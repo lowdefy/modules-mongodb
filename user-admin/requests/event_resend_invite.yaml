@@ -1,0 +1,63 @@
+id: event_resend_invite
+type: MongoDBUpdateOne
+connectionId:
+  _module.connectionId: events
+payload:
+  user:
+    _state: user
+properties:
+  options:
+    upsert: true
+  filter:
+    _id:
+      _uuid: true
+  update:
+    _build.array.concat:
+      - - $set:
+            _object.assign:
+              - created:
+                  _module.var: change_stamp
+                date:
+                  _date: now
+                type: resend-user-invite
+                metadata:
+                  app_name:
+                    _module.var: app_name
+                  user:
+                    _id:
+                      _payload: user._id
+                    name:
+                      _string.concat:
+                        - _string.trim:
+                            _if_none:
+                              - _payload: user.profile.given_name
+                              - ""
+                        - " "
+                        - _string.trim:
+                            _if_none:
+                              - _payload: user.profile.family_name
+                              - ""
+                  lowercase_email:
+                    _payload: user.lowercase_email
+              - _object.defineProperty:
+                  on: {}
+                  key:
+                    _module.var: app_name
+                  descriptor:
+                    value:
+                      title:
+                        _nunjucks:
+                          template: |
+                            {% raw %}{{ user.profile.name }} sent user invite email to {{ first_name }} {{ last_name }}{% endraw %}
+                          on:
+                            user:
+                              _user: true
+                            first_name:
+                              _payload: user.profile.given_name
+                            last_name:
+                              _payload: user.profile.family_name
+                      description: null
+      - _module.var:
+          key: request_stages.event_resend_invite
+          default:
+            - $set: {}

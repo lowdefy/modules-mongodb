@@ -1,0 +1,235 @@
+id: get_user_excel_data
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-contacts
+payload:
+  filter:
+    _state: filter
+  sort:
+    _state: sort
+  pagination:
+    _state: fetch_request_pagination
+    ~ignoreBuildChecks: true
+properties:
+  pipeline:
+    _build.array.concat:
+      - - $search:
+            compound:
+              filter:
+                - compound:
+                    mustNot:
+                      - equals:
+                          path: disabled
+                          value: true
+                    must:
+                      _array.concat:
+                        - - compound:
+                              should:
+                                - equals:
+                                    path:
+                                      _string.concat:
+                                        - "apps."
+                                        - _module.var: app_name
+                                        - ".is_user"
+                                    value: true
+                                - equals:
+                                    path:
+                                      _string.concat:
+                                        - "apps."
+                                        - _module.var: app_name
+                                        - ".invite.open"
+                                    value: true
+                        - _if:
+                            test:
+                              _ne:
+                                - _payload: filter.search
+                                - null
+                            then:
+                              - compound:
+                                  should:
+                                    - text:
+                                        query:
+                                          _string.toLowerCase:
+                                            _payload: filter.search
+                                        path:
+                                          - profile.name
+                                          - lowercase_email
+                                    - wildcard:
+                                        query:
+                                          _string.concat:
+                                            - "*"
+                                            - _string.toLowerCase:
+                                                _payload: filter.search
+                                            - "*"
+                                        path:
+                                          - profile.name
+                                          - lowercase_email
+                                        allowAnalyzedField: true
+                            else: []
+                        - _if:
+                            test:
+                              _gt:
+                                - _if_none:
+                                    - _payload: filter.roles.length
+                                    - 0
+                                - 0
+                            then:
+                              - compound:
+                                  should:
+                                    - in:
+                                        path:
+                                          _string.concat:
+                                            - "apps."
+                                            - _module.var: app_name
+                                            - ".roles"
+                                        value:
+                                          _payload: filter.roles
+                            else: []
+                        - _array.filter:
+                            - _module.var:
+                                key: request_stages.filter_match
+                                default: []
+                            - _function:
+                                __ne:
+                                  - __args: 0
+                                  - null
+
+        # TODO: Move to atlas search
+        - $match:
+            removed: null
+        # TODO: Improve
+        - $match:
+            $expr:
+              _switch:
+                branches:
+                  - if:
+                      _eq:
+                        - _payload: filter.status
+                        - disabled
+                    then:
+                      $eq:
+                        - _string.concat:
+                            - "$apps."
+                            - _module.var: app_name
+                            - ".disabled"
+                        - true
+                  - if:
+                      _eq:
+                        - _payload: filter.status
+                        - active
+                    then:
+                      $and:
+                        - $eq:
+                            - _string.concat:
+                                - "$apps."
+                                - _module.var: app_name
+                                - ".is_user"
+                            - true
+                        - $ne:
+                            - _string.concat:
+                                - "$apps."
+                                - _module.var: app_name
+                                - ".disabled"
+                            - true
+                  - if:
+                      _eq:
+                        - _payload: filter.status
+                        - invited
+                    then:
+                      $and:
+                        - $eq:
+                            - _string.concat:
+                                - "$apps."
+                                - _module.var: app_name
+                                - ".invite.open"
+                            - true
+                        - $ne:
+                            - _string.concat:
+                                - "$apps."
+                                - _module.var: app_name
+                                - ".disabled"
+                            - true
+                default: true
+
+        - $addFields:
+            score:
+              $meta: searchScore
+        - _if:
+            test:
+              _eq:
+                - _if_none:
+                    - _payload: filter.search
+                    - null
+                - null
+            then:
+              $sort:
+                _object.assign:
+                  - _object.defineProperty:
+                      on: {}
+                      key:
+                        _payload: sort.by
+                      descriptor:
+                        value:
+                          _payload: sort.order
+                  - _id: 1
+            else:
+              $sort:
+                score: -1
+                updated.timestamp: -1
+        - $addFields:
+            app:
+              _string.concat:
+                - "$apps."
+                - _module.var: app_name
+            active:
+              $switch:
+                branches:
+                  - case:
+                      $eq:
+                        - _string.concat:
+                            - "$apps."
+                            - _module.var: app_name
+                            - ".disabled"
+                        - true
+                    then:
+                      text: Disabled
+                      color: red
+                  - case:
+                      $eq:
+                        - _string.concat:
+                            - "$apps."
+                            - _module.var: app_name
+                            - ".invite.open"
+                        - true
+                    then:
+                      text: Open Invite
+                      color: blue
+                default:
+                  text: Active
+                  color: green
+            updated_at:
+              $dateToString:
+                date: $updated.timestamp
+                format: "%Y-%m-%d"
+            created_at:
+              $dateToString:
+                date: $created.timestamp
+                format: "%Y-%m-%d"
+            signed_up_at:
+              $dateToString:
+                date:
+                  _string.concat:
+                    - "$apps."
+                    - _module.var: app_name
+                    - ".sign_up"
+                format: "%Y-%m-%d"
+      - _module.var:
+          key: request_stages.get_all_users
+          default:
+            - $addFields: {}
+      - - $project:
+            apps: 0
+        - $skip:
+            _payload: pagination.skip
+        - $limit:
+            _payload: pagination.pageSize

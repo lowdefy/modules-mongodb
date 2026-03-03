@@ -1,0 +1,6 @@
+id: events
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB
+  collection: events

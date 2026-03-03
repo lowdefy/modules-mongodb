@@ -1,0 +1,33 @@
+id: user_avatar
+type: Img
+style:
+  textAlign: center
+  marginBottom: 42
+properties:
+  style:
+    width: 100px
+    borderRadius: 50%
+  src:
+    _nunjucks:
+      template: https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed={{ name }}
+      on:
+        name:
+          _string.concat:
+            - _if_none:
+                - _state: user.profile.given_name
+                - ""
+            - " "
+            - _if_none:
+                - _state: user.profile.family_name
+                - ""
+  alt:
+    _string.concat:
+      - "User avatar for "
+      - _string.concat:
+          - _if_none:
+              - _state: user.profile.given_name
+              - ""
+          - " "
+          - _if_none:
+              - _state: user.profile.family_name
+              - ""

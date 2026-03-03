@@ -1,0 +1,6 @@
+{
+  "name": "@lowdefy/modules",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lowdefy modules for MRM applications"
+}

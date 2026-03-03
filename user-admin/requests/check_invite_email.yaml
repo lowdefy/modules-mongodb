@@ -1,0 +1,28 @@
+id: check_invite_email
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-contacts
+payload:
+  email:
+    _state: email
+properties:
+  pipeline:
+    - $match:
+        lowercase_email:
+          _string.toLowerCase:
+            _string.trim:
+              _if_none:
+                - _payload: email
+                - ""
+    - $project:
+        _id: 1
+        edit_user:
+          $or:
+            - _string.concat:
+                - "$apps."
+                - _module.var: app_name
+                - ".is_user"
+            - _string.concat:
+                - "$apps."
+                - _module.var: app_name
+                - ".invite.open"

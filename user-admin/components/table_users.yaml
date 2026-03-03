@@ -1,0 +1,79 @@
+id: users_table
+type: AgGridMaterial
+properties:
+  height: 70vh
+  rowStyle:
+    cursor: pointer
+  rowData:
+    _request: get_all_users
+  defaultColDef:
+    sortable: true
+    resizable: true
+    cellStyle:
+      cursor: pointer
+      wordBreak: break-word
+      lineHeight: 1.25
+      paddingBottom: 8px
+      paddingTop: 8px
+  columnDefs:
+    _build.array.concat:
+      - - headerName: Name
+          field: profile.name
+          minWidth: 240
+          flex: 1
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% raw %}<img src="{{ profile.picture }}" width="30px" height="30px" style="margin-right: 5px; border-radius: 50%;"/> {{ profile.name | safe }}{% endraw %}
+                on:
+                  __args: 0.data
+        - headerName: Email
+          field: email
+          flex: 1
+          minWidth: 250
+        - headerName: Active
+          field: active
+          width: 140
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% raw %}<span style="color: {{ color }}; border: 1px solid {{ color }}; border-radius: 4px; padding: 4px 8px;">{{ text }}</span>{% endraw %}
+                on:
+                  __args: 0.data.active
+        - headerName: Roles
+          flex: 1
+          minWidth: 200
+          wrapText: true
+          autoHeight: true
+          field: app.roles
+          cellRenderer:
+            _function:
+              __array.join:
+                - __if_none:
+                    - __args: 0.data.app.roles
+                    - []
+                - ", "
+      - _module.var:
+          key: components.table_columns
+          default: []
+      - - headerName: Updated At
+          field: updated_at
+          width: 120
+        - headerName: Created At
+          field: created_at
+          width: 120
+        - headerName: Signed Up At
+          field: signed_up_at
+          width: 130
+events:
+  onRowClick:
+    - id: link_to_edit
+      type: Link
+      params:
+        pageId:
+          _module.pageId: users-edit
+        input:
+          user_id:
+            _event: row._id

@@ -1,0 +1,49 @@
+name: User Admin
+description: User administration — list, edit, invite users
+
+vars:
+  app_name:
+    required: true
+    description: App name for MongoDB field paths (e.g., prp-team)
+  app_title:
+    required: true
+    description: Display title for the app (e.g., Team)
+  roles:
+    required: true
+    description: List of available user roles [{label, value}]
+  theme:
+    default: { header_theme: light }
+    description: Theme configuration
+  change_stamp:
+    required: true
+    description: Change stamp for audit trail
+  app_domain:
+    description: App domain URL for invite links (falls back to current origin)
+  components:
+    description: "Component overrides: form_profile, form_global_attributes, form_app_attributes, table_columns, download_columns, filters"
+  request_stages:
+    description: "MongoDB pipeline stage overrides: get_all_users, invite_user, update_user, filter_match, event_invite_user, event_update_user, event_resend_invite"
+  filter_requests:
+    default: []
+    description: Additional requests for the custom filters section
+
+connections:
+  - _ref: connections/user-contacts.yaml
+  - _ref: connections/events.yaml
+  - _ref: connections/consume-notifications.yaml
+
+pages:
+  - _ref: pages/users.yaml
+  - _ref: pages/users-edit.yaml
+  - _ref: pages/users-invite.yaml
+  - _ref: pages/check-invite-email.yaml
+
+components: []
+
+menus:
+  - _ref: menu.yaml
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+  - name: "@lowdefy/community-plugin-aggrid"
+  - name: "@lowdefy/community-plugin-xlsx"

@@ -1,0 +1,14 @@
+id: button_new_invite
+type: Button
+layout:
+  flex: 0 0 auto
+properties:
+  title: New Invite
+  icon: AiOutlineSend
+events:
+  onClick:
+    - id: link_to_check_invite_email
+      type: Link
+      params:
+        pageId:
+          _module.pageId: check-invite-email

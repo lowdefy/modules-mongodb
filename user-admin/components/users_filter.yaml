@@ -1,0 +1,75 @@
+id: users_filter
+type: Box
+layout:
+  contentGutter: 8
+style:
+  maxWidth: 1200
+  margin: auto
+blocks:
+  - id: filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 auto
+    properties:
+      placeholder: Search by Name, Surname, or Email
+      label:
+        disabled: true
+    events:
+      onPressEnter:
+        _ref: ../actions/search.yaml
+      onChange:
+        try:
+          _ref: ../actions/search.yaml
+        debounce:
+          ms: 500
+  - id: filter.roles
+    type: MultipleSelector
+    visible:
+      _gt:
+        - _array.length:
+            _module.var:
+              key: roles
+              default: []
+        - 0
+    layout:
+      flex: 1 1 auto
+    properties:
+      placeholder: Roles
+      label:
+        disabled: true
+      options:
+        _module.var: roles
+    events:
+      onChange:
+        _ref: ../actions/search.yaml
+  - id: filter.status
+    type: ButtonSelector
+    layout:
+      flex: 0 1 auto
+    properties:
+      label:
+        disabled: true
+      options:
+        - label: Active
+          value: active
+        - label: Disabled
+          value: disabled
+        - label: Open Invite
+          value: invited
+    events:
+      onChange:
+        _ref: ../actions/search.yaml
+  - id: filter.clear
+    type: Button
+    layout:
+      flex: 0 1 auto
+    properties:
+      title: Clear
+      icon: AiOutlineClear
+      type: default
+    events:
+      onClick:
+        _build.array.concat:
+          - - id: reset
+              type: Reset
+          - _ref: ../actions/search.yaml

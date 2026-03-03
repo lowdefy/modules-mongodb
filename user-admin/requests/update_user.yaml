@@ -1,0 +1,96 @@
+id: update_user
+type: MongoDBUpdateOne
+connectionId:
+  _module.connectionId: user-contacts
+payload:
+  user:
+    _state: user
+  name:
+    _string.trim:
+      _string.concat:
+        - _string.trim:
+            _if_none:
+              - _state: user.profile.given_name
+              - ""
+        - " "
+        - _string.trim:
+            _if_none:
+              - _state: user.profile.family_name
+              - ""
+properties:
+  filter:
+    _id:
+      _payload: user._id
+  update:
+    _build.array.concat:
+      - - $set:
+            _object.assign:
+              - updated:
+                  _module.var: change_stamp
+                global_attributes:
+                  $mergeObjects:
+                    - $global_attributes
+                    - _payload: user.global_attributes
+                profile.name:
+                  _payload: name
+                profile.picture:
+                  _string.concat:
+                    - https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed=
+                    - _payload: name
+                profile.title:
+                  _payload: user.profile.title
+                profile.given_name:
+                  _string.trim:
+                    _if_none:
+                      - _payload: user.profile.given_name
+                      - ""
+                profile.family_name:
+                  _string.trim:
+                    _if_none:
+                      - _payload: user.profile.family_name
+                      - ""
+              - _object.defineProperty:
+                  on: {}
+                  key:
+                    _string.concat:
+                      ["apps.", { _module.var: app_name }, ".disabled"]
+                  descriptor:
+                    value:
+                      _if_none:
+                        - _payload: user.disabled
+                        - false
+              - _object.defineProperty:
+                  on: {}
+                  key:
+                    _string.concat:
+                      ["apps.", { _module.var: app_name }, ".roles"]
+                  descriptor:
+                    value:
+                      _payload: user.roles
+              - _object.defineProperty:
+                  on: {}
+                  key:
+                    _string.concat:
+                      ["apps.", { _module.var: app_name }, ".invite.open"]
+                  descriptor:
+                    value:
+                      _if_none:
+                        - _payload: user.invite.open
+                        - false
+              - _object.defineProperty:
+                  on: {}
+                  key:
+                    _string.concat:
+                      ["apps.", { _module.var: app_name }, ".app_attributes"]
+                  descriptor:
+                    value:
+                      $mergeObjects:
+                        - _string.concat:
+                            - "$apps."
+                            - _module.var: app_name
+                            - ".app_attributes"
+                        - _payload: user.app_attributes
+      - _module.var:
+          key: request_stages.update_user
+          default:
+            - $set: {}

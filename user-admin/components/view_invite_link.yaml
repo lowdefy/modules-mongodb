@@ -1,0 +1,17 @@
+id: view_invite_link
+type: Paragraph
+properties:
+  code: true
+  copyable: true
+  content:
+    _nunjucks:
+      template: "{{ origin }}/login?hint={{ hint }}"
+      on:
+        origin:
+          _if_none:
+            - _module.var: app_domain
+            - _location: origin
+        hint:
+          _if_none:
+            - _state: user.lowercase_email
+            - ""

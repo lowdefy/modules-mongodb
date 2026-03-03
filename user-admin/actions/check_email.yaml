@@ -1,0 +1,35 @@
+- id: validate
+  type: Validate
+- id: check_invite_email
+  type: Request
+  params: check_invite_email
+- id: link_to_edit_user
+  type: Link
+  skip:
+    _ne:
+      - _request: check_invite_email.0.edit_user
+      - true
+  messages:
+    success: User already exists, confirm user access details.
+  params:
+    pageId:
+      _module.pageId: users-edit
+    input:
+      user_id:
+        _request: check_invite_email.0._id
+- id: link_to_new_invite
+  type: Link
+  skip:
+    _eq:
+      - _request: check_invite_email.0.edit_user
+      - true
+  params:
+    pageId:
+      _module.pageId: users-invite
+    input:
+      user_id:
+        _request: check_invite_email.0._id
+      email:
+        _state: email
+- id: reset
+  type: Reset

@@ -1,0 +1,65 @@
+id: export_button
+type: Button
+layout:
+  flex: 0 1 auto
+properties:
+  title: Download Excel File
+  block: true
+  type: default
+events:
+  onClick:
+    - id: fetch_excel_data
+      type: FetchRequest
+      params:
+        requestName: get_user_excel_data
+    - id: xlsx_download
+      type: DownloadXlsx
+      params:
+        fileName:
+          _string.concat:
+            - _module.var: app_title
+            - _Users_Export
+        dateFormat: "YYYY/MM/DD"
+        data:
+          _actions: fetch_excel_data.response
+        schema:
+          _build.array.concat:
+            - - column: name
+                value: profile.name
+                type: String
+                width: 20
+              - column: email
+                value: email
+                type: String
+                width: 20
+              - column:
+                  _string.concat:
+                    - _string.toLowerCase:
+                        _string.replaceAll:
+                          on:
+                            _module.var: app_title
+                          regex: " "
+                          newSubstr: "_"
+                    - "_active"
+                value: active.text
+                type: String
+                width: 12
+              - column: roles
+                value: app.roles
+                type: Array
+                width: 30
+            - _module.var:
+                key: components.download_columns
+                default: []
+            - - column: updated_at
+                value: updated_at
+                type: String
+                width: 15
+              - column: created_at
+                value: created_at
+                type: String
+                width: 15
+              - column: signed_up_at
+                value: signed_up_at
+                type: String
+                width: 15

@@ -1,0 +1,34 @@
+id: form_access
+type: Box
+layout:
+  contentGutter: 8
+blocks:
+  #TODO What is this supposed to be?
+  - id: user.invite.open
+    type: Switch
+    visible:
+      _ne:
+        - _state: user.is_user
+        - true
+    properties:
+      title: Invite
+      color: green
+  - id: user.roles
+    type: MultipleSelector
+    properties:
+      title: Roles
+      options:
+        _module.var: roles
+  - id: user.disabled
+    type: Switch
+    visible:
+      _or:
+        - _eq:
+            - _state: user.is_user
+            - true
+        - _eq:
+            - _state: user.invite.open
+            - true
+    properties:
+      title: Disable User
+      color: "#f5222d"

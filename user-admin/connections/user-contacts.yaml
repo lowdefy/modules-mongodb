@@ -1,0 +1,6 @@
+id: user-contacts
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB
+  collection: user_contacts

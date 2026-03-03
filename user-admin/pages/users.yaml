@@ -1,0 +1,75 @@
+_ref:
+  path: ../../shared/page_layout.yaml
+  vars:
+    id: users
+    title:
+      _string.concat:
+        - _module.var: app_title
+        - " User Admin"
+    theme:
+      _module.var: theme
+    requests:
+      - _ref: ../requests/get_all_users.yaml
+      - _ref: ../requests/get_user_excel_data.yaml
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _string.concat:
+            - _module.var: app_title
+            - " User Admin"
+    events:
+      onInit:
+        - id: set_sort_filter
+          type: SetState
+          params:
+            sort:
+              by: updated.timestamp
+              order: -1
+      onMountAsync:
+        - id: set_pagination
+          type: SetState
+          params:
+            pagination:
+              current: 1
+              skip: 0
+              pageSize: 500
+        - id: get_all
+          type: Request
+          params:
+            - get_all_users
+    page_actions:
+      - id: buttons_container
+        type: Box
+        layout:
+          contentGutter: 8
+        blocks:
+          - _ref: ../components/excel_download.yaml
+          - _ref: ../components/button_new_invite.yaml
+    blocks:
+      - _ref: ../components/users_filter.yaml
+      - id: custom_filters_box
+        type: Box
+        layout:
+          contentGutter: 8
+        requests:
+          _module.var:
+            key: filter_requests
+            default: []
+        style:
+          maxWidth: 1200
+          margin: auto
+          marginTop: 4
+        blocks:
+          _module.var:
+            key: components.filters
+            default: []
+      - _ref: ../components/sort_filters.yaml
+      - id: content
+        type: Card
+        style:
+          padding: 8px 16px 0px 16px
+          margin: auto
+        blocks:
+          - _ref: ../components/table_users.yaml
+          - _ref: ../components/pagination.yaml

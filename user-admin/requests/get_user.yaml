@@ -1,0 +1,63 @@
+id: get_user
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-contacts
+payload:
+  user_id:
+    _input: user_id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: user_id
+    - $project:
+        email:
+          $cond:
+            - $regexMatch:
+                input: $email
+                regex: "@"
+            - $email
+            - null
+        lowercase_email:
+          $cond:
+            - $regexMatch:
+                input: $lowercase_email
+                regex: "@"
+            - $lowercase_email
+            - null
+
+        global_attributes: 1
+        profile: 1
+        instance: 1
+        app_attributes:
+          _string.concat:
+            - "$apps."
+            - _module.var: app_name
+            - ".app_attributes"
+        disabled:
+          _string.concat:
+            - "$apps."
+            - _module.var: app_name
+            - ".disabled"
+        invite:
+          _string.concat:
+            - "$apps."
+            - _module.var: app_name
+            - ".invite"
+        is_user:
+          _string.concat:
+            - "$apps."
+            - _module.var: app_name
+            - ".is_user"
+        roles:
+          _string.concat:
+            - "$apps."
+            - _module.var: app_name
+            - ".roles"
+        sign_up:
+          _string.concat:
+            - "$apps."
+            - _module.var: app_name
+            - ".sign_up"
+        updated: 1
+        created: 1

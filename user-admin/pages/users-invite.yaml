@@ -1,0 +1,156 @@
+_ref:
+  path: ../../shared/page_layout.yaml
+  vars:
+    id: users-invite
+    title:
+      _nunjucks:
+        template: |
+          Invite {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+        on:
+          _object.assign:
+            - _request: get_user.0
+            - app_title:
+                _module.var: app_title
+    theme:
+      _module.var: theme
+    doc:
+      _request: get_user.0
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _string.concat:
+            - _module.var: app_title
+            - " User Admin"
+        pageId:
+          _module.pageId: users
+      - label: Invite User
+    requests:
+      - _ref: ../requests/get_user.yaml
+      - _ref: ../requests/invite_user.yaml
+      - _ref: ../requests/event_invite_user.yaml
+      - _ref: ../requests/notification_invite_user.yaml
+    events:
+      onMount:
+        - id: redirect
+          type: Link
+          skip:
+            _ne:
+              - _input: email
+              - null
+          params:
+            back: true
+        - id: get_user
+          type: Request
+          params: get_user
+        - id: set_user
+          type: SetState
+          params:
+            user:
+              _if:
+                test:
+                  _eq:
+                    - _input: user_id
+                    - null
+                then:
+                  email:
+                    _input: email
+                  lowercase_email:
+                    _string.toLowerCase:
+                      _input: email
+                else:
+                  _request: get_user.0
+
+    blocks:
+      - id: content_wrapper
+        type: Card
+        style:
+          maxWidth: 600
+          margin: auto
+        layout:
+          contentGutter: 8
+        blocks:
+          - _ref: ../components/view_user_avatar_preview.yaml
+          - _ref: ../components/view_invite_link.yaml
+          - _ref: ../components/view_email.yaml
+          - id: divider
+            type: Divider
+            properties:
+              title: Profile
+          - _module.var:
+              key: components.form_profile
+              default:
+                id: form_profile
+                type: Box
+          - id: divider
+            type: Divider
+            properties:
+              title: Access
+          - _module.var:
+              key: components.form_global_attributes
+              default:
+                id: form_global_attributes
+                type: Box
+          - _module.var:
+              key: components.form_app_attributes
+              default:
+                id: form_app_attributes
+                type: Box
+          - _ref: ../components/form_access_invite.yaml
+          - id: divider
+            type: Divider
+          - id: footer
+            type: Box
+            layout:
+              contentGutter: 8
+            blocks:
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: users
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Send Invite
+                  icon: RiMailSendLine
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: invite_user
+                      type: Request
+                      messages:
+                        success: New invite created.
+                      params: invite_user
+                    - id: event_invite_user
+                      type: Request
+                      params: event_invite_user
+                    - id: send_notification
+                      type: Request
+                      async: true
+                      params:
+                        - notification_invite_user
+                    - id: reset
+                      type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: users

@@ -1,0 +1,11 @@
+id: notification_resend_invite
+type: AxiosHttp
+connectionId:
+  _module.connectionId: consume-notifications
+payload:
+  event_ids:
+    - _request: event_resend_invite.lastErrorObject.upserted
+properties:
+  data:
+    ids:
+      _payload: event_ids
