@@ -19,16 +19,16 @@ blocks:
         type: Paragraph
         properties:
           content: |
-            This app tests all modules in the monorepo with multiple instances.
+            This app tests all modules in the monorepo.
       - id: links
         type: Box
         layout:
           contentGutter: 16
         blocks:
-          - id: team_users_link
+          - id: user_admin_link
             type: Button
             properties:
-              title: Team User Admin
+              title: User Admin
               icon: AiOutlineTeam
               block: true
             events:
@@ -36,16 +36,4 @@ blocks:
                 - id: link
                   type: Link
                   params:
-                    pageId: team-users/users
-          - id: client_users_link
-            type: Button
-            properties:
-              title: Client User Admin
-              icon: AiOutlineUser
-              block: true
-            events:
-              onClick:
-                - id: link
-                  type: Link
-                  params:
-                    pageId: client-users/users
+                    pageId: user-admin/users

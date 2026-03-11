@@ -1,6 +1,8 @@
 {
-  "name": "@lowdefy/modules",
+  "name": "@lowdefy/modules-mongodb",
   "version": "0.1.0",
   "private": true,
-  "description": "Lowdefy modules for MRM applications"
+  "description": "Lowdefy MongoDB Modules",
+  "packageManager": "pnpm@10.6.2",
+  "type": "module"
 }

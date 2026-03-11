@@ -1,20 +1,24 @@
 lowdefy: 0.0.0-experimental-20260311112138
-name: Module Test App
+name: Module Demo App
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: 2.4.1
+  - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
-  - name: '@lowdefy/community-plugin-aggrid'
-    version: 1.1.0
-  - name: '@lowdefy/community-plugin-xlsx'
-    version: 0.1.0
 
 modules:
   - id: user-admin
-    source: 'file:../../modules/user-admin'
+    source: "file:../../modules/user-admin"
     # source: github:lowdefy/modules-mongodb/modules/user-admin@v1.0.0
     vars:
       _ref: modules/user-admin/index.yaml
+
+  - id: user-account
+    source: "file:../../modules/user-account"
+    # source: github:lowdefy/modules-mongodb/modules/user-account@v1.0.0
+    vars:
+      _ref: modules/user-account/index.yaml
 
 menus:
   - id: default
@@ -28,11 +32,11 @@ menus:
               icon: AiOutlineHome
 
         - _ref:
-            module: team-users
+            module: user-admin
             menu: default
 
         - _ref:
-            module: client-users
+            module: user-account
             menu: default
 
 pages:

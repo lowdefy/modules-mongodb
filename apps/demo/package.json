@@ -1,0 +1,15 @@
+{
+  "name": "@lowdefy/modules-demo",
+  "version": "0.1.0",
+  "license": "UNLICENSED",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "ldf:b": "lowdefy build",
+    "ldf:d": "lowdefy dev --log-level=debug --no-open",
+    "ldf": "lowdefy dev --no-open"
+  },
+  "dependencies": {
+    "lowdefy": "0.0.0-experimental-20260311112138"
+  }
+}
