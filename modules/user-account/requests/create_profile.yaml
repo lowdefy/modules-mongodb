@@ -1,0 +1,70 @@
+id: create_profile
+type: MongoDBUpdateOne
+connectionId:
+  _module.connectionId: user-contacts
+payload:
+  contact:
+    _state: contact
+  contact_id:
+    _input: contact_id
+  name:
+    _string.concat:
+      - _string.trim:
+          _if_none:
+            - _state: contact.profile.given_name
+            - ""
+      - " "
+      - _string.trim:
+          _if_none:
+            - _state: contact.profile.family_name
+            - ""
+properties:
+  filter:
+    _id:
+      _if_none:
+        - _user: id
+        - _payload: contact_id
+  update:
+    $set:
+      profile.profile_created: true
+      profile.picture:
+        _string.concat:
+          - https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed=
+          - _payload: name
+      profile.name:
+        _payload: name
+      profile.title:
+        _payload: contact.profile.title
+      profile.given_name:
+        _string.trim:
+          _if_none:
+            - _payload: contact.profile.given_name
+            - ""
+      profile.family_name:
+        _string.trim:
+          _if_none:
+            - _payload: contact.profile.family_name
+            - ""
+      profile.birthday:
+        _payload: contact.profile.birthday
+      profile.work_phone:
+        _payload: contact.profile.work_phone
+      profile.mobile_phone:
+        _payload: contact.profile.mobile_phone
+      profile.job_title:
+        _string.trim:
+          _if_none:
+            - _payload: contact.profile.job_title
+            - ""
+      profile.department:
+        _string.trim:
+          _if_none:
+            - _payload: contact.profile.department
+            - ""
+      profile.company_name:
+        _string.trim:
+          _if_none:
+            - _payload: contact.profile.company_name
+            - ""
+      updated:
+        _module.var: change_stamp

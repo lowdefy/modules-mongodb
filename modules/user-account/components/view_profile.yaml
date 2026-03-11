@@ -1,0 +1,78 @@
+id: view_contact_profile
+type: Box
+blocks:
+  - id: user_avatar
+    type: Img
+    style:
+      textAlign: center
+      marginBottom: 42
+    properties:
+      style:
+        width: 100px
+        borderRadius: 50%
+      src:
+        _user: profile.picture
+  - id: view_contact_profile
+    type: Descriptions
+    properties:
+      column: 1
+      labelStyle:
+        fontWeight: bold
+        width:
+          _if:
+            test:
+              _gt:
+                - _media: width
+                - 768
+            then: 30%
+        justifyContent: right
+      items:
+        _array.filter:
+          - - label: Name
+              value:
+                _string.concat:
+                  - _if_none:
+                      - _user: profile.title
+                      - ""
+                  - _if:
+                      test:
+                        _eq:
+                          - _user: profile.title
+                          - null
+                      then: ""
+                      else: ". "
+                  - _user: profile.name
+            - label: Email
+              value:
+                _user: email
+            - label: Work Phone
+              value:
+                _user: profile.work_phone.phone_number
+            - label: Mobile Phone
+              value:
+                _user: profile.mobile_phone.phone_number
+            - label: Company Name
+              value:
+                _user: profile.company_name
+            - label: Department
+              value:
+                _user: profile.department
+            - label: Job Title
+              value:
+                _user: profile.job_title
+            - label: Birthday
+              value:
+                _nunjucks:
+                  template: |
+                    {{ value | date('DD MMM') }}
+                  on:
+                    value:
+                      _user: profile.birthday
+          - _function:
+              __and:
+                - __ne:
+                    - __args: 0.value
+                    - null
+                - __ne:
+                    - __args: 0.value
+                    - ""

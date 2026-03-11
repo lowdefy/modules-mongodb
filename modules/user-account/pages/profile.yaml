@@ -1,0 +1,70 @@
+_ref:
+  path: ../shared/page_layout.yaml
+  vars:
+    id: profile
+    title: Profile
+    theme:
+      _module.var: theme
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Profile
+    blocks:
+      - id: content_wrapper
+        type: Box
+        style:
+          maxWidth: 600
+          margin: auto
+        layout:
+          contentGutter: 16
+          contentJustify: center
+        blocks:
+          - id: welcome_title
+            type: Divider
+            properties:
+              title: Profile
+              orientation: center
+          - id: content_wrapper
+            type: Card
+            layout:
+              contentGutter: 16
+            blocks:
+              - _module.var:
+                  key: components.view_profile
+                  default:
+                    _ref: ../components/view_profile.yaml
+              - id: divider
+                type: Divider
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: logout_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Logout
+                  icon: AiOutlineLogout
+                  type: default
+                events:
+                  onClick:
+                    - id: logout
+                      type: Logout
+                      params:
+                        callbackUrl:
+                          pageId: router
+              - id: edit_profile_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Edit Profile
+                  icon: AiOutlineEdit
+                events:
+                  onClick:
+                    - id: edit_profile_link
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: edit-profile

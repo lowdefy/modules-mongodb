@@ -1,0 +1,44 @@
+name: User Account
+description: User account pages — login, email verification, profile view/edit, profile creation
+
+vars:
+  app_name:
+    required: true
+    description: App name for MongoDB field paths and change stamps
+  change_stamp:
+    required: true
+    description: Change stamp for audit trail
+  theme:
+    default: { header_theme: light }
+    description: Theme configuration
+  login_message:
+    default: <p>Welcome. Please provide your work email to sign in.</p>
+    description: HTML message shown on the login page
+  verify_email_message:
+    default: A sign in link has been sent to your email. Follow the link to sign in.
+    description: Message shown on the verify email request page
+  components:
+    description: "Component overrides: form_profile, view_profile, login_logo"
+
+connections:
+  - _ref: connections/user-contacts.yaml
+
+pages:
+  - _ref: pages/login.yaml
+  - _ref: pages/verify-email-request.yaml
+  - _ref: pages/profile.yaml
+  - _ref: pages/edit-profile.yaml
+  - _ref: pages/create-profile.yaml
+
+components: []
+
+menus:
+  - _ref: menu.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^2"

@@ -1,0 +1,91 @@
+_ref:
+  path: ../shared/page_layout.yaml
+  vars:
+    id: create-profile
+    title: Create Profile
+    theme:
+      _module.var: theme
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Create Profile
+    events:
+      onInit:
+        - id: init
+          type: SetState
+          params:
+            contact.profile:
+              _user: profile
+            contact.email:
+              _user: email
+            contact.profile.birthday:
+              _if:
+                test:
+                  _ne:
+                    - _user: profile.birthday
+                    - null
+                then:
+                  _date:
+                    _if_none:
+                      - _user: profile.birthday
+                      - 2099-01-01
+                else: null
+    requests:
+      - _ref: ../requests/create_profile.yaml
+    blocks:
+      - id: content_wrapper
+        type: Box
+        style:
+          maxWidth: 600
+          margin: auto
+        layout:
+          contentGutter: 16
+          contentJustify: center
+        blocks:
+          - id: welcome_title
+            type: Divider
+            properties:
+              title: Create Profile
+              orientation: center
+          - id: profile_card
+            type: Card
+            layout:
+              contentGutter: 16
+            blocks:
+              - _module.var:
+                  key: components.form_profile
+                  default:
+                    _ref: ../components/form_profile.yaml
+              - id: divider
+                type: Divider
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                      params:
+                        regex: ^contact\.
+                    - id: create_profile
+                      type: Request
+                      params: create_profile
+                      messages:
+                        success: Profile created.
+                    - id: reset
+                      type: Reset
+                    - id: link_to_router
+                      type: Link
+                      params:
+                        url:
+                          _string.concat:
+                            - _location: origin
+                            - /router

@@ -1,0 +1,8 @@
+app_name: demo
+change_stamp:
+  user:
+    _user: id
+  timestamp:
+    _date: now
+theme:
+  header_theme: light

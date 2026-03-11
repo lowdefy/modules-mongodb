@@ -1,0 +1,47 @@
+id: verify-email-request
+type: Box
+layout:
+  contentGutter: 16
+  contentAlign: center
+  contentJustify: center
+style:
+  minHeight: 100vh
+  backgroundColor: "#F0F2F5"
+  padding: 0 20px
+blocks:
+  - id: card_page
+    type: Box
+    style:
+      maxWidth: 500
+    blocks:
+      - id: logo
+        type: Box
+        style:
+          marginBottom: 24
+          marginTop: 48
+        blocks:
+          _module.var:
+            key: components.login_logo
+            default: []
+      - id: card
+        type: Card
+        layout:
+          contentGutter: 8
+        properties:
+          style:
+            boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+        blocks:
+          - id: title
+            type: Html
+            style:
+              textAlign: center
+            properties:
+              html: <h1>Check Your Email</h1>
+          - id: check_email
+            type: Result
+            properties:
+              icon: AiOutlineMail
+              subTitle:
+                _module.var:
+                  key: verify_email_message
+                  default: A sign in link has been sent to your email. Follow the link to sign in.

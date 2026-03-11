@@ -1,0 +1,74 @@
+_ref:
+  path: ../shared/page_layout.yaml
+  vars:
+    id: edit-profile
+    title: Edit Profile
+    theme:
+      _module.var: theme
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Profile
+        pageId:
+          _module.pageId: profile
+      - label: Edit Profile
+    events:
+      onMount:
+        - id: init
+          type: SetState
+          params:
+            contact.profile:
+              _user: profile
+            contact.email:
+              _user: email
+    requests:
+      - _ref: ../requests/update_profile.yaml
+    blocks:
+      - id: content_wrapper
+        type: Box
+        style:
+          maxWidth: 600
+          margin: auto
+        layout:
+          contentGutter: 16
+          contentJustify: center
+        blocks:
+          - id: welcome_title
+            type: Divider
+            properties:
+              title: Edit Profile
+              orientation: center
+          - id: content_wrapper
+            type: Card
+            layout:
+              contentGutter: 16
+            blocks:
+              - _module.var:
+                  key: components.form_profile
+                  default:
+                    _ref: ../components/form_profile.yaml
+              - id: divider
+                type: Divider
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                events:
+                  onClick:
+                    - id: update_profile
+                      type: Request
+                      messages:
+                        success: Profile updated.
+                      params: update_profile
+                    - id: link_to_profile
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: profile
