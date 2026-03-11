@@ -1,0 +1,14 @@
+- headerName: Name
+  field: name
+  flex: 1
+  minWidth: 150
+- headerName: Email
+  field: email
+  flex: 1
+  minWidth: 200
+- headerName: Role
+  field: role
+  width: 120
+- headerName: Status
+  field: status
+  width: 100

@@ -1,0 +1,51 @@
+id: home
+type: PageHeaderMenu
+properties:
+  title: Module Test App
+blocks:
+  - id: content
+    type: Box
+    style:
+      maxWidth: 800
+      margin: auto
+      padding: 24
+    blocks:
+      - id: title
+        type: Title
+        properties:
+          content: Module Test App
+          level: 2
+      - id: description
+        type: Paragraph
+        properties:
+          content: |
+            This app tests all modules in the monorepo with multiple instances.
+      - id: links
+        type: Box
+        layout:
+          contentGutter: 16
+        blocks:
+          - id: team_users_link
+            type: Button
+            properties:
+              title: Team User Admin
+              icon: AiOutlineTeam
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: team-users/users
+          - id: client_users_link
+            type: Button
+            properties:
+              title: Client User Admin
+              icon: AiOutlineUser
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: client-users/users

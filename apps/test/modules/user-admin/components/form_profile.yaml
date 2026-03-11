@@ -1,0 +1,26 @@
+- id: name
+  type: TextInput
+  properties:
+    label: Full Name
+    size: large
+- id: email
+  type: TextInput
+  properties:
+    label: Email
+    size: large
+    disabled: true
+- id: phone
+  type: TextInput
+  properties:
+    label: Phone Number
+- id: department
+  type: Selector
+  properties:
+    label: Department
+    options:
+      - label: Engineering
+        value: engineering
+      - label: Operations
+        value: operations
+      - label: Finance
+        value: finance
