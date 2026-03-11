@@ -43,7 +43,15 @@ components: []
 menus:
   - _ref: menu.yaml
 
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+  - name: CONSUME_NOTIFICATIONS_URL
+    description: URL for the consume notifications service
+    required: false
+
 plugins:
   - name: "@lowdefy/community-plugin-mongodb"
-  - name: "@lowdefy/community-plugin-aggrid"
+    version: "^2"
   - name: "@lowdefy/community-plugin-xlsx"
+    version: "^1"
