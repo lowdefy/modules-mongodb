@@ -1,0 +1,63 @@
+## -----------------------------
+# id: page id
+# page_actions: page actions
+# blocks: page blocks
+# breadcrumbs: page breadcrumbs
+# doc: page document
+# events: page events
+# request: page requests
+# title: page title
+## ------------------------------
+
+id:
+  _var: id
+type: PageHeaderMenu
+properties:
+  header:
+    theme:
+      _var:
+        key: theme.header_theme
+        default: light
+  title:
+    _var: title
+requests:
+  _var:
+    key: requests
+    default: []
+events:
+  _var:
+    key: events
+    default: {}
+blocks:
+  - id: content_wrapper
+    type: Box
+    style:
+      minHeight: 100vh
+    layout:
+      contentGutter: 16
+    blocks:
+      - _ref:
+          path: page_title.yaml
+          vars:
+            breadcrumbs:
+              _var:
+                key: breadcrumbs
+                default: []
+            title:
+              _var: title
+            hideTitle:
+              _var:
+                key: hideTitle
+                default: false
+            doc:
+              _var: doc
+            page_actions:
+              _var:
+                key: page_actions
+                default: []
+      - id: content_wrapper
+        type: Box
+        blocks:
+          _var:
+            key: blocks
+            default: []

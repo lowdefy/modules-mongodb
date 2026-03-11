@@ -55,3 +55,4 @@ plugins:
     version: "^2"
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
+  - name: "@lowdefy/modules-mongodb-plugins"

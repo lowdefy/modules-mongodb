@@ -1,10 +1,12 @@
-- id: users
-  type: MenuLink
-  pageId:
-    _module.pageId: users
-  properties:
-    title:
-      _string.concat:
-        - _module.var: app_title
-        - " User Admin"
-    icon: AiOutlineTeam
+id: default
+links:
+  - id: users
+    type: MenuLink
+    pageId:
+      _module.pageId: users
+    properties:
+      title:
+        _string.concat:
+          - _module.var: app_title
+          - " User Admin"
+      icon: AiOutlineTeam
