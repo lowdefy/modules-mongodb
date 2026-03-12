@@ -5,7 +5,7 @@ _ref:
     title:
       _string.concat:
         - _module.var: app_title
-        - " User Admin [BRANCH]"
+        - " User Admin [SHA]"
     theme:
       _module.var: theme
     requests:
@@ -17,7 +17,7 @@ _ref:
       - label:
           _string.concat:
             - _module.var: app_title
-            - " User Admin [BRANCH]"
+            - " User Admin [SHA]"
     events:
       onInit:
         - id: set_sort_filter
