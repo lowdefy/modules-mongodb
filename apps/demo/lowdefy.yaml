@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260311112138
+lowdefy: 0.0.0-experimental-20260311134230
 name: Module Demo App
 
 plugins:
@@ -11,8 +11,8 @@ plugins:
 
 modules:
   - id: user-admin
-    source: 'file:../../modules/user-admin'
-    # source: github:lowdefy/modules-mongodb/modules/user-admin@2295caf6ca0bedee1e4e349d80c0666f6639c5c4
+    # source: 'file:../../modules/user-admin'
+    source: github:lowdefy/modules-mongodb/modules/user-admin@v1.0.0-test
     vars:
       _ref: modules/user-admin/index.yaml
 
