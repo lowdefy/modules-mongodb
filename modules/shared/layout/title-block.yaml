@@ -1,0 +1,45 @@
+id: title-block
+type: Box
+blocks:
+  - id: breadcrumbs
+    type: Breadcrumb
+    style:
+      paddingTop: 20px
+    properties:
+      list:
+        _var: { key: breadcrumbs, default: [] }
+  - id: title
+    type: Html
+    layout:
+      flex: 1 0 auto
+    style:
+      paddingTop: 12px
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            <h2 style="margin-bottom: 0px;">{{ title | safe }}</h2>
+            <h5 style="color: #a9a9a9; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1;">
+              {% if doc.updated.user.name %}
+                Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll')}}
+              {% endif %}
+              {% if doc.updated.user.name and doc.created.user.name %}
+                <span style="padding: 10px;">|</span>
+              {% endif %}
+              {% if doc.created.user.name %}
+                Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll')}}
+              {% endif %}
+            </h5>
+          on:
+            title:
+              _var: title
+            doc:
+              _var: doc
+  - id: page-actions
+    type: Box
+    layout:
+      flex: 0 1 auto
+    style:
+      margin: 16
+    blocks:
+      _var: { key: page_actions, default: [] }

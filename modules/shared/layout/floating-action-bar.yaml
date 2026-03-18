@@ -1,0 +1,16 @@
+id: floating-action-bar
+type: Affix
+properties:
+  offsetBottom: 0
+blocks:
+  - id: floating-action-card
+    type: Card
+    properties:
+      size: small
+      style:
+        boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+    layout:
+      contentDirection: row-reverse
+      contentGutter: 8
+    blocks:
+      _var: actions

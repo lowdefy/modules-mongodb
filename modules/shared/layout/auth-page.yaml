@@ -1,0 +1,79 @@
+id:
+  _var: id
+type: Box
+properties:
+  title:
+    _var: title
+layout:
+  contentGutter: 16
+  contentAlign: center
+  contentJustify: center
+style:
+  minHeight: 100vh
+  backgroundColor: "#F0F2F5"
+  padding: 0 20px
+events:
+  onInit:
+    _var: { key: events.onInit, default: [] }
+  onInitAsync:
+    _var: { key: events.onInitAsync, default: [] }
+  onMount:
+    _var: { key: events.onMount, default: [] }
+  onMountAsync:
+    _var: { key: events.onMountAsync, default: [] }
+requests:
+  _var: { key: requests, default: [] }
+blocks:
+  _build.array.concat:
+    - - id: auth-page-container
+        type: Box
+        style:
+          maxWidth: 400
+        blocks:
+          - id: auth-logo
+            type: Img
+            style:
+              marginBottom: 24
+              marginTop: 48
+            layout:
+              align: middle
+            properties:
+              src:
+                _module.var: logo.primary
+              height: 75
+              width: 100%
+              style:
+                _module.var: logo.style
+          - id: auth-card
+            type: Card
+            layout:
+              contentGutter: 8
+            properties:
+              style:
+                boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+            blocks:
+              _build.array.concat:
+                - _build.if:
+                    test:
+                      _build.ne:
+                        - _var: { key: title, default: "" }
+                        - ""
+                    then:
+                      - id: auth-title
+                        type: Html
+                        style:
+                          textAlign: center
+                        properties:
+                          html:
+                            _string.concat:
+                              - "<h1>"
+                              - _var: title
+                              - "</h1>"
+                    else: []
+                - _var: blocks
+                - _var: { key: actions, default: [] }
+          - id: auth-spacer
+            type: Box
+            style:
+              height: 48
+    - _module.var: { key: footer, default: [] }
