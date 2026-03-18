@@ -1,0 +1,63 @@
+_ref:
+  path: ./page.yaml
+  vars:
+    id:
+      _var: id
+    title:
+      _var: title
+    hide_title: true
+    events:
+      _var: { key: events, default: {} }
+    requests:
+      _var: { key: requests, default: [] }
+    blocks:
+      - id: card-page-container
+        type: Box
+        style:
+          maxWidth:
+            _var: { key: width, default: 750 }
+          margin: auto
+        layout:
+          contentGutter: 16
+        blocks:
+          _build.array.concat:
+            - - _ref:
+                  path: ../../shared/layout/title-block.yaml
+                  vars:
+                    title: { _var: title }
+                    doc: { _var: { key: doc, default: null } }
+                    page_actions: []
+                    breadcrumbs: []
+            - _var: { key: header_blocks, default: [] }
+            - - id: card-page-card
+                type: Card
+                properties:
+                  style:
+                    boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+                layout:
+                  contentGutter: 16
+                blocks:
+                  _var: blocks
+            - _var: { key: footer_blocks, default: [] }
+            - _build.if:
+                test:
+                  _build.array.length:
+                    _var: { key: footer_actions, default: [] }
+                then:
+                  - id: card-page-footer
+                    type: Affix
+                    properties:
+                      offsetBottom: 0
+                    blocks:
+                      - id: card-page-footer-card
+                        type: Card
+                        properties:
+                          size: small
+                          style:
+                            boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+                        layout:
+                          contentDirection: row-reverse
+                          contentGutter: 8
+                        blocks:
+                          _var: footer_actions
+                else: []
