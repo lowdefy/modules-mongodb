@@ -1,0 +1,29 @@
+id: log-event
+type: InternalApi
+auth:
+  public: false
+routine:
+  - id: insert-event
+    type: MongoDBInsertOne
+    connectionId:
+      _module.connectionId: events-db
+    properties:
+      doc:
+        _object.assign:
+          - _payload: display
+          - _payload: references
+          - _id:
+              _uuid: true
+            date:
+              _date: now
+            created:
+              _ref: ../defaults/change_stamp.yaml
+            type:
+              _payload: type
+            metadata:
+              _payload: metadata
+            files:
+              _payload: files
+  - :return:
+      eventId:
+        _step: insert-event.insertedId
