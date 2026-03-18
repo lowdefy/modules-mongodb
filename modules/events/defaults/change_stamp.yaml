@@ -1,0 +1,10 @@
+_module.var:
+  key: change_stamp
+  default:
+    timestamp:
+      _date: now
+    user:
+      name:
+        _user: profile.name
+      id:
+        _user: id

@@ -1,0 +1,56 @@
+name: Events
+description: Event logging — log-event API, event timeline panel, shared event metadata
+
+vars:
+  collection:
+    type: string
+    default: events
+  display_key:
+    type: string
+    required: true
+    description: >
+      App identifier for display objects. Events store per-app display
+      titles keyed by app name — this var selects which to render.
+  change_stamp:
+    type: object
+    description: >
+      Audit metadata template resolved at runtime.
+      Contains runtime operators (_user, _date) that evaluate per-request.
+      Default: { timestamp: { _date: now }, user: { name: { _user: profile.name }, id: { _user: id } } }
+  event_types:
+    type: object
+    default: {}
+    description: >
+      Additional event type display metadata. Merged with built-in types.
+      Keys are type strings, values have color, title, icon.
+
+components:
+  - id: change_stamp
+    component:
+      _ref: defaults/change_stamp.yaml
+  - id: event_types
+    component:
+      _build.object.assign:
+        - _ref: ../shared/enums/event_types.yaml
+        - _module.var:
+            key: event_types
+            default: {}
+  - id: event-log-panel
+    component:
+      _ref: components/event-log-panel.yaml
+
+api:
+  - _ref: api/log-event.yaml
+
+connections:
+  - _ref: connections/events-db.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+
+plugins:
+  - name: "@lowdefy/blocks-antd"
+    version: "^4"
+  - name: "@lowdefy/connection-mongodb"
+    version: "^4"
