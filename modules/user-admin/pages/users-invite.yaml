@@ -68,7 +68,7 @@ _ref:
           maxWidth: 600
           margin: auto
         layout:
-          contentGutter: 8
+          gap: 8
         blocks:
           - _ref: ../components/view_user_avatar_preview.yaml
           - _ref: ../components/view_invite_link.yaml
@@ -102,7 +102,7 @@ _ref:
           - id: footer
             type: Box
             layout:
-              contentGutter: 8
+              gap: 8
             blocks:
               - id: spacer
                 type: Box
@@ -115,7 +115,6 @@ _ref:
                 properties:
                   title: Cancel
                   icon: AiOutlineCloseCircle
-                  type: default
                 events:
                   onClick:
                     - id: back

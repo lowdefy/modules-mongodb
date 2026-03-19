@@ -21,7 +21,7 @@ _ref:
       - id: content_wrapper
         type: Card
         layout:
-          contentGutter: 8
+          gap: 8
         style:
           maxWidth: 500
           margin: auto

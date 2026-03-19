@@ -1,7 +1,7 @@
 id: form_profile
 type: Box
 layout:
-  contentGutter: 8
+  gap: 8
 style:
   margin: auto
 blocks:
@@ -10,10 +10,10 @@ blocks:
     style:
       textAlign: center
       marginBottom: 42
-    properties:
-      style:
+      /element:
         width: 100px
         borderRadius: 50%
+    properties:
       src:
         _nunjucks:
           template: https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed={{ name }}

@@ -1,7 +1,7 @@
 id: form_access
 type: Box
 layout:
-  contentGutter: 8
+  gap: 8
 blocks:
   - id: user.roles
     type: MultipleSelector

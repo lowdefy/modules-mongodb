@@ -16,18 +16,18 @@ _ref:
           maxWidth: 600
           margin: auto
         layout:
-          contentGutter: 16
-          contentJustify: center
+          gap: 16
+          justify: center
         blocks:
           - id: welcome_title
             type: Divider
             properties:
               title: Profile
-              orientation: center
+              titlePlacement: center
           - id: content_wrapper
             type: Card
             layout:
-              contentGutter: 16
+              gap: 16
             blocks:
               - _module.var:
                   key: components.view_profile
@@ -46,7 +46,6 @@ _ref:
                 properties:
                   title: Logout
                   icon: AiOutlineLogout
-                  type: default
                 events:
                   onClick:
                     - id: logout

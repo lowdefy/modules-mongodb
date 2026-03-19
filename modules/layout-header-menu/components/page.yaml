@@ -39,7 +39,7 @@ events:
     _var: { key: events.onMount, default: [] }
   onMountAsync:
     _var: { key: events.onMountAsync, default: [] }
-areas:
+slots:
   header:
     blocks:
       _module.var: { key: header_extra.blocks, default: [] }
