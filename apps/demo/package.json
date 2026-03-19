@@ -7,7 +7,10 @@
   "scripts": {
     "ldf:b": "lowdefy build",
     "ldf:d": "lowdefy dev --log-level=debug --no-open",
-    "ldf": "lowdefy dev --no-open"
+    "ldf": "lowdefy dev --no-open",
+    "ldf:b:i": "infisical run --env=dev --path=/apps/demo -- lowdefy build",
+    "ldf:d:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --log-level=debug --no-open",
+    "ldf:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --no-open"
   },
   "dependencies": {
     "lowdefy": "0.0.0-experimental-20260319101008"
