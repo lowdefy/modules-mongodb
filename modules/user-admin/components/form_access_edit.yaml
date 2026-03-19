@@ -1,7 +1,7 @@
 id: form_access
 type: Box
 layout:
-  contentGutter: 8
+  gap: 8
 blocks:
   #TODO What is this supposed to be?
   - id: user.invite.open

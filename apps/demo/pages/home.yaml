@@ -23,7 +23,7 @@ blocks:
       - id: links
         type: Box
         layout:
-          contentGutter: 16
+          gap: 16
         blocks:
           - id: user_admin_link
             type: Button

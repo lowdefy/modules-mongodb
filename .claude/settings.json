@@ -9,5 +9,12 @@
         "repo": "TECHMRM/claude-plugins"
       }
     }
+  },
+  "sandbox": {
+    "enabled": true,
+    "excludedCommands": ["gh"],
+    "network": {
+      "allowedDomains": ["github.com", "api.github.com"]
+    }
   }
 }

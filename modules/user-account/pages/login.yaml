@@ -1,9 +1,9 @@
 id: login
 type: Box
 layout:
-  contentGutter: 16
-  contentAlign: center
-  contentJustify: center
+  gap: 16
+  align: center
+  justify: center
 style:
   minHeight: 100vh
   backgroundColor: "#F0F2F5"
@@ -76,9 +76,9 @@ blocks:
       - id: card
         type: Card
         layout:
-          contentGutter: 8
-        properties:
-          style:
+          gap: 8
+        style:
+          /element:
             boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
         blocks:
           - id: title
@@ -98,7 +98,7 @@ blocks:
                 style:
                   padding: 32px 24px
                 layout:
-                  contentGutter: 0
+                  gap: 0
                 blocks:
                   - id: no_invite_alert
                     type: Alert

@@ -1,1 +1,1 @@
-// Block exports will be added here as needed.
+export { default as PageHeaderMenu } from "./blocks/PageHeaderMenu/PageHeaderMenu.js";

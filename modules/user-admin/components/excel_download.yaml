@@ -5,7 +5,6 @@ layout:
 properties:
   title: Download Excel File
   block: true
-  type: default
 events:
   onClick:
     - id: fetch_excel_data

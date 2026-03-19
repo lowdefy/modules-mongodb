@@ -42,7 +42,7 @@ _ref:
       - id: buttons_container
         type: Box
         layout:
-          contentGutter: 8
+          gap: 8
         blocks:
           - _ref: ../components/excel_download.yaml
           - _ref: ../components/button_new_invite.yaml
@@ -51,7 +51,7 @@ _ref:
       - id: custom_filters_box
         type: Box
         layout:
-          contentGutter: 8
+          gap: 8
         requests:
           _module.var:
             key: filter_requests

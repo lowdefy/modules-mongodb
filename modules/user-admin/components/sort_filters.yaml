@@ -2,8 +2,8 @@
 id: sort_filters_container
 type: Box
 layout:
-  contentGutter: 8
-  contentJustify: end
+  gap: 8
+  justify: end
 style:
   padding: 12px 16px 0px 16px
   margin: auto

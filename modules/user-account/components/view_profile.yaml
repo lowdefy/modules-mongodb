@@ -6,17 +6,16 @@ blocks:
     style:
       textAlign: center
       marginBottom: 42
-    properties:
-      style:
+      /element:
         width: 100px
         borderRadius: 50%
+    properties:
       src:
         _user: profile.picture
   - id: view_contact_profile
     type: Descriptions
-    properties:
-      column: 1
-      labelStyle:
+    style:
+      /label:
         fontWeight: bold
         width:
           _if:
@@ -26,6 +25,8 @@ blocks:
                 - 768
             then: 30%
         justifyContent: right
+    properties:
+      column: 1
       items:
         _array.filter:
           - - label: Name

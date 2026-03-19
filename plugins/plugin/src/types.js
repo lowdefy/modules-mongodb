@@ -1,10 +1,7 @@
-import * as actions from "./actions.js";
-
 export default {
-  actions: Object.keys(actions),
-  blocks: [],
+  actions: ["FetchRequest"],
+  blocks: ["PageHeaderMenu"],
   icons: {},
-  styles: { default: [] },
   operators: {},
   connections: [],
   requests: [],

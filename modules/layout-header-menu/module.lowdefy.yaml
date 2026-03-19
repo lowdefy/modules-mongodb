@@ -1,0 +1,14 @@
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugin"
+    version: "1.0.0"
+
+components:
+  - id: page
+    component:
+      _ref: ./components/page.yaml
+  - id: card-page
+    component:
+      _ref: ./components/card-page.yaml
+  - id: auth-page
+    component:
+      _ref: ../shared/layout/auth-page.yaml

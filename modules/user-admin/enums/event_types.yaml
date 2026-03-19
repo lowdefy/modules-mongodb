@@ -1,0 +1,12 @@
+invite-user:
+  color: "#52c41a"
+  title: User Invited
+  icon: AiOutlineSend
+update-user:
+  color: "#1890ff"
+  title: User Updated
+  icon: AiOutlineUser
+resend-user-invite:
+  color: "#faad14"
+  title: Invite Resent
+  icon: AiOutlineSend

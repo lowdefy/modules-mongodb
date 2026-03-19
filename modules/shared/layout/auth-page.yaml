@@ -5,9 +5,9 @@ properties:
   title:
     _var: title
 layout:
-  contentGutter: 16
-  contentAlign: center
-  contentJustify: center
+  gap: 16
+  align: center
+  justify: center
 style:
   minHeight: 100vh
   backgroundColor: "#F0F2F5"
@@ -35,21 +35,21 @@ blocks:
             style:
               marginBottom: 24
               marginTop: 48
+              /element:
+                _module.var: logo.style
             layout:
-              align: middle
+              selfAlign: middle
             properties:
               src:
                 _module.var: logo.primary
               height: 75
               width: 100%
-              style:
-                _module.var: logo.style
           - id: auth-card
             type: Card
             layout:
-              contentGutter: 8
-            properties:
-              style:
+              gap: 8
+            style:
+              /element:
                 boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
             blocks:
               _build.array.concat:

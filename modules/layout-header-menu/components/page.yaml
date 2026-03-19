@@ -1,0 +1,97 @@
+id:
+  _var: id
+type: PageHeaderMenu
+properties:
+  title:
+    _var: title
+  logo:
+    src:
+      _module.var: logo.primary
+    srcMobile:
+      _module.var: logo.icon
+    style:
+      _module.var: logo.style
+  header:
+    theme: light
+    contentStyle:
+      flex: 1 1 auto
+      display: flex
+      justifyContent: flex-end
+      alignItems: center
+  menu:
+    _module.var:
+      key: menu
+      default:
+        _menu: default
+style:
+  minHeight: 100vh
+  backgroundColor: "#F0F2F5"
+requests:
+  _build.array.concat:
+    - _module.var: { key: header_extra.requests, default: [] }
+    - _var: { key: requests, default: [] }
+events:
+  onInit:
+    _var: { key: events.onInit, default: [] }
+  onInitAsync:
+    _var: { key: events.onInitAsync, default: [] }
+  onMount:
+    _var: { key: events.onMount, default: [] }
+  onMountAsync:
+    _var: { key: events.onMountAsync, default: [] }
+slots:
+  header:
+    blocks:
+      _module.var: { key: header_extra.blocks, default: [] }
+  mobileExtra:
+    blocks:
+      _module.var: { key: header_extra.compact, default: [] }
+  mobileDrawerContent:
+    blocks:
+      _module.var: { key: header_extra.mobile_extra, default: [] }
+blocks:
+  _build.array.concat:
+    # Title block: per-page override > module-level override > default
+    - _build.if:
+        test:
+          _build.not:
+            _var: { key: hide_title, default: false }
+        then:
+          _build.switch:
+            branches:
+              - if:
+                  _build.ne:
+                    - _var: { key: title_block, default: null }
+                    - null
+                then:
+                  _var: title_block
+              - if:
+                  _build.ne:
+                    - _module.var: { key: title_block, default: null }
+                    - null
+                then:
+                  _module.var: title_block
+            default:
+              - _ref:
+                  path: ../../shared/layout/title-block.yaml
+                  vars:
+                    title: { _var: title }
+                    breadcrumbs: { _var: { key: breadcrumbs, default: [] } }
+                    doc: { _var: { key: doc, default: null } }
+                    page_actions: { _var: { key: page_actions, default: [] } }
+        else: []
+    # Consumer content
+    - _var: blocks
+    # Floating action bar (only when provided)
+    - _build.if:
+        test:
+          _build.array.length:
+            _var: { key: floating_actions, default: [] }
+        then:
+          - _ref:
+              path: ../../shared/layout/floating-action-bar.yaml
+              vars:
+                actions: { _var: floating_actions }
+        else: []
+    # Footer
+    - _module.var: { key: footer, default: [] }

@@ -4,5 +4,14 @@
   "private": true,
   "description": "Lowdefy MongoDB Modules",
   "packageManager": "pnpm@10.6.2",
-  "type": "module"
+  "type": "module",
+  "pnpm": {
+    "packageExtensions": {
+      "@lowdefy/client": {
+        "dependencies": {
+          "antd": "6.3.1"
+        }
+      }
+    }
+  }
 }
