@@ -55,6 +55,9 @@ api:
 connections:
   - _ref: connections/events-db.yaml
 
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugins"
+
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
