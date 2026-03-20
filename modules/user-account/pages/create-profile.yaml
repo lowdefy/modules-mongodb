@@ -1,10 +1,10 @@
 _ref:
-  path: ../shared/page_layout.yaml
+  module: layout
+  component: page
   vars:
     id: create-profile
     title: Create Profile
-    theme:
-      _module.var: theme
+    hide_title: true
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -33,31 +33,23 @@ _ref:
     requests:
       - _ref: ../requests/create_profile.yaml
     blocks:
-      - id: content_wrapper
-        type: Box
-        style:
-          maxWidth: 600
-          margin: auto
-        layout:
-          gap: 16
-          justify: center
-        blocks:
-          - id: welcome_title
-            type: Divider
-            properties:
-              title: Create Profile
-              titlePlacement: center
-          - id: profile_card
-            type: Card
-            layout:
-              gap: 16
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Create Profile
+            width: 600
             blocks:
               - _module.var:
                   key: components.form_profile
                   default:
                     _ref: ../components/form_profile.yaml
-              - id: divider
-                type: Divider
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 600
+            actions:
               - id: spacer
                 type: Box
                 layout:
@@ -85,7 +77,4 @@ _ref:
                     - id: link_to_router
                       type: Link
                       params:
-                        url:
-                          _string.concat:
-                            - _location: origin
-                            - /router
+                        pageId: router
