@@ -1,0 +1,8 @@
+id: user-avatar-compact
+type: Avatar
+properties:
+  src:
+    _user: profile.picture
+  alt:
+    _user: profile.name
+  size: small
