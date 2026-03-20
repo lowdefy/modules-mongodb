@@ -79,10 +79,7 @@ _ref:
         type: TextInput
         required: true
         validate:
-          _ref:
-            path: ../validate/email.yaml
-            vars:
-              field_name: email
+          _ref: ../validate/email.yaml
         properties:
           title: Email
           label:
@@ -106,7 +103,15 @@ _ref:
                 email:
                   _state: email
                 callbackUrl:
-                  pageId: router
+                  _if:
+                    test:
+                      _ne:
+                        - _input: callbackUrl
+                        - null
+                    then:
+                      _input: callbackUrl
+                    else:
+                      pageId: router
             - id: set_login_button_enabled
               type: SetState
               params:
@@ -127,11 +132,6 @@ _ref:
           onClick:
             - id: validate
               type: Validate
-            - id: set_login_email
-              type: SetGlobal
-              params:
-                login_email:
-                  _state: email
             - id: login
               type: Login
               params:

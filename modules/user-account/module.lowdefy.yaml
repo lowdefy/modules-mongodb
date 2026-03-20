@@ -38,6 +38,15 @@ pages:
   - _ref: pages/edit-profile.yaml
   - _ref: pages/create-profile.yaml
 
+exports:
+  components:
+    - id: user-avatar
+      description: Desktop header avatar with popover menu (profile link, logout)
+    - id: user-avatar-compact
+      description: Compact avatar for mobile header and collapsed sidebar
+    - id: user-menu
+      description: Flat button list for mobile drawer (profile link, logout)
+
 components:
   - id: user-avatar
     component:
