@@ -72,7 +72,7 @@ blocks:
     required: true
     validate:
       _ref:
-        path: ../shared/validate_email.yaml
+        path: ../validate/email.yaml
         vars:
           field_name: contact.email
     properties:
