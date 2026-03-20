@@ -1,58 +1,26 @@
 _ref:
-  path: ../shared/page_layout.yaml
+  module: layout
+  component: page
   vars:
     id: profile
     title: Profile
-    theme:
-      _module.var: theme
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label: Profile
     blocks:
-      - id: content_wrapper
-        type: Box
-        style:
-          maxWidth: 600
-          margin: auto
-        layout:
-          gap: 16
-          justify: center
-        blocks:
-          - id: welcome_title
-            type: Divider
-            properties:
-              title: Profile
-              titlePlacement: center
-          - id: content_wrapper
-            type: Card
-            layout:
-              gap: 16
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Profile
+            width: 600
             blocks:
               - _module.var:
                   key: components.view_profile
                   default:
                     _ref: ../components/view_profile.yaml
-              - id: divider
-                type: Divider
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
-              - id: logout_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Logout
-                  icon: AiOutlineLogout
-                events:
-                  onClick:
-                    - id: logout
-                      type: Logout
-                      params:
-                        callbackUrl:
-                          pageId: router
+            footer_buttons:
               - id: edit_profile_button
                 type: Button
                 layout:
@@ -67,3 +35,18 @@ _ref:
                       params:
                         pageId:
                           _module.pageId: edit-profile
+              - id: logout_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Logout
+                  icon: AiOutlineLogout
+                  type: default
+                events:
+                  onClick:
+                    - id: logout
+                      type: Logout
+                      params:
+                        callbackUrl:
+                          pageId: router
