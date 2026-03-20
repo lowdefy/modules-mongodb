@@ -1,5 +1,6 @@
 _ref:
-  path: ../../shared/page_layout.yaml
+  module: layout
+  component: page
   vars:
     id: users-invite
     title:
@@ -11,10 +12,7 @@ _ref:
             - _request: get_user.0
             - app_title:
                 _module.var: app_title
-    theme:
-      _module.var: theme
-    doc:
-      _request: get_user.0
+    hide_title: true
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -27,9 +25,6 @@ _ref:
       - label: Invite User
     requests:
       - _ref: ../requests/get_user.yaml
-      - _ref: ../requests/invite_user.yaml
-      - _ref: ../requests/event_invite_user.yaml
-      - _ref: ../requests/notification_invite_user.yaml
     events:
       onMount:
         - id: redirect
@@ -62,48 +57,56 @@ _ref:
                   _request: get_user.0
 
     blocks:
-      - id: content_wrapper
-        type: Card
-        style:
-          maxWidth: 600
-          margin: auto
-        layout:
-          gap: 8
-        blocks:
-          - _ref: ../components/view_user_avatar_preview.yaml
-          - _ref: ../components/view_invite_link.yaml
-          - _ref: ../components/view_email.yaml
-          - id: divider
-            type: Divider
-            properties:
-              title: Profile
-          - _module.var:
-              key: components.form_profile
-              default:
-                id: form_profile
-                type: Box
-          - id: divider
-            type: Divider
-            properties:
-              title: Access
-          - _module.var:
-              key: components.form_global_attributes
-              default:
-                id: form_global_attributes
-                type: Box
-          - _module.var:
-              key: components.form_app_attributes
-              default:
-                id: form_app_attributes
-                type: Box
-          - _ref: ../components/form_access_invite.yaml
-          - id: divider
-            type: Divider
-          - id: footer
-            type: Box
-            layout:
-              gap: 8
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title:
+              _nunjucks:
+                template: |
+                  Invite {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+                on:
+                  _object.assign:
+                    - _request: get_user.0
+                    - app_title:
+                        _module.var: app_title
+            doc:
+              _request: get_user.0
+            width: 600
             blocks:
+              - _ref: ../components/view_user_avatar_preview.yaml
+              - _ref: ../components/view_invite_link.yaml
+              - _ref: ../components/view_email.yaml
+              - id: divider
+                type: Divider
+                properties:
+                  title: Profile
+              - _module.var:
+                  key: components.form_profile
+                  default:
+                    id: form_profile
+                    type: Box
+              - id: divider
+                type: Divider
+                properties:
+                  title: Access
+              - _module.var:
+                  key: components.form_global_attributes
+                  default:
+                    id: form_global_attributes
+                    type: Box
+              - _module.var:
+                  key: components.form_app_attributes
+                  default:
+                    id: form_app_attributes
+                    type: Box
+              - _ref: ../components/form_access_invite.yaml
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 600
+            actions:
               - id: spacer
                 type: Box
                 layout:
@@ -115,6 +118,7 @@ _ref:
                 properties:
                   title: Cancel
                   icon: AiOutlineCloseCircle
+                  type: default
                 events:
                   onClick:
                     - id: back
@@ -134,18 +138,15 @@ _ref:
                     - id: validate
                       type: Validate
                     - id: invite_user
-                      type: Request
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: invite-user
+                        payload:
+                          user:
+                            _state: user
                       messages:
                         success: New invite created.
-                      params: invite_user
-                    - id: event_invite_user
-                      type: Request
-                      params: event_invite_user
-                    - id: send_notification
-                      type: Request
-                      async: true
-                      params:
-                        - notification_invite_user
                     - id: reset
                       type: Reset
                     - id: back

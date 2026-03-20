@@ -1,16 +1,12 @@
 _ref:
-  path: ../../shared/page_layout.yaml
+  module: layout
+  component: page
   vars:
     id: users
     title:
       _string.concat:
         - _module.var: app_title
         - " User Admin"
-    theme:
-      _module.var: theme
-    requests:
-      - _ref: ../requests/get_all_users.yaml
-      - _ref: ../requests/get_user_excel_data.yaml
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -18,6 +14,14 @@ _ref:
           _string.concat:
             - _module.var: app_title
             - " User Admin"
+    page_actions:
+      - id: buttons_container
+        type: Box
+        layout:
+          gap: 8
+        blocks:
+          - _ref: ../components/excel_download.yaml
+          - _ref: ../components/button_new_invite.yaml
     events:
       onInit:
         - id: set_sort_filter
@@ -38,14 +42,9 @@ _ref:
           type: Request
           params:
             - get_all_users
-    page_actions:
-      - id: buttons_container
-        type: Box
-        layout:
-          gap: 8
-        blocks:
-          - _ref: ../components/excel_download.yaml
-          - _ref: ../components/button_new_invite.yaml
+    requests:
+      - _ref: ../requests/get_all_users.yaml
+      - _ref: ../requests/get_user_excel_data.yaml
     blocks:
       - _ref: ../components/users_filter.yaml
       - id: custom_filters_box

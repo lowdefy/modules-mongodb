@@ -1,5 +1,0 @@
-id: consume-notifications
-type: AxiosHttp
-properties:
-  baseURL:
-    _secret: CONSUME_NOTIFICATIONS_URL

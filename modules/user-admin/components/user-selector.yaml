@@ -1,0 +1,20 @@
+id: user-selector
+type: Selector
+requests:
+  - _ref: ../requests/get_users_for_selector.yaml
+events:
+  onMount:
+    - id: fetch_users
+      type: Request
+      params: get_users_for_selector
+properties:
+  placeholder: Select a user
+  options:
+    _request: get_users_for_selector
+  label:
+    _var:
+      key: label
+      default: User
+  optionConfig:
+    titleField: label
+    valueField: value
