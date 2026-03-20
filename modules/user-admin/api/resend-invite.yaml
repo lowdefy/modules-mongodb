@@ -3,12 +3,12 @@ type: Api
 auth:
   public: false
 routine:
-  - id: log-event
+  - id: new-event
     type: CallApi
     properties:
       endpointId:
         _module.endpointId:
-          id: log-event
+          id: new-event
           module: events
       payload:
         type: resend-user-invite
@@ -65,7 +65,7 @@ routine:
           module: notifications
       payload:
         event_ids:
-          - _step: log-event.eventId
+          - _step: new-event.eventId
 
   - :return:
       success: true

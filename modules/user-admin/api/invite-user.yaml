@@ -138,12 +138,12 @@ routine:
               default:
                 - $set: {}
 
-  - id: log-event
+  - id: new-event
     type: CallApi
     properties:
       endpointId:
         _module.endpointId:
-          id: log-event
+          id: new-event
           module: events
       payload:
         type: invite-user
@@ -206,7 +206,7 @@ routine:
           module: notifications
       payload:
         event_ids:
-          - _step: log-event.eventId
+          - _step: new-event.eventId
 
   - :return:
       userId:

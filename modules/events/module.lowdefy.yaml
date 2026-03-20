@@ -1,5 +1,5 @@
 name: Events
-description: Event logging — log-event API, event timeline panel, shared event metadata
+description: Event logging — new-event API, event timeline panel, shared event metadata
 
 exports:
   components:
@@ -7,12 +7,12 @@ exports:
     - id: event_types
     - id: event-log-panel
   api:
-    - id: log-event
+    - id: new-event
 
 vars:
   collection:
     type: string
-    default: events
+    default: log-events
   display_key:
     type: string
     required: true
@@ -50,7 +50,7 @@ components:
       _ref: components/event-log-panel.yaml
 
 api:
-  - _ref: api/log-event.yaml
+  - _ref: api/new-event.yaml
 
 connections:
   - _ref: connections/events-db.yaml

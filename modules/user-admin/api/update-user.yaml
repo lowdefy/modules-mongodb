@@ -111,12 +111,12 @@ routine:
               default:
                 - $set: {}
 
-  - id: log-event
+  - id: new-event
     type: CallApi
     properties:
       endpointId:
         _module.endpointId:
-          id: log-event
+          id: new-event
           module: events
       payload:
         type: update-user

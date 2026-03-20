@@ -36,7 +36,7 @@ routine:
       filter:
         _id:
           _user: id
-  - id: log-event
+  - id: new-event
     type: CallApi
     properties:
       endpointId:
