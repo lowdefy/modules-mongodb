@@ -1,6 +1,14 @@
 name: Events
 description: Event logging — log-event API, event timeline panel, shared event metadata
 
+exports:
+  components:
+    - id: change_stamp
+    - id: event_types
+    - id: event-log-panel
+  api:
+    - id: log-event
+
 vars:
   collection:
     type: string
@@ -11,6 +19,8 @@ vars:
     description: >
       App identifier for display objects. Events store per-app display
       titles keyed by app name — this var selects which to render.
+      Must not contain dots — dots in MongoDB field paths are interpreted
+      as nested field navigation, breaking the $addFields extraction.
   change_stamp:
     type: object
     description: >
@@ -38,10 +48,6 @@ components:
   - id: event-log-panel
     component:
       _ref: components/event-log-panel.yaml
-
-exports:
-  api:
-    - id: log-event
 
 api:
   - _ref: api/log-event.yaml
