@@ -1,193 +1,149 @@
-id: login
-type: Box
-layout:
-  gap: 16
-  align: center
-  justify: center
-style:
-  minHeight: 100vh
-  backgroundColor: "#F0F2F5"
-  padding: 0 20px
-events:
-  onMount:
-    - id: logged_in_redirect
-      type: Link
-      skip:
-        _eq:
-          - _user: id
-          - null
-      params: router
-    - id: set_error_message
-      type: SetState
-      skip:
-        _eq:
-          - _url_query: error
-          - null
-      params:
-        error_message:
-          _switch:
-            branches:
-              - if:
-                  _eq:
-                    - _url_query: error
-                    - EmailCreateAccount
-                then: You have not been granted access to this app. Please contact an administrator to request access.
-              - if:
-                  _eq:
-                    - _url_query: error
-                    - Verification
-                then: <p>The sign in link is no longer valid.</p><p>It may have been used already or it may have expired.</p>
-            default: An error occurred while logging in. Please contact an administrator.
-    - id: logout
-      type: Logout
-      skip:
-        _eq:
-          - _url_query: error
-          - null
-      params:
-        redirect: false
-    - id: set_hint
-      type: SetState
-      skip:
-        _eq:
-          - _url_query: hint
-          - null
-      params:
-        login_button_disabled: false
-        email:
-          _if_none:
-            - _url_query: hint
-            - ""
-blocks:
-  - id: card_page
-    type: Box
-    style:
-      maxWidth: 500
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: login
+    title: Login
+    events:
+      onMount:
+        - id: logged_in_redirect
+          type: Link
+          skip:
+            _eq:
+              - _user: id
+              - null
+          params: router
+        - id: set_error_message
+          type: SetState
+          skip:
+            _eq:
+              - _url_query: error
+              - null
+          params:
+            error_message:
+              _switch:
+                branches:
+                  - if:
+                      _eq:
+                        - _url_query: error
+                        - EmailCreateAccount
+                    then: You have not been granted access to this app. Please contact an administrator to request access.
+                  - if:
+                      _eq:
+                        - _url_query: error
+                        - Verification
+                    then: <p>The sign in link is no longer valid.</p><p>It may have been used already or it may have expired.</p>
+                default: An error occurred while logging in. Please contact an administrator.
+        - id: logout
+          type: Logout
+          skip:
+            _eq:
+              - _url_query: error
+              - null
+          params:
+            redirect: false
+        - id: set_hint
+          type: SetState
+          skip:
+            _eq:
+              - _url_query: hint
+              - null
+          params:
+            login_button_disabled: false
+            email:
+              _if_none:
+                - _url_query: hint
+                - ""
     blocks:
-      - id: logo
-        type: Box
+      - id: no_invite_alert
+        type: Alert
         style:
-          marginBottom: 24
-          marginTop: 48
-        blocks:
-          _module.var:
-            key: components.login_logo
-            default: []
-      - id: card
-        type: Card
-        layout:
-          gap: 8
+          marginBottom: 16px
+        visible:
+          _ne:
+            - _state: error_message
+            - null
+        properties:
+          description:
+            _state: error_message
+          type: error
+          showIcon: false
+      - id: sign_in_title
+        type: Html
+        properties:
+          html:
+            _module.var:
+              key: login_message
+              default: <p>Welcome. Please provide your work email to sign in.</p>
+      - id: email
+        type: TextInput
+        required: true
+        validate:
+          _ref:
+            path: ../validate/email.yaml
+            vars:
+              field_name: email
+        properties:
+          title: Email
+          label:
+            disabled: true
+          size: large
+          placeholder: Work Email
+          suffixIcon:
+            name: AiOutlineMail
+            color: "#888"
+        events:
+          onPressEnter:
+            - id: validate
+              type: Validate
+            - id: set_login_button_disabled
+              type: SetState
+              params:
+                login_button_disabled: true
+            - id: login
+              type: Login
+              params:
+                email:
+                  _state: email
+                callbackUrl:
+                  pageId: router
+            - id: set_login_button_enabled
+              type: SetState
+              params:
+                login_button_disabled: false
+    actions:
+      - id: login_button
+        type: Button
         style:
-          /element:
-            boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
-        blocks:
-          - id: title
-            type: Html
-            style:
-              textAlign: center
-            properties:
-              html: <h1>Login</h1>
-          - id: content_wrapper
-            type: Box
-            style:
-              maxWidth: 400
-              margin: auto
-            blocks:
-              - id: signin_box
-                type: Box
-                style:
-                  padding: 32px 24px
-                layout:
-                  gap: 0
-                blocks:
-                  - id: no_invite_alert
-                    type: Alert
-                    style:
-                      marginBottom: 16px
-                    visible:
+          marginTop: 24
+        properties:
+          title: Login
+          icon: AiOutlineLogin
+          block: true
+          size: large
+          disabled:
+            _state: login_button_disabled
+        events:
+          onClick:
+            - id: validate
+              type: Validate
+            - id: set_login_email
+              type: SetGlobal
+              params:
+                login_email:
+                  _state: email
+            - id: login
+              type: Login
+              params:
+                email:
+                  _state: email
+                callbackUrl:
+                  _if:
+                    test:
                       _ne:
-                        - _state: error_message
+                        - _input: callbackUrl
                         - null
-                    properties:
-                      description:
-                        _state: error_message
-                      type: error
-                      showIcon: false
-                  - id: sign_in_title
-                    type: Html
-                    properties:
-                      html:
-                        _module.var:
-                          key: login_message
-                          default: <p>Welcome. Please provide your work email to sign in.</p>
-                  - id: email
-                    type: TextInput
-                    required: true
-                    validate:
-                      _ref:
-                        path: ../validate/email.yaml
-                        vars:
-                          field_name: email
-                    properties:
-                      title: Email
-                      label:
-                        disabled: true
-                      size: large
-                      placeholder: Work Email
-                      suffixIcon:
-                        name: AiOutlineMail
-                        color: "#888"
-                    events:
-                      onPressEnter:
-                        - id: validate
-                          type: Validate
-                        - id: set_login_button_disabled
-                          type: SetState
-                          params:
-                            login_button_disabled: true
-                        - id: login
-                          type: Login
-                          params:
-                            email:
-                              _state: email
-                            callbackUrl:
-                              pageId: router
-                        - id: set_login_button_enabled
-                          type: SetState
-                          params:
-                            login_button_disabled: false
-                  - id: login_button
-                    type: Button
-                    style:
-                      marginTop: 24
-                    properties:
-                      title: Login
-                      icon: AiOutlineLogin
-                      block: true
-                      size: large
-                      disabled:
-                        _state: login_button_disabled
-                    events:
-                      onClick:
-                        - id: validate
-                          type: Validate
-                        - id: set_login_email
-                          type: SetGlobal
-                          params:
-                            login_email:
-                              _state: email
-                        - id: login
-                          type: Login
-                          params:
-                            email:
-                              _state: email
-                            callbackUrl:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _input: callbackUrl
-                                    - null
-                                then:
-                                  _input: callbackUrl
-                                else:
-                                  pageId: router
+                    then:
+                      _input: callbackUrl
+                    else:
+                      pageId: router
