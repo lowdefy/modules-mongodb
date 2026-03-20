@@ -1,0 +1,38 @@
+id: update-profile
+type: Api
+auth:
+  public: false
+routine:
+  - :if:
+      _or:
+        - _eq:
+            - _payload: contact.profile.given_name
+            - null
+        - _eq:
+            - _payload: contact.profile.family_name
+            - null
+    :then:
+      :reject: Missing required profile fields.
+
+  - id: update
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: user-contacts
+    properties:
+      filter:
+        _id:
+          _user: id
+      update:
+        $set:
+          _ref: profile-set-fields.yaml
+
+  - id: updated_user
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-contacts
+    properties:
+      filter:
+        _id:
+          _user: id
+  - :return:
+      success: true

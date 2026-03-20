@@ -21,8 +21,6 @@ _ref:
               _user: profile
             contact.email:
               _user: email
-    requests:
-      - _ref: ../requests/update_profile.yaml
     blocks:
       - _ref:
           module: layout
@@ -72,10 +70,15 @@ _ref:
                     - id: validate
                       type: Validate
                     - id: update_profile
-                      type: Request
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-profile
+                        payload:
+                          contact:
+                            _state: contact
                       messages:
                         success: Profile updated.
-                      params: update_profile
                     - id: link_to_profile
                       type: Link
                       params:

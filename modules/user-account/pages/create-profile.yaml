@@ -30,8 +30,6 @@ _ref:
                       - _user: profile.birthday
                       - 2099-01-01
                 else: null
-    requests:
-      - _ref: ../requests/create_profile.yaml
     blocks:
       - _ref:
           module: layout
@@ -68,8 +66,13 @@ _ref:
                       params:
                         regex: ^contact\.
                     - id: create_profile
-                      type: Request
-                      params: create_profile
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: create-profile
+                        payload:
+                          contact:
+                            _state: contact
                       messages:
                         success: Profile created.
                     - id: reset
