@@ -1,0 +1,7 @@
+id: send-notification
+type: InternalApi
+auth:
+  public: false
+routine:
+  - :return:
+      success: true

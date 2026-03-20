@@ -1,0 +1,71 @@
+id: resend-invite
+type: Api
+auth:
+  public: false
+routine:
+  - id: log-event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: log-event
+          module: events
+      payload:
+        type: resend-user-invite
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: defaults/event_display.yaml
+                        - _module.var:
+                            key: event_display
+                            default: {}
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.resend-user-invite
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  key:
+                    __build.args: 0.0
+                  value:
+                    title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.resend-user-invite
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _payload: user.profile.name
+                            email:
+                              _payload: user.email
+                    description: null
+        references:
+          user_ids:
+            - _payload: user._id
+        metadata:
+          app_name:
+            _module.var: app_name
+
+  - id: send-notification
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: send-notification
+          module: notifications
+      payload:
+        event_ids:
+          - _step: log-event.eventId
+
+  - :return:
+      success: true

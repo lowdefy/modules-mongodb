@@ -1,0 +1,28 @@
+id: get_users_for_selector
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: user-contacts
+properties:
+  pipeline:
+    - $match:
+        _object.defineProperty:
+          on: {}
+          key:
+            _string.concat:
+              - "apps."
+              - _module.var: app_name
+              - ".is_user"
+          descriptor:
+            value: true
+    - $project:
+        label:
+          $concat:
+            - "$profile.given_name"
+            - " "
+            - "$profile.family_name"
+            - " ("
+            - "$email"
+            - ")"
+        value: "$_id"
+    - $sort:
+        label: 1

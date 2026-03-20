@@ -39,6 +39,10 @@ components:
     component:
       _ref: components/event-log-panel.yaml
 
+exports:
+  api:
+    - id: log-event
+
 api:
   - _ref: api/log-event.yaml
 
@@ -48,9 +52,3 @@ connections:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
-
-plugins:
-  - name: "@lowdefy/blocks-antd"
-    version: "^4"
-  - name: "@lowdefy/connection-mongodb"
-    version: "^4"
