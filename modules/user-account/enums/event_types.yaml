@@ -1,0 +1,8 @@
+create-profile:
+  color: '#52c41a'
+  title: Profile Created
+  icon: AiOutlineUser
+update-profile:
+  color: '#1890ff'
+  title: Profile Updated
+  icon: AiOutlineEdit
