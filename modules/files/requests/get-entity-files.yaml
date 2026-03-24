@@ -1,0 +1,15 @@
+id: get_entity_files
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: files-db
+properties:
+  pipeline:
+    - $match:
+        collection:
+          _var: entity_type
+        doc_id:
+          _var: entity_id
+        removed:
+          $ne: true
+    - $sort:
+        created.timestamp: -1

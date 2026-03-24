@@ -1,0 +1,111 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: company-edit
+    title:
+      _string.concat:
+        - "Edit "
+        - _module.var: label
+        - ": "
+        - _if_none:
+            - _request: get_company.0.display_name
+            - ""
+    hide_title: true
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_company
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_company.0
+              - null
+          params:
+            pageId:
+              _module.pageId: companies
+        - id: set_state
+          type: SetState
+          params:
+            company:
+              _request: get_company.0
+    requests:
+      - _ref: ../requests/get_company.yaml
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title:
+              _string.concat:
+                - "Edit "
+                - _module.var: label
+                - ": "
+                - _if_none:
+                    - _request: get_company.0.display_name
+                    - ""
+            doc:
+              _request: get_company.0
+            width: 700
+            blocks:
+              - _module.var:
+                  key: components.form_fields
+                  default:
+                    _ref: ../components/form_company.yaml
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 700
+            actions:
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: update_company
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-company
+                        payload:
+                          company:
+                            _state: company
+                      messages:
+                        success:
+                          _string.concat:
+                            - _module.var: label
+                            - " updated."
+                    - id: reset
+                      type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        back: true

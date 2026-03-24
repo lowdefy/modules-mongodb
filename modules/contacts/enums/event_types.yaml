@@ -1,0 +1,8 @@
+create-contact:
+  color: "#1890ff"
+  title: Contact Created
+  icon: AiOutlineUserAdd
+update-contact:
+  color: "#52c41a"
+  title: Contact Updated
+  icon: AiOutlineEdit

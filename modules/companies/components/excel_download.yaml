@@ -1,0 +1,72 @@
+id: export_button
+type: Button
+layout:
+  flex: 0 1 auto
+properties:
+  title: Download Excel File
+  block: true
+events:
+  onClick:
+    - id: fetch_excel_data
+      type: FetchRequest
+      params:
+        requestName: get_company_excel_data
+    - id: xlsx_download
+      type: DownloadXlsx
+      params:
+        fileName:
+          _string.concat:
+            - _module.var: label_plural
+            - _Export
+        dateFormat: "YYYY/MM/DD"
+        data:
+          _actions: fetch_excel_data.response
+        schema:
+          _build.array.concat:
+            - - column: id
+                value: _id
+                type: String
+                width: 12
+              - column: name
+                value: display_name
+                type: String
+                width: 25
+              - column: description
+                value: description
+                type: String
+                width: 30
+              - column: registered_name
+                value: registered_name
+                type: String
+                width: 25
+              - column: registration_number
+                value: registration_number
+                type: String
+                width: 20
+              - column: vat_number
+                value: vat_number
+                type: String
+                width: 15
+              - column: website
+                value: website
+                type: String
+                width: 25
+              - column: email
+                value: contact.primary_email
+                type: String
+                width: 25
+              - column: phone
+                value: contact.primary_phone
+                type: String
+                width: 15
+            - _module.var:
+                key: components.download_columns
+                default: []
+            - - column: updated_at
+                value: updated_at
+                type: String
+                width: 15
+              - column: created_at
+                value: created_at
+                type: String
+                width: 15

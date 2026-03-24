@@ -1,0 +1,3 @@
+default:
+  create-contact: "{{ user.profile.name }} created {{ target.name }}"
+  update-contact: "{{ user.profile.name }} updated {{ target.name }}"

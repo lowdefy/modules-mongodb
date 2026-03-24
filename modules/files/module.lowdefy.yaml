@@ -1,0 +1,63 @@
+name: Files
+description: File attachment management — upload, download, list, S3 integration
+
+dependencies:
+  - id: events
+    description: Change stamp for file metadata audit
+
+vars:
+  collection:
+    default: files
+    description: MongoDB collection name for file metadata
+  bucket:
+    required: true
+    description: S3 bucket name for private file storage
+  public_bucket:
+    description: S3 bucket name for public file storage (optional)
+  s3_region:
+    default: af-south-1
+    description: AWS region for S3 buckets
+  components:
+    description: "Overrides: file_list"
+
+exports:
+  connections:
+    - id: files-db
+      description: MongoDB connection for file metadata
+    - id: files-bucket
+      description: S3 bucket for private file storage
+  api:
+    - id: save-file
+      description: Upsert file metadata after S3 upload
+    - id: delete-file
+      description: Soft-delete file metadata
+  components:
+    - id: file-upload
+      description: S3UploadButton with metadata save
+    - id: file-list
+      description: File list with S3Download and delete
+
+connections:
+  - _ref: connections/files-db.yaml
+  - _ref: connections/files-bucket.yaml
+  - _ref: connections/files-bucket-public.yaml
+
+api:
+  - _ref: api/save-file.yaml
+  - _ref: api/delete-file.yaml
+
+components:
+  - id: file-upload
+    component:
+      _ref: components/file-upload.yaml
+  - id: file-list
+    component:
+      _ref: components/file-list.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+  - name: S3_ACCESS_KEY_ID
+    description: AWS access key for S3
+  - name: S3_SECRET_ACCESS_KEY
+    description: AWS secret key for S3

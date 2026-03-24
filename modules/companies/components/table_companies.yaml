@@ -1,0 +1,49 @@
+id: companies_table
+type: AgGridMaterial
+properties:
+  height: 70vh
+  rowStyle:
+    cursor: pointer
+  rowData:
+    _request: get_all_companies
+  defaultColDef:
+    sortable: true
+    resizable: true
+    cellStyle:
+      cursor: pointer
+      wordBreak: break-word
+      lineHeight: 1.25
+      paddingBottom: 8px
+      paddingTop: 8px
+  columnDefs:
+    _build.array.concat:
+      - - headerName: ID
+          field: _id
+          width: 120
+        - headerName: Name
+          field: display_name
+          flex: 1
+          minWidth: 240
+        - headerName: Description
+          field: description
+          flex: 1
+          minWidth: 200
+      - _module.var:
+          key: components.table_columns
+          default: []
+      - - headerName: Updated
+          field: updated_at
+          width: 120
+        - headerName: Created
+          field: created_at
+          width: 120
+events:
+  onRowClick:
+    - id: link_to_detail
+      type: Link
+      params:
+        pageId:
+          _module.pageId: company-detail
+        urlQuery:
+          _id:
+            _event: row._id

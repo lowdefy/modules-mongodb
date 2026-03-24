@@ -1,0 +1,21 @@
+id: get_companies_for_selector
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: companies-db
+properties:
+  pipeline:
+    - $match:
+        removed:
+          $ne: true
+    - $project:
+        label:
+          $concat:
+            - _build.string.concat:
+                - "$"
+                - _module.var: name_field
+            - " ("
+            - "$_id"
+            - ")"
+        value: "$_id"
+    - $sort:
+        label: 1

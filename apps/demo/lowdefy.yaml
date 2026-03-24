@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260324092624
+lowdefy: 0.0.0-experimental-20260324134638
 name: Module Demo App
 
 plugins:
@@ -6,6 +6,8 @@ plugins:
     version: 2.4.1
   - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
+  - name: "@lowdefy/plugin-aws"
+    version: "^4"
   - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
 
@@ -42,6 +44,34 @@ modules:
     vars:
       _ref: modules/user-account/index.yaml
 
+  - id: companies
+    source: "file:../../modules/companies"
+    dependencies:
+      layout: layout
+      events: events
+      contacts: contacts
+      files: files
+    vars:
+      _ref: modules/companies/index.yaml
+
+  - id: contacts
+    source: "file:../../modules/contacts"
+    dependencies:
+      layout: layout
+      events: events
+      companies: companies
+      files: files
+    vars:
+      _ref: modules/contacts/index.yaml
+
+  - id: files
+    source: "file:../../modules/files"
+    dependencies:
+      events: events
+    vars:
+      bucket: demo-files-bucket
+      s3_region: af-south-1
+
 menus:
   - id: default
     links:
@@ -59,6 +89,14 @@ menus:
 
         - _ref:
             module: user-account
+            menu: default
+
+        - _ref:
+            module: companies
+            menu: default
+
+        - _ref:
+            module: contacts
             menu: default
 
 pages:

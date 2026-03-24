@@ -1,0 +1,12 @@
+- id: update_pagination
+  type: SetState
+  params:
+    pagination:
+      current: 1
+      skip: 0
+      pageSize:
+        _state: pagination.pageSize
+    selected: null
+- id: get_data
+  type: Request
+  params: get_all_contacts

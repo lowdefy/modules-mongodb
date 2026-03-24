@@ -1,0 +1,25 @@
+id: get_contacts_for_selector
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: contacts-db
+properties:
+  pipeline:
+    _build.array.concat:
+      - - $match:
+            hidden:
+              $ne: true
+            disabled:
+              $ne: true
+        - $project:
+            label:
+              $concat:
+                - "$profile.name"
+                - " ("
+                - "$email"
+                - ")"
+            value: "$_id"
+        - $sort:
+            label: 1
+      - _module.var:
+          key: request_stages.selector
+          default: []

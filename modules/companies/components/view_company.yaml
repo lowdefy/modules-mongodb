@@ -1,0 +1,42 @@
+id: company_details
+type: Descriptions
+properties:
+  column: 2
+  items:
+    - label:
+        _string.concat:
+          - _module.var: label
+          - " Name"
+      value:
+        _request: get_company.0.display_name
+      span: 2
+    - label: Description
+      value:
+        _request: get_company.0.description
+      span: 2
+    - label: Registered Name
+      value:
+        _request: get_company.0.registered_name
+    - label: Registration Number
+      value:
+        _request: get_company.0.registration_number
+    - label: VAT Number
+      value:
+        _request: get_company.0.vat_number
+    - label: Website
+      value:
+        _request: get_company.0.website
+    - label: Email
+      value:
+        _request: get_company.0.contact.primary_email
+    - label: Phone
+      value:
+        _request: get_company.0.contact.primary_phone
+    - label: Registered Address
+      value:
+        _request: get_company.0.address.registered.formatted_address
+      span: 2
+    - label: Building / Unit / Floor
+      value:
+        _request: get_company.0.address.registered.extra
+      span: 2

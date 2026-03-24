@@ -1,0 +1,21 @@
+id: delete-file
+type: Api
+routine:
+  - id: delete
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: files-db
+    properties:
+      filter:
+        _id:
+          _payload: file_id
+      update:
+        $set:
+          removed: true
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+
+  - :return:
+      success: true
