@@ -1,0 +1,82 @@
+id: form_contact
+type: Box
+blocks:
+  _build.array.concat:
+    # Core profile fields
+    - - id: contact.profile.title
+        type: Selector
+        properties:
+          title: Title
+          options:
+            - Mr
+            - Ms
+            - Mrs
+            - Dr
+            - Prof
+      - id: contact.profile.given_name
+        type: TextInput
+        required: true
+        properties:
+          title: First Name
+      - id: contact.profile.family_name
+        type: TextInput
+        required: true
+        properties:
+          title: Last Name
+      - id: contact.email
+        type: TextInput
+        required: true
+        properties:
+          title: Email
+          placeholder: "name@company.com"
+          disabled:
+            _var:
+              key: email_disabled
+              default: false
+        validate:
+          _ref: ../validate/email.yaml
+      - id: contact.profile.work_phone
+        type: PhoneNumberInput
+        properties:
+          title: Work Phone
+      - id: contact.profile.mobile_phone
+        type: PhoneNumberInput
+        properties:
+          title: Mobile Phone
+      - id: divider_details
+        type: Divider
+        properties:
+          title: Details
+      - id: contact.profile.department
+        type: TextInput
+        properties:
+          title: Department
+      - id: contact.profile.job_title
+        type: TextInput
+        properties:
+          title: Job Title
+      - id: contact.profile.birthday
+        type: DateSelector
+        properties:
+          title: Birthday
+      - id: contact.global_attributes.internal_details
+        type: TextArea
+        properties:
+          title: Notes
+          rows: 3
+    # form_attributes injection point
+    - _module.var:
+        key: components.form_attributes
+        default: []
+    # Companies section
+    - - id: divider_companies
+        type: Divider
+        properties:
+          title: Companies
+      - _ref:
+          module: companies
+          component: company-selector
+        vars:
+          label: Linked Companies
+          mode: MultipleSelector
+          field_id: contact.global_attributes.company_ids

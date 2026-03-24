@@ -1,0 +1,106 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: company-detail
+    title:
+      _if_none:
+        - _request: get_company.0.display_name
+        - _module.var: label
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+        pageId:
+          _module.pageId: companies
+      - label:
+          _if_none:
+            - _request: get_company.0.display_name
+            - ""
+    page_actions:
+      - id: edit_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title: Edit
+          icon: AiOutlineEdit
+          type: default
+        events:
+          onClick:
+            - id: go_edit
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: company-edit
+                urlQuery:
+                  _id:
+                    _url_query: _id
+    doc:
+      _request: get_company.0
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_company
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_company.0
+              - null
+          params:
+            pageId:
+              _module.pageId: companies
+    requests:
+      - _ref: ../requests/get_company.yaml
+    blocks:
+      - id: detail_layout
+        type: Box
+        layout:
+          contentGutter: 16
+        blocks:
+          - id: main_column
+            type: Box
+            layout:
+              span: 14
+              sm:
+                span: 24
+            blocks:
+              _build.array.concat:
+                - - _ref:
+                      module: layout
+                      component: card
+                      vars:
+                        title:
+                          _string.concat:
+                            - _module.var: label
+                            - " Information"
+                        doc:
+                          _request: get_company.0
+                        blocks:
+                          - _module.var:
+                              key: components.detail_fields
+                              default:
+                                _ref: ../components/view_company.yaml
+                - _module.var:
+                    key: components.main_tiles
+                    default: []
+          - id: sidebar_column
+            type: Box
+            layout:
+              span: 10
+              sm:
+                span: 24
+            blocks:
+              _build.array.concat:
+                - _module.var:
+                    key: components.sidebar_default_tiles
+                    default:
+                      - _ref: ../components/tile_contacts.yaml
+                      - _ref: ../components/tile_events.yaml
+                - _module.var:
+                    key: components.sidebar_tiles
+                    default: []

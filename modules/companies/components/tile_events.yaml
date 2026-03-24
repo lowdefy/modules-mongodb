@@ -1,0 +1,13 @@
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Activity
+    blocks:
+      - _ref:
+          module: events
+          component: event-log-panel
+          vars:
+            reference_field: company_ids
+            reference_value:
+              _url_query: _id

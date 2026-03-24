@@ -1,0 +1,61 @@
+id: contacts_table
+type: AgGridMaterial
+properties:
+  height: 70vh
+  rowStyle:
+    cursor: pointer
+  rowData:
+    _request: get_all_contacts
+  defaultColDef:
+    sortable: true
+    resizable: true
+    cellStyle:
+      cursor: pointer
+      wordBreak: break-word
+      lineHeight: 1.25
+      paddingBottom: 8px
+      paddingTop: 8px
+  columnDefs:
+    _build.array.concat:
+      - - headerName: Name
+          field: profile.name
+          flex: 1
+          minWidth: 240
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% raw %}<img src="{{ profile.picture }}" width="30px" height="30px" style="margin-right: 5px; border-radius: 50%;"/> {{ profile.name | safe }}{% endraw %}
+                on:
+                  __args: 0.data
+        - headerName: Email
+          field: email
+          flex: 1
+          minWidth: 250
+        - headerName: Department
+          field: profile.department
+          flex: 1
+          minWidth: 150
+        - headerName: Job Title
+          field: profile.job_title
+          flex: 1
+          minWidth: 150
+      - _module.var:
+          key: components.table_columns
+          default: []
+      - - headerName: Updated
+          field: updated_at
+          width: 120
+        - headerName: Created
+          field: created_at
+          width: 120
+events:
+  onRowClick:
+    - id: link_to_detail
+      type: Link
+      params:
+        pageId:
+          _module.pageId: contact-detail
+        urlQuery:
+          _id:
+            _event: row._id

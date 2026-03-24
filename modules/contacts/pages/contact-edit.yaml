@@ -1,0 +1,132 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: contact-edit
+    title:
+      _string.concat:
+        - "Edit "
+        - _module.var: label
+        - ": "
+        - _if_none:
+            - _request: get_contact.0.profile.name
+            - ""
+    hide_title: true
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_contact
+        - id: redirect_if_user
+          type: Link
+          skip:
+            _not:
+              _get:
+                key:
+                  _string.concat:
+                    - "apps."
+                    - _module.var: app_name
+                    - ".is_user"
+                from:
+                  _request: get_contact.0
+          params:
+            pageId:
+              _module.pageId: contact-detail
+            urlQuery:
+              _id:
+                _url_query: _id
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_contact.0
+              - null
+          params:
+            pageId:
+              _module.pageId: contacts
+        - id: set_state
+          type: SetState
+          params:
+            contact:
+              _request: get_contact.0
+    requests:
+      - _ref: ../requests/get_contact.yaml
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title:
+              _string.concat:
+                - "Edit "
+                - _module.var: label
+                - ": "
+                - _if_none:
+                    - _request: get_contact.0.profile.name
+                    - ""
+            doc:
+              _request: get_contact.0
+            width: 700
+            blocks:
+              - _module.var:
+                  key: components.form_fields
+                  default:
+                    _ref:
+                      path: ../components/form_contact.yaml
+                      vars:
+                        email_disabled: true
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 700
+            actions:
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: update_contact
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-contact
+                        payload:
+                          contact:
+                            _state: contact
+                      messages:
+                        success:
+                          _string.concat:
+                            - _module.var: label
+                            - " updated."
+                    - id: reset
+                      type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        back: true

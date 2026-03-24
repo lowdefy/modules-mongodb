@@ -1,0 +1,10 @@
+id: default
+links:
+  - id: companies
+    type: MenuLink
+    pageId:
+      _module.pageId: companies
+    properties:
+      title:
+        _module.var: label_plural
+      icon: AiOutlineShop

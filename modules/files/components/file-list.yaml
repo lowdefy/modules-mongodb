@@ -1,0 +1,21 @@
+id:
+  _var:
+    key: block_id
+    default: file_list
+type: Box
+requests:
+  - _ref: ../requests/get-entity-files.yaml
+  - _ref: ../requests/download-policy.yaml
+events:
+  onMount:
+    - id: fetch_files
+      type: Request
+      params:
+        _var:
+          key: files_request_id
+          default: get_entity_files
+blocks:
+  - _module.var:
+      key: components.file_list
+      default:
+        _ref: ../components/default-file-list.yaml

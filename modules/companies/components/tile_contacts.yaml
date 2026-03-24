@@ -1,0 +1,36 @@
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Contacts
+    header_buttons:
+      - id: view_all_contacts
+        type: Button
+        properties:
+          title: View All
+          type: link
+          size: small
+        events:
+          onClick:
+            - id: go_contacts
+              type: Link
+              params:
+                pageId:
+                  _module.pageId:
+                    id: contacts
+                    module: contacts
+                urlQuery:
+                  company_id:
+                    _url_query: _id
+    blocks:
+      - id: company_contacts_list
+        type: Box
+        requests:
+          - _ref: ../requests/get_company_contacts.yaml
+        events:
+          onMount:
+            - id: fetch_contacts
+              type: Request
+              params: get_company_contacts
+        blocks:
+          - _ref: ../components/contact_list_items.yaml

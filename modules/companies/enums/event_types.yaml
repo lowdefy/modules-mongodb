@@ -1,0 +1,8 @@
+create-company:
+  color: "#1890ff"
+  title: Company Created
+  icon: AiOutlinePlusCircle
+update-company:
+  color: "#52c41a"
+  title: Company Updated
+  icon: AiOutlineEdit

@@ -1,0 +1,33 @@
+id: contact_details
+type: Descriptions
+properties:
+  column: 2
+  items:
+    - label: Title
+      value:
+        _request: get_contact.0.profile.title
+    - label: Name
+      value:
+        _request: get_contact.0.profile.name
+    - label: Email
+      value:
+        _request: get_contact.0.email
+    - label: Work Phone
+      value:
+        _request: get_contact.0.profile.work_phone
+    - label: Mobile Phone
+      value:
+        _request: get_contact.0.profile.mobile_phone
+    - label: Department
+      value:
+        _request: get_contact.0.profile.department
+    - label: Job Title
+      value:
+        _request: get_contact.0.profile.job_title
+    - label: Birthday
+      value:
+        _request: get_contact.0.profile.birthday
+    - label: Notes
+      value:
+        _request: get_contact.0.global_attributes.internal_details
+      span: 2

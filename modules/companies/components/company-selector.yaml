@@ -1,0 +1,30 @@
+id:
+  _var:
+    key: field_id
+    default: company
+type:
+  _var:
+    key: mode
+    default: Selector
+requests:
+  - _ref: ../requests/get_companies_for_selector.yaml
+events:
+  onMount:
+    - id: fetch_companies
+      type: Request
+      params: get_companies_for_selector
+properties:
+  placeholder:
+    _string.concat:
+      - "Select "
+      - _module.var: label
+  options:
+    _request: get_companies_for_selector
+  label:
+    _var:
+      key: label
+      default:
+        _module.var: label
+  optionConfig:
+    titleField: label
+    valueField: value

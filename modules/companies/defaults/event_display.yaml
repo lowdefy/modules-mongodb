@@ -1,0 +1,3 @@
+default:
+  create-company: "{{ user.profile.name }} created {{ target.name }}"
+  update-company: "{{ user.profile.name }} updated {{ target.name }}"

@@ -1,0 +1,42 @@
+id: get_company
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: companies-db
+payload:
+  _id:
+    _url_query: _id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: _id
+        removed:
+          $ne: true
+    - $addFields:
+        display_name:
+          $getField:
+            field:
+              _module.var: name_field
+            input: "$$ROOT"
+    - $lookup:
+        from:
+          _module.var: contacts_collection
+        let:
+          company_id: "$_id"
+        pipeline:
+          - $match:
+              $expr:
+                $in:
+                  - "$$company_id"
+                  - $ifNull:
+                      - "$global_attributes.company_ids"
+                      - []
+          - $project:
+              _id: 1
+        as: contacts
+    - $addFields:
+        contacts:
+          $map:
+            input: "$contacts"
+            as: c
+            in: "$$c._id"

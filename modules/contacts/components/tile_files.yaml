@@ -1,0 +1,20 @@
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Files
+    blocks:
+      - _ref:
+          module: files
+          component: file-list
+          vars:
+            entity_type: contact
+            entity_id:
+              _url_query: _id
+      - _ref:
+          module: files
+          component: file-upload
+          vars:
+            entity_type: contact
+            entity_id:
+              _url_query: _id
