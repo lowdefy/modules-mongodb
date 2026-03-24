@@ -4,7 +4,7 @@ routine:
   - id: insert-event
     type: MongoDBInsertOne
     connectionId:
-      _module.connectionId: events-db
+      _module.connectionId: events-collection
     properties:
       doc:
         _object.assign:

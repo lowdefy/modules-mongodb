@@ -1,4 +1,4 @@
-id: events-db
+id: events-collection
 type: MongoDBCollection
 properties:
   databaseUri:
