@@ -33,6 +33,33 @@ vars:
     default: []
     description: Additional requests for the custom filters section
 
+exports:
+  pages:
+    - id: users
+      description: User administration list with filtering, sorting, pagination, and Excel download
+    - id: users-edit
+      description: Edit existing user profile and access settings
+    - id: users-invite
+      description: Invite a new user with profile and access settings
+    - id: check-invite-email
+      description: Verify email availability before sending invite
+  connections:
+    - id: user-contacts
+      description: MongoDB connection for user contact records
+  api:
+    - id: invite-user
+      description: Create user invite with profile, access, and notification
+    - id: update-user
+      description: Update existing user profile and access settings
+    - id: resend-invite
+      description: Resend pending user invitation email
+  components:
+    - id: user-selector
+      description: Autocomplete selector for picking users
+  menus:
+    - id: default
+      description: User admin navigation link
+
 connections:
   - _ref: connections/user-contacts.yaml
 

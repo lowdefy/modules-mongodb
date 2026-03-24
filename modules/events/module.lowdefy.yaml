@@ -2,12 +2,19 @@ name: Events
 description: Event logging — new-event API, event timeline panel, shared event metadata
 
 exports:
+  connections:
+    - id: events-db
+      description: MongoDB connection for event log records
   components:
     - id: change_stamp
+      description: Audit metadata template with timestamp and user fields
     - id: event_types
+      description: Event type display metadata (color, title, icon) merged with app additions
     - id: event-log-panel
+      description: Timeline panel showing filtered event history for an entity
   api:
     - id: new-event
+      description: Log a new audit event
 
 vars:
   collection:

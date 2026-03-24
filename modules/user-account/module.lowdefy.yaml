@@ -39,6 +39,25 @@ pages:
   - _ref: pages/create-profile.yaml
 
 exports:
+  pages:
+    - id: login
+      description: Email-based passwordless login page
+    - id: verify-email-request
+      description: Confirmation page after sign-in link is sent
+    - id: profile
+      description: View user profile details
+    - id: edit-profile
+      description: Edit user profile fields
+    - id: create-profile
+      description: First-time profile creation after sign-up
+  connections:
+    - id: user-contacts
+      description: MongoDB connection for user contact records
+  api:
+    - id: create-profile
+      description: Create a new user profile record
+    - id: update-profile
+      description: Update existing user profile fields
   components:
     - id: user-avatar
       description: Desktop header avatar with popover menu (profile link, logout)
@@ -46,6 +65,9 @@ exports:
       description: Compact avatar for mobile header and collapsed sidebar
     - id: user-menu
       description: Flat button list for mobile drawer (profile link, logout)
+  menus:
+    - id: default
+      description: User account navigation links
 
 components:
   - id: user-avatar
