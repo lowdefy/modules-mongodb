@@ -31,4 +31,4 @@ blocks:
             - true
     properties:
       title: Disable User
-      color: "#f5222d"
+      color: danger

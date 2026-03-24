@@ -88,7 +88,6 @@ _ref:
           placeholder: Work Email
           suffixIcon:
             name: AiOutlineMail
-            color: "#888"
         events:
           onPressEnter:
             - id: validate

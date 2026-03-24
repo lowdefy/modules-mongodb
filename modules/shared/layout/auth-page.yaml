@@ -1,18 +1,8 @@
 id:
   _var: id
-type: Box
-properties:
-  title:
-    _var: title
-layout:
-  gap: 16
-  align: center
-  justify: center
+type: Layout
 style:
   minHeight: 100vh
-  backgroundColor:
-    _theme: colorBgLayout
-  padding: 0 20px
 events:
   onInit:
     _var:
@@ -35,31 +25,32 @@ requests:
     key: requests
     default: []
 blocks:
-  _build.array.concat:
-    - - id: auth-page-container
+  - id: auth-content
+    type: Content
+    layout:
+      align: center
+      justify: center
+      flex: 1 1 auto
+    style:
+      padding: 0 20px
+    blocks:
+      - id: auth-page-container
         type: Box
         style:
           maxWidth: 400
         blocks:
           - id: auth-logo
             type: Img
-            style:
-              marginBottom: 24
-              marginTop: 48
             layout:
               selfAlign: middle
             properties:
               src:
                 _module.var: logo.primary
-              height: 75
               width: 100%
           - id: auth-card
             type: Card
             layout:
               gap: 8
-            style:
-              /element:
-                boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
             blocks:
               _build.array.concat:
                 - _build.if:
@@ -71,15 +62,13 @@ blocks:
                         - ""
                     then:
                       - id: auth-title
-                        type: Html
+                        type: Title
                         style:
                           textAlign: center
                         properties:
-                          html:
-                            _string.concat:
-                              - "<h1>"
-                              - _var: title
-                              - "</h1>"
+                          content:
+                            _var: title
+                          level: 1
                     else: []
                 - _var:
                     key: blocks
@@ -87,10 +76,9 @@ blocks:
                 - _var:
                     key: actions
                     default: []
-          - id: auth-spacer
-            type: Box
-            style:
-              height: 48
-    - _module.var:
+  - id: auth-footer
+    type: Footer
+    blocks:
+      _module.var:
         key: footer
         default: []

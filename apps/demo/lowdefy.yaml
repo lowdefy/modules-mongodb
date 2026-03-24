@@ -1,11 +1,67 @@
 lowdefy: 0.0.0-experimental-20260324134638
 name: Module Demo App
 
+config:
+  homePageId: router
+
+auth:
+  authPages:
+    signIn: /user-account/login
+    verifyRequest: /user-account/verify-email-request
+    error: /user-account/login
+  theme:
+    brandColor: "#f1b434"
+  adapter:
+    id: mdb_adapter
+    type: MultiAppMongoDBAdapter
+    properties:
+      invite:
+        required: true
+      databaseUri:
+        _secret: MONGODB_URI
+      appName: demo
+      verificationTokens:
+        uses: 5
+  providers:
+    - id: email
+      type: EmailProvider
+      properties:
+        maxAge: 1800
+        server:
+          host: smtp.sendgrid.net
+          port: 465
+          auth:
+            user: apikey
+            pass:
+              _secret: SENDGRID_API_KEY
+        from:
+          _secret: AUTH_FROM_ADDRESS
+        templateVariables:
+          appName: Lowdefy Modules MongoDB Demo
+          logoHeight: 80px
+  userFields:
+    id: user.id
+    profile: user.profile
+    app_attributes: user.app_attributes
+    global_attributes: user.global_attributes
+    roles: user.roles
+  pages:
+    public: true
+  # pages:
+  #   protected: true
+  #   public:
+  #     - user-account/login
+  #     - "404"
+  #     - user-account/verify-email-request
+  #     - router
+
 plugins:
   - name: "@lowdefy/community-plugin-mongodb"
     version: 2.4.1
   - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
+  - name: "@lowdefy/community-plugin-nodemailer"
+    version: 1.1.4
   - name: "@lowdefy/plugin-aws"
     version: "^4"
   - name: "@lowdefy/modules-mongodb-plugins"
@@ -100,4 +156,6 @@ menus:
             menu: default
 
 pages:
+  - _ref: pages/router.yaml
+  - _ref: pages/404.yaml
   - _ref: pages/home.yaml

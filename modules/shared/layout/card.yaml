@@ -56,9 +56,6 @@ _build.switch:
                       _var:
                         key: skeleton_height
                         default: 300
-            style:
-              /element:
-                boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
             properties:
               title:
                 _build.if:
@@ -92,19 +89,20 @@ _build.switch:
                         type: Html
                         style:
                           marginBottom: 8
+                          color:
+                            _theme: colorTextDescription
+                          fontSize: 0.85em
                         properties:
                           html:
                             _nunjucks:
                               template: |
-                                <span style="color: #a9a9a9; font-size: 0.85em;">
-                                  {% if doc.updated.user.name %}
-                                    Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll') }}
-                                  {% endif %}
-                                  {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
-                                  {% if doc.created.user.name %}
-                                    Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll') }}
-                                  {% endif %}
-                                </span>
+                                {% if doc.updated.user.name %}
+                                  Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll') }}
+                                {% endif %}
+                                {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
+                                {% if doc.created.user.name %}
+                                  Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll') }}
+                                {% endif %}
                               on:
                                 doc:
                                   _var: doc

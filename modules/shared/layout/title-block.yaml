@@ -11,30 +11,34 @@ blocks:
           key: breadcrumbs
           default: []
   - id: title
-    type: Html
+    type: Title
     layout:
       flex: 1 0 auto
+    properties:
+      content:
+        _var: title
+      level: 2
+  - id: title-metadata
+    type: Html
     style:
-      paddingTop: 12px
+      color:
+        _theme: colorTextDescription
+      fontSize: 0.85em
+      overflow: hidden
+      whiteSpace: nowrap
+      textOverflow: ellipsis
     properties:
       html:
         _nunjucks:
           template: |
-            <h2 style="margin-bottom: 0px;">{{ title | safe }}</h2>
-            <h5 style="color: #a9a9a9; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; line-height: 1;">
-              {% if doc.updated.user.name %}
-                Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll')}}
-              {% endif %}
-              {% if doc.updated.user.name and doc.created.user.name %}
-                <span style="padding: 10px;">|</span>
-              {% endif %}
-              {% if doc.created.user.name %}
-                Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll')}}
-              {% endif %}
-            </h5>
+            {% if doc.updated.user.name %}
+              Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll')}}
+            {% endif %}
+            {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
+            {% if doc.created.user.name %}
+              Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll')}}
+            {% endif %}
           on:
-            title:
-              _var: title
             doc:
               _var: doc
   - id: page-actions

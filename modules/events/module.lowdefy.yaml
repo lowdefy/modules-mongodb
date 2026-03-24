@@ -3,14 +3,14 @@ description: Event logging — new-event API, event timeline panel, shared event
 
 exports:
   connections:
-    - id: events-db
-      description: MongoDB connection for event log records
+    - id: events-collection
+      description: MongoDB collection connection for event log records
   components:
     - id: change_stamp
       description: Audit metadata template with timestamp and user fields
     - id: event_types
       description: Event type display metadata (color, title, icon) merged with app additions
-    - id: event-log-panel
+    - id: events-timeline
       description: Timeline panel showing filtered event history for an entity
   api:
     - id: new-event
@@ -52,15 +52,15 @@ components:
         - _module.var:
             key: event_types
             default: {}
-  - id: event-log-panel
+  - id: events-timeline
     component:
-      _ref: components/event-log-panel.yaml
+      _ref: components/events-timeline.yaml
 
 api:
   - _ref: api/new-event.yaml
 
 connections:
-  - _ref: connections/events-db.yaml
+  - _ref: connections/events-collection.yaml
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
