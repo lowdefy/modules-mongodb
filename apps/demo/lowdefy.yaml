@@ -1,6 +1,10 @@
 lowdefy: 0.0.0-experimental-20260324092624
 name: Module Demo App
 
+cli:
+  watch:
+    - ../../modules/shared
+
 config:
   homePageId: router
 

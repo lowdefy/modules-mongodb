@@ -25,6 +25,9 @@ vars:
   card:
     type: object
     description: Custom card component override (replaces default Card layout)
+  auth_page:
+    type: object
+    description: "Auth page overrides: { brand_panel_background, card_style }"
 
 exports:
   components:

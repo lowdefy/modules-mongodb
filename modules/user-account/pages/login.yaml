@@ -57,8 +57,6 @@ _ref:
     blocks:
       - id: no_invite_alert
         type: Alert
-        style:
-          marginBottom: 16px
         visible:
           _ne:
             - _state: error_message
@@ -67,9 +65,13 @@ _ref:
           description:
             _state: error_message
           type: error
-          showIcon: false
+          showIcon: true
       - id: sign_in_title
         type: Html
+        style:
+          textAlign: center
+          color:
+            _theme: colorTextSecondary
         properties:
           html:
             _module.var:
@@ -119,7 +121,7 @@ _ref:
       - id: login_button
         type: Button
         style:
-          marginTop: 24
+          marginTop: 8
         properties:
           title: Login
           icon: AiOutlineLogin
