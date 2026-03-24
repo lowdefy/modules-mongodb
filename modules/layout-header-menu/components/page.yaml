@@ -12,12 +12,9 @@ properties:
     style:
       _module.var: logo.style
   header:
-    theme: light
-    contentStyle:
-      flex: 1 1 auto
-      display: flex
-      justifyContent: flex-end
-      alignItems: center
+    _module.var:
+      key: header
+      default: {}
   menu:
     _module.var:
       key: menu
@@ -65,6 +62,11 @@ slots:
     blocks:
       _module.var:
         key: header_extra.mobile_extra
+        default: []
+  footer:
+    blocks:
+      _module.var:
+        key: footer
         default: []
 blocks:
   _build.array.concat:
@@ -116,8 +118,4 @@ blocks:
     # Consumer content
     - _var:
         key: blocks
-        default: []
-    # Footer
-    - _module.var:
-        key: footer
         default: []
