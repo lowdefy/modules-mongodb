@@ -1,0 +1,50 @@
+id:
+  _var:
+    key: block_id
+    default: file_upload
+type: Box
+blocks:
+  - id:
+      _build.string.concat:
+        - _var:
+            key: block_id
+            default: file_upload
+        - _s3
+    type: S3UploadButton
+    requests:
+      - _ref: ../requests/upload-policy.yaml
+    properties:
+      s3PostPolicyRequestId:
+        _build.string.concat:
+          - "upload_policy_"
+          - _var:
+              key: block_id
+              default: file_upload
+      disabled:
+        _var:
+          key: disabled
+          default: false
+    events:
+      onSuccess:
+        - id: save_file_metadata
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: save-file
+            payload:
+              entity_type:
+                _var: entity_type
+              entity_id:
+                _var: entity_id
+              file:
+                _event: file
+              file_title:
+                _var:
+                  key: file_title
+                  default: null
+        - id: refresh_files
+          type: Request
+          params:
+            _var:
+              key: files_request_id
+              default: get_entity_files

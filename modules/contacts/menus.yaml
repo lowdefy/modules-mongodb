@@ -1,0 +1,10 @@
+id: default
+links:
+  - id: contacts
+    type: MenuLink
+    pageId:
+      _module.pageId: contacts
+    properties:
+      title:
+        _module.var: label_plural
+      icon: AiOutlineContacts

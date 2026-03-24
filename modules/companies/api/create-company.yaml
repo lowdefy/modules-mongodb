@@ -1,0 +1,124 @@
+id: create-company
+type: Api
+routine:
+  - id: insert
+    type: MongoDBInsertConsecutiveId
+    connectionId:
+      _module.connectionId: companies-db
+    properties:
+      prefix:
+        _module.var: id_prefix
+      length:
+        _module.var: id_length
+      doc:
+        _build.object.assign:
+          - trading_name:
+              _payload: company.trading_name
+            description:
+              _payload: company.description
+            registered_name:
+              _payload: company.registered_name
+            registration_number:
+              _payload: company.registration_number
+            vat_number:
+              _payload: company.vat_number
+            website:
+              _payload: company.website
+            address:
+              _payload: company.address
+            contact:
+              _payload: company.contact
+            lowercase_email:
+              _string.toLowerCase:
+                _string.trim:
+                  _if_none:
+                    - _payload: company.contact.primary_email
+                    - ""
+            removed: null
+            created:
+              _ref:
+                module: events
+                component: change_stamp
+            updated:
+              _ref:
+                module: events
+                component: change_stamp
+          - _module.var:
+              key: request_stages.insert_company
+              default: {}
+
+  - id: link-contacts
+    type: MongoDBUpdateMany
+    connectionId:
+      _module.connectionId:
+        id: contacts-db
+        module: contacts
+    properties:
+      filter:
+        _id:
+          $in:
+            _if_none:
+              - _payload: company.contacts
+              - []
+      update:
+        $addToSet:
+          global_attributes.company_ids:
+            _step: insert.insertedId
+
+  - id: new-event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: create-company
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: ../defaults/event_display.yaml
+                        - _module.var:
+                            key: event_display
+                            default: {}
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.create-company
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  key:
+                    __build.args: 0.0
+                  value:
+                    title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.create-company
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _payload:
+                                _build.string.concat:
+                                  - "company."
+                                  - _module.var: name_field
+                    description: null
+        references:
+          company_ids:
+            - _step: insert.insertedId
+        metadata:
+          company_id:
+            _step: insert.insertedId
+
+  - :return:
+      companyId:
+        _step: insert.insertedId

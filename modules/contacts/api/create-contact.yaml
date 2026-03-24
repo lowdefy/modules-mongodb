@@ -1,0 +1,178 @@
+id: create-contact
+type: Api
+routine:
+  - id: check-existing
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: contacts-db
+    properties:
+      query:
+        lowercase_email:
+          _string.toLowerCase:
+            _string.trim:
+              _if_none:
+                - _payload: contact.email
+                - ""
+
+  - id: insert
+    type: MongoDBInsertOne
+    skip:
+      _ne:
+        - _step: check-existing
+        - null
+    connectionId:
+      _module.connectionId: contacts-db
+    properties:
+      doc:
+        _build.object.assign:
+          - _id:
+              _uuid: true
+            email:
+              _string.trim:
+                _if_none:
+                  - _payload: contact.email
+                  - ""
+            lowercase_email:
+              _string.toLowerCase:
+                _string.trim:
+                  _if_none:
+                    - _payload: contact.email
+                    - ""
+            profile:
+              name:
+                _string.concat:
+                  - _if_none:
+                      - _payload: contact.profile.given_name
+                      - ""
+                  - " "
+                  - _if_none:
+                      - _payload: contact.profile.family_name
+                      - ""
+              picture:
+                _string.concat:
+                  - "https://api.dicebear.com/6.x/initials/svg?seed="
+                  - _if_none:
+                      - _payload: contact.profile.given_name
+                      - ""
+                  - " "
+                  - _if_none:
+                      - _payload: contact.profile.family_name
+                      - ""
+              title:
+                _payload: contact.profile.title
+              given_name:
+                _payload: contact.profile.given_name
+              family_name:
+                _payload: contact.profile.family_name
+              work_phone:
+                _payload: contact.profile.work_phone
+              mobile_phone:
+                _payload: contact.profile.mobile_phone
+              department:
+                _payload: contact.profile.department
+              job_title:
+                _payload: contact.profile.job_title
+              birthday:
+                _payload: contact.profile.birthday
+            global_attributes:
+              company_ids:
+                _if_none:
+                  - _payload: contact.global_attributes.company_ids
+                  - []
+              internal_details:
+                _payload: contact.global_attributes.internal_details
+            hidden: false
+            disabled: false
+            created:
+              _ref:
+                module: events
+                component: change_stamp
+            updated:
+              _ref:
+                module: events
+                component: change_stamp
+          - _module.var:
+              key: request_stages.insert_contact
+              default: {}
+
+  - id: new-event
+    type: CallApi
+    skip:
+      _ne:
+        - _step: check-existing
+        - null
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: create-contact
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: ../defaults/event_display.yaml
+                        - _module.var:
+                            key: event_display
+                            default: {}
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.create-contact
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  key:
+                    __build.args: 0.0
+                  value:
+                    title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.create-contact
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _string.concat:
+                                - _if_none:
+                                    - _payload: contact.profile.given_name
+                                    - ""
+                                - " "
+                                - _if_none:
+                                    - _payload: contact.profile.family_name
+                                    - ""
+                    description: null
+        references:
+          contact_ids:
+            - _step: insert.insertedId
+          company_ids:
+            _if_none:
+              - _payload: contact.global_attributes.company_ids
+              - []
+        metadata:
+          contact_id:
+            _step: insert.insertedId
+
+  - :return:
+      contactId:
+        _if:
+          test:
+            _ne:
+              - _step: check-existing
+              - null
+          then:
+            _step: check-existing._id
+          else:
+            _step: insert.insertedId
+      existing:
+        _ne:
+          - _step: check-existing
+          - null

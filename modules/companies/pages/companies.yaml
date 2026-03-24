@@ -1,0 +1,66 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: companies
+    title:
+      _module.var: label_plural
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+    page_actions:
+      - id: new_company_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title:
+            _string.concat:
+              - "New "
+              - _module.var: label
+          icon: AiOutlinePlusCircle
+          type: primary
+        events:
+          onClick:
+            - id: go_new
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: company-new
+    events:
+      onInit:
+        - id: set_sort
+          type: SetState
+          params:
+            sort:
+              by: updated.timestamp
+              order: -1
+      onMountAsync:
+        - id: set_pagination
+          type: SetState
+          params:
+            pagination:
+              current: 1
+              skip: 0
+              pageSize: 500
+        - id: get_all
+          type: Request
+          params:
+            - get_all_companies
+    requests:
+      - _ref: ../requests/get_all_companies.yaml
+    blocks:
+      - _module.var:
+          key: components.filters
+          default:
+            _ref: ../components/filter_companies.yaml
+      - id: content
+        type: Card
+        blocks:
+          - _module.var:
+              key: components.table
+              default:
+                _ref: ../components/table_companies.yaml
+          - _ref: ../components/pagination.yaml

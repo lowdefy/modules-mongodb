@@ -1,0 +1,9 @@
+id: download_policy
+type: AwsS3PresignedGetObject
+connectionId:
+  _module.connectionId: files-bucket
+properties:
+  key:
+    _state: selected_file_key
+  responseContentType:
+    _state: selected_file_type

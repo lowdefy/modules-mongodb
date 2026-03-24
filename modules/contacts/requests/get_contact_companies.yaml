@@ -1,0 +1,30 @@
+id: get_contact_companies
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId:
+    id: companies-db
+    module: companies
+payload:
+  company_ids:
+    _state: contact.global_attributes.company_ids
+properties:
+  pipeline:
+    - $match:
+        _id:
+          $in:
+            _if_none:
+              - _payload: company_ids
+              - []
+        removed:
+          $ne: true
+    - $addFields:
+        display_name:
+          $getField:
+            field: trading_name
+            input: "$$ROOT"
+    - $project:
+        _id: 1
+        display_name: 1
+        trading_name: 1
+    - $sort:
+        display_name: 1

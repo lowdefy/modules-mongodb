@@ -1,0 +1,87 @@
+id: form_company
+type: Box
+blocks:
+  _build.array.concat:
+    # Core fields
+    - - id: company.trading_name
+        type: TextInput
+        required: true
+        properties:
+          title:
+            _string.concat:
+              - _module.var: label
+              - " Name"
+          placeholder:
+            _string.concat:
+              - "Enter "
+              - _module.var: label
+              - " name"
+      - id: company.description
+        type: TextArea
+        properties:
+          title: Description
+          rows: 3
+      - id: divider_registration
+        type: Divider
+        properties:
+          title: Registration
+      - id: company.registered_name
+        type: TextInput
+        properties:
+          title: Registered Name
+      - id: company.registration_number
+        type: TextInput
+        properties:
+          title: Registration Number
+      - id: company.vat_number
+        type: TextInput
+        properties:
+          title: VAT Number
+      - id: divider_contact
+        type: Divider
+        properties:
+          title: Contact Details
+      - id: company.website
+        type: TextInput
+        properties:
+          title: Website
+          placeholder: "https://..."
+      - id: company.contact.primary_email
+        type: TextInput
+        properties:
+          title: Email
+          placeholder: "info@company.com"
+        validate:
+          _ref: ../validate/email.yaml
+      - id: company.contact.primary_phone
+        type: PhoneNumberInput
+        properties:
+          title: Phone
+      - id: divider_address
+        type: Divider
+        properties:
+          title: Address
+      - id: company.address.registered.formatted_address
+        type: TextInput
+        properties:
+          title: Registered Address
+      - id: company.address.registered.extra
+        type: TextInput
+        properties:
+          title: Building / Unit / Floor
+    # form_attributes injection point — custom fields appear here
+    - _module.var:
+        key: components.form_attributes
+        default: []
+    # Contacts section
+    - - id: divider_contacts
+        type: Divider
+        properties:
+          title: Contacts
+      - _ref:
+          module: contacts
+          component: contact-selector
+        vars:
+          label: Linked Contacts
+          mode: MultipleSelector
+          field_id: company.contacts

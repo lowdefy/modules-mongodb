@@ -1,0 +1,60 @@
+id: export_button
+type: Button
+layout:
+  flex: 0 1 auto
+properties:
+  title: Download Excel File
+  block: true
+events:
+  onClick:
+    - id: fetch_excel_data
+      type: FetchRequest
+      params:
+        requestName: get_contact_excel_data
+    - id: xlsx_download
+      type: DownloadXlsx
+      params:
+        fileName:
+          _string.concat:
+            - _module.var: label_plural
+            - _Export
+        dateFormat: "YYYY/MM/DD"
+        data:
+          _actions: fetch_excel_data.response
+        schema:
+          _build.array.concat:
+            - - column: name
+                value: profile.name
+                type: String
+                width: 25
+              - column: email
+                value: email
+                type: String
+                width: 25
+              - column: department
+                value: profile.department
+                type: String
+                width: 20
+              - column: job_title
+                value: profile.job_title
+                type: String
+                width: 20
+              - column: work_phone
+                value: profile.work_phone
+                type: String
+                width: 15
+              - column: mobile_phone
+                value: profile.mobile_phone
+                type: String
+                width: 15
+            - _module.var:
+                key: components.download_columns
+                default: []
+            - - column: updated_at
+                value: updated_at
+                type: String
+                width: 15
+              - column: created_at
+                value: created_at
+                type: String
+                width: 15

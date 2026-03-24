@@ -1,0 +1,119 @@
+id: get_all_companies
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: companies-db
+payload:
+  pagination:
+    _state: pagination
+  filter:
+    _state: filter
+  sort:
+    _state: sort
+properties:
+  pipeline:
+    - $search:
+        compound:
+          filter:
+            - compound:
+                mustNot:
+                  - equals:
+                      path: removed
+                      value: true
+                must:
+                  _array.concat:
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.search
+                            - null
+                        then:
+                          - compound:
+                              should:
+                                - text:
+                                    query:
+                                      _string.toLowerCase:
+                                        _payload: filter.search
+                                    path:
+                                      - _module.var: name_field
+                                      - lowercase_email
+                                - wildcard:
+                                    query:
+                                      _string.concat:
+                                        - "*"
+                                        - _string.toLowerCase:
+                                            _payload: filter.search
+                                        - "*"
+                                    path:
+                                      - _module.var: name_field
+                                      - lowercase_email
+                                    allowAnalyzedField: true
+                        else: []
+                    - _array.filter:
+                        - _module.var:
+                            key: request_stages.filter_match
+                            default: []
+                        - _function:
+                            __ne:
+                              - __args: 0
+                              - null
+
+    - $addFields:
+        score:
+          $meta: searchScore
+        display_name:
+          $getField:
+            field:
+              _module.var: name_field
+            input: "$$ROOT"
+    - $facet:
+        count:
+          - $count: total
+        results:
+          _build.array.concat:
+            - - _if:
+                  test:
+                    _eq:
+                      - _if_none:
+                          - _payload: filter.search
+                          - null
+                      - null
+                  then:
+                    $sort:
+                      _object.assign:
+                        - _object.defineProperty:
+                            on: {}
+                            key:
+                              _payload: sort.by
+                            descriptor:
+                              value:
+                                _payload: sort.order
+                        - _id: 1
+                  else:
+                    $sort:
+                      score: -1
+                      updated.timestamp: -1
+              - $skip:
+                  _payload: pagination.skip
+              - $limit:
+                  _payload: pagination.pageSize
+              - $addFields:
+                  updated_at:
+                    $dateToString:
+                      date: $updated.timestamp
+                      format: "%Y-%m-%d"
+                  created_at:
+                    $dateToString:
+                      date: $created.timestamp
+                      format: "%Y-%m-%d"
+            - _module.var:
+                key: request_stages.get_all_companies
+                default:
+                  - $addFields: {}
+    - $unwind:
+        path: $count
+    - $unwind:
+        path: $results
+    - $addFields:
+        results.total_results: $count.total
+    - $replaceRoot:
+        newRoot: $results
