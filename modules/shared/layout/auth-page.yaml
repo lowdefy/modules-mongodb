@@ -10,19 +10,30 @@ layout:
   justify: center
 style:
   minHeight: 100vh
-  backgroundColor: "#F0F2F5"
+  backgroundColor:
+    _theme: colorBgLayout
   padding: 0 20px
 events:
   onInit:
-    _var: { key: events.onInit, default: [] }
+    _var:
+      key: events.onInit
+      default: []
   onInitAsync:
-    _var: { key: events.onInitAsync, default: [] }
+    _var:
+      key: events.onInitAsync
+      default: []
   onMount:
-    _var: { key: events.onMount, default: [] }
+    _var:
+      key: events.onMount
+      default: []
   onMountAsync:
-    _var: { key: events.onMountAsync, default: [] }
+    _var:
+      key: events.onMountAsync
+      default: []
 requests:
-  _var: { key: requests, default: [] }
+  _var:
+    key: requests
+    default: []
 blocks:
   _build.array.concat:
     - - id: auth-page-container
@@ -35,8 +46,6 @@ blocks:
             style:
               marginBottom: 24
               marginTop: 48
-              /element:
-                _module.var: logo.style
             layout:
               selfAlign: middle
             properties:
@@ -56,7 +65,9 @@ blocks:
                 - _build.if:
                     test:
                       _build.ne:
-                        - _var: { key: title, default: "" }
+                        - _var:
+                            key: title
+                            default: ""
                         - ""
                     then:
                       - id: auth-title
@@ -70,10 +81,16 @@ blocks:
                               - _var: title
                               - "</h1>"
                     else: []
-                - _var: blocks
-                - _var: { key: actions, default: [] }
+                - _var:
+                    key: blocks
+                    default: []
+                - _var:
+                    key: actions
+                    default: []
           - id: auth-spacer
             type: Box
             style:
               height: 48
-    - _module.var: { key: footer, default: [] }
+    - _module.var:
+        key: footer
+        default: []

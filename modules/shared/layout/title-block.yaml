@@ -7,7 +7,9 @@ blocks:
       paddingTop: 20px
     properties:
       list:
-        _var: { key: breadcrumbs, default: [] }
+        _var:
+          key: breadcrumbs
+          default: []
   - id: title
     type: Html
     layout:
@@ -42,4 +44,6 @@ blocks:
     style:
       margin: 16
     blocks:
-      _var: { key: page_actions, default: [] }
+      _var:
+        key: page_actions
+        default: []

@@ -1,0 +1,13 @@
+name: Notifications
+description: Notification dispatch — send-notification API stub
+
+exports:
+  api:
+    - id: send-notification
+
+api:
+  - _ref: api/send-notification.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI

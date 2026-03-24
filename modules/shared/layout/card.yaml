@@ -1,0 +1,135 @@
+_build.switch:
+  branches:
+    - if:
+        _build.ne:
+          - _module.var:
+              key: card
+              default: null
+          - null
+      then:
+        _module.var: card
+  default:
+    id: card-section
+    type: Box
+    style:
+      maxWidth:
+        _var:
+          key: width
+          default: "100%"
+      margin: auto
+    layout:
+      gap: 8
+    blocks:
+      _build.array.concat:
+        # Back button (above the card, only when show_back_button)
+        - _build.if:
+            test:
+              _var:
+                key: show_back_button
+                default: false
+            then:
+              - id: back-btn
+                type: Button
+                properties:
+                  icon: AiOutlineArrowLeft
+                  type: text
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
+            else: []
+        # Card with native header (title + slots.extra for header_buttons)
+        - - id: card
+            type: Card
+            loading:
+              _var:
+                key: loading
+                default: false
+            skeleton:
+              type: Card
+              blocks:
+                - type: Skeleton
+                  properties:
+                    height:
+                      _var:
+                        key: skeleton_height
+                        default: 300
+            style:
+              /element:
+                boxShadow: 0px 5px 8px -3px rgba(0,0,0,0.1)
+            properties:
+              title:
+                _build.if:
+                  test:
+                    _var:
+                      key: show_title
+                      default: true
+                  then:
+                    _var: title
+                  else: null
+            layout:
+              gap: 16
+            slots:
+              extra:
+                blocks:
+                  _var:
+                    key: header_buttons
+                    default: []
+            blocks:
+              _build.array.concat:
+                # Doc metadata (only when doc provided)
+                - _build.if:
+                    test:
+                      _build.ne:
+                        - _var:
+                            key: doc
+                            default: null
+                        - null
+                    then:
+                      - id: card-doc-metadata
+                        type: Html
+                        style:
+                          marginBottom: 8
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                <span style="color: #a9a9a9; font-size: 0.85em;">
+                                  {% if doc.updated.user.name %}
+                                    Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll') }}
+                                  {% endif %}
+                                  {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
+                                  {% if doc.created.user.name %}
+                                    Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll') }}
+                                  {% endif %}
+                                </span>
+                              on:
+                                doc:
+                                  _var: doc
+                    else: []
+                # Content
+                - _var:
+                    key: blocks
+                    default: []
+        # Footer buttons (inline, not sticky)
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: footer_buttons
+                      default: []
+                - 0
+            then:
+              - id: card-footer
+                type: Box
+                layout:
+                  direction: row-reverse
+                  gap: 8
+                blocks:
+                  _var:
+                    key: footer_buttons
+                    default: []
+            else: []

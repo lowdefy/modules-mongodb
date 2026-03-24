@@ -1,0 +1,60 @@
+id: event-log-panel
+type: Box
+style:
+  maxHeight: 600
+  overflowY: auto
+
+requests:
+  - id: get-events
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: events-db
+    properties:
+      pipeline:
+        - $match:
+            _object.fromEntries:
+              - - _var: reference_field
+                - _var: reference_value
+        - $sort:
+            date: -1
+        - $addFields:
+            title:
+              _string.concat:
+                - "$"
+                - _var:
+                    key: display_key
+                    default:
+                      _module.var: display_key
+                - ".title"
+            description:
+              _string.concat:
+                - "$"
+                - _var:
+                    key: display_key
+                    default:
+                      _module.var: display_key
+                - ".description"
+            info:
+              _string.concat:
+                - "$"
+                - _var:
+                    key: display_key
+                    default:
+                      _module.var: display_key
+                - ".info"
+
+blocks:
+  - id: events-timeline
+    type: EventsTimeline
+    properties:
+      data:
+        _request: get-events
+      eventTypeConfig:
+        _build.object.assign:
+          - _ref: ../../shared/enums/event_types.yaml
+          - _module.var:
+              key: event_types
+              default: {}
+      reverse: true
+      s3GetPolicyRequestId:
+        _var: s3GetPolicyRequestId

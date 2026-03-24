@@ -1,27 +1,35 @@
 name: User Account
-description: User account pages — login, email verification, profile view/edit, profile creation
+description: User account pages — login, email verification, profile view/edit/create
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+  - id: events
+    description: Audit event logging and change stamp
 
 vars:
   app_name:
     required: true
-    description: App name for MongoDB field paths and change stamps
-  change_stamp:
-    required: true
-    description: Change stamp for audit trail
-  theme:
-    default: { header_theme: light }
-    description: Theme configuration
+    description: App name for event metadata
   login_message:
     default: <p>Welcome. Please provide your work email to sign in.</p>
     description: HTML message shown on the login page
   verify_email_message:
     default: A sign in link has been sent to your email. Follow the link to sign in.
     description: Message shown on the verify email request page
+  event_display:
+    default:
+      _ref: defaults/event_display.yaml
+    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates."
   components:
-    description: "Component overrides: form_profile, view_profile, login_logo"
+    description: "Overrides: form_profile, view_profile"
 
 connections:
   - _ref: connections/user-contacts.yaml
+
+api:
+  - _ref: api/create-profile.yaml
+  - _ref: api/update-profile.yaml
 
 pages:
   - _ref: pages/login.yaml
@@ -30,7 +38,47 @@ pages:
   - _ref: pages/edit-profile.yaml
   - _ref: pages/create-profile.yaml
 
-components: []
+exports:
+  pages:
+    - id: login
+      description: Email-based passwordless login page
+    - id: verify-email-request
+      description: Confirmation page after sign-in link is sent
+    - id: profile
+      description: View user profile details
+    - id: edit-profile
+      description: Edit user profile fields
+    - id: create-profile
+      description: First-time profile creation after sign-up
+  connections:
+    - id: user-contacts
+      description: MongoDB connection for user contact records
+  api:
+    - id: create-profile
+      description: Create a new user profile record
+    - id: update-profile
+      description: Update existing user profile fields
+  components:
+    - id: user-avatar
+      description: Desktop header avatar with popover menu (profile link, logout)
+    - id: user-avatar-compact
+      description: Compact avatar for mobile header and collapsed sidebar
+    - id: user-menu
+      description: Flat button list for mobile drawer (profile link, logout)
+  menus:
+    - id: default
+      description: User account navigation links
+
+components:
+  - id: user-avatar
+    component:
+      _ref: components/user-avatar.yaml
+  - id: user-avatar-compact
+    component:
+      _ref: components/user-avatar-compact.yaml
+  - id: user-menu
+    component:
+      _ref: components/user-menu.yaml
 
 menus:
   - _ref: menu.yaml

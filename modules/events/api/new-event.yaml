@@ -1,7 +1,5 @@
-id: log-event
-type: InternalApi
-auth:
-  public: false
+id: new-event
+type: Api
 routine:
   - id: insert-event
     type: MongoDBInsertOne

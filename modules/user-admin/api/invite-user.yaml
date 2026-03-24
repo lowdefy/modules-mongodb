@@ -1,0 +1,211 @@
+id: invite-user
+type: Api
+routine:
+  - id: invite
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: user-contacts
+    properties:
+      options:
+        upsert: true
+      filter:
+        lowercase_email:
+          _string.toLowerCase:
+            _string.trim:
+              _if_none:
+                - _payload: user.email
+                - ""
+      update:
+        _build.array.concat:
+          - - $set:
+                _object.assign:
+                  - _id:
+                      $ifNull:
+                        - $_id
+                        - _uuid: true
+                    email:
+                      $ifNull:
+                        - $email
+                        - _string.trim:
+                            _if_none:
+                              - _payload: user.email
+                              - ""
+                    lowercase_email:
+                      $ifNull:
+                        - $lowercase_email
+                        - _string.toLowerCase:
+                            _string.trim:
+                              _if_none:
+                                - _payload: user.email
+                                - ""
+                    global_attributes:
+                      $mergeObjects:
+                        - $global_attributes
+                        - _payload: user.global_attributes
+                    profile.name:
+                      _string.trim:
+                        _string.concat:
+                          - _string.trim:
+                              _if_none:
+                                - _payload: user.profile.given_name
+                                - ""
+                          - " "
+                          - _string.trim:
+                              _if_none:
+                                - _payload: user.profile.family_name
+                                - ""
+                    profile.picture:
+                      _string.concat:
+                        - https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed=
+                        - _string.trim:
+                            _string.concat:
+                              - _string.trim:
+                                  _if_none:
+                                    - _payload: user.profile.given_name
+                                    - ""
+                              - " "
+                              - _string.trim:
+                                  _if_none:
+                                    - _payload: user.profile.family_name
+                                    - ""
+                    profile.title:
+                      _payload: user.profile.title
+                    profile.given_name:
+                      _string.trim:
+                        _if_none:
+                          - _payload: user.profile.given_name
+                          - ""
+                    profile.family_name:
+                      _string.trim:
+                        _if_none:
+                          - _payload: user.profile.family_name
+                          - ""
+                    updated:
+                      _ref:
+                        module: events
+                        component: change_stamp
+                    created:
+                      $ifNull:
+                        - $created
+                        - _ref:
+                            module: events
+                            component: change_stamp
+                  - _object.defineProperty:
+                      on: {}
+                      key:
+                        _string.concat:
+                          ["apps.", { _module.var: app_name }, ".disabled"]
+                      descriptor:
+                        value:
+                          $literal: false
+                  - _object.defineProperty:
+                      on: {}
+                      key:
+                        _string.concat:
+                          ["apps.", { _module.var: app_name }, ".roles"]
+                      descriptor:
+                        value:
+                          _payload: user.roles
+                  - _object.defineProperty:
+                      on: {}
+                      key:
+                        _string.concat:
+                          ["apps.", { _module.var: app_name }, ".invite.open"]
+                      descriptor:
+                        value:
+                          $literal: true
+                  - _object.defineProperty:
+                      on: {}
+                      key:
+                        _string.concat:
+                          [
+                            "apps.",
+                            { _module.var: app_name },
+                            ".app_attributes",
+                          ]
+                      descriptor:
+                        value:
+                          $mergeObjects:
+                            - _string.concat:
+                                - "$apps."
+                                - _module.var: app_name
+                                - ".app_attributes"
+                            - _payload: user.app_attributes
+          - _module.var:
+              key: request_stages.invite_user
+              default:
+                - $set: {}
+
+  - id: new-event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: invite-user
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: ../defaults/event_display.yaml
+                        - _module.var:
+                            key: event_display
+                            default: {}
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.invite-user
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  key:
+                    __build.args: 0.0
+                  value:
+                    title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.invite-user
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _step: invite.value.profile.name
+                            email:
+                              _step: invite.value.email
+                    description: null
+        references:
+          user_ids:
+            - _step: invite.value._id
+        metadata:
+          app_name:
+            _module.var: app_name
+          lowercase_email:
+            _string.toLowerCase:
+              _string.trim:
+                _if_none:
+                  - _payload: user.email
+                  - ""
+
+  - id: send-notification
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: send-notification
+          module: notifications
+      payload:
+        event_ids:
+          - _step: new-event.eventId
+
+  - :return:
+      userId:
+        _step: invite.value._id

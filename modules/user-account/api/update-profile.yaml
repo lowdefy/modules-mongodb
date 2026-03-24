@@ -1,0 +1,83 @@
+id: update-profile
+type: Api
+routine:
+  - :if:
+      _or:
+        - _eq:
+            - _payload: contact.profile.given_name
+            - null
+        - _eq:
+            - _payload: contact.profile.family_name
+            - null
+    :then:
+      :reject: Missing required profile fields.
+
+  - id: update
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: user-contacts
+    properties:
+      filter:
+        _id:
+          _user: id
+      update:
+        $set:
+          _ref: profile-set-fields.yaml
+
+  - id: updated_user
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-contacts
+    properties:
+      filter:
+        _id:
+          _user: id
+  - id: new-event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: update-profile
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: ../defaults/event_display.yaml
+                        - _module.var:
+                            key: event_display
+                            default: {}
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.update-profile
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  key:
+                    __build.args: 0.0
+                  value:
+                    title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.update-profile
+                        on:
+                          user:
+                            _result: updated_user
+                    description: null
+        references:
+          user_ids:
+            - _user: id
+        metadata:
+          app_name:
+            _module.var: app_name
+  - :return:
+      success: true

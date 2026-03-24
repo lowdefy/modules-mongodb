@@ -2,13 +2,6 @@ app_name: demo
 app_title: Demo
 roles:
   _ref: modules/user-admin/roles.yaml
-change_stamp:
-  user:
-    _user: id
-  timestamp:
-    _date: now
-theme:
-  header_theme: light
 components:
   table_columns:
     _ref: modules/user-admin/components/table_columns.yaml

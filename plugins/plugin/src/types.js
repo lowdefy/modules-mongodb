@@ -1,6 +1,6 @@
 export default {
   actions: ["FetchRequest"],
-  blocks: ["PageHeaderMenu"],
+  blocks: ["PageHeaderMenu", "EventsTimeline"],
   icons: {},
   operators: {},
   connections: [],

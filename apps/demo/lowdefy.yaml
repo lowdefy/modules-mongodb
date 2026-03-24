@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260319101008
+lowdefy: 0.0.0-experimental-20260324092624
 name: Module Demo App
 
 plugins:
@@ -10,9 +10,29 @@ plugins:
     version: workspace:*
 
 modules:
+  - id: layout
+    source: "file:../../modules/layout-header-menu"
+
+  - id: events
+    source: "file:../../modules/events"
+    vars:
+      display_key: demo
+      change_stamp:
+        user:
+          _user: id
+        timestamp:
+          _date: now
+
+  - id: notifications
+    source: "file:../../modules/notifications"
+
   - id: user-admin
     source: "file:../../modules/user-admin"
     # source: github:lowdefy/modules-mongodb/modules/user-admin@v1.0.0
+    dependencies:
+      layout: layout
+      events: events
+      notifications: notifications
     vars:
       _ref: modules/user-admin/index.yaml
 

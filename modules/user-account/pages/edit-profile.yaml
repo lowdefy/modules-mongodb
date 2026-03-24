@@ -1,10 +1,10 @@
 _ref:
-  path: ../shared/page_layout.yaml
+  module: layout
+  component: page
   vars:
     id: edit-profile
     title: Edit Profile
-    theme:
-      _module.var: theme
+    hide_title: true
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -13,7 +13,7 @@ _ref:
           _module.pageId: profile
       - label: Edit Profile
     events:
-      onMount:
+      onInit:
         - id: init
           type: SetState
           params:
@@ -21,38 +21,43 @@ _ref:
               _user: profile
             contact.email:
               _user: email
-    requests:
-      - _ref: ../requests/update_profile.yaml
     blocks:
-      - id: content_wrapper
-        type: Box
-        style:
-          maxWidth: 600
-          margin: auto
-        layout:
-          gap: 16
-          justify: center
-        blocks:
-          - id: welcome_title
-            type: Divider
-            properties:
-              title: Edit Profile
-              titlePlacement: center
-          - id: content_wrapper
-            type: Card
-            layout:
-              gap: 16
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Edit Profile
+            width: 600
             blocks:
               - _module.var:
                   key: components.form_profile
                   default:
                     _ref: ../components/form_profile.yaml
-              - id: divider
-                type: Divider
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 600
+            actions:
               - id: spacer
                 type: Box
                 layout:
                   flex: 1 0 auto
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: profile
               - id: save_button
                 type: Button
                 layout:
@@ -62,11 +67,18 @@ _ref:
                   icon: AiOutlineSave
                 events:
                   onClick:
+                    - id: validate
+                      type: Validate
                     - id: update_profile
-                      type: Request
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-profile
+                        payload:
+                          contact:
+                            _state: contact
                       messages:
                         success: Profile updated.
-                      params: update_profile
                     - id: link_to_profile
                       type: Link
                       params:

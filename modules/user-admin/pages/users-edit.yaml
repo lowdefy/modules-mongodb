@@ -1,5 +1,6 @@
 _ref:
-  path: ../../shared/page_layout.yaml
+  module: layout
+  component: page
   vars:
     id: users-edit
     title:
@@ -11,10 +12,7 @@ _ref:
             - _request: get_user.0
             - app_title:
                 _module.var: app_title
-    theme:
-      _module.var: theme
-    doc:
-      _request: get_user.0
+    hide_title: true
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -27,10 +25,6 @@ _ref:
       - label: Edit User
     requests:
       - _ref: ../requests/get_user.yaml
-      - _ref: ../requests/update_user.yaml
-      - _ref: ../requests/event_update_user.yaml
-      - _ref: ../requests/event_resend_invite.yaml
-      - _ref: ../requests/notification_resend_invite.yaml
     events:
       onMount:
         - id: redirect_if_no_id
@@ -68,49 +62,57 @@ _ref:
             disable_save: false
 
     blocks:
-      - id: content_wrapper
-        type: Card
-        style:
-          maxWidth: 600
-          margin: auto
-        layout:
-          gap: 8
-        blocks:
-          - _ref: ../components/view_user_avatar_preview.yaml
-          - _ref: ../components/view_signed_up.yaml
-          - _ref: ../components/view_invite_link.yaml
-          - _ref: ../components/view_email.yaml
-          - id: divider
-            type: Divider
-            properties:
-              title: Profile
-          - _module.var:
-              key: components.form_profile
-              default:
-                id: form_profile
-                type: Box
-          - id: divider
-            type: Divider
-            properties:
-              title: Access
-          - _module.var:
-              key: components.form_global_attributes
-              default:
-                id: form_global_attributes
-                type: Box
-          - _module.var:
-              key: components.form_app_attributes
-              default:
-                id: form_app_attributes
-                type: Box
-          - _ref: ../components/form_access_edit.yaml
-          - id: divider
-            type: Divider
-          - id: footer
-            type: Box
-            layout:
-              gap: 8
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title:
+              _nunjucks:
+                template: |
+                  Edit {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+                on:
+                  _object.assign:
+                    - _request: get_user.0
+                    - app_title:
+                        _module.var: app_title
+            doc:
+              _request: get_user.0
+            width: 600
             blocks:
+              - _ref: ../components/view_user_avatar_preview.yaml
+              - _ref: ../components/view_signed_up.yaml
+              - _ref: ../components/view_invite_link.yaml
+              - _ref: ../components/view_email.yaml
+              - id: divider
+                type: Divider
+                properties:
+                  title: Profile
+              - _module.var:
+                  key: components.form_profile
+                  default:
+                    id: form_profile
+                    type: Box
+              - id: divider
+                type: Divider
+                properties:
+                  title: Access
+              - _module.var:
+                  key: components.form_global_attributes
+                  default:
+                    id: form_global_attributes
+                    type: Box
+              - _module.var:
+                  key: components.form_app_attributes
+                  default:
+                    id: form_app_attributes
+                    type: Box
+              - _ref: ../components/form_access_edit.yaml
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 600
+            actions:
               - id: resend_invite_button
                 type: Button
                 visible:
@@ -124,16 +126,25 @@ _ref:
                     _ne:
                       - _state: user.invite.open
                       - true
+                  type: default
                   title: Resend Invite
                   icon: AiOutlineSend
                 events:
                   onClick:
-                    - id: event_resend_invite
-                      type: Request
-                      params: event_resend_invite
-                    - id: send_notification
-                      type: Request
-                      params: notification_resend_invite
+                    - id: resend
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: resend-invite
+                        payload:
+                          user:
+                            _id:
+                              _state: user._id
+                            profile:
+                              name:
+                                _state: user.profile.name
+                            email:
+                              _state: user.email
                       messages:
                         success: Invite sent successfully.
               - id: spacer
@@ -147,6 +158,7 @@ _ref:
                 properties:
                   title: Cancel
                   icon: AiOutlineCloseCircle
+                  type: default
                 events:
                   onClick:
                     - id: back
@@ -167,13 +179,15 @@ _ref:
                     - id: validate
                       type: Validate
                     - id: update_user
-                      type: Request
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-user
+                        payload:
+                          user:
+                            _state: user
                       messages:
                         success: User updated.
-                      params: update_user
-                    - id: event_update_user
-                      type: Request
-                      params: event_update_user
                     - id: reset
                       type: Reset
                     - id: back

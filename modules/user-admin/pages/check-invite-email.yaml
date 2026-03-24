@@ -1,56 +1,48 @@
 _ref:
-  path: ../../shared/page_layout.yaml
+  module: layout
+  component: page
   vars:
     id: check-invite-email
     title: Check Invite Email
-    theme:
-      _module.var: theme
-    breadcrumbs:
-      - home: true
-        icon: AiOutlineHome
-      - label:
-          _string.concat:
-            - _module.var: app_title
-            - " User Admin"
-        pageId:
-          _module.pageId: users
-      - label: Check Invite Email
+    hide_title: true
     requests:
       - _ref: ../requests/check_invite_email.yaml
     blocks:
-      - id: content_wrapper
-        type: Card
-        layout:
-          gap: 8
-        style:
-          maxWidth: 500
-          margin: auto
-        blocks:
-          - id: email
-            type: TextInput
-            required: true
-            validate:
-              _ref:
-                path: ../../shared/validate_email.yaml
-                vars:
-                  field_name: email
-            properties:
-              title: New User Work Email Address
-              placeholder: name@company.com
-            events:
-              onPressEnter:
-                _ref: ../actions/check_email.yaml
-          - id: spacer
-            type: Box
-            layout:
-              flex: 1 0 auto
-          - id: save_button
-            type: Button
-            layout:
-              flex: 0 1 auto
-            properties:
-              title: Find Contact
-              icon: AiOutlineSearch
-            events:
-              onClick:
-                _ref: ../actions/check_email.yaml
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: Check Invite Email
+            width: 500
+            blocks:
+              - id: email
+                type: TextInput
+                required: true
+                validate:
+                  _ref: ../validate/email.yaml
+                properties:
+                  title: New User Work Email Address
+                  placeholder: name@company.com
+                events:
+                  onPressEnter:
+                    _ref: ../actions/check_email.yaml
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 500
+            actions:
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Find Contact
+                  icon: AiOutlineSearch
+                events:
+                  onClick:
+                    _ref: ../actions/check_email.yaml

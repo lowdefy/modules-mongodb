@@ -1,6 +1,14 @@
 name: User Admin
 description: User administration — list, edit, invite users
 
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+  - id: events
+    description: Audit event logging and change stamp
+  - id: notifications
+    description: Notification dispatch
+
 vars:
   app_name:
     required: true
@@ -11,26 +19,54 @@ vars:
   roles:
     required: true
     description: List of available user roles [{label, value}]
-  theme:
-    default: { header_theme: light }
-    description: Theme configuration
-  change_stamp:
-    required: true
-    description: Change stamp for audit trail
+  event_display:
+    default:
+      _ref: defaults/event_display.yaml
+    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). Merges with default templates."
   app_domain:
     description: App domain URL for invite links (falls back to current origin)
   components:
     description: "Component overrides: form_profile, form_global_attributes, form_app_attributes, table_columns, download_columns, filters"
   request_stages:
-    description: "MongoDB pipeline stage overrides: get_all_users, invite_user, update_user, filter_match, event_invite_user, event_update_user, event_resend_invite"
+    description: "MongoDB pipeline stage overrides: get_all_users, invite_user, update_user, filter_match"
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
 
+exports:
+  pages:
+    - id: users
+      description: User administration list with filtering, sorting, pagination, and Excel download
+    - id: users-edit
+      description: Edit existing user profile and access settings
+    - id: users-invite
+      description: Invite a new user with profile and access settings
+    - id: check-invite-email
+      description: Verify email availability before sending invite
+  connections:
+    - id: user-contacts
+      description: MongoDB connection for user contact records
+  api:
+    - id: invite-user
+      description: Create user invite with profile, access, and notification
+    - id: update-user
+      description: Update existing user profile and access settings
+    - id: resend-invite
+      description: Resend pending user invitation email
+  components:
+    - id: user-selector
+      description: Autocomplete selector for picking users
+  menus:
+    - id: default
+      description: User admin navigation link
+
 connections:
   - _ref: connections/user-contacts.yaml
-  - _ref: connections/events.yaml
-  - _ref: connections/consume-notifications.yaml
+
+api:
+  - _ref: api/invite-user.yaml
+  - _ref: api/update-user.yaml
+  - _ref: api/resend-invite.yaml
 
 pages:
   - _ref: pages/users.yaml
@@ -38,7 +74,10 @@ pages:
   - _ref: pages/users-invite.yaml
   - _ref: pages/check-invite-email.yaml
 
-components: []
+components:
+  - id: user-selector
+    component:
+      _ref: components/user-selector.yaml
 
 menus:
   - _ref: menu.yaml
@@ -46,9 +85,6 @@ menus:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
-  - name: CONSUME_NOTIFICATIONS_URL
-    description: URL for the consume notifications service
-    required: false
 
 plugins:
   - name: "@lowdefy/community-plugin-mongodb"
