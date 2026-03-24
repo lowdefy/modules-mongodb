@@ -81,7 +81,9 @@ blocks:
                               - _var: title
                               - "</h1>"
                     else: []
-                - _var: blocks
+                - _var:
+                    key: blocks
+                    default: []
                 - _var:
                     key: actions
                     default: []

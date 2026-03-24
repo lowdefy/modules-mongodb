@@ -1,7 +1,5 @@
 id: resend-invite
 type: Api
-auth:
-  public: false
 routine:
   - id: new-event
     type: CallApi
@@ -20,7 +18,7 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: defaults/event_display.yaml
+                        - _ref: ../defaults/event_display.yaml
                         - _module.var:
                             key: event_display
                             default: {}

@@ -23,4 +23,6 @@ blocks:
           direction: row-reverse
           gap: 8
         blocks:
-          _var: actions
+          _var:
+            key: actions
+            default: []

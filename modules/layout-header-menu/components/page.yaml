@@ -114,7 +114,9 @@ blocks:
                         default: []
         else: []
     # Consumer content
-    - _var: blocks
+    - _var:
+        key: blocks
+        default: []
     # Footer
     - _module.var:
         key: footer

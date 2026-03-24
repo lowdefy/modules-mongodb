@@ -19,7 +19,7 @@ _ref:
                 type: TextInput
                 required: true
                 validate:
-                  _ref: validate/email.yaml
+                  _ref: ../validate/email.yaml
                 properties:
                   title: New User Work Email Address
                   placeholder: name@company.com

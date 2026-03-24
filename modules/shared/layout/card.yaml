@@ -110,14 +110,18 @@ _build.switch:
                                   _var: doc
                     else: []
                 # Content
-                - _var: blocks
+                - _var:
+                    key: blocks
+                    default: []
         # Footer buttons (inline, not sticky)
         - _build.if:
             test:
-              _build.array.length:
-                _var:
-                  key: footer_buttons
-                  default: []
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: footer_buttons
+                      default: []
+                - 0
             then:
               - id: card-footer
                 type: Box
@@ -125,5 +129,7 @@ _build.switch:
                   direction: row-reverse
                   gap: 8
                 blocks:
-                  _var: footer_buttons
+                  _var:
+                    key: footer_buttons
+                    default: []
             else: []

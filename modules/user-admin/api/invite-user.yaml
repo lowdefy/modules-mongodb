@@ -1,7 +1,5 @@
 id: invite-user
 type: Api
-auth:
-  public: false
 routine:
   - id: invite
     type: MongoDBUpdateOne
@@ -155,7 +153,7 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: defaults/event_display.yaml
+                        - _ref: ../defaults/event_display.yaml
                         - _module.var:
                             key: event_display
                             default: {}

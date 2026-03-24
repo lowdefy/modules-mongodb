@@ -1,7 +1,5 @@
 id: update-profile
 type: Api
-auth:
-  public: false
 routine:
   - :if:
       _or:
