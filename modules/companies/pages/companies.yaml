@@ -4,12 +4,16 @@ _ref:
   vars:
     id: companies
     title:
-      _module.var: label_plural
+      _module.var:
+        key: label_plural
+        default: Companies
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _module.var: label_plural
+          _module.var:
+            key: label_plural
+            default: Companies
     page_actions:
       - id: new_company_button
         type: Button

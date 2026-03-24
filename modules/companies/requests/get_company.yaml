@@ -16,11 +16,15 @@ properties:
         display_name:
           $getField:
             field:
-              _module.var: name_field
+              _module.var:
+                key: name_field
+                default: trading_name
             input: "$$ROOT"
     - $lookup:
         from:
-          _module.var: contacts_collection
+          _module.var:
+            key: contacts_collection
+            default: user_contacts
         let:
           company_id: "$_id"
         pipeline:

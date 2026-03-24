@@ -6,7 +6,9 @@ connectionId:
     module: companies
 payload:
   company_ids:
-    _state: contact.global_attributes.company_ids
+    _if_none:
+      - _request: get_contact.0.global_attributes.company_ids
+      - _state: contact.global_attributes.company_ids
 properties:
   pipeline:
     - $match:

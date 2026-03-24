@@ -63,7 +63,9 @@ properties:
         display_name:
           $getField:
             field:
-              _module.var: name_field
+              _module.var:
+                key: name_field
+                default: trading_name
             input: "$$ROOT"
     - $facet:
         count:

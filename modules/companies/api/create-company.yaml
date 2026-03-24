@@ -7,9 +7,13 @@ routine:
       _module.connectionId: companies-db
     properties:
       prefix:
-        _module.var: id_prefix
+        _module.var:
+          key: id_prefix
+          default: "C-"
       length:
-        _module.var: id_length
+        _module.var:
+          key: id_length
+          default: 4
       doc:
         _build.object.assign:
           - trading_name:
