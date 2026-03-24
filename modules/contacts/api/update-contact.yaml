@@ -1,0 +1,141 @@
+id: update-contact
+type: Api
+routine:
+  - id: update
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: contacts-db
+    properties:
+      filter:
+        _object.assign:
+          - _id:
+              _payload: contact._id
+            updated.timestamp:
+              _payload: contact.updated.timestamp
+          - _object.defineProperty:
+              on: {}
+              key:
+                _string.concat:
+                  - "apps."
+                  - _module.var: app_name
+                  - ".is_user"
+              descriptor:
+                value:
+                  $ne: true
+      update:
+        _build.array.concat:
+          - - $set:
+                # email and lowercase_email are NOT updated — email is immutable after creation
+                profile.name:
+                  _string.concat:
+                    - _if_none:
+                        - _payload: contact.profile.given_name
+                        - ""
+                    - " "
+                    - _if_none:
+                        - _payload: contact.profile.family_name
+                        - ""
+                profile.picture:
+                  _string.concat:
+                    - "https://api.dicebear.com/6.x/initials/svg?seed="
+                    - _if_none:
+                        - _payload: contact.profile.given_name
+                        - ""
+                    - " "
+                    - _if_none:
+                        - _payload: contact.profile.family_name
+                        - ""
+                profile.title:
+                  _payload: contact.profile.title
+                profile.given_name:
+                  _payload: contact.profile.given_name
+                profile.family_name:
+                  _payload: contact.profile.family_name
+                profile.work_phone:
+                  _payload: contact.profile.work_phone
+                profile.mobile_phone:
+                  _payload: contact.profile.mobile_phone
+                profile.department:
+                  _payload: contact.profile.department
+                profile.job_title:
+                  _payload: contact.profile.job_title
+                profile.birthday:
+                  _payload: contact.profile.birthday
+                global_attributes.company_ids:
+                  _if_none:
+                    - _payload: contact.global_attributes.company_ids
+                    - []
+                global_attributes.internal_details:
+                  _payload: contact.global_attributes.internal_details
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+          - _module.var:
+              key: request_stages.update_contact
+              default: []
+
+  - id: new-event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: update-contact
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: ../defaults/event_display.yaml
+                        - _module.var:
+                            key: event_display
+                            default: {}
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.update-contact
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  key:
+                    __build.args: 0.0
+                  value:
+                    title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.update-contact
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            name:
+                              _string.concat:
+                                - _if_none:
+                                    - _payload: contact.profile.given_name
+                                    - ""
+                                - " "
+                                - _if_none:
+                                    - _payload: contact.profile.family_name
+                                    - ""
+                    description: null
+        references:
+          contact_ids:
+            - _payload: contact._id
+          company_ids:
+            _if_none:
+              - _payload: contact.global_attributes.company_ids
+              - []
+        metadata:
+          contact_id:
+            _payload: contact._id
+
+  - :return:
+      success: true

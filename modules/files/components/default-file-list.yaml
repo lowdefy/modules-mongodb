@@ -1,0 +1,60 @@
+id: files_display
+type: Box
+visible:
+  _gt:
+    - _array.length:
+        _request: get_entity_files
+    - 0
+blocks:
+  - id: files_list
+    type: List
+    properties:
+      data:
+        _request: get_entity_files
+    blocks:
+      - id: files_list.$.file_row
+        type: Box
+        layout:
+          contentGutter: 8
+          contentJustify: space-between
+          contentAlign: middle
+        blocks:
+          - id: files_list.$.download
+            type: S3Download
+            properties:
+              s3GetPolicyRequestId: download_policy
+              fileList:
+                - _array_indices: file
+          - id: files_list.$.file_date
+            type: Paragraph
+            properties:
+              content:
+                _date.format:
+                  on:
+                    _array_indices: created.timestamp
+                  params:
+                    format: YYYY-MM-DD
+          - id: files_list.$.delete_button
+            type: Button
+            visible:
+              _var:
+                key: allow_delete
+                default: true
+            properties:
+              title: ""
+              icon: AiOutlineDelete
+              type: text
+              size: small
+            events:
+              onClick:
+                - id: delete_file
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _module.endpointId: delete-file
+                    payload:
+                      file_id:
+                        _array_indices: _id
+                - id: refresh
+                  type: Request
+                  params: get_entity_files

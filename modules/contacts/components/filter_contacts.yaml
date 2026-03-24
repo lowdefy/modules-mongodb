@@ -1,0 +1,37 @@
+id: filters
+type: Box
+layout:
+  gap: 8
+style:
+  maxWidth: 1200
+  margin: auto
+blocks:
+  - id: filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 auto
+    properties:
+      placeholder: Search by Name or Email
+      label:
+        disabled: true
+    events:
+      onPressEnter:
+        _ref: ../actions/search.yaml
+      onChange:
+        try:
+          _ref: ../actions/search.yaml
+        debounce:
+          ms: 500
+  - id: filter.clear
+    type: Button
+    layout:
+      flex: 0 1 auto
+    properties:
+      title: Clear
+      icon: AiOutlineClear
+    events:
+      onClick:
+        _build.array.concat:
+          - - id: reset
+              type: Reset
+          - _ref: ../actions/search.yaml

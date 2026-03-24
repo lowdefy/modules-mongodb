@@ -1,0 +1,88 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: company-new
+    title:
+      _string.concat:
+        - "New "
+        - _module.var: label
+    hide_title: true
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title:
+              _string.concat:
+                - "New "
+                - _module.var: label
+            width: 700
+            blocks:
+              - _module.var:
+                  key: components.form_fields
+                  default:
+                    _ref: ../components/form_company.yaml
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 700
+            actions:
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: companies
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title:
+                    _string.concat:
+                      - "Create "
+                      - _module.var: label
+                  icon: AiOutlinePlusCircle
+                  type: primary
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: create_company
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: create-company
+                        payload:
+                          company:
+                            _state: company
+                      messages:
+                        success:
+                          _string.concat:
+                            - _module.var: label
+                            - " created."
+                    - id: reset
+                      type: Reset
+                    - id: go_detail
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: company-detail
+                        urlQuery:
+                          _id:
+                            _actions: create_company.response.companyId

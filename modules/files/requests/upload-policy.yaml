@@ -1,0 +1,36 @@
+id:
+  _build.string.concat:
+    - "upload_policy_"
+    - _var:
+        key: block_id
+        default: file_upload
+type: AwsS3PresignedPostPolicy
+connectionId:
+  _module.connectionId: files-bucket
+properties:
+  key:
+    _string.concat:
+      - _var: entity_type
+      - "/"
+      - _date.format:
+          on:
+            _date: now
+          params:
+            format: "YYYYMMDD_HHmmssSSS"
+      - "/"
+      - _uuid: true
+      - "/"
+      - _state:
+          _string.concat:
+            - _var:
+                key: block_id
+                default: file_upload
+            - _s3.file.name
+  conditions:
+    Content-Type:
+      _state:
+        _string.concat:
+          - _var:
+              key: block_id
+              default: file_upload
+          - _s3.file.type

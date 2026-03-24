@@ -1,0 +1,27 @@
+id: get_company_contacts
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId:
+    id: contacts-db
+    module: contacts
+payload:
+  company_id:
+    _url_query: _id
+properties:
+  pipeline:
+    - $match:
+        global_attributes.company_ids:
+          _payload: company_id
+    - $match:
+        hidden:
+          $ne: true
+        disabled:
+          $ne: true
+    - $project:
+        profile.name: 1
+        profile.given_name: 1
+        profile.family_name: 1
+        email: 1
+        contact.primary_phone: 1
+    - $sort:
+        profile.name: 1

@@ -1,0 +1,37 @@
+id: save-file
+type: Api
+routine:
+  - id: save
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: files-db
+    properties:
+      options:
+        upsert: true
+      filter:
+        _id:
+          _payload: file.key
+      update:
+        $set:
+          collection:
+            _payload: entity_type
+          doc_id:
+            _payload: entity_id
+          file:
+            _payload: file
+          file_title:
+            _payload: file_title
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+        $setOnInsert:
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+          removed: null
+
+  - :return:
+      fileId:
+        _payload: file.key
