@@ -6,6 +6,8 @@ properties:
   secretAccessKey:
     _secret: S3_SECRET_ACCESS_KEY
   region:
-    _module.var: s3_region
+    _module.var:
+      key: s3_region
+      default: af-south-1
   bucket:
     _module.var: public_bucket

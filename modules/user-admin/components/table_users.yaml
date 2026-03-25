@@ -25,7 +25,7 @@ properties:
             _function:
               __nunjucks:
                 template: |
-                  {% raw %}<img src="{{ profile.picture }}" width="30px" height="30px" style="margin-right: 5px; border-radius: 50%;"/> {{ profile.name | safe }}{% endraw %}
+                  <span style="display: inline-flex; align-items: center;"><img src="{{ profile.picture }}" width="30px" height="30px" style="margin-right: 8px; border-radius: 50%; flex-shrink: 0;"/>{{ profile.name | safe }}</span>
                 on:
                   __args: 0.data
         - headerName: Email
@@ -39,7 +39,7 @@ properties:
             _function:
               __nunjucks:
                 template: |
-                  {% raw %}<span style="color: {{ color }}; border: 1px solid {{ color }}; border-radius: 4px; padding: 4px 8px;">{{ text }}</span>{% endraw %}
+                  <span style="color: {{ color }}; border: 1px solid {{ color }}; border-radius: 4px; padding: 4px 8px;">{{ text }}</span>
                 on:
                   __args: 0.data.active
         - headerName: Roles

@@ -4,5 +4,7 @@ properties:
   databaseUri:
     _secret: MONGODB_URI
   collection:
-    _module.var: collection
+    _module.var:
+      key: collection
+      default: log-events
   write: true
