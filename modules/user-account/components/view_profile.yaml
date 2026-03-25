@@ -6,7 +6,7 @@ blocks:
     style:
       textAlign: center
       marginBottom: 42
-      /element:
+      .element:
         width: 100px
         borderRadius: 50%
     properties:
@@ -15,7 +15,7 @@ blocks:
   - id: view_contact_profile
     type: Descriptions
     style:
-      /label:
+      .label:
         fontWeight: bold
         width:
           _if:

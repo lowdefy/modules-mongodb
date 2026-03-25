@@ -3,7 +3,7 @@ type: Img
 style:
   textAlign: center
   marginBottom: 42
-  /element:
+  .element:
     width: 100px
     borderRadius: 50%
 properties:
