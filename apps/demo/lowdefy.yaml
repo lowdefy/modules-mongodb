@@ -5,6 +5,12 @@ cli:
   watch:
     - ../../modules/shared
 
+theme:
+  antd:
+    # algorithm: dark
+    token:
+      colorPrimary: "#7c3aed"
+
 config:
   homePageId: router
 
@@ -14,7 +20,7 @@ auth:
     verifyRequest: /user-account/verify-email-request
     error: /user-account/login
   theme:
-    brandColor: "#f1b434"
+    brandColor: "#7c3aed"
   adapter:
     id: mdb_adapter
     type: MultiAppMongoDBAdapter
@@ -74,6 +80,19 @@ plugins:
 modules:
   - id: layout
     source: "file:../../modules/layout-header-menu"
+    vars:
+      auth_page:
+        max_width: 380
+        logo_max_width: 180
+        card_style:
+          boxShadow: "0 4px 24px rgba(0, 0, 0, 0.12)"
+      footer:
+        - id: footer-text
+          type: Html
+          properties:
+            html: |
+              <p>Lowdefy Modules MongoDB Demo</p>
+              <p>© 2026 Lowdefy. All rights reserved.</p>
 
   - id: events
     source: "file:../../modules/events"

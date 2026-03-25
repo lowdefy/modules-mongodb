@@ -4,7 +4,7 @@ description: Page layout with header menu, title bar, and content area
 vars:
   logo:
     type: object
-    description: "Logo config: { primary, icon, style }"
+    description: "Logo config: { primary_light, primary_dark, icon, style }"
   menu:
     type: object
     description: Menu config passed to PageHeaderMenu. Defaults to _menu default.
@@ -27,7 +27,7 @@ vars:
     description: Custom card component override (replaces default Card layout)
   auth_page:
     type: object
-    description: "Auth page overrides: { brand_panel_background, card_style }"
+    description: "Auth page overrides: { cover_background, card_style, max_width, logo_max_width }"
 
 exports:
   components:

@@ -69,14 +69,13 @@ _ref:
       - id: sign_in_title
         type: Html
         style:
-          textAlign: center
           color:
             _theme: colorTextSecondary
         properties:
           html:
             _module.var:
               key: login_message
-              default: <p>Welcome. Please provide your work email to sign in.</p>
+              default: <p>Please provide your work email to sign in.</p>
       - id: email
         type: TextInput
         required: true

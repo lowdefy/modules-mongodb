@@ -6,7 +6,7 @@ properties:
     _var: title
   logo:
     src:
-      _module.var: logo.primary
+      _module.var: logo.primary_light
     srcMobile:
       _module.var: logo.icon
     style:

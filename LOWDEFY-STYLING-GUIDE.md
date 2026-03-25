@@ -44,27 +44,29 @@ Source files:
 
 ## Style Property
 
-`style` in YAML is an object. Flat keys go to the BlockLayout wrapper. `/`-prefixed keys target CSS slots defined in the block's `meta.js`.
+`style` in YAML is an object. Flat keys go to the BlockLayout wrapper. `.`-prefixed keys target CSS slots defined in the block's `meta.js`.
+
+**Migration note:** The `.` prefix replaces the previous `/` prefix (e.g. `/element` → `.element`). Any existing `/`-prefixed keys should be migrated to `.`.
 
 ```yaml
 style:
-  maxWidth: 400 # → BlockLayout wrapper (flat = /block)
+  maxWidth: 400 # → BlockLayout wrapper (flat = .block)
   background: red # → BlockLayout wrapper
-  /element: # → Block element <div>
+  .element: # → Block element <div>
     borderRadius: 12
-  /header: # → Block-specific sub-element (Card header, etc.)
+  .header: # → Block-specific sub-element (Card header, etc.)
     backgroundColor: grey
 ```
 
 **Where each target lands:**
 
-- Flat / `/block` → the outer `<div id="bl-{blockId}">` (BlockLayout wrapper). This is the element that participates in parent flex/grid layout.
-- `/element` → the inner `<div id="{blockId}">` (block component element). For Box, this is the main `<div>`. For Card, this is the `<div class="ant-card">`.
-- `/header`, `/body`, etc. → block-specific sub-elements passed via Ant Design's `styles` prop.
+- Flat / `.block` → the outer `<div id="bl-{blockId}">` (BlockLayout wrapper). This is the element that participates in parent flex/grid layout.
+- `.element` → the inner `<div id="{blockId}">` (block component element). For Box, this is the main `<div>`. For Card, this is the `<div class="ant-card">`.
+- `.header`, `.body`, etc. → block-specific sub-elements passed via Ant Design's `styles` prop.
 
 Available CSS slot keys are listed in each block's `meta.js` under `cssKeys`.
 
-**Gotcha:** Ant Design's Layout, Content, and Footer blocks paint their own backgrounds (from `colorBgLayout`). To override, use `/element` style — flat style on the wrapper won't cover the element's background.
+**Gotcha:** Ant Design's Layout, Content, and Footer blocks paint their own backgrounds (from `colorBgLayout`). To override, use `.element` style — flat style on the wrapper won't cover the element's background.
 
 ## Class Property
 
@@ -76,8 +78,8 @@ class: "p-4 shadow-lg"
 
 # Object → target specific parts
 class:
-  /element: "min-h-screen"
-  /body: "p-8"
+  .element: "min-h-screen"
+  .body: "p-8"
 ```
 
 Tailwind CSS is always available. Theme-bridged classes like `bg-primary`, `text-text-secondary`, `bg-bg-layout` map to Ant Design tokens automatically.
@@ -274,7 +276,7 @@ background: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary)
       bodyPadding: 32
 ```
 
-Do NOT put `boxShadow` on flat style (it goes to the wrapper, not the Card element, causing visual artifacts with rounded corners). Use `properties.theme` or `/element` style, or let the app theme handle it.
+Do NOT put `boxShadow` on flat style (it goes to the wrapper, not the Card element, causing visual artifacts with rounded corners). Use `properties.theme` or `.element` style, or let the app theme handle it.
 
 ## `auth.theme.brandColor` vs `theme.antd.token.colorPrimary`
 

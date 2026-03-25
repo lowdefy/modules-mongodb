@@ -1,23 +1,101 @@
 # Layout Header Menu
 
-Page layout with header menu, title bar, and content area.
+Page layout module with header menu, title bar, content area, and auth page components.
+
+## Components
+
+- **page** — PageHeaderMenu layout wrapper with title bar, header slots, and content area
+- **card** — Standard content card layout with optional back button and footer
+- **floating-actions** — Floating action button bar affixed to bottom of viewport
+- **auth-page** — Centered auth/login page layout with branded cover and card
 
 ## Vars
+
+### `logo`
+
+Type: `object`
+
+Logo configuration used by both the page header and auth page.
+
+- **`primary_light`** (string) — Logo for light backgrounds (page header, light theme). Default: `/logo-light-theme.png`
+- **`primary_dark`** (string) — Logo for dark backgrounds (auth page cover, dark theme header). Default: `/logo-dark-theme.png`
+- **`icon`** (string) — Square logo for mobile header. Default: `/logo-square-light-theme.png`
+- **`style`** (object) — Inline style for the header logo
+
+### `menu`
+
+Type: `object`
+
+Menu config passed to PageHeaderMenu. Default: `_menu: default`.
+
+### `header`
+
+Type: `object`
+
+PageHeaderMenu header properties.
+
+- **`theme`** (string) — Header theme: `light` or `dark`
+- **`contentStyle`** (object) — Inline style for header content area
+
+### `header_extra`
+
+Type: `object`
+
+Header customization slots.
+
+- **`blocks`** (array) — Blocks rendered in the header slot (right side)
+- **`compact`** (array) — Blocks rendered in the mobile extra slot
+- **`mobile_extra`** (array) — Blocks rendered in the mobile drawer
+- **`requests`** (array) — Requests loaded with every page that uses the page component
+
+### `title_block`
+
+Type: `object`
+
+Custom title block override. Replaces the default title bar (breadcrumbs, title, page actions) with your own blocks.
+
+### `footer`
+
+Type: `array`
+Default: `[]`
+
+Footer blocks shown on both page layouts and the auth page. On the auth page, the footer is styled with small font size and secondary text color automatically.
+
+### `card`
+
+Type: `object`
+
+Custom card component override. Replaces the default Card layout wrapper.
 
 ### `auth_page`
 
 Type: `object`
 
-Overrides for the `auth-page` component (login, email verification, etc.).
+Overrides for the auth-page component (login, email verification, etc.).
 
-- **`brand_panel_background`** (string) — CSS `background` for the left brand panel (visible on md+ screens). Default: `var(--ant-color-primary)`
+- **`cover_background`** (string) — CSS `background` for the card cover area. Default: `colorPrimary` gradient (auto-adapts to dark mode with reduced saturation)
 - **`card_style`** (object) — Inline style object applied to the auth card. Use for shadows, borders, or other overrides. Default: `{}`
+- **`max_width`** (number) — Max width of the auth card container in pixels. Default: `360`
+- **`logo_max_width`** (number) — Max width of the logo in the cover area in pixels. Default: `160`
 
-#### Layout
+## Auth Page
 
-Split-panel layout: left brand panel (45% width, `colorPrimary` background) with logo, right form panel with card. On mobile (`< md`), the brand panel hides and the logo appears above the card.
+Centered login/auth layout with a branded card cover and form body.
 
-#### Example
+### Layout
+
+- Full viewport height, card centered horizontally and vertically
+- Card cover area with `colorPrimary` gradient background and dark-theme logo
+- Card body with title, form content, and action buttons
+- Optional footer below the card (small, centered, secondary color)
+
+### Dark mode
+
+- Card cover gradient automatically reduces saturation in dark mode
+- Logo always uses `logo.primary_dark` (designed for dark backgrounds)
+- Card body, inputs, and footer adapt via Ant Design dark algorithm
+
+### Example
 
 ```yaml
 modules:
@@ -25,17 +103,36 @@ modules:
     source: "github:lowdefy/modules-mongodb/modules/layout-header-menu@v1"
     vars:
       logo:
-        primary: /logo.png
+        primary_light: /my-logo.png
+        primary_dark: /my-logo-white.png
+      footer:
+        - id: footer-text
+          type: Html
+          properties:
+            html: <p>© 2026 My Company</p>
       auth_page:
-        brand_panel_background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-        card_style:
-          boxShadow: "0 4px 24px rgba(0, 0, 0, 0.12)"
+        cover_background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
 ```
 
-#### Theming
+### Using the auth-page component
 
-The brand panel uses `var(--ant-color-primary)` by default, so it adapts to the app's `brandColor` / `colorPrimary` token. The form panel uses `var(--ant-color-bg-container)`. Both adapt to dark mode.
-
-The logo in the brand panel has `filter: brightness(0) invert(1)` to render white. On mobile, the logo renders in its original colors.
-
-The card uses `bordered: false`, `borderRadiusLG: 12`, and `bodyPadding: 32` by default. App-level Card theme tokens (`theme.antd.components.Card`) apply as normal.
+```yaml
+# In a module page (e.g. login.yaml)
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: login
+    title: Login
+    blocks:
+      - id: email
+        type: TextInput
+        properties:
+          placeholder: Work Email
+    actions:
+      - id: login_button
+        type: Button
+        properties:
+          title: Login
+          block: true
+```
