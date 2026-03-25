@@ -12,6 +12,9 @@ blocks:
     blocks:
       - id: title
         type: Title
+        style:
+          .element:
+            width: 100px
         properties:
           content: Module Test App
           level: 2
