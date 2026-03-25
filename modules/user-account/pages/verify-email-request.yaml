@@ -3,13 +3,19 @@ _ref:
   component: auth-page
   vars:
     id: verify-email-request
-    title: Check Your Email
     blocks:
       - id: check_email
         type: Result
+        style:
+          .icon:
+            color: 'var(--ant-color-primary)'
         properties:
           icon: AiOutlineMail
+          title: Check Your Email
           subTitle:
             _module.var:
               key: verify_email_message
               default: A sign in link has been sent to your email. Follow the link to sign in.
+          theme:
+            paddingLG: 0
+            iconFontSize: 56
