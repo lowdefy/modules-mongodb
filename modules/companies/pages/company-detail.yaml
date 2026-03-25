@@ -11,7 +11,9 @@ _ref:
       - home: true
         icon: AiOutlineHome
       - label:
-          _module.var: label_plural
+          _module.var:
+            key: label_plural
+            default: Companies
         pageId:
           _module.pageId: companies
       - label:
@@ -60,7 +62,7 @@ _ref:
       - id: detail_layout
         type: Box
         layout:
-          contentGutter: 16
+          gap: 16
         blocks:
           - id: main_column
             type: Box

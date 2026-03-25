@@ -74,6 +74,7 @@ modules:
   - id: events
     source: "file:../../modules/events"
     vars:
+      collection: log-events
       display_key: demo
       change_stamp:
         user:
@@ -125,6 +126,7 @@ modules:
     dependencies:
       events: events
     vars:
+      collection: files
       bucket: demo-files-bucket
       s3_region: af-south-1
 

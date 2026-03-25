@@ -6,7 +6,7 @@ _ref:
     blocks:
       - _ref:
           module: events
-          component: event-log-panel
+          component: events-timeline
           vars:
             reference_field: company_ids
             reference_value:

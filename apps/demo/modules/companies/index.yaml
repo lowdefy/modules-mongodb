@@ -1,1 +1,7 @@
-{}
+collection: companies
+label: Company
+label_plural: Companies
+name_field: trading_name
+id_prefix: "C-"
+id_length: 4
+contacts_collection: user_contacts

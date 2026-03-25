@@ -4,12 +4,16 @@ _ref:
   vars:
     id: contacts
     title:
-      _module.var: label_plural
+      _module.var:
+        key: label_plural
+        default: Contacts
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _module.var: label_plural
+          _module.var:
+            key: label_plural
+            default: Contacts
     page_actions:
       - id: new_contact_button
         type: Button

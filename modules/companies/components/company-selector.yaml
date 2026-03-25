@@ -24,7 +24,9 @@ properties:
     _var:
       key: label
       default:
-        _module.var: label
+        _module.var:
+          key: label
+          default: Company
   optionConfig:
     titleField: label
     valueField: value

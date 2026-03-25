@@ -4,3 +4,4 @@ properties:
   databaseUri:
     _secret: MONGODB_URI
   collection: user_contacts
+  write: true
