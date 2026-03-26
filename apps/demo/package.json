@@ -13,6 +13,6 @@
     "ldf:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --no-open"
   },
   "dependencies": {
-    "lowdefy": "0.0.0-experimental-20260325093056"
+    "lowdefy": "0.0.0-experimental-20260326075333"
   }
 }

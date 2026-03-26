@@ -217,7 +217,7 @@ Token name conversion: `colorPrimary` → `--ant-color-primary` (camelCase → k
 
 **Confirmed working:** `var(--ant-color-primary)`, `var(--ant-color-bg-layout)`, `var(--ant-color-bg-container)`.
 
-**Not confirmed:** `var(--ant-color-primary-hover)`, `var(--ant-color-primary-active)` — these derived tokens may or may not be available as CSS variables. Use `color-mix()` to derive variants from the base color instead:
+Derived tokens like `var(--ant-color-primary-hover)` and `var(--ant-color-primary-active)` are also available. For custom color mixing, use `color-mix()`:
 
 ```css
 color-mix(in srgb, var(--ant-color-primary) 70%, black)   /* darker */
@@ -229,12 +229,118 @@ color-mix(in srgb, var(--ant-color-primary) 70%, white)   /* lighter */
 Ant Design tokens are bridged to Tailwind utility classes:
 
 - `bg-primary`, `text-primary`, `border-primary` → `colorPrimary`
+- `*-primary-hover` → `colorPrimaryHover`
+- `*-primary-active` → `colorPrimaryActive`
+- `*-primary-bg` → `colorPrimaryBg`
+- `*-success`, `*-warning`, `*-error`, `*-info` → matching semantic tokens
 - `bg-bg-container` → `colorBgContainer`
 - `bg-bg-layout` → `colorBgLayout`
 - `text-text-primary` → `colorText`
 - `text-text-secondary` → `colorTextSecondary`
+- `*-border` → `colorBorder`
+- `rounded`, `rounded-sm`, `rounded-lg` → `borderRadius` variants
+- `text-sm`, `text-lg` → `fontSize` variants
 
 These adapt to dark mode automatically.
+
+Custom Tailwind tokens can be added via `theme.tailwind` in `lowdefy.yaml`:
+
+```yaml
+theme:
+  tailwind:
+    color:
+      accent: "#7c3aed"
+      surface: "#f8fafc"
+```
+
+### Dark Mode
+
+Lowdefy supports three dark mode behaviors via `theme.darkMode`:
+
+```yaml
+theme:
+  darkMode: system # 'system' (default), 'light', or 'dark'
+```
+
+- `system` — follows OS preference, updates live. Users can override with `SetDarkMode`. This is the default.
+- `light` — forces light mode.
+- `dark` — forces dark mode.
+
+#### Built-in toggle
+
+Add a dark mode toggle to page layouts with a single property:
+
+```yaml
+- id: my_page
+  type: PageHeaderMenu # or PageSiderMenu
+  properties:
+    darkModeToggle: true
+```
+
+Renders a moon/sun icon in the header that cycles through light, dark, and system. Preference persists to `localStorage`.
+
+#### Programmatic toggle
+
+Use the `SetDarkMode` action with `_media: darkMode`:
+
+```yaml
+- id: dark_mode_toggle
+  type: Button
+  properties:
+    hideTitle: true
+    icon:
+      _if:
+        test:
+          _media: darkMode
+        then: AiOutlineSun
+        else: AiOutlineMoon
+  events:
+    onClick:
+      - id: toggle
+        type: SetDarkMode
+```
+
+Without params, `SetDarkMode` cycles through `light`, `dark`, `system`. Can also set explicitly:
+
+```yaml
+- id: set_system
+  type: SetDarkMode
+  params:
+    darkMode: system
+```
+
+`SetDarkMode` auto-merges the `dark` algorithm with any existing `theme.antd.algorithm` (e.g. `compact` becomes `[compact, dark]`).
+
+Use `_media: darkMode` for the effective boolean state, `_media: darkModePreference` for the stored preference string.
+
+#### Scoped dark mode
+
+Use ConfigProvider to scope dark mode to a section:
+
+```yaml
+- id: dark_section
+  type: ConfigProvider
+  properties:
+    algorithm: dark
+  blocks:
+    # All blocks here use dark theme
+```
+
+#### Dark-mode-safe colors
+
+Avoid hardcoded hex values in styles — they won't adapt to dark mode. Use antd CSS variables:
+
+```yaml
+# Bad — hardcoded colors break in dark mode
+cellStyle:
+  backgroundColor: '#e6f7ff'
+
+# Good — palette tokens adapt automatically
+cellStyle:
+  backgroundColor: var(--ant-blue-1)
+```
+
+Useful palette variables: `var(--ant-blue-1)`, `var(--ant-green-1)`, `var(--ant-orange-1)`, `var(--ant-red-1)`. For semantic colors: `var(--ant-color-primary-bg)`, `var(--ant-color-success-bg)`, `var(--ant-color-warning-bg)`, `var(--ant-color-error-bg)`.
 
 ## Practical Patterns
 

@@ -6,3 +6,4 @@ properties:
   collection: user_contacts
   changeLog:
     collection: user_contacts_log
+  write: true
