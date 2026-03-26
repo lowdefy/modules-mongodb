@@ -6,7 +6,7 @@ _ref:
     title:
       _nunjucks:
         template: |
-          Edit {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+          Edit {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
           _object.assign:
             - _request: get_user.0
@@ -17,9 +17,12 @@ _ref:
       - home: true
         icon: AiOutlineHome
       - label:
-          _string.concat:
-            - _module.var: app_title
-            - " User Admin"
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var:
+                  key: app_title
+                  default: ""
+              - " User Admin"
         pageId:
           _module.pageId: users
       - label: Edit User
@@ -76,7 +79,7 @@ _ref:
               title:
                 _nunjucks:
                   template: |
-                    Edit {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+                    Edit {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
                   on:
                     _object.assign:
                       - _request: get_user.0

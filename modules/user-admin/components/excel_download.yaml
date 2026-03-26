@@ -15,9 +15,18 @@ events:
       type: DownloadXlsx
       params:
         fileName:
-          _string.concat:
-            - _module.var: app_title
-            - _Users_Export
+          _build.if:
+            test:
+              _build.ne:
+                - _module.var:
+                    key: app_title
+                    default: null
+                - null
+            then:
+              _build.string.concat:
+                - _module.var: app_title
+                - _Users_Export
+            else: Users_Export
         dateFormat: "YYYY/MM/DD"
         data:
           _actions: fetch_excel_data.response
@@ -32,14 +41,23 @@ events:
                 type: String
                 width: 20
               - column:
-                  _string.concat:
-                    - _string.toLowerCase:
-                        _string.replace:
-                          on:
-                            _module.var: app_title
-                          regex: " "
-                          newSubstr: "_"
-                    - "_active"
+                  _build.if:
+                    test:
+                      _build.ne:
+                        - _module.var:
+                            key: app_title
+                            default: null
+                        - null
+                    then:
+                      _build.string.concat:
+                        - _build.string.toLowerCase:
+                            _build.string.replace:
+                              on:
+                                _module.var: app_title
+                              regex: " "
+                              newSubstr: "_"
+                        - _active
+                    else: active
                 value: active.text
                 type: String
                 width: 12

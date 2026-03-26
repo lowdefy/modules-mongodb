@@ -4,16 +4,22 @@ _ref:
   vars:
     id: users
     title:
-      _string.concat:
-        - _module.var: app_title
-        - " User Admin"
+      _build.string.trim:
+        _build.string.concat:
+          - _module.var:
+              key: app_title
+              default: ""
+          - " User Admin"
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _string.concat:
-            - _module.var: app_title
-            - " User Admin"
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var:
+                  key: app_title
+                  default: ""
+              - " User Admin"
     page_actions:
       - id: buttons_container
         type: Box

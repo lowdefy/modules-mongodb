@@ -9,9 +9,12 @@ _ref:
       - home: true
         icon: AiOutlineHome
       - label:
-          _string.concat:
-            - _module.var: app_title
-            - " User Admin"
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var:
+                  key: app_title
+                  default: ""
+              - " User Admin"
         pageId:
           _module.pageId: users
       - label: Check Invite Email

@@ -14,8 +14,7 @@ vars:
     required: true
     description: App name for MongoDB field paths (e.g., prp-team)
   app_title:
-    required: true
-    description: Display title for the app (e.g., Team)
+    description: "Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User."
   roles:
     required: true
     description: List of available user roles [{label, value}]
