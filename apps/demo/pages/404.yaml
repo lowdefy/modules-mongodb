@@ -16,7 +16,7 @@ properties:
   status: info
   title: "404"
   subTitle: Sorry, the page you are visiting does not exist.
-areas:
+slots:
   extra:
     blocks:
       - id: home
