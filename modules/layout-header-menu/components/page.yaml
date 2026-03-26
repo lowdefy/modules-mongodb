@@ -6,7 +6,7 @@ properties:
     _var: title
   logo:
     src:
-      _module.var: logo.primary
+      _module.var: logo.primary_light
     srcMobile:
       _module.var: logo.icon
     style:
@@ -134,7 +134,7 @@ slots:
     style:
       textAlign: center
       fontSize: 12
-      color: 'var(--ant-color-text-secondary)'
+      color: "var(--ant-color-text-secondary)"
     blocks:
       _module.var:
         key: footer

@@ -28,15 +28,6 @@ Type: `object`
 
 Menu config passed to PageHeaderMenu. Default: `_menu: default`.
 
-### `header`
-
-Type: `object`
-
-PageHeaderMenu header properties.
-
-- **`theme`** (string) — Header theme: `light` or `dark`
-- **`contentStyle`** (object) — Inline style for header content area
-
 ### `header_extra`
 
 Type: `object`
@@ -44,8 +35,6 @@ Type: `object`
 Header customization slots.
 
 - **`blocks`** (array) — Blocks rendered in the header slot (right side)
-- **`compact`** (array) — Blocks rendered in the mobile extra slot
-- **`mobile_extra`** (array) — Blocks rendered in the mobile drawer
 - **`requests`** (array) — Requests loaded with every page that uses the page component
 
 ### `title_block`
@@ -53,6 +42,26 @@ Header customization slots.
 Type: `object`
 
 Custom title block override. Replaces the default title bar (breadcrumbs, title, page actions) with your own blocks.
+
+### `darkModeToggle`
+
+Type: `boolean`
+Default: `false`
+
+Show a dark mode toggle button in the page header.
+
+### `extra_profile_links`
+
+Type: `array`
+Default: `[]`
+
+Extra links appended to the profile dropdown menu (after the default profile/logout links from user-account). Can also be overridden per-page via `_ref` vars.
+
+### `profile_on_menu_click`
+
+Type: `array`
+
+Event actions for the `onProfileMenuClick` event. Default: user-account module's `profile-on-menu-click` component (handles logout action).
 
 ### `footer`
 
