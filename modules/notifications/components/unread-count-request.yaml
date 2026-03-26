@@ -1,0 +1,11 @@
+id: notifications_unread_count
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: notifications-db
+properties:
+  pipeline:
+    - $match:
+        read: false
+        user_id:
+          _user: id
+    - $count: total

@@ -59,26 +59,31 @@ exports:
     - id: update-profile
       description: Update existing user profile fields
   components:
-    - id: user-avatar
-      description: Desktop header avatar with popover menu (profile link, logout)
-    - id: user-avatar-compact
-      description: Compact avatar for mobile header and collapsed sidebar
-    - id: user-menu
-      description: Flat button list for mobile drawer (profile link, logout)
+    - id: profile-avatar
+      description: Avatar config for PageHeaderMenu profile — user picture with first-letter fallback
+    - id: profile-links
+      description: MenuLink to user profile page
+    - id: profile-actions
+      description: MenuLink for logout (danger-styled)
+    - id: profile-on-menu-click
+      description: Event handler for profile menu click — fires Logout when key=logout
   menus:
     - id: default
       description: User account navigation links
 
 components:
-  - id: user-avatar
+  - id: profile-avatar
     component:
-      _ref: components/user-avatar.yaml
-  - id: user-avatar-compact
+      _ref: components/profile-avatar.yaml
+  - id: profile-links
     component:
-      _ref: components/user-avatar-compact.yaml
-  - id: user-menu
+      _ref: components/profile-links.yaml
+  - id: profile-actions
     component:
-      _ref: components/user-menu.yaml
+      _ref: components/profile-actions.yaml
+  - id: profile-on-menu-click
+    component:
+      _ref: components/profile-on-menu-click.yaml
 
 menus:
   - _ref: menu.yaml

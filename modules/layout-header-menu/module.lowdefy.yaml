@@ -1,6 +1,10 @@
 name: Layout Header Menu
 description: Page layout with header menu, title bar, and content area
 
+dependencies:
+  - id: user-account
+  - id: notifications
+
 vars:
   logo:
     type: object

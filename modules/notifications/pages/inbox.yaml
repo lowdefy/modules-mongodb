@@ -1,0 +1,9 @@
+id: inbox
+type: PageHeaderMenu
+properties:
+  title: Notifications
+blocks:
+  - id: placeholder
+    type: Html
+    properties:
+      html: <p>Notifications inbox — coming soon.</p>

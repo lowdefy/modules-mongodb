@@ -6,24 +6,82 @@ properties:
     _var: title
   logo:
     src:
-      _module.var: logo.primary_light
+      _module.var: logo.primary
     srcMobile:
       _module.var: logo.icon
     style:
       _module.var: logo.style
   header:
-    _module.var:
-      key: header
-      default: {}
+    theme: light
+    contentStyle:
+      flex: 1 1 auto
+      display: flex
+      justifyContent: flex-end
+      alignItems: center
   menu:
     _module.var:
       key: menu
       default:
         _menu: default
+  # Built-in header features — gated by per-page hide flags
+  profile:
+    _build.if:
+      test:
+        _build.not:
+          _var:
+            key: hide_profile
+            default: false
+      then:
+        avatar:
+          _ref:
+            module: user-account
+            component: profile-avatar
+        links:
+          _build.array.concat:
+            - _ref:
+                module: user-account
+                component: profile-links
+            - _var:
+                key: extra_profile_links
+                default:
+                  _module.var:
+                    key: extra_profile_links
+                    default: []
+            - _ref:
+                module: user-account
+                component: profile-actions
+      else: null
+  notifications:
+    _build.if:
+      test:
+        _build.not:
+          _var:
+            key: hide_notifications
+            default: false
+      then:
+        _ref:
+          module: notifications
+          component: notification-config
+      else: null
+  darkModeToggle:
+    _module.var:
+      key: darkModeToggle
+      default: false
 style:
   minHeight: 100vh
 requests:
   _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _var:
+              key: hide_notifications
+              default: false
+        then:
+          - _ref:
+              module: notifications
+              component: unread-count-request
+        else: []
     - _module.var:
         key: header_extra.requests
         default: []
@@ -47,30 +105,43 @@ events:
     _var:
       key: events.onMountAsync
       default: []
+  # Header action events — gated by same hide flags
+  onProfileMenuClick:
+    _build.if:
+      test:
+        _build.not:
+          _var:
+            key: hide_profile
+            default: false
+      then:
+        _module.var:
+          key: profile_on_menu_click
+          default:
+            _ref:
+              module: user-account
+              component: profile-on-menu-click
+      else: []
+  onNotificationClick:
+    _build.if:
+      test:
+        _build.not:
+          _var:
+            key: hide_notifications
+            default: false
+      then:
+        _ref:
+          module: notifications
+          component: notification-on-click
+      else: []
 slots:
   header:
     blocks:
       _module.var:
         key: header_extra.blocks
         default: []
-  mobileExtra:
-    blocks:
-      _module.var:
-        key: header_extra.compact
-        default: []
-  mobileDrawerContent:
-    blocks:
-      _module.var:
-        key: header_extra.mobile_extra
-        default: []
-  footer:
-    blocks:
-      _module.var:
-        key: footer
-        default: []
 blocks:
   _build.array.concat:
-    # Title block: per-page override > module-level override > default
+    # Title block (per-page override > module-level override > default)
     - _build.if:
         test:
           _build.not:
@@ -78,17 +149,18 @@ blocks:
               key: hide_title
               default: false
         then:
-          _build.switch:
-            branches:
-              - if:
-                  _build.ne:
-                    - _var:
-                        key: title_block
-                        default: null
-                    - null
-                then:
-                  _var: title_block
-              - if:
+          _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: title_block
+                    default: null
+                - null
+            then:
+              _var: title_block
+            else:
+              _build.if:
+                test:
                   _build.ne:
                     - _module.var:
                         key: title_block
@@ -96,26 +168,28 @@ blocks:
                     - null
                 then:
                   _module.var: title_block
-            default:
-              - _ref:
-                  path: ../../shared/layout/title-block.yaml
-                  vars:
-                    title:
-                      _var: title
-                    breadcrumbs:
-                      _var:
-                        key: breadcrumbs
-                        default: []
-                    doc:
-                      _var:
-                        key: doc
-                        default: null
-                    page_actions:
-                      _var:
-                        key: page_actions
-                        default: []
+                else:
+                  - _ref:
+                      path: ../../shared/layout/title-block.yaml
+                      vars:
+                        title:
+                          _var: title
+                        breadcrumbs:
+                          _var:
+                            key: breadcrumbs
+                            default: []
+                        doc:
+                          _var:
+                            key: doc
+                            default: null
+                        page_actions:
+                          _var:
+                            key: page_actions
+                            default: []
         else: []
     # Consumer content
-    - _var:
-        key: blocks
+    - _var: blocks
+    # Footer
+    - _module.var:
+        key: footer
         default: []

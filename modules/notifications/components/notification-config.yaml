@@ -1,0 +1,10 @@
+count:
+  _if_none:
+    - _array.get:
+        on:
+          _request: notifications_unread_count
+        index: 0
+        field: total
+    - 0
+icon:
+  name: AiOutlineBell

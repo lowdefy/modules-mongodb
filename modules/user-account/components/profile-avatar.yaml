@@ -1,0 +1,17 @@
+src:
+  _user: profile.picture
+content:
+  _if:
+    test:
+      _eq:
+        - _user: profile.picture
+        - null
+    then:
+      _string.substring:
+        on:
+          _if_none:
+            - _user: profile.name
+            - "?"
+        start: 0
+        end: 1
+    else: null

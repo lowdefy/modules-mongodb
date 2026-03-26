@@ -1,0 +1,6 @@
+- id: logout
+  type: MenuLink
+  properties:
+    title: Logout
+    icon: AiOutlineLogout
+    danger: true

@@ -1,0 +1,5 @@
+- id: go-inbox
+  type: Link
+  params:
+    pageId:
+      _module.pageId: inbox
