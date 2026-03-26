@@ -9,8 +9,8 @@ blocks:
       html:
         _nunjucks:
           template: |
-            <h2 class="ant-typography" style="margin-bottom: 0;">{{ title | safe }}</h2>
-            <div style="color: var(--ant-color-text-description); font-size: 0.85em; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+            <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
+            <div class="text-text-secondary text-sm" style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
               {% if doc.updated.user.name %}
                 Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll')}}
               {% endif %}
