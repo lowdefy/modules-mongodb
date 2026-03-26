@@ -1,0 +1,10 @@
+id: avatar
+type: PageHeaderMenu
+properties:
+  profile:
+    avatar:
+      content: ST
+      color: '#12ee33'
+blocks:
+  - id: b
+    type: Button
