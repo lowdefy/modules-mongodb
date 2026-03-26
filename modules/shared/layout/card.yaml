@@ -18,6 +18,7 @@ _build.switch:
           default: "100%"
       margin: auto
     layout:
+      span: 24
       gap: 8
     blocks:
       _build.array.concat:

@@ -57,23 +57,31 @@ _ref:
                   _request: get_user.0
 
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title:
-              _nunjucks:
-                template: |
-                  Invite {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
-                on:
-                  _object.assign:
-                    - _request: get_user.0
-                    - app_title:
-                        _module.var: app_title
-            doc:
-              _request: get_user.0
-            width: 600
+      - id: content
+        type: Box
+        layout:
+          span: 24
+        style:
+          maxWidth: 600
+          margin: auto
+        blocks:
+          - id: card
+            type: Card
+            properties:
+              title:
+                _nunjucks:
+                  template: |
+                    Invite {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+                  on:
+                    _object.assign:
+                      - _request: get_user.0
+                      - app_title:
+                          _module.var: app_title
+            layout:
+              gap: 16
             blocks:
+              # TODO: doc_metadata component
+              # - _ref: ../components/doc_metadata.yaml
               - _ref: ../components/view_user_avatar_preview.yaml
               - _ref: ../components/view_invite_link.yaml
               - _ref: ../components/view_email.yaml
@@ -101,56 +109,51 @@ _ref:
                     id: form_app_attributes
                     type: Box
               - _ref: ../components/form_access_invite.yaml
-      - _ref:
-          module: layout
-          component: floating-actions
-          vars:
-            width: 600
-            actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
-              - id: cancel_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
-                events:
-                  onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: users
-              - id: save_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Send Invite
-                  icon: RiMailSendLine
-                events:
-                  onClick:
-                    - id: validate
-                      type: Validate
-                    - id: invite_user
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _module.endpointId: invite-user
-                        payload:
-                          user:
-                            _state: user
-                      messages:
-                        success: New invite created.
-                    - id: reset
-                      type: Reset
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: users
+          - _ref:
+              module: layout
+              component: floating-actions
+              vars:
+                actions:
+                  - id: cancel_button
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Cancel
+                      icon: AiOutlineCloseCircle
+                      type: default
+                    events:
+                      onClick:
+                        - id: back
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: users
+                  - id: save_button
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Send Invite
+                      icon: RiMailSendLine
+                    events:
+                      onClick:
+                        - id: validate
+                          type: Validate
+                        - id: invite_user
+                          type: CallAPI
+                          params:
+                            endpointId:
+                              _module.endpointId: invite-user
+                            payload:
+                              user:
+                                _state: user
+                          messages:
+                            success: New invite created.
+                        - id: reset
+                          type: Reset
+                        - id: back
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: users
