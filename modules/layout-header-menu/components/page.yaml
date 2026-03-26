@@ -11,13 +11,6 @@ properties:
       _module.var: logo.icon
     style:
       _module.var: logo.style
-  header:
-    theme: light
-    contentStyle:
-      flex: 1 1 auto
-      display: flex
-      justifyContent: flex-end
-      alignItems: center
   menu:
     _module.var:
       key: menu
@@ -67,8 +60,6 @@ properties:
     _module.var:
       key: darkModeToggle
       default: false
-style:
-  minHeight: 100vh
 requests:
   _build.array.concat:
     - _build.if:
@@ -139,6 +130,15 @@ slots:
       _module.var:
         key: header_extra.blocks
         default: []
+  footer:
+    style:
+      textAlign: center
+      fontSize: 12
+      color: 'var(--ant-color-text-secondary)'
+    blocks:
+      _module.var:
+        key: footer
+        default: []
 blocks:
   _build.array.concat:
     # Title block (per-page override > module-level override > default)
@@ -189,7 +189,3 @@ blocks:
         else: []
     # Consumer content
     - _var: blocks
-    # Footer
-    - _module.var:
-        key: footer
-        default: []
