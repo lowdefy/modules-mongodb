@@ -16,7 +16,7 @@
 
 import React, { useState, useMemo } from "react";
 import { Timeline, Modal, Badge, Tooltip, Card } from "antd";
-import { blockDefaultProps } from "@lowdefy/block-utils";
+import { withBlockDefaults } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
 import DOMPurify from "dompurify";
@@ -500,11 +500,4 @@ const EventsTimeline = ({ blockId, properties, methods, components }) => {
   );
 };
 
-EventsTimeline.defaultProps = blockDefaultProps;
-EventsTimeline.meta = {
-  category: "display",
-  icons: [],
-  styles: ["blocks/EventsTimeline/style.less"],
-};
-
-export default EventsTimeline;
+export default withBlockDefaults(EventsTimeline);

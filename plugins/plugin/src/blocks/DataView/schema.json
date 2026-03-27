@@ -1,0 +1,63 @@
+{
+  "type": "object",
+  "properties": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "data": {
+        "type": "object",
+        "description": "The data object to display. Can contain nested objects, arrays, and various data types. DataView automatically detects and formats fields based on their type (contacts, companies, files, dates, etc.)."
+      },
+      "formConfig": {
+        "type": "object",
+        "description": "Configuration object defining how to structure and display the data. Allows customization of sections, field ordering, labels, and component hints for type detection.",
+        "properties": {
+          "component": {
+            "type": "string",
+            "enum": ["section"],
+            "description": "Component type, typically 'section' for the root."
+          },
+          "title": {
+            "type": "string",
+            "description": "Title for the section."
+          },
+          "form": {
+            "type": "array",
+            "description": "Array of field configurations or nested sections.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "description": "The data field key to display. Supports dot notation for nested fields (e.g., 'user.name')."
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Custom label for the field. If not provided, the key will be formatted automatically."
+                },
+                "component": {
+                  "type": "string",
+                  "description": "Component hint for type detection (e.g., 'selector', 'date_selector', 'contact_selector_number_required'). Helps DataView determine the correct rendering type."
+                }
+              }
+            }
+          }
+        }
+      },
+      "sectionCards": {
+        "type": "boolean",
+        "default": true,
+        "description": "Whether to display sections as cards with borders and padding. Set to false for a more compact, borderless layout."
+      },
+      "disableCrmLinks": {
+        "type": "boolean",
+        "default": false,
+        "description": "Disable hyperlinks for contact and company fields. When true, contacts and companies will display as plain text with icons instead of clickable links."
+      },
+      "s3GetPolicyRequestId": {
+        "type": "string",
+        "description": "Request ID for S3 file download policy. Required when displaying file fields that need secure download URLs."
+      }
+    }
+  }
+}

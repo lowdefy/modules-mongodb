@@ -1,0 +1,263 @@
+// ============================================================================
+// CONTAINER & LAYOUT
+// ============================================================================
+
+.dataview-container {
+  width: 100%;
+}
+
+.dataview-empty {
+  font-style: italic;
+  color: @text-color-secondary;
+  padding: 16px;
+}
+
+// ============================================================================
+// CARD WRAPPER FOR TOP-LEVEL SECTIONS (using Ant Design Card)
+// ============================================================================
+
+.dataview-card {
+  margin: 12px 0;
+}
+
+// ============================================================================
+// GRID LAYOUT (for simple fields)
+// ============================================================================
+
+.dataview-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 48px;
+  row-gap: 20px;
+  margin-bottom: 20px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+// Force 2 columns when labels are long
+.dataview-grid-two-cols {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.dataview-grid-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+// Make full-width items span all grid columns
+.dataview-grid .dataview-grid-item-fullwidth {
+  grid-column: 1 / -1;
+}
+
+.dataview-grid-label {
+  color: @text-color-secondary;
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.025em;
+}
+
+.dataview-value {
+  font-size: 14px;
+  color: #111827;
+  font-weight: 400;
+  line-height: 1.5;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  min-width: 0;
+
+  a {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+}
+
+// ============================================================================
+// SECTIONS (for nested objects/arrays)
+// ============================================================================
+
+.dataview-section {
+  margin-bottom: 24px;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+}
+
+.dataview-section-header {
+  padding: 0 0 12px 0;
+  margin-bottom: 16px;
+  font-weight: 600;
+  font-size: 16px;
+  color: @heading-color;
+  border-bottom: 2px solid @border-color-split;
+}
+
+// Explicit header variants for section nesting levels
+.dataview-section-header-l1 {
+  font-size: 14px;
+  color: @text-color;
+  border-bottom: 1px solid @border-color-base;
+  padding-bottom: 8px;
+  margin-bottom: 12px;
+}
+
+// ============================================================================
+// OBJECT ARRAYS
+// ============================================================================
+
+.dataview-object-array {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dataview-object-array-item {
+  background-color: @background-color-light;
+  border: 1px solid @border-color-split;
+  border-radius: @border-radius-sm;
+  padding: 16px;
+}
+
+// ============================================================================
+// VALUE TYPE STYLES
+// ============================================================================
+
+.dataview-value-boolean-true {
+  color: #10b981;
+  font-weight: 500;
+}
+
+.dataview-value-boolean-false {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+.dataview-value-null {
+  font-style: italic;
+  color: #9ca3af;
+  font-weight: 400;
+}
+
+.dataview-richtext,
+.dataview-value-longtext {
+  padding: 8px;
+  border-color: @border-color-base;
+  background-color: @background-color-light;
+  border-style: solid;
+  border-width: 1px;
+  border-radius: 4px;
+  white-space: pre-line;
+}
+
+// ============================================================================
+// LINKS & INTERACTIVE ELEMENTS
+// ============================================================================
+
+.dataview-link {
+  color: @link-color;
+  text-decoration: none;
+  transition: color 0.2s;
+
+  &:hover {
+    color: darken(@link-color, 10%);
+    text-decoration: underline;
+  }
+}
+
+// ============================================================================
+// STRING ARRAYS (TAGS)
+// ============================================================================
+
+.dataview-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.dataview-tag {
+  padding: 2px 8px;
+  background-color: @tag-default-bg;
+  border-radius: 4px;
+  font-size: 13px;
+  color: @text-color;
+  font-weight: 400;
+}
+
+// ============================================================================
+// ARRAYS
+// ============================================================================
+
+.dataview-special-array {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dataview-special-array-item {
+  padding: 4px 0;
+
+  &:not(:last-child) {
+    padding-bottom: 6px;
+    border-bottom: 1px solid @border-color-split;
+  }
+}
+
+.dataview-array {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dataview-array-item {
+  padding: 4px 8px;
+  background: @background-color-light;
+  border-left: 2px solid @border-color-base;
+
+  &:hover {
+    background: darken(@background-color-light, 2%);
+  }
+}
+
+// ============================================================================
+// RICH TEXT FIELDS
+// ============================================================================
+
+.dataview-fullwidth-field {
+  margin: 20px 0;
+
+  .dataview-grid-item-fullwidth {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+// ============================================================================
+// RESPONSIVE DESIGN
+// ============================================================================
+
+// 3 columns on larger screens
+@media (min-width: 1024px) {
+  .dataview-grid {
+    grid-template-columns: repeat(3, 1fr);
+    column-gap: 40px;
+  }
+  // Keep two columns when flagged for long labels
+  .dataview-grid.dataview-grid-two-cols {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+// Single column on mobile
+@media (max-width: 640px) {
+  .dataview-grid {
+    grid-template-columns: 1fr;
+    row-gap: 16px;
+  }
+}

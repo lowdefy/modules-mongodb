@@ -8,6 +8,7 @@
     "./*": "./dist/*",
     "./actions": "./dist/actions.js",
     "./blocks": "./dist/blocks.js",
+    "./metas": "./dist/metas.js",
     "./types": "./dist/types.js"
   },
   "files": [
@@ -23,9 +24,10 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260326141314",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260326141314",
-    "@lowdefy/helpers": "0.0.0-experimental-20260326141314",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260327101025",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260327101025",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260327101025",
+    "@lowdefy/helpers": "0.0.0-experimental-20260327101025",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=4",
     "react": ">=18"

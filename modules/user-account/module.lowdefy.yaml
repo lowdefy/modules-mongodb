@@ -95,3 +95,4 @@ secrets:
 plugins:
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^2"
+  - name: "@lowdefy/modules-mongodb-plugins"
