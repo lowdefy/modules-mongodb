@@ -4,7 +4,7 @@ _ref:
   vars:
     id: create-profile
     title: Create Profile
-    hide_title: true
+    content_width: 600
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -31,27 +31,20 @@ _ref:
                       - 2099-01-01
                 else: null
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title: Create Profile
-            width: 600
-            blocks:
-              - _module.var:
-                  key: components.form_profile
-                  default:
-                    _ref: ../components/form_profile.yaml
+      - id: card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          - _module.var:
+              key: components.form_profile
+              default:
+                _ref: ../components/form_profile.yaml
       - _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 600
             actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
               - id: save_button
                 type: Button
                 layout:

@@ -4,23 +4,26 @@ _ref:
   vars:
     id: profile
     title: Profile
+    content_width: 600
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label: Profile
     blocks:
+      - id: card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          - _module.var:
+              key: components.view_profile
+              default:
+                _ref: ../components/view_profile.yaml
       - _ref:
           module: layout
-          component: card
+          component: floating-actions
           vars:
-            title: Profile
-            width: 600
-            blocks:
-              - _module.var:
-                  key: components.view_profile
-                  default:
-                    _ref: ../components/view_profile.yaml
-            footer_buttons:
+            actions:
               - id: edit_profile_button
                 type: Button
                 layout:
