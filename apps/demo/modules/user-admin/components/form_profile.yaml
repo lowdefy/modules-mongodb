@@ -3,22 +3,37 @@ type: Box
 layout:
   gap: 8
 blocks:
-  - id: name
-    type: TextInput
+  - id: user.profile.title
+    type: Selector
+    layout:
+      span: 4
     properties:
-      label: Full Name
-      size: large
-  - id: email
+      label: Title
+      options:
+        - Mr
+        - Ms
+        - Mrs
+        - Dr
+        - Prof
+  - id: user.profile.given_name
     type: TextInput
+    required: true
+    layout:
+      span: 10
     properties:
-      label: Email
-      size: large
-      disabled: true
-  - id: phone
+      label: First Name
+  - id: user.profile.family_name
+    type: TextInput
+    required: true
+    layout:
+      span: 10
+    properties:
+      label: Last Name
+  - id: user.profile.phone
     type: TextInput
     properties:
       label: Phone Number
-  - id: department
+  - id: user.profile.department
     type: Selector
     properties:
       label: Department
