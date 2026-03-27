@@ -13,8 +13,8 @@ importers:
   apps/demo:
     dependencies:
       lowdefy:
-        specifier: 0.0.0-experimental-20260326131120
-        version: 0.0.0-experimental-20260326131120
+        specifier: 0.0.0-experimental-20260326141314
+        version: 0.0.0-experimental-20260326141314
 
   apps/demo/.lowdefy/codemods: {}
 
@@ -305,14 +305,14 @@ importers:
   plugins/plugin:
     dependencies:
       '@lowdefy/block-utils':
-        specifier: 0.0.0-experimental-20260326131120
-        version: 0.0.0-experimental-20260326131120
+        specifier: 0.0.0-experimental-20260326141314
+        version: 0.0.0-experimental-20260326141314
       '@lowdefy/blocks-antd':
-        specifier: 0.0.0-experimental-20260326131120
-        version: 0.0.0-experimental-20260326131120(date-fns@2.30.0)(moment@2.29.4)
+        specifier: 0.0.0-experimental-20260326141314
+        version: 0.0.0-experimental-20260326141314
       '@lowdefy/helpers':
-        specifier: 0.0.0-experimental-20260326131120
-        version: 0.0.0-experimental-20260326131120
+        specifier: 0.0.0-experimental-20260326141314
+        version: 0.0.0-experimental-20260326141314
       '@lowdefy/plugin-aws':
         specifier: '>=4.0.0'
         version: 4.7.1
@@ -870,6 +870,9 @@ packages:
   '@lowdefy/block-utils@0.0.0-experimental-20260326131120':
     resolution: {integrity: sha512-O1N3C2RlotZZnFdzB64l56yITu3OiU4660ertAcKUVp43iEG60i6/+8ma2mch9M9SOD/ya/x2hF+YQc3eNFFeQ==}
 
+  '@lowdefy/block-utils@0.0.0-experimental-20260326141314':
+    resolution: {integrity: sha512-skRN7I7WvaE4KaUbDLl/jnjArbmlPUGUzNfULZci1QtQ4uZXYyvbfH9cjqGZA761ORXA9J58Z/z09oJkexEV9g==}
+
   '@lowdefy/block-utils@4.7.1':
     resolution: {integrity: sha512-Vct6NueRTtbxWiYVqHzWJD4uBEEaREhrvGtlirFGH215s3S1EXQSC9iesZb1xJMpFLiGNO7/k/iIjIYxhKDyZQ==}
 
@@ -878,6 +881,9 @@ packages:
 
   '@lowdefy/blocks-antd@0.0.0-experimental-20260326131120':
     resolution: {integrity: sha512-i0nQmr9KowAIfLPtvMO0nl21mPcUIkP5XWVIPiDKP366MZXRD+q1xPLUa5JIvFNuIoGZTO7ukSdt3/xhjuHu+Q==}
+
+  '@lowdefy/blocks-antd@0.0.0-experimental-20260326141314':
+    resolution: {integrity: sha512-4I2jELJbjBeJO6KIPrZbAsfYcT8gZYineNgltcQHzAUD/lqUX/Rcl39NTDAzhXFWN7SF0kN3B72XIGMqLFy2jA==}
 
   '@lowdefy/blocks-antd@4.7.1':
     resolution: {integrity: sha512-yA6BzDGYl2JTUJTKb2ProhRQL4XnwbS3+sw/SpVve+WDYXcx61OiI7s/hFdway1WN5Q3mkYW9oDUL1Pwi1x+oQ==}
@@ -922,11 +928,17 @@ packages:
   '@lowdefy/errors@0.0.0-experimental-20260326131120':
     resolution: {integrity: sha512-f0NcL1vI9yEiBkFk05VjqLdgrzqIAjLaUypWaJTKH5Z/mymAN+TOFFNB6ByjtPAVTM/Fl9qkvyF9RCeBUa4PiQ==}
 
+  '@lowdefy/errors@0.0.0-experimental-20260326141314':
+    resolution: {integrity: sha512-bys/b/S1kVUpgjZiRKfPnaMhoHg2mHL2rQx3oisKDDpv75WgSiSIx/MYBZBT1FrIsylcvUHvGbnNWz0EkAOsVQ==}
+
   '@lowdefy/errors@4.7.1':
     resolution: {integrity: sha512-XZSmm6YtT3MboDe4ZuUdo1zNI+aNnB4qEWxlvge7vHz8NzFHGKwrD0NIxdnJt9xwU9VIoU5V6BJzfUBotC3ybA==}
 
   '@lowdefy/helpers@0.0.0-experimental-20260326131120':
     resolution: {integrity: sha512-cQh53NSABAKHq1S5BqRJDPohiPOuaEzpkGv2mPniX7tyW3alacoepJ0uo+H7em58uwPHeM9tyiwR1+iStiOf+Q==}
+
+  '@lowdefy/helpers@0.0.0-experimental-20260326141314':
+    resolution: {integrity: sha512-0aW9YKrnl4pEhNpKz8xCG5WCPkvZtmic1OoL7aMZPS+DlKopAhliM1GZMN4HxkhnC90AISp6H02Eq2BE3dmkew==}
 
   '@lowdefy/helpers@4.7.1':
     resolution: {integrity: sha512-bjBekBjqQlsmDUIsX9BeLV7ANd/wl2U6Pu78q9Bitxhn6nRmNNgVu7SK9WVVNtSlieADuem3f1q90gopBQVZWQ==}
@@ -937,8 +949,14 @@ packages:
   '@lowdefy/logger@0.0.0-experimental-20260326131120':
     resolution: {integrity: sha512-Q2GzFcCAh5ZwCj4QgbDVIxCv21yUYAyZZg7+nmhMGimKJA5kSARznPyVW+jfg6TGyswG5gkoSv5Gim0WrICRJQ==}
 
+  '@lowdefy/logger@0.0.0-experimental-20260326141314':
+    resolution: {integrity: sha512-ZhDXeRc2xrsZLAI/zsOXf0/Jd5lqhDaC5+chDMlVyFBB4NQ48jVcsEc+1nmDe1WpJfVJ62MlUU+DfsfyDuaK4Q==}
+
   '@lowdefy/node-utils@0.0.0-experimental-20260326131120':
     resolution: {integrity: sha512-nYKg4DX8YKYn57adwtfegq7/qyH75W1PrI4KbxKNoCxVmTUfFPRKTDwoTSqzZB41X50eA2JAnlrwRjlFewcQHQ==}
+
+  '@lowdefy/node-utils@0.0.0-experimental-20260326141314':
+    resolution: {integrity: sha512-OyRPE5qrXFxaXrziU+yPZ6NkKufu5Bily/A8+uQM8LX0GAzfUn1RHi37Gwmz4JiI8JNCKeAxF3l5BjqSedznlA==}
 
   '@lowdefy/nunjucks@0.0.0-experimental-20260326131120':
     resolution: {integrity: sha512-7GnzD6M+Xb6seb6kSTlCYBWhLZR0ZCXv1B71WkonP3fipCmd1u9hKcP6C6P/yZ0txjdiCMFCs6RLTHi4UqmnQA==}
@@ -3765,8 +3783,8 @@ packages:
     resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
     hasBin: true
 
-  lowdefy@0.0.0-experimental-20260326131120:
-    resolution: {integrity: sha512-QOTGXF/QhNM7Jf09qBEV0fcZVM4/Y3Riv/L5Ppis5yeD6DtoLXxbEbZfm4MPBD/FP6f/4AAm27IahrbkWqkJtA==}
+  lowdefy@0.0.0-experimental-20260326141314:
+    resolution: {integrity: sha512-ZA/E+6FqmYsX3GPIKhoQyKvkyRaCNsQc0ZJpquLVhd0jBIfnrVOO7XM9cq0JvW3nXDrn7pHEcR+cUCZy8jPfjA==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -6112,6 +6130,16 @@ snapshots:
       react-dom: 18.2.0(react@18.2.0)
       tailwind-merge: 2.6.0
 
+  '@lowdefy/block-utils@0.0.0-experimental-20260326141314':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260326141314
+      '@lowdefy/helpers': 0.0.0-experimental-20260326141314
+      clsx: 2.1.1
+      dompurify: 3.2.4
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      tailwind-merge: 2.6.0
+
   '@lowdefy/block-utils@4.7.1':
     dependencies:
       '@emotion/css': 11.11.2
@@ -6140,6 +6168,23 @@ snapshots:
       '@ant-design/icons': 6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/block-utils': 0.0.0-experimental-20260326131120
       '@lowdefy/helpers': 0.0.0-experimental-20260326131120
+      '@rc-component/motion': 1.3.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      antd: 6.3.1(date-fns@2.30.0)(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      classnames: 2.3.2
+      dayjs: 1.11.19
+      minisearch: 7.2.0
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    transitivePeerDependencies:
+      - date-fns
+      - luxon
+      - moment
+
+  '@lowdefy/blocks-antd@0.0.0-experimental-20260326141314':
+    dependencies:
+      '@ant-design/icons': 6.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/block-utils': 0.0.0-experimental-20260326141314
+      '@lowdefy/helpers': 0.0.0-experimental-20260326141314
       '@rc-component/motion': 1.3.1(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       antd: 6.3.1(date-fns@2.30.0)(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       classnames: 2.3.2
@@ -6315,11 +6360,18 @@ snapshots:
 
   '@lowdefy/errors@0.0.0-experimental-20260326131120': {}
 
+  '@lowdefy/errors@0.0.0-experimental-20260326141314': {}
+
   '@lowdefy/errors@4.7.1': {}
 
   '@lowdefy/helpers@0.0.0-experimental-20260326131120':
     dependencies:
       '@lowdefy/errors': 0.0.0-experimental-20260326131120
+      lodash.merge: 4.6.2
+
+  '@lowdefy/helpers@0.0.0-experimental-20260326141314':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260326141314
       lodash.merge: 4.6.2
 
   '@lowdefy/helpers@4.7.1':
@@ -6341,10 +6393,23 @@ snapshots:
       ora: 7.0.1
       pino: 8.16.2
 
+  '@lowdefy/logger@0.0.0-experimental-20260326141314':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260326141314
+      '@lowdefy/helpers': 0.0.0-experimental-20260326141314
+      ora: 7.0.1
+      pino: 8.16.2
+
   '@lowdefy/node-utils@0.0.0-experimental-20260326131120':
     dependencies:
       '@lowdefy/errors': 0.0.0-experimental-20260326131120
       '@lowdefy/helpers': 0.0.0-experimental-20260326131120
+      fs-extra: 11.1.1
+
+  '@lowdefy/node-utils@0.0.0-experimental-20260326141314':
+    dependencies:
+      '@lowdefy/errors': 0.0.0-experimental-20260326141314
+      '@lowdefy/helpers': 0.0.0-experimental-20260326141314
       fs-extra: 11.1.1
 
   '@lowdefy/nunjucks@0.0.0-experimental-20260326131120':
@@ -9668,12 +9733,12 @@ snapshots:
     dependencies:
       js-tokens: 4.0.0
 
-  lowdefy@0.0.0-experimental-20260326131120:
+  lowdefy@0.0.0-experimental-20260326141314:
     dependencies:
-      '@lowdefy/errors': 0.0.0-experimental-20260326131120
-      '@lowdefy/helpers': 0.0.0-experimental-20260326131120
-      '@lowdefy/logger': 0.0.0-experimental-20260326131120
-      '@lowdefy/node-utils': 0.0.0-experimental-20260326131120
+      '@lowdefy/errors': 0.0.0-experimental-20260326141314
+      '@lowdefy/helpers': 0.0.0-experimental-20260326141314
+      '@lowdefy/logger': 0.0.0-experimental-20260326141314
+      '@lowdefy/node-utils': 0.0.0-experimental-20260326141314
       axios: 1.8.2
       commander: 11.1.0
       decompress: 4.2.1

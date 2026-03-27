@@ -23,9 +23,9 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260326131120",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260326131120",
-    "@lowdefy/helpers": "0.0.0-experimental-20260326131120",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260326141314",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260326141314",
+    "@lowdefy/helpers": "0.0.0-experimental-20260326141314",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=4",
     "react": ">=18"
