@@ -36,21 +36,6 @@ _ref:
           component: floating-actions
           vars:
             actions:
-              - id: cancel_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
-                events:
-                  onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: profile
               - id: save_button
                 type: Button
                 layout:
@@ -73,6 +58,21 @@ _ref:
                       messages:
                         success: Profile updated.
                     - id: link_to_profile
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: profile
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
                       type: Link
                       params:
                         pageId:

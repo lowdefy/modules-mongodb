@@ -29,7 +29,7 @@ routine:
     connectionId:
       _module.connectionId: user-contacts
     properties:
-      filter:
+      query:
         _id:
           _user: id
   - id: new-event
