@@ -5,10 +5,11 @@ _ref:
     id: create-profile
     title: Create Profile
     content_width: 600
-    breadcrumbs:
-      - home: true
-        icon: AiOutlineHome
-      - label: Create Profile
+    breadcrumbs: []
+    menu:
+      links: []
+    hide_profile: true
+    hide_notifications: true
     events:
       onInit:
         - id: init

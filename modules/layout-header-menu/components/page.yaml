@@ -17,10 +17,13 @@ properties:
         key: breadcrumbs
         default: []
   menu:
-    _module.var:
+    _var:
       key: menu
       default:
-        _menu: default
+        _module.var:
+          key: menu
+          default:
+            _menu: default
   # Built-in header features — gated by per-page hide flags
   profile:
     _build.if:
