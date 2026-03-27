@@ -12,7 +12,7 @@ _ref:
             - _request: get_user.0
             - app_title:
                 _module.var: app_title
-    hide_title: true
+    content_width: 600
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -65,138 +65,120 @@ _ref:
             disable_save: false
 
     blocks:
-      - id: content
-        type: Box
+      - id: card
+        type: Card
         layout:
-          span: 24
-        style:
-          maxWidth: 600
-          margin: auto
+          gap: 16
         blocks:
-          - id: card
-            type: Card
+          # TODO: doc_metadata component
+          # - _ref: ../components/doc_metadata.yaml
+          - _ref: ../components/view_user_avatar_preview.yaml
+          - _ref: ../components/view_signed_up.yaml
+          - _ref: ../components/view_invite_link.yaml
+          - _ref: ../components/view_email.yaml
+          - id: divider
+            type: Divider
             properties:
-              title:
-                _nunjucks:
-                  template: |
-                    Edit {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
-                  on:
-                    _object.assign:
-                      - _request: get_user.0
-                      - app_title:
-                          _module.var: app_title
-            layout:
-              gap: 16
-            blocks:
-              # TODO: doc_metadata component
-              # - _ref: ../components/doc_metadata.yaml
-              - _ref: ../components/view_user_avatar_preview.yaml
-              - _ref: ../components/view_signed_up.yaml
-              - _ref: ../components/view_invite_link.yaml
-              - _ref: ../components/view_email.yaml
-              - id: divider
-                type: Divider
+              title: Profile
+          - _module.var:
+              key: components.form_profile
+              default:
+                id: form_profile
+                type: Box
+          - id: divider
+            type: Divider
+            properties:
+              title: Access
+          - _module.var:
+              key: components.form_global_attributes
+              default:
+                id: form_global_attributes
+                type: Box
+          - _module.var:
+              key: components.form_app_attributes
+              default:
+                id: form_app_attributes
+                type: Box
+          - _ref: ../components/form_access_edit.yaml
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            actions:
+              - id: resend_invite_button
+                type: Button
+                visible:
+                  _ne:
+                    - _state: user.is_user
+                    - true
+                layout:
+                  flex: 0 1 auto
                 properties:
-                  title: Profile
-              - _module.var:
-                  key: components.form_profile
-                  default:
-                    id: form_profile
-                    type: Box
-              - id: divider
-                type: Divider
+                  disabled:
+                    _ne:
+                      - _state: user.invite.open
+                      - true
+                  type: default
+                  title: Resend Invite
+                  icon: AiOutlineSend
+                events:
+                  onClick:
+                    - id: resend
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: resend-invite
+                        payload:
+                          user:
+                            _id:
+                              _state: user._id
+                            profile:
+                              name:
+                                _state: user.profile.name
+                            email:
+                              _state: user.email
+                      messages:
+                        success: Invite sent successfully.
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
                 properties:
-                  title: Access
-              - _module.var:
-                  key: components.form_global_attributes
-                  default:
-                    id: form_global_attributes
-                    type: Box
-              - _module.var:
-                  key: components.form_app_attributes
-                  default:
-                    id: form_app_attributes
-                    type: Box
-              - _ref: ../components/form_access_edit.yaml
-          - _ref:
-              module: layout
-              component: floating-actions
-              vars:
-                actions:
-                  - id: resend_invite_button
-                    type: Button
-                    visible:
-                      _ne:
-                        - _state: user.is_user
-                        - true
-                    layout:
-                      flex: 0 1 auto
-                    properties:
-                      disabled:
-                        _ne:
-                          - _state: user.invite.open
-                          - true
-                      type: default
-                      title: Resend Invite
-                      icon: AiOutlineSend
-                    events:
-                      onClick:
-                        - id: resend
-                          type: CallAPI
-                          params:
-                            endpointId:
-                              _module.endpointId: resend-invite
-                            payload:
-                              user:
-                                _id:
-                                  _state: user._id
-                                profile:
-                                  name:
-                                    _state: user.profile.name
-                                email:
-                                  _state: user.email
-                          messages:
-                            success: Invite sent successfully.
-                  - id: cancel_button
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    properties:
-                      title: Cancel
-                      icon: AiOutlineCloseCircle
-                      type: default
-                    events:
-                      onClick:
-                        - id: back
-                          type: Link
-                          params:
-                            back: true
-                  - id: save_button
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    properties:
-                      title: Save
-                      icon: AiOutlineSave
-                      disabled:
-                        _state: disable_save
-                    events:
-                      onClick:
-                        - id: validate
-                          type: Validate
-                        - id: update_user
-                          type: CallAPI
-                          params:
-                            endpointId:
-                              _module.endpointId: update-user
-                            payload:
-                              user:
-                                _state: user
-                          messages:
-                            success: User updated.
-                        - id: reset
-                          type: Reset
-                        - id: back
-                          type: Link
-                          params:
-                            back: true
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                  disabled:
+                    _state: disable_save
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: update_user
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-user
+                        payload:
+                          user:
+                            _state: user
+                      messages:
+                        success: User updated.
+                    - id: reset
+                      type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        back: true

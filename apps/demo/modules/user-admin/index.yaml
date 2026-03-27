@@ -1,5 +1,4 @@
 app_name: demo
-app_title: Demo
 roles:
   _ref: modules/user-admin/roles.yaml
 components:
