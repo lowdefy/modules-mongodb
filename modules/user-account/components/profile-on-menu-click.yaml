@@ -1,9 +1,0 @@
-- id: logout
-  type: Logout
-  skip:
-    _ne:
-      - _event: key
-      - logout
-  params:
-    callbackUrl:
-      home: true

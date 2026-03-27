@@ -102,21 +102,6 @@ events:
       key: events.onMountAsync
       default: []
   # Header action events — gated by same hide flags
-  onProfileMenuClick:
-    _build.if:
-      test:
-        _build.not:
-          _var:
-            key: hide_profile
-            default: false
-      then:
-        _module.var:
-          key: profile_on_menu_click
-          default:
-            _ref:
-              module: user-account
-              component: profile-on-menu-click
-      else: []
   onNotificationClick:
     _build.if:
       test:

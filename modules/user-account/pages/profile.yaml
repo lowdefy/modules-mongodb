@@ -52,4 +52,5 @@ _ref:
                       type: Logout
                       params:
                         callbackUrl:
-                          pageId: router
+                          pageId:
+                            _module.pageId: logout

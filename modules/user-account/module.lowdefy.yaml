@@ -37,6 +37,7 @@ pages:
   - _ref: pages/profile.yaml
   - _ref: pages/edit-profile.yaml
   - _ref: pages/create-profile.yaml
+  - _ref: pages/logout.yaml
 
 exports:
   pages:
@@ -50,6 +51,8 @@ exports:
       description: Edit user profile fields
     - id: create-profile
       description: First-time profile creation after sign-up
+    - id: logout
+      description: Logout page — logs user out and shows login link
   connections:
     - id: user-contacts
       description: MongoDB connection for user contact records
@@ -65,8 +68,6 @@ exports:
       description: MenuLink to user profile page
     - id: profile-actions
       description: MenuLink for logout (danger-styled)
-    - id: profile-on-menu-click
-      description: Event handler for profile menu click — fires Logout when key=logout
   menus:
     - id: default
       description: User account navigation links
@@ -81,10 +82,6 @@ components:
   - id: profile-actions
     component:
       _ref: components/profile-actions.yaml
-  - id: profile-on-menu-click
-    component:
-      _ref: components/profile-on-menu-click.yaml
-
 menus:
   - _ref: menu.yaml
 
