@@ -10,12 +10,12 @@ blocks:
           title:
             _string.concat:
               - _module.var: label
-              - " Name"
+              - ' Name'
           placeholder:
             _string.concat:
-              - "Enter "
+              - 'Enter '
               - _module.var: label
-              - " name"
+              - ' name'
       - id: company.description
         type: TextArea
         properties:
@@ -45,14 +45,14 @@ blocks:
         type: TextInput
         properties:
           title: Website
-          placeholder: "https://..."
+          placeholder: 'https://...'
       - id: company.contact.primary_email
         type: TextInput
         properties:
           title: Email
-          placeholder: "info@company.com"
+          placeholder: 'info@company.com'
         validate:
-          _ref: ../validate/email.yaml
+          _ref: validate/email.yaml
       - id: company.contact.primary_phone
         type: PhoneNumberInput
         properties:
@@ -70,9 +70,7 @@ blocks:
         properties:
           title: Building / Unit / Floor
     # form_attributes injection point — custom fields appear here
-    - _module.var:
-        key: components.form_attributes
-        default: []
+    - _module.var: components.form_attributes
     # Contacts section
     - - id: divider_contacts
         type: Divider

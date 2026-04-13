@@ -15,19 +15,19 @@ routine:
   - id: update
     type: MongoDBUpdateOne
     connectionId:
-      _module.connectionId: user-contacts
+      _module.connectionId: user-contacts-collection
     properties:
       filter:
         _id:
           _user: id
       update:
         $set:
-          _ref: profile-set-fields.yaml
+          _ref: api/profile-set-fields.yaml
 
   - id: updated_user
     type: MongoDBFindOne
     connectionId:
-      _module.connectionId: user-contacts
+      _module.connectionId: user-contacts-collection
     properties:
       query:
         _id:
@@ -49,10 +49,8 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: ../defaults/event_display.yaml
-                        - _module.var:
-                            key: event_display
-                            default: {}
+                        - _ref: defaults/event_display.yaml
+                        - _module.var: event_display
                   callback:
                     _build.function:
                       __build.ne:

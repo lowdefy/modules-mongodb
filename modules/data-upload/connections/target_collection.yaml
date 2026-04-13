@@ -1,0 +1,8 @@
+id: target_collection
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection:
+    _module.var: tool.target_collection
+  write: false

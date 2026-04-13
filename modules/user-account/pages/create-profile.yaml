@@ -31,16 +31,28 @@ _ref:
                       - _user: profile.birthday
                       - 2099-01-01
                 else: null
+        - id: init_avatar_color
+          type: SetState
+          params:
+            contact.profile.avatar_color:
+              _if_none:
+                - _state: contact.profile.avatar_color
+                - _get:
+                    from:
+                      _module.var: avatar_colors
+                    key:
+                      _math.floor:
+                        _product:
+                          - _math.random: true
+                          - _array.length:
+                              _module.var: avatar_colors
     blocks:
       - id: card
         type: Card
         layout:
           gap: 16
         blocks:
-          - _module.var:
-              key: components.form_profile
-              default:
-                _ref: ../components/form_profile.yaml
+          - _ref: components/form_profile.yaml
       - _ref:
           module: layout
           component: floating-actions
@@ -59,6 +71,15 @@ _ref:
                       type: Validate
                       params:
                         regex: ^contact\.
+                    - id: generate_avatar
+                      type: SetState
+                      params:
+                        contact.profile.picture:
+                          _js:
+                            _ref:
+                              path: ../shared/profile/generate-avatar-svg.js.njk
+                              vars:
+                                prefix: contact.profile
                     - id: create_profile
                       type: CallAPI
                       params:
@@ -69,9 +90,13 @@ _ref:
                             _state: contact
                       messages:
                         success: Profile created.
+                    # TODO: UpdateSession is bugged, using hard link to force refresh as workaround
+                    # - id: update_session
+                    #   type: UpdateSession
                     - id: reset
                       type: Reset
-                    - id: link_to_router
+                    - id: link_to_home
                       type: Link
                       params:
-                        pageId: router
+                        url:
+                          _location: origin

@@ -1,0 +1,38 @@
+id: area_selected
+type: Box
+loading:
+  _not:
+    _request: get_selected_notification
+skeleton:
+  type: Box
+  style:
+    padding: 100px 24px 200px 24px
+  blocks:
+    - id: spinner
+      type: Spinner
+      properties:
+        size: large
+blocks:
+  - id: no_selected
+    type: Result
+    visible:
+      _not:
+        _url_query: _id
+    properties:
+      subTitle: Click on a notification to view details.
+      title: No Selected Notification
+      icon:
+        name: AiOutlineFileExclamation
+        color: '#d9d9d9'
+  - id: selected_item
+    type: Box
+    visible:
+      _not:
+        _not:
+          _url_query: _id
+    blocks:
+      - _ref:
+          path: components/view-notification.yaml
+          vars:
+            notification:
+              _request: get_selected_notification.0

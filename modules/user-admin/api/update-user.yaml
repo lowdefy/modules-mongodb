@@ -4,7 +4,7 @@ routine:
   - id: update
     type: MongoDBUpdateOne
     connectionId:
-      _module.connectionId: user-contacts
+      _module.connectionId: user-contacts-collection
     properties:
       filter:
         _id:
@@ -33,22 +33,10 @@ routine:
                               _if_none:
                                 - _payload: user.profile.family_name
                                 - ""
+                    profile.avatar_color:
+                      _payload: user.profile.avatar_color
                     profile.picture:
-                      _string.concat:
-                        - https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed=
-                        - _string.trim:
-                            _string.concat:
-                              - _string.trim:
-                                  _if_none:
-                                    - _payload: user.profile.given_name
-                                    - ""
-                              - " "
-                              - _string.trim:
-                                  _if_none:
-                                    - _payload: user.profile.family_name
-                                    - ""
-                    profile.title:
-                      _payload: user.profile.title
+                      _payload: user.profile.picture
                     profile.given_name:
                       _string.trim:
                         _if_none:
@@ -59,6 +47,16 @@ routine:
                         _if_none:
                           - _payload: user.profile.family_name
                           - ""
+                  # Title (conditional)
+                  - _build.if:
+                      test:
+                        _module.var: show_title
+                      then:
+                        profile.title:
+                          _payload: user.profile.title
+                      else: {}
+                  # Extended profile fields (injected by consumer)
+                  - _module.var: components.profile_set_fields
                   - _object.defineProperty:
                       on: {}
                       key:
@@ -104,10 +102,7 @@ routine:
                                 - _module.var: app_name
                                 - ".app_attributes"
                             - _payload: user.app_attributes
-          - _module.var:
-              key: request_stages.update_user
-              default:
-                - $set: {}
+          - _module.var: request_stages.update_user
 
   - id: new-event
     type: CallApi
@@ -126,10 +121,8 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: ../defaults/event_display.yaml
-                        - _module.var:
-                            key: event_display
-                            default: {}
+                        - _ref: defaults/event_display.yaml
+                        - _module.var: event_display
                   callback:
                     _build.function:
                       __build.ne:

@@ -28,9 +28,7 @@ properties:
           field: description
           flex: 1
           minWidth: 200
-      - _module.var:
-          key: components.table_columns
-          default: []
+      - _module.var: components.table_columns
       - - headerName: Updated
           field: updated_at
           width: 120

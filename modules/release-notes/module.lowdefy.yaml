@@ -1,0 +1,24 @@
+name: Release Notes
+description: Display release notes from CHANGELOG.md
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+
+vars:
+  content:
+    type: string
+    description: Markdown content to render (typically loaded from CHANGELOG.md via _ref)
+
+exports:
+  pages:
+    - id: release-notes
+      description: Release notes page
+  menus:
+    - id: default
+
+pages:
+  - _ref: pages/release-notes.yaml
+
+menus:
+  - _ref: menus.yaml

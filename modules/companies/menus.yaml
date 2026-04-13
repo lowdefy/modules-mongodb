@@ -6,7 +6,5 @@ links:
       _module.pageId: companies
     properties:
       title:
-        _module.var:
-          key: label_plural
-          default: Companies
+        _module.var: label_plural
       icon: AiOutlineShop

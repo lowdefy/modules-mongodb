@@ -1,0 +1,21 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: release-notes
+    title: Release Notes
+    hide_title: true
+    content_width: 900
+    blocks:
+      - id: release_notes_card
+        type: Card
+        style:
+          padding: 32px
+        blocks:
+          - id: release_notes_markdown
+            type: Markdown
+            properties:
+              content:
+                _if_none:
+                  - _module.var: content
+                  - 'No release notes available yet.'

@@ -5,106 +5,93 @@ layout:
 style:
   margin: auto
 blocks:
-  - id: user_avatar
-    type: Img
-    style:
-      textAlign: center
-      marginBottom: 42
-      .element:
-        width: 100px
-        borderRadius: 50%
-    properties:
-      src:
-        _nunjucks:
-          template: https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed={{ name }}
-          on:
-            name:
-              _string.concat:
-                - _if_none:
-                    - _state: contact.profile.given_name
-                    - ""
-                - " "
-                - _if_none:
-                    - _state: contact.profile.family_name
-                    - ""
-      alt:
-        _string.concat:
-          - "User avatar for "
-          - _string.concat:
-              - _if_none:
-                  - _state: contact.profile.given_name
-                  - ""
-              - " "
-              - _if_none:
-                  - _state: contact.profile.family_name
-                  - ""
-  - id: contact.profile.title
-    type: Selector
-    layout:
-      span: 3
-    properties:
-      title: Title
-      placeholder: Mr
-      options:
-        - Mr
-        - Ms
-        - Mrs
-        - Dr
-        - Prof
-  - id: contact.profile.given_name
-    type: TextInput
-    required: true
-    layout:
-      span: 9
-    properties:
-      title: First Name
-      placeholder: John
-  - id: contact.profile.family_name
-    type: TextInput
-    required: true
-    layout:
-      span: 12
-    properties:
-      title: Last Name
-      placeholder: Doe
-  - id: contact.email
-    type: TextInput
-    required: true
-    validate:
-      _ref:
-        path: ../validate/email.yaml
-        vars:
-          field_name: contact.email
-    properties:
-      title: Email
-      disabled: true
-  - id: contact.profile.work_phone
-    type: PhoneNumberInput
-    layout:
-      span: 12
-    properties:
-      title: Work Number
-      defaultRegion: ZA
-      placeholder: 11 001 2233
-  - id: contact.profile.mobile_phone
-    type: PhoneNumberInput
-    layout:
-      span: 12
-    properties:
-      title: Mobile Number
-      defaultRegion: ZA
-      placeholder: 82 111 2222
-  - id: contact.profile.department
-    type: TextInput
-    properties:
-      title: Department
-      placeholder: Production
-  - id: contact.profile.job_title
-    type: TextInput
-    properties:
-      title: Job Title
-      placeholder: Plant Manager
-  - id: contact.profile.birthday
-    type: DateSelector
-    properties:
-      title: Birthday
+  _build.array.concat:
+    - - id: avatar_preview
+        type: Avatar
+        style:
+          textAlign: center
+          marginBottom: 16
+        properties:
+          src:
+            _js:
+              _ref:
+                path: ../shared/profile/generate-avatar-svg.js.njk
+                vars:
+                  prefix: contact.profile
+          size: 100
+      - id: shuffle_color
+        type: Button
+        style:
+          textAlign: center
+          marginBottom: 16
+        properties:
+          icon: AiOutlineSync
+          shape: round
+          variant: outlined
+          # size: small
+          title: Change color
+        events:
+          onClick:
+            - id: next_color
+              type: SetState
+              params:
+                contact.profile.avatar_color:
+                  _get:
+                    from:
+                      _module.var: avatar_colors
+                    key:
+                      _math.floor:
+                        _product:
+                          - _math.random: true
+                          - _array.length:
+                              _module.var: avatar_colors
+    - _build.if:
+        test:
+          _module.var: show_title
+        then:
+          - id: contact.profile.title
+            type: Selector
+            layout:
+              span: 3
+            properties:
+              title: Title
+              placeholder: Mr
+              options:
+                - Mr
+                - Ms
+                - Mrs
+                - Dr
+                - Prof
+        else: []
+    - - id: contact.profile.given_name
+        type: TextInput
+        required: true
+        layout:
+          span:
+            _build.if:
+              test:
+                _module.var: show_title
+              then: 9
+              else: 12
+        properties:
+          title: First Name
+          placeholder: John
+      - id: contact.profile.family_name
+        type: TextInput
+        required: true
+        layout:
+          span: 12
+        properties:
+          title: Last Name
+          placeholder: Doe
+    - - id: email_display
+        type: Descriptions
+        properties:
+          bordered: false
+          column: 1
+          size: small
+          items:
+            - label: Email
+              value:
+                _state: contact.email
+    - _module.var: components.profile_fields

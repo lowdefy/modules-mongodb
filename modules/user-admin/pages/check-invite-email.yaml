@@ -11,15 +11,13 @@ _ref:
       - label:
           _build.string.trim:
             _build.string.concat:
-              - _module.var:
-                  key: app_title
-                  default: ""
+              - _module.var: app_title
               - " User Admin"
         pageId:
           _module.pageId: users
       - label: Check Invite Email
     requests:
-      - _ref: ../requests/check_invite_email.yaml
+      - _ref: requests/check_invite_email.yaml
     blocks:
       - id: card
         type: Card
@@ -28,13 +26,13 @@ _ref:
             type: TextInput
             required: true
             validate:
-              _ref: ../validate/email.yaml
+              _ref: validate/email.yaml
             properties:
               title: New User Work Email Address
               placeholder: name@company.com
             events:
               onPressEnter:
-                _ref: ../actions/check_email.yaml
+                _ref: actions/check_email.yaml
       - _ref:
           module: layout
           component: floating-actions
@@ -49,4 +47,4 @@ _ref:
                   icon: AiOutlineSearch
                 events:
                   onClick:
-                    _ref: ../actions/check_email.yaml
+                    _ref: actions/check_email.yaml

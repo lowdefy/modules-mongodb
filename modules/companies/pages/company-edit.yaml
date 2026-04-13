@@ -12,6 +12,7 @@ _ref:
             - _request: get_company.0.display_name
             - ""
     hide_title: true
+    content_width: 700
     events:
       onMount:
         - id: fetch
@@ -33,7 +34,7 @@ _ref:
             company:
               _request: get_company.0
     requests:
-      - _ref: ../requests/get_company.yaml
+      - _ref: requests/get_company.yaml
     blocks:
       - _ref:
           module: layout
@@ -49,12 +50,8 @@ _ref:
                     - ""
             doc:
               _request: get_company.0
-            width: 700
             blocks:
-              - _module.var:
-                  key: components.form_fields
-                  default:
-                    _ref: ../components/form_company.yaml
+              - _module.var: components.form_fields
       - _ref:
           module: layout
           component: floating-actions

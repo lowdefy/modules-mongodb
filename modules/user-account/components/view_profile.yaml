@@ -1,23 +1,118 @@
 id: view_contact_profile
 type: Box
 blocks:
-  - id: user_avatar
-    type: Img
-    style:
-      textAlign: center
-      marginBottom: 42
-      .element:
-        width: 100px
-        borderRadius: 50%
-    properties:
-      src:
-        _user: profile.picture
-  - id: profile_data
-    type: DataView
-    properties:
-      sectionCards: false
-      data:
-        _object.assign:
-          - _user: profile
-          - email:
+  _build.array.concat:
+    # Identity header
+    - - _ref:
+          path: ../shared/layout/identity-header.yaml
+          vars:
+            avatar_src:
+              _user: profile.picture
+            name:
+              _user: profile.name
+            email:
               _user: email
+            extra:
+              - id: signed_up
+                type: Paragraph
+                visible:
+                  _ne:
+                    - _get:
+                        key:
+                          _build.string.concat:
+                            - 'apps.'
+                            - _module.var: app_name
+                            - '.sign_up'
+                        from:
+                          _if_none:
+                            - _request: get_my_profile.0
+                            - {}
+                    - null
+                style:
+                  marginBottom: 0
+                properties:
+                  type: secondary
+                  content:
+                    _nunjucks:
+                      template: "Signed up {{ date | date('YYYY-MM-DD') }}"
+                      on:
+                        date:
+                          _get:
+                            key:
+                              _build.string.concat:
+                                - 'apps.'
+                                - _module.var: app_name
+                                - '.sign_up'
+                            from:
+                              _if_none:
+                                - _request: get_my_profile.0
+                                - {}
+    # Profile DataDescriptions
+    - - id: profile_divider
+        type: Divider
+        properties:
+          title: Profile
+      - id: profile_data
+        type: DataDescriptions
+        properties:
+          bordered: true
+          column: 1
+          size: small
+          data:
+            _object.assign:
+              - _user: profile
+              - profile_created: null
+              - picture: null
+              - name: null
+          formConfig:
+            _build.if:
+              test:
+                _build.ne:
+                  - _module.var: components.profile_view_config
+                  - null
+              then:
+                _build.array.concat:
+                  - _build.if:
+                      test:
+                        _module.var: show_title
+                      then:
+                        - key: title
+                          title: Title
+                      else: []
+                  - - key: given_name
+                      title: First Name
+                    - key: family_name
+                      title: Last Name
+                  - _module.var: components.profile_view_config
+              else: null
+    # Attributes DataDescriptions (optional)
+    - - id: attributes_divider
+        type: Divider
+        visible:
+          _build.ne:
+            - _module.var: components.attributes_view_config
+            - null
+        properties:
+          title: Attributes
+      - id: attributes_data
+        type: DataDescriptions
+        visible:
+          _build.ne:
+            - _module.var: components.attributes_view_config
+            - null
+        properties:
+          bordered: true
+          column: 1
+          size: small
+          data:
+            _object.assign:
+              - _if_none:
+                  - _user: global_attributes
+                  - {}
+              - _if_none:
+                  - _user: app_attributes
+                  - {}
+          formConfig:
+            _module.var: components.attributes_view_config
+    # Extra content slot
+    - _module.var: components.view_extra

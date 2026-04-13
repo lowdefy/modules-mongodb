@@ -1,0 +1,105 @@
+name: Layout Header Menu
+description: Page layout with sider menu, title bar, and content area
+
+dependencies:
+  - id: user-account
+  - id: notifications
+
+vars:
+  logo:
+    type: object
+    description: "Logo config: { primary_light, primary_dark, icon, style }"
+    properties:
+      primary_light:
+        description: Logo for light header background
+      primary_dark:
+        default: /logo-dark-theme.png
+        description: Logo for dark backgrounds (auth cover)
+      primary:
+        default: /logo-light-theme.png
+        description: Primary logo (brand panel, mobile auth)
+      icon:
+        description: Small icon logo for mobile header
+      style:
+        description: Custom logo style object
+  menu:
+    type: object
+    default:
+      _menu: default
+    description: Menu config passed to PageHeaderMenu. Defaults to _menu default.
+  header:
+    type: object
+    default: {}
+    description: "PageHeaderMenu header properties: { theme, contentStyle }"
+  header_extra:
+    type: object
+    description: "Header customization: { blocks, requests }"
+    properties:
+      requests:
+        default: []
+      blocks:
+        default: []
+  title_block:
+    type: object
+    default: null
+    description: Custom title block override (replaces default title bar)
+  footer:
+    type: array
+    default: []
+    description: Footer blocks appended after page content
+  card:
+    type: object
+    default: null
+    description: Custom card component override (replaces default Card layout)
+  darkModeToggle:
+    type: boolean
+    default: true
+    description: Enable dark mode toggle in header
+  extra_profile_links:
+    type: array
+    default: []
+    description: Additional profile menu links
+  auth_page:
+    type: object
+    description: "Auth page overrides: { cover_background, card_style, max_width, logo_max_width }"
+    properties:
+      max_width:
+        default: 360
+      card_style:
+        default: {}
+      cover_background:
+        default:
+          _if:
+            test:
+              _media: darkMode
+            then: 'linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 40%, black) 0%, color-mix(in srgb, var(--ant-color-primary) 60%, black) 100%)'
+            else: 'linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)'
+      logo_max_width:
+        default: 160
+      brand_panel_background:
+        default: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)"
+
+exports:
+  components:
+    - id: page
+      description: PageSiderMenu layout wrapper with title bar, header slots, sider menu, and content area
+    - id: card
+      description: Standard content card layout with optional back button and footer
+    - id: floating-actions
+      description: Floating action button bar affixed to bottom of viewport
+    - id: auth-page
+      description: Centered auth/login page layout with logo and card
+
+components:
+  - id: page
+    component:
+      _ref: ./components/page.yaml
+  - id: card
+    component:
+      _ref: ../shared/layout/card.yaml
+  - id: floating-actions
+    component:
+      _ref: ../shared/layout/floating-actions.yaml
+  - id: auth-page
+    component:
+      _ref: ../shared/layout/auth-page.yaml

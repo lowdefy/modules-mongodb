@@ -1,7 +1,7 @@
 # Contacts — Vars
 
 - **`app_name`** (required) — App identifier for `is_user` guard and per-app access flags.
-- **`collection`** — MongoDB collection name. Default: `user_contacts`.
+- **`collection`** — MongoDB collection name. Default: `user-contacts`.
 - **`label`** — Singular display label. Default: `Contact`.
 - **`label_plural`** — Plural display label. Default: `Contacts`.
 - **`event_display`** — Per-app event display templates. Default: built-in defaults.

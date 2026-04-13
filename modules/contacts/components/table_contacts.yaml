@@ -1,5 +1,5 @@
 id: contacts_table
-type: AgGridMaterial
+type: AgGridBalham
 properties:
   height: 70vh
   rowStyle:
@@ -25,7 +25,7 @@ properties:
             _function:
               __nunjucks:
                 template: |
-                  <span style="display: inline-flex; align-items: center;"><img src="{{ profile.picture }}" width="30px" height="30px" style="margin-right: 8px; border-radius: 50%; flex-shrink: 0;"/>{{ profile.name | safe }}</span>
+                  <span style="display: inline-flex; align-items: center;">{% if profile.picture %}<img src="{{ profile.picture }}" width="30px" height="30px" style="margin-right: 8px; border-radius: 50%; flex-shrink: 0;"/>{% else %}<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:#d9d9d9;color:#8c8c8c;font-size:16px;margin-right:8px;flex-shrink:0;">&#x1F464;</span>{% endif %}{{ profile.name | safe }}</span>
                 on:
                   __args: 0.data
         - headerName: Email
@@ -40,9 +40,7 @@ properties:
           field: profile.job_title
           flex: 1
           minWidth: 150
-      - _module.var:
-          key: components.table_columns
-          default: []
+      - _module.var: components.table_columns
       - - headerName: Updated
           field: updated_at
           width: 120

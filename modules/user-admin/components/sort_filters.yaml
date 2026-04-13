@@ -42,7 +42,7 @@ blocks:
     events:
       onChange:
         try:
-          _ref: ../actions/search.yaml
+          _ref: actions/search.yaml
         debounce:
           ms: 500
 
@@ -94,4 +94,4 @@ blocks:
                             - -1
                         then: 1
                         else: -1
-              - _ref: ../actions/search.yaml
+              - _ref: actions/search.yaml

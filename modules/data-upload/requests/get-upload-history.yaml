@@ -1,0 +1,34 @@
+id: get_upload_history
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: imports
+properties:
+  pipeline:
+    - $match:
+        file_key:
+          $regex:
+            _module.var: tool.s3_prefix
+    - $sort:
+        date: -1
+    - $limit: 10
+    - $addFields:
+        file_name:
+          $arrayElemAt:
+            - $split:
+                - '$file_key'
+                - '/'
+            - -1
+        uploaded_by_name:
+          $ifNull:
+            - '$created.user.name'
+            - 'System'
+        date_display:
+          $dateToString:
+            date: '$date'
+            format: '%Y-%m-%d %H:%M'
+        status:
+          $ifNull:
+            - $arrayElemAt:
+                - '$status.stage'
+                - 0
+            - 'Unknown'

@@ -6,28 +6,19 @@ _ref:
     title:
       _build.string.trim:
         _build.string.concat:
-          - _module.var:
-              key: app_title
-              default: ""
-          - " User Admin"
+          - _module.var: app_title
+          - ' User Admin'
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
           _build.string.trim:
             _build.string.concat:
-              - _module.var:
-                  key: app_title
-                  default: ""
-              - " User Admin"
+              - _module.var: app_title
+              - ' User Admin'
     page_actions:
-      - id: buttons_container
-        type: Box
-        layout:
-          gap: 8
-        blocks:
-          - _ref: ../components/excel_download.yaml
-          - _ref: ../components/button_new_invite.yaml
+      - _ref: components/excel_download.yaml
+      - _ref: components/button_new_invite.yaml
     events:
       onInit:
         - id: set_sort_filter
@@ -49,32 +40,25 @@ _ref:
           params:
             - get_all_users
     requests:
-      - _ref: ../requests/get_all_users.yaml
-      - _ref: ../requests/get_user_excel_data.yaml
+      - _ref: requests/get_all_users.yaml
+      - _ref: requests/get_user_excel_data.yaml
     blocks:
-      - _ref: ../components/users_filter.yaml
+      - _ref: components/users_filter.yaml
       - id: custom_filters_box
         type: Box
         layout:
           gap: 8
         requests:
-          _module.var:
-            key: filter_requests
-            default: []
+          _module.var: filter_requests
         style:
           maxWidth: 1200
           margin: auto
           marginTop: 4
         blocks:
-          _module.var:
-            key: components.filters
-            default: []
-      - _ref: ../components/sort_filters.yaml
+          _module.var: components.filters
+      - _ref: components/sort_filters.yaml
       - id: content
         type: Card
-        style:
-          padding: 8px 16px 0px 16px
-          margin: auto
         blocks:
-          - _ref: ../components/table_users.yaml
-          - _ref: ../components/pagination.yaml
+          - _ref: components/table_users.yaml
+          - _ref: components/pagination.yaml

@@ -4,7 +4,7 @@ routine:
   - id: save
     type: MongoDBUpdateOne
     connectionId:
-      _module.connectionId: files-db
+      _module.connectionId: files-collection
     properties:
       options:
         upsert: true
@@ -21,6 +21,10 @@ routine:
             _payload: file
           file_title:
             _payload: file_title
+          file_category:
+            _payload: file_category
+          metadata:
+            _payload: metadata
           updated:
             _ref:
               module: events
@@ -31,6 +35,31 @@ routine:
               module: events
               component: change_stamp
           removed: null
+
+  - id: log-event
+    type: CallApi
+    skip:
+      _not:
+        _module.var: log_events
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: upload-file
+        references:
+          entity_type:
+            _payload: entity_type
+          entity_id:
+            _payload: entity_id
+        metadata:
+          file_name:
+            _payload: file.name
+          file_category:
+            _payload: file_category
+          file_key:
+            _payload: file.key
 
   - :return:
       fileId:

@@ -1,0 +1,13 @@
+id: companies-collection
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection:
+    _module.var: collection
+  changeLog:
+    collection: log-changes
+    meta:
+      user:
+        _user: true
+  write: true

@@ -21,11 +21,31 @@ vars:
     default:
       _ref: defaults/event_display.yaml
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates."
+  show_title:
+    type: boolean
+    default: false
+    description: Show the title/honorific field (Mr, Ms, Dr, etc.)
+  avatar_colors:
+    default:
+      _ref: ../shared/profile/avatar_colors.yaml
+    description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
   components:
-    description: "Overrides: form_profile, view_profile"
+    type: object
+    description: "Overrides: form_profile, view_profile, profile_fields, profile_set_fields, profile_view_config, attributes_view_config, view_extra"
+    properties:
+      profile_view_config:
+        default: null
+      attributes_view_config:
+        default: null
+      view_extra:
+        default: []
+      profile_fields:
+        default: []
+      profile_set_fields:
+        default: {}
 
 connections:
-  - _ref: connections/user-contacts.yaml
+  - _ref: connections/user-contacts-collection.yaml
 
 api:
   - _ref: api/create-profile.yaml
@@ -54,7 +74,7 @@ exports:
     - id: logout
       description: Logout page — logs user out and shows login link
   connections:
-    - id: user-contacts
+    - id: user-contacts-collection
       description: MongoDB connection for user contact records
   api:
     - id: create-profile

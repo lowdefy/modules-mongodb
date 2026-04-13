@@ -7,7 +7,7 @@ type:
     key: mode
     default: Selector
 requests:
-  - _ref: ../requests/get_companies_for_selector.yaml
+  - _ref: requests/get_companies_for_selector.yaml
 events:
   onMount:
     - id: fetch_companies
@@ -24,9 +24,7 @@ properties:
     _var:
       key: label
       default:
-        _module.var:
-          key: label
-          default: Company
+        _module.var: label
   optionConfig:
     titleField: label
     valueField: value

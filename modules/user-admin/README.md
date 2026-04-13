@@ -169,9 +169,10 @@ Type: `object`
 
 Override default form sections, table columns, and filters. All keys are optional — omitted keys use module defaults (empty placeholder blocks for forms, standard columns for tables).
 
-- **`form_profile`** — Block definition replacing the profile form section on invite and edit pages
-- **`form_global_attributes`** — Block definition replacing the global attributes form section
-- **`form_app_attributes`** — Block definition replacing the app-specific attributes form section
+- **`profile_fields`** — Array of form field blocks appended to the profile section on invite and edit pages
+- **`profile_set_fields`** — Object mapping field paths to payload operations for the API save
+- **`global_attributes_fields`** — Array of form field blocks for the global attributes section (divider provided by template)
+- **`app_attributes_fields`** — Array of form field blocks for the app-specific attributes section (divider provided by template)
 - **`table_columns`** — Array of AgGrid column definitions appended to the users table
 - **`download_columns`** — Array of column definitions appended to the Excel export
 - **`filters`** — Array of block definitions added to the filter section on the users list page

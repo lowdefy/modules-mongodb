@@ -12,11 +12,11 @@ blocks:
             <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
             <div class="text-text-secondary text-sm" style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
               {% if doc.updated.user.name %}
-                Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll')}}
+                Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A')}}
               {% endif %}
               {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
               {% if doc.created.user.name %}
-                Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll')}}
+                Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('MMM D, YYYY h:mm A')}}
               {% endif %}
             </div>
           on:

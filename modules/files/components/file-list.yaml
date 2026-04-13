@@ -4,18 +4,93 @@ id:
     default: file_list
 type: Box
 requests:
-  - _ref: ../requests/get-entity-files.yaml
-  - _ref: ../requests/download-policy.yaml
+  - _ref: requests/get-entity-files.yaml
+  - _ref: requests/download-policy.yaml
 events:
   onMount:
     - id: fetch_files
       type: Request
-      params:
-        _var:
-          key: files_request_id
-          default: get_entity_files
+      params: get_entity_files
 blocks:
-  - _module.var:
-      key: components.file_list
-      default:
-        _ref: ../components/default-file-list.yaml
+  - id:
+      _build.string.concat:
+        - _var:
+            key: block_id
+            default: file_list
+        - _empty
+    type: Box
+    visible:
+      _eq:
+        - _array.length:
+            _request: get_entity_files
+        - 0
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var:
+                key: block_id
+                default: file_list
+            - _no_files
+        type: Paragraph
+        properties:
+          content: No files
+          type: secondary
+          style:
+            fontSize: 12
+            fontStyle: italic
+  - id:
+      _build.string.concat:
+        - _var:
+            key: block_id
+            default: file_list
+        - _items
+    type: List
+    visible:
+      _gt:
+        - _array.length:
+            _request: get_entity_files
+        - 0
+    properties:
+      data:
+        _request: get_entity_files
+    blocks:
+      - id:
+          _build.string.concat:
+            - _var:
+                key: block_id
+                default: file_list
+            - _items.$.row
+        type: Box
+        layout:
+          gap: 8
+          justify: space-between
+          contentAlign: middle
+        blocks:
+          - id:
+              _build.string.concat:
+                - _var:
+                    key: block_id
+                    default: file_list
+                - _items.$.download
+            type: S3Download
+            properties:
+              s3GetPolicyRequestId: download_policy
+              fileList:
+                - _array_indices: file
+          - id:
+              _build.string.concat:
+                - _var:
+                    key: block_id
+                    default: file_list
+                - _items.$.date
+            type: Paragraph
+            properties:
+              type: secondary
+              style:
+                fontSize: 12
+              content:
+                _dayjs.format:
+                  on:
+                    _array_indices: created.timestamp
+                  params:
+                    format: YYYY-MM-DD

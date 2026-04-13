@@ -1,0 +1,7 @@
+id: imports
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: imports
+  write: true

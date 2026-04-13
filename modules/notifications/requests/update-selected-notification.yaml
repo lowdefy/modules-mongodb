@@ -1,0 +1,21 @@
+id: update_selected_notification
+type: MongoDBUpdateOne
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  selected_id:
+    _state: selected_id
+  app_name:
+    _module.var: app_name
+properties:
+  disableNoMatchError: true
+  filter:
+    _id:
+      _payload: selected_id
+    contact_id:
+      _user: id
+    created.app_name:
+      _payload: app_name
+  update:
+    $set:
+      read: true

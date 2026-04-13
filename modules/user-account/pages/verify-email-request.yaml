@@ -13,9 +13,7 @@ _ref:
           icon: AiOutlineMail
           title: Check Your Email
           subTitle:
-            _module.var:
-              key: verify_email_message
-              default: A sign in link has been sent to your email. Follow the link to sign in.
+            _module.var: verify_email_message
           theme:
             paddingLG: 0
             iconFontSize: 56

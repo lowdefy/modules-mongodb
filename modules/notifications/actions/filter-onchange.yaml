@@ -1,0 +1,4 @@
+debounce:
+  ms: 500
+try:
+  _ref: actions/update-list.yaml

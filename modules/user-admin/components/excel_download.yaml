@@ -18,10 +18,8 @@ events:
           _build.if:
             test:
               _build.ne:
-                - _module.var:
-                    key: app_title
-                    default: null
-                - null
+                - _module.var: app_title
+                - ""
             then:
               _build.string.concat:
                 - _module.var: app_title
@@ -44,10 +42,8 @@ events:
                   _build.if:
                     test:
                       _build.ne:
-                        - _module.var:
-                            key: app_title
-                            default: null
-                        - null
+                        - _module.var: app_title
+                        - ""
                     then:
                       _build.string.concat:
                         - _build.string.toLowerCase:
@@ -65,9 +61,7 @@ events:
                 value: app.roles
                 type: Array
                 width: 30
-            - _module.var:
-                key: components.download_columns
-                default: []
+            - _module.var: components.download_columns
             - - column: updated_at
                 value: updated_at
                 type: String

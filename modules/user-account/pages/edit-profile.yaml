@@ -27,10 +27,7 @@ _ref:
         layout:
           gap: 16
         blocks:
-          - _module.var:
-              key: components.form_profile
-              default:
-                _ref: ../components/form_profile.yaml
+          - _ref: components/form_profile.yaml
       - _ref:
           module: layout
           component: floating-actions
@@ -47,6 +44,15 @@ _ref:
                   onClick:
                     - id: validate
                       type: Validate
+                    - id: generate_avatar
+                      type: SetState
+                      params:
+                        contact.profile.picture:
+                          _js:
+                            _ref:
+                              path: ../shared/profile/generate-avatar-svg.js.njk
+                              vars:
+                                prefix: contact.profile
                     - id: update_profile
                       type: CallAPI
                       params:

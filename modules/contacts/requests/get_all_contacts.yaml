@@ -1,7 +1,7 @@
 id: get_all_contacts
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: contacts-db
+  _module.connectionId: contacts-collection
 payload:
   pagination:
     _state: pagination
@@ -52,9 +52,7 @@ properties:
                                     allowAnalyzedField: true
                         else: []
                     - _array.filter:
-                        - _module.var:
-                            key: request_stages.filter_match
-                            default: []
+                        - _module.var: request_stages.filter_match
                         - _function:
                             __ne:
                               - __args: 0
@@ -103,10 +101,7 @@ properties:
                     $dateToString:
                       date: $created.timestamp
                       format: "%Y-%m-%d"
-            - _module.var:
-                key: request_stages.get_all_contacts
-                default:
-                  - $addFields: {}
+            - _module.var: request_stages.get_all_contacts
     - $unwind:
         path: $count
     - $unwind:

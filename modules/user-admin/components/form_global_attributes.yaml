@@ -1,0 +1,19 @@
+id: form_global_attributes
+type: Box
+layout:
+  gap: 8
+blocks:
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: components.global_attributes_fields
+            - 0
+        then:
+          - id: global_attributes_divider
+            type: Divider
+            properties:
+              title: Global Attributes
+        else: []
+    - _module.var: components.global_attributes_fields

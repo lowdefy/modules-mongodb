@@ -1,20 +1,7 @@
 _ref:
-  module: layout
-  component: card
+  module: files
+  component: file-card
   vars:
-    title: Files
-    blocks:
-      - _ref:
-          module: files
-          component: file-list
-          vars:
-            entity_type: contact
-            entity_id:
-              _url_query: _id
-      - _ref:
-          module: files
-          component: file-upload
-          vars:
-            entity_type: contact
-            entity_id:
-              _url_query: _id
+    entity_type: contact
+    entity_id:
+      _url_query: _id

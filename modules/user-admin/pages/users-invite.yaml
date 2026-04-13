@@ -19,15 +19,13 @@ _ref:
       - label:
           _build.string.trim:
             _build.string.concat:
-              - _module.var:
-                  key: app_title
-                  default: ""
+              - _module.var: app_title
               - " User Admin"
         pageId:
           _module.pageId: users
       - label: Invite User
     requests:
-      - _ref: ../requests/get_user.yaml
+      - _ref: requests/get_user.yaml
     events:
       onMount:
         - id: redirect
@@ -58,6 +56,23 @@ _ref:
                       _input: email
                 else:
                   _request: get_user.0
+        - id: init_avatar_color
+          type: SetState
+          skip:
+            _ne:
+              - _state: user.profile.avatar_color
+              - null
+          params:
+            user.profile.avatar_color:
+              _get:
+                from:
+                  _module.var: avatar_colors
+                key:
+                  _math.floor:
+                    _product:
+                      - _math.random: true
+                      - _array.length:
+                          _module.var: avatar_colors
 
     blocks:
       - id: card
@@ -67,53 +82,26 @@ _ref:
         blocks:
           # TODO: doc_metadata component
           # - _ref: ../components/doc_metadata.yaml
-          - _ref: ../components/view_user_avatar_preview.yaml
-          - _ref: ../components/view_invite_link.yaml
-          - _ref: ../components/view_email.yaml
+          - _ref: components/view_user_avatar_preview.yaml
+          - _ref: components/view_invite_link.yaml
+          - _ref: components/view_email.yaml
           - id: divider
             type: Divider
             properties:
               title: Profile
-          - _module.var:
-              key: components.form_profile
-              default:
-                id: form_profile
-                type: Box
+          - _ref: components/form_profile.yaml
           - id: divider
             type: Divider
             properties:
               title: Access
-          - _module.var:
-              key: components.form_global_attributes
-              default:
-                id: form_global_attributes
-                type: Box
-          - _module.var:
-              key: components.form_app_attributes
-              default:
-                id: form_app_attributes
-                type: Box
-          - _ref: ../components/form_access_invite.yaml
+          - _ref: components/form_global_attributes.yaml
+          - _ref: components/form_app_attributes.yaml
+          - _ref: components/form_access_invite.yaml
       - _ref:
           module: layout
           component: floating-actions
           vars:
             actions:
-              - id: cancel_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
-                events:
-                  onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: users
               - id: save_button
                 type: Button
                 layout:
@@ -125,6 +113,15 @@ _ref:
                   onClick:
                     - id: validate
                       type: Validate
+                    - id: generate_avatar
+                      type: SetState
+                      params:
+                        user.profile.picture:
+                          _js:
+                            _ref:
+                              path: ../shared/profile/generate-avatar-svg.js.njk
+                              vars:
+                                prefix: user.profile
                     - id: invite_user
                       type: CallAPI
                       params:
@@ -137,6 +134,21 @@ _ref:
                         success: New invite created.
                     - id: reset
                       type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: users
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
                     - id: back
                       type: Link
                       params:

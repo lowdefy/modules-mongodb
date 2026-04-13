@@ -1,0 +1,41 @@
+id: upload_zone
+type: Box
+blocks:
+  - id: upload_dragger
+    type: S3UploadDragger
+    requests:
+      - _ref: requests/upload_policy.yaml
+    properties:
+      s3PostPolicyRequestId: upload_policy
+      title: Drop spreadsheet here, or click to browse
+      accept: '.xlsx'
+      singleFile: true
+    events:
+      onBeforeUpload:
+        - id: validate_headers
+          type: ValidateXlsxHeaders
+          params:
+            file:
+              _event: file
+            id_column:
+              _module.var: tool.id_column
+            required_columns:
+              _js: |
+                const cols = state('tool_columns') || [];
+                return cols.filter(c => c.required).map(c => c.field);
+      onSuccess:
+        # Wait for Lambda to process the file before refreshing
+        - id: wait_for_lambda
+          type: Wait
+          params:
+            ms: 1500
+        - id: refresh_all
+          type: Request
+          params:
+            - get_staged
+            - get_upload_history
+        - id: refresh_history_state
+          type: SetState
+          params:
+            upload_history_list:
+              _request: get_upload_history

@@ -14,6 +14,7 @@ vars:
     required: true
     description: App name for MongoDB field paths (e.g., prp-team)
   app_title:
+    default: ""
     description: "Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User."
   roles:
     required: true
@@ -24,18 +25,66 @@ vars:
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). Merges with default templates."
   app_domain:
     description: App domain URL for invite links (falls back to current origin)
+  show_title:
+    type: boolean
+    default: false
+    description: Show the title/honorific field (Mr, Ms, Dr, etc.)
   components:
-    description: "Component overrides: form_profile, form_global_attributes, form_app_attributes, table_columns, download_columns, filters"
+    type: object
+    description: "Component overrides: profile_fields, profile_set_fields, profile_view_config, attributes_view_config, view_extra, view_access_tile, global_attributes_fields, app_attributes_fields, table_columns, download_columns, filters"
+    properties:
+      profile_view_config:
+        default: null
+      attributes_view_config:
+        default: null
+      view_extra:
+        default: []
+      download_columns:
+        default: []
+      table_columns:
+        default: []
+      profile_set_fields:
+        default: {}
+      profile_fields:
+        default: []
+      filters:
+        default: []
+      app_attributes_fields:
+        default: []
+      global_attributes_fields:
+        default: []
+      view_access_tile:
+        default:
+          _ref: components/view_access.yaml
   request_stages:
+    type: object
     description: "MongoDB pipeline stage overrides: get_all_users, invite_user, update_user, filter_match"
+    properties:
+      filter_match:
+        default: []
+      get_all_users:
+        default:
+          - $addFields: {}
+      update_user:
+        default:
+          - $set: {}
+      invite_user:
+        default:
+          - $set: {}
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
+  avatar_colors:
+    default:
+      _ref: ../shared/profile/avatar_colors.yaml
+    description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
 
 exports:
   pages:
     - id: users
       description: User administration list with filtering, sorting, pagination, and Excel download
+    - id: users-view
+      description: Read-only user detail with profile, attributes, and access sidebar
     - id: users-edit
       description: Edit existing user profile and access settings
     - id: users-invite
@@ -43,7 +92,7 @@ exports:
     - id: check-invite-email
       description: Verify email availability before sending invite
   connections:
-    - id: user-contacts
+    - id: user-contacts-collection
       description: MongoDB connection for user contact records
   api:
     - id: invite-user
@@ -60,7 +109,7 @@ exports:
       description: User admin navigation link
 
 connections:
-  - _ref: connections/user-contacts.yaml
+  - _ref: connections/user-contacts-collection.yaml
 
 api:
   - _ref: api/invite-user.yaml
@@ -69,6 +118,7 @@ api:
 
 pages:
   - _ref: pages/users.yaml
+  - _ref: pages/users-view.yaml
   - _ref: pages/users-edit.yaml
   - _ref: pages/users-invite.yaml
   - _ref: pages/check-invite-email.yaml

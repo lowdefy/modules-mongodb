@@ -1,7 +1,7 @@
 id: get_user_excel_data
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: user-contacts
+  _module.connectionId: user-contacts-collection
 payload:
   filter:
     _state: filter
@@ -86,9 +86,7 @@ properties:
                                           _payload: filter.roles
                             else: []
                         - _array.filter:
-                            - _module.var:
-                                key: request_stages.filter_match
-                                default: []
+                            - _module.var: request_stages.filter_match
                             - _function:
                                 __ne:
                                   - __args: 0
@@ -223,10 +221,7 @@ properties:
                     - _module.var: app_name
                     - ".sign_up"
                 format: "%Y-%m-%d"
-      - _module.var:
-          key: request_stages.get_all_users
-          default:
-            - $addFields: {}
+      - _module.var: request_stages.get_all_users
       - - $project:
             apps: 0
         - $skip:

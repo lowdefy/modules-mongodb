@@ -8,6 +8,22 @@ _ref:
         - "New "
         - _module.var: label
     hide_title: true
+    content_width: 700
+    events:
+      onInit:
+        - id: init_avatar_color
+          type: SetState
+          params:
+            contact.profile.avatar_color:
+              _get:
+                from:
+                  _module.var: avatar_colors
+                key:
+                  _math.floor:
+                    _product:
+                      - _math.random: true
+                      - _array.length:
+                          _module.var: avatar_colors
     blocks:
       - _ref:
           module: layout
@@ -17,12 +33,8 @@ _ref:
               _string.concat:
                 - "New "
                 - _module.var: label
-            width: 700
             blocks:
-              - _module.var:
-                  key: components.form_fields
-                  default:
-                    _ref: ../components/form_contact.yaml
+              - _module.var: components.form_fields
       - _ref:
           module: layout
           component: floating-actions
@@ -63,6 +75,15 @@ _ref:
                   onClick:
                     - id: validate
                       type: Validate
+                    - id: generate_avatar
+                      type: SetState
+                      params:
+                        contact.profile.picture:
+                          _js:
+                            _ref:
+                              path: ../shared/profile/generate-avatar-svg.js.njk
+                              vars:
+                                prefix: contact.profile
                     - id: create_contact
                       type: CallAPI
                       params:

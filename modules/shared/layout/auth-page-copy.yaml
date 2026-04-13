@@ -47,9 +47,7 @@ blocks:
     style:
       overflow: hidden
       background:
-        _module.var:
-          key: auth_page.brand_panel_background
-          default: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)"
+        _module.var: auth_page.brand_panel_background
     slots:
       content:
         style:
@@ -64,9 +62,7 @@ blocks:
           filter: "brightness(0) invert(1)"
         properties:
           src:
-            _module.var:
-              key: logo.primary
-              default: /logo-light-theme.png
+            _module.var: logo.primary
           width: 100%
   # Form panel
   - id: auth-form-panel
@@ -108,9 +104,7 @@ blocks:
                   marginBottom: 8
                 properties:
                   src:
-                    _module.var:
-                      key: logo.primary
-                      default: /logo-light-theme.png
+                    _module.var: logo.primary
                   width: 100%
             # Card
             - - id: auth-card
@@ -121,9 +115,7 @@ blocks:
                     borderRadiusLG: 12
                     bodyPadding: 32
                 style:
-                  _module.var:
-                    key: auth_page.card_style
-                    default: {}
+                  _module.var: auth_page.card_style
                 layout:
                   gap: 16
                 blocks:
@@ -157,9 +149,7 @@ blocks:
                 test:
                   _build.gt:
                     - _build.array.length:
-                        _module.var:
-                          key: footer
-                          default: []
+                        _module.var: footer
                     - 0
                 then:
                   - id: auth-footer
@@ -168,7 +158,5 @@ blocks:
                       marginTop: 24
                       textAlign: center
                     blocks:
-                      _module.var:
-                        key: footer
-                        default: []
+                      _module.var: footer
                 else: []

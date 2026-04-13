@@ -8,8 +8,6 @@ links:
       title:
         _build.string.trim:
           _build.string.concat:
-            - _module.var:
-                key: app_title
-                default: ""
+            - _module.var: app_title
             - " User Admin"
       icon: AiOutlineTeam

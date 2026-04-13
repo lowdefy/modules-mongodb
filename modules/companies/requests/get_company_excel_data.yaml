@@ -1,7 +1,7 @@
 id: get_company_excel_data
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: companies-db
+  _module.connectionId: companies-collection
 payload:
   filter:
     _state: filter
@@ -41,19 +41,17 @@ properties:
                                     - wildcard:
                                         query:
                                           _string.concat:
-                                            - "*"
+                                            - '*'
                                             - _string.toLowerCase:
                                                 _payload: filter.search
-                                            - "*"
+                                            - '*'
                                         path:
                                           - _module.var: name_field
                                           - lowercase_email
                                         allowAnalyzedField: true
                             else: []
                         - _array.filter:
-                            - _module.var:
-                                key: request_stages.filter_match
-                                default: []
+                            - _module.var: request_stages.filter_match
                             - _function:
                                 __ne:
                                   - __args: 0
@@ -62,18 +60,16 @@ properties:
             display_name:
               $getField:
                 field:
-                  _module.var:
-                    key: name_field
-                    default: trading_name
-                input: "$$ROOT"
+                  _module.var: name_field
+                input: '$$ROOT'
             updated_at:
               $dateToString:
                 date: $updated.timestamp
-                format: "%Y-%m-%d"
+                format: '%Y-%m-%d'
             created_at:
               $dateToString:
                 date: $created.timestamp
-                format: "%Y-%m-%d"
+                format: '%Y-%m-%d'
         - _if:
             test:
               _eq:
@@ -96,10 +92,7 @@ properties:
               $sort:
                 score: -1
                 updated.timestamp: -1
-      - _module.var:
-          key: request_stages.get_all_companies
-          default:
-            - $addFields: {}
+      - _module.var: request_stages.get_all_companies
       - - $skip:
             _payload: pagination.skip
         - $limit:

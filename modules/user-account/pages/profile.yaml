@@ -9,16 +9,27 @@ _ref:
       - home: true
         icon: AiOutlineHome
       - label: Profile
+    requests:
+      - id: get_my_profile
+        type: MongoDBFindOne
+        connectionId:
+          _module.connectionId: user-contacts-collection
+        properties:
+          query:
+            sub:
+              _user: sub
+    events:
+      onMount:
+        - id: get_my_profile
+          type: Request
+          params: get_my_profile
     blocks:
       - id: card
         type: Card
         layout:
           gap: 16
         blocks:
-          - _module.var:
-              key: components.view_profile
-              default:
-                _ref: ../components/view_profile.yaml
+          - _ref: components/view_profile.yaml
       - _ref:
           module: layout
           component: floating-actions

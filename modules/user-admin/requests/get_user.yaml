@@ -1,7 +1,7 @@
 id: get_user
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: user-contacts
+  _module.connectionId: user-contacts-collection
 payload:
   user_id:
     _input: user_id

@@ -1,7 +1,7 @@
 id: get_entity_files
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: files-db
+  _module.connectionId: files-collection
 properties:
   pipeline:
     - $match:
@@ -11,5 +11,18 @@ properties:
           _var: entity_id
         removed:
           $ne: true
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: file_category
+                default: null
+            - null
+        then:
+          $match:
+            file_category:
+              _var: file_category
+        else:
+          $addFields: {}
     - $sort:
         created.timestamp: -1

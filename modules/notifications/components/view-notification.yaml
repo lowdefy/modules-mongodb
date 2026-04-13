@@ -1,0 +1,47 @@
+id: view_notification
+type: Box
+blocks:
+  - id: header
+    type: Html
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            <div style="display: flex; gap: 1em;">
+              <div style="flex: 0 1 auto;">
+              {% if status %}
+                <div style="font-size: 0.7rem; background: {{ status.color }}; padding: 6px; border-radius: 4px; color: white; min-width: 80px; text-align: center; margin-top: 8px;">
+                  <b>{{ status.title | safe }}</b>
+                </div>
+              {% endif %}
+              </div>
+              <div style="flex: 1 1 auto; width: 100%;">
+                <h3 style="margin: 0;">{{ notification.title | safe }}</h3>
+                <p><small style="color: var(--ant-color-text-secondary);">Received on {{ notification.created.timestamp | date('D MMM YYYY') }}</small></p>
+              </div>
+            </div>
+          on:
+            notification:
+              _var: notification
+            status:
+              _global:
+                _string.concat:
+                  - enums.event_types.
+                  - _get:
+                      key: event_type
+                      from:
+                        _var: notification
+  - id: divider
+    type: Divider
+    properties:
+      title: Notification Details
+  - id: notification_details
+    type: Html
+    style:
+      marginBottom: 2em
+    properties:
+      html:
+        _get:
+          key: body
+          from:
+            _var: notification

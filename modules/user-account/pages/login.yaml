@@ -73,14 +73,12 @@ _ref:
             _theme: colorTextSecondary
         properties:
           html:
-            _module.var:
-              key: login_message
-              default: <p>Please provide your work email to sign in.</p>
+            _module.var: login_message
       - id: email
         type: TextInput
         required: true
         validate:
-          _ref: ../validate/email.yaml
+          _ref: validate/email.yaml
         properties:
           title: Email
           label:

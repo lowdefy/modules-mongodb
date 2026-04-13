@@ -1,0 +1,18 @@
+$match:
+  _object.assign:
+    - _if:
+        test:
+          _eq:
+            - _payload: filter.type
+            - Unread
+        then:
+          read: false
+        else: {}
+    - _if:
+        test:
+          _eq:
+            - _payload: filter.type
+            - Read
+        then:
+          read: true
+        else: {}

@@ -11,9 +11,7 @@ _ref:
       - home: true
         icon: AiOutlineHome
       - label:
-          _module.var:
-            key: label_plural
-            default: Companies
+          _module.var: label_plural
         pageId:
           _module.pageId: companies
       - label:
@@ -57,7 +55,7 @@ _ref:
             pageId:
               _module.pageId: companies
     requests:
-      - _ref: ../requests/get_company.yaml
+      - _ref: requests/get_company.yaml
     blocks:
       - id: detail_layout
         type: Box
@@ -83,13 +81,8 @@ _ref:
                         doc:
                           _request: get_company.0
                         blocks:
-                          - _module.var:
-                              key: components.detail_fields
-                              default:
-                                _ref: ../components/view_company.yaml
-                - _module.var:
-                    key: components.main_tiles
-                    default: []
+                          - _module.var: components.detail_fields
+                - _module.var: components.main_tiles
           - id: sidebar_column
             type: Box
             layout:
@@ -98,11 +91,6 @@ _ref:
                 span: 24
             blocks:
               _build.array.concat:
-                - _module.var:
-                    key: components.sidebar_default_tiles
-                    default:
-                      - _ref: ../components/tile_contacts.yaml
-                      - _ref: ../components/tile_events.yaml
-                - _module.var:
-                    key: components.sidebar_tiles
-                    default: []
+                - - _ref: components/tile_contacts.yaml
+                  - _ref: components/tile_events.yaml
+                - _module.var: components.sidebar_tiles

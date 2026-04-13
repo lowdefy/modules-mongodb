@@ -1,7 +1,7 @@
 id: get_contact
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: contacts-db
+  _module.connectionId: contacts-collection
 payload:
   _id:
     _url_query: _id

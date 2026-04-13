@@ -1,0 +1,9 @@
+id: default
+links:
+  - id: release-notes
+    type: MenuLink
+    pageId:
+      _module.pageId: release-notes
+    properties:
+      title: Release Notes
+      icon: AiOutlineFileText

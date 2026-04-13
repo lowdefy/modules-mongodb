@@ -1,0 +1,16 @@
+- id: set_pagination
+  type: SetState
+  params:
+    pagination:
+      pageSize: 10
+      skip: 0
+      current: 1
+- id: fetch
+  type: Request
+  params: get_notifications
+- id: set_notifications
+  type: SetState
+  params:
+    list:
+      _request: get_notifications.0.notifications
+- _ref: actions/set-types.yaml

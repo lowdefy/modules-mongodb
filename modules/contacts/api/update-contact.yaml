@@ -4,7 +4,7 @@ routine:
   - id: update
     type: MongoDBUpdateOne
     connectionId:
-      _module.connectionId: contacts-db
+      _module.connectionId: contacts-collection
     properties:
       filter:
         _object.assign:
@@ -25,55 +25,47 @@ routine:
       update:
         _build.array.concat:
           - - $set:
-                # email and lowercase_email are NOT updated — email is immutable after creation
-                profile.name:
-                  _string.concat:
-                    - _if_none:
-                        - _payload: contact.profile.given_name
-                        - ""
-                    - " "
-                    - _if_none:
-                        - _payload: contact.profile.family_name
-                        - ""
-                profile.picture:
-                  _string.concat:
-                    - "https://api.dicebear.com/6.x/initials/svg?seed="
-                    - _if_none:
-                        - _payload: contact.profile.given_name
-                        - ""
-                    - " "
-                    - _if_none:
-                        - _payload: contact.profile.family_name
-                        - ""
-                profile.title:
-                  _payload: contact.profile.title
-                profile.given_name:
-                  _payload: contact.profile.given_name
-                profile.family_name:
-                  _payload: contact.profile.family_name
-                profile.work_phone:
-                  _payload: contact.profile.work_phone
-                profile.mobile_phone:
-                  _payload: contact.profile.mobile_phone
-                profile.department:
-                  _payload: contact.profile.department
-                profile.job_title:
-                  _payload: contact.profile.job_title
-                profile.birthday:
-                  _payload: contact.profile.birthday
-                global_attributes.company_ids:
-                  _if_none:
-                    - _payload: contact.global_attributes.company_ids
-                    - []
-                global_attributes.internal_details:
-                  _payload: contact.global_attributes.internal_details
-                updated:
-                  _ref:
-                    module: events
-                    component: change_stamp
-          - _module.var:
-              key: request_stages.update_contact
-              default: []
+                _object.assign:
+                  # email and lowercase_email are NOT updated — email is immutable after creation
+                  # Core profile fields
+                  - profile.name:
+                      _string.concat:
+                        - _if_none:
+                            - _payload: contact.profile.given_name
+                            - ""
+                        - " "
+                        - _if_none:
+                            - _payload: contact.profile.family_name
+                            - ""
+                    profile.avatar_color:
+                      _payload: contact.profile.avatar_color
+                    profile.picture:
+                      _payload: contact.profile.picture
+                    profile.given_name:
+                      _payload: contact.profile.given_name
+                    profile.family_name:
+                      _payload: contact.profile.family_name
+                    global_attributes.company_ids:
+                      _if_none:
+                        - _payload: contact.global_attributes.company_ids
+                        - []
+                    updated:
+                      _ref:
+                        module: events
+                        component: change_stamp
+                  # Title (conditional)
+                  - _build.if:
+                      test:
+                        _module.var: show_title
+                      then:
+                        profile.title:
+                          _payload: contact.profile.title
+                      else: {}
+                  # Extended profile fields (injected by consumer)
+                  - _module.var: components.profile_set_fields
+                  # Attribute set fields (injected by consumer)
+                  - _module.var: components.attributes_set_fields
+          - _module.var: request_stages.update_contact
 
   - id: new-event
     type: CallApi
@@ -92,10 +84,8 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: ../defaults/event_display.yaml
-                        - _module.var:
-                            key: event_display
-                            default: {}
+                        - _ref: defaults/event_display.yaml
+                        - _module.var: event_display
                   callback:
                     _build.function:
                       __build.ne:

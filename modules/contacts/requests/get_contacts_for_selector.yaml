@@ -1,7 +1,7 @@
 id: get_contacts_for_selector
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: contacts-db
+  _module.connectionId: contacts-collection
 properties:
   pipeline:
     _build.array.concat:
@@ -20,6 +20,4 @@ properties:
             value: "$_id"
         - $sort:
             label: 1
-      - _module.var:
-          key: request_stages.selector
-          default: []
+      - _module.var: request_stages.selector

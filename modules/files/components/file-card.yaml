@@ -1,0 +1,56 @@
+_ref:
+  module: layout
+  component: card
+  vars:
+    title:
+      _var:
+        key: title
+        default: Files
+    blocks:
+      - _ref:
+          path: components/file-manager.yaml
+          vars:
+            entity_type:
+              _var: entity_type
+            entity_id:
+              _var: entity_id
+            file_category:
+              _var:
+                key: file_category
+                default: null
+            view_only:
+              _var:
+                key: view_only
+                default: false
+            disabled:
+              _var:
+                key: disabled
+                default: false
+            allow_delete:
+              _var:
+                key: allow_delete
+                default: true
+            single_file:
+              _var:
+                key: single_file
+                default: false
+            max_count:
+              _var:
+                key: max_count
+                default: null
+            accept:
+              _var:
+                key: accept
+                default: "*"
+            hint:
+              _var:
+                key: hint
+                default: null
+            file_title:
+              _var:
+                key: file_title
+                default: null
+            block_id:
+              _var:
+                key: block_id
+                default: file_manager

@@ -1,19 +1,6 @@
-profile.name:
-  _string.trim:
-    _string.concat:
-      - _string.trim:
-          _if_none:
-            - _payload: contact.profile.given_name
-            - ""
-      - " "
-      - _string.trim:
-          _if_none:
-            - _payload: contact.profile.family_name
-            - ""
-profile.picture:
-  _string.concat:
-    - https://api.dicebear.com/6.x/initials/svg?backgroundType=gradientLinear&scale=75&seed=
-    - _string.trim:
+_build.object.assign:
+  - profile.name:
+      _string.trim:
         _string.concat:
           - _string.trim:
               _if_none:
@@ -24,40 +11,29 @@ profile.picture:
               _if_none:
                 - _payload: contact.profile.family_name
                 - ""
-profile.title:
-  _payload: contact.profile.title
-profile.given_name:
-  _string.trim:
-    _if_none:
-      - _payload: contact.profile.given_name
-      - ""
-profile.family_name:
-  _string.trim:
-    _if_none:
-      - _payload: contact.profile.family_name
-      - ""
-profile.work_phone:
-  _payload: contact.profile.work_phone
-profile.mobile_phone:
-  _payload: contact.profile.mobile_phone
-profile.birthday:
-  _payload: contact.profile.birthday
-profile.job_title:
-  _string.trim:
-    _if_none:
-      - _payload: contact.profile.job_title
-      - ""
-profile.department:
-  _string.trim:
-    _if_none:
-      - _payload: contact.profile.department
-      - ""
-profile.company_name:
-  _string.trim:
-    _if_none:
-      - _payload: contact.profile.company_name
-      - ""
-updated:
-  _ref:
-    module: events
-    component: change_stamp
+    profile.avatar_color:
+      _payload: contact.profile.avatar_color
+    profile.picture:
+      _payload: contact.profile.picture
+    profile.given_name:
+      _string.trim:
+        _if_none:
+          - _payload: contact.profile.given_name
+          - ""
+    profile.family_name:
+      _string.trim:
+        _if_none:
+          - _payload: contact.profile.family_name
+          - ""
+    updated:
+      _ref:
+        module: events
+        component: change_stamp
+  - _build.if:
+      test:
+        _module.var: show_title
+      then:
+        profile.title:
+          _payload: contact.profile.title
+      else: {}
+  - _module.var: components.profile_set_fields

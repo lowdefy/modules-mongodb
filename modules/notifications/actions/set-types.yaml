@@ -1,0 +1,15 @@
+id: set_event_types
+type: SetState
+params:
+  event_types:
+    _js: |
+      const notification_types = request('get_notification_types.0.event_types');
+      const event_types = lowdefyGlobal('enums.event_types');
+      if (!notification_types || !event_types) return [];
+      return Object.keys(event_types)
+        .filter(key => notification_types.includes(key))
+        .map(key => ({
+          value: key,
+          label: event_types[key].title,
+          tag: { color: event_types[key].color }
+        }));

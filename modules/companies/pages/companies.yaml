@@ -4,16 +4,12 @@ _ref:
   vars:
     id: companies
     title:
-      _module.var:
-        key: label_plural
-        default: Companies
+      _module.var: label_plural
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _module.var:
-            key: label_plural
-            default: Companies
+          _module.var: label_plural
     page_actions:
       - id: new_company_button
         type: Button
@@ -54,17 +50,11 @@ _ref:
           params:
             - get_all_companies
     requests:
-      - _ref: ../requests/get_all_companies.yaml
+      - _ref: requests/get_all_companies.yaml
     blocks:
-      - _module.var:
-          key: components.filters
-          default:
-            _ref: ../components/filter_companies.yaml
+      - _module.var: components.filters
       - id: content
         type: Card
         blocks:
-          - _module.var:
-              key: components.table
-              default:
-                _ref: ../components/table_companies.yaml
-          - _ref: ../components/pagination.yaml
+          - _module.var: components.table
+          - _ref: components/pagination.yaml

@@ -15,7 +15,7 @@ routine:
             date:
               _date: now
             created:
-              _ref: ../defaults/change_stamp.yaml
+              _ref: defaults/change_stamp.yaml
             type:
               _payload: type
             metadata:

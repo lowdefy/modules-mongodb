@@ -43,9 +43,7 @@ blocks:
         type: Box
         style:
           maxWidth:
-            _module.var:
-              key: auth_page.max_width
-              default: 360
+            _module.var: auth_page.max_width
         blocks:
           _build.array.concat:
             - - id: auth-card
@@ -54,9 +52,7 @@ blocks:
                   gap: 16
                 style:
                   .element:
-                    _module.var:
-                      key: auth_page.card_style
-                      default: {}
+                    _module.var: auth_page.card_style
                 properties:
                   bordered: false
                   theme:
@@ -73,28 +69,17 @@ blocks:
                         style:
                           padding: '32px 32px 24px 32px'
                           background:
-                            _module.var:
-                              key: auth_page.cover_background
-                              default:
-                                _if:
-                                  test:
-                                    _media: darkMode
-                                  then: 'linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 40%, black) 0%, color-mix(in srgb, var(--ant-color-primary) 60%, black) 100%)'
-                                  else: 'linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)'
+                            _module.var: auth_page.cover_background
                           borderRadius: '12px 12px 0 0'
                         blocks:
                           - id: auth-logo
                             type: Img
                             style:
                               maxWidth:
-                                _module.var:
-                                  key: auth_page.logo_max_width
-                                  default: 160
+                                _module.var: auth_page.logo_max_width
                             properties:
                               src:
-                                _module.var:
-                                  key: logo.primary_dark
-                                  default: /logo-dark-theme.png
+                                _module.var: logo.primary_dark
                               width: 100%
                 blocks:
                   _build.array.concat:
@@ -123,9 +108,7 @@ blocks:
                 test:
                   _build.gt:
                     - _build.array.length:
-                        _module.var:
-                          key: footer
-                          default: []
+                        _module.var: footer
                     - 0
                 then:
                   - id: auth-footer
@@ -136,7 +119,5 @@ blocks:
                       fontSize: 12
                       color: 'var(--ant-color-text-secondary)'
                     blocks:
-                      _module.var:
-                        key: footer
-                        default: []
+                      _module.var: footer
                 else: []

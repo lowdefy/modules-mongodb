@@ -1,6 +1,0 @@
-id: notifications-db
-type: MongoDBCollection
-properties:
-  databaseUri:
-    _secret: MONGODB_URI
-  collection: notifications

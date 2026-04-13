@@ -1,0 +1,75 @@
+id: upload_history
+type: Box
+visible:
+  _gt:
+    - _array.length:
+        _if_none:
+          - _state: upload_history_list
+          - []
+    - 0
+blocks:
+  - id: upload_history_header
+    type: Html
+    properties:
+      html: |
+        <div class="flex items-center gap-2 mb-1">
+          <span class="text-text-secondary text-xs font-semibold uppercase tracking-wider">Recent Uploads</span>
+          <span class="h-px flex-1 bg-border-secondary"></span>
+        </div>
+  - id: upload_history_list
+    type: List
+    style:
+      maxHeight: 200
+      overflowY: auto
+    blocks:
+      - id: upload_history_list.$.row
+        type: Box
+        layout:
+          justify: space-between
+          align: middle
+          gap: 8
+        style:
+          padding: 5px 8px
+          borderRadius: 6
+        blocks:
+          - id: upload_history_list.$.info
+            type: Html
+            style:
+              flex: 1 1 auto
+              minWidth: 0
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    <div class="flex items-center gap-1.5 min-w-0">
+                      <span class="text-xs font-medium truncate">{{ file_name }}</span>
+                      <span class="shrink-0 px-1.5 rounded-sm text-[10px] font-medium leading-[16px] {% if status == 'Successful' %}bg-success-bg text-success{% elif status == 'Failed' %}bg-error-bg text-error{% else %}bg-fill-tertiary text-text-quaternary{% endif %}">{{ status }}</span>
+                    </div>
+                    <div class="text-text-quaternary text-[11px] leading-relaxed pl-5">{{ date_display }}&ensp;·&ensp;{{ uploaded_by_name }}&ensp;·&ensp;{{ count }} rows</div>
+                  on:
+                    _state: upload_history_list.$
+          - id: upload_history_list.$.download_btn
+            type: Button
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: ''
+              type: text
+              size: small
+              icon: AiOutlineCloudDownload
+            events:
+              onClick:
+                - id: set_download_key
+                  type: SetState
+                  params:
+                    download_file_key:
+                      _state: upload_history_list.$.file_key
+                - id: get_download_url
+                  type: Request
+                  params: get_upload_download
+                - id: open_download
+                  type: Link
+                  params:
+                    url:
+                      _request: get_upload_download
+                    newTab: true

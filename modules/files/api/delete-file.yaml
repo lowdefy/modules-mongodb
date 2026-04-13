@@ -4,7 +4,7 @@ routine:
   - id: delete
     type: MongoDBUpdateOne
     connectionId:
-      _module.connectionId: files-db
+      _module.connectionId: files-collection
     properties:
       filter:
         _id:
@@ -16,6 +16,29 @@ routine:
             _ref:
               module: events
               component: change_stamp
+
+  - id: log-event
+    type: CallApi
+    skip:
+      _not:
+        _module.var: log_events
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: delete-file
+        references:
+          entity_type:
+            _payload: entity_type
+          entity_id:
+            _payload: entity_id
+        metadata:
+          file_id:
+            _payload: file_id
+          file_name:
+            _payload: file_name
 
   - :return:
       success: true
