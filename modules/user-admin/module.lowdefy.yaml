@@ -29,33 +29,45 @@ vars:
     type: boolean
     default: false
     description: Show the title/honorific field (Mr, Ms, Dr, etc.)
-  components:
+  CHOOSE_NAME_PROFILE_ATTRIBUTE_CONFIG:
     type: object
     description: "Component overrides: profile_fields, profile_set_fields, profile_view_config, attributes_view_config, view_extra, view_access_tile, global_attributes_fields, app_attributes_fields, table_columns, download_columns, filters"
     properties:
-      profile_view_config:
-        default: null
+      app_attributes_fields:
+        description: "TODO"
+        default: []
       attributes_view_config:
+        description: "TODO"
         default: null
-      view_extra:
+      global_attributes_fields:
+        description: "TODO"
         default: []
-      download_columns:
-        default: []
-      table_columns:
+      profile_fields:
+        description: "TODO"
         default: []
       profile_set_fields:
+        description: "TODO"
         default: {}
-      profile_fields:
+      profile_view_config:
+        description: "TODO"
+        default: null
+      view_extra:
+        description: "TODO"
+        default: []
+  CHOOSE_NAME_USERS_TABLE_CONFIG:
+    type: object
+    description: "TODO"
+    properties:
+      download_columns:
+        description: "TODO"
+        default: []
+      table_columns:
+        description: "TODO"
         default: []
       filters:
+        description: "TODO"
         default: []
-      app_attributes_fields:
-        default: []
-      global_attributes_fields:
-        default: []
-      view_access_tile:
-        default:
-          _ref: components/view_access.yaml
+
   request_stages:
     type: object
     description: "MongoDB pipeline stage overrides: get_all_users, invite_user, update_user, filter_match"
@@ -141,3 +153,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^1"

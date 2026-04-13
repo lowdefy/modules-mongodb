@@ -1,0 +1,5 @@
+- id: user.global_attributes.notes
+  type: TextArea
+  properties:
+    label: Notes
+    rows: 3
