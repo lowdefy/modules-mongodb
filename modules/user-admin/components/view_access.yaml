@@ -54,12 +54,7 @@ blocks:
     blocks:
       _build.array.map:
         on:
-          # TODO: FIX
-          - mrm
-          - user-admin-hydra
-          - demo
-
-          # _module.var: roles
+          _module.var: roles
         callback:
           _build.function:
             id:

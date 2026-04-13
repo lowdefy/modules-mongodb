@@ -73,19 +73,22 @@ auth:
     global_attributes: user.global_attributes
     roles: user.roles
   pages:
-    public: true
-  # pages:
-  # protected: true
-  # public:
-  #   - '404'
-  #   - notifications-invalid
-  #   - notifications-link
-  #   - router
-  #   - user-account/login
-  #   - user-account/verify-email-request
-  # roles:
-  #   user-admin:
-  #     - user-admin/*
+    protected: true
+    public:
+      - '404'
+      - notifications-invalid
+      - notifications-link
+      - router
+      - user-account/login
+      - user-account/verify-email-request
+    roles:
+      user-admin:
+        - user-admin/*
+  api:
+    protected: true
+    roles:
+      user-admin:
+        - user-admin/*
 
 modules:
   _ref: modules.yaml

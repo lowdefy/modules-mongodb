@@ -3,8 +3,27 @@ display_key:
     path: app_config.yaml
     key: app_name
 change_stamp:
-  _ref: ../shared/change_stamp.yaml
-event_types:
-  _build.object.assign:
-    - _ref: pages/lot-view/enums/lot_event_types.yaml
-    - _ref: pages/package-detail/enums/package_event_types.yaml
+  timestamp:
+    _date: now
+  user:
+    name:
+      _if_none:
+        - _user: profile.name
+        - _var: default_name
+    id:
+      _if_none:
+        - _user: id
+        - _var: default_id
+  app_name:
+    _ref:
+      path: app_config.yaml
+      key: app_name
+  version:
+    app:
+      _ref:
+        path: package.json
+        key: version
+    lowdefy:
+      _ref:
+        path: package.json
+        key: dependencies.lowdefy
