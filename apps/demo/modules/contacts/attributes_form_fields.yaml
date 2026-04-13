@@ -1,0 +1,5 @@
+- id: contact.global_attributes.internal_details
+  type: TextArea
+  properties:
+    title: Notes
+    rows: 3

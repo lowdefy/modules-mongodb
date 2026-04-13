@@ -1,0 +1,11 @@
+app_name:
+  _ref:
+    path: app_config.yaml
+    key: app_name
+components:
+  profile_fields:
+    _ref: modules/shared/profile/form_fields.yaml
+  profile_set_fields:
+    _ref: modules/shared/profile/set_fields.yaml
+  profile_view_config:
+    _ref: modules/shared/profile/view_config.yaml

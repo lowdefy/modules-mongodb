@@ -1,0 +1,10 @@
+display_key:
+  _ref:
+    path: app_config.yaml
+    key: app_name
+change_stamp:
+  _ref: ../shared/change_stamp.yaml
+event_types:
+  _build.object.assign:
+    - _ref: pages/lot-view/enums/lot_event_types.yaml
+    - _ref: pages/package-detail/enums/package_event_types.yaml

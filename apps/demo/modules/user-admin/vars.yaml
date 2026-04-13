@@ -1,0 +1,13 @@
+app_name:
+  _ref:
+    path: app_config.yaml
+    key: app_name
+roles:
+  _ref: modules/user-admin/roles.yaml
+components:
+  profile_fields:
+    _ref: modules/user-admin/profile_form_fields.yaml
+  profile_set_fields:
+    _ref: modules/user-admin/profile_set_fields.yaml
+  profile_view_config:
+    _ref: modules/shared/profile/view_config.yaml

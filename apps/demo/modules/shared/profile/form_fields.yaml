@@ -1,0 +1,13 @@
+- id: contact.profile.phone_number
+  type: PhoneNumberInput
+  properties:
+    title: Phone Number
+    defaultRegion: US
+- id: contact.profile.department
+  type: TextInput
+  properties:
+    title: Department
+- id: contact.profile.job_title
+  type: TextInput
+  properties:
+    title: Job Title

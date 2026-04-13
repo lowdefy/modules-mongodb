@@ -1,0 +1,12 @@
+profile.phone_number:
+  _payload: contact.profile.phone_number
+profile.job_title:
+  _string.trim:
+    _if_none:
+      - _payload: contact.profile.job_title
+      - ""
+profile.department:
+  _string.trim:
+    _if_none:
+      - _payload: contact.profile.department
+      - ""
