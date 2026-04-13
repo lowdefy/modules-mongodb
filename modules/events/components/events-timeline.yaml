@@ -9,39 +9,42 @@ requests:
     type: MongoDBAggregation
     connectionId:
       _module.connectionId: events-collection
+    payload:
+      reference_value:
+        _var: reference_value
     properties:
       pipeline:
         - $match:
             _object.fromEntries:
               - - _var: reference_field
-                - _var: reference_value
+                - _payload: reference_value
         - $sort:
             date: -1
         - $addFields:
             title:
               _string.concat:
-                - "$"
+                - '$'
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - ".title"
+                - '.title'
             description:
               _string.concat:
-                - "$"
+                - '$'
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - ".description"
+                - '.description'
             info:
               _string.concat:
-                - "$"
+                - '$'
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - ".info"
+                - '.info'
 
 blocks:
   - id: events-timeline
@@ -51,10 +54,11 @@ blocks:
         _request: get-events
       eventTypeConfig:
         _build.object.assign:
-          - _ref: ../../shared/enums/event_types.yaml
-          - _module.var:
-              key: event_types
-              default: {}
-      reverse: true
+          - _ref: ../shared/enums/event_types.yaml
+          - _module.var: event_types
+      reverse:
+        _var:
+          key: reverse
+          default: true
       s3GetPolicyRequestId:
         _var: s3GetPolicyRequestId

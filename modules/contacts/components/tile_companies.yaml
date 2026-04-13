@@ -7,11 +7,11 @@ _ref:
       - id: contact_companies_list
         type: Box
         requests:
-          - _ref: ../requests/get_contact_companies.yaml
+          - _ref: requests/get_contact_companies.yaml
         events:
           onMount:
             - id: fetch_companies
               type: Request
               params: get_contact_companies
         blocks:
-          - _ref: ../components/company_list_items.yaml
+          - _ref: components/company_list_items.yaml

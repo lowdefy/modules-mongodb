@@ -1,0 +1,46 @@
+# shared layout component — accepts vars for data binding
+id: identity_header
+type: Box
+class: bg-primary-bg p-4 rounded-lg
+layout:
+  gap: 12
+  direction: row
+  align: middle
+blocks:
+  - id: avatar
+    type: Avatar
+    layout:
+      flex: 0 0 auto
+    properties:
+      size: 64
+      src:
+        _var: avatar_src
+      icon: UserOutlined
+  - id: identity_text
+    type: Box
+    layout:
+      flex: 1 1 auto
+      gap: 0
+    blocks:
+      _build.array.concat:
+        - - id: display_name
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: '<span class="text-base font-semibold">{{ name | safe }}</span>'
+                  on:
+                    name:
+                      _var: name
+          - id: email
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: '<span class="text-sm text-text-secondary">{{ email | safe }}</span>'
+                  on:
+                    email:
+                      _var: email
+        - _var:
+            key: extra
+            default: []

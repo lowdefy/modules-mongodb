@@ -1,0 +1,10 @@
+id: form_global_attributes
+type: Box
+layout:
+  gap: 8
+blocks:
+  - id: user.global_attributes.notes
+    type: TextArea
+    properties:
+      label: Notes
+      rows: 3

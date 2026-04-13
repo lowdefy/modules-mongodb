@@ -1,7 +1,7 @@
 id: check_invite_email
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: user-contacts
+  _module.connectionId: user-contacts-collection
 payload:
   email:
     _state: email

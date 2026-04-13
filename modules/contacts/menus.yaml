@@ -6,7 +6,5 @@ links:
       _module.pageId: contacts
     properties:
       title:
-        _module.var:
-          key: label_plural
-          default: Contacts
+        _module.var: label_plural
       icon: AiOutlineContacts

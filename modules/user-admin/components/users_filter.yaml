@@ -16,10 +16,10 @@ blocks:
         disabled: true
     events:
       onPressEnter:
-        _ref: ../actions/search.yaml
+        _ref: actions/search.yaml
       onChange:
         try:
-          _ref: ../actions/search.yaml
+          _ref: actions/search.yaml
         debounce:
           ms: 500
   - id: filter.roles
@@ -27,9 +27,7 @@ blocks:
     visible:
       _gt:
         - _array.length:
-            _module.var:
-              key: roles
-              default: []
+            _module.var: roles
         - 0
     layout:
       flex: 1 1 auto
@@ -41,7 +39,7 @@ blocks:
         _module.var: roles
     events:
       onChange:
-        _ref: ../actions/search.yaml
+        _ref: actions/search.yaml
   - id: filter.status
     type: ButtonSelector
     layout:
@@ -58,7 +56,7 @@ blocks:
           value: invited
     events:
       onChange:
-        _ref: ../actions/search.yaml
+        _ref: actions/search.yaml
   - id: filter.clear
     type: Button
     layout:
@@ -71,4 +69,4 @@ blocks:
         _build.array.concat:
           - - id: reset
               type: Reset
-          - _ref: ../actions/search.yaml
+          - _ref: actions/search.yaml

@@ -47,9 +47,7 @@ events:
                 value: profile.mobile_phone
                 type: String
                 width: 15
-            - _module.var:
-                key: components.download_columns
-                default: []
+            - _module.var: components.download_columns
             - - column: updated_at
                 value: updated_at
                 type: String

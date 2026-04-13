@@ -1,8 +1,0 @@
-id: user-contacts
-type: MongoDBCollection
-properties:
-  databaseUri:
-    _secret: MONGODB_URI
-  collection: user_contacts
-  changeLog:
-    collection: user_contacts_log

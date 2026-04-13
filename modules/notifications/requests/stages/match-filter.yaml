@@ -1,0 +1,38 @@
+$match:
+  _object.assign:
+    - _if:
+        test:
+          _gt:
+            - _array.length:
+                _payload: filter.dates
+            - 0
+        then:
+          created.timestamp:
+            $gte:
+              _payload: filter.dates.0
+            $lt:
+              _mql.expr:
+                on:
+                  end_date:
+                    _if_none:
+                      - _payload: filter.dates.1
+                      - _date: now
+                expr:
+                  $dateAdd:
+                    startDate: $end_date
+                    unit: day
+                    amount: 1
+        else: {}
+    - _if:
+        test:
+          _gt:
+            - _array.length:
+                _payload: filter.status
+            - 0
+        then:
+          event_type:
+            $in:
+              _if_none:
+                - _payload: filter.status
+                - []
+        else: {}

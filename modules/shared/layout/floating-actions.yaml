@@ -1,25 +1,16 @@
 id: floating-action-bar
-type: Box
-style:
-  maxWidth:
-    _var:
-      key: width
-      default: "100%"
-  margin: auto
+type: Affix
+properties:
+  offsetBottom: 0
 blocks:
-  - id: floating-action-affix
-    type: Affix
+  - id: floating-action-card
+    type: Card
     properties:
-      offsetBottom: 0
+      size: small
+    layout:
+      direction: row-reverse
+      gap: 8
     blocks:
-      - id: floating-action-card
-        type: Card
-        properties:
-          size: small
-        layout:
-          direction: row-reverse
-          gap: 8
-        blocks:
-          _var:
-            key: actions
-            default: []
+      _var:
+        key: actions
+        default: []

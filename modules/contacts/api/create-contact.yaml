@@ -4,7 +4,7 @@ routine:
   - id: check-existing
     type: MongoDBFindOne
     connectionId:
-      _module.connectionId: contacts-db
+      _module.connectionId: contacts-collection
     properties:
       query:
         lowercase_email:
@@ -15,85 +15,81 @@ routine:
                 - ""
 
   - id: insert
-    type: MongoDBInsertOne
+    type: MongoDBUpdateOne
     skip:
       _ne:
         - _step: check-existing
         - null
     connectionId:
-      _module.connectionId: contacts-db
+      _module.connectionId: contacts-collection
     properties:
-      doc:
-        _build.object.assign:
-          - _id:
-              _uuid: true
-            email:
-              _string.trim:
-                _if_none:
-                  - _payload: contact.email
-                  - ""
-            lowercase_email:
-              _string.toLowerCase:
-                _string.trim:
-                  _if_none:
-                    - _payload: contact.email
-                    - ""
-            profile:
-              name:
-                _string.concat:
-                  - _if_none:
-                      - _payload: contact.profile.given_name
-                      - ""
-                  - " "
-                  - _if_none:
-                      - _payload: contact.profile.family_name
-                      - ""
-              picture:
-                _string.concat:
-                  - "https://api.dicebear.com/6.x/initials/svg?seed="
-                  - _if_none:
-                      - _payload: contact.profile.given_name
-                      - ""
-                  - " "
-                  - _if_none:
-                      - _payload: contact.profile.family_name
-                      - ""
-              title:
-                _payload: contact.profile.title
-              given_name:
-                _payload: contact.profile.given_name
-              family_name:
-                _payload: contact.profile.family_name
-              work_phone:
-                _payload: contact.profile.work_phone
-              mobile_phone:
-                _payload: contact.profile.mobile_phone
-              department:
-                _payload: contact.profile.department
-              job_title:
-                _payload: contact.profile.job_title
-              birthday:
-                _payload: contact.profile.birthday
-            global_attributes:
-              company_ids:
-                _if_none:
-                  - _payload: contact.global_attributes.company_ids
-                  - []
-              internal_details:
-                _payload: contact.global_attributes.internal_details
-            hidden: false
-            disabled: false
-            created:
-              _ref:
-                module: events
-                component: change_stamp
-            updated:
-              _ref:
-                module: events
-                component: change_stamp
-          - _module.var:
-              key: request_stages.insert_contact
-              default: {}
+      filter:
+        _id:
+          _payload: _id
+      options:
+        upsert: true
+      update:
+        _build.array.concat:
+          - - $set:
+                _object.assign:
+                  # Insert-only fields (use $ifNull so they're only set on first insert)
+                  - _id:
+                      $ifNull:
+                        - $_id
+                        - _payload: _id
+                    email:
+                      _payload: contact.email
+                    lowercase_email:
+                      _string.toLowerCase:
+                        _payload: contact.email
+                    hidden: false
+                    disabled: false
+                    created:
+                      $ifNull:
+                        - $created
+                        - _ref:
+                            module: events
+                            component: change_stamp
+                  # Core profile fields
+                  - profile.name:
+                      _string.concat:
+                        - _if_none:
+                            - _payload: contact.profile.given_name
+                            - ""
+                        - " "
+                        - _if_none:
+                            - _payload: contact.profile.family_name
+                            - ""
+                    profile.avatar_color:
+                      _payload: contact.profile.avatar_color
+                    profile.picture:
+                      _payload: contact.profile.picture
+                    profile.given_name:
+                      _payload: contact.profile.given_name
+                    profile.family_name:
+                      _payload: contact.profile.family_name
+                    global_attributes.company_ids:
+                      _if_none:
+                        - _payload: contact.global_attributes.company_ids
+                        - []
+                    updated:
+                      _ref:
+                        module: events
+                        component: change_stamp
+                  # Title (conditional)
+                  - _build.if:
+                      test:
+                        _module.var: show_title
+                      then:
+                        profile.title:
+                          _payload: contact.profile.title
+                      else: {}
+                  # Extended profile fields (injected by consumer)
+                  - _module.var: components.profile_set_fields
+                  # Attribute set fields (injected by consumer)
+                  - _module.var: components.attributes_set_fields
+          # request_stages injection (preserved)
+          - _module.var: request_stages.insert_contact
 
   - id: new-event
     type: CallApi
@@ -116,10 +112,8 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: ../defaults/event_display.yaml
-                        - _module.var:
-                            key: event_display
-                            default: {}
+                        - _ref: defaults/event_display.yaml
+                        - _module.var: event_display
                   callback:
                     _build.function:
                       __build.ne:
@@ -152,14 +146,14 @@ routine:
                     description: null
         references:
           contact_ids:
-            - _step: insert.insertedId
+            - _step: insert.upsertedId
           company_ids:
             _if_none:
               - _payload: contact.global_attributes.company_ids
               - []
         metadata:
           contact_id:
-            _step: insert.insertedId
+            _step: insert.upsertedId
 
   - :return:
       contactId:
@@ -171,7 +165,7 @@ routine:
           then:
             _step: check-existing._id
           else:
-            _step: insert.insertedId
+            _step: insert.upsertedId
       existing:
         _ne:
           - _step: check-existing

@@ -4,38 +4,40 @@ _ref:
   vars:
     id: check-invite-email
     title: Check Invite Email
-    hide_title: true
+    content_width: 500
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var: app_title
+              - " User Admin"
+        pageId:
+          _module.pageId: users
+      - label: Check Invite Email
     requests:
-      - _ref: ../requests/check_invite_email.yaml
+      - _ref: requests/check_invite_email.yaml
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title: Check Invite Email
-            width: 500
-            blocks:
-              - id: email
-                type: TextInput
-                required: true
-                validate:
-                  _ref: ../validate/email.yaml
-                properties:
-                  title: New User Work Email Address
-                  placeholder: name@company.com
-                events:
-                  onPressEnter:
-                    _ref: ../actions/check_email.yaml
+      - id: card
+        type: Card
+        blocks:
+          - id: email
+            type: TextInput
+            required: true
+            validate:
+              _ref: validate/email.yaml
+            properties:
+              title: New User Work Email Address
+              placeholder: name@company.com
+            events:
+              onPressEnter:
+                _ref: actions/check_email.yaml
       - _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 500
             actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
               - id: save_button
                 type: Button
                 layout:
@@ -45,4 +47,4 @@ _ref:
                   icon: AiOutlineSearch
                 events:
                   onClick:
-                    _ref: ../actions/check_email.yaml
+                    _ref: actions/check_email.yaml

@@ -1,7 +1,7 @@
 id: get_all_companies
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: companies-db
+  _module.connectionId: companies-collection
 payload:
   pagination:
     _state: pagination
@@ -39,19 +39,17 @@ properties:
                                 - wildcard:
                                     query:
                                       _string.concat:
-                                        - "*"
+                                        - '*'
                                         - _string.toLowerCase:
                                             _payload: filter.search
-                                        - "*"
+                                        - '*'
                                     path:
                                       - _module.var: name_field
                                       - lowercase_email
                                     allowAnalyzedField: true
                         else: []
                     - _array.filter:
-                        - _module.var:
-                            key: request_stages.filter_match
-                            default: []
+                        - _module.var: request_stages.filter_match
                         - _function:
                             __ne:
                               - __args: 0
@@ -63,10 +61,8 @@ properties:
         display_name:
           $getField:
             field:
-              _module.var:
-                key: name_field
-                default: trading_name
-            input: "$$ROOT"
+              _module.var: name_field
+            input: '$$ROOT'
     - $facet:
         count:
           - $count: total
@@ -102,15 +98,12 @@ properties:
                   updated_at:
                     $dateToString:
                       date: $updated.timestamp
-                      format: "%Y-%m-%d"
+                      format: '%Y-%m-%d'
                   created_at:
                     $dateToString:
                       date: $created.timestamp
-                      format: "%Y-%m-%d"
-            - _module.var:
-                key: request_stages.get_all_companies
-                default:
-                  - $addFields: {}
+                      format: '%Y-%m-%d'
+            - _module.var: request_stages.get_all_companies
     - $unwind:
         path: $count
     - $unwind:

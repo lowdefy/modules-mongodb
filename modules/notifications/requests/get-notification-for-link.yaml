@@ -1,0 +1,22 @@
+id: get_notification_for_link
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  _id:
+    _url_query: _id
+  app_name:
+    _module.var: app_name
+  contact_id:
+    _user: id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: _id
+        created.app_name:
+          _payload: app_name
+        $or:
+          - event_type: invite-user
+          - contact_id:
+              _payload: contact_id

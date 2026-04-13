@@ -1,0 +1,16 @@
+id: notifications_unread_count
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  app_name:
+    _module.var: app_name
+properties:
+  pipeline:
+    - $match:
+        read: false
+        contact_id:
+          _user: id
+        created.app_name:
+          _payload: app_name
+    - $count: total

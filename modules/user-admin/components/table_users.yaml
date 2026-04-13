@@ -1,5 +1,5 @@
 id: users_table
-type: AgGridMaterial
+type: AgGridBalham
 properties:
   height: 70vh
   rowStyle:
@@ -12,9 +12,8 @@ properties:
     cellStyle:
       cursor: pointer
       wordBreak: break-word
-      lineHeight: 1.25
-      paddingBottom: 8px
-      paddingTop: 8px
+      display: flex
+      alignItems: center
   columnDefs:
     _build.array.concat:
       - - headerName: Name
@@ -25,7 +24,7 @@ properties:
             _function:
               __nunjucks:
                 template: |
-                  <span style="display: inline-flex; align-items: center;"><img src="{{ profile.picture }}" width="30px" height="30px" style="margin-right: 8px; border-radius: 50%; flex-shrink: 0;"/>{{ profile.name | safe }}</span>
+                  <span style="display: inline-flex; align-items: center;">{% if profile.picture %}<img src="{{ profile.picture }}" width="16px" height="16px" style="margin-right: 4px; border-radius: 50%; flex-shrink: 0;"/>{% else %}<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#d9d9d9;color:#8c8c8c;font-size:10px;margin-right:4px;flex-shrink:0;">&#x1F464;</span>{% endif %}{{ profile.name | safe }}</span>
                 on:
                   __args: 0.data
         - headerName: Email
@@ -39,7 +38,7 @@ properties:
             _function:
               __nunjucks:
                 template: |
-                  <span style="color: {{ color }}; border: 1px solid {{ color }}; border-radius: 4px; padding: 4px 8px;">{{ text }}</span>
+                  <span style="color: {{ color }}; border: 1px solid {{ color }}; border-radius: 2px; padding: 2px 4px;">{{ text }}</span>
                 on:
                   __args: 0.data.active
         - headerName: Roles
@@ -55,9 +54,7 @@ properties:
                     - __args: 0.data.app.roles
                     - []
                 - ", "
-      - _module.var:
-          key: components.table_columns
-          default: []
+      - _module.var: components.table_columns
       - - headerName: Updated At
           field: updated_at
           width: 120
@@ -73,7 +70,7 @@ events:
       type: Link
       params:
         pageId:
-          _module.pageId: users-edit
+          _module.pageId: users-view
         input:
           user_id:
             _event: row._id

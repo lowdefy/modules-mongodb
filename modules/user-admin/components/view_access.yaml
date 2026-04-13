@@ -1,0 +1,92 @@
+id: access_card
+type: Card
+properties:
+  title: Access
+layout:
+  gap: 8
+blocks:
+  - id: status_tag
+    type: Tag
+    properties:
+      color:
+        _if:
+          test:
+            _eq:
+              - _state: user.disabled
+              - true
+          then: red
+          else:
+            _if:
+              test:
+                _eq:
+                  - _state: user.invite.open
+                  - true
+              then: blue
+              else: green
+      title:
+        _if:
+          test:
+            _eq:
+              - _state: user.disabled
+              - true
+          then: Disabled
+          else:
+            _if:
+              test:
+                _eq:
+                  - _state: user.invite.open
+                  - true
+              then: Open Invite
+              else: Active
+  - id: roles_label
+    type: Paragraph
+    style:
+      marginBottom: 0
+    properties:
+      type: secondary
+      content: Roles
+  - id: roles_tags
+    type: Box
+    style:
+      display: flex
+      flexWrap: wrap
+      gap: 4px
+    blocks:
+      _build.array.map:
+        on:
+          # TODO: FIX
+          - mrm
+          - user-admin-hydra
+          - demo
+
+          # _module.var: roles
+        callback:
+          _build.function:
+            id:
+              _build.string.concat:
+                - 'role_tag_'
+                - __build.args: 0
+            type: Tag
+            visible:
+              _array.includes:
+                - _state: user.roles
+                - __build.args: 0
+            properties:
+              title:
+                __build.args: 0
+  - id: signed_up
+    type: Paragraph
+    visible:
+      _eq:
+        - _state: user.is_user
+        - true
+    style:
+      marginBottom: 0
+    properties:
+      type: secondary
+      content:
+        _nunjucks:
+          template: "Signed up {{ date | date('YYYY-MM-DD') }}"
+          on:
+            date:
+              _state: user.sign_up

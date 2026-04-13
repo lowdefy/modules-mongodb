@@ -1,0 +1,17 @@
+id: update_notifications
+type: MongoDBUpdateMany
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  app_name:
+    _module.var: app_name
+properties:
+  filter:
+    contact_id:
+      _user: id
+    created.app_name:
+      _payload: app_name
+    read: false
+  update:
+    $set:
+      read: true

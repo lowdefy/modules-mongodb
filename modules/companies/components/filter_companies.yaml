@@ -20,10 +20,10 @@ blocks:
         disabled: true
     events:
       onPressEnter:
-        _ref: ../actions/search.yaml
+        _ref: actions/search.yaml
       onChange:
         try:
-          _ref: ../actions/search.yaml
+          _ref: actions/search.yaml
         debounce:
           ms: 500
   - id: filter.clear
@@ -38,4 +38,4 @@ blocks:
         _build.array.concat:
           - - id: reset
               type: Reset
-          - _ref: ../actions/search.yaml
+          - _ref: actions/search.yaml

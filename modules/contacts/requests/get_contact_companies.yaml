@@ -2,7 +2,7 @@ id: get_contact_companies
 type: MongoDBAggregation
 connectionId:
   _module.connectionId:
-    id: companies-db
+    id: companies-collection
     module: companies
 payload:
   company_ids:
@@ -23,7 +23,7 @@ properties:
         display_name:
           $getField:
             field: trading_name
-            input: "$$ROOT"
+            input: '$$ROOT'
     - $project:
         _id: 1
         display_name: 1

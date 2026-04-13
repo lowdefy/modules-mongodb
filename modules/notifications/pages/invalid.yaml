@@ -1,0 +1,41 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: invalid
+    title: Invalid Notification
+    hide_title: true
+    blocks:
+      - id: invalid_result
+        type: Result
+        properties:
+          status: info
+          title: Invalid Notification Link
+          subTitle: The notification link you are trying to access is not valid.
+        slots:
+          extra:
+            blocks:
+              - id: home
+                type: Button
+                properties:
+                  title: Go to home page
+                  type: link
+                  icon: AiOutlineHome
+                events:
+                  onClick:
+                    - id: go_home
+                      type: Link
+                      params:
+                        home: true
+              - id: inbox
+                type: Button
+                properties:
+                  title: Go to inbox
+                  icon: AiOutlineBell
+                events:
+                  onClick:
+                    - id: go_inbox
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: inbox

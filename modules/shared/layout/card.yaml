@@ -2,22 +2,15 @@ _build.switch:
   branches:
     - if:
         _build.ne:
-          - _module.var:
-              key: card
-              default: null
+          - _module.var: card
           - null
       then:
         _module.var: card
   default:
     id: card-section
     type: Box
-    style:
-      maxWidth:
-        _var:
-          key: width
-          default: "100%"
-      margin: auto
     layout:
+      span: 24
       gap: 8
     blocks:
       _build.array.concat:
@@ -68,6 +61,7 @@ _build.switch:
                   else: null
             layout:
               gap: 16
+            # TODO: This breaks show_title prop, title is always shown
             slots:
               extra:
                 blocks:
@@ -97,11 +91,11 @@ _build.switch:
                             _nunjucks:
                               template: |
                                 {% if doc.updated.user.name %}
-                                  Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll') }}
+                                  Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A') }}
                                 {% endif %}
                                 {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
                                 {% if doc.created.user.name %}
-                                  Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll') }}
+                                  Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('MMM D, YYYY h:mm A') }}
                                 {% endif %}
                               on:
                                 doc:

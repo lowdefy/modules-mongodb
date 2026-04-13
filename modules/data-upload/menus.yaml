@@ -1,0 +1,10 @@
+id: default
+links:
+  - id: data-upload
+    type: MenuLink
+    pageId:
+      _module.pageId: data-upload
+    properties:
+      title:
+        _module.var: tool.label
+      icon: AiOutlineUpload

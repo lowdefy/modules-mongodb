@@ -1,0 +1,115 @@
+id:
+  _var:
+    key: block_id
+    default: file_manager
+type: FileManager
+requests:
+  - _ref:
+      path: requests/upload-policy.yaml
+      vars:
+        block_id:
+          _var:
+            key: block_id
+            default: file_manager
+  - _ref: requests/download-policy.yaml
+  - _ref: requests/get-entity-files.yaml
+properties:
+  s3PostPolicyRequestId:
+    _build.string.concat:
+      - "upload_policy_"
+      - _var:
+          key: block_id
+          default: file_manager
+  s3GetPolicyRequestId: download_policy
+  files:
+    _request: get_entity_files
+  viewOnly:
+    _var:
+      key: view_only
+      default: false
+  disabled:
+    _var:
+      key: disabled
+      default: false
+  showDelete:
+    _var:
+      key: allow_delete
+      default: true
+  singleFile:
+    _var:
+      key: single_file
+      default: false
+  maxCount:
+    _var:
+      key: max_count
+      default: null
+  accept:
+    _var:
+      key: accept
+      default: "*"
+  hint:
+    _var:
+      key: hint
+      default: Click or drag file to upload
+  label:
+    _var:
+      key: label
+      default: null
+  modalTitle:
+    _var:
+      key: modal_title
+      default: Upload File
+events:
+  onMount:
+    - id: fetch_files
+      type: Request
+      params: get_entity_files
+  onSave:
+    - id: save_file_metadata
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: save-file
+        payload:
+          entity_type:
+            _var: entity_type
+          entity_id:
+            _var: entity_id
+          file:
+            _event: file
+          file_title:
+            _var:
+              key: file_title
+              default: null
+          file_category:
+            _var:
+              key: file_category
+              default: null
+          metadata:
+            _state:
+              _build.string.concat:
+                - _var:
+                    key: block_id
+                    default: file_manager
+                - .form
+    - id: refresh_files
+      type: Request
+      params: get_entity_files
+  onDelete:
+    - id: delete_file
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: delete-file
+        payload:
+          file_id:
+            _event: fileDoc._id
+          file_name:
+            _event: fileDoc.file.name
+          entity_type:
+            _var: entity_type
+          entity_id:
+            _var: entity_id
+    - id: refresh_files
+      type: Request
+      params: get_entity_files

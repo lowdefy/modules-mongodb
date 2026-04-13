@@ -1,0 +1,9 @@
+count:
+  _if_none:
+    - _request: notifications_unread_count.0.total
+    - 0
+icon:
+  name: AiOutlineBell
+link:
+  pageId:
+    _module.pageId: inbox

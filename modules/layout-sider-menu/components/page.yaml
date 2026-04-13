@@ -1,0 +1,170 @@
+id:
+  _var: id
+type: PageSiderMenu
+properties:
+  title:
+    _var: title
+  logo:
+    src:
+      _module.var: logo.primary_light
+    srcMobile:
+      _module.var: logo.icon
+    style:
+      _module.var: logo.style
+  breadcrumb:
+    list:
+      _var:
+        key: breadcrumbs
+        default: []
+  menu:
+    _var:
+      key: menu
+      default:
+        _module.var: menu
+  # Built-in header features — gated by per-page hide flags
+  profile:
+    _build.if:
+      test:
+        _build.not:
+          _var:
+            key: hide_profile
+            default: false
+      then:
+        avatar:
+          _ref:
+            module: user-account
+            component: profile-avatar
+        # TODO: Use menu for profile links
+        links:
+          _build.array.concat:
+            - _ref:
+                module: user-account
+                component: profile-links
+            - _var:
+                key: extra_profile_links
+                default:
+                  _module.var: extra_profile_links
+            - _ref:
+                module: user-account
+                component: profile-actions
+      else: null
+  notifications:
+    _build.if:
+      test:
+        _build.not:
+          _var:
+            key: hide_notifications
+            default: false
+      then:
+        _ref:
+          module: notifications
+          component: notification-config
+      else: null
+  darkModeToggle:
+    _module.var: darkModeToggle
+style:
+  .header:
+    borderBottom: 1px solid var(--ant-color-border)
+  .sider:
+    borderInlineEnd: 1px solid var(--ant-color-border)
+requests:
+  _build.array.concat:
+    - _build.if:
+        test:
+          _build.not:
+            _var:
+              key: hide_notifications
+              default: false
+        then:
+          - _ref:
+              module: notifications
+              component: unread-count-request
+        else: []
+    - _module.var: header_extra.requests
+    - _var:
+        key: requests
+        default: []
+events:
+  onInit:
+    _var:
+      key: events.onInit
+      default: []
+  onInitAsync:
+    _var:
+      key: events.onInitAsync
+      default: []
+  onMount:
+    _var:
+      key: events.onMount
+      default: []
+  onMountAsync:
+    _var:
+      key: events.onMountAsync
+      default: []
+slots:
+  header:
+    blocks:
+      _module.var: header_extra.blocks
+  footer:
+    style:
+      textAlign: center
+      fontSize: 12
+      color: 'var(--ant-color-text-secondary)'
+    blocks:
+      _module.var: footer
+blocks:
+  - id: page-content
+    type: Box
+    layout:
+      span: 24
+      gap: 12
+    style:
+      maxWidth:
+        _var:
+          key: content_width
+          default: '100%'
+      margin: auto
+    blocks:
+      _build.array.concat:
+        # Title block (per-page override > module-level override > default)
+        - _build.if:
+            test:
+              _build.not:
+                _var:
+                  key: hide_title
+                  default: false
+            then:
+              _build.if:
+                test:
+                  _build.ne:
+                    - _var:
+                        key: title_block
+                        default: null
+                    - null
+                then:
+                  _var: title_block
+                else:
+                  _build.if:
+                    test:
+                      _build.ne:
+                        - _module.var: title_block
+                        - null
+                    then:
+                      _module.var: title_block
+                    else:
+                      - _ref:
+                          path: ../shared/layout/title-block.yaml
+                          vars:
+                            title:
+                              _var: title
+                            doc:
+                              _var:
+                                key: doc
+                                default: null
+                            page_actions:
+                              _var:
+                                key: page_actions
+                                default: []
+            else: []
+        # Consumer content
+        - _var: blocks

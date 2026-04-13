@@ -30,10 +30,17 @@ vars:
       as nested field navigation, breaking the $addFields extraction.
   change_stamp:
     type: object
+    default:
+      timestamp:
+        _date: now
+      user:
+        name:
+          _user: profile.name
+        id:
+          _user: id
     description: >
       Audit metadata template resolved at runtime.
       Contains runtime operators (_user, _date) that evaluate per-request.
-      Default: { timestamp: { _date: now }, user: { name: { _user: profile.name }, id: { _user: id } } }
   event_types:
     type: object
     default: {}
@@ -49,9 +56,7 @@ components:
     component:
       _build.object.assign:
         - _ref: ../shared/enums/event_types.yaml
-        - _module.var:
-            key: event_types
-            default: {}
+        - _module.var: event_types
   - id: events-timeline
     component:
       _ref: components/events-timeline.yaml

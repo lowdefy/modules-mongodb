@@ -1,0 +1,18 @@
+id: get_selected_notification
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  _id:
+    _state: selected_id
+  app_name:
+    _module.var: app_name
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: _id
+        contact_id:
+          _user: id
+        created.app_name:
+          _payload: app_name

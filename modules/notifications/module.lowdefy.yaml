@@ -1,13 +1,66 @@
 name: Notifications
-description: Notification dispatch — send-notification API stub
+description: Notification bell, inbox, and deep-link routing
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+
+vars:
+  app_name:
+    type: string
+    required: true
+    description: >
+      App identifier used to scope notifications. Matches created.app_name
+      on notification documents.
+  send_routine:
+    type: array
+    default: []
+    description: >
+      API routine steps for dispatching notifications. Receives event_ids
+      in the payload. Default is an empty routine (no-op).
+
+connections:
+  - _ref: connections/notifications-collection.yaml
+
+pages:
+  - _ref: pages/inbox.yaml
+  - _ref: pages/link.yaml
+  - _ref: pages/invalid.yaml
 
 exports:
+  pages:
+    - id: inbox
+      description: Notifications inbox — list, filter, and view notifications
+    - id: link
+      description: Deep-link handler — routes notification links to target pages
+    - id: invalid
+      description: Error page for invalid notification links
+  connections:
+    - id: notifications-collection
+      description: MongoDB connection for notifications collection
   api:
     - id: send-notification
+  components:
+    - id: notification-config
+      description: Notification bell config for PageHeaderMenu — count, icon, and link
+    - id: unread-count-request
+      description: MongoDB count request for unread notifications
 
 api:
   - _ref: api/send-notification.yaml
 
+components:
+  - id: notification-config
+    component:
+      _ref: components/notification-config.yaml
+  - id: unread-count-request
+    component:
+      _ref: components/unread-count-request.yaml
+
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^2"

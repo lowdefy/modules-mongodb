@@ -2,43 +2,52 @@ name: Files
 description: File attachment management — upload, download, list, S3 integration
 
 dependencies:
+  - id: layout
+    description: Card component for file-card wrapper
   - id: events
-    description: Change stamp for file metadata audit
+    description: Change stamp and event logging for file audit
 
 vars:
   collection:
     default: files
     description: MongoDB collection name for file metadata
-  bucket:
-    required: true
-    description: S3 bucket name for private file storage
-  public_bucket:
-    description: S3 bucket name for public file storage (optional)
   s3_region:
-    default: af-south-1
+    default: ca-central-1
     description: AWS region for S3 buckets
+  log_events:
+    type: boolean
+    default: true
+    description: Log file upload/delete events via the events module
   components:
-    description: "Overrides: file_list"
+    type: object
+    description: "Overrides: file_list (deprecated)"
 
 exports:
   connections:
-    - id: files-db
+    - id: files-collection
       description: MongoDB connection for file metadata
     - id: files-bucket
       description: S3 bucket for private file storage
+    - id: files-bucket-public
+      description: S3 bucket for public file storage
   api:
     - id: save-file
-      description: Upsert file metadata after S3 upload
+      description: Upsert file metadata (with optional metadata object) after S3 upload
     - id: delete-file
       description: Soft-delete file metadata
   components:
-    - id: file-upload
-      description: S3UploadButton with metadata save
+    - id: file-manager
+      description: >-
+        Unified FileManager block — drag-drop upload, file type icons,
+        thumbnails, clipboard paste, progress bar, download, delete
+        confirmation, form fields modal, single-file and max-count modes
+    - id: file-card
+      description: Layout card wrapping file-manager for easy embedding
     - id: file-list
-      description: File list with S3Download and delete
+      description: Lightweight read-only file list using standard Lowdefy blocks (no plugin needed)
 
 connections:
-  - _ref: connections/files-db.yaml
+  - _ref: connections/files-collection.yaml
   - _ref: connections/files-bucket.yaml
   - _ref: connections/files-bucket-public.yaml
 
@@ -47,9 +56,12 @@ api:
   - _ref: api/delete-file.yaml
 
 components:
-  - id: file-upload
+  - id: file-manager
     component:
-      _ref: components/file-upload.yaml
+      _ref: components/file-manager.yaml
+  - id: file-card
+    component:
+      _ref: components/file-card.yaml
   - id: file-list
     component:
       _ref: components/file-list.yaml
@@ -57,7 +69,14 @@ components:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
-  - name: S3_ACCESS_KEY_ID
-    description: AWS access key for S3
-  - name: S3_SECRET_ACCESS_KEY
-    description: AWS secret key for S3
+  - name: FILES_S3_ACCESS_KEY_ID
+    description: AWS access key for S3 file storage
+  - name: FILES_S3_SECRET_ACCESS_KEY
+    description: AWS secret access key for S3 file storage
+  - name: FILES_S3_BUCKET
+    description: S3 bucket name for private file storage
+  - name: FILES_S3_BUCKET_PUB
+    description: S3 bucket name for public file storage
+
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugins"

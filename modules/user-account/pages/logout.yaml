@@ -1,0 +1,45 @@
+_ref:
+  module: layout
+  component: auth-page
+  vars:
+    id: logout
+    title: ""
+    events:
+      onMount:
+        - id: logout
+          type: Logout
+          params:
+            redirect: false
+    blocks:
+      - id: logout_icon
+        type: Icon
+        style:
+          fontSize: 48
+          color: "var(--ant-color-primary)"
+          textAlign: center
+        properties:
+          name: AiOutlineLogout
+      - id: logout_message
+        type: Html
+        style:
+          textAlign: center
+          color: "var(--ant-color-text-secondary)"
+        properties:
+          html: <p>You have been logged out.</p>
+    actions:
+      - id: login_button
+        type: Button
+        style:
+          marginTop: 8
+        properties:
+          title: Login Again
+          icon: AiOutlineLogin
+          block: true
+          size: large
+        events:
+          onClick:
+            - id: login_link
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: login

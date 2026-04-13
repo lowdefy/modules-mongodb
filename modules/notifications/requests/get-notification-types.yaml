@@ -1,0 +1,21 @@
+id: get_notification_types
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  filter:
+    _state: filter
+  app_name:
+    _module.var: app_name
+properties:
+  pipeline:
+    - $match:
+        contact_id:
+          _user: id
+        created.app_name:
+          _payload: app_name
+    - _ref: requests/stages/match-filter-read-status.yaml
+    - $group:
+        _id: 0
+        event_types:
+          $addToSet: $event_type

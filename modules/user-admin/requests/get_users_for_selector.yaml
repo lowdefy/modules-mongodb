@@ -1,7 +1,7 @@
 id: get_users_for_selector
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: user-contacts
+  _module.connectionId: user-contacts-collection
 properties:
   pipeline:
     - $match:

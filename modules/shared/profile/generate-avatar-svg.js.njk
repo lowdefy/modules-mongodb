@@ -1,0 +1,13 @@
+// Build-time template: _ref renders this .njk with vars (e.g. prefix),
+// producing a plain JS string that _js executes at runtime.
+const gn = (state('{{ prefix }}.given_name') || '').trim();
+const fn = (state('{{ prefix }}.family_name') || '').trim();
+let initials;
+if (gn && fn) initials = (gn[0] + fn[0]).toUpperCase();
+else if (gn.length > 1) initials = gn.substring(0, 2).toUpperCase();
+else if (gn) initials = gn.toUpperCase();
+else initials = '?';
+const from = state('{{ prefix }}.avatar_color.from') || '#37474f';
+const to = state('{{ prefix }}.avatar_color.to') || '#546e7a';
+const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='128' height='128'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0%' stop-color='${from}'/><stop offset='100%' stop-color='${to}'/></linearGradient></defs><rect width='128' height='128' fill='url(#g)'/><text x='64' y='64' dominant-baseline='central' text-anchor='middle' fill='white' font-family='sans-serif' font-size='48' font-weight='bold'>${initials}</text></svg>`;
+return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);

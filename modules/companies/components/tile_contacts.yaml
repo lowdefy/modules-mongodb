@@ -26,11 +26,11 @@ _ref:
       - id: company_contacts_list
         type: Box
         requests:
-          - _ref: ../requests/get_company_contacts.yaml
+          - _ref: requests/get_company_contacts.yaml
         events:
           onMount:
             - id: fetch_contacts
               type: Request
               params: get_company_contacts
         blocks:
-          - _ref: ../components/contact_list_items.yaml
+          - _ref: components/contact_list_items.yaml

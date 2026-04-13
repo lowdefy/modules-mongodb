@@ -2,7 +2,7 @@ id: get_company_contacts
 type: MongoDBAggregation
 connectionId:
   _module.connectionId:
-    id: contacts-db
+    id: contacts-collection
     module: contacts
 payload:
   company_id:

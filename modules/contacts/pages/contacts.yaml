@@ -4,16 +4,12 @@ _ref:
   vars:
     id: contacts
     title:
-      _module.var:
-        key: label_plural
-        default: Contacts
+      _module.var: label_plural
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _module.var:
-            key: label_plural
-            default: Contacts
+          _module.var: label_plural
     page_actions:
       - id: new_contact_button
         type: Button
@@ -54,18 +50,12 @@ _ref:
           params:
             - get_all_contacts
     requests:
-      - _ref: ../requests/get_all_contacts.yaml
-      - _ref: ../requests/get_contact_excel_data.yaml
+      - _ref: requests/get_all_contacts.yaml
+      - _ref: requests/get_contact_excel_data.yaml
     blocks:
-      - _module.var:
-          key: components.filters
-          default:
-            _ref: ../components/filter_contacts.yaml
+      - _module.var: components.filters
       - id: content
         type: Card
         blocks:
-          - _module.var:
-              key: components.table
-              default:
-                _ref: ../components/table_contacts.yaml
-          - _ref: ../components/pagination.yaml
+          - _module.var: components.table
+          - _ref: components/pagination.yaml

@@ -1,7 +1,7 @@
 id: user-selector
 type: Selector
 requests:
-  - _ref: ../requests/get_users_for_selector.yaml
+  - _ref: requests/get_users_for_selector.yaml
 events:
   onMount:
     - id: fetch_users

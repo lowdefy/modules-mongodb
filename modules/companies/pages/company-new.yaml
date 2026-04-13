@@ -5,9 +5,10 @@ _ref:
     id: company-new
     title:
       _string.concat:
-        - "New "
+        - 'New '
         - _module.var: label
     hide_title: true
+    content_width: 700
     blocks:
       - _ref:
           module: layout
@@ -15,14 +16,10 @@ _ref:
           vars:
             title:
               _string.concat:
-                - "New "
+                - 'New '
                 - _module.var: label
-            width: 700
             blocks:
-              - _module.var:
-                  key: components.form_fields
-                  default:
-                    _ref: ../components/form_company.yaml
+              - _module.var: components.form_fields
       - _ref:
           module: layout
           component: floating-actions
@@ -55,7 +52,7 @@ _ref:
                 properties:
                   title:
                     _string.concat:
-                      - "Create "
+                      - 'Create '
                       - _module.var: label
                   icon: AiOutlinePlusCircle
                   type: primary
@@ -75,7 +72,7 @@ _ref:
                         success:
                           _string.concat:
                             - _module.var: label
-                            - " created."
+                            - ' created.'
                     - id: reset
                       type: Reset
                     - id: go_detail

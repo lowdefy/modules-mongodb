@@ -1,7 +1,7 @@
 id: get_companies_for_selector
 type: MongoDBAggregation
 connectionId:
-  _module.connectionId: companies-db
+  _module.connectionId: companies-collection
 properties:
   pipeline:
     - $match:
@@ -11,11 +11,11 @@ properties:
         label:
           $concat:
             - _build.string.concat:
-                - "$"
+                - '$'
                 - _module.var: name_field
-            - " ("
-            - "$_id"
-            - ")"
-        value: "$_id"
+            - ' ('
+            - '$_id'
+            - ')'
+        value: '$_id'
     - $sort:
         label: 1

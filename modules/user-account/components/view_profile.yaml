@@ -1,79 +1,118 @@
 id: view_contact_profile
 type: Box
 blocks:
-  - id: user_avatar
-    type: Img
-    style:
-      textAlign: center
-      marginBottom: 42
-      /element:
-        width: 100px
-        borderRadius: 50%
-    properties:
-      src:
-        _user: profile.picture
-  - id: view_contact_profile
-    type: Descriptions
-    style:
-      /label:
-        fontWeight: bold
-        width:
-          _if:
-            test:
-              _gt:
-                - _media: width
-                - 768
-            then: 30%
-        justifyContent: right
-    properties:
-      column: 1
-      items:
-        _array.filter:
-          - - label: Name
-              value:
-                _string.concat:
-                  - _if_none:
-                      - _user: profile.title
-                      - ""
-                  - _if:
-                      test:
-                        _eq:
-                          - _user: profile.title
-                          - null
-                      then: ""
-                      else: ". "
-                  - _user: profile.name
-            - label: Email
-              value:
-                _user: email
-            - label: Work Phone
-              value:
-                _user: profile.work_phone.phone_number
-            - label: Mobile Phone
-              value:
-                _user: profile.mobile_phone.phone_number
-            - label: Company Name
-              value:
-                _user: profile.company_name
-            - label: Department
-              value:
-                _user: profile.department
-            - label: Job Title
-              value:
-                _user: profile.job_title
-            - label: Birthday
-              value:
-                _nunjucks:
-                  template: |
-                    {{ value | date('DD MMM') }}
-                  on:
-                    value:
-                      _user: profile.birthday
-          - _function:
-              __and:
-                - __ne:
-                    - __args: 0.value
+  _build.array.concat:
+    # Identity header
+    - - _ref:
+          path: ../shared/layout/identity-header.yaml
+          vars:
+            avatar_src:
+              _user: profile.picture
+            name:
+              _user: profile.name
+            email:
+              _user: email
+            extra:
+              - id: signed_up
+                type: Paragraph
+                visible:
+                  _ne:
+                    - _get:
+                        key:
+                          _build.string.concat:
+                            - 'apps.'
+                            - _module.var: app_name
+                            - '.sign_up'
+                        from:
+                          _if_none:
+                            - _request: get_my_profile.0
+                            - {}
                     - null
-                - __ne:
-                    - __args: 0.value
-                    - ""
+                style:
+                  marginBottom: 0
+                properties:
+                  type: secondary
+                  content:
+                    _nunjucks:
+                      template: "Signed up {{ date | date('YYYY-MM-DD') }}"
+                      on:
+                        date:
+                          _get:
+                            key:
+                              _build.string.concat:
+                                - 'apps.'
+                                - _module.var: app_name
+                                - '.sign_up'
+                            from:
+                              _if_none:
+                                - _request: get_my_profile.0
+                                - {}
+    # Profile DataDescriptions
+    - - id: profile_divider
+        type: Divider
+        properties:
+          title: Profile
+      - id: profile_data
+        type: DataDescriptions
+        properties:
+          bordered: true
+          column: 1
+          size: small
+          data:
+            _object.assign:
+              - _user: profile
+              - profile_created: null
+              - picture: null
+              - name: null
+          formConfig:
+            _build.if:
+              test:
+                _build.ne:
+                  - _module.var: components.profile_view_config
+                  - null
+              then:
+                _build.array.concat:
+                  - _build.if:
+                      test:
+                        _module.var: show_title
+                      then:
+                        - key: title
+                          title: Title
+                      else: []
+                  - - key: given_name
+                      title: First Name
+                    - key: family_name
+                      title: Last Name
+                  - _module.var: components.profile_view_config
+              else: null
+    # Attributes DataDescriptions (optional)
+    - - id: attributes_divider
+        type: Divider
+        visible:
+          _build.ne:
+            - _module.var: components.attributes_view_config
+            - null
+        properties:
+          title: Attributes
+      - id: attributes_data
+        type: DataDescriptions
+        visible:
+          _build.ne:
+            - _module.var: components.attributes_view_config
+            - null
+        properties:
+          bordered: true
+          column: 1
+          size: small
+          data:
+            _object.assign:
+              - _if_none:
+                  - _user: global_attributes
+                  - {}
+              - _if_none:
+                  - _user: app_attributes
+                  - {}
+          formConfig:
+            _module.var: components.attributes_view_config
+    # Extra content slot
+    - _module.var: components.view_extra

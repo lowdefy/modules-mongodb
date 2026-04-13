@@ -12,9 +12,6 @@ dependencies:
     description: File attachments (optional sidebar tile)
 
 vars:
-  collection:
-    default: user_contacts
-    description: MongoDB collection name
   label:
     default: Contact
     description: Singular display label
@@ -27,14 +24,71 @@ vars:
   event_display:
     default:
       _ref: defaults/event_display.yaml
-    description: "Per-app event display templates"
+    description: 'Per-app event display templates'
+  show_title:
+    type: boolean
+    default: false
+    description: Show the title/honorific field (Mr, Ms, Dr, etc.)
   components:
-    description: "Overrides: detail_fields, form_fields, form_attributes, table, filters, main_tiles, sidebar_tiles, download_columns"
+    type: object
+    description: 'Overrides: detail_fields, form_fields, form_attributes, attributes_set_fields, profile_fields, profile_set_fields, profile_view_config, attributes_view_config, view_extra, table, filters, main_tiles, sidebar_tiles, download_columns'
+    properties:
+      detail_fields:
+        default:
+          _ref: components/view_contact.yaml
+      form_fields:
+        default:
+          _ref: components/form_contact.yaml
+      form_attributes:
+        default: null
+      attributes_set_fields:
+        default: {}
+      profile_fields:
+        default: []
+      profile_set_fields:
+        default: {}
+      profile_view_config:
+        default: null
+      attributes_view_config:
+        default: null
+      view_extra:
+        default: []
+      table:
+        default:
+          _ref: components/table_contacts.yaml
+      table_columns:
+        default: []
+      filters:
+        default:
+          _ref: components/filter_contacts.yaml
+      main_tiles:
+        default: []
+      sidebar_tiles:
+        default: []
+      download_columns:
+        default: []
   request_stages:
-    description: "Pipeline overrides: get_all_contacts, get_contact, insert_contact, update_contact, selector, filter_match"
+    type: object
+    description: 'Pipeline overrides: get_all_contacts, get_contact, insert_contact, update_contact, selector, filter_match'
+    properties:
+      get_all_contacts:
+        default:
+          - $addFields: {}
+      selector:
+        default: []
+      filter_match:
+        default: []
+      insert_contact:
+        default: []
+      update_contact:
+        default: []
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
+  avatar_colors:
+    default:
+      _ref: ../shared/profile/avatar_colors.yaml
+    description: 'Gradient pairs for avatar backgrounds. Each entry: { from, to }.'
 
 exports:
   pages:
@@ -47,8 +101,8 @@ exports:
     - id: contact-new
       description: Create a new contact with duplicate detection
   connections:
-    - id: contacts-db
-      description: MongoDB connection for contact records (user_contacts collection)
+    - id: contacts-collection
+      description: MongoDB connection for contact records (user-contacts collection)
   api:
     - id: create-contact
       description: Create contact with duplicate check and event logging
@@ -62,7 +116,7 @@ exports:
       description: Contacts navigation link
 
 connections:
-  - _ref: connections/contacts-db.yaml
+  - _ref: connections/contacts-collection.yaml
 
 api:
   - _ref: api/create-contact.yaml

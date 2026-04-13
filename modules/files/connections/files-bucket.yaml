@@ -2,13 +2,11 @@ id: files-bucket
 type: AwsS3Bucket
 properties:
   accessKeyId:
-    _secret: S3_ACCESS_KEY_ID
+    _secret: FILES_S3_ACCESS_KEY_ID
   secretAccessKey:
-    _secret: S3_SECRET_ACCESS_KEY
+    _secret: FILES_S3_SECRET_ACCESS_KEY
   region:
-    _module.var:
-      key: s3_region
-      default: af-south-1
+    _module.var: s3_region
   bucket:
-    _module.var: bucket
+    _secret: FILES_S3_BUCKET
   write: true

@@ -1,5 +1,15 @@
-lowdefy: 0.0.0-experimental-20260324134638
+lowdefy: 0.0.0-experimental-20260327101025
 name: Module Demo App
+
+cli:
+  watch:
+    - ../../modules/shared
+
+theme:
+  antd:
+    # algorithm: dark
+    token:
+      colorPrimary: '#7c3aed'
 
 config:
   homePageId: router
@@ -10,7 +20,7 @@ auth:
     verifyRequest: /user-account/verify-email-request
     error: /user-account/login
   theme:
-    brandColor: "#f1b434"
+    brandColor: '#7c3aed'
   adapter:
     id: mdb_adapter
     type: MultiAppMongoDBAdapter
@@ -56,23 +66,34 @@ auth:
   #     - router
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
+  - name: '@lowdefy/community-plugin-mongodb'
     version: 2.4.1
-  - name: "@lowdefy/community-plugin-xlsx"
+  - name: '@lowdefy/community-plugin-xlsx'
     version: 1.1.0
-  - name: "@lowdefy/community-plugin-nodemailer"
+  - name: '@lowdefy/community-plugin-nodemailer'
     version: 1.1.4
-  - name: "@lowdefy/plugin-aws"
-    version: "^4"
-  - name: "@lowdefy/modules-mongodb-plugins"
+  - name: '@lowdefy/modules-mongodb-plugins'
     version: workspace:*
 
 modules:
   - id: layout
-    source: "file:../../modules/layout-header-menu"
+    source: 'file:../../modules/layout-header-menu'
+    vars:
+      auth_page:
+        max_width: 380
+        logo_max_width: 180
+        card_style:
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12)'
+      footer:
+        - id: footer-text
+          type: Html
+          properties:
+            html: |
+              <p>Lowdefy Modules MongoDB Demo</p>
+              <p>© 2026 Lowdefy. All rights reserved.</p>
 
   - id: events
-    source: "file:../../modules/events"
+    source: 'file:../../modules/events'
     vars:
       collection: log-events
       display_key: demo
@@ -83,10 +104,10 @@ modules:
           _date: now
 
   - id: notifications
-    source: "file:../../modules/notifications"
+    source: 'file:../../modules/notifications'
 
   - id: user-admin
-    source: "file:../../modules/user-admin"
+    source: 'file:../../modules/user-admin'
     # source: github:lowdefy/modules-mongodb/modules/user-admin@v1.0.0
     dependencies:
       layout: layout
@@ -96,13 +117,13 @@ modules:
       _ref: modules/user-admin/index.yaml
 
   - id: user-account
-    source: "file:../../modules/user-account"
+    source: 'file:../../modules/user-account'
     # source: github:lowdefy/modules-mongodb/modules/user-account@v1.0.0
     vars:
       _ref: modules/user-account/index.yaml
 
   - id: companies
-    source: "file:../../modules/companies"
+    source: 'file:../../modules/companies'
     dependencies:
       layout: layout
       events: events
@@ -112,7 +133,7 @@ modules:
       _ref: modules/companies/index.yaml
 
   - id: contacts
-    source: "file:../../modules/contacts"
+    source: 'file:../../modules/contacts'
     dependencies:
       layout: layout
       events: events
@@ -122,7 +143,7 @@ modules:
       _ref: modules/contacts/index.yaml
 
   - id: files
-    source: "file:../../modules/files"
+    source: 'file:../../modules/files'
     dependencies:
       events: events
     vars:
@@ -133,31 +154,33 @@ modules:
 menus:
   - id: default
     links:
-      _build.array.concat:
-        - - id: home
-            type: MenuLink
-            pageId: home
-            properties:
-              title: Home
-              icon: AiOutlineHome
-
-        - _ref:
+      - id: user-admin-group
+        type: MenuGroup
+        properties:
+          title: User Admin
+        links:
+          _ref:
             module: user-admin
             menu: default
-
-        - _ref:
-            module: user-account
-            menu: default
-
-        - _ref:
+      - id: companies-group
+        type: MenuGroup
+        properties:
+          title: Companies
+        links:
+          _ref:
             module: companies
             menu: default
-
-        - _ref:
+      - id: contacts-group
+        type: MenuGroup
+        properties:
+          title: Contacts
+        links:
+          _ref:
             module: contacts
             menu: default
 
 pages:
   - _ref: pages/router.yaml
+  - _ref: pages/avatar.yaml
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml

@@ -1,0 +1,112 @@
+id: link
+type: Box
+requests:
+  - _ref: requests/get-notification-for-link.yaml
+  - _ref: requests/update-selected-notification.yaml
+events:
+  onMount:
+    # Fetch notification (invite-user matches without contact_id, others need contact_id)
+    - id: get_notification
+      type: Request
+      params: get_notification_for_link
+    # If invite-user, navigate directly to the notification's link (login page with hint)
+    - id: link_invite
+      type: Link
+      skip:
+        _ne:
+          - _request: get_notification_for_link.0.event_type
+          - invite-user
+      params:
+        pageId:
+          _if_none:
+            - _request: get_notification_for_link.0.links.button.pageId
+            - _module.pageId: inbox
+        urlQuery:
+          _if_none:
+            - _request: get_notification_for_link.0.links.button.urlQuery
+            - {}
+        input:
+          _if_none:
+            - _request: get_notification_for_link.0.links.button.input
+            - {}
+    # Break if invite link was followed
+    - id: break_invite
+      type: Throw
+      skip:
+        _ne:
+          - _request: get_notification_for_link.0.event_type
+          - invite-user
+      messages:
+        error: false
+      params:
+        throw: true
+    # If unauthenticated + not found, redirect to login with callback
+    - id: link_to_login
+      type: Link
+      skip:
+        _ne:
+          - _user: true
+          - null
+      params:
+        pageId: user-account/login
+        input:
+          callbackUrl:
+            pageId:
+              _module.pageId: link
+            urlQuery:
+              _url_query: true
+    # Break if no user (login redirect should have fired)
+    - id: break_no_user
+      type: Throw
+      messages:
+        error: false
+      params:
+        throw:
+          _eq:
+            - _user: true
+            - null
+    # Authenticated — redirect to invalid page if not found
+    - id: invalid_notification
+      type: Link
+      skip:
+        _ne:
+          - _request: get_notification_for_link.length
+          - 0
+      params:
+        pageId:
+          _module.pageId: invalid
+    # Break if no notification
+    - id: break_no_notification
+      type: Throw
+      messages:
+        error: false
+      params:
+        throw:
+          _eq:
+            - _request: get_notification_for_link.length
+            - 0
+    # Mark as read
+    - id: mark_read
+      type: SetState
+      params:
+        selected_id:
+          _url_query: _id
+    - id: update_read
+      type: Request
+      params: update_selected_notification
+    # Navigate to target page or fall back to inbox
+    - id: link_notification
+      type: Link
+      params:
+        pageId:
+          _if_none:
+            - _request: get_notification_for_link.0.links.button.pageId
+            - _module.pageId: inbox
+        urlQuery:
+          _if_none:
+            - _request: get_notification_for_link.0.links.button.urlQuery
+            - {}
+        input:
+          _if_none:
+            - _request: get_notification_for_link.0.links.button.input
+            - {}

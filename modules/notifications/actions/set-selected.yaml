@@ -1,0 +1,18 @@
+_build.array.concat:
+  - - id: scroll_top
+      type: ScrollTo
+      params:
+        top: 0
+    - id: set_id
+      type: SetState
+      params:
+        selected_id:
+          _if_none:
+            - _var: selected_id
+            - _url_query: _id
+    - id: get_selected_notification
+      type: Request
+      params: get_selected_notification
+    - id: update_selected_notification
+      type: Request
+      params: update_selected_notification

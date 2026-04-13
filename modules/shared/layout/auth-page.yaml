@@ -28,57 +28,96 @@ blocks:
   - id: auth-content
     type: Content
     layout:
-      align: center
+      direction: column
       justify: center
       flex: 1 1 auto
+    slots:
+      content:
+        style:
+          minHeight: 100vh
+          alignItems: center
     style:
       padding: 0 20px
     blocks:
       - id: auth-page-container
         type: Box
         style:
-          maxWidth: 400
+          maxWidth:
+            _module.var: auth_page.max_width
         blocks:
-          - id: auth-logo
-            type: Img
-            layout:
-              selfAlign: middle
-            properties:
-              src:
-                _module.var: logo.primary
-              width: 100%
-          - id: auth-card
-            type: Card
-            layout:
-              gap: 8
-            blocks:
-              _build.array.concat:
-                - _build.if:
-                    test:
-                      _build.ne:
-                        - _var:
-                            key: title
-                            default: ""
-                        - ""
-                    then:
-                      - id: auth-title
-                        type: Title
+          _build.array.concat:
+            - - id: auth-card
+                type: Card
+                layout:
+                  gap: 16
+                style:
+                  .element:
+                    _module.var: auth_page.card_style
+                properties:
+                  bordered: false
+                  theme:
+                    borderRadiusLG: 12
+                    bodyPadding: '28px 32px 28px 32px'
+                slots:
+                  cover:
+                    blocks:
+                      - id: auth-cover
+                        type: Box
+                        layout:
+                          justify: center
+                          align: middle
                         style:
-                          textAlign: center
-                        properties:
-                          content:
-                            _var: title
-                          level: 1
-                    else: []
-                - _var:
-                    key: blocks
-                    default: []
-                - _var:
-                    key: actions
-                    default: []
-  - id: auth-footer
-    type: Footer
-    blocks:
-      _module.var:
-        key: footer
-        default: []
+                          padding: '32px 32px 24px 32px'
+                          background:
+                            _module.var: auth_page.cover_background
+                          borderRadius: '12px 12px 0 0'
+                        blocks:
+                          - id: auth-logo
+                            type: Img
+                            style:
+                              maxWidth:
+                                _module.var: auth_page.logo_max_width
+                            properties:
+                              src:
+                                _module.var: logo.primary_dark
+                              width: 100%
+                blocks:
+                  _build.array.concat:
+                    - _build.if:
+                        test:
+                          _build.ne:
+                            - _var:
+                                key: title
+                                default: ''
+                            - ''
+                        then:
+                          - id: auth-title
+                            type: Title
+                            properties:
+                              content:
+                                _var: title
+                              level: 3
+                        else: []
+                    - _var:
+                        key: blocks
+                        default: []
+                    - _var:
+                        key: actions
+                        default: []
+            - _build.if:
+                test:
+                  _build.gt:
+                    - _build.array.length:
+                        _module.var: footer
+                    - 0
+                then:
+                  - id: auth-footer
+                    type: Box
+                    style:
+                      marginTop: 24
+                      textAlign: center
+                      fontSize: 12
+                      color: 'var(--ant-color-text-secondary)'
+                    blocks:
+                      _module.var: footer
+                else: []

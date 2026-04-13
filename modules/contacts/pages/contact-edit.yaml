@@ -12,6 +12,7 @@ _ref:
             - _request: get_contact.0.profile.name
             - ""
     hide_title: true
+    content_width: 700
     events:
       onMount:
         - id: fetch
@@ -51,7 +52,7 @@ _ref:
             contact:
               _request: get_contact.0
     requests:
-      - _ref: ../requests/get_contact.yaml
+      - _ref: requests/get_contact.yaml
     blocks:
       - _ref:
           module: layout
@@ -67,15 +68,8 @@ _ref:
                     - ""
             doc:
               _request: get_contact.0
-            width: 700
             blocks:
-              - _module.var:
-                  key: components.form_fields
-                  default:
-                    _ref:
-                      path: ../components/form_contact.yaml
-                      vars:
-                        email_disabled: true
+              - _module.var: components.form_fields
       - _ref:
           module: layout
           component: floating-actions
@@ -111,6 +105,15 @@ _ref:
                   onClick:
                     - id: validate
                       type: Validate
+                    - id: generate_avatar
+                      type: SetState
+                      params:
+                        contact.profile.picture:
+                          _js:
+                            _ref:
+                              path: ../shared/profile/generate-avatar-svg.js.njk
+                              vars:
+                                prefix: contact.profile
                     - id: update_contact
                       type: CallAPI
                       params:

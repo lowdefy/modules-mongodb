@@ -6,25 +6,26 @@ _ref:
     title:
       _nunjucks:
         template: |
-          Edit {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+          Edit {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
           _object.assign:
             - _request: get_user.0
             - app_title:
                 _module.var: app_title
-    hide_title: true
+    content_width: 600
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _string.concat:
-            - _module.var: app_title
-            - " User Admin"
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var: app_title
+              - " User Admin"
         pageId:
           _module.pageId: users
       - label: Edit User
     requests:
-      - _ref: ../requests/get_user.yaml
+      - _ref: requests/get_user.yaml
     events:
       onMount:
         - id: redirect_if_no_id
@@ -35,12 +36,18 @@ _ref:
               - null
           params:
             back: true
-        - id: get_user
-          type: Request
+        - id: break_if_no_id
+          type: Throw
           skip:
-            _eq:
+            _ne:
               - _input: user_id
               - null
+          messages:
+            error: false
+          params:
+            throw: true
+        - id: get_user
+          type: Request
           params: get_user
         - id: redirect_if_no_user
           type: Link
@@ -50,6 +57,16 @@ _ref:
               - null
           params:
             back: true
+        - id: break_if_no_user
+          type: Throw
+          skip:
+            _ne:
+              - _request: get_user.0
+              - null
+          messages:
+            error: false
+          params:
+            throw: true
         - id: set_user
           type: SetState
           skip:
@@ -62,57 +79,118 @@ _ref:
             disable_save: false
 
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title:
-              _nunjucks:
-                template: |
-                  Edit {{ app_title }} User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
-                on:
-                  _object.assign:
-                    - _request: get_user.0
-                    - app_title:
-                        _module.var: app_title
-            doc:
-              _request: get_user.0
-            width: 600
-            blocks:
-              - _ref: ../components/view_user_avatar_preview.yaml
-              - _ref: ../components/view_signed_up.yaml
-              - _ref: ../components/view_invite_link.yaml
-              - _ref: ../components/view_email.yaml
-              - id: divider
-                type: Divider
-                properties:
-                  title: Profile
-              - _module.var:
-                  key: components.form_profile
-                  default:
-                    id: form_profile
-                    type: Box
-              - id: divider
-                type: Divider
-                properties:
-                  title: Access
-              - _module.var:
-                  key: components.form_global_attributes
-                  default:
-                    id: form_global_attributes
-                    type: Box
-              - _module.var:
-                  key: components.form_app_attributes
-                  default:
-                    id: form_app_attributes
-                    type: Box
-              - _ref: ../components/form_access_edit.yaml
+      - id: card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          # TODO: doc_metadata component
+          # - _ref: ../components/doc_metadata.yaml
+          - _ref:
+              path: ../shared/layout/identity-header.yaml
+              vars:
+                avatar_src:
+                  _state: user.profile.picture
+                name:
+                  _state: user.profile.name
+                email:
+                  _state: user.email
+                extra:
+                  - id: signed_up
+                    type: Paragraph
+                    visible:
+                      _eq:
+                        - _state: user.is_user
+                        - true
+                    style:
+                      marginBottom: 0
+                    properties:
+                      type: secondary
+                      content:
+                        _nunjucks:
+                          template: "Signed up {{ date | date('YYYY-MM-DD') }}"
+                          on:
+                            date:
+                              _state: user.sign_up
+                  - id: invite_link
+                    type: Paragraph
+                    visible:
+                      _eq:
+                        - _state: user.invite.open
+                        - true
+                    style:
+                      marginBottom: 0
+                    properties:
+                      type: secondary
+                      code: true
+                      copyable: true
+                      content:
+                        _nunjucks:
+                          template: "{{ origin }}/login?hint={{ hint }}"
+                          on:
+                            origin:
+                              _if_none:
+                                - _module.var: app_domain
+                                - _location: origin
+                            hint:
+                              _if_none:
+                                - _state: user.lowercase_email
+                                - ""
+          - id: divider
+            type: Divider
+            properties:
+              title: Profile
+          - _ref: components/form_profile.yaml
+          - id: divider
+            type: Divider
+            properties:
+              title: Access
+          - _ref: components/form_global_attributes.yaml
+          - _ref: components/form_app_attributes.yaml
+          - _ref: components/form_access_edit.yaml
       - _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 600
             actions:
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                  disabled:
+                    _state: disable_save
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: generate_avatar
+                      type: SetState
+                      params:
+                        user.profile.picture:
+                          _js:
+                            _ref:
+                              path: ../shared/profile/generate-avatar-svg.js.njk
+                              vars:
+                                prefix: user.profile
+                    - id: update_user
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-user
+                        payload:
+                          user:
+                            _state: user
+                      messages:
+                        success: User updated.
+                    - id: reset
+                      type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
               - id: resend_invite_button
                 type: Button
                 visible:
@@ -147,10 +225,6 @@ _ref:
                               _state: user.email
                       messages:
                         success: Invite sent successfully.
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
               - id: cancel_button
                 type: Button
                 layout:
@@ -161,35 +235,6 @@ _ref:
                   type: default
                 events:
                   onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        back: true
-              - id: save_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Save
-                  icon: AiOutlineSave
-                  disabled:
-                    _state: disable_save
-                events:
-                  onClick:
-                    - id: validate
-                      type: Validate
-                    - id: update_user
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _module.endpointId: update-user
-                        payload:
-                          user:
-                            _state: user
-                      messages:
-                        success: User updated.
-                    - id: reset
-                      type: Reset
                     - id: back
                       type: Link
                       params:

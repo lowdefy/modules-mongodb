@@ -1,0 +1,162 @@
+id:
+  _var: id
+type: Box
+layout:
+  direction: row
+  wrap: nowrap
+slots:
+  content:
+    style:
+      minHeight: 100vh
+style:
+  minHeight: 100vh
+  maxWidth: 1200
+  margin: "0 auto"
+  background: "var(--ant-color-bg-layout)"
+events:
+  onInit:
+    _var:
+      key: events.onInit
+      default: []
+  onInitAsync:
+    _var:
+      key: events.onInitAsync
+      default: []
+  onMount:
+    _var:
+      key: events.onMount
+      default: []
+  onMountAsync:
+    _var:
+      key: events.onMountAsync
+      default: []
+requests:
+  _var:
+    key: requests
+    default: []
+blocks:
+  # Brand panel — hidden on mobile (span: 0), ~45% on md+
+  - id: auth-brand-panel
+    type: Box
+    layout:
+      span: 0
+      md:
+        span: 11
+      direction: column
+      justify: center
+    style:
+      overflow: hidden
+      background:
+        _module.var: auth_page.brand_panel_background
+    slots:
+      content:
+        style:
+          minHeight: 100vh
+          alignItems: center
+    blocks:
+      - id: auth-logo
+        type: Img
+        style:
+          maxWidth: 200
+          width: "100%"
+          filter: "brightness(0) invert(1)"
+        properties:
+          src:
+            _module.var: logo.primary
+          width: 100%
+  # Form panel
+  - id: auth-form-panel
+    type: Box
+    layout:
+      span: 24
+      md:
+        span: 13
+      direction: column
+      justify: center
+    style:
+      padding: 40px 24px
+      background: "var(--ant-color-bg-layout)"
+    slots:
+      content:
+        style:
+          minHeight: 100vh
+          alignItems: center
+    blocks:
+      - id: auth-page-container
+        type: Box
+        style:
+          maxWidth: 400
+          width: "100%"
+        layout:
+          gap: 24
+        blocks:
+          _build.array.concat:
+            # Mobile logo — hidden on md+ via span: 0
+            - - id: auth-logo-mobile
+                type: Img
+                layout:
+                  span: 24
+                  selfAlign: middle
+                  md:
+                    span: 0
+                style:
+                  maxWidth: 140
+                  marginBottom: 8
+                properties:
+                  src:
+                    _module.var: logo.primary
+                  width: 100%
+            # Card
+            - - id: auth-card
+                type: Card
+                properties:
+                  bordered: false
+                  theme:
+                    borderRadiusLG: 12
+                    bodyPadding: 32
+                style:
+                  _module.var: auth_page.card_style
+                layout:
+                  gap: 16
+                blocks:
+                  _build.array.concat:
+                    - _build.if:
+                        test:
+                          _build.ne:
+                            - _var:
+                                key: title
+                                default: ""
+                            - ""
+                        then:
+                          - id: auth-title
+                            type: Title
+                            style:
+                              textAlign: center
+                              marginBottom: 0
+                            properties:
+                              content:
+                                _var: title
+                              level: 3
+                        else: []
+                    - _var:
+                        key: blocks
+                        default: []
+                    - _var:
+                        key: actions
+                        default: []
+            # Footer
+            - _build.if:
+                test:
+                  _build.gt:
+                    - _build.array.length:
+                        _module.var: footer
+                    - 0
+                then:
+                  - id: auth-footer
+                    type: Box
+                    style:
+                      marginTop: 24
+                      textAlign: center
+                    blocks:
+                      _module.var: footer
+                else: []

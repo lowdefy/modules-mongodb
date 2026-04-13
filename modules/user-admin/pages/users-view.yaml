@@ -1,0 +1,130 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: users-view
+    title:
+      _nunjucks:
+        template: |
+          {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+        on:
+          _object.assign:
+            - _request: get_user.0
+            - app_title:
+                _module.var: app_title
+    content_width: 900
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var: app_title
+              - " User Admin"
+        pageId:
+          _module.pageId: users
+      - label:
+          _if_none:
+            - _request: get_user.0.profile.name
+            - ""
+    page_actions:
+      - id: edit_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title: Edit
+          icon: AiOutlineEdit
+          type: default
+        events:
+          onClick:
+            - id: go_edit
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: users-edit
+                input:
+                  user_id:
+                    _input: user_id
+    doc:
+      _request: get_user.0
+    requests:
+      - _ref: requests/get_user.yaml
+    events:
+      onMount:
+        - id: redirect_if_no_id
+          type: Link
+          skip:
+            _ne:
+              - _input: user_id
+              - null
+          params:
+            back: true
+        - id: break_if_no_id
+          type: Throw
+          skip:
+            _ne:
+              - _input: user_id
+              - null
+          messages:
+            error: false
+          params:
+            throw: true
+        - id: get_user
+          type: Request
+          params: get_user
+        - id: redirect_if_no_user
+          type: Link
+          skip:
+            _ne:
+              - _request: get_user.0
+              - null
+          params:
+            back: true
+        - id: break_if_no_user
+          type: Throw
+          skip:
+            _ne:
+              - _request: get_user.0
+              - null
+          messages:
+            error: false
+          params:
+            throw: true
+        - id: set_user
+          type: SetState
+          skip:
+            _eq:
+              - _input: user_id
+              - null
+          params:
+            user:
+              _request: get_user.0
+    blocks:
+      - id: detail_layout
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: main_column
+            type: Box
+            layout:
+              span: 14
+              sm:
+                span: 24
+            blocks:
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Profile
+                    blocks:
+                      - _ref: components/view_user.yaml
+          - id: sidebar_column
+            type: Box
+            layout:
+              span: 10
+              sm:
+                span: 24
+            blocks:
+              - _module.var: components.view_access_tile

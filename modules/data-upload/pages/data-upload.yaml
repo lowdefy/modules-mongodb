@@ -1,0 +1,83 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: data-upload
+    title:
+      _module.var: tool.label
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Tools
+      - label:
+          _module.var: tool.label
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            tool_columns:
+              _module.var: tool.columns
+            tool_id_column:
+              _module.var: tool.id_column
+            filter:
+              status: 'new'
+              method: changes
+            pagination:
+              pageSize: 100
+      onMount:
+        - id: load_data
+          type: Request
+          params:
+            - get_staged
+            - get_upload_history
+        - id: set_upload_history
+          type: SetState
+          params:
+            upload_history_list:
+              _request: get_upload_history
+    requests:
+      - _ref: requests/get-staged.yaml
+      - _ref: requests/get-download-data.yaml
+      - _ref: requests/get-upload-history.yaml
+      - _ref: requests/get-upload-download.yaml
+    blocks:
+      # Top strip — upload zone + download button
+      - id: upload_strip
+        type: Card
+        properties:
+          size: small
+        blocks:
+          - id: upload_strip_row
+            type: Box
+            layout:
+              gap: 12
+              align: middle
+            blocks:
+              - id: upload_zone_col
+                type: Box
+                layout:
+                  flex: 1 1 auto
+                blocks:
+                  - _ref: components/upload-zone.yaml
+              - id: download_col
+                type: Box
+                layout:
+                  flex: 0 0 auto
+                blocks:
+                  - _ref: components/download-current.yaml
+
+      # Staging table
+      - id: table_card
+        type: Card
+        properties:
+          size: small
+        blocks:
+          - _ref: components/staging-table.yaml
+      # Upload history
+      - id: table_card
+        type: Card
+        properties:
+          size: small
+        blocks:
+          - _ref: components/upload-history.yaml

@@ -1,0 +1,30 @@
+id: filter_box
+type: Box
+loading:
+  _not:
+    _request: get_notifications
+layout:
+  gap: 8
+blocks:
+  - id: filter.dates
+    type: DateRangeSelector
+    layout:
+      flex: 1 0 auto
+    properties:
+      title: Date Range
+    events:
+      onChange:
+        _ref: actions/filter-onchange.yaml
+  - id: filter.status
+    type: MultipleSelector
+    layout:
+      flex: 1 0 auto
+    properties:
+      title: Type
+      placeholder: Select type
+      renderTags: true
+      options:
+        _state: event_types
+    events:
+      onChange:
+        _ref: actions/filter-onchange.yaml

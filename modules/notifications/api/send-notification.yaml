@@ -1,5 +1,4 @@
 id: send-notification
 type: InternalApi
 routine:
-  - :return:
-      success: true
+  _module.var: send_routine

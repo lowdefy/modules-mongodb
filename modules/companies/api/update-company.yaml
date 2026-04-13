@@ -4,7 +4,7 @@ routine:
   - id: update
     type: MongoDBUpdateOne
     connectionId:
-      _module.connectionId: companies-db
+      _module.connectionId: companies-collection
     properties:
       filter:
         _id:
@@ -35,20 +35,18 @@ routine:
                     _string.trim:
                       _if_none:
                         - _payload: company.contact.primary_email
-                        - ""
+                        - ''
                 updated:
                   _ref:
                     module: events
                     component: change_stamp
-          - _module.var:
-              key: request_stages.update_company
-              default: []
+          - _module.var: request_stages.update_company
 
   - id: unlink-old-contacts
     type: MongoDBUpdateMany
     connectionId:
       _module.connectionId:
-        id: contacts-db
+        id: contacts-collection
         module: contacts
     properties:
       filter:
@@ -63,7 +61,7 @@ routine:
     type: MongoDBUpdateMany
     connectionId:
       _module.connectionId:
-        id: contacts-db
+        id: contacts-collection
         module: contacts
     properties:
       filter:
@@ -94,10 +92,8 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: ../defaults/event_display.yaml
-                        - _module.var:
-                            key: event_display
-                            default: {}
+                        - _ref: defaults/event_display.yaml
+                        - _module.var: event_display
                   callback:
                     _build.function:
                       __build.ne:
@@ -121,7 +117,7 @@ routine:
                             name:
                               _payload:
                                 _build.string.concat:
-                                  - "company."
+                                  - 'company.'
                                   - _module.var: name_field
                     description: null
         references:

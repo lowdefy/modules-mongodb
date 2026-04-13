@@ -7,12 +7,27 @@ id:
 type: AwsS3PresignedPostPolicy
 connectionId:
   _module.connectionId: files-bucket
+payload:
+  file_name:
+    _state:
+      _string.concat:
+        - _var:
+            key: block_id
+            default: file_upload
+        - _s3.file.name
+  file_type:
+    _state:
+      _string.concat:
+        - _var:
+            key: block_id
+            default: file_upload
+        - _s3.file.type
 properties:
   key:
     _string.concat:
       - _var: entity_type
       - "/"
-      - _date.format:
+      - _dayjs.format:
           on:
             _date: now
           params:
@@ -20,17 +35,7 @@ properties:
       - "/"
       - _uuid: true
       - "/"
-      - _state:
-          _string.concat:
-            - _var:
-                key: block_id
-                default: file_upload
-            - _s3.file.name
+      - _payload: file_name
   conditions:
     Content-Type:
-      _state:
-        _string.concat:
-          - _var:
-              key: block_id
-              default: file_upload
-          - _s3.file.type
+      _payload: file_type

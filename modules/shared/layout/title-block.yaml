@@ -1,44 +1,27 @@
 id: title-block
 type: Box
 blocks:
-  - id: breadcrumbs
-    type: Breadcrumb
-    style:
-      paddingTop: 20px
-    properties:
-      list:
-        _var:
-          key: breadcrumbs
-          default: []
   - id: title
-    type: Title
+    type: Html
     layout:
       flex: 1 0 auto
-    properties:
-      content:
-        _var: title
-      level: 2
-  - id: title-metadata
-    type: Html
-    style:
-      color:
-        _theme: colorTextDescription
-      fontSize: 0.85em
-      overflow: hidden
-      whiteSpace: nowrap
-      textOverflow: ellipsis
     properties:
       html:
         _nunjucks:
           template: |
-            {% if doc.updated.user.name %}
-              Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('lll')}}
-            {% endif %}
-            {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
-            {% if doc.created.user.name %}
-              Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('lll')}}
-            {% endif %}
+            <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
+            <div class="text-text-secondary text-sm" style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+              {% if doc.updated.user.name %}
+                Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A')}}
+              {% endif %}
+              {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
+              {% if doc.created.user.name %}
+                Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('MMM D, YYYY h:mm A')}}
+              {% endif %}
+            </div>
           on:
+            title:
+              _var: title
             doc:
               _var: doc
   - id: page-actions

@@ -1,0 +1,215 @@
+id: staging_table
+type: Box
+blocks:
+  - id: method_filter_box
+    type: Box
+    layout:
+      flex: 1 0 auto
+    blocks:
+      - id: filter.method
+        type: ButtonSelector
+        visible:
+          _eq:
+            - _state: filter.status
+            - 'new'
+        properties:
+          label:
+            disabled: true
+          options:
+            - label: Changes
+              value: changes
+            - label: Inserts
+              value: insert
+            - label: Updates
+              value: update
+            - label: None
+              value: none
+            - label: Stale
+              value: stale
+        events:
+          onChange:
+            - id: reset_pagination
+              type: SetState
+              params:
+                pagination.current: 1
+                pagination.skip: 0
+            - id: refresh
+              type: Request
+              params: get_staged
+  - id: filter.status
+    type: ButtonSelector
+    layout:
+      flex: 0 1 auto
+    properties:
+      label:
+        disabled: true
+      buttonStyle: outline
+      options:
+        - label: Processing
+          value: 'new'
+        - label: Done
+          value: 'done'
+        - label: Discarded
+          value: 'discard'
+        - label: Errors
+          value: 'error'
+    events:
+      onChange:
+        - id: reset
+          type: SetState
+          params:
+            filter.method:
+              _if:
+                test:
+                  _eq:
+                    - _state: filter.status
+                    - 'new'
+                then: changes
+                else: null
+            pagination.current: 1
+            pagination.skip: 0
+            pagination.pageSize: 1000
+        - id: refresh
+          type: Request
+          params: get_staged
+  - id: staging_grid
+    type: AgGridBalham
+    loading:
+      _eq:
+        - _request: get_staged.0.results
+        - null
+    skeleton:
+      type: Skeleton
+      properties:
+        height: 400
+    properties:
+      rowData:
+        _js: |
+          const rows = request('get_staged.0.results') || [];
+          const status = state('filter.status');
+          if (status !== 'new') return rows;
+          const cols = state('tool_columns') || [];
+          const idCol = state('tool_id_column');
+          const fields = cols.map(c => c.field).filter(f => f !== idCol);
+          return rows.map(r => {
+            if (r.method !== 'update') return r;
+            const n = r.new_doc || {};
+            const t = r.target_doc || {};
+            const changed = fields.filter(f => JSON.stringify(n[f]) !== JSON.stringify(t[f]));
+            return { ...r, changed_fields: changed.join(', ') };
+          });
+      rowSelection: multiple
+      suppressRowClickSelection: true
+      columnDefs:
+        _array.concat:
+          - - field: target_id
+              headerName: ID
+              pinned: left
+              width: 160
+              checkboxSelection:
+                _eq:
+                  - _state: filter.status
+                  - 'new'
+              headerCheckboxSelection:
+                _eq:
+                  - _state: filter.status
+                  - 'new'
+              headerCheckboxSelectionFilteredOnly: true
+              cellRenderer:
+                _build.if:
+                  test:
+                    _build.ne:
+                      - _module.var: tool.view_page
+                      - null
+                  then:
+                    _function:
+                      __nunjucks:
+                        template:
+                          _build.string.concat:
+                            - '<a href="/'
+                            - _module.var: tool.view_page
+                            - '?_id={{ target_id }}" style="color:var(--ant-color-primary);font-weight:600">{{ target_id }}</a>'
+                        on:
+                          __args: 0.data
+                  else:
+                    _function:
+                      __nunjucks:
+                        template: '{{ target_id }}'
+                        on:
+                          __args: 0.data
+            - field: method
+              headerName: Action
+              width: 110
+              cellRenderer:
+                _function:
+                  __nunjucks:
+                    template: |
+                      {% if method == 'insert' %}<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-success-bg text-success border border-success-border">Insert</span>{% elif method == 'update' %}<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-primary-bg text-primary border border-primary-border">Update</span>{% elif method == 'delete' %}<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-error-bg text-error border border-error-border">Delete</span>{% elif method == 'none' %}<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-fill-tertiary text-text-tertiary">No Change</span>{% elif method == 'error' %}<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-error-bg text-error border border-error-border">Error</span>{% else %}<span class="inline-block px-2 py-0.5 rounded text-[11px] font-semibold bg-fill-tertiary text-text-secondary">{{ method }}</span>{% endif %}
+                    on:
+                      __args: 0.data
+          - _if:
+              test:
+                _eq:
+                  - _state: filter.status
+                  - 'new'
+              then:
+                - field: changed_fields
+                  headerName: Changed
+                  width: 200
+              else: []
+
+          - _if:
+              test:
+                _eq:
+                  - _state: filter.status
+                  - 'error'
+              then:
+                - field: validation_errors
+                  headerName: Errors
+                  flex: 1
+                  minWidth: 250
+                  autoHeight: true
+                  wrapText: true
+                  cellRenderer:
+                    _function:
+                      __nunjucks:
+                        template: |
+                          {% set items = errors or [] %}{% if items | length %}<span style="color:#cf1322;font-weight:600;font-size:12px">⚠ {{ items | join(', ') }}</span>{% endif %}
+                        on:
+                          __object.assign:
+                            - errors:
+                                __args: 0.value
+              else: []
+          - - field: quality_warnings
+              headerName: Warnings
+              flex: 1
+              minWidth: 160
+              autoHeight: true
+              wrapText: true
+              cellRenderer:
+                _function:
+                  __nunjucks:
+                    template: |
+                      {% set items = warnings or [] %}{% if items | length %}<span style="color:#d48806;font-weight:600;font-size:12px">⚠ {{ items | join(', ') }}</span>{% endif %}
+                    on:
+                      __object.assign:
+                        - warnings:
+                            __args: 0.value
+          - - field: source
+              headerName: Source
+              width: 280
+      defaultColDef:
+        sortable: true
+        resizable: true
+    events:
+      onSelectionChanged:
+        - id: update_selection
+          type: SetState
+          params:
+            selected_rows:
+              _event: selected
+  - id: table_footer
+    type: Box
+    blocks:
+      - _ref: components/action-bar.yaml
+      - _ref: components/pagination-staged.yaml

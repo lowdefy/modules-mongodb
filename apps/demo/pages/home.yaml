@@ -1,20 +1,13 @@
-id: home
-type: PageHeaderMenu
-properties:
-  title: Module Test App
-blocks:
-  - id: content
-    type: Box
-    style:
-      maxWidth: 800
-      margin: auto
-      padding: 24
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: home
+    title: Module Demo App
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
     blocks:
-      - id: title
-        type: Title
-        properties:
-          content: Module Test App
-          level: 2
       - id: description
         type: Paragraph
         properties:
