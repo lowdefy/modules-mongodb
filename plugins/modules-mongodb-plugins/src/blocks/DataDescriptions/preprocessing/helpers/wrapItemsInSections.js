@@ -5,8 +5,8 @@ function wrapItemsInSections(items) {
   let currentSection = null;
 
   items.forEach((item) => {
-    if (item.type === "grid") {
-      // Grid at root level - wrap in section
+    if (item.type === "field") {
+      // Field at root level - wrap in section
       if (!currentSection) {
         currentSection = createSection(null, 0, []);
         rootSections.push(currentSection);

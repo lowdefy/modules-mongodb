@@ -24,13 +24,14 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260327101025",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260327101025",
-    "@lowdefy/blocks-basic": "0.0.0-experimental-20260327101025",
-    "@lowdefy/helpers": "0.0.0-experimental-20260327101025",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260410094749",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260410094749",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260410094749",
+    "@lowdefy/helpers": "0.0.0-experimental-20260410094749",
     "@lowdefy/plugin-aws": ">=4.0.0",
-    "antd": ">=4",
-    "react": ">=18"
+    "antd": ">=6",
+    "react": ">=18",
+    "react-dom": ">=18"
   },
   "devDependencies": {
     "@swc/cli": "0.6.0",

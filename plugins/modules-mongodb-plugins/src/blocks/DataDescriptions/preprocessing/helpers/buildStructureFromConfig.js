@@ -1,6 +1,6 @@
-import { type } from '@lowdefy/helpers';
-import processConfigItems from './processConfigItems.js';
-import wrapItemsInSections from './wrapItemsInSections.js';
+import { type } from "@lowdefy/helpers";
+import processConfigItems from "./processConfigItems.js";
+import wrapItemsInSections from "./wrapItemsInSections.js";
 
 function buildStructureFromConfig(data, formConfig) {
   const configArray = type.isArray(formConfig) ? formConfig : [formConfig];
@@ -10,7 +10,7 @@ function buildStructureFromConfig(data, formConfig) {
   const wrappedItems = wrapItemsInSections(items);
 
   return {
-    type: 'root',
+    type: "root",
     items: wrappedItems,
   };
 }

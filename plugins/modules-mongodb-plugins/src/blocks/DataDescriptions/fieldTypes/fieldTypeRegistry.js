@@ -65,7 +65,7 @@ export const fieldTypeRegistry = {
       "user" in value &&
       value.user?.name &&
       value.user?.id,
-    render: ({ value }) => {
+    render: ({ value, properties }) => {
       const userName = value?.user?.name;
       const userId = value?.user?.id;
       const timestamp = value?.timestamp;
@@ -85,13 +85,16 @@ export const fieldTypeRegistry = {
         hour12: false,
       });
 
+      const contactDetailPageId =
+        properties?.contactDetailPageId ?? "contacts/contact-detail";
+
       return (
         <span className="dataview-value">
           by{" "}
           {userId ? (
             <a
               className="dataview-link"
-              href={`/contacts-details?_id=${userId}`}
+              href={`/${contactDetailPageId}?_id=${userId}`}
             >
               {userName}
             </a>
@@ -118,12 +121,15 @@ export const fieldTypeRegistry = {
       const displayName = value.name ?? value.email ?? "Contact";
       const contactId = value.contact_id ?? value._id;
 
+      const contactDetailPageId =
+        properties?.contactDetailPageId ?? "contacts/contact-detail";
+
       if (contactId && !properties?.disableCrmLinks) {
         return (
           <span className="dataview-value">
             <a
               className="dataview-link"
-              href={`/contacts-details?_id=${contactId}`}
+              href={`/${contactDetailPageId}?_id=${contactId}`}
             >
               <Icon blockId="contact-icon" properties="AiOutlineUser" />{" "}
               {displayName}
@@ -147,13 +153,15 @@ export const fieldTypeRegistry = {
     detect: (value) => type.isObject(value) && "trading_name" in value,
     render: ({ value, Icon, properties }) => {
       const companyId = value.company_id ?? value._id;
+      const companyDetailPageId =
+        properties?.companyDetailPageId ?? "companies/company-detail";
 
       if (companyId && !properties?.disableCrmLinks) {
         return (
           <span className="dataview-value">
             <a
               className="dataview-link"
-              href={`/companies-details?_id=${companyId}`}
+              href={`/${companyDetailPageId}?_id=${companyId}`}
             >
               <Icon blockId="company-icon" properties="AiOutlineCluster" />{" "}
               {value.trading_name}
@@ -262,6 +270,34 @@ export const fieldTypeRegistry = {
     },
     fullWidth: true,
     componentHints: ["location"],
+  },
+
+  phoneNumber: {
+    priority: 40,
+    detect: (value) =>
+      type.isObject(value) &&
+      "phone_number" in value &&
+      "region" in value &&
+      type.isObject(value.region),
+    render: ({ value }) => {
+      const phoneNumber = value.phone_number;
+      const flag = value.region?.flag;
+
+      if (!phoneNumber || phoneNumber === value.region?.dial_code) {
+        return <span className="dataview-value dataview-value-null">Not set</span>;
+      }
+
+      return (
+        <span className="dataview-value">
+          {flag ? `${flag} ` : ""}
+          <a className="dataview-link" href={`tel:${phoneNumber}`}>
+            {phoneNumber}
+          </a>
+        </span>
+      );
+    },
+    fullWidth: false,
+    componentHints: ["phone_number_input"],
   },
 
   // string types (check specific before generic)
@@ -396,40 +432,79 @@ export const fieldTypeRegistry = {
     componentHints: ["number"],
   },
 
-  datetime: {
-    priority: 90,
-    detect: (value) => type.isDate(value),
-    render: ({ value }) => (
-      <span className="dataview-value">{value.toLocaleString()}</span>
-    ),
-    fullWidth: false,
-    componentHints: [],
-  },
-
   date: {
-    priority: 95,
-    detect: (value) => type.isDate(value),
-    render: ({ value }) => (
-      <span className="dataview-value">{value.toLocaleDateString()}</span>
-    ),
+    priority: 90,
+    detect: (value) => {
+      const d = type.isDate(value)
+        ? value
+        : type.isString(value) &&
+            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)
+          ? new Date(value)
+          : null;
+      if (!d || Number.isNaN(d.getTime())) return false;
+      return (
+        d.getUTCHours() === 0 &&
+        d.getUTCMinutes() === 0 &&
+        d.getUTCSeconds() === 0 &&
+        d.getUTCMilliseconds() === 0
+      );
+    },
+    render: ({ value }) => {
+      const d = type.isDate(value) ? value : new Date(value);
+      return (
+        <span className="dataview-value">{d.toLocaleDateString()}</span>
+      );
+    },
     fullWidth: false,
     componentHints: ["date_selector"],
   },
 
+  datetime: {
+    priority: 95,
+    detect: (value) => {
+      if (type.isDate(value)) return true;
+      if (
+        type.isString(value) &&
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)
+      ) {
+        return !Number.isNaN(new Date(value).getTime());
+      }
+      return false;
+    },
+    render: ({ value }) => {
+      const d = type.isDate(value) ? value : new Date(value);
+      return <span className="dataview-value">{d.toLocaleString()}</span>;
+    },
+    fullWidth: false,
+    componentHints: [],
+  },
+
   dateRange: {
     priority: 95,
-    detect: (value) =>
-      type.isArray(value) &&
-      value.length === 2 &&
-      type.isDate(value?.[0]) &&
-      type.isDate(value?.[1]),
-    renderArray: ({ value }) => (
-      <div>
-        <span className="dataview-value">{value[0].toLocaleDateString()}</span>{" "}
-        -{" "}
-        <span className="dataview-value">{value[1].toLocaleDateString()}</span>
-      </div>
-    ),
+    detect: (value) => {
+      if (!type.isArray(value) || value.length !== 2) return false;
+      return value.every((v) => {
+        if (type.isDate(v)) return true;
+        if (
+          type.isString(v) &&
+          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)
+        ) {
+          return !Number.isNaN(new Date(v).getTime());
+        }
+        return false;
+      });
+    },
+    renderArray: ({ value }) => {
+      const d0 = type.isDate(value[0]) ? value[0] : new Date(value[0]);
+      const d1 = type.isDate(value[1]) ? value[1] : new Date(value[1]);
+      return (
+        <div>
+          <span className="dataview-value">{d0.toLocaleDateString()}</span>{" "}
+          -{" "}
+          <span className="dataview-value">{d1.toLocaleDateString()}</span>
+        </div>
+      );
+    },
     fullWidth: false,
     componentHints: ["date_range_selector"],
   },

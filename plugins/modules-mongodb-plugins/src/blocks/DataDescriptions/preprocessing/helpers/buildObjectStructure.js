@@ -1,8 +1,7 @@
-import { type } from '@lowdefy/helpers';
-import createSection from './createSection.js';
-import createGridNode from './createGridNode.js';
-import formatFieldName from '../../utils/formatFieldName.js';
-import detectFieldType from './detectFieldType.js';
+import { type } from "@lowdefy/helpers";
+import createSection from "./createSection.js";
+import formatFieldName from "../../utils/formatFieldName.js";
+import detectFieldType from "./detectFieldType.js";
 
 function buildObjectStructure(obj, level) {
   const leafFields = [];
@@ -20,7 +19,7 @@ function buildObjectStructure(obj, level) {
     } else {
       // leaf field
       leafFields.push({
-        type: 'field',
+        type: "field",
         key,
         value,
         label: formatFieldName(key),
@@ -33,13 +32,8 @@ function buildObjectStructure(obj, level) {
 
   const items = [];
 
-  // Add grid for leaf fields
-  if (leafFields.length > 0) {
-    const gridNode = createGridNode(leafFields);
-    if (gridNode) {
-      items.push(gridNode);
-    }
-  }
+  // Add leaf fields directly (no grid wrapping)
+  items.push(...leafFields);
 
   // Add sections for structural fields
   structuralFields.forEach(({ key, value }) => {

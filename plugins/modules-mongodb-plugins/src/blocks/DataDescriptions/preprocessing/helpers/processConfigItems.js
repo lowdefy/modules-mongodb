@@ -1,6 +1,5 @@
 import { get, type, applyArrayIndices } from "@lowdefy/helpers";
 import createSection from "./createSection.js";
-import createGridNode from "./createGridNode.js";
 import formatFieldName from "../../utils/formatFieldName.js";
 import detectFieldType from "./detectFieldType.js";
 
@@ -28,8 +27,8 @@ function processConfigItems(data, formItems, level) {
 
       // Merge box contents into current level
       boxItems.forEach((boxItem) => {
-        if (boxItem.type === "grid") {
-          fields.push(...boxItem.items);
+        if (boxItem.type === "field") {
+          fields.push(boxItem);
         } else if (boxItem.type === "section") {
           sections.push(boxItem);
         }
@@ -102,11 +101,8 @@ function processConfigItems(data, formItems, level) {
 
   const items = [];
 
-  // Add grid for fields
-  const gridNode = createGridNode(fields);
-  if (gridNode) {
-    items.push(gridNode);
-  }
+  // Add fields directly (no grid wrapping)
+  items.push(...fields);
 
   // Add sections
   items.push(...sections);

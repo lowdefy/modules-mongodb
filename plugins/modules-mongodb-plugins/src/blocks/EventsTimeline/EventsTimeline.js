@@ -27,7 +27,7 @@ dayjs.extend(duration);
 // Helpers
 // ---------------------------------------------------------------------------
 
-const DEFAULT_DOT_COLOR = "#d9d9d9";
+const DEFAULT_DOT_COLOR = "var(--ant-color-border)";
 
 function sanitize(html) {
   if (html == null) return "";
@@ -156,7 +156,7 @@ function TimeAgo({ timestamp, userName }) {
 
   return (
     <Tooltip title={tooltipTitle}>
-      <span style={{ color: "#999", fontSize: 12, whiteSpace: "nowrap" }}>
+      <span style={{ color: "var(--ant-color-text-tertiary)", fontSize: 12, whiteSpace: "nowrap" }}>
         {label}
       </span>
     </Tooltip>
@@ -180,17 +180,19 @@ function EventDescription({
   typeConfig,
 }) {
   const user = event.created?.user;
-  const cardBg = typeConfig.card_color || "#f0f0f0";
-  const borderColor = typeConfig.border_color || "#e8e8e8";
+
+  const cardStyle = { marginBottom: 4 };
+  if (typeConfig.card_color) {
+    cardStyle.backgroundColor = typeConfig.card_color;
+  }
+  if (typeConfig.border_color) {
+    cardStyle.borderColor = typeConfig.border_color;
+  }
 
   return (
     <Card
       size="small"
-      style={{
-        backgroundColor: cardBg,
-        borderColor: borderColor,
-        marginBottom: 4,
-      }}
+      style={cardStyle}
       styles={{ body: { padding: "12px 16px" } }}
     >
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
@@ -203,7 +205,7 @@ function EventDescription({
           />
           <div
             dangerouslySetInnerHTML={{ __html: sanitize(event.description) }}
-            style={{ marginTop: 4, fontSize: 13, color: "#333" }}
+            style={{ marginTop: 4, fontSize: 13 }}
           />
         </div>
       </div>
@@ -226,11 +228,11 @@ function EventInfo({ info, onOpenModal }) {
   );
 }
 
-function EventInfoModal({ visible, onClose, event, typeConfig }) {
+function EventInfoModal({ open, onClose, event, typeConfig }) {
   const user = event?.created?.user;
   return (
     <Modal
-      open={visible}
+      open={open}
       onCancel={onClose}
       footer={null}
       title={null}
@@ -272,8 +274,8 @@ function EventAction({ action, actionStatusConfig, methods }) {
       <Card
         size="small"
         style={{
-          borderColor: statusConf.border_color || "#e8e8e8",
-          backgroundColor: statusConf.card_color || "#fafafa",
+          borderColor: statusConf.border_color || "var(--ant-color-border-secondary)",
+          backgroundColor: statusConf.card_color || "var(--ant-color-fill-quaternary)",
         }}
         styles={{ body: { padding: "8px 12px" } }}
       >
@@ -394,7 +396,7 @@ function EventTimelineItem({
 
       {hasInfo && (
         <EventInfoModal
-          visible={modalVisible}
+          open={modalVisible}
           onClose={() => setModalVisible(false)}
           event={event}
           typeConfig={typeConfig}
@@ -426,7 +428,7 @@ function EventTimelineItem({
 // Main Component
 // ---------------------------------------------------------------------------
 
-const EventsTimeline = ({ blockId, properties, methods, components }) => {
+const EventsTimeline = ({ blockId, classNames = {}, properties, methods, components, styles = {} }) => {
   const {
     data = [],
     eventTypeConfig = {},
@@ -472,8 +474,7 @@ const EventsTimeline = ({ blockId, properties, methods, components }) => {
         if (Icon) {
           item.dot = (
             <Icon
-              name={_typeConfig.icon}
-              style={{ fontSize: 16, color: color }}
+              properties={{ name: _typeConfig.icon, color: color }}
             />
           );
         }
@@ -490,8 +491,10 @@ const EventsTimeline = ({ blockId, properties, methods, components }) => {
   ]);
 
   return (
-    <div id={blockId}>
+    <div id={blockId} className={classNames.element} style={styles.element}>
       <Timeline
+        className={classNames.timeline}
+        style={styles.timeline}
         mode={mode}
         reverse={reverse}
         items={items}
