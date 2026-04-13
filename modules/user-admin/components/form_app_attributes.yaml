@@ -2,6 +2,11 @@ id: form_app_attributes
 type: Box
 layout:
   gap: 8
+visible:
+  _build.gt:
+    - _build.array.length:
+        _module.var: components.app_attributes_fields
+    - 0
 blocks:
   _build.array.concat:
     - _build.if:

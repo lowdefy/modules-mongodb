@@ -1,0 +1,28 @@
+- id: validate
+  type: Validate
+- id: generate_avatar
+  type: SetState
+  params:
+    user.profile.picture:
+      _js:
+        _ref:
+          path: ../shared/profile/generate-avatar-svg.js.njk
+          vars:
+            prefix: user.profile
+- id: invite_user
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: invite-user
+    payload:
+      user:
+        _state: user
+  messages:
+    success: New invite created.
+- id: reset
+  type: Reset
+- id: back
+  type: Link
+  params:
+    pageId:
+      _module.pageId: users

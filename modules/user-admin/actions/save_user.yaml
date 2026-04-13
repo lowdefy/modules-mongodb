@@ -1,0 +1,27 @@
+- id: validate
+  type: Validate
+- id: generate_avatar
+  type: SetState
+  params:
+    user.profile.picture:
+      _js:
+        _ref:
+          path: ../shared/profile/generate-avatar-svg.js.njk
+          vars:
+            prefix: user.profile
+- id: update_user
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: update-user
+    payload:
+      user:
+        _state: user
+  messages:
+    success: User updated.
+- id: reset
+  type: Reset
+- id: back
+  type: Link
+  params:
+    back: true

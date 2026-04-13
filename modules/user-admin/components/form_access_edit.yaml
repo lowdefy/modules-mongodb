@@ -3,7 +3,6 @@ type: Box
 layout:
   gap: 8
 blocks:
-  #TODO What is this supposed to be?
   - id: user.invite.open
     type: Switch
     visible:

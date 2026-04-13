@@ -1,4 +1,3 @@
-# TODO: Build warning says _state: filter.search doesn't exist, but filter.search is an input block defined in users_filter.yaml
 id: sort_filters_container
 type: Box
 layout:

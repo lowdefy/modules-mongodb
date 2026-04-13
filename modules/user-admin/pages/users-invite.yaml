@@ -20,7 +20,7 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - " User Admin"
+              - ' User Admin'
         pageId:
           _module.pageId: users
       - label: Invite User
@@ -80,17 +80,15 @@ _ref:
         layout:
           gap: 16
         blocks:
-          # TODO: doc_metadata component
-          # - _ref: ../components/doc_metadata.yaml
           - _ref: components/view_user_avatar_preview.yaml
           - _ref: components/view_invite_link.yaml
           - _ref: components/view_email.yaml
-          - id: divider
+          - id: divider_profile
             type: Divider
             properties:
               title: Profile
           - _ref: components/form_profile.yaml
-          - id: divider
+          - id: divider_access
             type: Divider
             properties:
               title: Access
@@ -111,34 +109,7 @@ _ref:
                   icon: RiMailSendLine
                 events:
                   onClick:
-                    - id: validate
-                      type: Validate
-                    - id: generate_avatar
-                      type: SetState
-                      params:
-                        user.profile.picture:
-                          _js:
-                            _ref:
-                              path: ../shared/profile/generate-avatar-svg.js.njk
-                              vars:
-                                prefix: user.profile
-                    - id: invite_user
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _module.endpointId: invite-user
-                        payload:
-                          user:
-                            _state: user
-                      messages:
-                        success: New invite created.
-                    - id: reset
-                      type: Reset
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: users
+                    _ref: actions/invite_user.yaml
               - id: cancel_button
                 type: Button
                 layout:

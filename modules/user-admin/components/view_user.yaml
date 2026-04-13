@@ -13,30 +13,13 @@ blocks:
             email:
               _state: user.email
     # Invite link (only visible for open invites)
-    - - id: invite_link
-        type: Paragraph
-        visible:
-          _eq:
-            - _state: user.invite.open
-            - true
-        style:
-          marginBottom: 0
-        properties:
-          type: secondary
-          code: true
-          copyable: true
-          content:
-            _nunjucks:
-              template: '{{ origin }}/login?hint={{ hint }}'
-              on:
-                origin:
-                  _if_none:
-                    - _module.var: app_domain
-                    - _location: origin
-                hint:
-                  _if_none:
-                    - _state: user.lowercase_email
-                    - ''
+    - - _ref:
+          path: components/view_invite_link.yaml
+          vars:
+            visible:
+              _eq:
+                - _state: user.invite.open
+                - true
     # Profile DataDescriptions
     - - id: profile_data
         type: DataDescriptions

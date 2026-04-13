@@ -1,6 +1,13 @@
-id: view_invite_link
+id: invite_link
 type: Paragraph
+visible:
+  _var:
+    key: visible
+    default: true
+style:
+  marginBottom: 0
 properties:
+  type: secondary
   code: true
   copyable: true
   content:
