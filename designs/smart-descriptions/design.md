@@ -77,19 +77,35 @@ No nesting. No sections. No recursive card wrapping. Always a single flat `<Desc
             title: Edit
 ```
 
-| Property               | Type            | Default  | Description                                                         |
-| ---------------------- | --------------- | -------- | ------------------------------------------------------------------- |
-| `data`                 | object          | required | Data object. Field IDs / auto-discovered keys resolve paths here.   |
-| `fields`               | array           | —        | Lowdefy block definitions. When provided, only these fields render. |
-| `title`                | string          | —        | Descriptions header title.                                          |
-| `bordered`             | boolean         | `true`   | Ant Design Descriptions bordered prop.                              |
-| `column`               | number / object | `2`      | Items per row. Number or responsive object.                         |
-| `size`                 | string          | —        | `"default"` or `"small"`.                                           |
-| `layout`               | string          | —        | `"horizontal"` or `"vertical"`.                                     |
-| `colon`                | boolean         | —        | Show colon after labels.                                            |
-| `disableCrmLinks`      | boolean         | `false`  | Disable contact/company auto-links.                                 |
-| `s3GetPolicyRequestId` | string          | —        | Request ID for S3 file downloads.                                   |
-| `theme`                | object          | —        | Antd design token overrides.                                        |
+| Property               | Type            | Default                      | Description                                                                   |
+| ---------------------- | --------------- | ---------------------------- | ----------------------------------------------------------------------------- |
+| `data`                 | object          | required                     | Data object. Field IDs / auto-discovered keys resolve paths here.             |
+| `fields`               | array           | —                            | Lowdefy block definitions. When provided, only these fields render.           |
+| `title`                | string          | —                            | Descriptions header title.                                                    |
+| `bordered`             | boolean         | `true`                       | Ant Design Descriptions bordered prop.                                        |
+| `column`               | number / object | `2`                          | Items per row. Number or responsive object.                                   |
+| `size`                 | string          | —                            | `"default"` or `"small"`.                                                     |
+| `layout`               | string          | —                            | `"horizontal"` or `"vertical"`.                                               |
+| `colon`                | boolean         | —                            | Show colon after labels.                                                      |
+| `disableCrmLinks`      | boolean         | `false`                      | Disable contact/company auto-links.                                           |
+| `contactDetailPageId`  | string          | `"contacts/contact-detail"`  | Page ID for contact detail links (used by contact and changeStamp renderers). |
+| `companyDetailPageId`  | string          | `"companies/company-detail"` | Page ID for company detail links.                                             |
+| `s3GetPolicyRequestId` | string          | —                            | Request ID for S3 file downloads.                                             |
+| `theme`                | object          | —                            | Antd design token overrides.                                                  |
+
+The defaults for `contactDetailPageId` and `companyDetailPageId` assume the contacts and companies modules use `contacts` and `companies` as entry IDs. In module contexts where entry IDs differ, resolve these at the YAML level:
+
+```yaml
+properties:
+  contactDetailPageId:
+    _module.pageId:
+      id: contact-detail
+      module: contacts
+  companyDetailPageId:
+    _module.pageId:
+      id: company-detail
+      module: companies
+```
 
 ## Data-Only Mode (Auto-Discovery)
 
@@ -99,28 +115,28 @@ When `fields` is not provided, the block walks the `data` object and renders eve
 
 Each value is tested against the field type registry (same 20 types from DataDescriptions). The registry detects types by value shape — priority-ordered, first match wins:
 
-| Priority | Type        | Detection                                                      | Renderer                       |
-| -------- | ----------- | -------------------------------------------------------------- | ------------------------------ |
-| 1        | null        | `value === null`                                               | "Not set" (italic gray)        |
-| 1        | undefined   | `value === undefined`                                          | "-"                            |
-| 35       | fileList    | `{ fileList: [] }`                                             | S3Download links               |
-| 40       | richText    | `{ html\|markdown, text }`                                     | HTML via DangerousHtml         |
-| 40       | changeStamp | `{ timestamp, user: { name, id } }`                            | "by Name on Date, at Time"     |
-| 40       | contact     | `{ (email\|work_phone\|identifier_phone_number), contact_id }` | Contact link                   |
-| 40       | company     | `{ trading_name }`                                             | Company link                   |
-| 40       | file        | `{ key, bucket }`                                              | S3Download link                |
-| 40       | location    | `{ formatted_address\|geometry }`                              | Google Maps link               |
-| 40       | phoneNumber | `{ phone_number, region }`                                     | Flag + tel: link               |
-| 50       | longText    | String > 200 chars or contains `\n`                            | Pre-formatted text, full-width |
-| 90       | email       | Email regex match                                              | mailto: link                   |
-| 90       | url         | Starts with `http://` or `https://`                            | Clickable link (truncated)     |
-| 90       | date        | ISO string with midnight UTC                                   | `toLocaleDateString()`         |
-| 95       | datetime    | Date object or ISO datetime string                             | `toLocaleString()`             |
-| 95       | dateRange   | Array of exactly 2 dates                                       | "start - end"                  |
-| 98       | selector    | Never auto-detected (hint-only)                                | Tag badge                      |
-| 100      | string      | Any string                                                     | Plain text                     |
-| 100      | boolean     | `true` / `false`                                               | "Yes" / "No" badge             |
-| 100      | number      | Any number                                                     | `toLocaleString()`             |
+| Priority | Type        | Detection                                                      | Renderer                                       |
+| -------- | ----------- | -------------------------------------------------------------- | ---------------------------------------------- |
+| 1        | null        | `value === null`                                               | "Not set" (italic gray)                        |
+| 1        | undefined   | `value === undefined`                                          | "-"                                            |
+| 35       | fileList    | `{ fileList: [] }`                                             | S3Download links                               |
+| 40       | richText    | `{ html\|markdown, text }`                                     | HTML via DangerousHtml                         |
+| 40       | changeStamp | `{ timestamp, user: { name, id } }`                            | "by Name on Date, at Time"                     |
+| 40       | contact     | `{ (email\|work_phone\|identifier_phone_number), contact_id }` | Contact link                                   |
+| 40       | company     | `{ trading_name }`                                             | Company link                                   |
+| 40       | file        | `{ key, bucket }`                                              | S3Download link                                |
+| 40       | location    | `{ formatted_address\|geometry }`                              | Google Maps link (or text-only if no geometry) |
+| 40       | phoneNumber | `{ phone_number, region }`                                     | Flag + tel: link                               |
+| 50       | longText    | String > 200 chars or contains `\n`                            | Pre-formatted text, full-width                 |
+| 90       | email       | Email regex match                                              | mailto: link                                   |
+| 90       | url         | Starts with `http://` or `https://`                            | Clickable link (truncated)                     |
+| 90       | date        | ISO string with midnight UTC                                   | `toLocaleDateString()`                         |
+| 95       | datetime    | Date object or ISO datetime string                             | `toLocaleString()`                             |
+| 95       | dateRange   | Never auto-detected (hint-only)                                | "start - end"                                  |
+| 98       | selector    | Never auto-detected (hint-only)                                | Tag badge                                      |
+| 100      | string      | Any string                                                     | Plain text                                     |
+| 100      | boolean     | `true` / `false`                                               | "Yes" / "No" badge                             |
+| 100      | number      | Any number                                                     | `toLocaleString()`                             |
 
 ### Flattening Nested Objects
 
@@ -173,6 +189,7 @@ For each entry in `fields`:
 2. **Label**: `field.properties.title`. Falls back to formatted last segment of `id` (e.g., `phone_number` → "Phone Number").
 3. **Renderer**: Determined by `field.type` via the block type mapping (see below). If the block type is not recognized, falls back to auto-detection from the value.
 4. **Options**: For selector types, `field.properties.options` enables label lookup.
+5. **isArray**: Determined by `Array.isArray(value)`. Routes to the field type's array renderer when true.
 
 ### Block Type to Renderer Mapping
 
@@ -255,6 +272,8 @@ Always a single flat `<Descriptions>` component. No sections, no nested cards, n
 
 Full-width types (`longText`, `richText`, `location`) use `span: "filled"` to take the remaining columns in the row.
 
+For arrays of full-width types (e.g., multiple longText values), the `span: "filled"` applies to the entire `Descriptions.Item`. The array renderer wraps individual items in a flex container inside the item — each value renders vertically within the single full-width cell.
+
 ## Implementation
 
 ### Component Approach
@@ -321,6 +340,24 @@ Both processing functions return the same shape — a flat array of items:
 
 One set of renderers serves both modes. The `fieldType` determines which render function runs. In fields mode, `options` is passed through to the selector renderer for label lookup.
 
+`renderValue.js` passes the item's `options` through to the registry render call:
+
+```js
+const renderValue = (item, Icon, methods, properties) => {
+  const config = getFieldTypeConfig(item.fieldType);
+  return config.render({
+    value: item.value,
+    Icon,
+    methods,
+    properties,
+    fieldType: item.fieldType,
+    options: item.options, // null in auto-discovery, populated in fields mode
+  });
+};
+```
+
+Existing render functions ignore the extra `options` parameter via destructuring. Only the selector renderer reads it.
+
 ### File Structure
 
 ```
@@ -333,7 +370,6 @@ blocks/SmartDescriptions/
 ├── fieldTypes/
 │   ├── fieldTypeRegistry.js       # 20 type configs with detect + render (from DataDescriptions)
 │   ├── getFieldTypeConfig.js      # Lookup by type name
-│   ├── getFieldTypeByComponentHint.js  # Lookup by component hint (auto-discovery)
 │   ├── getFieldTypesByPriority.js      # Priority-sorted list (auto-discovery)
 │   └── blockTypeMap.js            # Block type → field type mapping (fields mode)
 ├── renderValue.js                 # Unified value renderer (delegates to registry)
@@ -344,13 +380,15 @@ blocks/SmartDescriptions/
     └── getByDotNotation.js        # Dot-notation path resolution
 ```
 
-**From DataDescriptions — kept unchanged:** `fieldTypes/fieldTypeRegistry.js`, `fieldTypes/getFieldTypeConfig.js`, `fieldTypes/getFieldTypeByComponentHint.js`, `fieldTypes/getFieldTypesByPriority.js`, `style.module.css`, `utils/formatFieldName.js`, `utils/formatValue.js`.
+**From DataDescriptions — kept unchanged:** `fieldTypes/getFieldTypeConfig.js`, `fieldTypes/getFieldTypesByPriority.js`, `style.module.css`, `utils/formatFieldName.js`, `utils/formatValue.js`.
+
+**From DataDescriptions — modified:** `fieldTypes/fieldTypeRegistry.js` (selector renderer enhanced to accept `options` parameter; location renderer fixed to guard missing `geometry`).
 
 **From DataDescriptions — removed:** `preprocessing/` (entire directory — no structure tree, no sections, no grid nodes), `core/StructureRenderer.js`, `core/renderField.js`, `components/` (Section, GridItem, Card).
 
 **From DataDescriptions — simplified:** `core/renderFieldValue.js` → `renderValue.js` (same registry dispatch, no recursive group handling). `core/renderArray.js` logic folded into `renderValue.js`.
 
-**New:** `processData.js` (flat auto-discovery with dotted-key flattening), `processFields.js` (flat field resolution with block type mapping), `fieldTypes/blockTypeMap.js` (block type → field type lookup table).
+**New:** `processData.js` (flat auto-discovery with dotted-key flattening), `processFields.js` (flat field resolution with block type mapping), `fieldTypes/blockTypeMap.js` (block type → field type lookup table), `utils/getByDotNotation.js` (dot-notation path resolution for fields mode).
 
 ### Selector Renderer Enhancement
 
@@ -404,12 +442,14 @@ Renders every field in `state.profile`. Phone numbers auto-detected as tel: link
         _state: profile
     fields:
       _build.array.concat:
+        # Core fields — _module.var resolves at call site, form_core.yaml reads via _var
         - _ref:
             path: ../shared/profile/form_core.yaml
             vars:
               show_title:
-                _module.var: show_title
-        - _module.var: profile.fields
+                _module.var: fields.show_title
+        # Consumer extended fields
+        - _module.var: fields.profile
   areas:
     extra:
       blocks:

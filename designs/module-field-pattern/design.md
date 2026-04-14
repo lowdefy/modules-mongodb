@@ -51,57 +51,58 @@ This file works in user-admin, user-account, and contacts without modification. 
 
 ### Module vars
 
-One var per field group, plus an optional pipeline stages var:
+Field definitions grouped under `fields`, write pipeline stages under `request_stages`:
 
 ```yaml
 # apps/demo/modules/user-admin/vars.yaml
-profile:
+fields:
   show_title: true
-  fields:
+  profile:
     _ref: modules/shared/profile/fields.yaml
-global_attributes:
-  fields:
+  global_attributes:
     _ref: modules/user-admin/global_attributes_fields.yaml
-app_attributes:
-  fields:
+  app_attributes:
     _ref: modules/user-admin/app_attributes_fields.yaml
-extra_update_stages: []
+request_stages:
+  write: []
 ```
 
 ### What this replaces
 
 | Old var                               | New var                    | Notes                          |
 | ------------------------------------- | -------------------------- | ------------------------------ |
-| `components.profile_fields`           | `profile.fields`           | Same blocks, new namespace     |
+| `components.profile_fields`           | `fields.profile`           | Same blocks, new namespace     |
 | `components.profile_set_fields`       | _eliminated_               | API does `_payload: profile`   |
 | `components.profile_view_config`      | _eliminated_               | SmartDescriptions reads blocks |
-| `components.global_attributes_fields` | `global_attributes.fields` |                                |
-| `components.app_attributes_fields`    | `app_attributes.fields`    |                                |
+| `components.global_attributes_fields` | `fields.global_attributes` |                                |
+| `components.app_attributes_fields`    | `fields.app_attributes`    |                                |
 | `components.attributes_view_config`   | _eliminated_               |                                |
-| —                                     | `extra_update_stages`      | New: MongoDB pipeline stages   |
+| `request_stages.update_user`          | `request_stages.write`     | Shared across all write flows  |
+| `request_stages.invite_user`          | `request_stages.write`     | Consolidated with update       |
 
-Six vars reduced to four. Three eliminated, one added.
+Six component vars reduced to three under `fields`. Two per-operation write stage vars consolidated into one `request_stages.write`. Three vars eliminated.
 
-### Extra update stages
+### Write stages
 
-For consumers who need data transformations beyond the whole-object save, expose one var for additional MongoDB update pipeline stages:
+For consumers who need data transformations beyond the whole-object save, `request_stages.write` provides additional MongoDB update pipeline stages shared across all write flows (update, invite, create):
 
 ```yaml
 # Consumer provides additional stages in aggregation syntax
-extra_update_stages:
-  - $set:
-      profile.department:
-        $trim:
-          input: "$profile.department"
-      profile.computed_display:
-        $concat:
-          - "$profile.given_name"
-          - " ("
-          - "$profile.department"
-          - ")"
+request_stages:
+  write:
+    - $set:
+        profile.department:
+          $trim:
+            input: "$profile.department"
+        profile.computed_display:
+          $concat:
+            - "$profile.given_name"
+            - " ("
+            - "$profile.department"
+            - ")"
 ```
 
-Standard MongoDB aggregation syntax. Appended after the module's core update stages. One escape hatch — flexible, well-understood, no Lowdefy-specific DSL to learn.
+Standard MongoDB aggregation syntax. Appended after the module's core update stages. One escape hatch — flexible, well-understood, no Lowdefy-specific DSL to learn. Replaces the per-operation `request_stages.update_user` / `request_stages.invite_user` vars with a single shared var.
 
 ## State Namespace
 
@@ -168,9 +169,9 @@ blocks:
         path: ../shared/profile/form_core.yaml
         vars:
           show_title:
-            _module.var: show_title
+            _module.var: fields.show_title
     # Consumer extended fields
-    - _module.var: profile.fields
+    - _module.var: fields.profile
 ```
 
 ```yaml
@@ -240,9 +241,9 @@ SmartDescriptions receives the same block definitions. The data prop wraps the s
             path: ../shared/profile/form_core.yaml
             vars:
               show_title:
-                _module.var: show_title
+                _module.var: fields.show_title
         # Same consumer fields
-        - _module.var: profile.fields
+        - _module.var: fields.profile
 ```
 
 SmartDescriptions resolves `profile.phone_number` as a dot-notation path into `data` → `data.profile.phone_number`. PhoneNumberInput type → renders as phone. Selector with options → shows label. TextInput → plain text. Form-only properties like `required` and `layout` are silently ignored.
@@ -259,10 +260,10 @@ Only fields listed in `fields` are rendered — no need to null out `picture`, `
   visible:
     _build.or:
       - _build.ne:
-          - _module.var: global_attributes.fields
+          - _module.var: fields.global_attributes
           - null
       - _build.ne:
-          - _module.var: app_attributes.fields
+          - _module.var: fields.app_attributes
           - null
   properties:
     title: Attributes
@@ -275,8 +276,8 @@ Only fields listed in `fields` are rendered — no need to null out `picture`, `
         _state: app_attributes
     fields:
       _build.array.concat:
-        - _module.var: global_attributes.fields
-        - _module.var: app_attributes.fields
+        - _module.var: fields.global_attributes
+        - _module.var: fields.app_attributes
 ```
 
 Fields with `id: global_attributes.notes` resolve to `data.global_attributes.notes`. Fields with `id: app_attributes.team` resolve to `data.app_attributes.team`. Mixed prefixes work because SmartDescriptions uses dot-notation paths, not a fixed prefix.
@@ -296,7 +297,7 @@ Switch from `$set` document to pipeline update syntax for composability:
         _payload: _id
     update:
       _build.array.concat:
-        # Stage 1: Core set
+        # Stage 1: Merge data objects
         - - $set:
               # Profile — merge, not replace (preserves fields like profile_created set elsewhere)
               profile:
@@ -305,14 +306,6 @@ Switch from `$set` document to pipeline update syntax for composability:
                       - "$$ROOT.profile"
                       - {}
                   - _payload: profile
-              # Recompute derived name field
-              profile.name:
-                $concat:
-                  - $trim:
-                      input: "$profile.given_name"
-                  - " "
-                  - $trim:
-                      input: "$profile.family_name"
               # Global attributes — merge, not replace
               global_attributes:
                 $mergeObjects:
@@ -336,15 +329,25 @@ Switch from `$set` document to pipeline update syntax for composability:
                 _ref:
                   module: events
                   component: change_stamp
+          # Stage 2: Compute derived fields (sees merged profile from stage 1)
+          - $set:
+              profile.name:
+                $concat:
+                  - $trim:
+                      input: "$profile.given_name"
+                  - " "
+                  - $trim:
+                      input: "$profile.family_name"
         # Consumer pipeline stages
-        - _module.var: extra_update_stages
+        - _module.var: request_stages.write
 ```
 
 Key points:
 
 - All data objects use `$mergeObjects` — merge, not replace. This preserves fields set outside the form (e.g. `profile_created` on profile, fields set by other apps on global_attributes).
-- `profile.name` is recomputed server-side in the same `$set` stage, overriding whatever the form sent.
-- Consumer `extra_update_stages` are appended as additional pipeline stages.
+- Derived fields like `profile.name` are computed in a **separate `$set` stage** after the merge stage, so they see the merged values. This avoids stale reads (expressions in a single `$set` stage evaluate against the input document, not intermediate results) and parent/child path conflicts.
+- Consumer `request_stages.write` stages are appended as additional pipeline stages, shared across all write flows.
+- The same `$mergeObjects` + `$ifNull` pattern applies to invite and create flows. On insert (no existing document), `$ifNull` falls back to `{}` so the merge simply uses the payload.
 
 ## Cross-Module Sharing
 
@@ -378,7 +381,7 @@ Wired the same way in any module that surfaces global attributes.
 
 **Merge-object save.** All data objects (profile, global_attributes, app_attributes) use `$mergeObjects` to overlay form data onto the existing document. Preserves fields set outside the form (e.g. `profile_created`, fields set by other apps).
 
-**Pipeline stages for transforms.** Consumers who need data transformations provide standard MongoDB update pipeline stages via `extra_update_stages`. Flexible, well-understood, no custom DSL.
+**Pipeline stages for transforms.** Consumers who need data transformations provide standard MongoDB update pipeline stages via `request_stages.write`, shared across all write flows (update, invite, create). Replaces the per-operation `request_stages.update_user` / `request_stages.invite_user` vars. Flexible, well-understood, no custom DSL.
 
 **Internal fields stay in `profile`.** `given_name`, `family_name`, `title`, `avatar_color`, `picture` all live in `profile.*` alongside consumer fields. The API recomputes derived fields (like `name`) in a `$set` pipeline stage. No separate namespace needed.
 
@@ -388,11 +391,11 @@ Wired the same way in any module that surfaces global attributes.
 
 ### Module changes
 
-| Module       | Changes needed                                                                                                                                            |
-| ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| user-admin   | Rename state root (`user.*` → flat), update form components, update view to SmartDescriptions, switch API to pipeline syntax, update module manifest vars |
-| user-account | Same state root change, update form and view components, update API                                                                                       |
-| contacts     | Same state root change (`contact.*` → flat), update form and view components, update API                                                                  |
+| Module       | Changes needed                                                                                                                                                                                                      |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| user-admin   | Rename state root (`user.*` → flat), update form components, update view to SmartDescriptions, switch API to pipeline syntax, update module manifest vars                                                           |
+| user-account | Same state root change, update form and view components, switch from document-style `$set` to pipeline syntax with `$mergeObjects`, add `request_stages.write` var to manifest, eliminate `profile-set-fields.yaml` |
+| contacts     | Same state root change (`contact.*` → flat), update form and view components, update API                                                                                                                            |
 
 ### Shared resources
 
