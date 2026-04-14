@@ -56,7 +56,7 @@ Connection:
 Request:
 
 ```yaml
-# prp shared notifications request
+# shared notifications request
 id: { { id } }
 type: AxiosHttp
 connectionId: consume_notifications
@@ -173,10 +173,10 @@ Declared in the app's connections (not in the notifications module):
 
 ## Files Changed
 
-| File                                                 | Change                                           |
-| ---------------------------------------------------- | ------------------------------------------------ |
-| `modules/notifications/module.lowdefy.yaml`          | Add `send_routine` var                           |
-| `modules/notifications/api/send-notification.yaml`   | Replace stub routine with `_module.var`          |
+| File                                                | Change                                           |
+| --------------------------------------------------- | ------------------------------------------------ |
+| `modules/notifications/module.lowdefy.yaml`         | Add `send_routine` var                           |
+| `modules/notifications/api/send-notification.yaml`  | Replace stub routine with `_module.var`          |
 | `apps/demo/modules.yaml`                            | Add `send_routine` var to notifications entry    |
 | `apps/demo/modules/notifications/send-routine.yaml` | **New** — Lambda dispatch routine                |
-| App connections                                      | Add `consume-notifications` AxiosHttp connection |
+| App connections                                     | Add `consume-notifications` AxiosHttp connection |
