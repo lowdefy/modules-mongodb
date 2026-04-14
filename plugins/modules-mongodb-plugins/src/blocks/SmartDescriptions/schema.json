@@ -1,0 +1,118 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "bordered": {
+      "type": "boolean",
+      "default": true,
+      "description": "Render items in a bordered table. Defaults to true."
+    },
+    "colon": {
+      "type": "boolean",
+      "description": "Include a colon after labels."
+    },
+    "column": {
+      "default": 2,
+      "oneOf": [
+        {
+          "type": "number",
+          "description": "The number of description items in a row."
+        },
+        {
+          "type": "object",
+          "properties": {
+            "xs": { "type": "integer" },
+            "sm": { "type": "integer" },
+            "md": { "type": "integer" },
+            "lg": { "type": "integer" },
+            "xl": { "type": "integer" }
+          }
+        }
+      ]
+    },
+    "layout": {
+      "type": "string",
+      "enum": ["horizontal", "vertical"],
+      "description": "Label position relative to value."
+    },
+    "size": {
+      "type": "string",
+      "enum": ["default", "small"],
+      "description": "Size of the descriptions block."
+    },
+    "theme": {
+      "type": "object",
+      "description": "Antd design token overrides. See https://ant.design/components/descriptions#design-token.",
+      "properties": {
+        "labelBg": { "type": "string" },
+        "labelColor": { "type": "string" },
+        "titleColor": { "type": "string" },
+        "titleMarginBottom": { "type": "number" },
+        "itemPaddingBottom": { "type": "number" },
+        "itemPaddingEnd": { "type": "number" },
+        "colonMarginRight": { "type": "number" },
+        "colonMarginLeft": { "type": "number" },
+        "contentColor": { "type": "string" },
+        "extraColor": { "type": "string" }
+      }
+    },
+    "title": {
+      "type": "string",
+      "description": "Descriptions header title."
+    },
+    "data": {
+      "type": "object",
+      "description": "Data object to display. Field IDs and auto-discovered keys resolve paths here."
+    },
+    "fields": {
+      "type": "array",
+      "description": "Lowdefy block definitions as field hints. When provided, only these fields render. Each entry uses id (data path), type (renderer hint), and properties.title/options.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Dot-notation path into the data object."
+          },
+          "type": {
+            "type": "string",
+            "description": "Lowdefy block type (e.g., TextInput, Selector, PhoneNumberInput). Determines which renderer to use."
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string",
+                "description": "Display label for the field."
+              },
+              "options": {
+                "type": "array",
+                "description": "Options for selector types. String array or [{label, value}] array."
+              }
+            }
+          }
+        },
+        "required": ["id"]
+      }
+    },
+    "disableCrmLinks": {
+      "type": "boolean",
+      "default": false,
+      "description": "Disable hyperlinks for contact and company fields."
+    },
+    "contactDetailPageId": {
+      "type": "string",
+      "default": "contacts/contact-detail",
+      "description": "Page ID for contact detail links."
+    },
+    "companyDetailPageId": {
+      "type": "string",
+      "default": "companies/company-detail",
+      "description": "Page ID for company detail links."
+    },
+    "s3GetPolicyRequestId": {
+      "type": "string",
+      "description": "Request ID for S3 file download policy."
+    }
+  }
+}
