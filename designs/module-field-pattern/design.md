@@ -51,7 +51,7 @@ This file works in user-admin, user-account, and contacts without modification. 
 
 ### Module vars
 
-Field definitions grouped under `fields`, write pipeline stages under `request_stages`:
+Field definitions grouped under `fields`, write pipeline stages under `request_stages`. All field vars default to `[]` in the module manifest so consumers only provide what they need:
 
 ```yaml
 # apps/demo/modules/user-admin/vars.yaml
@@ -258,13 +258,12 @@ Only fields listed in `fields` are rendered — no need to null out `picture`, `
 - id: attributes_view
   type: SmartDescriptions
   visible:
-    _build.or:
-      - _build.ne:
-          - _module.var: fields.global_attributes
-          - null
-      - _build.ne:
-          - _module.var: fields.app_attributes
-          - null
+    _build.gt:
+      - _build.array.length:
+          _build.array.concat:
+            - _module.var: fields.global_attributes
+            - _module.var: fields.app_attributes
+      - 0
   properties:
     title: Attributes
     column: 1

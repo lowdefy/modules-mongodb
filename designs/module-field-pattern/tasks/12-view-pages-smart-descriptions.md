@@ -89,13 +89,12 @@ Key changes:
 - id: attributes_view
   type: SmartDescriptions
   visible:
-    _build.or:
-      - _build.ne:
-          - _module.var: fields.global_attributes
-          - null
-      - _build.ne:
-          - _module.var: fields.app_attributes
-          - null
+    _build.gt:
+      - _build.array.length:
+          _build.array.concat:
+            - _module.var: fields.global_attributes
+            - _module.var: fields.app_attributes
+      - 0
   properties:
     title: Attributes
     column: 1
@@ -153,9 +152,10 @@ Note: contacts view reads from `_request:` not `_state:`, so `data` uses `_reque
 - id: attributes_view
   type: SmartDescriptions
   visible:
-    _build.ne:
-      - _module.var: fields.global_attributes
-      - null
+    _build.gt:
+      - _build.array.length:
+          _module.var: fields.global_attributes
+      - 0
   properties:
     title: Attributes
     column: 1

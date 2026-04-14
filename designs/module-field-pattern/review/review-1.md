@@ -60,7 +60,7 @@ Even with the evaluation fix above, setting both `profile` (whole object) and `p
 
 ### 3. `show_title` var path inconsistency
 
-> **Resolved.** Updated code references to `_module.var: profile.show_title` to match the nested consumer vars structure. Grouping `show_title` under `profile` is the intended direction. Migrating the existing module manifests to the nested var is a separate cleanup step during implementation.
+> **Resolved.** Updated code references to `_module.var: fields.show_title` to match the nested consumer vars structure. Grouping `show_title` under `fields` is the intended direction. Migrating the existing module manifests to the nested var is a separate cleanup step during implementation.
 
 The consumer vars example (design line 59) nests `show_title` under `profile`:
 

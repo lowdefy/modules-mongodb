@@ -23,6 +23,8 @@ Similarly, contacts' `request_stages` use different names: `request_stages.updat
 
 ### 2. Contacts' single `form_attributes` doesn't map to the dual global/app pattern
 
+> **Deferred to implementation.** Contacts-specific mapping will be documented when extending the pattern from user-admin to contacts.
+
 The design proposes two separate field groups: `fields.global_attributes` and `fields.app_attributes`. User-admin has both. But contacts uses a single `components.form_attributes` var for all additional detail fields. The demo's contacts `attributes_form_fields.yaml` only uses `contact.global_attributes.internal_details` — it has no `app_attributes` at all.
 
 The design doesn't explain how contacts' single attributes bucket maps to the new dual-var structure. Does contacts only get `fields.global_attributes`? Does `fields.app_attributes` stay null? What happens to `components.attributes_set_fields` — does it fold into `request_stages.write`?
@@ -32,6 +34,8 @@ The design doesn't explain how contacts' single attributes bucket maps to the ne
 ## Build-Time Safety
 
 ### 3. `_build.array.concat` with null field vars in combined attributes view
+
+> **Resolved.** Default `fields.global_attributes` and `fields.app_attributes` to `[]` in the module manifest. Updated `visible` check to use `_build.array.length` instead of null comparison.
 
 The combined attributes view (design lines 277-281) concatenates both field groups:
 

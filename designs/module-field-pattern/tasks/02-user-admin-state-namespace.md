@@ -43,11 +43,11 @@ blocks:
         path: ../shared/profile/form_core.yaml
         vars:
           show_title:
-            _module.var: show_title
+            _module.var: fields.show_title
     - _module.var: fields.profile
 ```
 
-Note: The var reference changes from `components.profile_fields` to `fields.profile` (this will be wired in the manifest task, but the code should use the new name now).
+Note: The var references change from `components.profile_fields` to `fields.profile` and `show_title` to `fields.show_title` (these will be wired in the manifest task, but the code should use the new names now).
 
 ### 2. Update form_global_attributes.yaml and form_app_attributes.yaml
 
