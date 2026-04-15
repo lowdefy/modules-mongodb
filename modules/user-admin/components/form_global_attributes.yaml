@@ -5,7 +5,7 @@ layout:
 visible:
   _build.gt:
     - _build.array.length:
-        _module.var: components.app_attributes_fields
+        _module.var: fields.global_attributes
     - 0
 blocks:
   _build.array.concat:
@@ -13,7 +13,7 @@ blocks:
         test:
           _build.gt:
             - _build.array.length:
-                _module.var: components.global_attributes_fields
+                _module.var: fields.global_attributes
             - 0
         then:
           - id: global_attributes_divider
@@ -21,4 +21,4 @@ blocks:
             properties:
               title: Global Attributes
         else: []
-    - _module.var: components.global_attributes_fields
+    - _module.var: fields.global_attributes

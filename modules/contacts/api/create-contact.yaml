@@ -11,7 +11,7 @@ routine:
           _string.toLowerCase:
             _string.trim:
               _if_none:
-                - _payload: contact.email
+                - _payload: email
                 - ""
 
   - id: insert
@@ -30,66 +30,52 @@ routine:
         upsert: true
       update:
         _build.array.concat:
+          # Stage 1: Insert-only fields + merge data objects
           - - $set:
-                _object.assign:
-                  # Insert-only fields (use $ifNull so they're only set on first insert)
-                  - _id:
-                      $ifNull:
-                        - $_id
-                        - _payload: _id
-                    email:
-                      _payload: contact.email
-                    lowercase_email:
-                      _string.toLowerCase:
-                        _payload: contact.email
-                    hidden: false
-                    disabled: false
-                    created:
-                      $ifNull:
-                        - $created
-                        - _ref:
-                            module: events
-                            component: change_stamp
-                  # Core profile fields
-                  - profile.name:
-                      _string.concat:
-                        - _if_none:
-                            - _payload: contact.profile.given_name
-                            - ""
-                        - " "
-                        - _if_none:
-                            - _payload: contact.profile.family_name
-                            - ""
-                    profile.avatar_color:
-                      _payload: contact.profile.avatar_color
-                    profile.picture:
-                      _payload: contact.profile.picture
-                    profile.given_name:
-                      _payload: contact.profile.given_name
-                    profile.family_name:
-                      _payload: contact.profile.family_name
-                    global_attributes.company_ids:
-                      _if_none:
-                        - _payload: contact.global_attributes.company_ids
-                        - []
-                    updated:
-                      _ref:
+                _id:
+                  $ifNull:
+                    - $_id
+                    - _payload: _id
+                email:
+                  _payload: email
+                lowercase_email:
+                  _string.toLowerCase:
+                    _payload: email
+                hidden: false
+                disabled: false
+                created:
+                  $ifNull:
+                    - $created
+                    - _ref:
                         module: events
                         component: change_stamp
-                  # Title (conditional)
-                  - _build.if:
-                      test:
-                        _module.var: show_title
-                      then:
-                        profile.title:
-                          _payload: contact.profile.title
-                      else: {}
-                  # Extended profile fields (injected by consumer)
-                  - _module.var: components.profile_set_fields
-                  # Attribute set fields (injected by consumer)
-                  - _module.var: components.attributes_set_fields
-          # request_stages injection (preserved)
-          - _module.var: request_stages.insert_contact
+                profile:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.profile"
+                        - {}
+                    - _payload: profile
+                global_attributes:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.global_attributes"
+                        - {}
+                    - _payload: global_attributes
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+          # Stage 2: Compute derived fields (sees merged profile from stage 1)
+          - - $set:
+                profile.name:
+                  $concat:
+                    - $trim:
+                        input: "$profile.given_name"
+                    - " "
+                    - $trim:
+                        input: "$profile.family_name"
+          # Consumer pipeline stages
+          - _module.var: request_stages.write
 
   - id: new-event
     type: CallApi
@@ -135,21 +121,24 @@ routine:
                             _user: true
                           target:
                             name:
-                              _string.concat:
-                                - _if_none:
-                                    - _payload: contact.profile.given_name
-                                    - ""
-                                - " "
-                                - _if_none:
-                                    - _payload: contact.profile.family_name
-                                    - ""
+                              _string.trim:
+                                _string.concat:
+                                  - _string.trim:
+                                      _if_none:
+                                        - _payload: profile.given_name
+                                        - ""
+                                  - " "
+                                  - _string.trim:
+                                      _if_none:
+                                        - _payload: profile.family_name
+                                        - ""
                     description: null
         references:
           contact_ids:
             - _step: insert.upsertedId
           company_ids:
             _if_none:
-              - _payload: contact.global_attributes.company_ids
+              - _payload: global_attributes.company_ids
               - []
         metadata:
           contact_id:

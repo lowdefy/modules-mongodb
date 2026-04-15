@@ -9,9 +9,9 @@ routine:
       filter:
         _object.assign:
           - _id:
-              _payload: contact._id
+              _payload: _id
             updated.timestamp:
-              _payload: contact.updated.timestamp
+              _payload: updated.timestamp
           - _object.defineProperty:
               on: {}
               key:
@@ -24,48 +24,36 @@ routine:
                   $ne: true
       update:
         _build.array.concat:
+          # Stage 1: Merge data objects
           - - $set:
-                _object.assign:
-                  # email and lowercase_email are NOT updated — email is immutable after creation
-                  # Core profile fields
-                  - profile.name:
-                      _string.concat:
-                        - _if_none:
-                            - _payload: contact.profile.given_name
-                            - ""
-                        - " "
-                        - _if_none:
-                            - _payload: contact.profile.family_name
-                            - ""
-                    profile.avatar_color:
-                      _payload: contact.profile.avatar_color
-                    profile.picture:
-                      _payload: contact.profile.picture
-                    profile.given_name:
-                      _payload: contact.profile.given_name
-                    profile.family_name:
-                      _payload: contact.profile.family_name
-                    global_attributes.company_ids:
-                      _if_none:
-                        - _payload: contact.global_attributes.company_ids
-                        - []
-                    updated:
-                      _ref:
-                        module: events
-                        component: change_stamp
-                  # Title (conditional)
-                  - _build.if:
-                      test:
-                        _module.var: show_title
-                      then:
-                        profile.title:
-                          _payload: contact.profile.title
-                      else: {}
-                  # Extended profile fields (injected by consumer)
-                  - _module.var: components.profile_set_fields
-                  # Attribute set fields (injected by consumer)
-                  - _module.var: components.attributes_set_fields
-          - _module.var: request_stages.update_contact
+                # email and lowercase_email are NOT updated — email is immutable after creation
+                profile:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.profile"
+                        - {}
+                    - _payload: profile
+                global_attributes:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.global_attributes"
+                        - {}
+                    - _payload: global_attributes
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+          # Stage 2: Compute derived fields (sees merged profile from stage 1)
+          - - $set:
+                profile.name:
+                  $concat:
+                    - $trim:
+                        input: "$profile.given_name"
+                    - " "
+                    - $trim:
+                        input: "$profile.family_name"
+          # Consumer pipeline stages
+          - _module.var: request_stages.write
 
   - id: new-event
     type: CallApi
@@ -107,25 +95,28 @@ routine:
                             _user: true
                           target:
                             name:
-                              _string.concat:
-                                - _if_none:
-                                    - _payload: contact.profile.given_name
-                                    - ""
-                                - " "
-                                - _if_none:
-                                    - _payload: contact.profile.family_name
-                                    - ""
+                              _string.trim:
+                                _string.concat:
+                                  - _string.trim:
+                                      _if_none:
+                                        - _payload: profile.given_name
+                                        - ""
+                                  - " "
+                                  - _string.trim:
+                                      _if_none:
+                                        - _payload: profile.family_name
+                                        - ""
                     description: null
         references:
           contact_ids:
-            - _payload: contact._id
+            - _payload: _id
           company_ids:
             _if_none:
-              - _payload: contact.global_attributes.company_ids
+              - _payload: global_attributes.company_ids
               - []
         metadata:
           contact_id:
-            _payload: contact._id
+            _payload: _id
 
   - :return:
       success: true

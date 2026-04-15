@@ -4,14 +4,13 @@ app_name:
     key: app_name
 roles:
   _ref: modules/user-admin/roles.yaml
-components:
-  profile_fields:
-    _ref: modules/user-admin/components/profile_fields.yaml
-  profile_set_fields:
-    _ref: modules/user-admin/components/profile_set_fields.yaml
-  profile_view_config:
-    _ref: modules/shared/profile/profile_view_config.yaml
-  global_attributes_fields:
-    _ref: modules/user-admin/components/global_attributes_fields.yaml
-  app_attributes_fields:
-    _ref: modules/user-admin/components/app_attributes_fields.yaml
+fields:
+  show_title: true
+  profile:
+    _ref: modules/shared/profile/fields.yaml
+  global_attributes:
+    _ref: modules/user-admin/global_attributes_fields.yaml
+  app_attributes:
+    _ref: modules/user-admin/app_attributes_fields.yaml
+request_stages:
+  write: []

@@ -67,15 +67,35 @@ _ref:
             error: false
           params:
             throw: true
-        - id: set_user
+        - id: set_state
           type: SetState
           skip:
             _eq:
               - _input: user_id
               - null
           params:
-            user:
-              _request: get_user.0
+            profile:
+              _request: get_user.0.profile
+            global_attributes:
+              _request: get_user.0.global_attributes
+            app_attributes:
+              _request: get_user.0.app_attributes
+            email:
+              _request: get_user.0.email
+            lowercase_email:
+              _request: get_user.0.lowercase_email
+            roles:
+              _request: get_user.0.roles
+            disabled:
+              _request: get_user.0.disabled
+            invite:
+              _request: get_user.0.invite
+            is_user:
+              _request: get_user.0.is_user
+            sign_up:
+              _request: get_user.0.sign_up
+            _id:
+              _request: get_user.0._id
             disable_save: false
 
     blocks:
@@ -88,17 +108,17 @@ _ref:
               path: ../shared/layout/identity-header.yaml
               vars:
                 avatar_src:
-                  _state: user.profile.picture
+                  _state: profile.picture
                 name:
-                  _state: user.profile.name
+                  _state: profile.name
                 email:
-                  _state: user.email
+                  _state: email
                 extra:
                   - id: signed_up
                     type: Paragraph
                     visible:
                       _eq:
-                        - _state: user.is_user
+                        - _state: is_user
                         - true
                     style:
                       marginBottom: 0
@@ -109,7 +129,7 @@ _ref:
                           template: "Signed up {{ date | date('YYYY-MM-DD') }}"
                           on:
                             date:
-                              _state: user.sign_up
+                              _state: sign_up
           - id: divider_profile
             type: Divider
             properties:
@@ -143,14 +163,14 @@ _ref:
                 type: Button
                 visible:
                   _ne:
-                    - _state: user.is_user
+                    - _state: is_user
                     - true
                 layout:
                   flex: 0 1 auto
                 properties:
                   disabled:
                     _ne:
-                      - _state: user.invite.open
+                      - _state: invite.open
                       - true
                   type: default
                   title: Resend Invite
@@ -163,14 +183,13 @@ _ref:
                         endpointId:
                           _module.endpointId: resend-invite
                         payload:
-                          user:
-                            _id:
-                              _state: user._id
-                            profile:
-                              name:
-                                _state: user.profile.name
-                            email:
-                              _state: user.email
+                          _id:
+                            _state: _id
+                          profile:
+                            name:
+                              _state: profile.name
+                          email:
+                            _state: email
                       messages:
                         success: Invite sent successfully.
               - id: cancel_button

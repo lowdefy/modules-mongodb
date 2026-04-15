@@ -3,30 +3,30 @@ type: Box
 layout:
   gap: 8
 blocks:
-  - id: user.invite.open
+  - id: invite.open
     type: Switch
     visible:
       _ne:
-        - _state: user.is_user
+        - _state: is_user
         - true
     properties:
       title: Invite
       color: green
-  - id: user.roles
+  - id: roles
     type: MultipleSelector
     properties:
       title: Roles
       options:
         _module.var: roles
-  - id: user.disabled
+  - id: disabled
     type: Switch
     visible:
       _or:
         - _eq:
-            - _state: user.is_user
+            - _state: is_user
             - true
         - _eq:
-            - _state: user.invite.open
+            - _state: invite.open
             - true
     properties:
       title: Disable User

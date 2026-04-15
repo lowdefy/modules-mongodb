@@ -25,13 +25,20 @@ vars:
     default:
       _ref: defaults/event_display.yaml
     description: 'Per-app event display templates'
-  show_title:
-    type: boolean
-    default: false
-    description: Show the title/honorific field (Mr, Ms, Dr, etc.)
+  fields:
+    type: object
+    description: "Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_title toggles the title/honorific field."
+    properties:
+      show_title:
+        type: boolean
+        default: false
+      profile:
+        default: []
+      global_attributes:
+        default: []
   components:
     type: object
-    description: 'Overrides: detail_fields, form_fields, form_attributes, attributes_set_fields, profile_fields, profile_set_fields, profile_view_config, attributes_view_config, view_extra, table, filters, main_tiles, sidebar_tiles, download_columns'
+    description: "Component overrides: detail_fields, form_fields, view_extra, table, table_columns, filters, main_tiles, sidebar_tiles, download_columns"
     properties:
       detail_fields:
         default:
@@ -39,18 +46,6 @@ vars:
       form_fields:
         default:
           _ref: components/form_contact.yaml
-      form_attributes:
-        default: null
-      attributes_set_fields:
-        default: {}
-      profile_fields:
-        default: []
-      profile_set_fields:
-        default: {}
-      profile_view_config:
-        default: null
-      attributes_view_config:
-        default: null
       view_extra:
         default: []
       table:
@@ -69,7 +64,7 @@ vars:
         default: []
   request_stages:
     type: object
-    description: 'Pipeline overrides: get_all_contacts, get_contact, insert_contact, update_contact, selector, filter_match'
+    description: "Pipeline overrides: get_all_contacts, write, selector, filter_match. write stages are appended to both create and update flows."
     properties:
       get_all_contacts:
         default:
@@ -78,9 +73,7 @@ vars:
         default: []
       filter_match:
         default: []
-      insert_contact:
-        default: []
-      update_contact:
+      write:
         default: []
   filter_requests:
     default: []

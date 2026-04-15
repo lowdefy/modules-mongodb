@@ -9,5 +9,5 @@ properties:
       _ref:
         path: ../shared/profile/generate-avatar-svg.js.njk
         vars:
-          prefix: user.profile
+          prefix: profile
   size: 100

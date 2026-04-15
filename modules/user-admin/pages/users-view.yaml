@@ -91,15 +91,35 @@ _ref:
             error: false
           params:
             throw: true
-        - id: set_user
+        - id: set_state
           type: SetState
           skip:
             _eq:
               - _input: user_id
               - null
           params:
-            user:
-              _request: get_user.0
+            profile:
+              _request: get_user.0.profile
+            global_attributes:
+              _request: get_user.0.global_attributes
+            app_attributes:
+              _request: get_user.0.app_attributes
+            email:
+              _request: get_user.0.email
+            lowercase_email:
+              _request: get_user.0.lowercase_email
+            roles:
+              _request: get_user.0.roles
+            disabled:
+              _request: get_user.0.disabled
+            invite:
+              _request: get_user.0.invite
+            is_user:
+              _request: get_user.0.is_user
+            sign_up:
+              _request: get_user.0.sign_up
+            _id:
+              _request: get_user.0._id
     blocks:
       - id: detail_layout
         type: Box

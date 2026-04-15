@@ -14,7 +14,7 @@ _ref:
         - id: init_avatar_color
           type: SetState
           params:
-            contact.profile.avatar_color:
+            profile.avatar_color:
               _get:
                 from:
                   _module.var: avatar_colors
@@ -78,20 +78,26 @@ _ref:
                     - id: generate_avatar
                       type: SetState
                       params:
-                        contact.profile.picture:
+                        profile.picture:
                           _js:
                             _ref:
                               path: ../shared/profile/generate-avatar-svg.js.njk
                               vars:
-                                prefix: contact.profile
+                                prefix: profile
                     - id: create_contact
                       type: CallAPI
                       params:
                         endpointId:
                           _module.endpointId: create-contact
                         payload:
-                          contact:
-                            _state: contact
+                          _id:
+                            _uuid: true
+                          email:
+                            _state: email
+                          profile:
+                            _state: profile
+                          global_attributes:
+                            _state: global_attributes
                       messages:
                         success:
                           _string.concat:

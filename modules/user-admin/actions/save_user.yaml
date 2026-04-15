@@ -3,20 +3,34 @@
 - id: generate_avatar
   type: SetState
   params:
-    user.profile.picture:
+    profile.picture:
       _js:
         _ref:
           path: ../shared/profile/generate-avatar-svg.js.njk
           vars:
-            prefix: user.profile
+            prefix: profile
 - id: update_user
   type: CallAPI
   params:
     endpointId:
       _module.endpointId: update-user
     payload:
-      user:
-        _state: user
+      _id:
+        _state: _id
+      profile:
+        _state: profile
+      global_attributes:
+        _state: global_attributes
+      app_attributes:
+        _state: app_attributes
+      email:
+        _state: email
+      roles:
+        _state: roles
+      disabled:
+        _state: disabled
+      invite:
+        _state: invite
   messages:
     success: User updated.
 - id: reset

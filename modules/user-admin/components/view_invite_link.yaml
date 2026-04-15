@@ -20,5 +20,5 @@ properties:
             - _location: origin
         hint:
           _if_none:
-            - _state: user.lowercase_email
+            - _state: lowercase_email
             - ""

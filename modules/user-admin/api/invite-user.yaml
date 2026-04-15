@@ -13,10 +13,11 @@ routine:
           _string.toLowerCase:
             _string.trim:
               _if_none:
-                - _payload: user.email
+                - _payload: email
                 - ""
       update:
         _build.array.concat:
+          # Stage 1: Insert-only fields + merge data objects
           - - $set:
                 _object.assign:
                   - _id:
@@ -28,7 +29,7 @@ routine:
                         - $email
                         - _string.trim:
                             _if_none:
-                              - _payload: user.email
+                              - _payload: email
                               - ""
                     lowercase_email:
                       $ifNull:
@@ -36,38 +37,20 @@ routine:
                         - _string.toLowerCase:
                             _string.trim:
                               _if_none:
-                                - _payload: user.email
+                                - _payload: email
                                 - ""
+                    profile:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.profile"
+                            - {}
+                        - _payload: profile
                     global_attributes:
                       $mergeObjects:
-                        - $global_attributes
-                        - _payload: user.global_attributes
-                    profile.name:
-                      _string.trim:
-                        _string.concat:
-                          - _string.trim:
-                              _if_none:
-                                - _payload: user.profile.given_name
-                                - ""
-                          - " "
-                          - _string.trim:
-                              _if_none:
-                                - _payload: user.profile.family_name
-                                - ""
-                    profile.avatar_color:
-                      _payload: user.profile.avatar_color
-                    profile.picture:
-                      _payload: user.profile.picture
-                    profile.given_name:
-                      _string.trim:
-                        _if_none:
-                          - _payload: user.profile.given_name
-                          - ""
-                    profile.family_name:
-                      _string.trim:
-                        _if_none:
-                          - _payload: user.profile.family_name
-                          - ""
+                        - $ifNull:
+                            - "$$ROOT.global_attributes"
+                            - {}
+                        - _payload: global_attributes
                     updated:
                       _ref:
                         module: events
@@ -78,16 +61,6 @@ routine:
                         - _ref:
                             module: events
                             component: change_stamp
-                  # Title (conditional)
-                  - _build.if:
-                      test:
-                        _module.var: show_title
-                      then:
-                        profile.title:
-                          _payload: user.profile.title
-                      else: {}
-                  # Extended profile fields (injected by consumer)
-                  - _module.var: components.profile_set_fields
                   - _object.defineProperty:
                       on: {}
                       key:
@@ -103,7 +76,7 @@ routine:
                           ["apps.", { _module.var: app_name }, ".roles"]
                       descriptor:
                         value:
-                          _payload: user.roles
+                          _payload: roles
                   - _object.defineProperty:
                       on: {}
                       key:
@@ -128,8 +101,18 @@ routine:
                                 - "$apps."
                                 - _module.var: app_name
                                 - ".app_attributes"
-                            - _payload: user.app_attributes
-          - _module.var: request_stages.invite_user
+                            - _payload: app_attributes
+          # Stage 2: Compute derived fields (sees merged profile from stage 1)
+          - - $set:
+                profile.name:
+                  $concat:
+                    - $trim:
+                        input: "$profile.given_name"
+                    - " "
+                    - $trim:
+                        input: "$profile.family_name"
+          # Consumer pipeline stages
+          - _module.var: request_stages.write
 
   - id: new-event
     type: CallApi
@@ -185,7 +168,7 @@ routine:
             _string.toLowerCase:
               _string.trim:
                 _if_none:
-                  - _payload: user.email
+                  - _payload: email
                   - ""
 
   - id: send-notification

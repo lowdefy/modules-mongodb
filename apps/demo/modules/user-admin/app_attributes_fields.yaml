@@ -1,7 +1,7 @@
-- id: user.app_attributes.team
+- id: app_attributes.team
   type: Selector
   properties:
-    label: Team
+    title: Team
     options:
       - label: Alpha
         value: alpha
