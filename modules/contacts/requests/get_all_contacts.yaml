@@ -12,6 +12,7 @@ payload:
 properties:
   pipeline:
     - $search:
+        returnStoredSource: true
         compound:
           filter:
             - compound:
