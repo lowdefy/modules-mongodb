@@ -1,0 +1,44 @@
+- id: validate
+  type: Validate
+- id: generate_avatar
+  type: SetState
+  params:
+    profile.picture:
+      _js:
+        _ref:
+          path: ../shared/profile/generate-avatar-svg.js.njk
+          vars:
+            prefix: profile
+- id: invite_user
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: invite-user
+    payload:
+      _id:
+        _state: _id
+      profile:
+        _state: profile
+      global_attributes:
+        _state: global_attributes
+      app_attributes:
+        _state: app_attributes
+      email:
+        _state: email
+      lowercase_email:
+        _state: lowercase_email
+      roles:
+        _state: roles
+      disabled:
+        _state: disabled
+      invite:
+        _state: invite
+  messages:
+    success: New invite created.
+- id: reset
+  type: Reset
+- id: back
+  type: Link
+  params:
+    pageId:
+      _module.pageId: users

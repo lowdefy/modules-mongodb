@@ -41,13 +41,13 @@ routine:
                             _user: true
                           target:
                             name:
-                              _payload: user.profile.name
+                              _payload: profile.name
                             email:
-                              _payload: user.email
+                              _payload: email
                     description: null
         references:
           user_ids:
-            - _payload: user._id
+            - _payload: _id
         metadata:
           app_name:
             _module.var: app_name

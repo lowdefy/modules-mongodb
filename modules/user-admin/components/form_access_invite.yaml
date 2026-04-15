@@ -3,7 +3,7 @@ type: Box
 layout:
   gap: 8
 blocks:
-  - id: user.roles
+  - id: roles
     type: MultipleSelector
     properties:
       title: Roles

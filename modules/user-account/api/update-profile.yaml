@@ -4,10 +4,10 @@ routine:
   - :if:
       _or:
         - _eq:
-            - _payload: contact.profile.given_name
+            - _payload: profile.given_name
             - null
         - _eq:
-            - _payload: contact.profile.family_name
+            - _payload: profile.family_name
             - null
     :then:
       :reject: Missing required profile fields.
@@ -21,8 +21,30 @@ routine:
         _id:
           _user: id
       update:
-        $set:
-          _ref: api/profile-set-fields.yaml
+        _build.array.concat:
+          # Stage 1: Merge profile
+          - - $set:
+                profile:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.profile"
+                        - {}
+                    - _payload: profile
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+          # Stage 2: Compute derived fields (sees merged profile from stage 1)
+          - - $set:
+                profile.name:
+                  $concat:
+                    - $trim:
+                        input: "$profile.given_name"
+                    - " "
+                    - $trim:
+                        input: "$profile.family_name"
+          # Consumer pipeline stages
+          - _module.var: request_stages.write
 
   - id: updated_user
     type: MongoDBFindOne

@@ -1,4 +1,4 @@
-id: user.email
+id: email
 type: TextInput
 properties:
   title: Email

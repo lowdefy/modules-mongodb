@@ -12,14 +12,14 @@ blocks:
         _if:
           test:
             _eq:
-              - _state: user.disabled
+              - _state: disabled
               - true
           then: red
           else:
             _if:
               test:
                 _eq:
-                  - _state: user.invite.open
+                  - _state: invite.open
                   - true
               then: blue
               else: green
@@ -27,14 +27,14 @@ blocks:
         _if:
           test:
             _eq:
-              - _state: user.disabled
+              - _state: disabled
               - true
           then: Disabled
           else:
             _if:
               test:
                 _eq:
-                  - _state: user.invite.open
+                  - _state: invite.open
                   - true
               then: Open Invite
               else: Active
@@ -54,12 +54,7 @@ blocks:
     blocks:
       _build.array.map:
         on:
-          # TODO: FIX
-          - mrm
-          - user-admin-hydra
-          - demo
-
-          # _module.var: roles
+          _module.var: roles
         callback:
           _build.function:
             id:
@@ -69,7 +64,7 @@ blocks:
             type: Tag
             visible:
               _array.includes:
-                - _state: user.roles
+                - _state: roles
                 - __build.args: 0
             properties:
               title:
@@ -78,7 +73,7 @@ blocks:
     type: Paragraph
     visible:
       _eq:
-        - _state: user.is_user
+        - _state: is_user
         - true
     style:
       marginBottom: 0
@@ -89,4 +84,4 @@ blocks:
           template: "Signed up {{ date | date('YYYY-MM-DD') }}"
           on:
             date:
-              _state: user.sign_up
+              _state: sign_up

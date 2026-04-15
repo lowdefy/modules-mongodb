@@ -6,3 +6,9 @@
 **/coverage/**
 
 temp.md
+# E2E Testing
+**/test-results/
+**/playwright-report/
+.mdb-e2e-state.json
+
+.obsidian

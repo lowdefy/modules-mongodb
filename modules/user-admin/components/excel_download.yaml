@@ -1,10 +1,10 @@
 id: export_button
 type: Button
 layout:
-  flex: 0 1 auto
+  flex: 0 0 auto
 properties:
   title: Download Excel File
-  block: true
+  variant: outlined
 events:
   onClick:
     - id: fetch_excel_data
@@ -19,13 +19,13 @@ events:
             test:
               _build.ne:
                 - _module.var: app_title
-                - ""
+                - ''
             then:
               _build.string.concat:
                 - _module.var: app_title
                 - _Users_Export
             else: Users_Export
-        dateFormat: "YYYY/MM/DD"
+        dateFormat: 'YYYY/MM/DD'
         data:
           _actions: fetch_excel_data.response
         schema:
@@ -43,15 +43,15 @@ events:
                     test:
                       _build.ne:
                         - _module.var: app_title
-                        - ""
+                        - ''
                     then:
                       _build.string.concat:
                         - _build.string.toLowerCase:
                             _build.string.replace:
                               on:
                                 _module.var: app_title
-                              regex: " "
-                              newSubstr: "_"
+                              regex: ' '
+                              newSubstr: '_'
                         - _active
                     else: active
                 value: active.text

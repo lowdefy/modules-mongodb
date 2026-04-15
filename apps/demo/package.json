@@ -10,9 +10,18 @@
     "ldf": "lowdefy dev --no-open",
     "ldf:b:i": "infisical run --env=dev --path=/apps/demo -- lowdefy build",
     "ldf:d:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --log-level=debug --no-open",
-    "ldf:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --no-open"
+    "ldf:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --no-open",
+    "e2e": "playwright test --config=e2e/playwright.config.js",
+    "e2e:headed": "SLOW_MO=500 playwright test --headed --workers=1 --config=e2e/playwright.config.js",
+    "e2e:ui": "playwright test --ui --config=e2e/playwright.config.js",
+    "e2e:server": "lowdefy build --server e2e && lowdefy start --port 3000 --log-level warn"
   },
   "dependencies": {
-    "lowdefy": "0.0.0-experimental-20260327101025"
+    "lowdefy": "0.0.0-experimental-20260413102757"
+  },
+  "devDependencies": {
+    "@lowdefy/e2e-utils": "latest",
+    "@playwright/test": "^1.50.0",
+    "@lowdefy/community-plugin-e2e-mdb": "latest"
   }
 }

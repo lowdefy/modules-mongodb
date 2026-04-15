@@ -12,71 +12,40 @@ blocks:
               _request: get_contact.0.profile.name
             email:
               _request: get_contact.0.email
-    # Profile DataDescriptions
-    - - id: profile_data
-        type: DataDescriptions
+    # Profile SmartDescriptions
+    - - id: profile_view
+        type: SmartDescriptions
         properties:
-          bordered: true
-          column: 1
-          size: small
           title: Profile
-          data:
-            _object.assign:
-              - _request: get_contact.0.profile
-              - profile_created: null
-              - picture: null
-              - name: null
-          formConfig:
-            _build.if:
-              test:
-                _build.ne:
-                  - _module.var: components.profile_view_config
-                  - null
-              then:
-                _build.array.concat:
-                  - _build.if:
-                      test:
-                        _module.var: show_title
-                      then:
-                        - key: title
-                          title: Title
-                      else: []
-                  - - key: given_name
-                      title: First Name
-                    - key: family_name
-                      title: Last Name
-                  - _module.var: components.profile_view_config
-              else: null
-    # Attributes DataDescriptions (optional)
-    - - id: attributes_data
-        type: DataDescriptions
-        visible:
-          _build.ne:
-            - _module.var: components.attributes_view_config
-            - null
-        properties:
-          bordered: true
           column: 1
           size: small
-          title: Attributes
           data:
-            _object.assign:
-              - _if_none:
-                  - _request: get_contact.0.global_attributes
-                  - {}
-              - _if_none:
-                  - _get:
-                      key:
-                        _string.concat:
-                          - 'apps.'
-                          - _module.var: app_name
-                          - '.app_attributes'
-                      from:
-                        _if_none:
-                          - _request: get_contact.0
-                          - {}
-                  - {}
-          formConfig:
-            _module.var: components.attributes_view_config
+            profile:
+              _request: get_contact.0.profile
+          fields:
+            _build.array.concat:
+              - _ref:
+                  path: ../shared/profile/form_core.yaml
+                  vars:
+                    show_title:
+                      _module.var: fields.show_title
+              - _module.var: fields.profile
+    # Attributes SmartDescriptions (only when fields are provided)
+    - - id: attributes_view
+        type: SmartDescriptions
+        visible:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.global_attributes
+            - 0
+        properties:
+          title: Attributes
+          column: 1
+          size: small
+          data:
+            global_attributes:
+              _request: get_contact.0.global_attributes
+          fields:
+            _module.var: fields.global_attributes
     # Extra content slot
     - _module.var: components.view_extra

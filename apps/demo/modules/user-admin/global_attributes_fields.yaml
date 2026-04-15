@@ -1,0 +1,5 @@
+- id: global_attributes.notes
+  type: TextArea
+  properties:
+    title: Notes
+    rows: 3

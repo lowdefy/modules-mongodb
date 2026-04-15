@@ -25,52 +25,45 @@ vars:
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). Merges with default templates."
   app_domain:
     description: App domain URL for invite links (falls back to current origin)
-  show_title:
-    type: boolean
-    default: false
-    description: Show the title/honorific field (Mr, Ms, Dr, etc.)
+  fields:
+    type: object
+    description: "Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_title toggles the title/honorific field."
+    properties:
+      show_title:
+        type: boolean
+        default: false
+      profile:
+        default: []
+      global_attributes:
+        default: []
+      app_attributes:
+        default: []
   components:
     type: object
-    description: "Component overrides: profile_fields, profile_set_fields, profile_view_config, attributes_view_config, view_extra, view_access_tile, global_attributes_fields, app_attributes_fields, table_columns, download_columns, filters"
+    description: "Component overrides: view_extra, view_access_tile, table_columns, download_columns, filters"
     properties:
-      profile_view_config:
-        default: null
-      attributes_view_config:
-        default: null
       view_extra:
         default: []
       download_columns:
         default: []
       table_columns:
         default: []
-      profile_set_fields:
-        default: {}
-      profile_fields:
-        default: []
       filters:
-        default: []
-      app_attributes_fields:
-        default: []
-      global_attributes_fields:
         default: []
       view_access_tile:
         default:
           _ref: components/view_access.yaml
   request_stages:
     type: object
-    description: "MongoDB pipeline stage overrides: get_all_users, invite_user, update_user, filter_match"
+    description: "MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows."
     properties:
       filter_match:
         default: []
       get_all_users:
         default:
           - $addFields: {}
-      update_user:
-        default:
-          - $set: {}
-      invite_user:
-        default:
-          - $set: {}
+      write:
+        default: []
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
@@ -141,3 +134,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^1"

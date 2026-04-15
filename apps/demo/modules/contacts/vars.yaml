@@ -1,0 +1,11 @@
+app_name:
+  _ref:
+    path: app_config.yaml
+    key: app_name
+fields:
+  profile:
+    _ref: modules/shared/profile/fields.yaml
+  global_attributes:
+    _ref: modules/contacts/global_attributes_fields.yaml
+request_stages:
+  write: []

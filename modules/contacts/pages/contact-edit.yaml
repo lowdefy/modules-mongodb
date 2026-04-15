@@ -49,8 +49,16 @@ _ref:
         - id: set_state
           type: SetState
           params:
-            contact:
-              _request: get_contact.0
+            profile:
+              _request: get_contact.0.profile
+            global_attributes:
+              _request: get_contact.0.global_attributes
+            email:
+              _request: get_contact.0.email
+            updated:
+              _request: get_contact.0.updated
+            _id:
+              _request: get_contact.0._id
     requests:
       - _ref: requests/get_contact.yaml
     blocks:
@@ -108,20 +116,26 @@ _ref:
                     - id: generate_avatar
                       type: SetState
                       params:
-                        contact.profile.picture:
+                        profile.picture:
                           _js:
                             _ref:
                               path: ../shared/profile/generate-avatar-svg.js.njk
                               vars:
-                                prefix: contact.profile
+                                prefix: profile
                     - id: update_contact
                       type: CallAPI
                       params:
                         endpointId:
                           _module.endpointId: update-contact
                         payload:
-                          contact:
-                            _state: contact
+                          _id:
+                            _state: _id
+                          profile:
+                            _state: profile
+                          global_attributes:
+                            _state: global_attributes
+                          updated:
+                            _state: updated
                       messages:
                         success:
                           _string.concat:

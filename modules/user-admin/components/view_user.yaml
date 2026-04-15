@@ -7,92 +7,59 @@ blocks:
           path: ../shared/layout/identity-header.yaml
           vars:
             avatar_src:
-              _state: user.profile.picture
+              _state: profile.picture
             name:
-              _state: user.profile.name
+              _state: profile.name
             email:
-              _state: user.email
+              _state: email
     # Invite link (only visible for open invites)
-    - - id: invite_link
-        type: Paragraph
-        visible:
-          _eq:
-            - _state: user.invite.open
-            - true
-        style:
-          marginBottom: 0
+    - - _ref:
+          path: components/view_invite_link.yaml
+          vars:
+            visible:
+              _eq:
+                - _state: invite.open
+                - true
+    # Profile SmartDescriptions
+    - - id: profile_view
+        type: SmartDescriptions
         properties:
-          type: secondary
-          code: true
-          copyable: true
-          content:
-            _nunjucks:
-              template: '{{ origin }}/login?hint={{ hint }}'
-              on:
-                origin:
-                  _if_none:
-                    - _module.var: app_domain
-                    - _location: origin
-                hint:
-                  _if_none:
-                    - _state: user.lowercase_email
-                    - ''
-    # Profile DataDescriptions
-    - - id: profile_data
-        type: DataDescriptions
-        properties:
-          bordered: true
-          column: 1
-          size: small
           title: Profile
-          data:
-            _object.assign:
-              - _state: user.profile
-              - profile_created: null
-              - picture: null
-              - name: null
-          formConfig:
-            _build.if:
-              test:
-                _build.ne:
-                  - _module.var: components.profile_view_config
-                  - null
-              then:
-                _build.array.concat:
-                  - _build.if:
-                      test:
-                        _module.var: show_title
-                      then:
-                        - key: title
-                          title: Title
-                      else: []
-                  - - key: given_name
-                      title: First Name
-                    - key: family_name
-                      title: Last Name
-                  - _module.var: components.profile_view_config
-              else: null
-    # Attributes DataDescriptions (optional)
-    - - id: attributes_data
-        type: DataDescriptions
-        visible:
-          _build.ne:
-            - _module.var: components.attributes_view_config
-            - null
-        properties:
-          bordered: true
           column: 1
           size: small
-          title: Attributes
           data:
-            _object.assign:
-              - _if_none:
-                  - _state: user.global_attributes
-                  - {}
-              - _if_none:
-                  - _state: user.app_attributes
-                  - {}
-          formConfig:
-            _module.var: components.attributes_view_config
+            profile:
+              _state: profile
+          fields:
+            _build.array.concat:
+              - _ref:
+                  path: ../shared/profile/form_core.yaml
+                  vars:
+                    show_title:
+                      _module.var: fields.show_title
+              - _module.var: fields.profile
+    # Combined attributes SmartDescriptions (only when fields are provided)
+    - - id: attributes_view
+        type: SmartDescriptions
+        visible:
+          _build.gt:
+            - _build.array.length:
+                _build.array.concat:
+                  - _module.var: fields.global_attributes
+                  - _module.var: fields.app_attributes
+            - 0
+        properties:
+          title: Attributes
+          column: 1
+          size: small
+          data:
+            global_attributes:
+              _state: global_attributes
+            app_attributes:
+              _state: app_attributes
+          fields:
+            _build.array.concat:
+              - _module.var: fields.global_attributes
+              - _module.var: fields.app_attributes
     # Extra content slot
     - _module.var: components.view_extra

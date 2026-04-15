@@ -4,43 +4,11 @@ layout:
   gap: 8
 blocks:
   _build.array.concat:
-    # Title (conditional)
-    - _build.if:
-        test:
-          _module.var: show_title
-        then:
-          - id: user.profile.title
-            type: Selector
-            layout:
-              span: 3
-            properties:
-              title: Title
-              options:
-                - Mr
-                - Ms
-                - Mrs
-                - Dr
-                - Prof
-        else: []
-    # Core fields
-    - - id: user.profile.given_name
-        type: TextInput
-        required: true
-        layout:
-          span:
-            _build.if:
-              test:
-                _module.var: show_title
-              then: 9
-              else: 12
-        properties:
-          title: First Name
-      - id: user.profile.family_name
-        type: TextInput
-        required: true
-        layout:
-          span: 12
-        properties:
-          title: Last Name
+    # Core fields (shared)
+    - _ref:
+        path: ../shared/profile/form_core.yaml
+        vars:
+          show_title:
+            _module.var: fields.show_title
     # Extended profile fields (injected by consumer)
-    - _module.var: components.profile_fields
+    - _module.var: fields.profile

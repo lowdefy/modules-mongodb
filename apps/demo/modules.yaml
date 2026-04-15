@@ -1,0 +1,49 @@
+# - id: companies
+#   source: 'file:../../modules/companies'
+
+# - id: contacts
+#   source: 'file:../../modules/contacts'
+#   vars:
+#     _ref: modules/contacts/vars.yaml
+
+- id: events
+  source: 'file:../../modules/events'
+  vars:
+    _ref: modules/events/vars.yaml
+
+- id: files
+  source: 'file:../../modules/files'
+
+- id: layout
+  source: 'file:../../modules/layout-sider-menu'
+  vars:
+    _ref: modules/layout/vars.yaml
+
+- id: notifications
+  source: 'file:../../modules/notifications'
+  vars:
+    _ref: modules/notifications/vars.yaml
+
+- id: release-notes
+  source: 'file:../../modules/release-notes'
+  vars:
+    content:
+      _ref: ../../CHANGELOG.md
+
+# - id: upload-companies
+#   source: 'file:../../modules/data-upload'
+#   vars:
+#     tool:
+#       _ref: modules/data-upload/load_companies.yaml
+#     change_stamp:
+#       _ref: ../shared/change_stamp.yaml
+
+- id: user-account
+  source: 'file:../../modules/user-account'
+  vars:
+    _ref: modules/user-account/vars.yaml
+
+- id: user-admin
+  source: 'file:../../modules/user-admin'
+  vars:
+    _ref: modules/user-admin/vars.yaml

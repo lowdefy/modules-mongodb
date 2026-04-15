@@ -1,0 +1,10 @@
+- id: create-notifications
+  type: AxiosHttp
+  connectionId: consume-notifications
+  payload:
+    event_ids:
+      _payload: event_ids
+  properties:
+    data:
+      ids:
+        _payload: event_ids

@@ -1,0 +1,22 @@
+id: upload-companies
+label: Upload Companies
+target_collection: companies
+id_column: _id
+
+api:
+  process_staged: process-staged-companies
+
+columns:
+  - field: _id
+    type: String
+    required: true
+  - field: description
+    type: String
+    required: true
+
+view_page:
+  _module.pageId:
+    module: companies
+    id: company-detail
+
+s3_prefix: tools/load_companies

@@ -1,6 +1,13 @@
-id: view_invite_link
+id: invite_link
 type: Paragraph
+visible:
+  _var:
+    key: visible
+    default: true
+style:
+  marginBottom: 0
 properties:
+  type: secondary
   code: true
   copyable: true
   content:
@@ -13,5 +20,5 @@ properties:
             - _location: origin
         hint:
           _if_none:
-            - _state: user.lowercase_email
+            - _state: lowercase_email
             - ""

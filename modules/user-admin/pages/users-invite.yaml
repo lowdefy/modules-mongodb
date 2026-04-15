@@ -20,7 +20,7 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - " User Admin"
+              - ' User Admin'
         pageId:
           _module.pageId: users
       - label: Invite User
@@ -39,31 +39,55 @@ _ref:
         - id: get_user
           type: Request
           params: get_user
-        - id: set_user
+        - id: set_state_new
           type: SetState
+          skip:
+            _ne:
+              - _input: user_id
+              - null
           params:
-            user:
-              _if:
-                test:
-                  _eq:
-                    - _input: user_id
-                    - null
-                then:
-                  email:
-                    _input: email
-                  lowercase_email:
-                    _string.toLowerCase:
-                      _input: email
-                else:
-                  _request: get_user.0
+            email:
+              _input: email
+            lowercase_email:
+              _string.toLowerCase:
+                _input: email
+        - id: set_state_existing
+          type: SetState
+          skip:
+            _eq:
+              - _input: user_id
+              - null
+          params:
+            profile:
+              _request: get_user.0.profile
+            global_attributes:
+              _request: get_user.0.global_attributes
+            app_attributes:
+              _request: get_user.0.app_attributes
+            email:
+              _request: get_user.0.email
+            lowercase_email:
+              _request: get_user.0.lowercase_email
+            roles:
+              _request: get_user.0.roles
+            disabled:
+              _request: get_user.0.disabled
+            invite:
+              _request: get_user.0.invite
+            is_user:
+              _request: get_user.0.is_user
+            sign_up:
+              _request: get_user.0.sign_up
+            _id:
+              _request: get_user.0._id
         - id: init_avatar_color
           type: SetState
           skip:
             _ne:
-              - _state: user.profile.avatar_color
+              - _state: profile.avatar_color
               - null
           params:
-            user.profile.avatar_color:
+            profile.avatar_color:
               _get:
                 from:
                   _module.var: avatar_colors
@@ -80,17 +104,15 @@ _ref:
         layout:
           gap: 16
         blocks:
-          # TODO: doc_metadata component
-          # - _ref: ../components/doc_metadata.yaml
           - _ref: components/view_user_avatar_preview.yaml
           - _ref: components/view_invite_link.yaml
           - _ref: components/view_email.yaml
-          - id: divider
+          - id: divider_profile
             type: Divider
             properties:
               title: Profile
           - _ref: components/form_profile.yaml
-          - id: divider
+          - id: divider_access
             type: Divider
             properties:
               title: Access
@@ -111,34 +133,7 @@ _ref:
                   icon: RiMailSendLine
                 events:
                   onClick:
-                    - id: validate
-                      type: Validate
-                    - id: generate_avatar
-                      type: SetState
-                      params:
-                        user.profile.picture:
-                          _js:
-                            _ref:
-                              path: ../shared/profile/generate-avatar-svg.js.njk
-                              vars:
-                                prefix: user.profile
-                    - id: invite_user
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _module.endpointId: invite-user
-                        payload:
-                          user:
-                            _state: user
-                      messages:
-                        success: New invite created.
-                    - id: reset
-                      type: Reset
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: users
+                    _ref: actions/invite_user.yaml
               - id: cancel_button
                 type: Button
                 layout:

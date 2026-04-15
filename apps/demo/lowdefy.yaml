@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260327101025
+lowdefy: 0.0.0-experimental-20260413102757
 name: Module Demo App
 
 cli:
@@ -7,12 +7,21 @@ cli:
 
 theme:
   antd:
-    # algorithm: dark
     token:
       colorPrimary: '#7c3aed'
 
 config:
   homePageId: router
+
+plugins:
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: 2.4.1
+  - name: '@lowdefy/community-plugin-xlsx'
+    version: 1.1.0
+  - name: '@lowdefy/community-plugin-nodemailer'
+    version: 1.1.4
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: workspace:*
 
 auth:
   authPages:
@@ -29,9 +38,17 @@ auth:
         required: true
       databaseUri:
         _secret: MONGODB_URI
-      appName: demo
+      appName:
+        _ref:
+          path: app_config.yaml
+          key: app_name
       verificationTokens:
         uses: 5
+      collections:
+        accounts: user-accounts
+        contacts: user-contacts
+        sessions: user-sessions
+        verificationTokens: user-verification-tokens
   providers:
     - id: email
       type: EmailProvider
@@ -56,128 +73,28 @@ auth:
     global_attributes: user.global_attributes
     roles: user.roles
   pages:
-    public: true
-  # pages:
-  #   protected: true
-  #   public:
-  #     - user-account/login
-  #     - "404"
-  #     - user-account/verify-email-request
-  #     - router
-
-plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: 2.4.1
-  - name: '@lowdefy/community-plugin-xlsx'
-    version: 1.1.0
-  - name: '@lowdefy/community-plugin-nodemailer'
-    version: 1.1.4
-  - name: '@lowdefy/modules-mongodb-plugins'
-    version: workspace:*
+    protected: true
+    public:
+      - '404'
+      - notifications-invalid
+      - notifications-link
+      - router
+      - user-account/login
+      - user-account/verify-email-request
+    roles:
+      user-admin:
+        - user-admin/*
+  api:
+    protected: true
+    roles:
+      user-admin:
+        - user-admin/*
 
 modules:
-  - id: layout
-    source: 'file:../../modules/layout-header-menu'
-    vars:
-      auth_page:
-        max_width: 380
-        logo_max_width: 180
-        card_style:
-          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12)'
-      footer:
-        - id: footer-text
-          type: Html
-          properties:
-            html: |
-              <p>Lowdefy Modules MongoDB Demo</p>
-              <p>© 2026 Lowdefy. All rights reserved.</p>
-
-  - id: events
-    source: 'file:../../modules/events'
-    vars:
-      collection: log-events
-      display_key: demo
-      change_stamp:
-        user:
-          _user: id
-        timestamp:
-          _date: now
-
-  - id: notifications
-    source: 'file:../../modules/notifications'
-
-  - id: user-admin
-    source: 'file:../../modules/user-admin'
-    # source: github:lowdefy/modules-mongodb/modules/user-admin@v1.0.0
-    dependencies:
-      layout: layout
-      events: events
-      notifications: notifications
-    vars:
-      _ref: modules/user-admin/index.yaml
-
-  - id: user-account
-    source: 'file:../../modules/user-account'
-    # source: github:lowdefy/modules-mongodb/modules/user-account@v1.0.0
-    vars:
-      _ref: modules/user-account/index.yaml
-
-  - id: companies
-    source: 'file:../../modules/companies'
-    dependencies:
-      layout: layout
-      events: events
-      contacts: contacts
-      files: files
-    vars:
-      _ref: modules/companies/index.yaml
-
-  - id: contacts
-    source: 'file:../../modules/contacts'
-    dependencies:
-      layout: layout
-      events: events
-      companies: companies
-      files: files
-    vars:
-      _ref: modules/contacts/index.yaml
-
-  - id: files
-    source: 'file:../../modules/files'
-    dependencies:
-      events: events
-    vars:
-      collection: files
-      bucket: demo-files-bucket
-      s3_region: af-south-1
+  _ref: modules.yaml
 
 menus:
-  - id: default
-    links:
-      - id: user-admin-group
-        type: MenuGroup
-        properties:
-          title: User Admin
-        links:
-          _ref:
-            module: user-admin
-            menu: default
-      - id: companies-group
-        type: MenuGroup
-        properties:
-          title: Companies
-        links:
-          _ref:
-            module: companies
-            menu: default
-      - id: contacts-group
-        type: MenuGroup
-        properties:
-          title: Contacts
-        links:
-          _ref:
-            module: contacts
-            menu: default
+  _ref: menus.yaml
 
 pages:
   - _ref: pages/router.yaml

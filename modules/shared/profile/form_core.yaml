@@ -1,0 +1,37 @@
+_build.array.concat:
+  - _build.if:
+      test:
+        _var: show_title
+      then:
+        - id: profile.title
+          type: Selector
+          layout:
+            span: 3
+          properties:
+            title: Title
+            options:
+              - Mr
+              - Ms
+              - Mrs
+              - Dr
+              - Prof
+      else: []
+  - - id: profile.given_name
+      type: TextInput
+      required: true
+      layout:
+        span:
+          _build.if:
+            test:
+              _var: show_title
+            then: 9
+            else: 12
+      properties:
+        title: First Name
+    - id: profile.family_name
+      type: TextInput
+      required: true
+      layout:
+        span: 12
+      properties:
+        title: Last Name

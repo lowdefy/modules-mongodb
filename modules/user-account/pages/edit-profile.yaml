@@ -17,9 +17,9 @@ _ref:
         - id: init
           type: SetState
           params:
-            contact.profile:
+            profile:
               _user: profile
-            contact.email:
+            email:
               _user: email
     blocks:
       - id: card
@@ -47,20 +47,20 @@ _ref:
                     - id: generate_avatar
                       type: SetState
                       params:
-                        contact.profile.picture:
+                        profile.picture:
                           _js:
                             _ref:
                               path: ../shared/profile/generate-avatar-svg.js.njk
                               vars:
-                                prefix: contact.profile
+                                prefix: profile
                     - id: update_profile
                       type: CallAPI
                       params:
                         endpointId:
                           _module.endpointId: update-profile
                         payload:
-                          contact:
-                            _state: contact
+                          profile:
+                            _state: profile
                       messages:
                         success: Profile updated.
                     - id: link_to_profile
