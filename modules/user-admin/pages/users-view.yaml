@@ -133,13 +133,15 @@ _ref:
               sm:
                 span: 24
             blocks:
-              - _ref:
-                  module: layout
-                  component: card
-                  vars:
-                    title: Profile
-                    blocks:
-                      - _ref: components/view_user.yaml
+              _build.array.concat:
+                - - _ref:
+                      module: layout
+                      component: card
+                      vars:
+                        title: Profile
+                        blocks:
+                          - _ref: components/view_user.yaml
+                - _module.var: components.main_slots
           - id: sidebar_column
             type: Box
             layout:
@@ -147,4 +149,6 @@ _ref:
               sm:
                 span: 24
             blocks:
-              - _module.var: components.view_access_tile
+              _build.array.concat:
+                - - _module.var: components.view_access_tile
+                - _module.var: components.sidebar_slots

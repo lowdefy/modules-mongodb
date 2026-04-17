@@ -1,0 +1,5 @@
+id: email
+type: TextInput
+properties:
+  title: Email
+  disabled: true

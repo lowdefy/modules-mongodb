@@ -12,11 +12,12 @@ Module var injection points allow consumers to extend routines without forking:
 
 - `components.profile_set_fields` — additional `$set` fields merged via `_object.assign` into the update document
 - `request_stages.insert_{entity}` / `request_stages.update_{entity}` — additional MongoDB pipeline stages appended after `$set` via `_build.array.concat`
-- `_build.if` with `_module.var` — conditionally include fields at build time (e.g., `show_title`)
+- `_build.if` with `_module.var` — conditionally include fields at build time (e.g., `show_honorific`)
 
 ## Step Types
 
 **Database operations:**
+
 - `MongoDBFindOne` — read a document (for validation, duplicate check, reading current state)
 - `MongoDBInsertOne` — insert a new document
 - `MongoDBUpdateOne` — update with filter, `$set`, `$push`, `upsert`
@@ -24,6 +25,7 @@ Module var injection points allow consumers to extend routines without forking:
 - `MongoDBAggregation` — complex query pipelines
 
 **Cross-API calls:**
+
 - `CallApi` — invoke another API endpoint, passing `payload`
 
 ## Control Flow
@@ -38,18 +40,19 @@ Module var injection points allow consumers to extend routines without forking:
 
 ## Data Access
 
-| Operator | Reads from | Example |
-|---|---|---|
-| `_payload: key` | Caller's payload | `_payload: contact.email` |
-| `_step: id.field` | Previous step result | `_step: insert.upsertedId` |
-| `_state: key` | Routine state (`:set_state:`) | `_state: change_stamp` |
-| `_item: row.field` | Current `:for:` loop item | `_item: row.method` |
-| `_user: field` | Authenticated user | `_user: id` |
-| `_var: key` | `_ref` vars (sub-routine params) | `_var: event_ids` |
+| Operator           | Reads from                       | Example                    |
+| ------------------ | -------------------------------- | -------------------------- |
+| `_payload: key`    | Caller's payload                 | `_payload: contact.email`  |
+| `_step: id.field`  | Previous step result             | `_step: insert.upsertedId` |
+| `_state: key`      | Routine state (`:set_state:`)    | `_state: change_stamp`     |
+| `_item: row.field` | Current `:for:` loop item        | `_item: row.method`        |
+| `_user: field`     | Authenticated user               | `_user: id`                |
+| `_var: key`        | `_ref` vars (sub-routine params) | `_var: event_ids`          |
 
 ## Connections and Endpoint References
 
 **Module-level** (portable across apps):
+
 ```yaml
 connectionId:
   _module.connectionId: contacts-collection
@@ -60,6 +63,7 @@ endpointId:
 ```
 
 **App-level** (direct references):
+
 ```yaml
 connectionId: lots
 endpointId: new-event
@@ -122,6 +126,7 @@ Every mutation should log an audit event. There are two patterns:
 ```
 
 The default event_display.yaml file defines Nunjucks templates per event type:
+
 ```yaml
 default:
   create-contact: "{{ user.profile.name }} created {{ target.name }}"
@@ -188,27 +193,35 @@ Sub-routines access vars via `_var: { key: event_ids }` with optional `default:`
 ## Routine Archetypes
 
 ### 1. Create with duplicate check
+
 FindOne duplicate → UpdateOne upsert (skip if exists) → CallApi event (skip if exists) → `:return:` id + existing flag. Uses `$ifNull` for `_id` and `created` so re-upserts are safe.
 
 ### 2. Update with optimistic concurrency
+
 Filter on `_id` + `updated.timestamp` → UpdateOne → CallApi event → `:return: success`. If someone else updated between fetch and save, the filter won't match.
 
 ### 3. Validation then update
+
 `:if:` required fields missing → `:reject:` error message. Then UpdateOne → FindOne (read back updated doc for event template) → CallApi event → `:return:`.
 
 ### 4. Event-only (no document mutation)
+
 CallApi event → (optional CallApi notification) → `:return:`. Used for comments, resend-invite.
 
 ### 5. Simple mutation
+
 UpdateOne/UpdateMany → (optional event) → `:return:`. Used for soft deletes, status changes, file saves.
 
 ### 6. Branching domain action
+
 FindOne current state → `:set_state:` computed values → `:if:` early returns for invalid states → UpdateOne → CallApi event → `:return:`. Used for gate advances, state machines.
 
 ### 7. Composed workflow
+
 `:set_state:` → `_ref` sub-routines chained together → `:if:` conditional paths → `:return:`. Keeps each sub-routine under 80 lines.
 
 ### 8. Bulk processing
+
 MongoDBAggregation query → `:set_state:` counters → `:for:` each row → `:try:` process (insert/update/delete based on method) → `:catch:` mark error → `:return:` summary counts.
 
 ## Anti-patterns

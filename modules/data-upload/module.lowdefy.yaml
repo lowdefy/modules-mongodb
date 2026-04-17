@@ -87,6 +87,6 @@ secrets:
     description: S3 bucket name for sync
 
 plugins:
-  - name: '@lowdefy/community-plugin-xlsx'
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: '^2'
+  - name: "@lowdefy/community-plugin-xlsx"
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^2"

@@ -24,44 +24,46 @@ _ref:
           type: Request
           params: get_my_profile
     blocks:
-      - id: card
-        type: Card
-        layout:
-          gap: 16
-        blocks:
-          - _ref: components/view_profile.yaml
-      - _ref:
-          module: layout
-          component: floating-actions
-          vars:
-            actions:
-              - id: edit_profile_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Edit Profile
-                  icon: AiOutlineEdit
-                events:
-                  onClick:
-                    - id: edit_profile_link
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: edit-profile
-              - id: logout_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Logout
-                  icon: AiOutlineLogout
-                  type: default
-                events:
-                  onClick:
-                    - id: logout
-                      type: Logout
-                      params:
-                        callbackUrl:
-                          pageId:
-                            _module.pageId: logout
+      _build.array.concat:
+        - - id: card
+            type: Card
+            layout:
+              gap: 16
+            blocks:
+              - _ref: components/view_profile.yaml
+        - _module.var: components.main_slots
+        - - _ref:
+              module: layout
+              component: floating-actions
+              vars:
+                actions:
+                  - id: edit_profile_button
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Edit Profile
+                      icon: AiOutlineEdit
+                    events:
+                      onClick:
+                        - id: edit_profile_link
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: edit-profile
+                  - id: logout_button
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Logout
+                      icon: AiOutlineLogout
+                      type: default
+                    events:
+                      onClick:
+                        - id: logout
+                          type: Logout
+                          params:
+                            callbackUrl:
+                              pageId:
+                                _module.pageId: logout

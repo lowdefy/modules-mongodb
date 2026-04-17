@@ -8,19 +8,19 @@
         _ref:
           module: user-admin
           menu: default
-    # - id: companies-group
-    #   type: MenuGroup
-    #   properties:
-    #     title: Companies
-    #   links:
-    #     _ref:
-    #       module: companies
-    #       menu: default
-    # - id: contacts-group
-    #   type: MenuGroup
-    #   properties:
-    #     title: Contacts
-    #   links:
-    #     _ref:
-    #       module: contacts
-    #       menu: default
+    - id: companies-group
+      type: MenuGroup
+      properties:
+        title: Companies
+      links:
+        _ref:
+          module: companies
+          menu: default
+    - id: contacts-group
+      type: MenuGroup
+      properties:
+        title: Contacts
+      links:
+        _ref:
+          module: contacts
+          menu: default

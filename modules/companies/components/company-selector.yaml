@@ -17,14 +17,15 @@ properties:
   placeholder:
     _string.concat:
       - "Select "
-      - _module.var: label
+      - _if_none:
+          - _var: label
+          - _module.var: label
   options:
     _request: get_companies_for_selector
   label:
-    _var:
-      key: label
-      default:
-        _module.var: label
+    _if_none:
+      - _var: label
+      - _module.var: label
   optionConfig:
     titleField: label
     valueField: value

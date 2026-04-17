@@ -5,31 +5,97 @@ _ref:
     id: company-new
     title:
       _string.concat:
-        - 'New '
+        - "New "
         - _module.var: label
-    hide_title: true
     content_width: 700
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+        pageId:
+          _module.pageId: companies
+      - label:
+          _string.concat:
+            - "New "
+            - _module.var: label
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            contact: {}
+            address: {}
+            attributes: {}
+            contacts: []
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title:
-              _string.concat:
-                - 'New '
-                - _module.var: label
-            blocks:
-              - _module.var: components.form_fields
+      - id: card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          - _ref: components/form_company.yaml
       - _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 700
             actions:
-              - id: spacer
-                type: Box
+              - id: save_button
+                type: Button
                 layout:
-                  flex: 1 0 auto
+                  flex: 0 1 auto
+                properties:
+                  title:
+                    _string.concat:
+                      - "Create "
+                      - _module.var: label
+                  icon: AiOutlinePlusCircle
+                  type: primary
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: create_company
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: create-company
+                        payload:
+                          trading_name:
+                            _state: trading_name
+                          description:
+                            _state: description
+                          registered_name:
+                            _state: registered_name
+                          registration_number:
+                            _state: registration_number
+                          vat_number:
+                            _state: vat_number
+                          website:
+                            _state: website
+                          contact:
+                            _state: contact
+                          address:
+                            _state: address
+                          attributes:
+                            _state: attributes
+                          contacts:
+                            _state: contacts
+                      messages:
+                        success:
+                          _string.concat:
+                            - _module.var: label
+                            - " created."
+                    - id: reset
+                      type: Reset
+                    - id: go_detail
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: company-detail
+                        urlQuery:
+                          _id:
+                            _actions: create_company.response.companyId
               - id: cancel_button
                 type: Button
                 layout:
@@ -45,41 +111,3 @@ _ref:
                       params:
                         pageId:
                           _module.pageId: companies
-              - id: save_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title:
-                    _string.concat:
-                      - 'Create '
-                      - _module.var: label
-                  icon: AiOutlinePlusCircle
-                  type: primary
-                events:
-                  onClick:
-                    - id: validate
-                      type: Validate
-                    - id: create_company
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _module.endpointId: create-company
-                        payload:
-                          company:
-                            _state: company
-                      messages:
-                        success:
-                          _string.concat:
-                            - _module.var: label
-                            - ' created.'
-                    - id: reset
-                      type: Reset
-                    - id: go_detail
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: company-detail
-                        urlQuery:
-                          _id:
-                            _actions: create_company.response.companyId

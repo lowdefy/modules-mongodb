@@ -27,18 +27,18 @@ vars:
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
   fields:
     type: object
-    description: "Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_title toggles the title/honorific field."
+    description: "Field block arrays: profile. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
     properties:
-      show_title:
+      show_honorific:
         type: boolean
         default: false
       profile:
         default: []
   components:
     type: object
-    description: "Component overrides: view_extra"
+    description: "Component overrides: main_slots"
     properties:
-      view_extra:
+      main_slots:
         default: []
   request_stages:
     type: object

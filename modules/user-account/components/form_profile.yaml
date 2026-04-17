@@ -49,8 +49,8 @@ blocks:
     - _ref:
         path: ../shared/profile/form_core.yaml
         vars:
-          show_title:
-            _module.var: fields.show_title
+          show_honorific:
+            _module.var: fields.show_honorific
     - - id: email_display
         type: Descriptions
         properties:

@@ -8,11 +8,16 @@ properties:
   showSizeChanger: true
   total:
     _if_none:
-      - _request: get_all_contacts.0.total_results
+      - _get:
+          from:
+            _request:
+              _var: request_id
+          key: 0.total_results
       - 0
   disabled:
     _not:
-      _request: get_all_contacts
+      _request:
+        _var: request_id
   pageSizeOptions:
     - 100
     - 500
@@ -23,4 +28,5 @@ events:
       type: Request
       messages:
         loading: true
-      params: get_all_contacts
+      params:
+        _var: request_id

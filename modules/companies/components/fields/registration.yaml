@@ -1,0 +1,12 @@
+- id: registered_name
+  type: TextInput
+  properties:
+    title: Registered Name
+- id: registration_number
+  type: TextInput
+  properties:
+    title: Registration Number
+- id: vat_number
+  type: TextInput
+  properties:
+    title: VAT Number

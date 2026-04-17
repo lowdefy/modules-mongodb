@@ -1,10 +1,10 @@
 id: export_button
 type: Button
 layout:
-  flex: 0 1 auto
+  flex: 0 0 auto
 properties:
   title: Download Excel File
-  block: true
+  variant: outlined
 events:
   onClick:
     - id: fetch_excel_data

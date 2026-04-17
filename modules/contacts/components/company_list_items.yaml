@@ -1,26 +1,47 @@
-id: company_list
-type: List
-properties:
-  dataSource:
-    _request: get_contact_companies
-  renderItem:
-    id: company_item.__id
-    type: List.Item
+id: company_list_container
+type: Box
+blocks:
+  - id: company_list_empty
+    type: Paragraph
+    visible:
+      _eq:
+        - _array.length:
+            _request: get_contact_companies
+        - 0
     properties:
-      title:
-        _nunjucks:
-          template: "{{ display_name }}"
-          on:
-            __args: 0
-    events:
-      onClick:
-        - id: go_company_detail
-          type: Link
-          params:
-            pageId:
-              _module.pageId:
-                id: company-detail
-                module: companies
-            urlQuery:
-              _id:
-                _args: 0._id
+      content: No linked companies
+      type: secondary
+      style:
+        fontSize: 12
+        fontStyle: italic
+  - id: company_list
+    type: List
+    visible:
+      _gt:
+        - _array.length:
+            _request: get_contact_companies
+        - 0
+    properties:
+      dataSource:
+        _request: get_contact_companies
+      renderItem:
+        id: company_item.__id
+        type: List.Item
+        properties:
+          title:
+            _nunjucks:
+              template: "{{ display_name }}"
+              on:
+                __args: 0
+        events:
+          onClick:
+            - id: go_company_detail
+              type: Link
+              params:
+                pageId:
+                  _module.pageId:
+                    id: company-detail
+                    module: companies
+                urlQuery:
+                  _id:
+                    _args: 0._id
