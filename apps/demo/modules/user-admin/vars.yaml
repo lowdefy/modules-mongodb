@@ -5,7 +5,7 @@ app_name:
 roles:
   _ref: modules/user-admin/roles.yaml
 fields:
-  show_title: true
+  show_honorific: true
   profile:
     _ref: modules/shared/profile/fields.yaml
   global_attributes:

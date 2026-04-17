@@ -19,6 +19,7 @@ These aren't aspirational — they're constraints. A page that shows everything 
 Every page wraps in `_ref: module: layout, component: page` — the `PageSiderMenu` shell providing header, breadcrumbs, menu, notifications, profile, dark mode toggle, and a content area.
 
 **Page layout vars** — the shell accepts:
+
 - `id`, `title` — page ID and display title
 - `breadcrumbs` — array of `{ label, pageId?, icon?, home? }` crumbs
 - `page_actions` — button blocks for the title bar (Edit, New, Export)
@@ -33,13 +34,14 @@ Every page wraps in `_ref: module: layout, component: page` — the `PageSiderMe
 **Content components** — shared layout pieces used inside pages:
 
 **`card`** (`_ref: module: layout, component: card`) — the workhorse content container. Vars:
+
 - `title`, `doc` — card header + change stamp metadata
 - `width` — max-width with auto margin (use `700` for centered forms)
 - `blocks` — card content
 - `header_buttons` — buttons in the card's `extra` slot (Edit, Download)
 - `footer_buttons` — buttons below the card (inline, not sticky)
 - `loading` + `skeleton_height` — skeleton placeholder while data loads
-- `show_title` — toggle card title (default `true`)
+- `hide_title` — hide the card title (default `false`, matches the `hide_title` convention on `layout/page`)
 - `show_back_button` — back arrow above the card
 
 **`floating-actions`** (`_ref: module: layout, component: floating-actions`) — sticky bottom bar (Affix) for Save/Cancel on edit pages. Vars: `width`, `actions`.
@@ -61,6 +63,7 @@ Page YAML → _ref: module: layout, component: page
 ## Variations
 
 **List page** — filters above, Card containing table + pagination:
+
 ```yaml
 blocks:
   - _ref: components/filter_{entities}.yaml
@@ -72,6 +75,7 @@ blocks:
 ```
 
 **Detail page** — two-column with info card + sidebar tiles:
+
 ```yaml
 blocks:
   - id: layout
@@ -89,6 +93,7 @@ blocks:
 ```
 
 **Edit page** — `hide_title: true`, centered card + floating actions:
+
 ```yaml
 vars:
   hide_title: true
@@ -109,6 +114,7 @@ vars:
 ```
 
 **Tabbed workspace** — for complex domain pages (lot-view, ticket-view):
+
 ```yaml
 blocks:
   - id: tabs
@@ -125,6 +131,7 @@ blocks:
 ```
 
 **Auth page** — branded login/signup:
+
 ```yaml
 _ref:
   module: layout

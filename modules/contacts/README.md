@@ -57,10 +57,6 @@ Selector/MultipleSelector for picking contacts from the current app. Useful in o
       field_id: contacts
 ```
 
-### `event_types`
-
-Contacts' event type display metadata (color, title, icon for `create-contact` and `update-contact`). Consumers that need to aggregate event type configs across modules can `_ref: { module: contacts, component: event_types }` — but this requires declaring `contacts` as a dependency.
-
 ## API Endpoints
 
 ### `create-contact`
@@ -105,7 +101,7 @@ Type: `object`
 
 Field block arrays used in both edit forms and view pages (via `SmartDescriptions`). The same blocks are rendered as inputs on edit/create and as read-only rows on view.
 
-- **`show_title`** (boolean, default `false`) — Toggle the title/honorific selector in the shared profile core.
+- **`show_honorific`** (boolean, default `false`) — Toggle the honorific/title selector (Mr/Ms/Dr) in the shared profile core.
 - **`profile`** (array, default `[]`) — Extended profile fields. IDs must be prefixed with `profile.` (e.g. `profile.phone_number`) so they bind to `state.profile.*` and resolve correctly in `SmartDescriptions`.
 - **`global_attributes`** (array, default `[]`) — Global attribute fields. IDs prefixed with `global_attributes.`.
 
@@ -113,7 +109,7 @@ Example:
 
 ```yaml
 fields:
-  show_title: true
+  show_honorific: true
   profile:
     - id: profile.phone_number
       type: PhoneNumberInput
@@ -138,8 +134,8 @@ Page-level slot overrides. All keys optional.
 
 - **`table_columns`** — Extra column definitions appended to the default table
 - **`filters`** — Extra filter blocks rendered below the built-in search bar (use with `filter_requests` for custom filter data sources)
-- **`main_tiles`** — Blocks appended to the main column of the detail page
-- **`sidebar_tiles`** — Blocks appended to the sidebar column of the detail page
+- **`main_slots`** — Extra blocks appended to the main column on the detail page
+- **`sidebar_slots`** — Extra blocks appended to the sidebar column on the detail page
 - **`download_columns`** — Extra columns appended to the Excel export
 
 ### `request_stages`

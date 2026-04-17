@@ -3,7 +3,7 @@ app_name:
     path: app_config.yaml
     key: app_name
 fields:
-  show_title: true
+  show_honorific: true
   profile:
     _ref: modules/shared/profile/fields.yaml
   global_attributes:

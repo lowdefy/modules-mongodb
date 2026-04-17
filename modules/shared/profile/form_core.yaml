@@ -1,7 +1,7 @@
 _build.array.concat:
   - _build.if:
       test:
-        _var: show_title
+        _var: show_honorific
       then:
         - id: profile.title
           type: Selector
@@ -23,7 +23,7 @@ _build.array.concat:
         span:
           _build.if:
             test:
-              _var: show_title
+              _var: show_honorific
             then: 9
             else: 12
       properties:

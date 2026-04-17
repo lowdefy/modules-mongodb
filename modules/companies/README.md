@@ -50,10 +50,6 @@ Selector/MultipleSelector for picking companies from the current app. Useful in 
       field_id: global_attributes.company_ids
 ```
 
-### `event_types`
-
-Companies' event type display metadata (color, title, icon for `create-company` and `update-company`). Consumers that need to aggregate event type configs across modules can `_ref: { module: companies, component: event_types }`.
-
 ## API Endpoints
 
 ### `create-company`
@@ -139,7 +135,7 @@ Page-level slot overrides.
 
 - **`table_columns`** — Extra column definitions appended to the default table
 - **`filters`** — Extra filter blocks rendered below the built-in search bar (use with `filter_requests` for custom filter data sources)
-- **`main_tiles`** / **`sidebar_tiles`** — Blocks appended to the detail page columns
+- **`main_slots`** / **`sidebar_slots`** — Extra blocks appended to the main / sidebar columns on the detail page
 - **`download_columns`** — Extra columns appended to the Excel export
 
 ### `request_stages`

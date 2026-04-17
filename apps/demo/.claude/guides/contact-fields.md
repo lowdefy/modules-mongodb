@@ -33,7 +33,7 @@ Fields are extensible via `_module.var` injection. The contacts module defines c
 | `profile.picture`      | String      | **Auto-generated**: DiceBear initials URL seeded by name                   |
 | `profile.given_name`   | String      | First name (required)                                                      |
 | `profile.family_name`  | String      | Last name (required)                                                       |
-| `profile.title`        | String      | Honorific (Mr/Ms/Dr/Prof) — only if `show_title` var is true               |
+| `profile.title`        | String      | Honorific (Mr/Ms/Dr/Prof) — only if `show_honorific` var is true           |
 | `profile.mobile_phone` | PhoneObject | `{ input, region: { name, code, dial_code }, phone_number }`               |
 | `profile.work_phone`   | PhoneObject | Same structure as mobile_phone                                             |
 | `profile.birthday`     | Date        | Nullable                                                                   |

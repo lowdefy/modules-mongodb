@@ -57,9 +57,6 @@ exports:
   api:
     - id: set-status-discard
       description: Bulk discard selected staged rows
-  components:
-    - id: event_types
-      description: Event type display metadata for data-upload events
   menus:
     - id: default
       description: Data upload navigation link
@@ -75,11 +72,6 @@ api:
 
 pages:
   - _ref: pages/data-upload.yaml
-
-components:
-  - id: event_types
-    component:
-      _ref: enums/event_types.yaml
 
 menus:
   - _ref: menus.yaml

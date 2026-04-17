@@ -34,24 +34,25 @@ vars:
     default:
       _ref: defaults/event_display.yaml
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates."
+  # TODO: add a `description:` to every nested property below (fields.*, components.*, request_stages.*).
+  # User-facing copy — describe what the var is for from the consumer's perspective, no implementation details.
   fields:
     type: object
     description: "Field block arrays rendered in both the edit form and SmartDescriptions view."
     properties:
       attributes:
-        # description: # TODO for all nested properties keys, concise but clear descriptions (no tech implementation details since this is user facing)
         default: []
   components:
     type: object
-    description: "Page slot overrides: table_columns, filters, main_tiles, sidebar_tiles, download_columns"
+    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
     properties:
       table_columns:
         default: []
       filters:
         default: []
-      main_tiles: ## TODO Consider different name for these: slot/view?
+      main_slots:
         default: []
-      sidebar_tiles: ## TODO same as above
+      sidebar_slots:
         default: []
       download_columns:
         default: []
@@ -93,8 +94,6 @@ exports:
   components:
     - id: company-selector
       description: Selector/MultipleSelector for picking companies
-    # - id: event_types
-    #   description: Event type display metadata for companies events
   menus:
     - id: default
       description: Companies navigation link
@@ -116,9 +115,6 @@ components:
   - id: company-selector
     component:
       _ref: components/company-selector.yaml
-  - id: event_types
-    component:
-      _ref: enums/event_types.yaml
 
 menus:
   - _ref: menus.yaml

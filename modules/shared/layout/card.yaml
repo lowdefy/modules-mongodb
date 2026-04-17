@@ -54,14 +54,14 @@ _build.switch:
                 _build.if:
                   test:
                     _var:
-                      key: show_title
-                      default: true
-                  then:
+                      key: hide_title
+                      default: false
+                  then: null
+                  else:
                     _var: title
-                  else: null
             layout:
               gap: 16
-            # TODO: This breaks show_title prop, title is always shown
+            # TODO: This breaks hide_title prop, title is always shown
             slots:
               extra:
                 blocks:

@@ -35,8 +35,8 @@ blocks:
               - _ref:
                   path: ../shared/profile/form_core.yaml
                   vars:
-                    show_title:
-                      _module.var: fields.show_title
+                    show_honorific:
+                      _module.var: fields.show_honorific
               - _module.var: fields.profile
     # Combined attributes SmartDescriptions (only when fields are provided)
     - - id: attributes_view
@@ -61,5 +61,3 @@ blocks:
             _build.array.concat:
               - _module.var: fields.global_attributes
               - _module.var: fields.app_attributes
-    # Extra content slot
-    - _module.var: components.view_extra

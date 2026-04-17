@@ -45,6 +45,13 @@ _ref:
     doc:
       _request: get_company.0
     events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            contact: {}
+            address: {}
+            attributes: {}
       onMount:
         - id: fetch
           type: Request
@@ -85,7 +92,7 @@ _ref:
                             - " Information"
                         blocks:
                           - _ref: components/view_company.yaml
-                - _module.var: components.main_tiles
+                - _module.var: components.main_slots
           - id: sidebar_column
             type: Box
             layout:
@@ -96,4 +103,4 @@ _ref:
               _build.array.concat:
                 - - _ref: components/tile_contacts.yaml
                   - _ref: components/tile_events.yaml
-                - _module.var: components.sidebar_tiles
+                - _module.var: components.sidebar_slots

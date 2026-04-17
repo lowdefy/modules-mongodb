@@ -25,11 +25,13 @@ vars:
     default:
       _ref: defaults/event_display.yaml
     description: "Per-app event display templates"
+  # TODO: add a `description:` to every nested property below (fields.*, components.*, request_stages.*).
+  # User-facing copy — describe what the var is for from the consumer's perspective, no implementation details.
   fields:
     type: object
-    description: "Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_title toggles the title/honorific field."
+    description: "Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
     properties:
-      show_title: ## TODO this is clashing with card/page titles -> this var should get a diff name honorific maybe
+      show_honorific:
         type: boolean
         default: false
       profile:
@@ -38,15 +40,15 @@ vars:
         default: []
   components:
     type: object
-    description: "Component slot overrides: table_columns, filters, main_tiles, sidebar_tiles, download_columns"
+    description: "Component slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
     properties:
       table_columns:
         default: []
       filters:
         default: []
-      main_tiles:
+      main_slots:
         default: []
-      sidebar_tiles:
+      sidebar_slots:
         default: []
       download_columns:
         default: []
@@ -92,8 +94,6 @@ exports:
   components:
     - id: contact-selector
       description: Selector/MultipleSelector for picking contacts
-    - id: event_types
-      description: Event type display metadata for contacts events
   menus:
     - id: default
       description: Contacts navigation link
@@ -115,9 +115,6 @@ components:
   - id: contact-selector
     component:
       _ref: components/contact-selector.yaml
-  - id: event_types
-    component:
-      _ref: enums/event_types.yaml
 
 menus:
   - _ref: menus.yaml

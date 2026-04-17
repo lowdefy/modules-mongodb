@@ -24,10 +24,9 @@ The redirect uses `skip` to only fire when the record is `null` — the `_ne: [r
 
 **Module var injection** makes detail pages extensible:
 
-- `components.view_extra` — blocks appended below the SmartDescriptions inside the main info card
 - `fields.{group}` — consumer-provided field arrays rendered as SmartDescriptions rows (e.g. `fields.profile`, `fields.attributes`)
-- `components.main_tiles` — inject extra Cards in the main column
-- `components.sidebar_tiles` — append additional tiles after the module's default sidebar tiles (events, files, etc.)
+- `components.main_slots` — append extra blocks to the main column
+- `components.sidebar_slots` — append extra blocks after the module's default sidebar tiles (events, files, etc.)
 
 ## Data Flow
 
@@ -75,11 +74,11 @@ _ref:
           - id: main_column
             type: Box
             layout: { span: 14, sm: { span: 24 } }
-            blocks: [info card + main_tiles]
+            blocks: [info card + main_slots]
           - id: sidebar_column
             type: Box
             layout: { span: 10, sm: { span: 24 } }
-            blocks: [sidebar_default_tiles + sidebar_tiles]
+            blocks: [sidebar_default_tiles + sidebar_slots]
 ```
 
 **Detail with inline edit buttons** — multiple Cards, each with an Edit button linking to a specific edit page. Cards use `loading` + `skeleton` for progressive display:
@@ -257,7 +256,7 @@ _ref:
                               default:
                                 _ref: components/view_{entity}.yaml
                 - _module.var:
-                    key: components.main_tiles
+                    key: components.main_slots
                     default: []
           - id: sidebar_column
             type: Box
@@ -271,7 +270,7 @@ _ref:
                     key: components.sidebar_default_tiles
                     default: []
                 - _module.var:
-                    key: components.sidebar_tiles
+                    key: components.sidebar_slots
                     default: []
 ```
 
@@ -282,7 +281,7 @@ _ref:
 - [ ] `doc` var passed for change stamp metadata display in title-block/card
 - [ ] Breadcrumbs: home → list page (with `pageId`) → current record name
 - [ ] Two-column layout: main (span 14) + sidebar (span 10), responsive to span 24 on `sm`
-- [ ] Sidebar uses `_build.array.concat` with `sidebar_default_tiles` + `sidebar_tiles` module vars
+- [ ] Sidebar uses `_build.array.concat` with `sidebar_default_tiles` + `sidebar_slots` module vars
 - [ ] Edit button passes `_id` via `urlQuery` using `_url_query: _id`
 - [ ] Complex pages copy record to state for mutation binding; use refetch pattern after mutations
 - [ ] Secondary data loaded in `onMountAsync` to avoid blocking initial render
