@@ -1,0 +1,16 @@
+id: form_global_attributes
+type: Box
+layout:
+  gap: 8
+visible:
+  _build.gt:
+    - _build.array.length:
+        _module.var: fields.global_attributes
+    - 0
+blocks:
+  _build.array.concat:
+    - - id: global_attributes_divider
+        type: Divider
+        properties:
+          title: Attributes
+    - _module.var: fields.global_attributes

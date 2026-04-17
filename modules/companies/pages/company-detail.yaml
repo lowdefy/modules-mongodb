@@ -4,9 +4,14 @@ _ref:
   vars:
     id: company-detail
     title:
-      _if_none:
-        - _request: get_company.0.display_name
-        - _module.var: label
+      _nunjucks:
+        template: |
+          {{ label }}{% if display_name %}: {{ display_name | safe }}{% endif %}
+        on:
+          _object.assign:
+            - _request: get_company.0
+            - label:
+                _module.var: label
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -78,10 +83,8 @@ _ref:
                           _string.concat:
                             - _module.var: label
                             - " Information"
-                        doc:
-                          _request: get_company.0
                         blocks:
-                          - _module.var: components.detail_fields
+                          - _ref: components/view_company.yaml
                 - _module.var: components.main_tiles
           - id: sidebar_column
             type: Box

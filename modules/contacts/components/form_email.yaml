@@ -1,0 +1,8 @@
+id: email
+type: TextInput
+required: true
+properties:
+  title: Email
+  placeholder: "name@company.com"
+validate:
+  _ref: validate/email.yaml

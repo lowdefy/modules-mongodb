@@ -1,0 +1,18 @@
+- id: trading_name
+  type: TextInput
+  required: true
+  properties:
+    title:
+      _string.concat:
+        - _module.var: label
+        - " Name"
+    placeholder:
+      _string.concat:
+        - "Enter "
+        - _module.var: label
+        - " name"
+- id: description
+  type: TextArea
+  properties:
+    title: Description
+    rows: 3

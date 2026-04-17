@@ -58,6 +58,10 @@ Autocomplete selector that returns all active users for the current app. Useful 
       label: Assigned To
 ```
 
+### `event_types`
+
+User-admin's event type display metadata (color, title, icon for `invite-user`, `update-user`, `resend-user-invite`). Consumers that need to aggregate event type configs across modules can `_ref: { module: user-admin, component: event_types }`.
+
 ## API Endpoints
 
 ### `invite-user`

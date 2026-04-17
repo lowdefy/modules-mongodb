@@ -91,6 +91,8 @@ exports:
       description: MenuLink to user profile page
     - id: profile-actions
       description: MenuLink for logout (danger-styled)
+    - id: event_types
+      description: Event type display metadata for user-account events
   menus:
     - id: default
       description: User account navigation links
@@ -105,6 +107,9 @@ components:
   - id: profile-actions
     component:
       _ref: components/profile-actions.yaml
+  - id: event_types
+    component:
+      _ref: enums/event_types.yaml
 menus:
   - _ref: menu.yaml
 

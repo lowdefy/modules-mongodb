@@ -1,5 +1,5 @@
 id: companies_table
-type: AgGridMaterial
+type: AgGridBalham
 properties:
   height: 70vh
   rowStyle:
@@ -12,9 +12,8 @@ properties:
     cellStyle:
       cursor: pointer
       wordBreak: break-word
-      lineHeight: 1.25
-      paddingBottom: 8px
-      paddingTop: 8px
+      display: flex
+      alignItems: center
   columnDefs:
     _build.array.concat:
       - - headerName: ID
@@ -29,10 +28,10 @@ properties:
           flex: 1
           minWidth: 200
       - _module.var: components.table_columns
-      - - headerName: Updated
+      - - headerName: Updated At
           field: updated_at
           width: 120
-        - headerName: Created
+        - headerName: Created At
           field: created_at
           width: 120
 events:

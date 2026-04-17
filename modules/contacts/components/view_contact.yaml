@@ -47,5 +47,3 @@ blocks:
               _request: get_contact.0.global_attributes
           fields:
             _module.var: fields.global_attributes
-    # Extra content slot
-    - _module.var: components.view_extra

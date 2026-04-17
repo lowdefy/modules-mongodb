@@ -1,4 +1,4 @@
-id: user_avatar
+id: avatar_preview
 type: Avatar
 style:
   textAlign: center

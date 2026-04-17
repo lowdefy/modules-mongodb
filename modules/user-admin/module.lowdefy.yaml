@@ -97,6 +97,8 @@ exports:
   components:
     - id: user-selector
       description: Autocomplete selector for picking users
+    - id: event_types
+      description: Event type display metadata for user-admin events
   menus:
     - id: default
       description: User admin navigation link
@@ -120,6 +122,9 @@ components:
   - id: user-selector
     component:
       _ref: components/user-selector.yaml
+  - id: event_types
+    component:
+      _ref: enums/event_types.yaml
 
 menus:
   - _ref: menu.yaml

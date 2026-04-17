@@ -8,7 +8,7 @@ Every list page wraps in `_ref: module: layout, component: page` and provides st
 
 The page initializes state in `onInit` (sort) and `onMountAsync` (pagination defaults + first data fetch). Blocks are composed as: filter component, then a Card containing the table and pagination.
 
-Module var injection points allow consumers to override filters (`components.filters`), table (`components.table`), and table columns (`components.table_columns`).
+Module var injection points allow consumers to add to the filter bar (`components.filters` — extra blocks rendered below the built-in search) and table columns (`components.table_columns` — appended to the default columns). The table itself is owned by the module.
 
 ## Reference Files
 

@@ -1,0 +1,14 @@
+id: form_profile
+type: Box
+layout:
+  gap: 8
+blocks:
+  _build.array.concat:
+    # Core fields (shared)
+    - _ref:
+        path: ../shared/profile/form_core.yaml
+        vars:
+          show_title:
+            _module.var: fields.show_title
+    # Extended profile fields (injected by consumer)
+    - _module.var: fields.profile

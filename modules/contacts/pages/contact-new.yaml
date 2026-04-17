@@ -7,13 +7,24 @@ _ref:
       _string.concat:
         - "New "
         - _module.var: label
-    hide_title: true
-    content_width: 700
+    content_width: 600
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+        pageId:
+          _module.pageId: contacts
+      - label:
+          _string.concat:
+            - "New "
+            - _module.var: label
     events:
       onInit:
-        - id: init_avatar_color
+        - id: init_state
           type: SetState
           params:
+            global_attributes: {}
             profile.avatar_color:
               _get:
                 from:
@@ -25,41 +36,24 @@ _ref:
                       - _array.length:
                           _module.var: avatar_colors
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title:
-              _string.concat:
-                - "New "
-                - _module.var: label
-            blocks:
-              - _module.var: components.form_fields
+      - id: card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          - _ref: ../shared/profile/avatar-preview.yaml
+          - _ref: components/form_email.yaml
+          - id: divider_profile
+            type: Divider
+            properties:
+              title: Profile
+          - _ref: components/form_profile.yaml
+          - _ref: components/form_global_attributes.yaml
       - _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 700
             actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
-              - id: cancel_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
-                events:
-                  onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        pageId:
-                          _module.pageId: contacts
               - id: save_button
                 type: Button
                 layout:
@@ -113,3 +107,18 @@ _ref:
                         urlQuery:
                           _id:
                             _actions: create_contact.response.contactId
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: contacts

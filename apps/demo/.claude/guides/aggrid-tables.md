@@ -44,12 +44,12 @@ cellRenderer:
 Enums only need a single `color` field — bg and border are derived automatically. When the color comes from a global enum lookup:
 
 ```yaml
-      on:
-        __get:
-          key:
-            __args: 0.data.{status_field}
-          from:
-            __global: enums.{enum_type}
+on:
+  __get:
+    key:
+      __args: 0.data.{status_field}
+    from:
+      __global: enums.{enum_type}
 ```
 
 **Row click** navigates to the detail page. In modules, use `_module.pageId` for portability. Use `onCellClick` instead of `onRowClick` when certain columns need different behavior (e.g., a link to a related entity).
@@ -127,7 +127,7 @@ Place a `Result` block alongside the table, toggled with `visible`:
 - **Don't use `_js` when `_function` + `__nunjucks` suffices** — `_js` is harder to read, maintain, and debug. Reserve it for cases that genuinely need JavaScript logic (e.g., `lowdefyGlobal()` calls).
 - **Don't hardcode `pageId` in modules** — use `_module.pageId: {entity}-detail` so the page ID is scoped to the module instance.
 - **Don't skip `defaultColDef`** — without it, every column needs individual styling. Copy the standard block from the Pattern section.
-- **Don't inline tables in the page file** — extract to `components/table_{entities}.yaml` and ref it. This keeps the page file under 80 lines and lets the table be overridden via `_module.var: components.table`.
+- **Don't inline tables in the page file** — extract to `components/table_{entities}.yaml` and ref it. This keeps the page file under 80 lines and keeps the table independently testable.
 - **Don't forget `wrapText: true` + `autoHeight: true`** on columns with long content (descriptions, lists) — without these, content truncates silently.
 
 ## Reference Files

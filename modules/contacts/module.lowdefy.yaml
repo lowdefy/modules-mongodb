@@ -24,12 +24,12 @@ vars:
   event_display:
     default:
       _ref: defaults/event_display.yaml
-    description: 'Per-app event display templates'
+    description: "Per-app event display templates"
   fields:
     type: object
     description: "Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_title toggles the title/honorific field."
     properties:
-      show_title:
+      show_title: ## TODO this is clashing with card/page titles -> this var should get a diff name honorific maybe
         type: boolean
         default: false
       profile:
@@ -38,24 +38,12 @@ vars:
         default: []
   components:
     type: object
-    description: "Component overrides: detail_fields, form_fields, view_extra, table, table_columns, filters, main_tiles, sidebar_tiles, download_columns"
+    description: "Component slot overrides: table_columns, filters, main_tiles, sidebar_tiles, download_columns"
     properties:
-      detail_fields:
-        default:
-          _ref: components/view_contact.yaml
-      form_fields:
-        default:
-          _ref: components/form_contact.yaml
-      view_extra:
-        default: []
-      table:
-        default:
-          _ref: components/table_contacts.yaml
       table_columns:
         default: []
       filters:
-        default:
-          _ref: components/filter_contacts.yaml
+        default: []
       main_tiles:
         default: []
       sidebar_tiles:
@@ -81,7 +69,7 @@ vars:
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
-    description: 'Gradient pairs for avatar backgrounds. Each entry: { from, to }.'
+    description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
 
 exports:
   pages:
@@ -104,6 +92,8 @@ exports:
   components:
     - id: contact-selector
       description: Selector/MultipleSelector for picking contacts
+    - id: event_types
+      description: Event type display metadata for contacts events
   menus:
     - id: default
       description: Contacts navigation link
@@ -125,6 +115,9 @@ components:
   - id: contact-selector
     component:
       _ref: components/contact-selector.yaml
+  - id: event_types
+    component:
+      _ref: enums/event_types.yaml
 
 menus:
   - _ref: menus.yaml
@@ -132,3 +125,11 @@ menus:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^2"
+  - name: "@lowdefy/community-plugin-xlsx"
+    version: "^1"
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^1"

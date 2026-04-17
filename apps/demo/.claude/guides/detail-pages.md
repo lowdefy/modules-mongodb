@@ -24,10 +24,10 @@ The redirect uses `skip` to only fire when the record is `null` — the `_ne: [r
 
 **Module var injection** makes detail pages extensible:
 
-- `components.detail_fields` — override the main info card content
+- `components.view_extra` — blocks appended below the SmartDescriptions inside the main info card
+- `fields.{group}` — consumer-provided field arrays rendered as SmartDescriptions rows (e.g. `fields.profile`, `fields.attributes`)
 - `components.main_tiles` — inject extra Cards in the main column
-- `components.sidebar_default_tiles` — override the default sidebar tiles (events, files, etc.)
-- `components.sidebar_tiles` — append additional tiles after defaults
+- `components.sidebar_tiles` — append additional tiles after the module's default sidebar tiles (events, files, etc.)
 
 ## Data Flow
 

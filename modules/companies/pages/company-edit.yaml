@@ -11,14 +11,25 @@ _ref:
         - _if_none:
             - _request: get_company.0.display_name
             - ""
-    hide_title: true
     content_width: 700
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+        pageId:
+          _module.pageId: companies
+      - label:
+          _string.concat:
+            - "Edit "
+            - _module.var: label
     events:
       onMount:
         - id: fetch
           type: Request
           params:
             - get_company
+            - get_company_contact_ids
         - id: redirect_if_not_found
           type: Link
           skip:
@@ -31,51 +42,47 @@ _ref:
         - id: set_state
           type: SetState
           params:
-            company:
-              _request: get_company.0
+            _id:
+              _request: get_company.0._id
+            trading_name:
+              _request: get_company.0.trading_name
+            description:
+              _request: get_company.0.description
+            registered_name:
+              _request: get_company.0.registered_name
+            registration_number:
+              _request: get_company.0.registration_number
+            vat_number:
+              _request: get_company.0.vat_number
+            website:
+              _request: get_company.0.website
+            contact:
+              _request: get_company.0.contact
+            address:
+              _request: get_company.0.address
+            attributes:
+              _request: get_company.0.attributes
+            contacts:
+              _if_none:
+                - _request: get_company_contact_ids.0.ids
+                - []
+            updated:
+              _request: get_company.0.updated
     requests:
       - _ref: requests/get_company.yaml
+      - _ref: requests/get_company_contact_ids.yaml
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title:
-              _string.concat:
-                - "Edit "
-                - _module.var: label
-                - ": "
-                - _if_none:
-                    - _request: get_company.0.display_name
-                    - ""
-            doc:
-              _request: get_company.0
-            blocks:
-              - _module.var: components.form_fields
+      - id: card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          - _ref: components/form_company.yaml
       - _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 700
             actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
-              - id: cancel_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Cancel
-                  icon: AiOutlineCloseCircle
-                  type: default
-                events:
-                  onClick:
-                    - id: back
-                      type: Link
-                      params:
-                        back: true
               - id: save_button
                 type: Button
                 layout:
@@ -93,8 +100,30 @@ _ref:
                         endpointId:
                           _module.endpointId: update-company
                         payload:
-                          company:
-                            _state: company
+                          _id:
+                            _state: _id
+                          trading_name:
+                            _state: trading_name
+                          description:
+                            _state: description
+                          registered_name:
+                            _state: registered_name
+                          registration_number:
+                            _state: registration_number
+                          vat_number:
+                            _state: vat_number
+                          website:
+                            _state: website
+                          contact:
+                            _state: contact
+                          address:
+                            _state: address
+                          attributes:
+                            _state: attributes
+                          contacts:
+                            _state: contacts
+                          updated:
+                            _state: updated
                       messages:
                         success:
                           _string.concat:
@@ -102,6 +131,20 @@ _ref:
                             - " updated."
                     - id: reset
                       type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
                     - id: back
                       type: Link
                       params:

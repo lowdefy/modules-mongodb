@@ -18,7 +18,7 @@ Some edit pages add a pre-check before the fetch: redirect back if the URL has n
 
 **Create pages** skip the entire onMount fetch/redirect sequence. If the form needs selector data (e.g., company dropdown), load it in `onMountAsync` to avoid blocking the initial render. Some create pages use `onInit` to seed state from `_user` (e.g., create-profile populates name/email from the logged-in user).
 
-**Form component** is always a separate `_ref`'d file (`components/form_{entity}.yaml`). The same form component is shared between edit and create pages. Differences between modes are handled via `_var` (e.g., `email_disabled: true` on edit, `enable_email: true` on create). Module pages use `_module.var: components.form_fields` as the injection point, so consuming apps can override the form entirely.
+**Form component** is always a separate `_ref`'d file (`components/form_{entity}.yaml`). The same form component is shared between edit and create pages. Differences between modes are handled via `_var` (e.g., `email_disabled: true` on edit, `enable_email: true` on create). For module-provided pages, the module owns the form layout directly (no wholesale `form_fields` override var); consumers extend via `_module.var: fields.*` field-array slots (e.g. `fields.profile`, `fields.attributes`).
 
 **Save flow** is always: `Validate` -> `CallAPI` (or `Request`) -> `Reset` -> `Link`.
 
