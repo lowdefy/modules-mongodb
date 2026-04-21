@@ -142,6 +142,10 @@ properties:
       _var:
         key: disable_delete
         default: false
+  allowVerify:
+    _eq:
+      - _module.var: verified
+      - trusted
   max:
     _var: max
   title:

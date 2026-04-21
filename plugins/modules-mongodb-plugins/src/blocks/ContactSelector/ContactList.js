@@ -12,6 +12,7 @@ const ContactList = ({
   contactManager: { selectedContacts, editContact, removeContact },
   allowEdit,
   allowDelete,
+  allowVerify,
   contactsData,
 }) => {
   const getContactData = (contact) => {
@@ -59,6 +60,7 @@ const ContactList = ({
                   properties={properties?.item}
                   allowEdit={allowEdit}
                   allowDelete={allowDelete}
+                  allowVerify={allowVerify}
                 />
               ))}
             {selectedContacts?.length === 0 && (

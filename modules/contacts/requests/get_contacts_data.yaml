@@ -33,5 +33,5 @@ properties:
             else: null
         work_phone: $profile.work_phone.phone_number
         mobile_phone: $profile.mobile_phone.phone_number
-        verified: 1
+        verified: $global_attributes.verified
         global_attributes: 1

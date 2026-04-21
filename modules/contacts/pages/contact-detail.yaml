@@ -39,8 +39,38 @@ _ref:
         layout:
           flex: 0 1 auto
         properties:
-          title: Edit
-          icon: AiOutlineEdit
+          title:
+            _if:
+              test:
+                _and:
+                  - _eq:
+                      - _module.var: verified
+                      - trusted
+                  - _eq:
+                      - _request: get_contact.global_attributes.verified
+                      - false
+              then: Verify
+              else: Edit
+          icon:
+            _if:
+              test:
+                _and:
+                  - _eq:
+                      - _module.var: verified
+                      - trusted
+                  - _eq:
+                      - _request: get_contact.global_attributes.verified
+                      - false
+              then: AiOutlineExclamationCircle
+              else: AiOutlineEdit
+          danger:
+            _and:
+              - _eq:
+                  - _module.var: verified
+                  - trusted
+              - _eq:
+                  - _request: get_contact.global_attributes.verified
+                  - false
           type: default
         events:
           onClick:

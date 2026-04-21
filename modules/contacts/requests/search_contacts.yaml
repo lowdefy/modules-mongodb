@@ -126,13 +126,14 @@ properties:
               contact_id: $_id
               email: $lowercase_email
               name: $profile.name
+              verified: $global_attributes.verified
             label:
               $concat:
                 - "<div>"
                 - $ifNull:
                     - $profile.name
                     - ""
-                - "</div><div class=\"secondary smaller\">"
+                - '</div><div class="secondary smaller">'
                 - $cond:
                     if:
                       $regexMatch:

@@ -10,3 +10,4 @@ fields:
     _ref: modules/contacts/global_attributes_fields.yaml
 request_stages:
   write: []
+verified: untrusted #trusted

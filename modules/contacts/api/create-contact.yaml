@@ -13,6 +13,10 @@ routine:
               _if_none:
                 - _payload: email
                 - ""
+        hidden:
+          $ne: true
+        disabled:
+          $ne: true
 
   - id: insert
     type: MongoDBUpdateOne
@@ -74,6 +78,28 @@ routine:
                     - " "
                     - $trim:
                         input: "$profile.family_name"
+          # Stage 3 (optional): Write `global_attributes.verified` based on the module's `verified` mode.
+          # - "trusted": mark as verified (internal-team apps).
+          # - "untrusted": mark as unverified (client-facing apps).
+          # - "off" (default): don't touch the flag.
+          - _build.if:
+              test:
+                _build.eq:
+                  - _module.var: verified
+                  - trusted
+              then:
+                - $set:
+                    global_attributes.verified: true
+              else:
+                _build.if:
+                  test:
+                    _build.eq:
+                      - _module.var: verified
+                      - untrusted
+                  then:
+                    - $set:
+                        global_attributes.verified: false
+                  else: []
           # Consumer pipeline stages
           - _module.var: request_stages.write
 
@@ -154,7 +180,13 @@ routine:
           then:
             _step: check-existing._id
           else:
-            _step: insert.upsertedId
+            # MongoDBUpdateOne returns `upsertedId` when the collection has no
+            # changeLog, and `lastErrorObject.upserted` when it does (because
+            # the implementation uses findOneAndUpdate with result metadata).
+            # Fall through so the API works for both connection shapes.
+            _if_none:
+              - _step: insert.upsertedId
+              - _step: insert.lastErrorObject.upserted
       existing:
         _ne:
           - _step: check-existing

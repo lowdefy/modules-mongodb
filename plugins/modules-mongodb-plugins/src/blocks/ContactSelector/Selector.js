@@ -83,11 +83,7 @@ const Selector = ({
         allowClear={false}
         showSearch={get(properties, "showSearch", { default: true })}
         size={properties.size}
-        filterOption={(input, option) =>
-          (option.filterstring || option.children.props.html || "")
-            .toLowerCase()
-            .indexOf(input.toLowerCase()) >= 0
-        }
+        filterOption={false}
         notFoundContent={
           fetchState
             ? "Fetching Contacts..."
@@ -130,9 +126,8 @@ const Selector = ({
                   : ""
               }
               disabled={opt.disabled}
-              filterstring={opt.filterString}
-              id={`${blockId}_${i}`}
-              key={i}
+              id={`${blockId}_${opt.value?.contact_id ?? i}`}
+              key={opt.value?.contact_id ?? `opt_${i}`}
               value={`${i}`}
             >
               {type.isNone(opt.label)
@@ -142,7 +137,11 @@ const Selector = ({
           ) : null,
         )}
         {searchText && properties.allowNewContacts && (
-          <Option id={`${blockId}_new_contact`} value={"new_contact"}>
+          <Option
+            id={`${blockId}_new_contact`}
+            key="__new_contact__"
+            value={"new_contact"}
+          >
             {renderHtml({
               html: `<div class="secondary" style="border-top: 1px solid #808080; padding: 8px"> Add <b>${searchText}</b> as new contact</div>`,
               methods,

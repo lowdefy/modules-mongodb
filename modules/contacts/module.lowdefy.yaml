@@ -68,6 +68,14 @@ vars:
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
+  verified:
+    default: "off"
+    description: |
+      Contact verification mode. Controls whether and how `global_attributes.verified` is written by this app's create/update flows, and whether Verify UI is shown.
+
+      - "off" (default): no verified flag written, no Verify UI. `global_attributes.verified` in existing records is ignored.
+      - "trusted": every create and update stamps `global_attributes.verified: true`. The contact-detail page header and contact-selector list rows render a danger-styled Verify button for records where `global_attributes.verified === false` (imports / contacts created by other apps in "untrusted" mode). Use for internal-team apps where every human-authored contact write counts as verifying.
+      - "untrusted": `create-contact` stamps `global_attributes.verified: false`; `update-contact` leaves the flag untouched (so a reviewer in a trusted app can flip it to true without client-side updates reverting it). No Verify UI. Use for client-facing apps where contacts need human review before being considered verified.
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml

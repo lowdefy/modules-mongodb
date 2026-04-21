@@ -91,6 +91,7 @@ const ContactSelector = ({
               contactsData={contactsData}
               allowEdit={properties.allowEdit ?? true}
               allowDelete={properties.allowDelete ?? true}
+              allowVerify={properties.allowVerify ?? false}
             />
             <ContactModal
               blockId={`${blockId}_modal`}

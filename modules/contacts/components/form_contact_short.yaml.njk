@@ -1,7 +1,12 @@
 # Simple three-field contact form used inside the contact-selector modal.
 #
+# Inputs bind to `{id}_contact.profile.*` and `{id}_contact.email`. When the
+# modal is closed the plugin resets `{id}_contact` to null, so all `required`
+# flags are gated on `{id}_contact` being non-null — otherwise a page-level
+# Validate action would treat the closed modal's hidden inputs as missing.
+#
 # Required vars:
-#   id: (string) Picker instance id. Binds inputs to `{id}_contact.*` state.
+#   id: (string) Picker instance id.
 #
 # Optional vars:
 #   required: (object, default: { given_name: true, family_name: true, email: true })
@@ -14,27 +19,42 @@ blocks:
   - id: {{ id | replace(".", "_") }}_contact.profile.given_name
     type: TextInput
     required:
-      _var:
-        key: required.given_name
-        default: true
+      _and:
+        - _ne:
+            - _state: {{ id | replace(".", "_") }}_contact
+              ~ignoreBuildChecks: true
+            - null
+        - _var:
+            key: required.given_name
+            default: true
     properties:
       title: First Name
       size: small
   - id: {{ id | replace(".", "_") }}_contact.profile.family_name
     type: TextInput
     required:
-      _var:
-        key: required.family_name
-        default: true
+      _and:
+        - _ne:
+            - _state: {{ id | replace(".", "_") }}_contact
+              ~ignoreBuildChecks: true
+            - null
+        - _var:
+            key: required.family_name
+            default: true
     properties:
       title: Last Name
       size: small
   - id: {{ id | replace(".", "_") }}_contact.email
     type: TextInput
     required:
-      _var:
-        key: required.email
-        default: true
+      _and:
+        - _ne:
+            - _state: {{ id | replace(".", "_") }}_contact
+              ~ignoreBuildChecks: true
+            - null
+        - _var:
+            key: required.email
+            default: true
     properties:
       title: Email
       placeholder: "name@company.com"

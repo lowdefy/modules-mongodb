@@ -21,25 +21,6 @@ function createGetContactsData({
         type: "Request",
         params: getContactsDataRequest,
       },
-      {
-        id: "__setContactsData",
-        type: "SetState",
-        params: {
-          [statePrefix()]: {
-            "_array.filter": [
-              { _request: getContactsDataRequest },
-              {
-                _function: {
-                  "__array.includes": [
-                    { __event: "selectedContactIds" },
-                    { __args: "0.contact_id" },
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      },
     ],
   });
 
@@ -55,7 +36,6 @@ function createGetContactsData({
       name: "__getContactsData",
       event: {
         contactIds: [...selectedContacts, ...dropdownOptions],
-        selectedContactIds: selectedContacts,
       },
     });
   };

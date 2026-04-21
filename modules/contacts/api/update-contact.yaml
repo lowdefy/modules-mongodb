@@ -59,6 +59,17 @@ routine:
                     - " "
                     - $trim:
                         input: "$profile.family_name"
+          # Stage 3 (optional): Mark as verified only in "trusted" mode (editing in a trusted app verifies).
+          # "untrusted" leaves the flag alone so trusted-app reviewers' verifications aren't reverted.
+          - _build.if:
+              test:
+                _build.eq:
+                  - _module.var: verified
+                  - trusted
+              then:
+                - $set:
+                    global_attributes.verified: true
+              else: []
           # Consumer pipeline stages
           - _module.var: request_stages.write
 

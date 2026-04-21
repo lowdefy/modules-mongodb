@@ -73,23 +73,23 @@ Multi-select contact picker backed by the `ContactSelector` plugin block. Search
 
 **Common vars:**
 
-| Var                    | Default                     | Purpose                                                       |
-| ---------------------- | --------------------------- | ------------------------------------------------------------- |
-| `required`             | `false`                     | Make the picker required                                      |
-| `validate`             | `[]`                        | Additional validation rules                                   |
-| `keyword`              | module `label` var          | Singular noun used in title/placeholder/modal                 |
-| `title`                | `"Select {keyword}"`        | Override input title                                          |
-| `placeholder`          | `"Select a {keyword}..."`   | Override input placeholder                                    |
-| `filter`               | `[]`                        | Extra Atlas Search compound clauses (e.g. company filter)     |
-| `all_contacts`         | `false`                     | If `false`, restrict results to contacts linked to one of the current user's companies (`_user: global_attributes.company_ids`). Set `true` to search the whole directory. |
-| `phone_label`          | `false`                     | Append phone numbers to dropdown labels                       |
-| `disable_new_contacts` | `false`                     | Hide the "add new contact" option                             |
-| `disable_edit`         | `false`                     | Hide edit buttons on list rows                                |
-| `disable_delete`       | `false`                     | Hide delete buttons on list rows                              |
-| `max`                  | _(unbounded)_               | Max selectable contacts                                       |
-| `extra_options`        | `[]`                        | Additional options appended to search results                 |
-| `form_required`        | `{ given_name, family_name, email: true }` | Which modal form fields are required          |
-| `item`                 | `{}`                        | Override list row `{ title, description }` nunjucks templates |
+| Var                    | Default                                    | Purpose                                                                                                                                                                    |
+| ---------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `required`             | `false`                                    | Make the picker required                                                                                                                                                   |
+| `validate`             | `[]`                                       | Additional validation rules                                                                                                                                                |
+| `keyword`              | module `label` var                         | Singular noun used in title/placeholder/modal                                                                                                                              |
+| `title`                | `"Select {keyword}"`                       | Override input title                                                                                                                                                       |
+| `placeholder`          | `"Select a {keyword}..."`                  | Override input placeholder                                                                                                                                                 |
+| `filter`               | `[]`                                       | Extra Atlas Search compound clauses (e.g. company filter)                                                                                                                  |
+| `all_contacts`         | `false`                                    | If `false`, restrict results to contacts linked to one of the current user's companies (`_user: global_attributes.company_ids`). Set `true` to search the whole directory. |
+| `phone_label`          | `false`                                    | Append phone numbers to dropdown labels                                                                                                                                    |
+| `disable_new_contacts` | `false`                                    | Hide the "add new contact" option                                                                                                                                          |
+| `disable_edit`         | `false`                                    | Hide edit buttons on list rows                                                                                                                                             |
+| `disable_delete`       | `false`                                    | Hide delete buttons on list rows                                                                                                                                           |
+| `max`                  | _(unbounded)_                              | Max selectable contacts                                                                                                                                                    |
+| `extra_options`        | `[]`                                       | Additional options appended to search results                                                                                                                              |
+| `form_required`        | `{ given_name, family_name, email: true }` | Which modal form fields are required                                                                                                                                       |
+| `item`                 | `{}`                                       | Override list row `{ title, description }` nunjucks templates                                                                                                              |
 
 **Wired events:**
 
@@ -216,6 +216,26 @@ Type: `array`
 Default: `[]`
 
 Additional request definitions loaded on the contacts list page alongside the built-in requests.
+
+### `verified`
+
+Type: `string` (enum)
+Default: `"off"`
+
+Contact verification mode. Controls whether `global_attributes.verified` is written by this app's create/update flows and whether Verify UI is shown.
+
+| Mode          | Create writes                       | Update writes                      | Verify UI                                                       |
+| ------------- | ----------------------------------- | ---------------------------------- | --------------------------------------------------------------- |
+| `"off"`       | _(nothing)_                         | _(nothing)_                        | None                                                            |
+| `"trusted"`   | `global_attributes.verified: true`  | `global_attributes.verified: true` | Shown for contacts where `global_attributes.verified === false` |
+| `"untrusted"` | `global_attributes.verified: false` | _(nothing — flag preserved)_       | None                                                            |
+
+**Typical deployment** (shared `user-contacts` collection across two apps):
+
+- **Internal-team app** — `verified: "trusted"`. Every contact created or edited by the team is marked verified. The contact-detail header and `contact-selector` rows show a danger-styled **Verify** button for contacts that came in as unverified (bulk imports, or records created by the client-facing app) so reviewers can confirm details and flip the flag.
+- **Client-facing app** — `verified: "untrusted"`. Every contact a client creates is marked unverified out of the gate. If a client later edits their own details, the flag is preserved (the internal team's verification isn't reverted by client-side updates). The client app has no Verify UI — verification happens in the team app.
+
+In `"off"` mode the module behaves exactly as it did before the flag existed: no field is written, no UI is shown, and pre-existing `verified` values in the DB are ignored.
 
 ### `event_display`
 

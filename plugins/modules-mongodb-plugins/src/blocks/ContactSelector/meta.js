@@ -1,7 +1,12 @@
 export default {
   valueType: "array",
   category: "input-container",
-  icons: ["AiOutlineUser", "AiOutlineDelete", "AiOutlineEdit"],
+  icons: [
+    "AiOutlineUser",
+    "AiOutlineDelete",
+    "AiOutlineEdit",
+    "AiOutlineExclamationCircle",
+  ],
   events: {
     onOpen: "Triggered when the contact modal is opened.",
     onClose: "Triggered when the contact modal is closed.",

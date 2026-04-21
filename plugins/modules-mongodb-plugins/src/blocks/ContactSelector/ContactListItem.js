@@ -16,7 +16,9 @@ const ContactListItem = ({
   editContact,
   allowEdit,
   allowDelete,
+  allowVerify,
 }) => {
+  const isUnverified = allowVerify && contact.verified === false;
   const [title, setTitle] = useState("Contact Name");
   const [description, setDescription] = useState("");
 
@@ -68,20 +70,33 @@ const ContactListItem = ({
       </td>
       {allowEdit && (
         <td>
-          <Button
-            id="edit_button"
-            icon={
-              <Icon
-                blockId="edit_icon"
-                properties={{ name: "AiOutlineEdit" }}
-              />
-            }
-            style={{ textAlign: "center" }}
-            type="default"
-            onClick={() => {
-              editContact(contact);
-            }}
-          />
+          {isUnverified ? (
+            <Button
+              id="verify_button"
+              size="small"
+              danger
+              onClick={() => {
+                editContact(contact);
+              }}
+            >
+              Verify
+            </Button>
+          ) : (
+            <Button
+              id="edit_button"
+              icon={
+                <Icon
+                  blockId="edit_icon"
+                  properties={{ name: "AiOutlineEdit" }}
+                />
+              }
+              style={{ textAlign: "center" }}
+              type="default"
+              onClick={() => {
+                editContact(contact);
+              }}
+            />
+          )}
         </td>
       )}
       {allowDelete && (
