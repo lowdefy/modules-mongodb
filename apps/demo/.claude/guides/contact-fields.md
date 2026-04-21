@@ -137,7 +137,7 @@ profile.picture:
 - `modules/contacts/components/form_global_attributes.yaml` — conditional "Attributes" divider + `fields.global_attributes` injection
 - `modules/contacts/components/view_contact.yaml` — SmartDescriptions rendering `fields.profile` and `fields.global_attributes` as read-only rows
 - `modules/contacts/components/table_contacts.yaml` — AgGridBalham with avatar renderer, `components.table_columns` injection
-- `modules/contacts/components/contact-selector.yaml` — reusable selector projecting `label: "name (email)"`, `value: _id`
+- `modules/contacts/components/contact-selector.yaml.njk` — multi-select picker with search and inline add/edit modal (ContactSelector plugin block)
 - `modules/contacts/connections/contacts-collection.yaml` — MongoDBCollection on `user-contacts` with changeLog
 - `modules/user-admin/api/invite-user.yaml` — sets `apps.{app_name}` layer with `_object.defineProperty` for dynamic paths
 - `modules/user-account/api/profile-set-fields.yaml` — shared `$set` fields injected via `_module.var: components.profile_set_fields`

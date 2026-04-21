@@ -12,7 +12,14 @@ properties:
     - $match:
         global_attributes.company_ids:
           _payload: company_id
-    - $group:
-        _id: null
-        ids:
-          $push: "$_id"
+        disabled:
+          $ne: true
+        hidden:
+          $ne: true
+    - $project:
+        _id: 0
+        contact_id: $_id
+        name: $profile.name
+        email: $lowercase_email
+    - $sort:
+        name: 1

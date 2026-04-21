@@ -1,0 +1,39 @@
+:global(.contact-selector-list) {
+  margin-top: 8px;
+  border: 1px solid var(--ant-color-border, #e0e0e0);
+  border-radius: var(--ant-border-radius, 4px);
+}
+
+:global(.contact-selector-scroll) {
+  max-height: 265px;
+  overflow-y: auto;
+}
+
+:global(.contact-selector-table) {
+  padding: 0px 12px;
+  width: 100%;
+  min-height: 50px;
+}
+
+:global(.contact-selector-table tr) {
+  width: 100%;
+  table-layout: auto;
+}
+
+:global(.contact-selector-table thead) {
+  background-color: var(--ant-color-bg-container, #fff);
+  border-bottom: 1px solid var(--ant-color-border, #e0e0e0);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+:global(.contact-selector-table th) {
+  font-weight: normal;
+}
+
+:global(.contact-selector-table tbody td:nth-child(2)),
+:global(.contact-selector-table tbody td:nth-child(3)) {
+  text-align: center;
+  vertical-align: middle;
+}

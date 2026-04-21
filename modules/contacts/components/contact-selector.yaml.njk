@@ -1,0 +1,218 @@
+# Contact selector block — multi-select with inline add/edit modal.
+#
+# Required vars:
+#   id: (string) Unique id for this selector instance. Used for state scoping and request ids.
+#
+# Optional vars:
+#   required: (boolean, default: false)
+#   validate: (array, default: [])
+#   visible: (boolean, default: true)
+#   title: (string) Label title. Defaults to "Select {keyword}".
+#   placeholder: (string) Input placeholder. Defaults to "Select a {keyword}...".
+#   keyword: (string) Singular noun used in title/placeholder/modal. Defaults to module `label` var.
+#   label: (object, default: {}) Extra Label block properties.
+#   all_contacts: (boolean, default: false) If false, restrict results to contacts linked to one
+#     of the current user's companies (via `global_attributes.company_ids`). Set true to search
+#     the entire contact directory.
+#   filter: (array, default: []) Extra Atlas Search compound clauses.
+#   phone_label: (boolean, default: false) Append phone numbers to dropdown labels.
+#   disable_new_contacts: (boolean, default: false)
+#   disable_edit: (boolean, default: false)
+#   disable_delete: (boolean, default: false)
+#   max: (number) Max selectable contacts.
+#   extra_options: (array) Additional options appended to search results.
+#   form_required: (object, default: {}) { given_name, family_name, email } — field-level required flags.
+#   item: (object) Override list.item { title, description } — nunjucks templates evaluated per row.
+#
+# State keys written by the block (for reference):
+#   {id}                       — selected contacts array (block value)
+#   {id}_input                 — current search text
+#   {id}_contact               — contact being added/edited in the modal
+#   {id}_contact_id            — id of contact being edited
+#   {id}_edit                  — true when editing, false when adding
+#   {id}_fetch_contacts        — list of contact_ids to fetch for list display
+
+id: {{ id }}
+type: ContactSelector
+required:
+  _var:
+    key: required
+    default: false
+validate:
+  _var:
+    key: validate
+    default: []
+visible:
+  _var:
+    key: visible
+    default: true
+requests:
+  - _ref:
+      path: requests/search_contacts.yaml
+      vars:
+        id: {{ id | replace(".", "_") }}_search_contacts
+        input_state_key: {{ id | replace(".", "_") }}_input
+        all_contacts:
+          _var:
+            key: all_contacts
+            default: false
+        filter:
+          _var:
+            key: filter
+            default: []
+        phone_label:
+          _var:
+            key: phone_label
+            default: false
+  - _ref:
+      path: requests/get_contact.yaml
+      vars:
+        id: {{ id | replace(".", "_") }}_get_contact
+        id_source:
+          _state: {{ id | replace(".", "_") }}_contact_id
+          ~ignoreBuildChecks: true
+  - _ref:
+      path: requests/get_contacts_data.yaml
+      vars:
+        id: {{ id | replace(".", "_") }}_get_contacts_data
+        contact_ids_state_key: {{ id | replace(".", "_") }}_fetch_contacts
+events:
+  onAddContact:
+    - id: validate
+      type: Validate
+      params:
+        regex: ^{{ id | replace(".", "_") }}_contact\.
+    - id: create_contact
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: create-contact
+        payload:
+          _id:
+            _uuid: true
+          email:
+            _state: {{ id | replace(".", "_") }}_contact.email
+            ~ignoreBuildChecks: true
+          profile:
+            _state: {{ id | replace(".", "_") }}_contact.profile
+            ~ignoreBuildChecks: true
+          global_attributes:
+            _state: {{ id | replace(".", "_") }}_contact.global_attributes
+            ~ignoreBuildChecks: true
+    - id: append_contact
+      type: CallMethod
+      params:
+        blockId: {{ id }}
+        method: appendContact
+        args:
+          - contact:
+              _state: {{ id | replace(".", "_") }}_contact
+              ~ignoreBuildChecks: true
+            contactId:
+              _actions: create_contact.response.contactId
+  onEditContact:
+    - id: update_contact
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: update-contact
+        payload:
+          _id:
+            _state: {{ id | replace(".", "_") }}_contact._id
+            ~ignoreBuildChecks: true
+          profile:
+            _state: {{ id | replace(".", "_") }}_contact.profile
+            ~ignoreBuildChecks: true
+          global_attributes:
+            _state: {{ id | replace(".", "_") }}_contact.global_attributes
+            ~ignoreBuildChecks: true
+properties:
+  allowNewContacts:
+    _not:
+      _var:
+        key: disable_new_contacts
+        default: false
+  allowEdit:
+    _not:
+      _var:
+        key: disable_edit
+        default: false
+  allowDelete:
+    _not:
+      _var:
+        key: disable_delete
+        default: false
+  max:
+    _var: max
+  title:
+    _var:
+      key: title
+      default:
+        _string.concat:
+          - "Select "
+          - _var:
+              key: keyword
+              default:
+                _module.var: label
+  placeholder:
+    _var:
+      key: placeholder
+      default:
+        _string.concat:
+          - "Select a "
+          - _string.toLowerCase:
+              _var:
+                key: keyword
+                default:
+                  _module.var: label
+          - "..."
+  label:
+    _var:
+      key: label
+      default: {}
+  searchContactsRequest: {{ id | replace(".", "_") }}_search_contacts
+  getContactRequest: {{ id | replace(".", "_") }}_get_contact
+  getContactsDataRequest: {{ id | replace(".", "_") }}_get_contacts_data
+  options:
+    _array.concat:
+      - _if_none:
+          - _request: {{ id | replace(".", "_") }}_search_contacts
+          - []
+      - _if_none:
+          - _var: extra_options
+          - []
+  optionsLoading:
+    _request_details: {{ id | replace(".", "_") }}_search_contacts.0.loading
+  data:
+    _request: {{ id | replace(".", "_") }}_get_contacts_data
+  list:
+    title: {% if keyword %}{{ keyword }} details{% else %}Contact details{% endif %}
+    placeholder: {% if keyword %}No {{ keyword | lower }} selected{% else %}No contacts selected{% endif %}
+    item:
+      _var:
+        key: item
+        default: {}
+  modal:
+    title:
+      _string.concat:
+        - "Add "
+        - _var:
+            key: keyword
+            default:
+              _module.var: label
+    editTitle:
+      _string.concat:
+        - "Edit "
+        - _var:
+            key: keyword
+            default:
+              _module.var: label
+blocks:
+  - _ref:
+      path: components/form_contact_short.yaml.njk
+      vars:
+        id: {{ id }}
+        required:
+          _var:
+            key: form_required
+            default: {}

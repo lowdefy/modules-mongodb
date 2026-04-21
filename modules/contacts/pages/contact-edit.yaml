@@ -9,7 +9,7 @@ _ref:
         - _module.var: label
         - ": "
         - _if_none:
-            - _request: get_contact.0.profile.name
+            - _request: get_contact.profile.name
             - ""
     content_width: 600
     breadcrumbs:
@@ -40,7 +40,7 @@ _ref:
                     - _module.var: app_name
                     - ".is_user"
                 from:
-                  _request: get_contact.0
+                  _request: get_contact
           params:
             pageId:
               _module.pageId: contact-detail
@@ -51,7 +51,7 @@ _ref:
           type: Link
           skip:
             _ne:
-              - _request: get_contact.0
+              - _request: get_contact
               - null
           params:
             pageId:
@@ -60,15 +60,15 @@ _ref:
           type: SetState
           params:
             profile:
-              _request: get_contact.0.profile
+              _request: get_contact.profile
             global_attributes:
-              _request: get_contact.0.global_attributes
+              _request: get_contact.global_attributes
             email:
-              _request: get_contact.0.email
+              _request: get_contact.email
             updated:
-              _request: get_contact.0.updated
+              _request: get_contact.updated
             _id:
-              _request: get_contact.0._id
+              _request: get_contact._id
     requests:
       - _ref: requests/get_contact.yaml
     blocks:

@@ -140,7 +140,6 @@ Extract into `stages/*.yaml` when the `$match` exceeds ~20 lines.
 - `modules/contacts/requests/get_all_contacts.yaml` — Atlas Search + unwound facet + module var injection (Convention A)
 - `modules/data-upload/requests/get-staged.yaml` — simple `$match` + `$facet` + `$lookup` (no search)
 - `modules/notifications/requests/get-notifications.yaml` — `$match` + extracted filter stages via `_ref`
-- `modules/contacts/requests/get_contacts_for_selector.yaml` — selector options with `_build.array.concat` + module var injection
 
 ## Template
 

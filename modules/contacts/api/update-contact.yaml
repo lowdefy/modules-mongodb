@@ -10,8 +10,15 @@ routine:
         _object.assign:
           - _id:
               _payload: _id
-            updated.timestamp:
-              _payload: updated.timestamp
+          - _if:
+              test:
+                _ne:
+                  - _payload: updated.timestamp
+                  - null
+              then:
+                updated.timestamp:
+                  _payload: updated.timestamp
+              else: {}
           - _object.defineProperty:
               on: {}
               key:

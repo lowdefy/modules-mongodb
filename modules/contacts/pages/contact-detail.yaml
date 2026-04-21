@@ -9,7 +9,7 @@ _ref:
           {{ label }}{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
           _object.assign:
-            - _request: get_contact.0
+            - _request: get_contact
             - label:
                 _module.var: label
     breadcrumbs:
@@ -21,7 +21,7 @@ _ref:
           _module.pageId: contacts
       - label:
           _if_none:
-            - _request: get_contact.0.profile.name
+            - _request: get_contact.profile.name
             - ""
     page_actions:
       - id: edit_button
@@ -35,7 +35,7 @@ _ref:
                   - _module.var: app_name
                   - ".is_user"
               from:
-                _request: get_contact.0
+                _request: get_contact
         layout:
           flex: 0 1 auto
         properties:
@@ -53,7 +53,7 @@ _ref:
                   _id:
                     _url_query: _id
     doc:
-      _request: get_contact.0
+      _request: get_contact
     events:
       onMount:
         - id: fetch
@@ -64,7 +64,7 @@ _ref:
           type: Link
           skip:
             _ne:
-              - _request: get_contact.0
+              - _request: get_contact
               - null
           params:
             pageId:

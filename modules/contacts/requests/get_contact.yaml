@@ -1,14 +1,22 @@
-id: get_contact
-type: MongoDBAggregation
+id:
+  _var:
+    key: id
+    default: get_contact
+type: MongoDBFindOne
 connectionId:
   _module.connectionId: contacts-collection
 payload:
   _id:
-    _url_query: _id
+    _var:
+      key: id_source
+      default:
+        _url_query: _id
+  ~ignoreBuildChecks: true
 properties:
-  pipeline:
-    - $match:
-        _id:
-          _payload: _id
-        hidden:
-          $ne: true
+  query:
+    _id:
+      _payload: _id
+    hidden:
+      $ne: true
+    disabled:
+      $ne: true

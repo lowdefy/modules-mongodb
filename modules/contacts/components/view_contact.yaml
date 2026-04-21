@@ -7,11 +7,11 @@ blocks:
           path: ../shared/layout/identity-header.yaml
           vars:
             avatar_src:
-              _request: get_contact.0.profile.picture
+              _request: get_contact.profile.picture
             name:
-              _request: get_contact.0.profile.name
+              _request: get_contact.profile.name
             email:
-              _request: get_contact.0.email
+              _request: get_contact.email
     # Profile SmartDescriptions
     - - id: profile_view
         type: SmartDescriptions
@@ -21,7 +21,7 @@ blocks:
           size: small
           data:
             profile:
-              _request: get_contact.0.profile
+              _request: get_contact.profile
           fields:
             _build.array.concat:
               - _ref:
@@ -44,6 +44,6 @@ blocks:
           size: small
           data:
             global_attributes:
-              _request: get_contact.0.global_attributes
+              _request: get_contact.global_attributes
           fields:
             _module.var: fields.global_attributes

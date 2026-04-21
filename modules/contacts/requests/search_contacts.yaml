@@ -1,0 +1,154 @@
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: contacts-collection
+payload:
+  input:
+    _state:
+      _var: input_state_key
+    ~ignoreBuildChecks: true
+properties:
+  pipeline:
+    _build.array.concat:
+      - - $search:
+            compound:
+              filter:
+                _array.concat:
+                  - - compound:
+                        mustNot:
+                          - equals:
+                              path: disabled
+                              value: true
+                          - equals:
+                              path: hidden
+                              value: true
+                  - _build.if:
+                      test:
+                        _build.not:
+                          _var:
+                            key: all_contacts
+                            default: false
+                      then:
+                        _if:
+                          test:
+                            _gt:
+                              - _array.length:
+                                  _if_none:
+                                    - _user: global_attributes.company_ids
+                                    - []
+                              - 0
+                          then:
+                            - in:
+                                path: global_attributes.company_ids
+                                value:
+                                  _user: global_attributes.company_ids
+                          else: []
+                      else: []
+                  - _var:
+                      key: filter
+                      default: []
+              should:
+                _if:
+                  test:
+                    _eq:
+                      - _if_none:
+                          - _payload: input
+                          - ""
+                      - ""
+                  then: []
+                  else:
+                    - text:
+                        query:
+                          _payload: input
+                        path:
+                          - profile.name
+                          - lowercase_email
+                    - wildcard:
+                        query:
+                          _string.concat:
+                            - "*"
+                            - _payload: input
+                            - "*"
+                        path:
+                          - profile.name
+                          - lowercase_email
+                        allowAnalyzedField: true
+        - $limit: 10
+        - $addFields:
+            work_phone: $profile.work_phone.phone_number
+            mobile_phone: $profile.mobile_phone.phone_number
+        - $addFields:
+            phone_label:
+              $switch:
+                branches:
+                  - case:
+                      $and:
+                        - $ne:
+                            - $ifNull:
+                                - $work_phone
+                                - ""
+                            - ""
+                        - $ne:
+                            - $ifNull:
+                                - $mobile_phone
+                                - ""
+                            - ""
+                    then:
+                      $concat:
+                        - " | "
+                        - $work_phone
+                        - " | "
+                        - $mobile_phone
+                  - case:
+                      $ne:
+                        - $ifNull:
+                            - $work_phone
+                            - ""
+                        - ""
+                    then:
+                      $concat:
+                        - " | "
+                        - $work_phone
+                  - case:
+                      $ne:
+                        - $ifNull:
+                            - $mobile_phone
+                            - ""
+                        - ""
+                    then:
+                      $concat:
+                        - " | "
+                        - $mobile_phone
+                default: ""
+        - $project:
+            value:
+              contact_id: $_id
+              email: $lowercase_email
+              name: $profile.name
+            label:
+              $concat:
+                - "<div>"
+                - $ifNull:
+                    - $profile.name
+                    - ""
+                - "</div><div class=\"secondary smaller\">"
+                - $cond:
+                    if:
+                      $regexMatch:
+                        input: $lowercase_email
+                        regex: "\\@"
+                    then:
+                      $ifNull:
+                        - $lowercase_email
+                        - ""
+                    else: "No email"
+                - _if:
+                    test:
+                      _var:
+                        key: phone_label
+                        default: false
+                    then: $phone_label
+                    else: ""
+                - "</div>"
+      - _module.var: request_stages.selector

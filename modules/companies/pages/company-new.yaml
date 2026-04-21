@@ -80,7 +80,12 @@ _ref:
                           attributes:
                             _state: attributes
                           contacts:
-                            _state: contacts
+                            _array.map:
+                              - _if_none:
+                                  - _state: contacts
+                                  - []
+                              - _function:
+                                  __args: 0.contact_id
                       messages:
                         success:
                           _string.concat:

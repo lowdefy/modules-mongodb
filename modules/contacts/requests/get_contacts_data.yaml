@@ -1,0 +1,37 @@
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: contacts-collection
+payload:
+  contact_ids:
+    _state:
+      _var: contact_ids_state_key
+    ~ignoreBuildChecks: true
+properties:
+  pipeline:
+    - $match:
+        _id:
+          $in:
+            _if_none:
+              - _payload: contact_ids
+              - []
+    - $project:
+        _id: 0
+        contact_id: $_id
+        name: $profile.name
+        email:
+          $cond:
+            if:
+              $regexMatch:
+                input: $lowercase_email
+                regex: "\\@"
+            then:
+              $ifNull:
+                - $lowercase_email
+                - ""
+            else: null
+        work_phone: $profile.work_phone.phone_number
+        mobile_phone: $profile.mobile_phone.phone_number
+        verified: 1
+        global_attributes: 1

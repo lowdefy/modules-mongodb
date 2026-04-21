@@ -45,17 +45,69 @@ Create a new contact with duplicate detection (by email).
 
 ### `contact-selector`
 
-Selector/MultipleSelector for picking contacts from the current app. Useful in other modules that need a contact picker (e.g. linking contacts to a company).
+Multi-select contact picker backed by the `ContactSelector` plugin block. Searches contacts as the user types, supports inline add (opens a modal with a short form) and inline edit/delete. Use this for ticket subscribers, points-of-contact, and any case where you need to pick multiple contacts and optionally create new ones on the fly.
 
 ```yaml
 - _ref:
     module: contacts
     component: contact-selector
     vars:
-      label: Linked Contacts
-      mode: MultipleSelector
-      field_id: contacts
+      id: subscribers
+      keyword: Subscriber
+      required: true
+      max: 10
+      form_required:
+        given_name: true
+        family_name: true
+        email: true
+      filter:
+        - compound:
+            must:
+              - in:
+                  path: global_attributes.company_ids
+                  value:
+                    _state: ticket.company_id
 ```
+
+**Required var:** `id` — unique per page usage; scopes the block's state keys (`{id}`, `{id}_contact`, `{id}_input`, …) and request ids.
+
+**Common vars:**
+
+| Var                    | Default                     | Purpose                                                       |
+| ---------------------- | --------------------------- | ------------------------------------------------------------- |
+| `required`             | `false`                     | Make the picker required                                      |
+| `validate`             | `[]`                        | Additional validation rules                                   |
+| `keyword`              | module `label` var          | Singular noun used in title/placeholder/modal                 |
+| `title`                | `"Select {keyword}"`        | Override input title                                          |
+| `placeholder`          | `"Select a {keyword}..."`   | Override input placeholder                                    |
+| `filter`               | `[]`                        | Extra Atlas Search compound clauses (e.g. company filter)     |
+| `all_contacts`         | `false`                     | If `false`, restrict results to contacts linked to one of the current user's companies (`_user: global_attributes.company_ids`). Set `true` to search the whole directory. |
+| `phone_label`          | `false`                     | Append phone numbers to dropdown labels                       |
+| `disable_new_contacts` | `false`                     | Hide the "add new contact" option                             |
+| `disable_edit`         | `false`                     | Hide edit buttons on list rows                                |
+| `disable_delete`       | `false`                     | Hide delete buttons on list rows                              |
+| `max`                  | _(unbounded)_               | Max selectable contacts                                       |
+| `extra_options`        | `[]`                        | Additional options appended to search results                 |
+| `form_required`        | `{ given_name, family_name, email: true }` | Which modal form fields are required          |
+| `item`                 | `{}`                        | Override list row `{ title, description }` nunjucks templates |
+
+**Wired events:**
+
+- `onAddContact` — validates the modal form, calls the module's `create-contact` API, and appends the returned contact to the selection.
+- `onEditContact` — calls the module's `update-contact` API with the edited contact.
+
+**Available block events** (fire your own handlers by passing additional entries via `events:`):
+
+- `onOpen`, `onClose` — modal lifecycle.
+- `onChange` — selection changed (add or remove).
+- `onCancel` — modal cancelled.
+- `onBlur`, `onFocus`, `onClear` — selector input events.
+- `afterSearch` — fires on every search-text change, with `event.value` set to the current query string. Useful for dependent lookups or analytics.
+- `afterClose` — fires after the modal's close transition finishes.
+
+**Modal form:** By default the picker ships with a three-field form (first name, last name, email). Email is disabled when editing existing contacts. If you need a richer form (company selector, phone numbers, custom fields), copy `components/form_contact_short.yaml.njk` and ref your own form in the modal content slot.
+
+**State paths:** The picker stores its selection at `state[{id}]` (an array of contact summaries). When the modal is open, the contact being added/edited is at `state[{id}_contact]`. Use these in downstream request payloads — e.g. `_state: subscribers` to get the selected contacts.
 
 ## API Endpoints
 

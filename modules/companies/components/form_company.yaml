@@ -46,6 +46,7 @@ blocks:
           module: contacts
           component: contact-selector
           vars:
-            label: Linked Contacts
-            mode: MultipleSelector
-            field_id: contacts
+            id: contacts
+            keyword: Contact
+            label:
+              title: Linked Contacts
