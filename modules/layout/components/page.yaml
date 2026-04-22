@@ -1,78 +1,103 @@
 id:
   _var: id
 type:
-  _build.if:
-    test:
-      _build.eq:
-        - _module.var: page_type
-        - sidebar
-    then: PageSidebarLayout
-    else: PageSiderMenu
-properties:
-  title:
-    _var: title
-  logo:
-    src:
-      _module.var: logo.primary_light
-    srcMobile:
-      _module.var: logo.icon
-    style:
-      _module.var: logo.style
-  breadcrumb:
-    list:
-      _var:
-        key: breadcrumbs
-        default: []
-  menu:
-    _var:
-      key: menu
-      default:
-        _module.var: menu
-  sider:
-    _module.var: sider
-  siderStorageKey:
-    _module.var: sider_storage_key
-  # Built-in header features — gated by per-page hide flags
-  profile:
-    _build.if:
-      test:
-        _build.not:
-          _var:
-            key: hide_profile
-            default: false
-      then:
-        avatar:
-          _ref:
-            module: user-account
-            component: profile-avatar
-        # TODO: Use menu for profile links
-        links:
-          _build.array.concat:
-            - _ref:
-                module: user-account
-                component: profile-links
+  _build.switch:
+    branches:
+      - if:
+          _build.eq:
             - _var:
-                key: extra_profile_links
+                key: page_type
                 default:
-                  _module.var: extra_profile_links
-            - _ref:
-                module: user-account
-                component: profile-actions
-      else: null
-  notifications:
-    _build.if:
-      test:
-        _build.not:
+                  _module.var: page_type
+            - sidebar
+        then: PageSidebarLayout
+      - if:
+          _build.eq:
+            - _var:
+                key: page_type
+                default:
+                  _module.var: page_type
+            - sider-menu
+        then: PageSiderMenu
+    default: PageHeaderMenu
+properties:
+  _build.object.assign:
+    - title:
+        _var: title
+      logo:
+        src:
+          _module.var: logo.primary_light
+        srcMobile:
+          _module.var: logo.icon
+        style:
+          _module.var: logo.style
+      breadcrumb:
+        list:
           _var:
-            key: hide_notifications
-            default: false
-      then:
-        _ref:
-          module: notifications
-          component: notification-config
-      else: null
-  darkModeToggle:
-    _module.var: dark_mode_toggle
+            key: breadcrumbs
+            default: []
+      menu:
+        _var:
+          key: menu
+          default:
+            _module.var: menu
+      # Built-in header features — gated by per-page hide flags
+      profile:
+        _build.if:
+          test:
+            _build.not:
+              _var:
+                key: hide_profile
+                default: false
+          then:
+            avatar:
+              _ref:
+                module: user-account
+                component: profile-avatar
+            # TODO: Use menu for profile links
+            links:
+              _build.array.concat:
+                - _ref:
+                    module: user-account
+                    component: profile-links
+                - _var:
+                    key: extra_profile_links
+                    default:
+                      _module.var: extra_profile_links
+                - _ref:
+                    module: user-account
+                    component: profile-actions
+          else: null
+      notifications:
+        _build.if:
+          test:
+            _build.not:
+              _var:
+                key: hide_notifications
+                default: false
+          then:
+            _ref:
+              module: notifications
+              component: notification-config
+          else: null
+      darkModeToggle:
+        _module.var: dark_mode_toggle
+    # sider / siderStorageKey only apply to sider-menu and sidebar variants.
+    # PageHeaderMenu rejects them (additionalProperties: false).
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: page_type
+                default:
+                  _module.var: page_type
+            - header-menu
+        then:
+          sider:
+            _module.var: sider
+          siderStorageKey:
+            _module.var: sider_storage_key
+        else: {}
 style:
   .header:
     borderBottom: 1px solid var(--ant-color-border)
@@ -127,7 +152,10 @@ slots:
     - _build.if:
         test:
           _build.eq:
-            - _module.var: page_type
+            - _var:
+                key: page_type
+                default:
+                  _module.var: page_type
             - sidebar
         then:
           siderOpen:

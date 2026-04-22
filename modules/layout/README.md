@@ -1,10 +1,10 @@
 # Layout
 
-Page layout module with title bar, content area, and auth page components. Supports two page block variants — `PageSiderMenu` (top header bar + collapsible sider) and `PageSidebarLayout` (full-height sider containing menu, profile, and notifications) — selected via the `page_type` var.
+Page layout module with title bar, content area, and auth page components. Supports three page block variants — `PageHeaderMenu` (default), `PageSiderMenu`, and `PageSidebarLayout` — selected via the `page_type` var.
 
 ## Components
 
-- **page** — Page layout wrapper. Renders `PageSiderMenu` or `PageSidebarLayout` depending on `page_type`. Provides title bar, header/sider slots, menu, profile, notifications, dark mode toggle, and content area.
+- **page** — Page layout wrapper. Renders `PageHeaderMenu`, `PageSiderMenu`, or `PageSidebarLayout` depending on `page_type`. Provides title bar, header/sider slots, menu, profile, notifications, dark mode toggle, and content area.
 - **card** — Standard content card layout with optional back button and footer
 - **floating-actions** — Floating action button bar affixed to bottom of viewport
 - **auth-page** — Centered auth/login page layout with branded cover and card
@@ -13,13 +13,16 @@ Page layout module with title bar, content area, and auth page components. Suppo
 
 ### `page_type`
 
-Type: `string` (`sider-menu` | `sidebar`)
-Default: `sider-menu`
+Type: `string` (`header-menu` | `sider-menu` | `sidebar`)
+Default: `header-menu`
 
-Selects the page block type.
+Selects the page block type. Can also be overridden per page via `_ref` vars.
 
-- **`sider-menu`** — `PageSiderMenu`: top header bar (logo, menu, profile, notifications, dark mode toggle) with a collapsible sider below it.
+- **`header-menu`** (default) — `PageHeaderMenu`: top header bar with the menu inline (no sider). Simplest chrome; works for small menus and marketing-style pages.
+- **`sider-menu`** — `PageSiderMenu`: top header bar (logo, profile, notifications, dark mode toggle) with a collapsible sider below it.
 - **`sidebar`** — `PageSidebarLayout`: full-height sider on the left containing the logo, menu, profile, notifications, and dark mode toggle. Content area spans the rest of the viewport.
+
+The `sider` and `sider_storage_key` vars are ignored when `page_type: header-menu` (PageHeaderMenu has no sider).
 
 ### `sider`
 
@@ -34,28 +37,28 @@ Sider properties forwarded to the page block.
 - **`hideToggleButton`** (boolean) — Hide the toggle button in the sider.
 - **`collapsedWidth`** (integer) — Width of the collapsed sider.
 
-Note: the common keys (`width`, `initialCollapsed`, `hideToggleButton`, `collapsedWidth`) work on both page types. `collapsible` only applies to `page_type: sidebar`.
+Note: the common keys (`width`, `initialCollapsed`, `hideToggleButton`, `collapsedWidth`) work for `page_type: sider-menu` and `sidebar`. `collapsible` only applies to `page_type: sidebar`. All of `sider` is ignored for `page_type: header-menu` (PageHeaderMenu has no sider).
 
 ### `sider_open_blocks`
 
 Type: `array`
 Default: `[]`
 
-Blocks rendered in the `siderOpen` slot of `PageSidebarLayout` (below the menu, visible when the sider is expanded). Ignored when `page_type: sider-menu`.
+Blocks rendered in the `siderOpen` slot of `PageSidebarLayout` (below the menu, visible when the sider is expanded). Only used when `page_type: sidebar`.
 
 ### `sider_closed_blocks`
 
 Type: `array`
 Default: `[]`
 
-Blocks rendered in the `siderClosed` slot of `PageSidebarLayout` (visible when the sider is collapsed). Ignored when `page_type: sider-menu`.
+Blocks rendered in the `siderClosed` slot of `PageSidebarLayout` (visible when the sider is collapsed). Only used when `page_type: sidebar`.
 
 ### `sider_storage_key`
 
 Type: `string`
 Default: `layout-sider`
 
-`localStorage` key suffix for sider collapsed-state persistence. Produces key `lf-{sider_storage_key}-open`. Set a unique value per app if multiple layouts would otherwise collide.
+`localStorage` key suffix for sider collapsed-state persistence. Produces key `lf-{sider_storage_key}-open`. Set a unique value per app if multiple layouts would otherwise collide. Ignored for `page_type: header-menu` (no sider to persist).
 
 ### `logo`
 
@@ -72,7 +75,7 @@ Logo configuration used by both the page header and auth page.
 
 Type: `object`
 
-Menu config passed to PageSiderMenu. Default: `_menu: default`.
+Menu config passed to the page block (rendered inline in the header for `header-menu`, in the sider for `sider-menu` and `sidebar`). Default: `_menu: default`.
 
 ### `header_extra`
 
@@ -94,7 +97,7 @@ Custom title block override. Replaces the default title bar (breadcrumbs, title,
 Type: `boolean`
 Default: `true`
 
-Show a dark mode toggle button in the page block. Rendered in the header for `page_type: sider-menu`, in the sider for `page_type: sidebar`.
+Show a dark mode toggle button in the page block. Rendered in the header for `page_type: header-menu` and `sider-menu`, and in the sider for `page_type: sidebar`.
 
 ### `extra_profile_links`
 
@@ -114,7 +117,7 @@ Event actions for the `onProfileMenuClick` event. Default: user-account module's
 Type: `array`
 Default: `[]`
 
-Footer blocks shown on both page layouts and the auth page. On the auth page, the footer is styled with small font size and secondary text color automatically.
+Footer blocks shown on all page variants and the auth page. On the auth page, the footer is styled with small font size and secondary text color automatically.
 
 ### `card`
 

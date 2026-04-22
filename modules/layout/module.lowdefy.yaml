@@ -1,5 +1,5 @@
 name: Layout
-description: Page layout module supporting both PageSiderMenu (top header + sider) and PageSidebarLayout (full-height sider) variants, selected via the page_type var.
+description: Page layout module supporting three page block variants — PageHeaderMenu (top header + inline menu, default), PageSiderMenu (top header + collapsible sider), and PageSidebarLayout (full-height sider) — selected via the page_type var.
 
 dependencies:
   - id: user-account
@@ -8,27 +8,28 @@ dependencies:
 vars:
   page_type:
     type: string
-    default: sider-menu
+    default: header-menu
     enum:
+      - header-menu
       - sider-menu
       - sidebar
-    description: Which page block to render. 'sider-menu' uses PageSiderMenu (top header bar + collapsible sider); 'sidebar' uses PageSidebarLayout (full-height sider containing menu, profile, and notifications).
+    description: Which page block to render. 'header-menu' (default) uses PageHeaderMenu (top header bar with inline menu, no sider); 'sider-menu' uses PageSiderMenu (top header bar + collapsible sider); 'sidebar' uses PageSidebarLayout (full-height sider containing menu, profile, and notifications). Can be overridden per page via `_ref` vars.
   sider:
     type: object
     default: {}
-    description: "Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only."
+    description: "Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider)."
   sider_open_blocks:
     type: array
     default: []
-    description: Blocks rendered in the PageSidebarLayout siderOpen slot (below the menu when expanded). Ignored when page_type is 'sider-menu'.
+    description: Blocks rendered in the PageSidebarLayout siderOpen slot (below the menu when expanded). Only used when page_type is 'sidebar'.
   sider_closed_blocks:
     type: array
     default: []
-    description: Blocks rendered in the PageSidebarLayout siderClosed slot (shown when collapsed). Ignored when page_type is 'sider-menu'.
+    description: Blocks rendered in the PageSidebarLayout siderClosed slot (shown when collapsed). Only used when page_type is 'sidebar'.
   sider_storage_key:
     type: string
     default: layout-sider
-    description: localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'.
+    description: localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist).
   logo:
     type: object
     description: "Logo config: { primary_light, primary_dark, icon, style }"
@@ -105,7 +106,7 @@ vars:
 exports:
   components:
     - id: page
-      description: Page layout wrapper with title bar, header/sider slots, menu, and content area. Selects PageSiderMenu or PageSidebarLayout based on the page_type var.
+      description: Page layout wrapper with title bar, header/sider slots, menu, and content area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on the page_type var.
     - id: card
       description: Standard content card layout with optional back button and footer
     - id: floating-actions
