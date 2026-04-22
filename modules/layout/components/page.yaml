@@ -1,6 +1,13 @@
 id:
   _var: id
-type: PageSiderMenu
+type:
+  _build.if:
+    test:
+      _build.eq:
+        - _module.var: page_type
+        - sidebar
+    then: PageSidebarLayout
+    else: PageSiderMenu
 properties:
   title:
     _var: title
@@ -21,6 +28,10 @@ properties:
       key: menu
       default:
         _module.var: menu
+  sider:
+    _module.var: sider
+  siderStorageKey:
+    _module.var: sider_storage_key
   # Built-in header features — gated by per-page hide flags
   profile:
     _build.if:
@@ -61,7 +72,7 @@ properties:
           component: notification-config
       else: null
   darkModeToggle:
-    _module.var: darkModeToggle
+    _module.var: dark_mode_toggle
 style:
   .header:
     borderBottom: 1px solid var(--ant-color-border)
@@ -102,16 +113,30 @@ events:
       key: events.onMountAsync
       default: []
 slots:
-  header:
-    blocks:
-      _module.var: header_extra.blocks
-  footer:
-    style:
-      textAlign: center
-      fontSize: 12
-      color: 'var(--ant-color-text-secondary)'
-    blocks:
-      _module.var: footer
+  _build.object.assign:
+    - header:
+        blocks:
+          _module.var: header_extra.blocks
+      footer:
+        style:
+          textAlign: center
+          fontSize: 12
+          color: "var(--ant-color-text-secondary)"
+        blocks:
+          _module.var: footer
+    - _build.if:
+        test:
+          _build.eq:
+            - _module.var: page_type
+            - sidebar
+        then:
+          siderOpen:
+            blocks:
+              _module.var: sider_open_blocks
+          siderClosed:
+            blocks:
+              _module.var: sider_closed_blocks
+        else: {}
 blocks:
   - id: page-content
     type: Box
@@ -122,7 +147,7 @@ blocks:
       maxWidth:
         _var:
           key: content_width
-          default: '100%'
+          default: "100%"
       margin: auto
     blocks:
       _build.array.concat:

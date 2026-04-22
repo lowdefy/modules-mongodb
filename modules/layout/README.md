@@ -1,15 +1,61 @@
-# Layout Header Menu
+# Layout
 
-Page layout module with sider menu, title bar, content area, and auth page components.
+Page layout module with title bar, content area, and auth page components. Supports two page block variants — `PageSiderMenu` (top header bar + collapsible sider) and `PageSidebarLayout` (full-height sider containing menu, profile, and notifications) — selected via the `page_type` var.
 
 ## Components
 
-- **page** — PageSiderMenu layout wrapper with title bar, header slots, sider menu, and content area
+- **page** — Page layout wrapper. Renders `PageSiderMenu` or `PageSidebarLayout` depending on `page_type`. Provides title bar, header/sider slots, menu, profile, notifications, dark mode toggle, and content area.
 - **card** — Standard content card layout with optional back button and footer
 - **floating-actions** — Floating action button bar affixed to bottom of viewport
 - **auth-page** — Centered auth/login page layout with branded cover and card
 
 ## Vars
+
+### `page_type`
+
+Type: `string` (`sider-menu` | `sidebar`)
+Default: `sider-menu`
+
+Selects the page block type.
+
+- **`sider-menu`** — `PageSiderMenu`: top header bar (logo, menu, profile, notifications, dark mode toggle) with a collapsible sider below it.
+- **`sidebar`** — `PageSidebarLayout`: full-height sider on the left containing the logo, menu, profile, notifications, and dark mode toggle. Content area spans the rest of the viewport.
+
+### `sider`
+
+Type: `object`
+Default: `{}`
+
+Sider properties forwarded to the page block.
+
+- **`width`** (number | string) — Width of the expanded sider.
+- **`initialCollapsed`** (boolean) — Initial collapsed state. Overridden by localStorage on subsequent visits.
+- **`collapsible`** (boolean) — Whether the sider can be collapsed. **PageSidebarLayout only.**
+- **`hideToggleButton`** (boolean) — Hide the toggle button in the sider.
+- **`collapsedWidth`** (integer) — Width of the collapsed sider.
+
+Note: the common keys (`width`, `initialCollapsed`, `hideToggleButton`, `collapsedWidth`) work on both page types. `collapsible` only applies to `page_type: sidebar`.
+
+### `sider_open_blocks`
+
+Type: `array`
+Default: `[]`
+
+Blocks rendered in the `siderOpen` slot of `PageSidebarLayout` (below the menu, visible when the sider is expanded). Ignored when `page_type: sider-menu`.
+
+### `sider_closed_blocks`
+
+Type: `array`
+Default: `[]`
+
+Blocks rendered in the `siderClosed` slot of `PageSidebarLayout` (visible when the sider is collapsed). Ignored when `page_type: sider-menu`.
+
+### `sider_storage_key`
+
+Type: `string`
+Default: `layout-sider`
+
+`localStorage` key suffix for sider collapsed-state persistence. Produces key `lf-{sider_storage_key}-open`. Set a unique value per app if multiple layouts would otherwise collide.
 
 ### `logo`
 
@@ -43,12 +89,12 @@ Type: `object`
 
 Custom title block override. Replaces the default title bar (breadcrumbs, title, page actions) with your own blocks.
 
-### `darkModeToggle`
+### `dark_mode_toggle`
 
 Type: `boolean`
-Default: `false`
+Default: `true`
 
-Show a dark mode toggle button in the page header.
+Show a dark mode toggle button in the page block. Rendered in the header for `page_type: sider-menu`, in the sider for `page_type: sidebar`.
 
 ### `extra_profile_links`
 
@@ -109,7 +155,7 @@ Centered login/auth layout with a branded card cover and form body.
 ```yaml
 modules:
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout-header-menu@v1"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v1"
     vars:
       logo:
         primary_light: /my-logo.png
