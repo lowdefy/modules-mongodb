@@ -1,0 +1,40 @@
+id: search_contacts
+type: MongoDBAggregation
+connectionId: demo-contacts
+payload:
+  searchText:
+    _if_none:
+      - _state: contact_selector_input
+      - ""
+properties:
+  pipeline:
+    - $match:
+        hidden:
+          $ne: true
+        disabled:
+          $ne: true
+        $or:
+          - profile.name:
+              $regex:
+                _payload: searchText
+              $options: i
+          - email:
+              $regex:
+                _payload: searchText
+              $options: i
+    - $project:
+        _id: 0
+        label:
+          $concat:
+            - "$profile.name"
+            - " ("
+            - "$email"
+            - ")"
+        value:
+          contact_id: "$_id"
+          name: "$profile.name"
+          email: "$email"
+          picture: "$profile.picture"
+    - $sort:
+        label: 1
+    - $limit: 20

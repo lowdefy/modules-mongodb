@@ -1,0 +1,10 @@
+id: get_contact
+type: MongoDBFindOne
+connectionId: demo-contacts
+payload:
+  _id:
+    _state: contact_selector_contact_id
+properties:
+  query:
+    _id:
+      _payload: _id
