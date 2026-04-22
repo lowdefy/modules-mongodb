@@ -51,7 +51,7 @@ Following the community-plugins pattern, use npm OIDC trusted publishing instead
 
 ### 4. Starting version
 
-Set all packages to `0.0.0`. The first changeset will be a major bump, publishing `1.0.0`. This ensures the first real release has a clean `v1.0.0` tag for module consumers.
+Set all packages to `0.0.0`. The first changeset is a minor bump, publishing `0.1.0`. Staying on `0.x` signals the modules are still stabilizing; we'll release `1.0.0` when they're stable.
 
 ### 5. No CI workflow (yet)
 
