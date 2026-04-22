@@ -36,6 +36,7 @@ The delete button behaviour is unchanged.
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactList.js` — modify — destructure + forward `allowVerify`
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactSelector.js` — modify — pass `properties.allowVerify` down
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/meta.js` — modify — document the new `allowVerify` property
+- `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/hooks/contactActions/setEditContact.js` — modify — change `{ _request: getContactRequest }` to ``{ _request: `${getContactRequest}.0` }`` so the block unwraps the aggregation array into a single-doc state value (design decision #4)
 
 ## Notes
 

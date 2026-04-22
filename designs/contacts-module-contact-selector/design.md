@@ -13,7 +13,7 @@ Consumers importing `_ref: { module: contacts, component: contact-selector }` to
 
 Those are the use cases the rich `ContactSelector` block was built for. The module needs to ship a wrapper that renders the rich picker with one `_ref` call per consumer, along with the three MongoDB requests the block's lifecycle hooks trigger. The existing wrapper, `get_contacts_for_selector.yaml` request, and any downstream coupling to them get replaced.
 
-The reference wrapper lives in the reference implementation (`apps/shared/contacts/components/contacts_selector.yaml.njk`, 242 lines). It has been in production there and exposes the knobs the module's consumers have asked for. This design ports the wrapper into the contacts module, adapts it to this module's conventions (module vars, `_module.*` operators, scoped endpoint IDs), and handles the fallout in `get_contact` and its 18 existing consumers.
+The reference wrapper lives in a separate reference implementation at `apps/shared/contacts/components/contacts_selector.yaml.njk` (242 lines). It has been in production there and exposes the knobs the module's consumers have asked for. This design ports the wrapper into the contacts module, adapts it to this module's conventions (module vars, `_module.*` operators, scoped endpoint IDs), and parameterises `get_contact` with a `request_stages` hook so consumers keep their existing `.0` reads while gaining an injection point for extra stages.
 
 ## Current state
 
@@ -28,11 +28,11 @@ The reference wrapper lives in the reference implementation (`apps/shared/contac
 1. Replace the `contact-selector` export with a rich picker rendered by the `ContactSelector` block, under the same component id so existing consumers upgrade transparently.
 2. Ship the three requests the block lifecycle needs, scoped per-instance so the same page can render multiple pickers side-by-side.
 3. Ship a default modal form (`form_contact_short.yaml.njk`); consumers can replace it per-call via a `form_blocks` var on the wrapper.
-4. Unify `get_contact` into a single `MongoDBFindOne` parameterised by `id` and `user_id` (the request's `user_id` var defaults to `{ _url_query: _id }` for detail pages; the picker passes a `_state: ...` node instead), eliminating the `get_contact_for_selector` near-duplicate, and updating 18 call sites to drop `.0`.
+4. Parameterise `get_contact` (the existing `MongoDBAggregation`) with `id` and `user_id` so the picker can reuse it with a state-driven id, and add a `request_stages.get_contact` module var for injectable downstream stages. No consumer updates — existing `.0` reads continue to work.
 
 ## Non-goals
 
-- Rewriting the block itself (block lives in the plugin, already v5). _Exception: a narrow addition of `allowVerify` rendering to `ContactListItem.js` — see decision #7._
+- Rewriting the block itself (block lives in the plugin, already v5). _Exceptions: a narrow addition of `allowVerify` rendering to `ContactListItem.js` (see decision #7), and a one-line change in `setEditContact.js` to unwrap the aggregation array — see decision #4._
 - Changing the `contacts` detail / edit / create page behaviour beyond the request-shape switch.
 - Adding a new `contacts-add-contact` endpoint alias — consumers call `contacts/create-contact` directly.
 - Fixing the two known issues flagged on the prior branch (empty-modal-on-new-contact, dropdown-closes-per-keystroke). Those live in the block and are tracked separately; the v5 migration appears to have resolved both (see Resolved questions #4).
@@ -41,7 +41,7 @@ The reference wrapper lives in the reference implementation (`apps/shared/contac
 
 ### 1. Wrapper is a `.yaml.njk`, not `.yaml`
 
-The the reference implementation is `.yaml.njk` because instance-scoped request IDs need string interpolation (`{{ id | replace(".", "_") }}_contact_search`). Plain YAML can't build these IDs at build time. CLAUDE.md codifies the rule: "Use `.yaml.njk` when vars need string interpolation in IDs or inline values".
+The reference implementation is `.yaml.njk` because instance-scoped request IDs need string interpolation (`{{ id | replace(".", "_") }}_contact_search`). Plain YAML can't build these IDs at build time. CLAUDE.md codifies the rule: "Use `.yaml.njk` when vars need string interpolation in IDs or inline values".
 
 ### 2. Instance scoping via `{id}_*` state keys
 
@@ -82,12 +82,14 @@ Per-call knobs (passed via `vars:` at the consumer):
 
 The module-level `verified`, `all_contacts`, `phone_label` defaults are declared in `module.lowdefy.yaml`; everything else is per-call `_var`.
 
-### 4. `get_contact` unification via `id` + `user_id` vars
+### 4. Parameterise `get_contact` as an aggregation with `request_stages.get_contact` hook
 
-Today `requests/get_contact.yaml` is a `MongoDBAggregation` with `_url_query: _id`. The picker needs a `MongoDBFindOne` keyed off a state value (`{id}_contact_id`). Two options considered:
+Today `requests/get_contact.yaml` is a `MongoDBAggregation` with `_url_query: _id`. It returns an array of one doc; 18 consumer reads already use `get_contact.0.<path>`. The picker needs the same lookup but keyed off a state value (`{id}_contact_id`).
 
-- **Duplicate** — add `get_contact_for_selector.yaml`. Near-identical file, two requests to keep in sync. **Rejected** — maintenance burden for no benefit.
-- **Unify** — single parameterised request. Adopted.
+Two options considered for the picker path:
+
+- **Switch to MongoDBFindOne** — returns a single doc (no `.0`). Clean on the consumer side but loses the project/match stage-injection point that other module aggregation requests (`get_all_contacts`, `update-contact`, etc.) expose via `request_stages.*`.
+- **Keep as MongoDBAggregation, parameterise** — consumers keep `.0` reads. Adopted. Reasoning: staying as an aggregation preserves future extensibility (apps that need to add `$lookup`, `$addFields`, or custom `$match` can inject stages without forking the request). Matches the convention of `get_all_contacts` and the `request_stages` pattern the module already uses.
 
 ```yaml
 # modules/contacts/requests/get_contact.yaml  (after)
@@ -95,7 +97,7 @@ id:
   _var:
     key: id
     default: get_contact
-type: MongoDBFindOne
+type: MongoDBAggregation
 connectionId:
   _module.connectionId: contacts-collection
 payload:
@@ -105,29 +107,91 @@ payload:
       default:
         _url_query: _id
 properties:
-  query:
-    _id:
-      _payload: _id
-    hidden:
-      $ne: true
+  pipeline:
+    _build.array.concat:
+      - - $match:
+            _id:
+              _payload: _id
+            hidden:
+              $ne: true
+        - $limit: 1
+      - _module.var: request_stages.get_contact
 ```
 
 Callers come in two flavours:
 
-- **Default (`detail`/`edit`/`view_contact`)** — `_ref: requests/get_contact.yaml` with no vars. Default `id: get_contact`, default `user_id: { _url_query: _id }` — same URL-query-driven behaviour as today, minus `.0` in 18 read sites.
+- **Default (`detail`/`edit`/`view_contact`)** — `_ref: requests/get_contact.yaml` with no vars. Default `id: get_contact`, default `user_id: { _url_query: _id }` — same URL-query-driven behaviour as today. Consumers' existing `get_contact.0.<path>` reads continue to work unchanged.
 - **Picker** — `_ref: { path: requests/get_contact.yaml, vars: { id: {{ id }}_get_contact, user_id: { _state: {{ id }}_contact_id, ~ignoreBuildChecks: true } } }`. `_var` preserves the `_state` operator node as `user_id`'s value, and it resolves at request-execution time against page state.
 
-Consumers must lose `.0`: `get_contact.0.profile.name` → `get_contact.profile.name` (and similar for the 18 hits). This is the only unavoidable blast across the module; it's mechanical and the failure mode is loud (undefined field reads render nothing).
+Because the request returns an array, the block's `setEditContact.js` unwraps the first element when it materialises state:
 
-`modules/contacts/pages/contact-edit.yaml:73` contains `- _ref: requests/get_contact.yaml` as a bare `requests:` entry. After unification, this stays as-is — the request's default `id` evaluates to `get_contact`, so the page-local request name is unchanged.
+```js
+// plugins/.../ContactSelector/hooks/contactActions/setEditContact.js
+[statePrefix("contact")]: { _request: `${getContactRequest}.0` },
+```
 
-### 5. Atlas `$search` for `search_contacts`
+This makes the block consistently expect aggregation responses from `getContactRequest` — no special-casing, no consumer burden.
 
-The module's `get_all_contacts` already uses Atlas `$search`, so the search index and storedSource config are in place. Using `$search` in `search_contacts` stays consistent, gets us wildcard + text scoring, and matches the reference implementation's request verbatim (with `_module.connectionId` swapped in). The alternative (regex `$match`) would work on any MongoDB but collapses ranking and is slow on large contact collections.
+`modules/contacts/pages/contact-edit.yaml:73` contains `- _ref: requests/get_contact.yaml` as a bare `requests:` entry. After parameterisation, this stays as-is — the request's default `id` evaluates to `get_contact`, so the page-local request name is unchanged.
 
-Consequence: the search request is the only place where the module hard-requires Atlas. The unify'd `get_contact` stays FindOne (no Atlas dependency). Apps that don't have Atlas already can't use the contacts module today — this doesn't change that.
+A new module var `request_stages.get_contact` is declared alongside the existing `request_stages.{write, get_all_contacts, selector, filter_match}`.
 
-When `all_contacts: false` (the default), the pipeline adds an `in` filter on `global_attributes.company_ids` scoped to the user's own `_user.global_attributes.company_ids`. Atlas `$search.compound.filter.in.value` rejects a `null` value at query time, so the `in` clause is conditionally included only when the user has at least one `company_id` — users with no companies see no options. This matches the guard added on the prior branch (`4e072de`).
+### 5. Layered `search_contacts` pipeline — `$search` for ranking, `$match` for filtering
+
+`search_contacts` splits the pipeline into two layers: Atlas `$search` for text ranking (`should` clauses only), and standard MongoDB `$match` for all structural filters. `returnStoredSource: true` on the `$search` stage materialises the stored fields into the search result so the subsequent `$match` can read them without a `$lookup`.
+
+```yaml
+pipeline:
+  # Layer 1: rank — Atlas $search with storedSource so downstream stages see the fields.
+  - $search:
+      returnStoredSource: true
+      compound:
+        should:
+          _if:
+            test: { _eq: [{ _if_none: [{ _payload: input }, ""] }, ""] }
+            then: []
+            else:
+              - text:
+                  {
+                    query: { _payload: input },
+                    path: [profile.name, lowercase_email],
+                  }
+              - wildcard:
+                  query: { _string.concat: ["*", { _payload: input }, "*"] }
+                  path: [profile.name, lowercase_email]
+                  allowAnalyzedField: true
+  # Layer 2: filter — standard Mongo query, consumer-pluggable via `filter` var.
+  - $match:
+      _object.assign:
+        - hidden: { $ne: true }
+          disabled: { $ne: true }
+        - _build.if:
+            test: { _var: all_contacts }
+            then: {}
+            else:
+              _build.if:
+                test:
+                  _gt:
+                    - _array.length:
+                        _if_none: [{ _user: global_attributes.company_ids }, []]
+                    - 0
+                then:
+                  global_attributes.company_ids:
+                    $in: { _user: global_attributes.company_ids }
+                else: {}
+        - _var: { key: filter, default: {} }
+  # Layer 3: cap + project.
+  - $limit: 10
+  - $project: { ... }
+```
+
+Three benefits:
+
+1. **Consumer `filter` var is standard Mongo.** Apps pass `filter: { status: 'active' }` (a `$match` expression), not Atlas `compound.filter` clauses. Familiar shape for anyone who's written MongoDB queries.
+2. **Stored-source retrieval.** `returnStoredSource: true` makes `$search` output the stored fields (`profile`, `email`, `global_attributes`) so the subsequent `$match` sees them. The module's existing Atlas search index already uses this — `get_all_contacts` is the precedent.
+3. **Graceful degradation.** An app without Atlas drops the `$search` stage; the remaining `$match` + `$project` pipeline works against any MongoDB. The picker loses text-ranking but still filters correctly — adequate for fallback use.
+
+The empty-`company_ids` guard is preserved: the `$in` clause is conditionally added only when the user has at least one company_id. Without the guard, `$in: null` would silently return zero rows (not an error with `$match`, unlike Atlas's rejection in `compound.filter`), but omitting the clause is cleaner and matches the guard added on the abandoned prior branch (`4e072de`).
 
 ### 6. Replace, don't dual-ship
 
@@ -257,20 +321,17 @@ Adds `modules/contacts/api/create-contact.yaml` to Files changed.
 
 **Modified**
 
-- `modules/contacts/module.lowdefy.yaml` — declare new module-level vars (`verified`, `all_contacts`, `phone_label`), update `exports.components`, update the `components:` block to point at the new `.yaml.njk`, add the new requests/files to `validate:` / `requests:` lists as applicable
-- `modules/contacts/requests/get_contact.yaml` — rewrite as parameterised `MongoDBFindOne`
-- `modules/contacts/requests/get_contact_companies.yaml` — drop `.0` from the `_request: get_contact.0.global_attributes.company_ids` read
-- `modules/contacts/components/view_contact.yaml` — drop `.0` (5 sites)
-- `modules/contacts/pages/contact-detail.yaml` — drop `.0` (6 sites)
-- `modules/contacts/pages/contact-edit.yaml` — drop `.0` (6 sites) and pass the request through unchanged (no vars → default `user_id: { _url_query: _id }`)
+- `modules/contacts/module.lowdefy.yaml` — declare new module-level vars (`verified`, `all_contacts`, `phone_label`), add `request_stages.get_contact` to the existing `request_stages:` group, update `exports.components`, update the `components:` block to point at the new `.yaml.njk`, add the new requests/files to `validate:` / `requests:` lists as applicable
+- `modules/contacts/requests/get_contact.yaml` — parameterise (id + user_id vars); stay MongoDBAggregation; add `request_stages.get_contact` concat point (see decision #4)
 - `modules/contacts/api/update-contact.yaml` — drop the `updated.timestamp` filter clause (see decision #9)
 - `modules/contacts/api/create-contact.yaml` — `:return: contactId` falls through `insert.upsertedId` → `insert.lastErrorObject.upserted` (see decision #10)
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactListItem.js` — add `allowVerify` prop; render Verify (danger) button in place of Edit for unverified rows
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactList.js` — forward `allowVerify` to `ContactListItem`
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactSelector.js` — pass `properties.allowVerify` down to `ContactList`
+- `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/hooks/contactActions/setEditContact.js` — read first element via `` `${getContactRequest}.0` `` so the block handles aggregation responses (see decision #4)
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/meta.js` — document `allowVerify` in properties
 
-Total: 5 new files, 2 deleted, 11 modified. Net delta is dominated by the new wrapper (~200 lines), the default form (~150 lines), and the block's `allowVerify` additions (~30 lines); offset by the deleted wrapper and selector request (~65 lines).
+Total: 5 new files, 2 deleted, 8 modified. Net delta is dominated by the new wrapper (~200 lines), the default form (~150 lines), and the block's `allowVerify` + `setEditContact` unwrap (~30 lines); offset by the deleted wrapper and selector request (~65 lines). The consumer-side `.0` drops from review-1's earlier plan are no longer needed — `get_contact` stays an aggregation.
 
 ## Data flow
 
@@ -322,6 +383,8 @@ Total: 5 new files, 2 deleted, 11 modified. Net delta is dominated by the new wr
 2. **`default_company_ids` is opt-in** — already per-call with `default: null`. When unset, the wrapper emits no `onOpen.prefill_company` action, so apps that don't use the `companies` module aren't coupled. When set, the prefill is appended to `onOpen`. No cross-module dependency is forced.
 3. **`verified` is opt-in and tri-state** — see decision #7. Default `off` means no verification behaviour is wired. When set to `trusted` or `untrusted`, the picker writes `global_attributes.verified` (not top-level) and exposes verify UI. Module-level only — no per-call override; apps that need heterogeneous pickers should split.
 4. **Two known block issues appear resolved on the demo page** — the empty-edit-modal and dropdown-closes-on-keystroke symptoms were not reproducible in the standalone demo added in `922f388`. They'll be re-verified end-to-end once the module wrapper is wired and a real consumer (e.g. a page in an app) drives the picker. If they resurface, fix in a follow-up branch on the block — not in scope for this design.
+5. **Aggregation over FindOne for `get_contact`** — keep the request as `MongoDBAggregation` so consumers can inject project/match stages via `request_stages.get_contact`, matching `get_all_contacts` / `create-contact` / `update-contact`. Earlier review-1 plan to switch to `MongoDBFindOne` + drop `.0` from 18 sites was reversed for extensibility. Block's `setEditContact.js` unwraps the array with `` `${getContactRequest}.0` ``.
+6. **Atlas `storedSource` + standard-Mongo `$match`** — `search_contacts`'s structural filters live in `$match` (standard Mongo), not `$search.compound.filter` (Atlas syntax). `returnStoredSource: true` makes the stored fields available to downstream stages. Consumer `filter` var takes a regular `$match` expression, and apps without Atlas can drop the `$search` stage for a degraded-but-functional picker.
 
 ## Downstream steps
 

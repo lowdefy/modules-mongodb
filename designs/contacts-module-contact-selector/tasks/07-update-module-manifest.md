@@ -37,6 +37,21 @@ vars:
     description: When true, the search results label includes phone numbers.
 ```
 
+**Add `get_contact` to the existing `request_stages:` group** so Task 3's parameterised `get_contact.yaml` has a default empty injection point:
+
+```yaml
+vars:
+  # ... existing request_stages group has get_all_contacts, write, selector, filter_match ...
+  request_stages:
+    type: object
+    properties:
+      # ... existing keys ...
+      get_contact:
+        type: array
+        default: []
+        description: Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields).
+```
+
 **Register the new request files** in the `requests:` block (file list form):
 
 ```yaml

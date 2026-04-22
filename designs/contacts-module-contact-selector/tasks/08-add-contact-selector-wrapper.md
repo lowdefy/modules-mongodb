@@ -6,7 +6,7 @@ This is the final integration task. All earlier tasks have set up the pieces:
 
 - Task 1 — `update-contact` / `create-contact` APIs accept the picker's payload shape.
 - Task 2 — The `ContactSelector` block supports `allowVerify`.
-- Task 3 — `get_contact` is a parameterised `MongoDBFindOne`; 18 `.0` reads are gone.
+- Task 3 — `get_contact` is a parameterised `MongoDBAggregation` with a `request_stages.get_contact` hook; consumers' existing `.0` reads continue to work.
 - Task 4 — `search_contacts` and `get_contacts_data` requests exist and project the block's value shape.
 - Task 5, 6 — `validate_email` helper and `form_contact_short` default form exist.
 - Task 7 — Module manifest declares `verified`, `all_contacts`, `phone_label` vars.

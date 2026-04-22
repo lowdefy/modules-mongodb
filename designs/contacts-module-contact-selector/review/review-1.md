@@ -109,7 +109,7 @@ Three safer options to consider:
 
 ### 4. `get_contact` unification is more complex than necessary
 
-> **Resolved.** Decision #4 rewritten to use the reference implementation's two-var pattern (`id` + `user_id`, `user_id` defaults to `{ _url_query: _id }`). Goal #4 and the contact-edit Modified entry updated to match.
+> **Resolved — subsequently revised.** Initial resolution adopted the two-var pattern (`id` + `user_id`) with `MongoDBFindOne`. That FindOne choice was later reversed based on in-session feedback ("prefer MongoDB aggregations over FindOne — enables project-stage injects"). Final shape: keep `MongoDBAggregation`, parameterise `id` + `user_id`, add a `request_stages.get_contact` hook. Consumers keep `.0` reads unchanged; the 18-site sweep dropped from scope. Block's `setEditContact.js` unwraps the array with `` `${getContactRequest}.0` `` to absorb the aggregation response. See decision #4.
 
 Decision #4 proposes:
 
@@ -193,7 +193,7 @@ The prior branch's `4e072de` commit message called out:
 
 > `all_contacts` filter guards against null user.global_attributes.company_ids at runtime: Atlas rejects "in.value: null", so the filter is only added when the user has at least one company_id.
 
-The design's "Atlas `$search`" decision (#5) inherits the the reference implementation pipeline without noting this runtime guard. Users who log in without any company_ids will hit a 500 from Atlas. Add to decision #5: "the `in` filter is conditionally added only when the user has a non-empty `global_attributes.company_ids`; users with no companies see no options when `all_contacts` is `false`."
+The design's "Atlas `$search`" decision (#5) inherits the reference implementation pipeline without noting this runtime guard. Users who log in without any company_ids will hit a 500 from Atlas. Add to decision #5: "the `in` filter is conditionally added only when the user has a non-empty `global_attributes.company_ids`; users with no companies see no options when `all_contacts` is `false`."
 
 ## Minor
 
