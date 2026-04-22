@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { Modal } from "antd";
 import { get } from "@lowdefy/helpers";
 import { renderHtml } from "@lowdefy/block-utils";
-import { Modal } from "antd";
 
 const ContactModal = ({
   blockId,
+  classNames = {},
+  styles = {},
   content,
   events,
   methods,
@@ -35,28 +37,24 @@ const ContactModal = ({
   }, [edit]);
 
   return (
-    <div id={blockId}>
+    <div id={blockId} className={classNames.element} style={styles.element}>
       <Modal
         id={`${blockId}_modal`}
         afterClose={() => methods.triggerEvent({ name: "afterClose" })}
-        bodyStyle={methods.makeCssClass(properties?.bodyStyle, true)}
         cancelButtonProps={properties?.cancelButtonProps}
         cancelText={properties?.cancelText ?? "Cancel"}
         centered={!!properties?.centered}
-        closable={
-          properties?.closable !== undefined ? properties?.closable : true
-        }
+        closable={properties?.closable ?? true}
         confirmLoading={get(
           events,
           edit ? "onEditContact.loading" : "onAddContact.loading",
         )}
-        mask={properties?.mask !== undefined ? properties?.mask : true}
-        maskClosable={
-          properties?.maskClosable !== undefined
-            ? properties?.maskClosable
-            : true
-        }
-        maskStyle={methods.makeCssClass(properties?.maskStyle, true)}
+        mask={properties?.mask ?? true}
+        maskClosable={properties?.maskClosable ?? true}
+        styles={{
+          body: properties?.bodyStyle,
+          mask: properties?.maskStyle,
+        }}
         okButtonProps={properties?.okButtonProps}
         okText={okTitle}
         style={properties?.style}

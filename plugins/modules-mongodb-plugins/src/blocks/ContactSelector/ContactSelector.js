@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { blockDefaultProps } from "@lowdefy/block-utils";
+import { withBlockDefaults } from "@lowdefy/block-utils";
 import { Label } from "@lowdefy/blocks-antd/blocks";
 
 import Selector from "./Selector.js";
@@ -12,6 +12,7 @@ import useContactActions from "./hooks/useContactActions.js";
 
 const ContactSelector = ({
   blockId,
+  classNames = {},
   components,
   content,
   events,
@@ -19,6 +20,7 @@ const ContactSelector = ({
   methods,
   properties,
   required,
+  styles = {},
   validation,
   value,
 }) => {
@@ -66,9 +68,11 @@ const ContactSelector = ({
       required={required}
       content={{
         content: () => (
-          <div>
+          <div className={classNames.element} style={styles.element}>
             <Selector
               blockId={`${blockId}_selector`}
+              classNames={{ element: classNames.selector }}
+              styles={{ element: styles.selector }}
               components={components}
               events={events}
               loading={properties.optionsLoading}
@@ -81,6 +85,11 @@ const ContactSelector = ({
               contactActions={contactActions}
             />
             <ContactList
+              classNames={{
+                element: classNames.list,
+                item: classNames.listItem,
+              }}
+              styles={{ element: styles.list, item: styles.listItem }}
               components={components}
               loading={loading}
               methods={methods}
@@ -92,6 +101,8 @@ const ContactSelector = ({
             />
             <ContactModal
               blockId={`${blockId}_modal`}
+              classNames={{ element: classNames.modal }}
+              styles={{ element: styles.modal }}
               content={content}
               events={events}
               methods={methods}
@@ -108,12 +119,4 @@ const ContactSelector = ({
   );
 };
 
-ContactSelector.defaultProps = blockDefaultProps;
-ContactSelector.meta = {
-  valueType: "array",
-  category: "input-container",
-  icons: [...Label.meta.icons, "AiOutlineDelete", "AiOutlineEdit"],
-  styles: ["blocks/ContactSelector/style.less"],
-};
-
-export default ContactSelector;
+export default withBlockDefaults(ContactSelector);

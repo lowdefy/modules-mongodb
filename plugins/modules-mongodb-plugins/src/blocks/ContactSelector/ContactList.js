@@ -1,9 +1,12 @@
 import React from "react";
-import ContactListItem from "./ContactListItem.js";
-import { SkeletonParagraph } from "@lowdefy/blocks-loaders/blocks";
+import { Skeleton, theme } from "antd";
 import { type } from "@lowdefy/helpers";
 
+import ContactListItem from "./ContactListItem.js";
+
 const ContactList = ({
+  classNames = {},
+  styles = {},
   components,
   loading,
   methods,
@@ -13,61 +16,92 @@ const ContactList = ({
   allowDelete,
   contactsData,
 }) => {
+  const { token } = theme.useToken();
+
   const getContactData = (contact) => {
     if (!type.isArray(contactsData)) return contact;
-
     const contactData = contactsData.find(
       (cData) => cData.contact_id === contact.contact_id,
     );
-
     return contactData || contact;
   };
 
-  return loading ? (
-    <div className="list-border" style={{ padding: 12 }}>
-      <SkeletonParagraph methods={methods} properties={{ lines: 3 }} />
-    </div>
-  ) : (
-    <div className="list-border">
-      <div
-        className="table-scroll"
-        style={selectedContacts?.length ? { padding: "0px 12px" } : {}}
-      >
-        <table className="list-table">
-          {selectedContacts?.length > 0 && (
-            <thead className="secondary">
-              <tr>
-                <th style={{ padding: 8, textAlign: "left", width: "75%" }}>
-                  {properties?.title ?? "Details"}
-                </th>
-                {allowEdit && <th>Edit</th>}
-                {allowDelete && <th>Remove</th>}
-              </tr>
-            </thead>
-          )}
-          <tbody>
-            {selectedContacts?.length > 0 &&
-              selectedContacts.map((contact, index) => (
-                <ContactListItem
-                  key={index}
-                  components={components}
-                  contact={getContactData(contact)}
-                  editContact={editContact}
-                  removeContact={removeContact}
-                  methods={methods}
-                  properties={properties?.item}
-                  allowEdit={allowEdit}
-                  allowDelete={allowDelete}
-                />
-              ))}
-            {selectedContacts?.length === 0 && (
-              <tr className="secondary" style={{ textAlign: "center" }}>
-                <td>{properties?.placeholder ?? "No contacts selected"}</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+  const containerStyle = {
+    marginTop: 8,
+    border: `1px solid ${token.colorBorder}`,
+    borderRadius: token.borderRadius,
+    overflow: "hidden",
+    ...styles.element,
+  };
+
+  if (loading) {
+    return (
+      <div className={classNames.element} style={containerStyle}>
+        <div style={{ padding: 12 }}>
+          <Skeleton active paragraph={{ rows: 3 }} />
+        </div>
       </div>
+    );
+  }
+
+  const hasItems = selectedContacts?.length > 0;
+  const showActionsHeader = hasItems && (allowEdit || allowDelete);
+
+  return (
+    <div className={classNames.element} style={containerStyle}>
+      {hasItems && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            padding: "8px 12px",
+            fontWeight: 500,
+            color: token.colorTextSecondary,
+            background: token.colorFillQuaternary,
+            borderBottom: `1px solid ${token.colorBorderSecondary}`,
+          }}
+        >
+          <span style={{ flex: 1 }}>
+            {properties?.title ?? "Details"}
+          </span>
+          {showActionsHeader && (
+            <span style={{ width: 88, textAlign: "center" }}>Actions</span>
+          )}
+        </div>
+      )}
+
+      {!hasItems && (
+        <div
+          style={{
+            padding: "16px 12px",
+            textAlign: "center",
+            color: token.colorTextTertiary,
+          }}
+        >
+          {properties?.placeholder ?? "No contacts selected"}
+        </div>
+      )}
+
+      {hasItems && (
+        <div style={{ maxHeight: 265, overflowY: "auto" }}>
+          {selectedContacts.map((contact, index) => (
+            <ContactListItem
+              key={contact.contact_id ?? index}
+              className={classNames.item}
+              style={styles.item}
+              components={components}
+              contact={getContactData(contact)}
+              editContact={editContact}
+              removeContact={removeContact}
+              methods={methods}
+              properties={properties?.item}
+              allowEdit={allowEdit}
+              allowDelete={allowDelete}
+              isLast={index === selectedContacts.length - 1}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

@@ -4,17 +4,19 @@ import { Select } from "antd";
 import { get, type } from "@lowdefy/helpers";
 import { renderHtml } from "@lowdefy/block-utils";
 
-import getUniqueValues from "../utils/getUniqueValues.js";
+import getUniqueValues from "./getUniqueValues.js";
 
 const Option = Select.Option;
 
 const Selector = ({
   blockId,
+  classNames = {},
   components: { Icon },
   events,
   loading,
   methods,
   properties,
+  styles = {},
   validation,
   contactManager: {
     addContact,
@@ -26,16 +28,14 @@ const Selector = ({
 }) => {
   const [fetchState, setFetch] = useState(false);
   const [elementId] = useState((0 | (Math.random() * 9e2)) + 1e2);
-  const [uniqueValueOptions, setUniqueValueOptions] = useState([]);
+  const [options, setOptions] = useState([]);
   const [value, setValue] = useState([]);
   const [searchText, setSearchText] = useState(null);
 
   useEffect(() => {
-    const options = getUniqueValues(properties.options || []);
-    setUniqueValueOptions(options);
+    setOptions(getUniqueValues(properties.options || []));
   }, [JSON.stringify(properties.options)]);
 
-  // Debounce logic for searchContacts
   const debounceTimer = useRef(null);
   const debouncedSearchContacts = useCallback(
     (value) => {
@@ -53,14 +53,17 @@ const Selector = ({
   );
 
   return (
-    <div className={methods.makeCssClass({ width: "100%" })}>
+    <div
+      className={classNames.element}
+      style={{ width: "100%", ...styles.element }}
+    >
       <div id={`${blockId}_${elementId}_popup`} />
       <Select
-        bordered={properties.bordered}
-        className={methods.makeCssClass([
-          { width: "100%" },
-          properties.inputStyle,
-        ])}
+        id={`${blockId}_input`}
+        variant={
+          properties.bordered === false ? "borderless" : properties.variant
+        }
+        style={{ width: "100%" }}
         mode="multiple"
         autoFocus={properties.autoFocus}
         getPopupContainer={() =>
@@ -71,8 +74,10 @@ const Selector = ({
           loading ||
           (properties.max && selectedContacts.length >= properties.max)
         }
-        placeholder={get(properties, "placeholder", { default: "Select item" })}
-        status={validation.status}
+        placeholder={get(properties, "placeholder", {
+          default: "Select item",
+        })}
+        status={validation?.status}
         value={value}
         suffixIcon={
           properties.suffixIcon && (
@@ -83,7 +88,6 @@ const Selector = ({
             />
           )
         }
-        showArrow={true}
         allowClear={false}
         showSearch={get(properties, "showSearch", { default: true })}
         size={properties.size}
@@ -101,7 +105,7 @@ const Selector = ({
           if (newVal[0] === "new_contact") {
             createNewContact(searchText);
           } else {
-            const val = uniqueValueOptions[newVal]?.value;
+            const val = options[newVal]?.value;
             addContact(val);
             methods.triggerEvent({ name: "onChange" });
           }
@@ -122,17 +126,21 @@ const Selector = ({
           setSearchText(value);
           setFetch(true);
           debouncedSearchContacts(value);
-          await methods.triggerEvent({ name: "afterSearch", event: { value } });
+          await methods.triggerEvent({
+            name: "afterSearch",
+            event: { value },
+          });
         }}
       >
-        {uniqueValueOptions.map((opt, i) =>
+        {options.map((opt, i) =>
           type.isObject(opt) ? (
             <Option
-              className={`${
+              className={
                 contactSelected(opt.value)
                   ? "ant-select-item-option-selected"
-                  : ""
-              } ${methods.makeCssClass([properties.optionsStyle, opt.style])}`}
+                  : undefined
+              }
+              style={opt.style}
               disabled={opt.disabled}
               filterstring={opt.filterString}
               id={`${blockId}_${i}`}
@@ -147,7 +155,6 @@ const Selector = ({
         )}
         {searchText && properties.allowNewContacts && (
           <Option
-            className={methods.makeCssClass(properties.optionsStyle)}
             id={`${blockId}_new_contact`}
             value={"new_contact"}
           >
