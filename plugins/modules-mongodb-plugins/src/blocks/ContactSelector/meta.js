@@ -1,3 +1,10 @@
+// Per-row action controls (passed via `properties`):
+//   allowEdit    — boolean, default true. Render an Edit (icon) button per row.
+//   allowVerify  — boolean, default false. When true, rows where
+//                  `contact.verified !== true` render a danger-styled
+//                  "Verify" button in place of Edit; clicking it fires the
+//                  same edit flow (no separate onVerify event).
+//   allowDelete  — boolean, default true. Render a Delete (icon) button per row.
 export default {
   category: "input-container",
   valueType: "array",

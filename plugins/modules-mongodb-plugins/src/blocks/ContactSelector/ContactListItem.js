@@ -14,6 +14,7 @@ const ContactListItem = ({
   removeContact,
   editContact,
   allowEdit,
+  allowVerify,
   allowDelete,
   isLast,
 }) => {
@@ -39,7 +40,8 @@ const ContactListItem = ({
     setDescription(parsedDescription ?? contact.email ?? "");
   }, [properties?.description, properties?.title, JSON.stringify(contact)]);
 
-  const showActions = allowEdit || allowDelete;
+  const showVerify = allowVerify === true && !contact.verified;
+  const showActions = allowEdit || allowVerify || allowDelete;
 
   return (
     <div
@@ -74,16 +76,27 @@ const ContactListItem = ({
         </div>
       </div>
       {showActions && (
-        <Space size={4} style={{ width: 88, justifyContent: "flex-end" }}>
-          {allowEdit && (
+        <Space size={4} style={{ width: 120, justifyContent: "flex-end" }}>
+          {showVerify ? (
             <Button
               size="small"
-              type="default"
-              icon={
-                <Icon properties={{ name: "AiOutlineEdit" }} />
-              }
+              type="primary"
+              danger
               onClick={() => editContact(contact)}
-            />
+            >
+              Verify
+            </Button>
+          ) : (
+            allowEdit && (
+              <Button
+                size="small"
+                type="default"
+                icon={
+                  <Icon properties={{ name: "AiOutlineEdit" }} />
+                }
+                onClick={() => editContact(contact)}
+              />
+            )
           )}
           {allowDelete && (
             <Button

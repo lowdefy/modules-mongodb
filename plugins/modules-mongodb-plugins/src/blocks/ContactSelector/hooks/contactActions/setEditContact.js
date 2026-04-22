@@ -23,7 +23,7 @@ function createSetEditContact({
         type: "SetState",
         params: {
           [statePrefix("edit")]: true,
-          [statePrefix("contact")]: { _request: getContactRequest },
+          [statePrefix("contact")]: { _request: `${getContactRequest}.0` },
         },
       },
     ],

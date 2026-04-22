@@ -13,6 +13,7 @@ const ContactList = ({
   properties,
   contactManager: { selectedContacts, editContact, removeContact },
   allowEdit,
+  allowVerify,
   allowDelete,
   contactsData,
 }) => {
@@ -45,7 +46,7 @@ const ContactList = ({
   }
 
   const hasItems = selectedContacts?.length > 0;
-  const showActionsHeader = hasItems && (allowEdit || allowDelete);
+  const showActionsHeader = hasItems && (allowEdit || allowVerify || allowDelete);
 
   return (
     <div className={classNames.element} style={containerStyle}>
@@ -65,7 +66,7 @@ const ContactList = ({
             {properties?.title ?? "Details"}
           </span>
           {showActionsHeader && (
-            <span style={{ width: 88, textAlign: "center" }}>Actions</span>
+            <span style={{ width: 120, textAlign: "center" }}>Actions</span>
           )}
         </div>
       )}
@@ -96,6 +97,7 @@ const ContactList = ({
               methods={methods}
               properties={properties?.item}
               allowEdit={allowEdit}
+              allowVerify={allowVerify}
               allowDelete={allowDelete}
               isLast={index === selectedContacts.length - 1}
             />
