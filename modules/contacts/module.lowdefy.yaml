@@ -113,7 +113,9 @@ exports:
       description: Update contact with is_user guard and event logging
   components:
     - id: contact-selector
-      description: Selector/MultipleSelector for picking contacts
+      description: Rich ContactSelector block — search, add, edit, remove, optional verify UI
+    - id: basic-contact-selector
+      description: Simple Selector/MultipleSelector dropdown over all active contacts (read-only picker)
   menus:
     - id: default
       description: Contacts navigation link
@@ -135,6 +137,9 @@ components:
   - id: contact-selector
     component:
       _ref: components/contact-selector.yaml.njk
+  - id: basic-contact-selector
+    component:
+      _ref: components/basic-contact-selector.yaml
 
 menus:
   - _ref: menus.yaml

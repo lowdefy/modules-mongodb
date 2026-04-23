@@ -1,0 +1,40 @@
+# Simple Selector / MultipleSelector dropdown backed by a one-shot
+# fetch of all active contacts. Useful when the rich ContactSelector
+# block (see contact-selector.yaml.njk) is overkill — e.g. read-only
+# forms, admin tools, or cases where add/edit is handled elsewhere.
+#
+# Vars:
+#   field_id (string, default "contact") — block id / state key
+#   mode     (string, default "Selector") — "Selector" or "MultipleSelector"
+#   label    (string) — passed to the block's label / placeholder
+id:
+  _var:
+    key: field_id
+    default: contact
+type:
+  _var:
+    key: mode
+    default: Selector
+requests:
+  - _ref: requests/get_contacts_for_selector.yaml
+events:
+  onMount:
+    - id: fetch_contacts
+      type: Request
+      params: get_contacts_for_selector
+properties:
+  placeholder:
+    _string.concat:
+      - "Select "
+      - _if_none:
+          - _var: label
+          - _module.var: label
+  options:
+    _request: get_contacts_for_selector
+  label:
+    _if_none:
+      - _var: label
+      - _module.var: label
+  optionConfig:
+    titleField: label
+    valueField: value
