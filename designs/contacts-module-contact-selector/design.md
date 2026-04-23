@@ -77,8 +77,8 @@ Per-call knobs (passed via `vars:` at the consumer):
 | `disable_new_contacts`                         | `boolean` | `false`                                     | Hides the "Add new contact" footer in the dropdown                                                       |
 | `disable_edit`                                 | `boolean` | `true`                                      | Hides per-row edit buttons                                                                               |
 | `onAddContact`                                 | `array`   | `[]`                                        | Extra actions appended after the default add-contact chain                                               |
-| `form_blocks`                                  | `array`   | default form `_ref`                         | Override the modal form. Default renders `form_contact_short.yaml.njk` (first / last / email / phones)   |
-| `form_required`                                | `object`  | `{}`                                        | `{ given_name, family_name, email, phones, company_ids }` — required flags forwarded to the default form |
+| `form_extra_blocks`                            | `array`   | `[]`                                        | Input blocks appended to the default form (given_name/family_name/email). See decision #8                |
+| `form_required`                                | `object`  | `{}`                                        | `{ given_name, family_name, email }` — required flags forwarded to the default form                      |
 
 The module-level `verified`, `all_contacts`, `phone_label` defaults are declared in `module.lowdefy.yaml`; everything else is per-call `_var`.
 
@@ -146,6 +146,11 @@ pipeline:
   - $search:
       returnStoredSource: true
       compound:
+        # Baseline: compound requires ≥1 clause across filter/must/mustNot/should,
+        # and `should` collapses to [] when input is empty (review-3 #1).
+        filter:
+          - exists:
+              path: _id
         should:
           _if:
             test: { _eq: [{ _if_none: [{ _payload: input }, ""] }, ""] }
@@ -191,7 +196,9 @@ Three benefits:
 2. **Stored-source retrieval.** `returnStoredSource: true` makes `$search` output the stored fields (`profile`, `email`, `global_attributes`) so the subsequent `$match` sees them. The module's existing Atlas search index already uses this — `get_all_contacts` is the precedent.
 3. **Graceful degradation.** An app without Atlas drops the `$search` stage; the remaining `$match` + `$project` pipeline works against any MongoDB. The picker loses text-ranking but still filters correctly — adequate for fallback use.
 
-The empty-`company_ids` guard is preserved: the `$in` clause is conditionally added only when the user has at least one company_id. Without the guard, `$in: null` would silently return zero rows (not an error with `$match`, unlike Atlas's rejection in `compound.filter`), but omitting the clause is cleaner and matches the guard added on the abandoned prior branch (`4e072de`).
+The empty-`company_ids` guard is preserved: the `$in` clause is conditionally added only when the user has at least one company_id. Without the guard, `$in: null` would silently return zero rows (not an error with `$match`, unlike Atlas's rejection in `compound.filter`), but omitting the clause is cleaner and matches the guard added on the abandoned prior branch (`4e072de`). The guard uses a runtime `_if` (not `_build.if`) because its test reads runtime operators (`_user`, `_array.length`) that can't resolve at build time — review-3 caught a `_build.if` → `_if` fix here.
+
+**Projection uses `$email`, not `$lowercase_email`** (review-3 #2). The `$project` stage emits `email: $ifNull: ["$email", "$lowercase_email"]`. `lowercase_email` feeds the `$search` text/wildcard path (case-insensitive matching) but isn't declared as stored in the Atlas index's storedSource config, so projecting it directly produces null. `email` is stored (the contacts list table reads it). Same projection shape in `get_contacts_data.yaml` for consistency.
 
 ### 6. Replace, don't dual-ship
 
@@ -223,35 +230,34 @@ Implementation:
 - **Block additions (in scope)**: `ContactListItem.js` gains an `allowVerify` prop; when `allowVerify && !contact.verified`, the Edit button is replaced with a Verify button (danger style, label "Verify", still triggers `editContact(contact)`). `ContactList.js` and `ContactSelector.js` forward the prop. `meta.js` adds `allowVerify` to documented properties.
 - `search_contacts` and `get_contacts_data` project `verified: $global_attributes.verified` so the block-level contact objects carry the field at top level for list rendering (matches how the block already reads other contact fields at top level).
 
-### 8. Form override via consumer-supplied `form_blocks`
+### 8. Form extension via `form_extra_blocks` (append, don't replace)
 
-The wrapper renders the modal form as a nested `blocks:` array defaulting to the shipped `form_contact_short.yaml.njk`. Consumers who need a different form pass their own `form_blocks` var:
+> **Revised by review-3 #5.** Previously the wrapper let consumers *replace* the whole form via `form_blocks`. That contract mismatched the rest of the contacts module (`form_profile.yaml` / `fields.profile` module var, etc.) where forms expose an extension slot fed through `_build.array.concat`. Renamed to `form_extra_blocks` and switched to append-only. Consumers who want a radically different form fork the file or call the block directly — no longer first-class.
+
+The wrapper renders the modal form via a single `_ref` to the shipped `form_contact_short.yaml.njk`. The default form accepts an `extra_blocks` var that gets appended to its core inputs (given_name, family_name, email) via `_build.array.concat`. The wrapper passes `extra_blocks: _var: form_extra_blocks (default [])` through, so a consumer's extra fields reach the form in one hop.
 
 ```yaml
 # components/contact-selector.yaml.njk — blocks section
 blocks:
-  _var:
-    key: form_blocks
-    default:
-      - _ref:
-          path: components/form_contact_short.yaml.njk
-          vars:
-            key: {{ id | replace(".", "_") }}_contact
-            new_contact:
-              _not:
-                _state: {{ id | replace(".", "_") }}_edit
-                ~ignoreBuildChecks: true
-            required:
-              _var:
-                key: form_required
-                default: {}
-            get_contact:
-              _request: {{ id | replace(".", "_") }}_get_contact
-            loading:
-              _request_details: {{ id | replace(".", "_") }}_get_contact.0.loading
+  - _ref:
+      path: components/form_contact_short.yaml.njk
+      vars:
+        key: {{ id | replace(".", "_") }}_contact
+        new_contact:
+          _not:
+            _state: {{ id | replace(".", "_") }}_edit
+            ~ignoreBuildChecks: true
+        required:
+          _var:
+            key: form_required
+            default: {}
+        extra_blocks:
+          _var:
+            key: form_extra_blocks
+            default: []
 ```
 
-Consumer overriding:
+Consumer adding fields:
 
 ```yaml
 _ref:
@@ -259,17 +265,21 @@ _ref:
   component: contact-selector
   vars:
     id: edit.ticket.subscribers
-    form_blocks:
-      - _ref:
-          path: pages/tickets/components/custom_contact_form.yaml.njk
-          vars: { ... } # consumer wires state keys using the same {id}_contact prefix
+    form_extra_blocks:
+      - id: edit_ticket_subscribers_contact.profile.job_title
+        type: TextInput
+        properties: { title: Job Title }
+      - id: edit_ticket_subscribers_contact.profile.department
+        type: TextInput
+        properties: { title: Department }
 ```
 
-Trade-off considered: a per-module `form` var (one override for all pickers in the module) was rejected — the only proven way to express it would be passing a path through `_ref: { path: { _module.var: form } }`, which isn't a documented pattern. Per-call override is the mechanism Lowdefy's block slots already use, and matches the reference implementation's pattern of inlining the form at each call site.
+Trade-offs considered:
 
-The default `form_contact_short.yaml.njk` ships with the five fields from the reference implementation: `profile.given_name`, `profile.family_name`, `email`, `profile.work_phone`, `profile.mobile_phone`. `email` is locked once the contact exists (it's the dedup key; editing emails is a separate concern). The email input uses `_ref: { path: ../validate/email.yaml, vars: { field_name: {{ key }}.email } }`, reusing the validator the contacts module already ships (identical to the user-admin / user-account / companies copies — see review-2). Cross-module consolidation into a shared `modules/shared/validate/email.yaml` was considered and rejected: it would break the documented GitHub-subpath distribution model (`source: "github:.../modules/contacts@v1"`) because `../shared/` sits outside the pulled subtree.
+- A per-module `form` var (one override for all pickers in the module) was rejected — the only proven way to express it would be passing a path through `_ref: { path: { _module.var: form } }`, which isn't a documented pattern.
+- Full-form replacement via `form_blocks` was rejected at review-3 — it created a footgun (consumers could drop the email dedup key, skip validation, or use the wrong state-key prefix) and didn't match the module's established pattern of core+extension.
 
-An app that wants the same custom form on every picker page wraps the consumer call in its own shared component that passes `form_blocks` through. Acceptable ergonomics for the added simplicity.
+The default `form_contact_short.yaml.njk` ships with three fields: `profile.given_name`, `profile.family_name`, `email`. Name fields are editable in both Add and Edit modes (review-3 #4 removed the over-applied edit-mode lock). **`email` is locked on edit** — it's the dedup key; editing emails is a separate flow. Phones were removed from defaults (review-3 #5) — apps that need them pass phone blocks via `form_extra_blocks`. The email input uses `_ref: { path: validate/email.yaml, vars: { field_name: {{ key }}.email } }`, reusing the validator the contacts module already ships (identical to the user-admin / user-account / companies copies — see review-2). Cross-module consolidation into a shared `modules/shared/validate/email.yaml` was considered and rejected: it would break the documented GitHub-subpath distribution model (`source: "github:.../modules/contacts@v1"`) because `../shared/` sits outside the pulled subtree.
 
 ### 9. Drop optimistic-concurrency check on `update-contact`
 
@@ -326,11 +336,13 @@ Adds `modules/contacts/api/create-contact.yaml` to Files changed.
 - `modules/contacts/api/create-contact.yaml` — `:return: contactId` falls through `insert.upsertedId` → `insert.lastErrorObject.upserted` (see decision #10)
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactListItem.js` — add `allowVerify` prop; render Verify (danger) button in place of Edit for unverified rows
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactList.js` — forward `allowVerify` to `ContactListItem`
-- `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactSelector.js` — pass `properties.allowVerify` down to `ContactList`
+- `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactSelector.js` — pass `properties.allowVerify` down to `ContactList`; memoize Label `content` prop with `useCallback`/`useMemo` (review-3 #3, defense-in-depth)
+- `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/Selector.js` — drop `loading` from `disabled` expression (review-3 #3 root-cause fix); add controlled `open` state (defense-in-depth)
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/hooks/contactActions/setEditContact.js` — read first element via `` `${getContactRequest}.0` `` so the block handles aggregation responses (see decision #4)
+- `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/hooks/contactActions/getContactsData.js` — drop the third action that wrote the filtered enrichment response back to the block's value state key (review-3 #6). Enrichment is display-only via `properties.data` → `contactsData` → `ContactList.getContactData()`; value stays owned by `useContactManager` (race-safe).
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/meta.js` — document `allowVerify` in properties
 
-Total: 4 new files, 2 deleted, 8 modified. Net delta is dominated by the new wrapper (~200 lines), the default form (~150 lines), and the block's `allowVerify` + `setEditContact` unwrap (~30 lines); offset by the deleted wrapper and selector request (~65 lines). The consumer-side `.0` drops from review-1's earlier plan are no longer needed — `get_contact` stays an aggregation. Review-2 dropped the originally-planned `validate_email.yaml` — the form reuses the existing `modules/contacts/validate/email.yaml`.
+Total: 4 new files, 2 deleted, 10 modified. Net delta is dominated by the new wrapper (~200 lines), the default form (~90 lines after review-3 #5 phone-drop + extra_blocks refactor), and the block's `allowVerify` + `setEditContact` unwrap (~30 lines); offset by the deleted wrapper and selector request (~65 lines). The consumer-side `.0` drops from review-1's earlier plan are no longer needed — `get_contact` stays an aggregation. Review-2 dropped the originally-planned `validate_email.yaml` — the form reuses the existing `modules/contacts/validate/email.yaml`. Review-3 added `Selector.js` and `getContactsData.js` to Modified and documented five fix-level findings (Atlas compound baseline, email projection, dropdown-close root cause, form field lock scope, rapid-select value wipe) plus one deliberate contract refinement (`form_blocks` → `form_extra_blocks`).
 
 ## Data flow
 
@@ -381,7 +393,7 @@ Total: 4 new files, 2 deleted, 8 modified. Net delta is dominated by the new wra
 1. **`extra_options` pattern** — document only, no helper. The consumer composes its own options list via `extra_options: { _array.concat: [{ _request: my_local_request }, …] }` (or just a static array). README snippet covers the pattern; the wrapper treats `extra_options` as a pass-through that's concatenated onto the search results.
 2. **`default_company_ids` is opt-in** — already per-call with `default: null`. When unset, the wrapper emits no `onOpen.prefill_company` action, so apps that don't use the `companies` module aren't coupled. When set, the prefill is appended to `onOpen`. No cross-module dependency is forced.
 3. **`verified` is opt-in and tri-state** — see decision #7. Default `off` means no verification behaviour is wired. When set to `trusted` or `untrusted`, the picker writes `global_attributes.verified` (not top-level) and exposes verify UI. Module-level only — no per-call override; apps that need heterogeneous pickers should split.
-4. **Two known block issues appear resolved on the demo page** — the empty-edit-modal and dropdown-closes-on-keystroke symptoms were not reproducible in the standalone demo added in `922f388`. They'll be re-verified end-to-end once the module wrapper is wired and a real consumer (e.g. a page in an app) drives the picker. If they resurface, fix in a follow-up branch on the block — not in scope for this design.
+4. **Two known block issues — status.** (a) *Empty-edit-modal on just-added contacts*: resolved by Task 1's `create-contact` upsertedId fall-through + Task 2's aggregation-array unwrap in `setEditContact.js`. End-to-end verification against the demo page confirms the contact_id reaches `appendContact` and Edit pre-fills correctly. (b) *Dropdown-closes-on-keystroke*: **recurred** once the module wrapper was wired end-to-end. Resolved at review-3 #3 — root cause was the wrapper setting `optionsLoading`, which `ContactSelector.js` passes as `loading` to `Selector.js`, which in turn put the antd `<Select>` into `disabled` state during each in-flight request. antd closes the dropdown on `disabled`→`true`. Fixed by dropping `loading` from the block's `disabled` expression and removing the `optionsLoading` property from the wrapper; controlled `open` state and memoized Label content added as defense-in-depth.
 5. **Aggregation over FindOne for `get_contact`** — keep the request as `MongoDBAggregation` so consumers can inject project/match stages via `request_stages.get_contact`, matching `get_all_contacts` / `create-contact` / `update-contact`. Earlier review-1 plan to switch to `MongoDBFindOne` + drop `.0` from 18 sites was reversed for extensibility. Block's `setEditContact.js` unwraps the array with `` `${getContactRequest}.0` ``.
 6. **Atlas `storedSource` + standard-Mongo `$match`** — `search_contacts`'s structural filters live in `$match` (standard Mongo), not `$search.compound.filter` (Atlas syntax). `returnStoredSource: true` makes the stored fields available to downstream stages. Consumer `filter` var takes a regular `$match` expression, and apps without Atlas can drop the `$search` stage for a degraded-but-functional picker.
 
