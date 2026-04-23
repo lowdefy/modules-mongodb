@@ -24,7 +24,7 @@
 id: form_contact
 type: Box
 layout:
-  contentGutter: 8
+  gap: 8
 style:
   margin: auto
 blocks:
@@ -72,7 +72,7 @@ blocks:
           _var: new_contact
     validate:
       _ref:
-        path: ../validate/email.yaml
+        path: validate/email.yaml
         vars:
           field_name: {{ key }}.email
 

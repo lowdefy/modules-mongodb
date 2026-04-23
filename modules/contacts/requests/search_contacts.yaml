@@ -15,7 +15,8 @@ type: MongoDBAggregation
 connectionId:
   _module.connectionId: contacts-collection
 payload:
-  _var: payload
+  input:
+    _var: input
 properties:
   pipeline:
     - $search:
@@ -58,7 +59,7 @@ properties:
                 _var: all_contacts
               then: {}
               else:
-                _build.if:
+                _if:
                   test:
                     _gt:
                       - _array.length:

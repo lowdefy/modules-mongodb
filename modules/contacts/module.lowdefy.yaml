@@ -134,7 +134,7 @@ pages:
 components:
   - id: contact-selector
     component:
-      _ref: components/contact-selector.yaml
+      _ref: components/contact-selector.yaml.njk
 
 menus:
   - _ref: menus.yaml
