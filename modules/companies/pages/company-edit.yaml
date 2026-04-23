@@ -121,7 +121,14 @@ _ref:
                           attributes:
                             _state: attributes
                           contacts:
-                            _state: contacts
+                            _array.map:
+                              on:
+                                _if_none:
+                                  - _state: contacts
+                                  - []
+                              callback:
+                                _function:
+                                  __args: 0.contact_id
                           updated:
                             _state: updated
                       messages:
