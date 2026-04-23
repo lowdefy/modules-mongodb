@@ -4,6 +4,7 @@
       type: MenuGroup
       properties:
         title: User Admin
+        icon: AiOutlineTeam
       links:
         _ref:
           module: user-admin
@@ -12,6 +13,7 @@
       type: MenuGroup
       properties:
         title: Companies
+        icon: AiOutlineShop
       links:
         _ref:
           module: companies
@@ -20,6 +22,7 @@
       type: MenuGroup
       properties:
         title: Contacts
+        icon: AiOutlineContacts
       links:
         _ref:
           module: contacts

@@ -1,11 +1,35 @@
-name: Layout Header Menu
-description: Page layout with sider menu, title bar, and content area
+name: Layout
+description: Page layout module supporting three page block variants — PageHeaderMenu (top header + inline menu, default), PageSiderMenu (top header + collapsible sider), and PageSidebarLayout (full-height sider) — selected via the page_type var.
 
 dependencies:
   - id: user-account
   - id: notifications
 
 vars:
+  page_type:
+    type: string
+    default: header-menu
+    enum:
+      - header-menu
+      - sider-menu
+      - sidebar
+    description: Which page block to render. 'header-menu' (default) uses PageHeaderMenu (top header bar with inline menu, no sider); 'sider-menu' uses PageSiderMenu (top header bar + collapsible sider); 'sidebar' uses PageSidebarLayout (full-height sider containing menu, profile, and notifications). Can be overridden per page via `_ref` vars.
+  sider:
+    type: object
+    default: {}
+    description: "Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider)."
+  sider_open_blocks:
+    type: array
+    default: []
+    description: Blocks rendered in the PageSidebarLayout siderOpen slot (below the menu when expanded). Only used when page_type is 'sidebar'.
+  sider_closed_blocks:
+    type: array
+    default: []
+    description: Blocks rendered in the PageSidebarLayout siderClosed slot (shown when collapsed). Only used when page_type is 'sidebar'.
+  sider_storage_key:
+    type: string
+    default: layout-sider
+    description: localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist).
   logo:
     type: object
     description: "Logo config: { primary_light, primary_dark, icon, style }"
@@ -26,11 +50,11 @@ vars:
     type: object
     default:
       _menu: default
-    description: Menu config passed to PageHeaderMenu. Defaults to _menu default.
+    description: Menu config passed to the page block. Defaults to _menu default.
   header:
     type: object
     default: {}
-    description: "PageHeaderMenu header properties: { theme, contentStyle }"
+    description: "Page block header properties: { theme, contentStyle }"
   header_extra:
     type: object
     description: "Header customization: { blocks, requests }"
@@ -51,10 +75,10 @@ vars:
     type: object
     default: null
     description: Custom card component override (replaces default Card layout)
-  darkModeToggle:
+  dark_mode_toggle:
     type: boolean
     default: true
-    description: Enable dark mode toggle in header
+    description: Enable dark mode toggle in the page block (rendered in the header for sider-menu, in the sider for sidebar)
   extra_profile_links:
     type: array
     default: []
@@ -72,8 +96,8 @@ vars:
           _if:
             test:
               _media: darkMode
-            then: 'linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 40%, black) 0%, color-mix(in srgb, var(--ant-color-primary) 60%, black) 100%)'
-            else: 'linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)'
+            then: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 40%, black) 0%, color-mix(in srgb, var(--ant-color-primary) 60%, black) 100%)"
+            else: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)"
       logo_max_width:
         default: 160
       brand_panel_background:
@@ -82,7 +106,7 @@ vars:
 exports:
   components:
     - id: page
-      description: PageSiderMenu layout wrapper with title bar, header slots, sider menu, and content area
+      description: Page layout wrapper with title bar, header/sider slots, menu, and content area. Selects PageHeaderMenu, PageSiderMenu, or PageSidebarLayout based on the page_type var.
     - id: card
       description: Standard content card layout with optional back button and footer
     - id: floating-actions
@@ -93,7 +117,7 @@ exports:
 components:
   - id: page
     component:
-      _ref: ./components/page.yaml
+      _ref: components/page.yaml
   - id: card
     component:
       _ref: ../shared/layout/card.yaml
