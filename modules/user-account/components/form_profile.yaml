@@ -6,19 +6,7 @@ style:
   margin: auto
 blocks:
   _build.array.concat:
-    - - id: avatar_preview
-        type: Avatar
-        style:
-          textAlign: center
-          marginBottom: 16
-        properties:
-          src:
-            _js:
-              _ref:
-                path: ../shared/profile/generate-avatar-svg.js.njk
-                vars:
-                  prefix: profile
-          size: 100
+    - - _ref: ../shared/profile/avatar-preview.yaml
       - id: shuffle_color
         type: Button
         style:

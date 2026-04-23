@@ -62,16 +62,13 @@ Page YAML → _ref: module: layout, component: page
 
 ## Variations
 
-**List page** — filters above, Card containing table + pagination:
+**List page** — flat siblings: filter, table, pagination. AgGrid tables do not need a Card wrapper.
 
 ```yaml
 blocks:
   - _ref: components/filter_{entities}.yaml
-  - id: content
-    type: Card
-    blocks:
-      - _ref: components/table_{entities}.yaml
-      - _ref: components/pagination.yaml
+  - _ref: components/table_{entities}.yaml
+  - _ref: components/pagination.yaml
 ```
 
 **Detail page** — two-column with info card + sidebar tiles:
