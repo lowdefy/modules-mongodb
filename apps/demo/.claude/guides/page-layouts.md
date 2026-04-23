@@ -154,7 +154,7 @@ _ref:
 
 ## Reference Files
 
-- `modules/layout-header-menu/components/page.yaml` — main page layout shell with all vars
+- `modules/layout/components/page.yaml` — main page layout shell with all vars
 - `modules/shared/layout/title-block.yaml` — title + change stamp Nunjucks template
 - `modules/shared/layout/card.yaml` — card with doc metadata, skeleton, header/footer buttons, back button
 - `modules/shared/layout/floating-actions.yaml` — sticky Affix action bar
