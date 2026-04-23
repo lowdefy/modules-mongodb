@@ -8,7 +8,7 @@ This is the final integration task. All earlier tasks have set up the pieces:
 - Task 2 — The `ContactSelector` block supports `allowVerify`.
 - Task 3 — `get_contact` is a parameterised `MongoDBAggregation` with a `request_stages.get_contact` hook; consumers' existing `.0` reads continue to work.
 - Task 4 — `search_contacts` and `get_contacts_data` requests exist and project the block's value shape.
-- Task 5, 6 — `validate_email` helper and `form_contact_short` default form exist.
+- Task 6 — `form_contact_short` default form exists. (Task 5 was obsoleted by review-2 — the form reuses the existing `modules/contacts/validate/email.yaml`.)
 - Task 7 — Module manifest declares `verified`, `all_contacts`, `phone_label` vars.
 
 This task swaps the `contact-selector` export target from the old `.yaml` (simple `Selector` dropdown) to a new `.yaml.njk` wrapper that renders `type: ContactSelector`, instance-scopes all three requests, wires the `onOpen` / `onAddContact` / `onEditContact` chains, and nests the default form via `form_blocks` default. Old files get deleted.

@@ -2,11 +2,10 @@
 
 ## Context
 
-`modules/contacts/module.lowdefy.yaml` is the contacts module's manifest. After Tasks 4, 5, 6 land, three new files exist in the module tree:
+`modules/contacts/module.lowdefy.yaml` is the contacts module's manifest. After Tasks 4 and 6 land, three new files exist in the module tree (Task 5 was obsoleted by review-2 — the form reuses the existing `validate/email.yaml`):
 
 - `requests/search_contacts.yaml` (Task 4)
 - `requests/get_contacts_data.yaml` (Task 4)
-- `validate/validate_email.yaml` (Task 5)
 - `components/form_contact_short.yaml.njk` (Task 6)
 
 The manifest needs to register these, declare the three new module-level vars (`verified`, `all_contacts`, `phone_label`), and leave the `components.contact-selector` entry untouched (Task 8 swaps its `_ref` target from `.yaml` to `.yaml.njk` as part of the wrapper swap).

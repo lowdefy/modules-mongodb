@@ -267,7 +267,7 @@ _ref:
 
 Trade-off considered: a per-module `form` var (one override for all pickers in the module) was rejected — the only proven way to express it would be passing a path through `_ref: { path: { _module.var: form } }`, which isn't a documented pattern. Per-call override is the mechanism Lowdefy's block slots already use, and matches the reference implementation's pattern of inlining the form at each call site.
 
-The default `form_contact_short.yaml.njk` ships with the five fields from the reference implementation: `profile.given_name`, `profile.family_name`, `email`, `profile.work_phone`, `profile.mobile_phone`. `email` is locked once the contact exists (it's the dedup key; editing emails is a separate concern). `_ref: validate_email.yaml` is referenced via `../shared/...` — this module doesn't ship that file today, so the design bundles a local `validate_email.yaml` inside the contacts module.
+The default `form_contact_short.yaml.njk` ships with the five fields from the reference implementation: `profile.given_name`, `profile.family_name`, `email`, `profile.work_phone`, `profile.mobile_phone`. `email` is locked once the contact exists (it's the dedup key; editing emails is a separate concern). The email input uses `_ref: { path: ../validate/email.yaml, vars: { field_name: {{ key }}.email } }`, reusing the validator the contacts module already ships (identical to the user-admin / user-account / companies copies — see review-2). Cross-module consolidation into a shared `modules/shared/validate/email.yaml` was considered and rejected: it would break the documented GitHub-subpath distribution model (`source: "github:.../modules/contacts@v1"`) because `../shared/` sits outside the pulled subtree.
 
 An app that wants the same custom form on every picker page wraps the consumer call in its own shared component that passes `form_blocks` through. Acceptable ergonomics for the added simplicity.
 
@@ -312,7 +312,6 @@ Adds `modules/contacts/api/create-contact.yaml` to Files changed.
 - `modules/contacts/components/form_contact_short.yaml.njk` — default form
 - `modules/contacts/requests/search_contacts.yaml` — Atlas `$search` selector pipeline, projects `{ value: { contact_id, name, email, verified, picture }, label: html }`
 - `modules/contacts/requests/get_contacts_data.yaml` — MongoDBAggregation that enriches selected + option contacts by id (projects `contact_id`/`name`/`email`/`verified`/`picture`) for the block's list rows
-- `modules/contacts/validate/validate_email.yaml` — referenced by the default form
 
 **Deleted**
 
@@ -331,7 +330,7 @@ Adds `modules/contacts/api/create-contact.yaml` to Files changed.
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/hooks/contactActions/setEditContact.js` — read first element via `` `${getContactRequest}.0` `` so the block handles aggregation responses (see decision #4)
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/meta.js` — document `allowVerify` in properties
 
-Total: 5 new files, 2 deleted, 8 modified. Net delta is dominated by the new wrapper (~200 lines), the default form (~150 lines), and the block's `allowVerify` + `setEditContact` unwrap (~30 lines); offset by the deleted wrapper and selector request (~65 lines). The consumer-side `.0` drops from review-1's earlier plan are no longer needed — `get_contact` stays an aggregation.
+Total: 4 new files, 2 deleted, 8 modified. Net delta is dominated by the new wrapper (~200 lines), the default form (~150 lines), and the block's `allowVerify` + `setEditContact` unwrap (~30 lines); offset by the deleted wrapper and selector request (~65 lines). The consumer-side `.0` drops from review-1's earlier plan are no longer needed — `get_contact` stays an aggregation. Review-2 dropped the originally-planned `validate_email.yaml` — the form reuses the existing `modules/contacts/validate/email.yaml`.
 
 ## Data flow
 

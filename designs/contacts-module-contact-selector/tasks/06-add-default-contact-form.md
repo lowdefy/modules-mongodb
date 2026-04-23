@@ -6,7 +6,7 @@ The `ContactSelector` wrapper (Task 8) renders its modal form as nested `blocks:
 
 The form binds its inputs to `{key}.profile.given_name`, `{key}.profile.family_name`, `{key}.email`, `{key}.profile.work_phone`, `{key}.profile.mobile_phone`, where `{key}` is a Nunjucks-interpolated prefix passed in by the wrapper (typically `{id}_contact`). Required flags are forwarded from the wrapper's `form_required` var. Email is disabled when editing (it's the dedup key; editing emails is a separate concern).
 
-Task 5 ships `modules/contacts/validate/validate_email.yaml`; this form references it via `../validate/validate_email.yaml` to wire the email input's validation.
+The existing `modules/contacts/validate/email.yaml` (already on the branch, identical across four modules) is referenced via `../validate/email.yaml` to wire the email input's validation. Task 5 was obsoleted by review-2 — no new validator file is needed.
 
 ## Task
 
@@ -16,7 +16,7 @@ Task 5 ships `modules/contacts/validate/validate_email.yaml`; this form referenc
 2. Five nested blocks:
    - `{{ key }}.profile.given_name` — TextInput, `span: 12`, title "First Name", `required` from `_var: required.given_name` (default `true`), disabled unless `new_contact === true`.
    - `{{ key }}.profile.family_name` — TextInput, `span: 12`, title "Last Name", `required` from `_var: required.family_name` (default `true`), disabled unless `new_contact === true`.
-   - `{{ key }}.email` — TextInput, full width, title "Email", `required` from `_var: required.email` (default `false`), `validate: _ref: { path: ../validate/validate_email.yaml, vars: { field_name: {{ key }}.email } }`, disabled unless `new_contact === true`.
+   - `{{ key }}.email` — TextInput, full width, title "Email", `required` from `_var: required.email` (default `false`), `validate: _ref: { path: ../validate/email.yaml, vars: { field_name: {{ key }}.email } }`, disabled unless `new_contact === true`.
    - `{{ key }}.profile.work_phone` — PhoneNumberInput, `span: 12`, title "Work Number", `defaultRegion: ZA`, `placeholder: 11 001 2233`. Validate clause: warning when input length > 9 chars, error when `required.phones: true` and both work+mobile are blank. Disabled when `!new_contact && existing work_phone.input is non-empty` (see the reference implementation for the `_and` conditional shape).
    - `{{ key }}.profile.mobile_phone` — PhoneNumberInput, `span: 12`, title "Mobile Number", `defaultRegion: ZA`, `placeholder: 82 111 2222`. Same warning-length validate. Same required-phones clause. Same disabled conditional. Include the `label.extra` warning banner the reference implementation has (yellow text when length > 9).
 3. Vars accepted (documented in a top comment block):
@@ -30,7 +30,7 @@ Task 5 ships `modules/contacts/validate/validate_email.yaml`; this form referenc
 
 - `pnpm ldf:b:i` in `apps/demo` succeeds.
 - When Task 8 lands and a consumer opens the wrapper's Add modal, the five fields render with correct titles.
-- Entering "not-an-email" in the email field shows the Task 5 validator's error.
+- Entering "not-an-email" in the email field shows the existing `validate/email.yaml` validator's "Please provide a valid email address." error.
 - Opening the Edit modal disables email, first name, last name inputs; phone fields are disabled only if the existing contact already has a phone number (prevents wiping).
 - Setting `required.phones: true` in the wrapper's `form_required` surfaces the "Please provide either a work number or a mobile number" error when both are blank.
 

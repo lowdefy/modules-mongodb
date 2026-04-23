@@ -1,48 +1,21 @@
-# Task 5: Add `validate_email.yaml` helper to the contacts module
+# Task 5: ~~Add `validate_email.yaml` helper to the contacts module~~ — **Obsoleted by review-2**
 
-## Context
+> **Status: no work required.** The contacts module already ships `modules/contacts/validate/email.yaml` (identical to the copies in `user-admin`, `user-account`, `companies`). The default form (Task 6) references that file directly via `_ref: { path: ../validate/email.yaml, vars: { field_name: ... } }`. No new validator file is created.
 
-The default modal form (Task 6) validates the email field. the reference implementation's version of this validator lives at `apps/shared/validate_email.yaml` and is referenced via `../shared/validate_email.yaml` relative to the form. This module doesn't have a shared validate directory outside itself, so the design bundles a local copy inside the contacts module at `modules/contacts/validate/validate_email.yaml`.
+## Rationale
 
-The validator is `_ref`'d from `form_contact_short.yaml.njk` (Task 6) with a `field_name` var so it can pull the current value from state.
+The original task was premised on "this module doesn't ship that file today." That premise was wrong — a `_regex`-based email validator with a `field_name` var (defaulting to `email`) and a null/empty-case fall-through already exists at `modules/contacts/validate/email.yaml`. It is also already referenced from `modules/contacts/components/form_email.yaml:8`.
 
-## Task
+Cross-module consolidation into a shared `modules/shared/validate/email.yaml` was also considered and rejected: Lowdefy modules are advertised as distributable via GitHub subpath (`source: "github:.../modules/contacts@v1"`). A `../shared/...` reference would resolve inside this monorepo but break once a module is pulled by subpath, since `../shared/` sits outside the pulled subtree. The four per-module duplicate copies stand.
 
-**Create `modules/contacts/validate/validate_email.yaml`.** Minimal email validator — returns a Lowdefy `validate` array entry (status + message + pass):
+See `review/review-2.md` for the full finding.
 
-```yaml
-- message: Please provide a valid email address.
-  status: error
-  pass:
-    _or:
-      - _eq:
-          - _state:
-              _var: field_name
-          - null
-      - _eq:
-          - _state:
-              _var: field_name
-          - ""
-      - _regex:
-          on:
-            _state:
-              _var: field_name
-          pattern: '^[^\s@]+@[^\s@]+\.[^\s@]+$'
-```
+## Follow-ups
 
-The `_or` wraps three cases: empty, null, or matching the basic email regex. Required-ness is enforced separately by the form's `required:` flag, not by this validator.
-
-## Acceptance Criteria
-
-- `pnpm ldf:b:i` in `apps/demo` succeeds.
-- When Task 6 lands, the form's email field shows "Please provide a valid email address." for strings like `not-an-email` and clears for valid addresses or empty input.
+- Task 6 references the existing file directly (`../validate/email.yaml`). No dependency on this task.
+- Task 7 does not register the validator in the manifest (it's pulled in via `_ref` from the form, which is the same mechanism `form_email.yaml` already uses).
+- Tasks.md dropped Task 5 from the ordering graph; Task 6's Depends-On becomes `—`.
 
 ## Files
 
-- `modules/contacts/validate/validate_email.yaml` — create
-
-## Notes
-
-- Keep the regex deliberately loose — it's a client-side first-pass check, not RFC 5322 compliance. Server-side APIs (`create-contact`) normalise via `_string.toLowerCase` already.
-- If a `validate/` subdirectory doesn't exist under `modules/contacts/`, create it.
-- This file is NOT registered in `module.lowdefy.yaml` directly — it's pulled in via `_ref` from `form_contact_short.yaml.njk`. Module-manifest wiring happens in Task 7 if needed.
+- **none** — no file is created or modified as part of this task.
