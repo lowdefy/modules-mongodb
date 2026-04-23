@@ -54,11 +54,14 @@ vars:
         default: []
   request_stages:
     type: object
-    description: "Pipeline overrides: get_all_contacts, write, selector, filter_match. write stages are appended to both create and update flows."
+    description: "Pipeline overrides: get_all_contacts, get_contact, write, selector, filter_match. write stages are appended to both create and update flows."
     properties:
       get_all_contacts:
         default:
           - $addFields: {}
+      get_contact:
+        default: []
+        description: Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields).
       selector:
         default: []
       filter_match:
@@ -72,6 +75,23 @@ vars:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+  verified:
+    type: string
+    enum: [off, trusted, untrusted]
+    default: off
+    description: |
+      Contact verification mode for the contact-selector picker.
+      - off: no verification UI or payload writes.
+      - trusted: contacts created/edited via the picker are marked verified; unverified rows render a Verify button.
+      - untrusted: contacts created via the picker are marked unverified; apps provide their own verify flow.
+  all_contacts:
+    type: boolean
+    default: false
+    description: When true, the picker searches across all companies. When false, scope to the user's global_attributes.company_ids.
+  phone_label:
+    type: boolean
+    default: false
+    description: When true, the search results label includes phone numbers.
 
 exports:
   pages:
