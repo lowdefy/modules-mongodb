@@ -5,18 +5,15 @@
                    (wrapper passes "{id}_contact"); Nunjucks-interpolated
                    into each block id.
      new_contact   (operator/boolean) — truthy when the modal is in Add mode;
-                   falsy when editing an existing contact. Inputs are
-                   disabled when falsy (except phones — see below).
-     required      (object) — { given_name, family_name, email, phones }
-                   flags forwarded from the wrapper's form_required var.
-                   Individual keys default to given_name/family_name=true,
-                   email/phones=false.
-     get_contact   (object) — the currently-loaded contact (wrapper state
-                   `{id}_contact`). Used to lock phone fields when the
-                   stored contact already has a number, so editing can't
-                   wipe it.
-     loading       (boolean) — reserved for future use; not wired to any
-                   block property yet.
+                   falsy when editing an existing contact. Email is locked
+                   on edit (dedup key); name fields stay editable.
+     required      (object) — { given_name, family_name, email } flags
+                   forwarded from the wrapper's form_required var.
+                   given_name/family_name default true, email defaults false.
+     extra_blocks  (array) — extra input blocks appended after the core
+                   three. Mirrors the form_profile / fields.profile pattern
+                   other contacts module forms use. Apps that want phones
+                   or custom fields pass them here.
 
    No onAddContact / onEditContact actions live here — those are on the
    wrapper. This form only provides inputs and validation.
@@ -28,160 +25,48 @@ layout:
 style:
   margin: auto
 blocks:
-  - id: {{ key }}.profile.given_name
-    type: TextInput
-    required:
-      _var:
-        key: required.given_name
-        default: true
-    layout:
-      span: 12
-    properties:
-      title: First Name
-      disabled:
-        _not:
-          _var: new_contact
+  _build.array.concat:
+    - - id: {{ key }}.profile.given_name
+        type: TextInput
+        required:
+          _var:
+            key: required.given_name
+            default: true
+        layout:
+          span: 12
+        properties:
+          title: First Name
 
-  - id: {{ key }}.profile.family_name
-    type: TextInput
-    required:
-      _var:
-        key: required.family_name
-        default: true
-    layout:
-      span: 12
-    properties:
-      title: Last Name
-      disabled:
-        _not:
-          _var: new_contact
+      - id: {{ key }}.profile.family_name
+        type: TextInput
+        required:
+          _var:
+            key: required.family_name
+            default: true
+        layout:
+          span: 12
+        properties:
+          title: Last Name
 
-  - id: {{ key }}.email
-    type: TextInput
-    required:
-      _var:
-        key: required.email
-        default: false
-    layout:
-      span: 24
-    properties:
-      title: Email
-      placeholder: name@company.com
-      disabled:
-        _not:
-          _var: new_contact
-    validate:
-      _ref:
-        path: validate/email.yaml
-        vars:
-          field_name: {{ key }}.email
-
-  - id: {{ key }}.profile.work_phone
-    type: PhoneNumberInput
-    layout:
-      span: 12
-    properties:
-      title: Work Number
-      defaultRegion: ZA
-      placeholder: 11 001 2233
-      disabled:
-        _and:
-          - _not:
+      - id: {{ key }}.email
+        type: TextInput
+        required:
+          _var:
+            key: required.email
+            default: false
+        layout:
+          span: 24
+        properties:
+          title: Email
+          placeholder: name@company.com
+          disabled:
+            _not:
               _var: new_contact
-          - _ne:
-              - _get:
-                  from:
-                    _var:
-                      key: get_contact
-                      default: {}
-                  key: profile.work_phone.input
-              - null
-    validate:
-      - message: Long numbers may not format correctly.
-        status: warning
-        pass:
-          _or:
-            - _eq:
-                - _state: {{ key }}.profile.work_phone.input
-                - null
-            - _lte:
-                - _string.length:
-                    _if_none:
-                      - _state: {{ key }}.profile.work_phone.input
-                      - ""
-                - 9
-      - message: Please provide either a work number or a mobile number.
-        status: error
-        pass:
-          _or:
-            - _not:
-                _var:
-                  key: required.phones
-                  default: false
-            - _ne:
-                - _state: {{ key }}.profile.work_phone.input
-                - null
-            - _ne:
-                - _state: {{ key }}.profile.mobile_phone.input
-                - null
-
-  - id: {{ key }}.profile.mobile_phone
-    type: PhoneNumberInput
-    layout:
-      span: 12
-    properties:
-      title: Mobile Number
-      defaultRegion: ZA
-      placeholder: 82 111 2222
-      disabled:
-        _and:
-          - _not:
-              _var: new_contact
-          - _ne:
-              - _get:
-                  from:
-                    _var:
-                      key: get_contact
-                      default: {}
-                  key: profile.mobile_phone.input
-              - null
-      label:
-        extra:
-          _if:
-            test:
-              _gt:
-                - _string.length:
-                    _if_none:
-                      - _state: {{ key }}.profile.mobile_phone.input
-                      - ""
-                - 9
-            then: '<span style="color: #faad14;">Long numbers may not format correctly.</span>'
-            else: null
-    validate:
-      - message: Long numbers may not format correctly.
-        status: warning
-        pass:
-          _or:
-            - _eq:
-                - _state: {{ key }}.profile.mobile_phone.input
-                - null
-            - _lte:
-                - _string.length:
-                    _if_none:
-                      - _state: {{ key }}.profile.mobile_phone.input
-                      - ""
-                - 9
-      - message: Please provide either a work number or a mobile number.
-        status: error
-        pass:
-          _or:
-            - _not:
-                _var:
-                  key: required.phones
-                  default: false
-            - _ne:
-                - _state: {{ key }}.profile.work_phone.input
-                - null
-            - _ne:
-                - _state: {{ key }}.profile.mobile_phone.input
-                - null
+        validate:
+          _ref:
+            path: validate/email.yaml
+            vars:
+              field_name: {{ key }}.email
+    - _var:
+        key: extra_blocks
+        default: []

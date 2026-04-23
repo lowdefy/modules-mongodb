@@ -22,16 +22,9 @@ properties:
         contact_id: "$_id"
         name: "$profile.name"
         email:
-          $cond:
-            if:
-              $regexMatch:
-                input: "$lowercase_email"
-                regex: '\@'
-            then:
-              $ifNull:
-                - "$lowercase_email"
-                - ""
-            else: null
+          $ifNull:
+            - "$email"
+            - "$lowercase_email"
         verified: "$global_attributes.verified"
         picture: "$profile.picture"
         global_attributes: 1

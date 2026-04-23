@@ -22,6 +22,11 @@ properties:
     - $search:
         returnStoredSource: true
         compound:
+          # Baseline clause — compound requires ≥1 clause across filter/must/mustNot/should,
+          # and `should` collapses to [] when input is empty.
+          filter:
+            - exists:
+                path: _id
           should:
             _if:
               test:
@@ -81,7 +86,10 @@ properties:
         value:
           contact_id: "$_id"
           name: "$profile.name"
-          email: "$lowercase_email"
+          email:
+            $ifNull:
+              - "$email"
+              - "$lowercase_email"
           verified: "$global_attributes.verified"
           picture: "$profile.picture"
         label:
@@ -92,6 +100,8 @@ properties:
                 - ""
             - '</div><div class="secondary smaller">'
             - $ifNull:
-                - "$lowercase_email"
-                - "No email"
+                - "$email"
+                - $ifNull:
+                    - "$lowercase_email"
+                    - "No email"
             - "</div>"

@@ -21,8 +21,11 @@
      disable_new_contacts (boolean) — when true, hides Add button; allowNewContacts = false.
      disable_edit       (boolean) — when true, hides Edit button; allowEdit = false.
      onAddContact       (array)   — extra actions appended to the onAddContact chain.
-     form_blocks        (array)   — overrides the default form_contact_short.yaml.njk in the modal.
-     form_required      (object)  — { given_name, family_name, email, phones } flags forwarded to the default form.
+     form_extra_blocks  (array)   — input blocks appended to the default form's
+                                    core three (given_name, family_name, email).
+                                    Mirrors the form_profile / fields.profile
+                                    pattern — extend by adding, not by replacing.
+     form_required      (object)  — { given_name, family_name, email } flags forwarded to the default form.
 
    Module-level vars (read via _module.var):
      verified     (enum off|trusted|untrusted) — picker writes `global_attributes.verified` on add/edit;
@@ -199,14 +202,18 @@ events:
                 else: {}
 properties:
   title:
-    _nunjucks:
-      template: |
-        {% if keyword %}{{ '{{' }} keyword {{ '}}' }} details{% else %}Contact details{% endif %}
-      on:
-        keyword:
-          _var:
-            key: keyword
-            default: null
+    _if_none:
+      - _var:
+          key: title
+          default: null
+      - _nunjucks:
+          template: |
+            {% if keyword %}{{ '{{' }} keyword {{ '}}' }} details{% else %}Contact details{% endif %}
+          on:
+            keyword:
+              _var:
+                key: keyword
+                default: null
   placeholder:
     _var:
       key: placeholder
@@ -234,15 +241,6 @@ properties:
   searchContactsRequest: {{ id | replace(".", "_") }}_contact_search
   getContactRequest: {{ id | replace(".", "_") }}_get_contact
   getContactsDataRequest: {{ id | replace(".", "_") }}_contacts_data
-  optionsLoading:
-    _and:
-      - _request_details: {{ id | replace(".", "_") }}_contact_search.0.loading
-      - _ne:
-          - _if_none:
-              - _state: {{ id | replace(".", "_") }}_input
-                ~ignoreBuildChecks: true
-              - ""
-          - ""
   options:
     _array.concat:
       - _if_none:
@@ -299,22 +297,19 @@ properties:
               default: null
     okText: Save
 blocks:
-  _var:
-    key: form_blocks
-    default:
-      - _ref:
-          path: components/form_contact_short.yaml.njk
-          vars:
-            key: {{ id | replace(".", "_") }}_contact
-            new_contact:
-              _not:
-                _state: {{ id | replace(".", "_") }}_edit
-                ~ignoreBuildChecks: true
-            required:
-              _var:
-                key: form_required
-                default: {}
-            get_contact:
-              _request: {{ id | replace(".", "_") }}_get_contact
-            loading:
-              _request_details: {{ id | replace(".", "_") }}_get_contact.0.loading
+  - _ref:
+      path: components/form_contact_short.yaml.njk
+      vars:
+        key: {{ id | replace(".", "_") }}_contact
+        new_contact:
+          _not:
+            _state: {{ id | replace(".", "_") }}_edit
+            ~ignoreBuildChecks: true
+        required:
+          _var:
+            key: form_required
+            default: {}
+        extra_blocks:
+          _var:
+            key: form_extra_blocks
+            default: []
