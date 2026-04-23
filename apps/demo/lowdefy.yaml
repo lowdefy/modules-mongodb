@@ -8,19 +8,19 @@ cli:
 theme:
   antd:
     token:
-      colorPrimary: '#7c3aed'
+      colorPrimary: "#7c3aed"
 
 config:
   homePageId: router
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
+  - name: "@lowdefy/community-plugin-mongodb"
     version: 2.4.1
-  - name: '@lowdefy/community-plugin-xlsx'
+  - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
-  - name: '@lowdefy/community-plugin-nodemailer'
+  - name: "@lowdefy/community-plugin-nodemailer"
     version: 1.1.4
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
 
 auth:
@@ -29,7 +29,7 @@ auth:
     verifyRequest: /user-account/verify-email-request
     error: /user-account/login
   theme:
-    brandColor: '#7c3aed'
+    brandColor: "#7c3aed"
   adapter:
     id: mdb_adapter
     type: MultiAppMongoDBAdapter
@@ -75,7 +75,7 @@ auth:
   pages:
     protected: true
     public:
-      - '404'
+      - "404"
       - notifications-invalid
       - notifications-link
       - router
@@ -103,6 +103,18 @@ connections:
       databaseUri:
         _secret: MONGODB_URI
       collection: user-contacts
+  - id: demo-contacts-test
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: demo-contact-selector-test
+      changeLog:
+        collection: demo-log-changes
+        meta:
+          user:
+            _user: true
+      write: true
 
 pages:
   - _ref: pages/router.yaml
@@ -110,3 +122,6 @@ pages:
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
   - _ref: pages/contact-selector-demo/contact-selector-demo.yaml
+
+api:
+  - _ref: pages/contact-selector-demo/api/save-demo-doc.yaml

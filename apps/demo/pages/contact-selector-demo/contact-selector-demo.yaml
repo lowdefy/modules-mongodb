@@ -8,120 +8,157 @@ _ref:
       - home: true
         icon: AiOutlineHome
       - title: Contact Selector
+    requests:
+      - _ref: pages/contact-selector-demo/requests/get_demo_doc.yaml
     events:
       onInit:
-        - id: init_contact_selector_state
+        - id: load_demo_doc
+          type: Request
+          params: get_demo_doc
+        - id: hydrate_state
           type: SetState
           params:
-            contact_selector_input: ""
-            contact_selector_contact_id: null
-            contact_selector_fetch_contacts: []
+            rich_contacts:
+              _if_none:
+                - _request: get_demo_doc.rich_contacts
+                - []
+            basic_contacts:
+              _if_none:
+                - _request: get_demo_doc.basic_contacts
+                - []
     blocks:
       - id: description
         type: Paragraph
         properties:
           content: |
-            Demo of the ContactSelector block against the user-contacts collection.
-            Search, select, add new, edit, or remove contacts and watch the block value update below.
+            Both pickers read contacts from the real `user-contacts`
+            collection (via the contacts module). The selected ids
+            are persisted to `demo-contact-selector-test` under
+            `_id: contact-selector-demo` — stand-in for a parent
+            record like a company with linked contacts. Use Save to
+            round-trip, reload the page to confirm hydration.
 
-      - id: contact_selector
-        type: ContactSelector
-        requests:
-          - _ref: pages/contact-selector-demo/requests/search_contacts.yaml
-          - _ref: pages/contact-selector-demo/requests/get_contact.yaml
-          - _ref: pages/contact-selector-demo/requests/get_contacts_data.yaml
+      - id: rich_title
+        type: Title
         properties:
-          allowNewContacts: true
-          allowEdit: true
-          allowDelete: true
-          title: Select contacts
-          placeholder: Search contacts...
-          max: 5
-          searchContactsRequest: search_contacts
-          getContactRequest: get_contact
-          getContactsDataRequest: get_contacts_data
-          options:
-            _request: search_contacts
-          data:
-            _request: get_contacts_data
-          list:
-            title: Selected contacts
-            placeholder: No contacts selected
-            item:
-              title: "{{ name }}"
-              description: "{{ email }}"
-          modal:
-            title: Add contact
-            editTitle: Edit contact
-            okText: Save
-        events:
-          onAddContact:
-            - id: create_contact
-              type: CallAPI
-              params:
-                endpointId: contacts/create-contact
-                payload:
-                  email:
-                    _state: contact_selector_contact.email
-                  profile:
-                    _state: contact_selector_contact.profile
-            - id: append_new
-              type: CallMethod
-              params:
-                blockId: contact_selector
-                method: appendContact
-                args:
-                  - contact:
-                      _state: contact_selector_contact
-                    contactId:
-                      _actions: create_contact.response.response.contactId
-          onEditContact:
-            - id: update_contact
-              type: CallAPI
-              params:
-                endpointId: contacts/update-contact
-                payload:
-                  _id:
-                    _state: contact_selector_contact._id
-                  profile:
-                    _state: contact_selector_contact.profile
-                  updated:
-                    timestamp:
-                      _state: contact_selector_contact.updated.timestamp
-        blocks:
-          - id: contact_selector_contact.profile.given_name
-            type: TextInput
-            properties:
-              label:
-                title: Given name
-              placeholder: e.g. Alice
-          - id: contact_selector_contact.profile.family_name
-            type: TextInput
-            properties:
-              label:
-                title: Family name
-              placeholder: e.g. Smith
-          - id: contact_selector_contact.email
-            type: TextInput
-            properties:
-              label:
-                title: Email
-              placeholder: e.g. alice@example.com
+          level: 4
+          content: Rich ContactSelector (module wrapper)
 
-      - id: current_value_title
+      - _ref:
+          module: contacts
+          component: contact-selector
+          vars:
+            id: rich_contacts
+            keyword: Contact
+            max: 5
+
+      - id: rich_value_title
         type: Title
         properties:
           level: 5
-          content: Current block value
-
-      - id: current_value_html
+          content: Rich block value
+      - id: rich_value_html
         type: Html
         properties:
           html:
             _nunjucks:
               template: |
-                <pre style="background:#f5f5f5;padding:12px;border-radius:4px;font-size:12px;overflow:auto">{{ value }}</pre>
+                <pre style="background:#f5f5f5;padding:12px;border-radius:4px;font-size:12px;overflow:auto">{{ value | safe }}</pre>
               on:
                 value:
-                  _js: |
-                    () => JSON.stringify(state('contact_selector') || [], null, 2)
+                  _json.stringify:
+                    on:
+                      _if_none:
+                        - _state: rich_contacts
+                        - []
+                    options:
+                      indent: 2
+
+      - id: divider_pickers
+        type: Divider
+
+      - id: basic_title
+        type: Title
+        properties:
+          level: 4
+          content: Basic contact selector (simple dropdown)
+
+      - _ref:
+          module: contacts
+          component: basic-contact-selector
+          vars:
+            field_id: basic_contacts
+            mode: MultipleSelector
+            label: Linked contacts
+
+      - id: basic_value_title
+        type: Title
+        properties:
+          level: 5
+          content: Basic block value
+      - id: basic_value_html
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <pre style="background:#f5f5f5;padding:12px;border-radius:4px;font-size:12px;overflow:auto">{{ value | safe }}</pre>
+              on:
+                value:
+                  _json.stringify:
+                    on:
+                      _if_none:
+                        - _state: basic_contacts
+                        - []
+                    options:
+                      indent: 2
+
+      - id: divider_save
+        type: Divider
+
+      - id: save_row
+        type: Box
+        layout:
+          gap: 8
+        blocks:
+          - id: save_button
+            type: Button
+            properties:
+              title: Save to test collection
+              type: primary
+              icon: AiOutlineSave
+            events:
+              onClick:
+                - id: save
+                  type: CallAPI
+                  params:
+                    endpointId: save-demo-doc
+                    payload:
+                      rich_contacts:
+                        _state: rich_contacts
+                      basic_contacts:
+                        _state: basic_contacts
+                  messages:
+                    success: Saved to demo-contact-selector-test
+          - id: reload_button
+            type: Button
+            properties:
+              title: Reload from test collection
+              type: default
+              icon: AiOutlineReload
+            events:
+              onClick:
+                - id: refetch
+                  type: Request
+                  params: get_demo_doc
+                - id: rehydrate
+                  type: SetState
+                  params:
+                    rich_contacts:
+                      _if_none:
+                        - _request: get_demo_doc.rich_contacts
+                        - []
+                    basic_contacts:
+                      _if_none:
+                        - _request: get_demo_doc.basic_contacts
+                        - []

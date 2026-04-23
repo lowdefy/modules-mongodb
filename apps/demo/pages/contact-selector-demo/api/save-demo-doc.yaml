@@ -1,0 +1,19 @@
+id: save-demo-doc
+type: Api
+routine:
+  - id: save
+    type: MongoDBUpdateOne
+    connectionId: demo-contacts-test
+    properties:
+      filter:
+        _id: contact-selector-demo
+      options:
+        upsert: true
+      update:
+        $set:
+          rich_contacts:
+            _payload: rich_contacts
+          basic_contacts:
+            _payload: basic_contacts
+          updated_at:
+            _date: now
