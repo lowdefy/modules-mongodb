@@ -1,29 +1,24 @@
 - id: default
   links:
-    - id: user-admin-group
+    - id: crm-group
       type: MenuGroup
       properties:
-        title: User Admin
-        icon: AiOutlineTeam
+        title: CRM
+        icon: AiOutlineContacts
+      links:
+        _build.array.concat:
+          - _ref:
+              module: companies
+              menu: default
+          - _ref:
+              module: contacts
+              menu: default
+    - id: admin-group
+      type: MenuGroup
+      properties:
+        title: Admin
+        icon: AiOutlineSetting
       links:
         _ref:
           module: user-admin
-          menu: default
-    - id: companies-group
-      type: MenuGroup
-      properties:
-        title: Companies
-        icon: AiOutlineShop
-      links:
-        _ref:
-          module: companies
-          menu: default
-    - id: contacts-group
-      type: MenuGroup
-      properties:
-        title: Contacts
-        icon: AiOutlineContacts
-      links:
-        _ref:
-          module: contacts
           menu: default

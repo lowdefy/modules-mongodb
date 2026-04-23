@@ -218,6 +218,10 @@ blocks:
                               _var:
                                 key: page_actions
                                 default: []
+                            show_back_button:
+                              _var:
+                                key: show_back_button
+                                default: false
             else: []
         # Consumer content
         - _var: blocks

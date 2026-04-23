@@ -6,7 +6,7 @@ How to build a standard list page with filters, table, and pagination.
 
 Every list page wraps in `_ref: module: layout, component: page` and provides standard vars: `id`, `title`, `breadcrumbs`, `page_actions`, `events`, `requests`, `blocks`.
 
-The page initializes state in `onInit` (sort) and `onMountAsync` (pagination defaults + first data fetch). Blocks are composed as: filter component, then a Card containing the table and pagination.
+The page initializes state in `onInit` (sort) and `onMountAsync` (pagination defaults + first data fetch). Blocks are composed as flat siblings under the page component: filter component, then the table, then pagination. Do not wrap AgGrid tables in a Card — the table stands on its own.
 
 Module var injection points allow consumers to add to the filter bar (`components.filters` — extra blocks rendered below the built-in search) and table columns (`components.table_columns` — appended to the default columns). The table itself is owned by the module.
 
@@ -80,14 +80,11 @@ _ref:
           key: components.filters
           default:
             _ref: components/filter_{entities}.yaml
-      - id: content
-        type: Card
-        blocks:
-          - _module.var:
-              key: components.table
-              default:
-                _ref: components/table_{entities}.yaml
-          - _ref: components/pagination.yaml
+      - _module.var:
+          key: components.table
+          default:
+            _ref: components/table_{entities}.yaml
+      - _ref: components/pagination.yaml
 ```
 
 ## Checklist

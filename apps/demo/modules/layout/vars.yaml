@@ -1,4 +1,4 @@
-page_type: header-menu
+page_type: sidebar
 extra_profile_links:
   - id: release-notes-link
     type: MenuLink

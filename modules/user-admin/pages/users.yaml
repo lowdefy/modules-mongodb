@@ -76,11 +76,8 @@ _ref:
                     - "apps."
                     - _module.var: app_name
                     - ".sign_up"
-      - id: content
-        type: Card
-        blocks:
-          - _ref: components/table_users.yaml
-          - _ref:
-              path: ../shared/layout/pagination.yaml
-              vars:
-                request_id: get_all_users
+      - _ref: components/table_users.yaml
+      - _ref:
+          path: ../shared/layout/pagination.yaml
+          vars:
+            request_id: get_all_users
