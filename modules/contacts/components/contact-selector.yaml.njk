@@ -105,6 +105,14 @@ requests:
 events:
   onOpen:
     _build.array.concat:
+      # Flip the modal-open flag so the nested form's `required` props engage.
+      # Child input blocks auto-materialize their state paths with null values
+      # at page mount, so {id}_contact is non-null even before the modal opens;
+      # we need an independent signal.
+      - - id: mark_modal_open
+          type: SetState
+          params:
+            {{ id | replace(".", "_") }}_contact_modal_open: true
       - _build.if:
           test:
             _build.ne:
@@ -125,12 +133,30 @@ events:
                     key: default_company_ids
                     default: []
           else: []
+  onClose:
+    - id: mark_modal_closed
+      type: SetState
+      params:
+        {{ id | replace(".", "_") }}_contact_modal_open: false
   onAddContact:
     _build.array.concat:
       - - id: validate
           type: Validate
           params:
             regex: '^{{ id | replace(".", "_") }}_contact\.'
+        - id: generate_avatar
+          type: SetState
+          skip:
+            _ne:
+              - _state: {{ id | replace(".", "_") }}_contact.profile.picture
+              - null
+          params:
+            {{ id | replace(".", "_") }}_contact.profile.picture:
+              _js:
+                _ref:
+                  path: ../shared/profile/generate-avatar-svg.js.njk
+                  vars:
+                    prefix: {{ id | replace(".", "_") }}_contact.profile
         - id: create_contact
           type: CallAPI
           params:
