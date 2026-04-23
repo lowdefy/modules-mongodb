@@ -1,14 +1,23 @@
-id: get_contact
+id:
+  _var:
+    key: id
+    default: get_contact
 type: MongoDBAggregation
 connectionId:
   _module.connectionId: contacts-collection
 payload:
   _id:
-    _url_query: _id
+    _var:
+      key: user_id
+      default:
+        _url_query: _id
 properties:
   pipeline:
-    - $match:
-        _id:
-          _payload: _id
-        hidden:
-          $ne: true
+    _build.array.concat:
+      - - $match:
+            _id:
+              _payload: _id
+            hidden:
+              $ne: true
+        - $limit: 1
+      - _module.var: request_stages.get_contact
