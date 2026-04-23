@@ -6,6 +6,13 @@ function createGetContactsData({
   value,
   properties: { getContactsDataRequest, options },
 }) {
+  // Enrichment only fires the request; display flows through properties.data
+  // → contactsData → ContactList.getContactData(). A prior iteration wrote
+  // the filtered response back to the block's value state key, but that
+  // races with concurrent addContact() calls — a second click firing while
+  // the first enrichment request is in flight would overwrite the value
+  // with the older response's filtered set, clearing recent selections.
+  // Leave value management to useContactManager.addContact/removeContact.
   methods.registerEvent({
     name: "__getContactsData",
     actions: [
@@ -20,25 +27,6 @@ function createGetContactsData({
         id: "__getContactsData",
         type: "Request",
         params: getContactsDataRequest,
-      },
-      {
-        id: "__setContactsData",
-        type: "SetState",
-        params: {
-          [statePrefix()]: {
-            "_array.filter": [
-              { _request: getContactsDataRequest },
-              {
-                _function: {
-                  "__array.includes": [
-                    { __event: "selectedContactIds" },
-                    { __args: "0.contact_id" },
-                  ],
-                },
-              },
-            ],
-          },
-        },
       },
     ],
   });

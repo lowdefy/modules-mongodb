@@ -31,6 +31,7 @@ const Selector = ({
   const [options, setOptions] = useState([]);
   const [value, setValue] = useState([]);
   const [searchText, setSearchText] = useState(null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     setOptions(getUniqueValues(properties.options || []));
@@ -66,12 +67,12 @@ const Selector = ({
         style={{ width: "100%" }}
         mode="multiple"
         autoFocus={properties.autoFocus}
+        open={open}
         getPopupContainer={() =>
           document.getElementById(`${blockId}_${elementId}_popup`)
         }
         disabled={
           properties.disabled ||
-          loading ||
           (properties.max && selectedContacts.length >= properties.max)
         }
         placeholder={get(properties, "placeholder", {
@@ -112,11 +113,16 @@ const Selector = ({
           setSearchText(null);
           setValue([]);
         }}
+        onDropdownVisibleChange={(visible) => {
+          setOpen(visible);
+        }}
         onBlur={() => {
+          setOpen(false);
           setSearchText(null);
           methods.triggerEvent({ name: "onBlur" });
         }}
         onFocus={() => {
+          setOpen(true);
           methods.triggerEvent({ name: "onFocus" });
         }}
         onClear={() => {
@@ -125,6 +131,7 @@ const Selector = ({
         onSearch={async (value) => {
           setSearchText(value);
           setFetch(true);
+          setOpen(true);
           debouncedSearchContacts(value);
           await methods.triggerEvent({
             name: "afterSearch",
