@@ -1,0 +1,37 @@
+# Bulk contact enrichment by id. Feeds the ContactSelector block's list-row
+# rendering for selected + option contacts. Shape must match search_contacts'
+# `value` object so both requests can drive the same row template.
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: contacts-collection
+payload:
+  contact_ids:
+    _var:
+      key: contact_ids
+      default: []
+properties:
+  pipeline:
+    - $match:
+        _id:
+          $in:
+            _payload: contact_ids
+    - $project:
+        _id: 0
+        contact_id: "$_id"
+        name: "$profile.name"
+        email:
+          $cond:
+            if:
+              $regexMatch:
+                input: "$lowercase_email"
+                regex: '\@'
+            then:
+              $ifNull:
+                - "$lowercase_email"
+                - ""
+            else: null
+        verified: "$global_attributes.verified"
+        picture: "$profile.picture"
+        global_attributes: 1
