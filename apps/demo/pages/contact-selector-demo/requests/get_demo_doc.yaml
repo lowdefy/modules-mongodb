@@ -1,6 +1,0 @@
-id: get_demo_doc
-type: MongoDBFindOne
-connectionId: demo-contacts-test
-properties:
-  query:
-    _id: contact-selector-demo

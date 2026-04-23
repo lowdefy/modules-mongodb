@@ -30,15 +30,15 @@ _ref:
                   type: Link
                   params:
                     pageId: user-admin/users
-          - id: contact_selector_demo_link
+          - id: companies_link
             type: Button
             properties:
-              title: Contact Selector Demo
-              icon: AiOutlineUserAdd
+              title: Companies
+              icon: AiOutlineBank
               block: true
             events:
               onClick:
                 - id: link
                   type: Link
                   params:
-                    pageId: contact-selector-demo
+                    pageId: companies/companies

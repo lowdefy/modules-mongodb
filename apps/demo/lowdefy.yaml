@@ -103,25 +103,9 @@ connections:
       databaseUri:
         _secret: MONGODB_URI
       collection: user-contacts
-  - id: demo-contacts-test
-    type: MongoDBCollection
-    properties:
-      databaseUri:
-        _secret: MONGODB_URI
-      collection: demo-contact-selector-test
-      changeLog:
-        collection: demo-log-changes
-        meta:
-          user:
-            _user: true
-      write: true
 
 pages:
   - _ref: pages/router.yaml
   - _ref: pages/avatar.yaml
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
-  - _ref: pages/contact-selector-demo/contact-selector-demo.yaml
-
-api:
-  - _ref: pages/contact-selector-demo/api/save-demo-doc.yaml
