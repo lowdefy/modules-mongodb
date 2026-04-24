@@ -1,5 +1,5 @@
 name: Contacts
-version: 0.0.0
+version: 0.1.0
 description: Contact management — list, detail, edit, create, selector
 
 dependencies:
