@@ -44,7 +44,7 @@ vars:
         default: []
   components:
     type: object
-    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
+    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, contact_card_extra_fields"
     properties:
       table_columns:
         default: []
@@ -56,6 +56,12 @@ vars:
         default: []
       download_columns:
         default: []
+      contact_card_extra_fields:
+        default: []
+        description: |
+          List of { label, value } pairs appended under each contact's name/email
+          in the company-detail contacts tile. `value` is a top-level key on the
+          contact doc projected by get_company_contacts.
   request_stages:
     type: object
     description: "Pipeline overrides: get_all_companies, selector, filter_match, write. write stages are appended to both create-company and update-company flows."
