@@ -14,6 +14,9 @@
 # by get_company_contacts. For a nested source field (e.g.
 # `contact.primary_phone`), extend the request's $project stage
 # to flatten it to a top-level key.
+#
+# Extra-field rows render when the field is non-null. Falsy primitives
+# (0, false, "") are shown — only `null`/`undefined` are skipped.
 id: contact_list_html
 type: Html
 properties:
@@ -23,16 +26,16 @@ properties:
         {% if contacts.length %}
         <div>
           {% for contact in contacts %}
-          <div style="padding:8px 0; border-bottom:1px solid var(--ant-color-border-secondary)">
-            <a href="/contacts/contacts/{{ contact._id }}" style="color:inherit; text-decoration:none">
-              <div><b>{{ contact.profile.name | safe }}</b></div>
+          <div style="padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}">
+            <a href="/{{ contact_detail_page }}?_id={{ contact._id }}" style="color:inherit; text-decoration:none">
+              <div><b>{{ contact.profile.name }}</b></div>
               {% if contact.email %}
-              <div style="color:var(--ant-color-text-secondary); font-size:12px">{{ contact.email | safe }}</div>
+              <div style="color:var(--ant-color-text-secondary); font-size:12px">{{ contact.email }}</div>
               {% endif %}
               {% for field in extra_fields %}
-                {% if contact[field.value] %}
+                {% if contact[field.value] != null %}
                 <div style="color:var(--ant-color-text-secondary); font-size:11px">
-                  <b>{{ field.label | safe }}:</b> {{ contact[field.value] | safe }}
+                  <b>{{ field.label }}:</b> {{ contact[field.value] }}
                 </div>
                 {% endif %}
               {% endfor %}
@@ -51,6 +54,8 @@ properties:
             - _request: get_company_contacts
             - []
         extra_fields:
-          _if_none:
-            - _module.var: components.contact_card_extra_fields
-            - []
+          _module.var: components.contact_card_extra_fields
+        contact_detail_page:
+          _module.pageId:
+            id: contact-detail
+            module: contacts

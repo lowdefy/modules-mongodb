@@ -13,6 +13,9 @@
 # `value` is a top-level key on the company document as projected
 # by get_contact_companies. For a nested source field, extend
 # the request's $project stage to flatten it to a top-level key.
+#
+# Extra-field rows render when the field is non-null. Falsy primitives
+# (0, false, "") are shown — only `null`/`undefined` are skipped.
 id: company_list_html
 type: Html
 properties:
@@ -22,13 +25,13 @@ properties:
         {% if companies.length %}
         <div>
           {% for company in companies %}
-          <div style="padding:8px 0; border-bottom:1px solid var(--ant-color-border-secondary)">
-            <a href="/companies/company-detail?_id={{ company._id }}" style="color:inherit; text-decoration:none">
-              <div><b>{{ company.display_name | safe }}</b></div>
+          <div style="padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}">
+            <a href="/{{ company_detail_page }}?_id={{ company._id }}" style="color:inherit; text-decoration:none">
+              <div><b>{{ company.display_name }}</b></div>
               {% for field in extra_fields %}
-                {% if company[field.value] %}
+                {% if company[field.value] != null %}
                 <div style="color:var(--ant-color-text-secondary); font-size:11px">
-                  <b>{{ field.label | safe }}:</b> {{ company[field.value] | safe }}
+                  <b>{{ field.label }}:</b> {{ company[field.value] }}
                 </div>
                 {% endif %}
               {% endfor %}
@@ -47,6 +50,8 @@ properties:
             - _request: get_contact_companies
             - []
         extra_fields:
-          _if_none:
-            - _module.var: components.company_card_extra_fields
-            - []
+          _module.var: components.company_card_extra_fields
+        company_detail_page:
+          _module.pageId:
+            id: company-detail
+            module: companies
