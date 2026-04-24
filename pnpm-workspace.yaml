@@ -1,4 +1,5 @@
 packages:
   - "apps/*"
   - "plugins/*"
+  - "modules/*"
   - "apps/*/.lowdefy/*"

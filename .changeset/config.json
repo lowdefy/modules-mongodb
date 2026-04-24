@@ -5,7 +5,7 @@
     { "repo": "lowdefy/modules-mongodb" }
   ],
   "commit": false,
-  "fixed": [["@lowdefy/modules-mongodb", "@lowdefy/modules-mongodb-plugins"]],
+  "fixed": [["@lowdefy/modules-mongodb-*"]],
   "linked": [],
   "access": "restricted",
   "baseBranch": "main",

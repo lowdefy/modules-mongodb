@@ -50,7 +50,7 @@ jobs:
         id: release-notes
         run: |
           node scripts/release-notes.mjs --output-file=/tmp/release-notes.md
-          VERSION=$(node -p "require('./package.json').version")
+          VERSION=$(node -p "require('./plugins/modules-mongodb-plugins/package.json').version")
           echo "version=v${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
