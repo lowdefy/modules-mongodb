@@ -81,3 +81,4 @@ secrets:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.1.0"

@@ -117,3 +117,4 @@ plugins:
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^2"
   - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.1.0"
