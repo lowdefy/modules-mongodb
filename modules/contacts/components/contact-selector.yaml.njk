@@ -144,6 +144,15 @@ events:
           type: Validate
           params:
             regex: '^{{ id | replace(".", "_") }}_contact\.'
+        - id: generate_id
+          type: SetState
+          skip:
+            _ne:
+              - _state: {{ id | replace(".", "_") }}_contact._id
+              - null
+          params:
+            {{ id | replace(".", "_") }}_contact._id:
+              _uuid: true
         - id: generate_avatar
           type: SetState
           skip:
