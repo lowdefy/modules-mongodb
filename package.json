@@ -8,7 +8,7 @@
   "scripts": {
     "build": "pnpm -r --filter '!@lowdefy/modules-demo' run build",
     "changeset": "changeset",
-    "release:version": "pnpm changeset version && pnpm install --no-frozen-lockfile",
+    "release:version": "pnpm changeset version && node scripts/sync-module-versions.mjs && pnpm install --no-frozen-lockfile",
     "release:publish": "pnpm changeset publish"
   },
   "devDependencies": {
