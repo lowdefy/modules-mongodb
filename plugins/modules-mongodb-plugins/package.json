@@ -2,8 +2,15 @@
   "name": "@lowdefy/modules-mongodb-plugins",
   "version": "0.1.0",
   "license": "Apache-2.0",
-  "private": true,
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lowdefy/modules-mongodb.git",
+    "directory": "plugins/modules-mongodb-plugins"
+  },
   "exports": {
     "./*": "./dist/*",
     "./actions": "./dist/actions.js",

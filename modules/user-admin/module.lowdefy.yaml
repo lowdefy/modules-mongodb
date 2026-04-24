@@ -1,4 +1,5 @@
 name: User Admin
+version: 0.1.0
 description: User administration — list, edit, invite users
 
 dependencies:
