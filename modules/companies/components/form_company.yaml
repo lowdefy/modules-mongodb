@@ -3,75 +3,41 @@ type: Box
 blocks:
   _build.array.concat:
     # Core fields
-    - - id: company.trading_name
-        type: TextInput
-        required: true
-        properties:
-          title:
-            _string.concat:
-              - _module.var: label
-              - ' Name'
-          placeholder:
-            _string.concat:
-              - 'Enter '
-              - _module.var: label
-              - ' name'
-      - id: company.description
-        type: TextArea
-        properties:
-          title: Description
-          rows: 3
-      - id: divider_registration
+    - _ref: components/fields/core.yaml
+    # Registration
+    - - id: divider_registration
         type: Divider
         properties:
           title: Registration
-      - id: company.registered_name
-        type: TextInput
-        properties:
-          title: Registered Name
-      - id: company.registration_number
-        type: TextInput
-        properties:
-          title: Registration Number
-      - id: company.vat_number
-        type: TextInput
-        properties:
-          title: VAT Number
-      - id: divider_contact
+    - _ref: components/fields/registration.yaml
+    # Contact details
+    - - id: divider_contact
         type: Divider
         properties:
           title: Contact Details
-      - id: company.website
-        type: TextInput
-        properties:
-          title: Website
-          placeholder: 'https://...'
-      - id: company.contact.primary_email
-        type: TextInput
-        properties:
-          title: Email
-          placeholder: 'info@company.com'
-        validate:
-          _ref: validate/email.yaml
-      - id: company.contact.primary_phone
-        type: PhoneNumberInput
-        properties:
-          title: Phone
-      - id: divider_address
+    - _ref: components/fields/contact.yaml
+    # Address
+    - - id: divider_address
         type: Divider
         properties:
           title: Address
-      - id: company.address.registered.formatted_address
-        type: TextInput
-        properties:
-          title: Registered Address
-      - id: company.address.registered.extra
-        type: TextInput
-        properties:
-          title: Building / Unit / Floor
-    # form_attributes injection point — custom fields appear here
-    - _module.var: components.form_attributes
-    # Contacts section
+    - _ref: components/fields/address.yaml
+    # Consumer attributes (conditional — only when provided)
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.attributes
+            - 0
+        then:
+          _build.array.concat:
+            - - id: divider_attributes
+                type: Divider
+                properties:
+                  title: Additional Details
+            - _module.var: fields.attributes
+        else: []
+    # Linked contacts
     - - id: divider_contacts
         type: Divider
         properties:
@@ -79,7 +45,7 @@ blocks:
       - _ref:
           module: contacts
           component: contact-selector
-        vars:
-          label: Linked Contacts
-          mode: MultipleSelector
-          field_id: company.contacts
+          vars:
+            label: Linked Contacts
+            mode: MultipleSelector
+            field_id: contacts

@@ -8,39 +8,60 @@ routine:
     properties:
       filter:
         _id:
-          _payload: company._id
+          _payload: _id
         updated.timestamp:
-          _payload: company.updated.timestamp
+          _payload: updated.timestamp
       update:
         _build.array.concat:
+          # Stage 1: Overwrite scalars, merge sub-objects
           - - $set:
                 trading_name:
-                  _payload: company.trading_name
+                  _payload: trading_name
                 description:
-                  _payload: company.description
+                  _payload: description
                 registered_name:
-                  _payload: company.registered_name
+                  _payload: registered_name
                 registration_number:
-                  _payload: company.registration_number
+                  _payload: registration_number
                 vat_number:
-                  _payload: company.vat_number
+                  _payload: vat_number
                 website:
-                  _payload: company.website
-                address:
-                  _payload: company.address
+                  _payload: website
                 contact:
-                  _payload: company.contact
-                lowercase_email:
-                  _string.toLowerCase:
-                    _string.trim:
-                      _if_none:
-                        - _payload: company.contact.primary_email
-                        - ''
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.contact"
+                        - {}
+                    - _payload: contact
+                address:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.address"
+                        - {}
+                    - _payload: address
+                attributes:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.attributes"
+                        - {}
+                    - $ifNull:
+                        - _payload: attributes
+                        - {}
                 updated:
                   _ref:
                     module: events
                     component: change_stamp
-          - _module.var: request_stages.update_company
+          # Stage 2: Derived fields (sees merged contact from stage 1)
+          - - $set:
+                lowercase_email:
+                  $toLower:
+                    $trim:
+                      input:
+                        $ifNull:
+                          - "$contact.primary_email"
+                          - ""
+          # Consumer pipeline stages
+          - _module.var: request_stages.write
 
   - id: unlink-old-contacts
     type: MongoDBUpdateMany
@@ -51,11 +72,11 @@ routine:
     properties:
       filter:
         global_attributes.company_ids:
-          _payload: company._id
+          _payload: _id
       update:
         $pull:
           global_attributes.company_ids:
-            _payload: company._id
+            _payload: _id
 
   - id: link-new-contacts
     type: MongoDBUpdateMany
@@ -68,12 +89,12 @@ routine:
         _id:
           $in:
             _if_none:
-              - _payload: company.contacts
+              - _payload: contacts
               - []
       update:
         $addToSet:
           global_attributes.company_ids:
-            _payload: company._id
+            _payload: _id
 
   - id: new-event
     type: CallApi
@@ -116,16 +137,14 @@ routine:
                           target:
                             name:
                               _payload:
-                                _build.string.concat:
-                                  - 'company.'
-                                  - _module.var: name_field
+                                _module.var: name_field
                     description: null
         references:
           company_ids:
-            - _payload: company._id
+            - _payload: _id
         metadata:
           company_id:
-            _payload: company._id
+            _payload: _id
 
   - :return:
       success: true

@@ -4,9 +4,14 @@ _ref:
   vars:
     id: contact-detail
     title:
-      _if_none:
-        - _request: get_contact.0.profile.name
-        - _module.var: label
+      _nunjucks:
+        template: |
+          {{ label }}{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+        on:
+          _object.assign:
+            - _request: get_contact.0
+            - label:
+                _module.var: label
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -88,11 +93,9 @@ _ref:
                           _string.concat:
                             - _module.var: label
                             - " Information"
-                        doc:
-                          _request: get_contact.0
                         blocks:
-                          - _module.var: components.detail_fields
-                - _module.var: components.main_tiles
+                          - _ref: components/view_contact.yaml
+                - _module.var: components.main_slots
           - id: sidebar_column
             type: Box
             layout:
@@ -103,4 +106,4 @@ _ref:
               _build.array.concat:
                 - - _ref: components/tile_companies.yaml
                   - _ref: components/tile_events.yaml
-                - _module.var: components.sidebar_tiles
+                - _module.var: components.sidebar_slots

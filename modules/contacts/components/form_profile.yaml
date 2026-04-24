@@ -1,0 +1,16 @@
+id: form_profile
+type: Box
+layout:
+  gap: 8
+blocks:
+  _build.array.concat:
+    # Avatar preview (gradient SVG driven by profile.avatar_color)
+    - - _ref: ../shared/profile/avatar-preview.yaml
+    # Core fields (shared)
+    - _ref:
+        path: ../shared/profile/form_core.yaml
+        vars:
+          show_honorific:
+            _module.var: fields.show_honorific
+    # Extended profile fields (injected by consumer)
+    - _module.var: fields.profile

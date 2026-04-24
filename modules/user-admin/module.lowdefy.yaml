@@ -27,9 +27,9 @@ vars:
     description: App domain URL for invite links (falls back to current origin)
   fields:
     type: object
-    description: "Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_title toggles the title/honorific field."
+    description: "Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
     properties:
-      show_title:
+      show_honorific:
         type: boolean
         default: false
       profile:
@@ -40,15 +40,17 @@ vars:
         default: []
   components:
     type: object
-    description: "Component overrides: view_extra, view_access_tile, table_columns, download_columns, filters"
+    description: "Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots"
     properties:
-      view_extra:
-        default: []
       download_columns:
         default: []
       table_columns:
         default: []
       filters:
+        default: []
+      main_slots:
+        default: []
+      sidebar_slots:
         default: []
       view_access_tile:
         default:

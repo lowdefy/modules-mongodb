@@ -1,0 +1,18 @@
+id: get_company_contact_ids
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId:
+    id: contacts-collection
+    module: contacts
+payload:
+  company_id:
+    _url_query: _id
+properties:
+  pipeline:
+    - $match:
+        global_attributes.company_ids:
+          _payload: company_id
+    - $group:
+        _id: null
+        ids:
+          $push: "$_id"

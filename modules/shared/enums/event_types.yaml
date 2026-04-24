@@ -2,7 +2,5 @@ _build.object.assign:
   - _ref: ../user-admin/enums/event_types.yaml
   - _ref: ../user-account/enums/event_types.yaml
   - _ref: ../contacts/enums/event_types.yaml
+  - _ref: ../companies/enums/event_types.yaml
   - _ref: ../data-upload/enums/event_types.yaml
-  # Add refs as modules are implemented:
-  # - _ref: ../companies/enums/event_types.yaml
-  # - _ref: ../workflows/enums/event_types.yaml

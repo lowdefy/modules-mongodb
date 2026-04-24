@@ -11,7 +11,7 @@ blocks:
         visible:
           _eq:
             - _state: filter.status
-            - 'new'
+            - "new"
         properties:
           label:
             disabled: true
@@ -46,13 +46,13 @@ blocks:
       buttonStyle: outline
       options:
         - label: Processing
-          value: 'new'
+          value: "new"
         - label: Done
-          value: 'done'
+          value: "done"
         - label: Discarded
-          value: 'discard'
+          value: "discard"
         - label: Errors
-          value: 'error'
+          value: "error"
     events:
       onChange:
         - id: reset
@@ -63,7 +63,7 @@ blocks:
                 test:
                   _eq:
                     - _state: filter.status
-                    - 'new'
+                    - "new"
                 then: changes
                 else: null
             pagination.current: 1
@@ -109,34 +109,25 @@ blocks:
               checkboxSelection:
                 _eq:
                   - _state: filter.status
-                  - 'new'
+                  - "new"
               headerCheckboxSelection:
                 _eq:
                   - _state: filter.status
-                  - 'new'
+                  - "new"
               headerCheckboxSelectionFilteredOnly: true
-              cellRenderer:
+              cell:
                 _build.if:
                   test:
                     _build.ne:
                       - _module.var: tool.view_page
                       - null
                   then:
-                    _function:
-                      __nunjucks:
-                        template:
-                          _build.string.concat:
-                            - '<a href="/'
-                            - _module.var: tool.view_page
-                            - '?_id={{ target_id }}" style="color:var(--ant-color-primary);font-weight:600">{{ target_id }}</a>'
-                        on:
-                          __args: 0.data
-                  else:
-                    _function:
-                      __nunjucks:
-                        template: '{{ target_id }}'
-                        on:
-                          __args: 0.data
+                    type: link
+                    pageId:
+                      _module.var: tool.view_page
+                    urlQuery:
+                      _id: target_id
+                  else: null
             - field: method
               headerName: Action
               width: 110
@@ -151,7 +142,7 @@ blocks:
               test:
                 _eq:
                   - _state: filter.status
-                  - 'new'
+                  - "new"
               then:
                 - field: changed_fields
                   headerName: Changed
@@ -162,7 +153,7 @@ blocks:
               test:
                 _eq:
                   - _state: filter.status
-                  - 'error'
+                  - "error"
               then:
                 - field: validation_errors
                   headerName: Errors
@@ -202,6 +193,11 @@ blocks:
         sortable: true
         resizable: true
     events:
+      onCellLink:
+        - id: go_to_view
+          type: Link
+          params:
+            _event: link
       onSelectionChanged:
         - id: update_selection
           type: SetState

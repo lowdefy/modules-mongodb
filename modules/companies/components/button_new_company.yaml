@@ -1,0 +1,18 @@
+id: button_new_company
+type: Button
+layout:
+  flex: 0 0 auto
+properties:
+  title:
+    _string.concat:
+      - "New "
+      - _module.var: label
+  icon: AiOutlinePlusCircle
+  type: primary
+events:
+  onClick:
+    - id: go_new
+      type: Link
+      params:
+        pageId:
+          _module.pageId: company-new

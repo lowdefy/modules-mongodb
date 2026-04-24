@@ -23,32 +23,50 @@ requests:
         - $addFields:
             title:
               _string.concat:
-                - '$'
+                - "$"
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - '.title'
+                - ".title"
             description:
               _string.concat:
-                - '$'
+                - "$"
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - '.description'
+                - ".description"
             info:
               _string.concat:
-                - '$'
+                - "$"
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - '.info'
+                - ".info"
 
 blocks:
+  - id: events_timeline_empty
+    type: Paragraph
+    visible:
+      _eq:
+        - _array.length:
+            _request: get-events
+        - 0
+    properties:
+      content: No activity
+      type: secondary
+      style:
+        fontSize: 12
+        fontStyle: italic
   - id: events-timeline
     type: EventsTimeline
+    visible:
+      _gt:
+        - _array.length:
+            _request: get-events
+        - 0
     properties:
       data:
         _request: get-events

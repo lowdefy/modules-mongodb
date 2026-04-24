@@ -7,7 +7,7 @@ _ref:
       _build.string.trim:
         _build.string.concat:
           - _module.var: app_title
-          - ' User Admin'
+          - " User Admin"
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
@@ -15,7 +15,7 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - ' User Admin'
+              - " User Admin"
     page_actions:
       - _ref: components/excel_download.yaml
       - _ref: components/button_new_invite.yaml
@@ -56,9 +56,28 @@ _ref:
           marginTop: 4
         blocks:
           _module.var: components.filters
-      - _ref: components/sort_filters.yaml
-      - id: content
-        type: Card
-        blocks:
-          - _ref: components/table_users.yaml
-          - _ref: components/pagination.yaml
+      - _ref:
+          path: ../shared/layout/sort-filters.yaml
+          vars:
+            search_action:
+              _ref: actions/search.yaml
+            sort_options:
+              - label: Name
+                value: profile.name
+              - label: Email
+                value: email
+              - label: Date Updated
+                value: updated.timestamp
+              - label: Date Created
+                value: created.timestamp
+              - label: Date Signed Up
+                value:
+                  _string.concat:
+                    - "apps."
+                    - _module.var: app_name
+                    - ".sign_up"
+      - _ref: components/table_users.yaml
+      - _ref:
+          path: ../shared/layout/pagination.yaml
+          vars:
+            request_id: get_all_users

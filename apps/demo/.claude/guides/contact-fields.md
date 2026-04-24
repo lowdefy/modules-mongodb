@@ -14,59 +14,60 @@ Fields are extensible via `_module.var` injection. The contacts module defines c
 
 ### Root fields
 
-| Field | Type | Set by | Mutable | Notes |
-|---|---|---|---|---|
-| `_id` | UUID | create | No | `$ifNull` on upsert to preserve |
-| `email` | String | create | No | Case-preserved original |
-| `lowercase_email` | String | create | No | Unique index, used for dedup |
-| `verified` | Boolean | create | Yes | Email verification status |
-| `hidden` | Boolean | create | Yes | Excluded from list queries |
-| `disabled` | Boolean | create | Yes | Global disable flag |
-| `created` | change_stamp | create | No | `$ifNull` / `$setOnInsert` guarded |
-| `updated` | change_stamp | every write | Yes | Always set unconditionally |
+| Field             | Type         | Set by      | Mutable | Notes                              |
+| ----------------- | ------------ | ----------- | ------- | ---------------------------------- |
+| `_id`             | UUID         | create      | No      | `$ifNull` on upsert to preserve    |
+| `email`           | String       | create      | No      | Case-preserved original            |
+| `lowercase_email` | String       | create      | No      | Unique index, used for dedup       |
+| `verified`        | Boolean      | create      | Yes     | Email verification status          |
+| `hidden`          | Boolean      | create      | Yes     | Excluded from list queries         |
+| `disabled`        | Boolean      | create      | Yes     | Global disable flag                |
+| `created`         | change_stamp | create      | No      | `$ifNull` / `$setOnInsert` guarded |
+| `updated`         | change_stamp | every write | Yes     | Always set unconditionally         |
 
 ### profile (the person)
 
-| Field | Type | Notes |
-|---|---|---|
-| `profile.name` | String | **Computed**: `given_name + " " + family_name` — never set from user input |
-| `profile.picture` | String | **Auto-generated**: DiceBear initials URL seeded by name |
-| `profile.given_name` | String | First name (required) |
-| `profile.family_name` | String | Last name (required) |
-| `profile.title` | String | Honorific (Mr/Ms/Dr/Prof) — only if `show_title` var is true |
-| `profile.mobile_phone` | PhoneObject | `{ input, region: { name, code, dial_code }, phone_number }` |
-| `profile.work_phone` | PhoneObject | Same structure as mobile_phone |
-| `profile.birthday` | Date | Nullable |
-| `profile.department` | String | Nullable |
-| `profile.job_title` | String | Nullable |
+| Field                  | Type        | Notes                                                                      |
+| ---------------------- | ----------- | -------------------------------------------------------------------------- |
+| `profile.name`         | String      | **Computed**: `given_name + " " + family_name` — never set from user input |
+| `profile.picture`      | String      | **Auto-generated**: DiceBear initials URL seeded by name                   |
+| `profile.given_name`   | String      | First name (required)                                                      |
+| `profile.family_name`  | String      | Last name (required)                                                       |
+| `profile.title`        | String      | Honorific (Mr/Ms/Dr/Prof) — only if `show_honorific` var is true           |
+| `profile.mobile_phone` | PhoneObject | `{ input, region: { name, code, dial_code }, phone_number }`               |
+| `profile.work_phone`   | PhoneObject | Same structure as mobile_phone                                             |
+| `profile.birthday`     | Date        | Nullable                                                                   |
+| `profile.department`   | String      | Nullable                                                                   |
+| `profile.job_title`    | String      | Nullable                                                                   |
 
 Phone, birthday, department, and job_title are **not core** — they're injected by consuming apps via `components.profile_set_fields` and `components.profile_fields`.
 
 ### global_attributes (cross-app)
 
-| Field | Type | Notes |
-|---|---|---|
-| `global_attributes.company_ids` | String[] | References to `companies._id` — a contact can belong to multiple companies |
-| `global_attributes.internal_details` | String | Free-text notes field |
+| Field                                | Type     | Notes                                                                      |
+| ------------------------------------ | -------- | -------------------------------------------------------------------------- |
+| `global_attributes.company_ids`      | String[] | References to `companies._id` — a contact can belong to multiple companies |
+| `global_attributes.internal_details` | String   | Free-text notes field                                                      |
 
 On update, `company_ids` can be replaced (contacts module) or union-merged via `$setUnion` (to never lose existing links).
 
 ### apps.{app_name} (per-app access)
 
-| Field | Type | Notes |
-|---|---|---|
-| `apps.{app_name}.is_user` | Boolean | `true` = has app access; blocks contact-edit (must use user-admin) |
-| `apps.{app_name}.disabled` | Boolean | Per-app disable (independent of global `disabled`) |
-| `apps.{app_name}.roles` | String[] | Role names for this app (e.g., `["admin", "procurement-lead"]`) |
-| `apps.{app_name}.invite.open` | Boolean | `true` = invite link is active/pending |
-| `apps.{app_name}.sign_up` | Object | `{ timestamp, method }` — set when user accepts invite |
-| `apps.{app_name}.app_attributes` | Object | App-specific custom data, merged via `$mergeObjects` |
+| Field                            | Type     | Notes                                                              |
+| -------------------------------- | -------- | ------------------------------------------------------------------ |
+| `apps.{app_name}.is_user`        | Boolean  | `true` = has app access; blocks contact-edit (must use user-admin) |
+| `apps.{app_name}.disabled`       | Boolean  | Per-app disable (independent of global `disabled`)                 |
+| `apps.{app_name}.roles`          | String[] | Role names for this app (e.g., `["admin", "procurement-lead"]`)    |
+| `apps.{app_name}.invite.open`    | Boolean  | `true` = invite link is active/pending                             |
+| `apps.{app_name}.sign_up`        | Object   | `{ timestamp, method }` — set when user accepts invite             |
+| `apps.{app_name}.app_attributes` | Object   | App-specific custom data, merged via `$mergeObjects`               |
 
 The `apps` layer is set by user-admin (invite-user, update-user). The contacts module never touches it. The `is_user` guard in update-contact's filter (`apps.{app_name}.is_user: { $ne: true }`) prevents editing user records through the contacts form.
 
 ## Computed Fields
 
 **`profile.name`** — always recomputed from given_name + family_name on every create/update:
+
 ```yaml
 profile.name:
   _string.concat:
@@ -80,6 +81,7 @@ profile.name:
 ```
 
 **`profile.picture`** — DiceBear initials avatar, seeded by the computed name:
+
 ```yaml
 profile.picture:
   _string.concat:
@@ -100,18 +102,19 @@ profile.picture:
 ## Variations
 
 **Contact vs User** — same collection, different access level:
+
 - Contact: `apps` is empty or `is_user` is falsy. Editable via contacts module.
 - User: `apps.{app_name}.is_user: true`. Editable only via user-admin module.
 
 **Dedup on create** — FindOne by `lowercase_email`. If exists: skip insert, return existing `_id` with `existing: true`. If not: upsert with `$ifNull` guards on `_id` and `created`.
 
 **Dynamic app-scoped fields** — user-admin uses `_object.defineProperty` to set paths like `apps.{app_name}.roles` where the app name comes from `_module.var: app_name`:
+
 ```yaml
 - _object.defineProperty:
     on: {}
     key:
-      _string.concat:
-        ["apps.", { _module.var: app_name }, ".roles"]
+      _string.concat: ["apps.", { _module.var: app_name }, ".roles"]
     descriptor:
       value:
         _payload: user.roles
@@ -130,9 +133,10 @@ profile.picture:
 - `docs/data-design/app-schema-example/user_contacts.yaml` — full schema definition with example documents and indexes
 - `modules/contacts/api/create-contact.yaml` — create with dedup, computed fields, `$ifNull` guards, module var injection
 - `modules/contacts/api/update-contact.yaml` — update with `is_user` guard, optimistic concurrency, immutable email
-- `modules/contacts/components/form_contact.yaml` — form with `show_title` conditional, `profile_fields` injection, email disabled on edit
-- `modules/contacts/components/view_contact.yaml` — detail view with DataView for profile, `profile_view_config` injection
-- `modules/contacts/components/table_contacts.yaml` — AgGrid with avatar renderer, `table_columns` injection
+- `modules/contacts/components/form_profile.yaml` — shared core fields + `fields.profile` injection; email lives in `form_email.yaml` (create) or identity-header (edit)
+- `modules/contacts/components/form_global_attributes.yaml` — conditional "Attributes" divider + `fields.global_attributes` injection
+- `modules/contacts/components/view_contact.yaml` — SmartDescriptions rendering `fields.profile` and `fields.global_attributes` as read-only rows
+- `modules/contacts/components/table_contacts.yaml` — AgGridBalham with avatar renderer, `components.table_columns` injection
 - `modules/contacts/components/contact-selector.yaml` — reusable selector projecting `label: "name (email)"`, `value: _id`
 - `modules/contacts/connections/contacts-collection.yaml` — MongoDBCollection on `user-contacts` with changeLog
 - `modules/user-admin/api/invite-user.yaml` — sets `apps.{app_name}` layer with `_object.defineProperty` for dynamic paths
@@ -141,6 +145,7 @@ profile.picture:
 ## Template
 
 **Event display defaults** (`modules/{module}/defaults/event_display.yaml`):
+
 ```yaml
 default:
   create-{entity}: "{{ user.profile.name }} created {{ target.name }}"
@@ -148,6 +153,7 @@ default:
 ```
 
 **Extended profile fields injection** (referenced as `_module.var: components.profile_set_fields`):
+
 ```yaml
 # This file is _ref'd into the app's module vars for contacts/user-admin/user-account
 profile.work_phone:
@@ -169,6 +175,7 @@ profile.department:
 ```
 
 **Extended profile form fields** (referenced as `_module.var: components.profile_fields`):
+
 ```yaml
 - id: {entity}.profile.work_phone
   type: PhoneNumberInput

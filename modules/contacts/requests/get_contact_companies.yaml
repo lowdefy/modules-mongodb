@@ -6,9 +6,7 @@ connectionId:
     module: companies
 payload:
   company_ids:
-    _if_none:
-      - _request: get_contact.0.global_attributes.company_ids
-      - _state: global_attributes.company_ids
+    _request: get_contact.0.global_attributes.company_ids
 properties:
   pipeline:
     - $match:
@@ -23,7 +21,7 @@ properties:
         display_name:
           $getField:
             field: trading_name
-            input: '$$ROOT'
+            input: "$$ROOT"
     - $project:
         _id: 1
         display_name: 1

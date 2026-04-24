@@ -62,8 +62,6 @@ blocks:
               - _ref:
                   path: ../shared/profile/form_core.yaml
                   vars:
-                    show_title:
-                      _module.var: fields.show_title
+                    show_honorific:
+                      _module.var: fields.show_honorific
               - _module.var: fields.profile
-    # Extra content slot
-    - _module.var: components.view_extra

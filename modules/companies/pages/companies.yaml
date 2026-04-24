@@ -11,24 +11,8 @@ _ref:
       - label:
           _module.var: label_plural
     page_actions:
-      - id: new_company_button
-        type: Button
-        layout:
-          flex: 0 1 auto
-        properties:
-          title:
-            _string.concat:
-              - "New "
-              - _module.var: label
-          icon: AiOutlinePlusCircle
-          type: primary
-        events:
-          onClick:
-            - id: go_new
-              type: Link
-              params:
-                pageId:
-                  _module.pageId: company-new
+      - _ref: components/excel_download.yaml
+      - _ref: components/button_new_company.yaml
     events:
       onInit:
         - id: set_sort
@@ -51,10 +35,36 @@ _ref:
             - get_all_companies
     requests:
       - _ref: requests/get_all_companies.yaml
+      - _ref: requests/get_company_excel_data.yaml
     blocks:
-      - _module.var: components.filters
-      - id: content
-        type: Card
+      - _ref: components/filter_companies.yaml
+      - id: custom_filters_box
+        type: Box
+        layout:
+          gap: 8
+        requests:
+          _module.var: filter_requests
+        style:
+          maxWidth: 1200
+          margin: auto
+          marginTop: 4
         blocks:
-          - _module.var: components.table
-          - _ref: components/pagination.yaml
+          _module.var: components.filters
+      - _ref:
+          path: ../shared/layout/sort-filters.yaml
+          vars:
+            search_action:
+              _ref: actions/search.yaml
+            sort_options:
+              - label: Name
+                value:
+                  _module.var: name_field
+              - label: Date Updated
+                value: updated.timestamp
+              - label: Date Created
+                value: created.timestamp
+      - _ref: components/table_companies.yaml
+      - _ref:
+          path: ../shared/layout/pagination.yaml
+          vars:
+            request_id: get_all_companies

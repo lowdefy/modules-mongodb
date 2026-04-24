@@ -1,0 +1,8 @@
+- id: address.registered.formatted_address
+  type: TextInput
+  properties:
+    title: Registered Address
+- id: address.registered.extra
+  type: TextInput
+  properties:
+    title: Building / Unit / Floor

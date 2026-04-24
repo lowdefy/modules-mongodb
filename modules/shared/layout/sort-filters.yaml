@@ -24,24 +24,11 @@ blocks:
       label:
         disabled: true
       options:
-        - label: Name
-          value: profile.name
-        - label: Email
-          value: email
-        - label: Date Updated
-          value: updated.timestamp
-        - label: Date Created
-          value: created.timestamp
-        - label: Date Signed Up
-          value:
-            _string.concat:
-              - "apps."
-              - _module.var: app_name
-              - ".sign_up"
+        _var: sort_options
     events:
       onChange:
         try:
-          _ref: actions/search.yaml
+          _var: search_action
         debounce:
           ms: 500
 
@@ -93,4 +80,4 @@ blocks:
                             - -1
                         then: 1
                         else: -1
-              - _ref: actions/search.yaml
+              - _var: search_action

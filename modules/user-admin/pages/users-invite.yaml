@@ -20,7 +20,7 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - ' User Admin'
+              - " User Admin"
         pageId:
           _module.pageId: users
       - label: Invite User
@@ -104,7 +104,7 @@ _ref:
         layout:
           gap: 16
         blocks:
-          - _ref: components/view_user_avatar_preview.yaml
+          - _ref: ../shared/profile/avatar-preview.yaml
           - _ref: components/view_invite_link.yaml
           - _ref: components/view_email.yaml
           - id: divider_profile

@@ -12,13 +12,13 @@ payload:
 properties:
   pipeline:
     - $search:
+        returnStoredSource: true
         compound:
           filter:
             - compound:
                 mustNot:
-                  - equals:
-                      path: removed
-                      value: true
+                  - exists:
+                      path: removed.timestamp
                 must:
                   _array.concat:
                     - _if:
@@ -39,10 +39,10 @@ properties:
                                 - wildcard:
                                     query:
                                       _string.concat:
-                                        - '*'
+                                        - "*"
                                         - _string.toLowerCase:
                                             _payload: filter.search
-                                        - '*'
+                                        - "*"
                                     path:
                                       - _module.var: name_field
                                       - lowercase_email
@@ -62,7 +62,7 @@ properties:
           $getField:
             field:
               _module.var: name_field
-            input: '$$ROOT'
+            input: "$$ROOT"
     - $facet:
         count:
           - $count: total
@@ -98,11 +98,11 @@ properties:
                   updated_at:
                     $dateToString:
                       date: $updated.timestamp
-                      format: '%Y-%m-%d'
+                      format: "%Y-%m-%d"
                   created_at:
                     $dateToString:
                       date: $created.timestamp
-                      format: '%Y-%m-%d'
+                      format: "%Y-%m-%d"
             - _module.var: request_stages.get_all_companies
     - $unwind:
         path: $count

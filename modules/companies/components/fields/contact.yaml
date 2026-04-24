@@ -1,0 +1,19 @@
+- id: website
+  type: TextInput
+  properties:
+    title: Website
+    placeholder: "https://..."
+- id: contact.primary_email
+  type: TextInput
+  properties:
+    title: Email
+    placeholder: "info@company.com"
+  validate:
+    _ref:
+      path: validate/email.yaml
+      vars:
+        field_name: contact.primary_email
+- id: contact.primary_phone
+  type: PhoneNumberInput
+  properties:
+    title: Phone

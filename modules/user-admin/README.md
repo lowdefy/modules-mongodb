@@ -167,15 +167,14 @@ Omitting a template for an event type under a given key means no display entry i
 
 Type: `object`
 
-Override default form sections, table columns, and filters. All keys are optional — omitted keys use module defaults (empty placeholder blocks for forms, standard columns for tables).
+Page-level slot overrides. All keys optional.
 
-- **`profile_fields`** — Array of form field blocks appended to the profile section on invite and edit pages
-- **`profile_set_fields`** — Object mapping field paths to payload operations for the API save
-- **`global_attributes_fields`** — Array of form field blocks for the global attributes section (divider provided by template)
-- **`app_attributes_fields`** — Array of form field blocks for the app-specific attributes section (divider provided by template)
-- **`table_columns`** — Array of AgGrid column definitions appended to the users table
-- **`download_columns`** — Array of column definitions appended to the Excel export
-- **`filters`** — Array of block definitions added to the filter section on the users list page
+- **`table_columns`** — Extra AgGrid column definitions appended to the users table
+- **`download_columns`** — Extra column definitions appended to the Excel export
+- **`filters`** — Extra filter blocks rendered below the built-in search bar
+- **`main_slots`** — Extra blocks appended to the main column on the view/edit pages
+- **`sidebar_slots`** — Extra blocks appended after the default sidebar (access tile)
+- **`view_access_tile`** — Override the default access sidebar tile wholesale
 
 ### `request_stages`
 
