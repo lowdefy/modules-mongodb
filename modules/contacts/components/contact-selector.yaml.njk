@@ -235,6 +235,12 @@ events:
                             - _module.var: verified
                             - trusted
                 else: {}
+    # Re-fetch enrichment so the list row picks up the edited fields.
+    # Block value doesn't change on edit (same contact_id), so the
+    # useEffect that normally drives getContactsData won't re-fire.
+    - id: refresh_contacts_data
+      type: Request
+      params: {{ id | replace(".", "_") }}_contacts_data
 properties:
   title:
     _if_none:
