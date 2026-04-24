@@ -1,6 +1,6 @@
 # User Admin — Vars
 
-- **`app_name`** (required) — App name for MongoDB field paths (e.g., `prp-team`).
+- **`app_name`** (required) — App name for MongoDB field paths (e.g., `example-app`).
 - **`roles`** (required) — List of available user roles `[{label, value}]`.
 - **`app_title`** — Optional display prefix (e.g., `Team`). When set: "Team User Admin", "Invite Team User". When not set: "User Admin", "Invite User".
 - **`event_display`** — Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive `user` (current) and `target` (edited/invited user). Default: built-in defaults.

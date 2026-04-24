@@ -13,7 +13,7 @@ dependencies:
 vars:
   app_name:
     required: true
-    description: App name for MongoDB field paths (e.g., prp-team)
+    description: App name for MongoDB field paths (e.g., example-app)
   app_title:
     default: ""
     description: "Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User."

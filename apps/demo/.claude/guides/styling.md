@@ -161,10 +161,10 @@ style:
 ## Reference Files
 
 - `modules/layout/components/page.yaml` — `style` on PageSiderMenu for header/sider borders
-- `apps/hydra/pages/lot-list/components/table_lots.yaml` — `cellStyle` with flexbox centering and theme vars
-- `apps/hydra/pages/home/components/packages_table.yaml` — cell renderer with inline Ant Design color vars
+- `apps/example-app/pages/lot-list/components/table_lots.yaml` — `cellStyle` with flexbox centering and theme vars
+- `apps/example-app/pages/home/components/packages_table.yaml` — cell renderer with inline Ant Design color vars
 - `modules/shared/layout/card.yaml` — `style` with slot targeting for card component
-- `apps/hydra/pages/lot-view/components/overview_tab.yaml` — mixed `style` and `layout` for detail pages
+- `apps/example-app/pages/lot-view/components/overview_tab.yaml` — mixed `style` and `layout` for detail pages
 
 ## Template
 

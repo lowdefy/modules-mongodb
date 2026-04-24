@@ -19,5 +19,5 @@ footer:
     type: Html
     properties:
       html: |
-        <p>Hydra</p>
+        <p>Modules Demo</p>
         <p>© 2026 Resonancy. All rights reserved.</p>

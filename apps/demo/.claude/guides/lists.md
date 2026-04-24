@@ -195,7 +195,7 @@ devices:
 - `modules/files/components/file-list.yaml` — read-only List rendering file items with download links
 - `modules/notifications/components/list-notifications.yaml` — List with click handlers, empty state, and status rendering
 - `modules/data-upload/components/upload-history.yaml` — List displaying upload history entries
-- `apps/hydra/pages/lot-view/components/overview_tab.yaml` — List rendering predecessor/successor lots with links
+- `apps/example-app/pages/lot-view/components/overview_tab.yaml` — List rendering predecessor/successor lots with links
 
 ## Template
 
