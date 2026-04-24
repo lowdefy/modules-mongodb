@@ -202,6 +202,26 @@ importers:
         specifier: 5.94.0
         version: 5.94.0
 
+  modules/companies: {}
+
+  modules/contacts: {}
+
+  modules/data-upload: {}
+
+  modules/events: {}
+
+  modules/files: {}
+
+  modules/layout: {}
+
+  modules/notifications: {}
+
+  modules/release-notes: {}
+
+  modules/user-account: {}
+
+  modules/user-admin: {}
+
   plugins/modules-mongodb-plugins:
     dependencies:
       '@lowdefy/block-utils':

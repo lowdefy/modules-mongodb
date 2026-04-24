@@ -1,4 +1,5 @@
 name: Notifications
+version: 0.0.0
 description: Notification bell, inbox, and deep-link routing
 
 dependencies:

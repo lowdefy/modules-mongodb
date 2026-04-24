@@ -39,7 +39,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, '..');
 
-const PRIMARY_PACKAGE = '@lowdefy/modules-mongodb';
+const PRIMARY_PACKAGE = '@lowdefy/modules-mongodb-plugins';
 
 const flags = new Set(process.argv.slice(2).filter((a) => !a.startsWith('--output-file')));
 const FLAG_ALL = flags.has('--all');
