@@ -15,7 +15,7 @@
   source: "file:../../modules/files"
 
 - id: layout
-  source: "file:../../modules/layout-sider-menu"
+  source: "file:../../modules/layout"
   vars:
     _ref: modules/layout/vars.yaml
 

@@ -64,11 +64,8 @@ _ref:
                 value: updated.timestamp
               - label: Date Created
                 value: created.timestamp
-      - id: content
-        type: Card
-        blocks:
-          - _ref: components/table_contacts.yaml
-          - _ref:
-              path: ../shared/layout/pagination.yaml
-              vars:
-                request_id: get_all_contacts
+      - _ref: components/table_contacts.yaml
+      - _ref:
+          path: ../shared/layout/pagination.yaml
+          vars:
+            request_id: get_all_contacts

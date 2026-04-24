@@ -11,6 +11,7 @@ Operators are the expression language of Lowdefy YAML. They fall into two catego
 **Runtime operators** (`_if`, `_eq`, `_state`, etc.) resolve every time the page renders or an action fires. They read live data and drive dynamic behavior. Use for: showing/hiding blocks, computing values, reading state.
 
 **The underscore depth rule** for `_function` callbacks:
+
 - `_operator` (single underscore) — resolves at page level, before the function runs
 - `__operator` (double underscore) — resolves inside the function, with access to `__args`
 - `___operator` (triple underscore) — resolves inside a nested function (rare, used in `valueFormatter` with nested `_function`)
@@ -212,7 +213,7 @@ valueFormatter:
       - __args: 0.value
       - __function:
           ___string.concat:
-            - ' '
+            - " "
             - ___args: 0.name
 ```
 
@@ -295,7 +296,7 @@ _ref:
 ## Reference Files
 
 - `modules/contacts/components/table_contacts.yaml` — `_function` + `__nunjucks` cellRenderer, `_build.array.concat` column injection
-- `modules/layout-header-menu/components/page.yaml` — heavy `_build.*` usage: conditional blocks, nested `_build.if`
+- `modules/layout/components/page.yaml` — heavy `_build.*` usage: conditional blocks, `_build.switch`, `_build.object.assign`
 - `modules/shared/layout/card.yaml` — `_build.switch`, `_build.array.concat`, `_var` with defaults
 - `modules/contacts/requests/get_all_contacts.yaml` — `_payload`, `_array.concat`, `_if`, `_module.var` in pipeline
 - `modules/contacts/api/create-contact.yaml` — `_step`, `_payload`, `_user`, `_object.assign`, `_build.if`

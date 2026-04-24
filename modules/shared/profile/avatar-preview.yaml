@@ -2,7 +2,7 @@ id: avatar_preview
 type: Avatar
 style:
   textAlign: center
-  marginBottom: 42
+  marginBottom: 16
 properties:
   src:
     _js:
