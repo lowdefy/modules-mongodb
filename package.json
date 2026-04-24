@@ -9,7 +9,7 @@
     "build": "pnpm -r --filter '!@lowdefy/modules-demo' run build",
     "changeset": "changeset",
     "release:version": "pnpm changeset version && node scripts/sync-module-versions.mjs && pnpm install --no-frozen-lockfile",
-    "release:publish": "pnpm changeset publish"
+    "release:publish": "pnpm changeset publish --no-git-tag"
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.6.0",
