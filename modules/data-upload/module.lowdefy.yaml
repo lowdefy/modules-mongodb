@@ -89,5 +89,6 @@ secrets:
 
 plugins:
   - name: "@lowdefy/community-plugin-xlsx"
+    version: "^1"
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^2"

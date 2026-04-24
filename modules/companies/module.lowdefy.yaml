@@ -130,4 +130,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1"
+    version: "^0.1.0"
