@@ -5,7 +5,7 @@
                         Dots are replaced with underscores for state paths (e.g. id "edit.ticket.subs" →
                         state keys "edit_ticket_subs_contact", request id "edit_ticket_subs_contact_search"),
                         but the block's own `id` keeps the dots so parent state paths stay addressable.
-     keyword            (string) — label in titles/placeholders (e.g. "Subscribers"). Nunjucks-interpolated.
+     keyword            (string) — label in titles/placeholders (e.g. "Subscribers"). Nunjucks-interpolated. ##TODO: Find a better name for this
      title              (string) — picker title override; defaults to "{{ keyword }} details" or "Contact details".
      placeholder        (string) — search input placeholder; defaults to "Search contacts...".
      label              (object) — passed to the block's Label wrapper (extra, tooltip, etc.).
@@ -15,7 +15,6 @@
      layout             (object)  — block layout overrides.
      max                (number)  — maximum selected contacts (passed to the block).
      filter             (object)  — extra Mongo $match clauses merged into the search pipeline.
-     payload            (object)  — extra payload keys merged into the search request.
      extra_options      (array)   — options appended after search results (ad-hoc entries).
      default_company_ids (array)  — if set, onOpen prefills the form's global_attributes.company_ids.
      disable_new_contacts (boolean) — when true, hides Add button; allowNewContacts = false.
@@ -26,12 +25,23 @@
                                     Mirrors the form_profile / fields.profile
                                     pattern — extend by adding, not by replacing.
      form_required      (object)  — { given_name, family_name, email } flags forwarded to the default form.
+     verified           (boolean) — when the module's `use_verified` is true,
+                                    this picker writes `global_attributes.verified`
+                                    = <verified> on add/edit. Each picker instance
+                                    can set a different value (e.g. a public
+                                    self-service picker creates unverified contacts,
+                                    an admin picker creates verified ones). Ignored
+                                    when `use_verified` is false.
+     company_only_contacts (boolean) — when true, search is scoped to the user's
+                                    global_attributes.company_ids. When false
+                                    (default), the picker searches all contacts.
+                                    Per-call so different pickers in the same app
+                                    can scope differently.
 
    Module-level vars (read via _module.var):
-     verified     (enum off|trusted|untrusted) — picker writes `global_attributes.verified` on add/edit;
-                                                  when "trusted", unverified rows show a Verify button.
-     all_contacts (boolean) — when false, search is scoped to the user's global_attributes.company_ids.
-     phone_label  (boolean) — reserved; currently a no-op in the search pipeline.
+     use_verified       (boolean) — master on/off for verification UI + payload writes.
+                                    When true, Verify button appears for unverified
+                                    rows and the payload writes global_attributes.verified.
 #}
 id: {{ id }}
 type: ContactSelector
@@ -80,14 +90,14 @@ requests:
         input:
           _state: {{ id | replace(".", "_") }}_input
           ~ignoreBuildChecks: true
-        all_contacts:
-          _module.var: all_contacts
+        company_only_contacts:
+          _var:
+            key: company_only_contacts
+            default: false
         filter:
           _var:
             key: filter
             default: {}
-        phone_label:
-          _module.var: phone_label
   - _ref:
       path: requests/get_contact.yaml
       vars:
@@ -176,9 +186,7 @@ events:
                 - _state: {{ id | replace(".", "_") }}_contact
                 - _build.if:
                     test:
-                      _build.ne:
-                        - _module.var: verified
-                        - off
+                      _module.var: use_verified
                     then:
                       global_attributes:
                         _object.assign:
@@ -186,9 +194,9 @@ events:
                               - _state: {{ id | replace(".", "_") }}_contact.global_attributes
                               - {}
                           - verified:
-                              _build.eq:
-                                - _module.var: verified
-                                - trusted
+                              _var:
+                                key: verified
+                                default: false
                     else: {}
         - id: append_contact
           type: CallMethod
@@ -221,9 +229,7 @@ events:
                 _state: {{ id | replace(".", "_") }}_contact.profile
             - _build.if:
                 test:
-                  _build.ne:
-                    - _module.var: verified
-                    - off
+                  _module.var: use_verified
                 then:
                   global_attributes:
                     _object.assign:
@@ -231,9 +237,9 @@ events:
                           - _state: {{ id | replace(".", "_") }}_contact.global_attributes
                           - {}
                       - verified:
-                          _build.eq:
-                            - _module.var: verified
-                            - trusted
+                          _var:
+                            key: verified
+                            default: false
                 else: {}
     # Re-fetch enrichment so the list row picks up the edited fields.
     # Block value doesn't change on edit (same contact_id), so the
@@ -276,9 +282,7 @@ properties:
         key: disable_edit
         default: false
   allowVerify:
-    _build.eq:
-      - _module.var: verified
-      - trusted
+    _module.var: use_verified
   searchContactsRequest: {{ id | replace(".", "_") }}_contact_search
   getContactRequest: {{ id | replace(".", "_") }}_get_contact
   getContactsDataRequest: {{ id | replace(".", "_") }}_contacts_data

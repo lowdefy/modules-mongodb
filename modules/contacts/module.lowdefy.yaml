@@ -75,23 +75,16 @@ vars:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
-  verified:
-    type: string
-    enum: [off, trusted, untrusted]
-    default: off
+  use_verified:
+    type: boolean
+    default: false
     description: |
-      Contact verification mode for the contact-selector picker.
-      - off: no verification UI or payload writes.
-      - trusted: contacts created/edited via the picker are marked verified; unverified rows render a Verify button.
-      - untrusted: contacts created via the picker are marked unverified; apps provide their own verify flow.
-  all_contacts:
-    type: boolean
-    default: false
-    description: When true, the picker searches across all companies. When false, scope to the user's global_attributes.company_ids.
-  phone_label:
-    type: boolean
-    default: false
-    description: When true, the search results label includes phone numbers.
+      Whether this module instance tracks contact verification.
+      - false: no verification UI or payload writes on any picker.
+      - true: pickers render a Verify button for unverified rows and
+        write `global_attributes.verified` on add/edit. Each picker
+        instance sets the written value via its per-call `verified`
+        var (see contact-selector wrapper).
 
 exports:
   pages:
