@@ -1,5 +1,5 @@
 name: Files
-version: 0.1.0
+version: 0.1.1
 description: File attachment management — upload, download, list, S3 integration
 
 dependencies:

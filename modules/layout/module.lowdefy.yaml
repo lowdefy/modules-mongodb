@@ -1,5 +1,5 @@
 name: Layout
-version: 0.1.0
+version: 0.1.1
 description: Page layout module supporting three page block variants — PageHeaderMenu (top header + inline menu, default), PageSiderMenu (top header + collapsible sider), and PageSidebarLayout (full-height sider) — selected via the page_type var.
 
 dependencies:
