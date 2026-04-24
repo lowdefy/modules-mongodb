@@ -1,10 +1,20 @@
 {
   "name": "@lowdefy/modules-mongodb",
-  "version": "1.0.0",
+  "version": "0.0.0",
   "private": true,
   "description": "Lowdefy MongoDB Modules",
   "packageManager": "pnpm@10.6.2",
   "type": "module",
+  "scripts": {
+    "build": "pnpm -r --filter '!@lowdefy/modules-demo' run build",
+    "changeset": "changeset",
+    "release:version": "pnpm changeset version && pnpm install --no-frozen-lockfile",
+    "release:publish": "pnpm changeset publish"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "0.6.0",
+    "@changesets/cli": "2.29.4"
+  },
   "pnpm": {
     "packageExtensions": {
       "@lowdefy/client": {
