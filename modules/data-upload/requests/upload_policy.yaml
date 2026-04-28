@@ -7,6 +7,8 @@ payload:
     _state: upload_dragger.file.name
   file_type:
     _state: upload_dragger.file.type
+  url:
+    _location: href
 properties:
   key:
     _string.concat:
@@ -30,10 +32,17 @@ properties:
       _if_none:
         - _user: profile.name
         - 'unknown'
+    x-amz-meta-uploaded-by-url:
+      _if_none:
+        - _payload: url
+        - 'unknown'
   conditions:
     - - starts-with
       - $x-amz-meta-uploaded-by-id
       - ''
     - - starts-with
       - $x-amz-meta-uploaded-by-name
+      - ''
+    - - starts-with
+      - $x-amz-meta-uploaded-by-url
       - ''
