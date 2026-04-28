@@ -1,6 +1,7 @@
 {
   "name": "@lowdefy/modules-mongodb",
   "version": "0.0.0",
+  "license": "MIT",
   "private": true,
   "description": "Lowdefy MongoDB Modules",
   "packageManager": "pnpm@10.6.2",
@@ -9,7 +10,7 @@
     "build": "pnpm -r --filter '!@lowdefy/modules-demo' run build",
     "changeset": "changeset",
     "release:version": "pnpm changeset version && node scripts/sync-module-versions.mjs && pnpm install --no-frozen-lockfile",
-    "release:publish": "pnpm changeset publish --no-git-tag"
+    "release:publish": "pnpm changeset publish"
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.6.0",

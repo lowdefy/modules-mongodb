@@ -116,8 +116,8 @@ links:
 - `modules/layout/module.lowdefy.yaml` — component-only module (no pages): page wrapper, card, floating-actions, auth-page
 - `modules/files/module.lowdefy.yaml` — infrastructure module: S3 connections, API-only exports, component exports
 - `modules/notifications/module.lowdefy.yaml` — send_routine injection: the API routine body is provided by the app
-- `apps/hydra/modules.yaml` — app wiring: all module entries with vars, including multi-instance (upload-lots)
-- `apps/hydra/menus.yaml` — menu composition: module menu refs wrapped in MenuGroups
+- `apps/example-app/modules.yaml` — app wiring: all module entries with vars, including multi-instance (upload-lots)
+- `apps/example-app/menus.yaml` — menu composition: module menu refs wrapped in MenuGroups
 
 ## Template
 

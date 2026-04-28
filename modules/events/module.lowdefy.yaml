@@ -1,5 +1,5 @@
 name: Events
-version: 0.1.0
+version: 0.1.1
 description: Event logging — new-event API, event timeline panel, shared event metadata
 
 exports:
@@ -70,6 +70,7 @@ connections:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.1.0"
 
 secrets:
   - name: MONGODB_URI

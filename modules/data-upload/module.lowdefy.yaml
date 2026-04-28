@@ -1,5 +1,5 @@
 name: Data Upload
-version: 0.1.0
+version: 0.1.1
 description: Generic data upload staging — upload spreadsheets, review changes, confirm/discard
 
 dependencies:
@@ -89,5 +89,6 @@ secrets:
 
 plugins:
   - name: "@lowdefy/community-plugin-xlsx"
+    version: "^1"
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^2"

@@ -167,9 +167,9 @@ transitions:
 
 - `modules/data-upload/components/staging-table.yaml` — `_js` for row data enrichment (computing changed fields)
 - `modules/data-upload/components/upload-zone.yaml` — `_js` for extracting required columns from config
-- `apps/hydra/pages/lot-view/components/overview_tab.yaml` — `_js` for value formatting (hours suffix, date display)
-- `apps/hydra/pages/lot-view/components/estimates_tab.yaml` — `_js` for percentage calculation and scope gap flagging
-- `apps/hydra/pages/lot-view/api/lots-advance-gate/lots-advance-gate.yaml` — server-side `_js` for gate checklist validation
+- `apps/example-app/pages/lot-view/components/overview_tab.yaml` — `_js` for value formatting (hours suffix, date display)
+- `apps/example-app/pages/lot-view/components/estimates_tab.yaml` — `_js` for percentage calculation and scope gap flagging
+- `apps/example-app/pages/lot-view/api/lots-advance-gate/lots-advance-gate.yaml` — server-side `_js` for gate checklist validation
 - `modules/notifications/actions/set-types.yaml` — `_js` for filtering global enums by notification types
 
 ## Template

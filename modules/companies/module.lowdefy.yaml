@@ -1,5 +1,5 @@
 name: Companies
-version: 0.1.0
+version: 0.1.1
 description: Company management — list, detail, edit, create, selector
 
 dependencies:
@@ -130,4 +130,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^1"
+    version: "^0.1.0"
