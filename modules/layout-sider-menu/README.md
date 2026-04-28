@@ -50,18 +50,53 @@ Default: `false`
 
 Show a dark mode toggle button in the page header.
 
-### `extra_profile_links`
+### `profile_menu_id`
 
-Type: `array`
-Default: `[]`
+Type: `string`
+Default: `profile`
 
-Extra links appended to the profile dropdown menu (after the default profile/logout links from user-account). Can also be overridden per-page via `_ref` vars.
+Id of the app-level menu used for the profile dropdown. The layout reads this menu at runtime via `_menu`, so menu links are filtered server-side by page access (`auth.pages.roles`) — links pointing to pages the user can't access are dropped before the dropdown renders.
 
-### `profile_on_menu_click`
+The app must register a top-level menu with this id in its `menus.yaml`. Two supported shapes:
 
-Type: `array`
+**Zero-config** — use `user-account`'s bundled Profile + Divider + Logout dropdown:
 
-Event actions for the `onProfileMenuClick` event. Default: user-account module's `profile-on-menu-click` component (handles logout action).
+```yaml
+# apps/{app}/menus.yaml
+- id: profile
+  links:
+    _ref:
+      module: user-account
+      menu: profile-default
+```
+
+**Custom** — write the whole dropdown inline when you need extra links. Module-level fragment mixing is not supported:
+
+```yaml
+- id: profile
+  links:
+    - id: profile
+      type: MenuLink
+      pageId: user-account/profile
+      properties:
+        title: Profile
+        icon: AiOutlineUser
+    - id: settings
+      type: MenuLink
+      pageId: settings/settings
+      properties:
+        title: Settings
+        icon: AiOutlineSetting
+    - id: logout-divider
+      type: MenuDivider
+    - id: logout
+      type: MenuLink
+      pageId: user-account/logout
+      properties:
+        title: Logout
+        icon: AiOutlineLogout
+        danger: true
+```
 
 ### `footer`
 

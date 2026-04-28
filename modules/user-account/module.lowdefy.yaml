@@ -87,26 +87,22 @@ exports:
   components:
     - id: profile-avatar
       description: Avatar config for PageHeaderMenu profile — user picture with first-letter fallback
-    - id: profile-links
-      description: MenuLink to user profile page
-    - id: profile-actions
-      description: MenuLink for logout (danger-styled)
   menus:
     - id: default
       description: User account navigation links
+    - id: profile-default
+      description: >
+        Default profile dropdown (Profile + Divider + Logout). Drop into the
+        app's `id: profile` menu for zero-config use, or define your own menu
+        inline when you need custom links.
 
 components:
   - id: profile-avatar
     component:
       _ref: components/profile-avatar.yaml
-  - id: profile-links
-    component:
-      _ref: components/profile-links.yaml
-  - id: profile-actions
-    component:
-      _ref: components/profile-actions.yaml
 menus:
   - _ref: menu.yaml
+  - _ref: menus/profile-default.yaml
 
 secrets:
   - name: MONGODB_URI
