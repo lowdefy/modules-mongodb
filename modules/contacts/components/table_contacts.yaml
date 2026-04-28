@@ -20,13 +20,11 @@ properties:
           field: profile.name
           flex: 1
           minWidth: 240
-          cellRenderer:
-            _function:
-              __nunjucks:
-                template: |
-                  <span style="display: inline-flex; align-items: center;">{% if profile.picture %}<img src="{{ profile.picture }}" width="16px" height="16px" style="margin-right: 4px; border-radius: 50%; flex-shrink: 0;"/>{% else %}<span style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:#d9d9d9;color:#8c8c8c;font-size:10px;margin-right:4px;flex-shrink:0;">&#x1F464;</span>{% endif %}{{ profile.name | safe }}</span>
-                on:
-                  __args: 0.data
+          cell:
+            type: avatar
+            nameField: profile.name
+            srcField: profile.picture
+            idField: _id
         - headerName: Email
           field: email
           flex: 1

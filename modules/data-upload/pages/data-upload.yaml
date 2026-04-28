@@ -21,7 +21,7 @@ _ref:
             tool_id_column:
               _module.var: tool.id_column
             filter:
-              status: 'new'
+              status: "new"
               method: changes
             pagination:
               pageSize: 100
@@ -68,12 +68,7 @@ _ref:
                   - _ref: components/download-current.yaml
 
       # Staging table
-      - id: table_card
-        type: Card
-        properties:
-          size: small
-        blocks:
-          - _ref: components/staging-table.yaml
+      - _ref: components/staging-table.yaml
       # Upload history
       - id: table_card
         type: Card

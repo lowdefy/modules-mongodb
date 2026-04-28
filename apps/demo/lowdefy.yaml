@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260413102757
+lowdefy: 0.0.0-experimental-20260421070726
 name: Module Demo App
 
 cli:
@@ -8,19 +8,19 @@ cli:
 theme:
   antd:
     token:
-      colorPrimary: '#7c3aed'
+      colorPrimary: "#7c3aed"
 
 config:
   homePageId: router
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
+  - name: "@lowdefy/community-plugin-mongodb"
     version: 2.4.1
-  - name: '@lowdefy/community-plugin-xlsx'
+  - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
-  - name: '@lowdefy/community-plugin-nodemailer'
+  - name: "@lowdefy/community-plugin-nodemailer"
     version: 1.1.4
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: workspace:*
 
 auth:
@@ -29,7 +29,7 @@ auth:
     verifyRequest: /user-account/verify-email-request
     error: /user-account/login
   theme:
-    brandColor: '#7c3aed'
+    brandColor: "#7c3aed"
   adapter:
     id: mdb_adapter
     type: MultiAppMongoDBAdapter
@@ -75,7 +75,7 @@ auth:
   pages:
     protected: true
     public:
-      - '404'
+      - "404"
       - notifications-invalid
       - notifications-link
       - router

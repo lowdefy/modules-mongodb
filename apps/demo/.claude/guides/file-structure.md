@@ -153,7 +153,7 @@ When adding a new file, ask these questions in order:
 
 - `modules/contacts/` — canonical module structure with all standard subdirectories
 - `modules/shared/layout/` — shared layout components (card, title-block, floating-actions)
-- `apps/hydra/pages/lot-view.yaml` — app-level page entry point referencing components/ subdirectory
+- `apps/example-app/pages/lot-view.yaml` — app-level page entry point referencing components/ subdirectory
 
 ## Checklist
 

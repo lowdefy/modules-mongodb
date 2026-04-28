@@ -118,8 +118,8 @@ jobs: {
 - `lambda/internal/serverless.yml` — SQS FIFO queue, DLQ, Lambda functions, IAM permissions
 
 **App wiring:**
-- `apps/hydra/modules/notifications/send-routine.yaml` — AxiosHttp call to consume-notifications Lambda
-- `apps/hydra/connections.yaml` — `consume-notifications` AxiosHttp connection with API key
+- `apps/example-app/modules/notifications/send-routine.yaml` — AxiosHttp call to consume-notifications Lambda
+- `apps/example-app/connections.yaml` — `consume-notifications` AxiosHttp connection with API key
 - `modules/user-admin/api/invite-user.yaml` — example of triggering send-notification from API routine (line 201)
 
 ## Template

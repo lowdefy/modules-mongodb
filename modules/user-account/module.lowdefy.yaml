@@ -1,4 +1,5 @@
 name: User Account
+version: 0.1.1
 description: User account pages — login, email verification, profile view/edit/create
 
 dependencies:
@@ -112,3 +113,4 @@ plugins:
   - name: "@lowdefy/community-plugin-mongodb"
     version: "^2"
   - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.1.0"

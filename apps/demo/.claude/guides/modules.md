@@ -24,7 +24,7 @@ A module is a self-contained feature package under `modules/{name}/` with a `mod
 
 ```yaml
 - id: files
-  source: 'file:../../modules/files'
+  source: "file:../../modules/files"
   vars:
     collection: files
 ```
@@ -33,7 +33,7 @@ A module is a self-contained feature package under `modules/{name}/` with a `mod
 
 ```yaml
 - id: user-admin
-  source: 'file:../../modules/user-admin'
+  source: "file:../../modules/user-admin"
   vars:
     _ref: modules/user-admin/vars.yaml
 ```
@@ -42,12 +42,12 @@ A module is a self-contained feature package under `modules/{name}/` with a `mod
 
 ```yaml
 - id: upload-lots
-  source: 'file:../../modules/data-upload'
+  source: "file:../../modules/data-upload"
   vars:
     tool:
       _ref: modules/data-upload/load_lots.yaml
 - id: upload-rooms
-  source: 'file:../../modules/data-upload'
+  source: "file:../../modules/data-upload"
   vars:
     tool:
       _ref: modules/data-upload/load_rooms.yaml
@@ -113,11 +113,11 @@ links:
 
 - `modules/contacts/module.lowdefy.yaml` — full-featured manifest: dependencies, nested var properties, component + request_stages injection points, all export types
 - `modules/events/module.lowdefy.yaml` — data-like component exports (change_stamp, event_types), var-driven component resolution
-- `modules/layout-header-menu/module.lowdefy.yaml` — component-only module (no pages): page wrapper, card, floating-actions, auth-page
+- `modules/layout/module.lowdefy.yaml` — component-only module (no pages): page wrapper, card, floating-actions, auth-page
 - `modules/files/module.lowdefy.yaml` — infrastructure module: S3 connections, API-only exports, component exports
 - `modules/notifications/module.lowdefy.yaml` — send_routine injection: the API routine body is provided by the app
-- `apps/hydra/modules.yaml` — app wiring: all module entries with vars, including multi-instance (upload-lots)
-- `apps/hydra/menus.yaml` — menu composition: module menu refs wrapped in MenuGroups
+- `apps/example-app/modules.yaml` — app wiring: all module entries with vars, including multi-instance (upload-lots)
+- `apps/example-app/menus.yaml` — menu composition: module menu refs wrapped in MenuGroups
 
 ## Template
 

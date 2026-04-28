@@ -1,9 +1,16 @@
 {
   "name": "@lowdefy/modules-mongodb-plugins",
-  "version": "0.1.0",
-  "license": "Apache-2.0",
-  "private": true,
+  "version": "0.1.1",
+  "license": "MIT",
   "type": "module",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lowdefy/modules-mongodb.git",
+    "directory": "plugins/modules-mongodb-plugins"
+  },
   "exports": {
     "./*": "./dist/*",
     "./actions": "./dist/actions.js",
@@ -24,10 +31,10 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260413102757",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260413102757",
-    "@lowdefy/blocks-basic": "0.0.0-experimental-20260413102757",
-    "@lowdefy/helpers": "0.0.0-experimental-20260413102757",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260421070726",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260421070726",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260421070726",
+    "@lowdefy/helpers": "0.0.0-experimental-20260421070726",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=6",
     "react": ">=18",

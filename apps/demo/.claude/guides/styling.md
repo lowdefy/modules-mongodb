@@ -16,29 +16,29 @@ Lowdefy has three styling mechanisms, layered in a strict CSS cascade:
 
 ```yaml
 class:
-  .block: 'p-4 rounded-lg'      # layout wrapper
-  .element: 'text-primary'       # block component root
-  .label: 'font-bold text-sm'   # label element (input blocks)
+  .block: "p-4 rounded-lg" # layout wrapper
+  .element: "text-primary" # block component root
+  .label: "font-bold text-sm" # label element (input blocks)
 
 style:
-  padding: 16                    # plain key → layout wrapper (block slot)
-  .element:                      # → block component root
-    border: '2px solid blue'
+  padding: 16 # plain key → layout wrapper (block slot)
+  .element: # → block component root
+    border: "2px solid blue"
 ```
 
 **Theme bridge** — Ant Design CSS variables (`--ant-*`) are bridged to Tailwind automatically. Key mappings:
 
-| Tailwind class | Resolves to |
-|---|---|
-| `text-primary` | `var(--ant-color-primary)` |
-| `bg-bg-container` | `var(--ant-color-bg-container)` |
-| `bg-bg-layout` | `var(--ant-color-bg-layout)` |
-| `text-text-secondary` | `var(--ant-color-text-secondary)` |
-| `border-border` | `var(--ant-color-border)` |
-| `text-success`, `text-error`, `text-warning`, `text-info` | Semantic colors |
-| `bg-primary-bg` | `var(--ant-color-primary-bg)` |
-| `rounded` / `rounded-sm` / `rounded-lg` | `var(--ant-border-radius[-sm|-lg])` |
-| `text-sm` / `text-lg` (font-size) | `var(--ant-font-size[-sm|-lg])` |
+| Tailwind class                                            | Resolves to                       |
+| --------------------------------------------------------- | --------------------------------- | ------ |
+| `text-primary`                                            | `var(--ant-color-primary)`        |
+| `bg-bg-container`                                         | `var(--ant-color-bg-container)`   |
+| `bg-bg-layout`                                            | `var(--ant-color-bg-layout)`      |
+| `text-text-secondary`                                     | `var(--ant-color-text-secondary)` |
+| `border-border`                                           | `var(--ant-color-border)`         |
+| `text-success`, `text-error`, `text-warning`, `text-info` | Semantic colors                   |
+| `bg-primary-bg`                                           | `var(--ant-color-primary-bg)`     |
+| `rounded` / `rounded-sm` / `rounded-lg`                   | `var(--ant-border-radius[-sm      | -lg])` |
+| `text-sm` / `text-lg` (font-size)                         | `var(--ant-font-size[-sm          | -lg])` |
 
 All bridge colors auto-update on dark mode toggle — no CSS recompilation needed.
 
@@ -60,7 +60,7 @@ YAML class/style
 ```yaml
 - id: hero_box
   type: Box
-  class: 'bg-bg-container p-6 rounded-lg shadow-md'
+  class: "bg-bg-container p-6 rounded-lg shadow-md"
 ```
 
 **Slot-targeted class on an Ant Design block** — style the inner element, not the wrapper:
@@ -69,7 +69,7 @@ YAML class/style
 - id: page_title
   type: Title
   class:
-    .element: 'text-primary font-semibold'
+    .element: "text-primary font-semibold"
   properties:
     content: Dashboard
 ```
@@ -89,7 +89,7 @@ YAML class/style
 ```yaml
 - id: content
   type: Box
-  class: 'p-2 sm:p-4 md:p-8'
+  class: "p-2 sm:p-4 md:p-8"
 ```
 
 **Responsive layout with the grid system** — for column sizing:
@@ -160,11 +160,11 @@ style:
 
 ## Reference Files
 
-- `modules/layout-header-menu/components/page.yaml` — `style` on PageSiderMenu for header/sider borders
-- `apps/hydra/pages/lot-list/components/table_lots.yaml` — `cellStyle` with flexbox centering and theme vars
-- `apps/hydra/pages/home/components/packages_table.yaml` — cell renderer with inline Ant Design color vars
+- `modules/layout/components/page.yaml` — `style` on PageSiderMenu for header/sider borders
+- `apps/example-app/pages/lot-list/components/table_lots.yaml` — `cellStyle` with flexbox centering and theme vars
+- `apps/example-app/pages/home/components/packages_table.yaml` — cell renderer with inline Ant Design color vars
 - `modules/shared/layout/card.yaml` — `style` with slot targeting for card component
-- `apps/hydra/pages/lot-view/components/overview_tab.yaml` — mixed `style` and `layout` for detail pages
+- `apps/example-app/pages/lot-view/components/overview_tab.yaml` — mixed `style` and `layout` for detail pages
 
 ## Template
 
