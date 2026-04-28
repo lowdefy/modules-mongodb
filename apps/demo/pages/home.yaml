@@ -30,3 +30,15 @@ _ref:
                   type: Link
                   params:
                     pageId: user-admin/users
+          - id: companies_link
+            type: Button
+            properties:
+              title: Companies
+              icon: AiOutlineBank
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: companies/companies

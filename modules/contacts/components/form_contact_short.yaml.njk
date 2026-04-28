@@ -1,0 +1,93 @@
+{# Default modal form for the ContactSelector wrapper (Task 8).
+
+   Vars:
+     key           (string, required) — state prefix for input ids
+                   (wrapper passes "{id}_contact"); Nunjucks-interpolated
+                   into each block id.
+     (modal-open signal) The form reads `_state: {{ key }}_modal_open` to
+                   gate its `required` props. The wrapper sets this key to
+                   true/false on its onOpen/onClose events. Needed because
+                   child input blocks auto-materialize their state paths with
+                   null values at page mount — `{{ key }}` is non-null even
+                   when the modal has never been opened, so we can't use the
+                   contact-object's presence as the open signal.
+
+     new_contact   (operator/boolean) — truthy when the modal is in Add mode;
+                   falsy when editing an existing contact. Email is locked
+                   on edit (dedup key); name fields stay editable.
+     required      (object) — { given_name, family_name, email } flags
+                   forwarded from the wrapper's form_required var.
+                   given_name/family_name default true, email defaults false.
+     extra_blocks  (array) — extra input blocks appended after the core
+                   three. Mirrors the form_profile / fields.profile pattern
+                   other contacts module forms use. Apps that want phones
+                   or custom fields pass them here.
+
+   No onAddContact / onEditContact actions live here — those are on the
+   wrapper. This form only provides inputs and validation.
+#}
+id: form_contact
+type: Box
+layout:
+  gap: 8
+style:
+  margin: auto
+blocks:
+  _build.array.concat:
+    - - id: {{ key }}.profile.given_name
+        type: TextInput
+        # required only applies while the modal is active ({{ key }} != null
+        # after resetContact clears it on close). Without this gate, a page-
+        # level Validate catches these inputs as empty+required even when the
+        # modal hasn't been opened.
+        required:
+          _and:
+            - _state: {{ key }}_modal_open
+              ~ignoreBuildChecks: true
+            - _var:
+                key: required.given_name
+                default: true
+        layout:
+          span: 12
+        properties:
+          title: First Name
+
+      - id: {{ key }}.profile.family_name
+        type: TextInput
+        required:
+          _and:
+            - _state: {{ key }}_modal_open
+              ~ignoreBuildChecks: true
+            - _var:
+                key: required.family_name
+                default: true
+        layout:
+          span: 12
+        properties:
+          title: Last Name
+
+      - id: {{ key }}.email
+        type: TextInput
+        required:
+          _and:
+            - _state: {{ key }}_modal_open
+              ~ignoreBuildChecks: true
+            - _var:
+                key: required.email
+                default: false
+        layout:
+          span: 24
+        properties:
+          title: Email
+          placeholder: name@company.com
+          disabled:
+            _not:
+              _var: new_contact
+        validate:
+          _ref:
+            path: validate/email.yaml
+            vars:
+              field_name: {{ key }}.email
+    - _var:
+        key: extra_blocks
+        default: []

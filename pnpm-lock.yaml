@@ -67,6 +67,9 @@ importers:
       '@lowdefy/helpers':
         specifier: 0.0.0-experimental-20260421070726
         version: 0.0.0-experimental-20260421070726
+      '@lowdefy/nunjucks':
+        specifier: 0.0.0-experimental-20260421070726
+        version: 0.0.0-experimental-20260421070726
       '@lowdefy/plugin-aws':
         specifier: '>=4.0.0'
         version: 4.7.1
@@ -366,6 +369,9 @@ packages:
 
   '@lowdefy/node-utils@0.0.0-experimental-20260421070726':
     resolution: {integrity: sha512-Q1BpHtpT4NGZ7qs+bUf71/wQxClZuX+H5pI36W83aHFT1mng47rJVT6DIwzkAazMRLtQOIFlvAN0rWCY0h/NFQ==}
+
+  '@lowdefy/nunjucks@0.0.0-experimental-20260421070726':
+    resolution: {integrity: sha512-rGY/vPTSgkQ03Z4RauBDhDD9/7jWJ4cCxhzmESux8thd8grs0sIaQP1wZjSZrZxFcBdLX4exaXJ8eUCp8Ei3cQ==}
 
   '@lowdefy/plugin-aws@4.7.1':
     resolution: {integrity: sha512-q6wgn/4ulx5yWC7y5pS/0epL0rxKzpVqK4PVm5teMblHFmLcnP9BOg+OgmJwo6UHL3xQQ8qxKv5bW6aWn0X3BQ==}
@@ -3207,6 +3213,11 @@ snapshots:
       '@lowdefy/errors': 0.0.0-experimental-20260421070726
       '@lowdefy/helpers': 0.0.0-experimental-20260421070726
       fs-extra: 11.1.1
+
+  '@lowdefy/nunjucks@0.0.0-experimental-20260421070726':
+    dependencies:
+      '@lowdefy/helpers': 0.0.0-experimental-20260421070726
+      dayjs: 1.11.19
 
   '@lowdefy/plugin-aws@4.7.1':
     dependencies:

@@ -1,0 +1,40 @@
+@import 'antd/lib/select/style/index.less';
+
+.list-border {
+  margin-top: 8px;
+  border: 1px solid #e0e0e0;
+  border-radius: @border-radius-base;
+}
+.table-scroll {
+  max-height: 265px;
+  overflow-y: scroll;
+}
+
+.list-table {
+  padding: 0px 12px;
+  width: 100%;
+  min-height: 50px;
+}
+
+.list-table tr {
+  width: 100%;
+  table-layout: auto;
+}
+
+.list-table thead {
+  background-color: white;
+  border-bottom: 1px solid #e0e0e0;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.list-table th {
+  font-weight: normal;
+}
+
+.list-table tbody td:nth-child(2),
+.list-table tbody td:nth-child(3) {
+  text-align: center;
+  vertical-align: middle;
+}

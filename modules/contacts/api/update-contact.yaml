@@ -10,8 +10,6 @@ routine:
         _object.assign:
           - _id:
               _payload: _id
-            updated.timestamp:
-              _payload: updated.timestamp
           - _object.defineProperty:
               on: {}
               key:
