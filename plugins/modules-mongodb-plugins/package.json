@@ -27,7 +27,6 @@
     "prepare": "pnpm build"
   },
   "dependencies": {
-    "@lowdefy/nunjucks": "0.0.0-experimental-20260421070726",
     "dayjs": "^1.11.0",
     "dompurify": "^3"
   },
