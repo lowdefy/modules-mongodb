@@ -10,28 +10,28 @@ When and how to use inline JavaScript in Lowdefy YAML — the escape hatch for l
 
 **Client-side helpers** (available in blocks, actions, component properties):
 
-| Helper | Equivalent operator | Example |
-|---|---|---|
-| `state('key')` | `_state: key` | `state('filter.search')` |
-| `request('key')` | `_request: key` | `request('get_lot.0')` |
-| `lowdefyGlobal('key')` | `_global: key` | `lowdefyGlobal('enums.disciplines')` |
-| `event('key')` | `_event: key` | `event('data.value.0')` |
-| `user('key')` | `_user: key` | `user('roles')` |
-| `input('key')` | `_input: key` | `input('company_id')` |
-| `urlQuery('key')` | `_url_query: key` | `urlQuery('tab')` |
-| `actions('key')` | `_actions: key` | `actions('fetch.response')` |
-| `location('key')` | `_location: key` | `location('pathname')` |
+| Helper                 | Equivalent operator | Example                              |
+| ---------------------- | ------------------- | ------------------------------------ |
+| `state('key')`         | `_state: key`       | `state('filter.search')`             |
+| `request('key')`       | `_request: key`     | `request('get_lot.0')`               |
+| `lowdefyGlobal('key')` | `_global: key`      | `lowdefyGlobal('enums.disciplines')` |
+| `event('key')`         | `_event: key`       | `event('data.value.0')`              |
+| `user('key')`          | `_user: key`        | `user('roles')`                      |
+| `input('key')`         | `_input: key`       | `input('company_id')`                |
+| `urlQuery('key')`      | `_url_query: key`   | `urlQuery('tab')`                    |
+| `actions('key')`       | `_actions: key`     | `actions('fetch.response')`          |
+| `location('key')`      | `_location: key`    | `location('pathname')`               |
 
 **Server-side helpers** (available in request pipelines and API routines):
 
-| Helper | Equivalent operator | Example |
-|---|---|---|
-| `payload('key')` | `_payload: key` | `payload('filter.search')` |
-| `user('key')` | `_user: key` | `user('id')` |
-| `secret('key')` | `_secret: key` | `secret('api_key')` |
-| `state('key')` | `_state: key` | `state('processed')` (API routine state) |
-| `step('key')` | `_step: key` | `step('get_current_lot')` |
-| `item('key')` | `_item: key` | `item('row._id')` (inside `:for` loops) |
+| Helper           | Equivalent operator | Example                                  |
+| ---------------- | ------------------- | ---------------------------------------- |
+| `payload('key')` | `_payload: key`     | `payload('filter.search')`               |
+| `user('key')`    | `_user: key`        | `user('id')`                             |
+| `secret('key')`  | `_secret: key`      | `secret('api_key')`                      |
+| `state('key')`   | `_state: key`       | `state('processed')` (API routine state) |
+| `step('key')`    | `_step: key`        | `step('get_current_lot')`                |
+| `item('key')`    | `_item: key`        | `item('row._id')` (inside `:for` loops)  |
 
 **Important:** use `lowdefyGlobal('key')` to read global state — not `global('key')`. The helper name differs from the operator name (`_global`).
 
@@ -176,7 +176,7 @@ transitions:
 
 ```yaml
 # Client-side: compute a derived value from state/request data
-{property}:
+{ property }:
   _js: |
     const data = request('{request_id}') || [];
     const config = lowdefyGlobal('enums.{enum_key}');

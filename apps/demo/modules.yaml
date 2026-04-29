@@ -1,5 +1,7 @@
 - id: companies
   source: "file:../../modules/companies"
+  vars:
+    _ref: modules/companies/vars.yaml
 
 - id: contacts
   source: "file:../../modules/contacts"

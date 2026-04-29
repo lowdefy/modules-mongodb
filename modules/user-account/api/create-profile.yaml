@@ -83,16 +83,14 @@ routine:
                         - null
               callback:
                 _build.function:
-                  key:
-                    __build.args: 0.0
-                  value:
-                    title:
+                  - __build.args: "0.0"
+                  - title:
                       _nunjucks:
                         template:
                           __build.args: 0.1.create-profile
                         on:
                           user:
-                            _result: updated_user
+                            _step: updated_user
                     description: null
         references:
           user_ids:
