@@ -14,3 +14,8 @@ fields:
     _ref: modules/user-admin/app_attributes_fields.yaml
 request_stages:
   write: []
+event_display:
+  demo:
+    invite-user: "{{ user.profile.name }} invited {{ target.name }}"
+    update-user: "{{ user.profile.name }} updated {{ target.name }}"
+    resend-user-invite: "{{ user.profile.name }} resent invite to {{ target.name }}"

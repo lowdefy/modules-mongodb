@@ -7,3 +7,7 @@ fields:
     _ref: modules/shared/profile/fields.yaml
 request_stages:
   write: []
+event_display:
+  demo:
+    create-profile: "{{ user.profile.name }} created their profile"
+    update-profile: "{{ user.profile.name }} updated their profile"
