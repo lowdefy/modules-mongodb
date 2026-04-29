@@ -22,6 +22,8 @@ payload:
             key: block_id
             default: file_upload
         - _s3.file.type
+  url:
+    _location: href
 properties:
   key:
     _string.concat:
@@ -36,6 +38,29 @@ properties:
       - _uuid: true
       - "/"
       - _payload: file_name
+  fields:
+    x-amz-meta-uploaded-by-id:
+      _if_none:
+        - _user: id
+        - "unknown"
+    x-amz-meta-uploaded-by-name:
+      _if_none:
+        - _user: profile.name
+        - "unknown"
+    x-amz-meta-uploaded-by-url:
+      _if_none:
+        - _payload: url
+        - "unknown"
   conditions:
-    Content-Type:
-      _payload: file_type
+    - - eq
+      - $Content-Type
+      - _payload: file_type
+    - - starts-with
+      - $x-amz-meta-uploaded-by-id
+      - ""
+    - - starts-with
+      - $x-amz-meta-uploaded-by-name
+      - ""
+    - - starts-with
+      - $x-amz-meta-uploaded-by-url
+      - ""
