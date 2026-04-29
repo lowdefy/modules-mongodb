@@ -1,52 +1,61 @@
-id: contact_list_container
-type: Box
-blocks:
-  - id: contact_list_empty
-    type: Paragraph
-    visible:
-      _eq:
-        - _array.length:
-            _request: get_company_contacts
-        - 0
-    properties:
-      content: No linked contacts
-      type: secondary
-      style:
-        fontSize: 12
-        fontStyle: italic
-  - id: contact_list
-    type: List
-    visible:
-      _gt:
-        - _array.length:
-            _request: get_company_contacts
-        - 0
-    properties:
-      dataSource:
-        _request: get_company_contacts
-      renderItem:
-        id: contact_item.__id
-        type: List.Item
-        properties:
-          title:
-            _nunjucks:
-              template: "{{ profile.name }}"
-              on:
-                __args: 0
-          description:
-            _nunjucks:
-              template: "{{ email }}"
-              on:
-                __args: 0
-        events:
-          onClick:
-            - id: go_contact_detail
-              type: Link
-              params:
-                pageId:
-                  _module.pageId:
-                    id: contact-detail
-                    module: contacts
-                urlQuery:
-                  _id:
-                    _args: 0._id
+# HTML rendering of the company's linked contacts. Reads
+# `_request: get_company_contacts` directly — no state setup needed.
+#
+# Extension: set `components.contact_card_extra_fields` in the
+# consuming app's vars (as a list of { label, value } pairs) to
+# render additional rows under each contact's name/email.
+#
+#   components:
+#     contact_card_extra_fields:
+#       - { label: Phone, value: primary_phone }
+#       - { label: Role, value: role }
+#
+# `value` is a top-level key on the contact document as projected
+# by get_company_contacts. For a nested source field (e.g.
+# `contact.primary_phone`), extend the request's $project stage
+# to flatten it to a top-level key.
+#
+# Extra-field rows render when the field is non-null. Falsy primitives
+# (0, false, "") are shown — only `null`/`undefined` are skipped.
+id: contact_list_html
+type: Html
+properties:
+  html:
+    _nunjucks:
+      template: |
+        {% if contacts.length %}
+        <div>
+          {% for contact in contacts %}
+          <div style="padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}">
+            <a href="/{{ contact_detail_page }}?_id={{ contact._id }}" style="color:inherit; text-decoration:none">
+              <div><b>{{ contact.profile.name }}</b></div>
+              {% if contact.email %}
+              <div style="color:var(--ant-color-text-secondary); font-size:12px">{{ contact.email }}</div>
+              {% endif %}
+              {% for field in extra_fields %}
+                {% if contact[field.value] != null %}
+                <div style="color:var(--ant-color-text-secondary); font-size:11px">
+                  <b>{{ field.label }}:</b> {{ contact[field.value] }}
+                </div>
+                {% endif %}
+              {% endfor %}
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="color:var(--ant-color-text-secondary); font-size:12px; font-style:italic; padding:8px 0">
+          No linked contacts
+        </div>
+        {% endif %}
+      on:
+        contacts:
+          _if_none:
+            - _request: get_company_contacts
+            - []
+        extra_fields:
+          _module.var: components.contact_card_extra_fields
+        contact_detail_page:
+          _module.pageId:
+            id: contact-detail
+            module: contacts
