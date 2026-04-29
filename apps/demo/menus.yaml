@@ -22,3 +22,33 @@
         _ref:
           module: user-admin
           menu: default
+
+- id: profile
+  links:
+    - id: profile
+      type: MenuLink
+      pageId: user-account/profile
+      properties:
+        title: Profile
+        icon: AiOutlineUser
+    - id: release-notes
+      type: MenuLink
+      pageId: release-notes/release-notes
+      properties:
+        title: Release Notes
+        icon: AiOutlineFileText
+    - id: users
+      type: MenuLink
+      pageId: user-admin/users
+      properties:
+        title: User Admin
+        icon: AiOutlineTeam
+    - id: logout-divider
+      type: MenuDivider
+    - id: logout
+      type: MenuLink
+      pageId: user-account/logout
+      properties:
+        title: Logout
+        icon: AiOutlineLogout
+        danger: true

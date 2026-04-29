@@ -1,19 +1,4 @@
 page_type: sidebar
-extra_profile_links:
-  - id: release-notes-link
-    type: MenuLink
-    pageId: release-notes/release-notes
-    properties:
-      title: Release Notes
-      icon: AiOutlineFileText
-  - id: admin-divider
-    type: MenuDivider
-  - id: users
-    type: MenuLink
-    pageId: user-admin/users
-    properties:
-      title: User Admin
-      icon: AiOutlineTeam
 footer:
   - id: footer-text
     type: Html

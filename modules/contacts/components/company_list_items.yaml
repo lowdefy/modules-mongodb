@@ -1,47 +1,57 @@
-id: company_list_container
-type: Box
-blocks:
-  - id: company_list_empty
-    type: Paragraph
-    visible:
-      _eq:
-        - _array.length:
-            _request: get_contact_companies
-        - 0
-    properties:
-      content: No linked companies
-      type: secondary
-      style:
-        fontSize: 12
-        fontStyle: italic
-  - id: company_list
-    type: List
-    visible:
-      _gt:
-        - _array.length:
-            _request: get_contact_companies
-        - 0
-    properties:
-      dataSource:
-        _request: get_contact_companies
-      renderItem:
-        id: company_item.__id
-        type: List.Item
-        properties:
-          title:
-            _nunjucks:
-              template: "{{ display_name }}"
-              on:
-                __args: 0
-        events:
-          onClick:
-            - id: go_company_detail
-              type: Link
-              params:
-                pageId:
-                  _module.pageId:
-                    id: company-detail
-                    module: companies
-                urlQuery:
-                  _id:
-                    _args: 0._id
+# HTML rendering of the contact's linked companies. Reads
+# `_request: get_contact_companies` directly — no state setup needed.
+#
+# Extension: set `components.company_card_extra_fields` in the
+# consuming app's vars (as a list of { label, value } pairs) to
+# render additional rows under each company's display name.
+#
+#   components:
+#     company_card_extra_fields:
+#       - { label: Reg, value: registration_number }
+#       - { label: VAT, value: vat_number }
+#
+# `value` is a top-level key on the company document as projected
+# by get_contact_companies. For a nested source field, extend
+# the request's $project stage to flatten it to a top-level key.
+#
+# Extra-field rows render when the field is non-null. Falsy primitives
+# (0, false, "") are shown — only `null`/`undefined` are skipped.
+id: company_list_html
+type: Html
+properties:
+  html:
+    _nunjucks:
+      template: |
+        {% if companies.length %}
+        <div>
+          {% for company in companies %}
+          <div style="padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}">
+            <a href="/{{ company_detail_page }}?_id={{ company._id }}" style="color:inherit; text-decoration:none">
+              <div><b>{{ company.display_name }}</b></div>
+              {% for field in extra_fields %}
+                {% if company[field.value] != null %}
+                <div style="color:var(--ant-color-text-secondary); font-size:11px">
+                  <b>{{ field.label }}:</b> {{ company[field.value] }}
+                </div>
+                {% endif %}
+              {% endfor %}
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div style="color:var(--ant-color-text-secondary); font-size:12px; font-style:italic; padding:8px 0">
+          No linked companies
+        </div>
+        {% endif %}
+      on:
+        companies:
+          _if_none:
+            - _request: get_contact_companies
+            - []
+        extra_fields:
+          _module.var: components.company_card_extra_fields
+        company_detail_page:
+          _module.pageId:
+            id: company-detail
+            module: companies

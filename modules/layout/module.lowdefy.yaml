@@ -80,10 +80,13 @@ vars:
     type: boolean
     default: true
     description: Enable dark mode toggle in the page block (rendered in the header for sider-menu, in the sider for sidebar)
-  extra_profile_links:
-    type: array
-    default: []
-    description: Additional profile menu links
+  profile_menu_id:
+    type: string
+    default: profile
+    description: >
+      Id of the app-level menu used for the profile dropdown. Menu links are
+      filtered server-side by page access (auth.pages.roles). The app must
+      register a menu with this id in its menus list.
   auth_page:
     type: object
     description: "Auth page overrides: { cover_background, card_style, max_width, logo_max_width }"

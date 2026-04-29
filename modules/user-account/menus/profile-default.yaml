@@ -1,0 +1,19 @@
+id: profile-default
+links:
+  - id: profile
+    type: MenuLink
+    pageId:
+      _module.pageId: profile
+    properties:
+      title: Profile
+      icon: AiOutlineUser
+  - id: logout-divider
+    type: MenuDivider
+  - id: logout
+    type: MenuLink
+    pageId:
+      _module.pageId: logout
+    properties:
+      title: Logout
+      icon: AiOutlineLogout
+      danger: true

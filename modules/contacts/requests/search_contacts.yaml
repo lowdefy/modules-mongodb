@@ -1,0 +1,104 @@
+# Text-ranked contact search for the ContactSelector block.
+# Layered pipeline:
+#   1. Atlas $search — text ranking only (should clauses). Requires a search
+#      index with `returnStoredSource: true` over profile.name,
+#      profile.picture, lowercase_email, global_attributes.*, hidden, disabled.
+#   2. $match — structural filters as a standard Mongo query. Consumer-pluggable
+#      via the `filter` var (plain $match expression, not Atlas compound syntax).
+#   3. $limit + $project — cap and shape to the block's { label, value } contract.
+# Apps without Atlas search can drop stage 1; the remaining pipeline works
+# standalone (unranked results).
+id:
+  _var: id
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: contacts-collection
+payload:
+  input:
+    _var: input
+properties:
+  pipeline:
+    - $search:
+        returnStoredSource: true
+        compound:
+          # Baseline clause — compound requires ≥1 clause across filter/must/mustNot/should,
+          # and `should` collapses to [] when input is empty.
+          filter:
+            - exists:
+                path: _id
+          should:
+            _if:
+              test:
+                _eq:
+                  - _if_none:
+                      - _payload: input
+                      - ""
+                  - ""
+              then: []
+              else:
+                - text:
+                    query:
+                      _payload: input
+                    path:
+                      - profile.name
+                      - lowercase_email
+                - wildcard:
+                    query:
+                      _string.concat:
+                        - "*"
+                        - _payload: input
+                        - "*"
+                    path:
+                      - profile.name
+                      - lowercase_email
+                    allowAnalyzedField: true
+    - $match:
+        _object.assign:
+          - hidden:
+              $ne: true
+            disabled:
+              $ne: true
+          - _build.if:
+              test:
+                _var: company_only_contacts
+              then:
+                _if:
+                  test:
+                    _gt:
+                      - _array.length:
+                          _if_none:
+                            - _user: global_attributes.company_ids
+                            - []
+                      - 0
+                  then:
+                    global_attributes.company_ids:
+                      $in:
+                        _user: global_attributes.company_ids
+                  else: {}
+              else: {}
+          - _var:
+              key: filter
+              default: {}
+    - $limit: 10
+    - $project:
+        _id: 0
+        value:
+          contact_id: "$_id"
+          name: "$profile.name"
+          email:
+            $ifNull:
+              - "$email"
+              - "$lowercase_email"
+        label:
+          $concat:
+            - "<div>"
+            - $ifNull:
+                - "$profile.name"
+                - ""
+            - '</div><div class="secondary smaller">'
+            - $ifNull:
+                - "$email"
+                - $ifNull:
+                    - "$lowercase_email"
+                    - "No email"
+            - "</div>"

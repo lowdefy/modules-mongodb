@@ -1,7 +1,0 @@
-- id: profile
-  type: MenuLink
-  pageId:
-    _module.pageId: profile
-  properties:
-    title: Profile
-    icon: AiOutlineUser

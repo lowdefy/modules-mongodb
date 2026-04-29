@@ -96,6 +96,14 @@ modules:
 menus:
   _ref: menus.yaml
 
+connections:
+  - id: demo-contacts
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: user-contacts
+
 pages:
   - _ref: pages/router.yaml
   - _ref: pages/avatar.yaml
