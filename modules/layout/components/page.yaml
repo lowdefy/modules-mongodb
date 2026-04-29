@@ -54,19 +54,9 @@ properties:
               _ref:
                 module: user-account
                 component: profile-avatar
-            # TODO: Use menu for profile links
             links:
-              _build.array.concat:
-                - _ref:
-                    module: user-account
-                    component: profile-links
-                - _var:
-                    key: extra_profile_links
-                    default:
-                      _module.var: extra_profile_links
-                - _ref:
-                    module: user-account
-                    component: profile-actions
+              _menu:
+                _module.var: profile_menu_id
           else: null
       notifications:
         _build.if:
