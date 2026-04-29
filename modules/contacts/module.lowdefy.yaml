@@ -41,7 +41,7 @@ vars:
         default: []
   components:
     type: object
-    description: "Component slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
+    description: "Component slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, company_card_extra_fields"
     properties:
       table_columns:
         default: []
@@ -53,13 +53,22 @@ vars:
         default: []
       download_columns:
         default: []
+      company_card_extra_fields:
+        default: []
+        description: |
+          List of { label, value } pairs appended under each company's display
+          name in the contact-detail companies tile. `value` is a top-level key
+          on the company doc projected by get_contact_companies.
   request_stages:
     type: object
-    description: "Pipeline overrides: get_all_contacts, write, selector, filter_match. write stages are appended to both create and update flows."
+    description: "Pipeline overrides: get_all_contacts, get_contact, write, selector, filter_match. write stages are appended to both create and update flows."
     properties:
       get_all_contacts:
         default:
           - $addFields: {}
+      get_contact:
+        default: []
+        description: Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields).
       selector:
         default: []
       filter_match:
@@ -73,6 +82,16 @@ vars:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
     description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+  use_verified:
+    type: boolean
+    default: false
+    description: |
+      Whether this module instance tracks contact verification.
+      - false: no verification UI or payload writes on any picker.
+      - true: pickers render a Verify button for unverified rows and
+        write `global_attributes.verified` on add/edit. Each picker
+        instance sets the written value via its per-call `verified`
+        var (see contact-selector wrapper).
 
 exports:
   pages:
@@ -94,7 +113,9 @@ exports:
       description: Update contact with is_user guard and event logging
   components:
     - id: contact-selector
-      description: Selector/MultipleSelector for picking contacts
+      description: Rich ContactSelector block — search, add, edit, remove, optional verify UI
+    - id: basic-contact-selector
+      description: Simple Selector/MultipleSelector dropdown over all active contacts (read-only picker)
   menus:
     - id: default
       description: Contacts navigation link
@@ -115,7 +136,10 @@ pages:
 components:
   - id: contact-selector
     component:
-      _ref: components/contact-selector.yaml
+      _ref: components/contact-selector.yaml.njk
+  - id: basic-contact-selector
+    component:
+      _ref: components/basic-contact-selector.yaml
 
 menus:
   - _ref: menus.yaml

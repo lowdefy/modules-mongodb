@@ -63,9 +63,15 @@ _ref:
             attributes:
               _request: get_company.0.attributes
             contacts:
-              _if_none:
-                - _request: get_company_contact_ids.0.ids
-                - []
+              _array.map:
+                on:
+                  _if_none:
+                    - _request: get_company_contact_ids.0.ids
+                    - []
+                callback:
+                  _function:
+                    contact_id:
+                      __args: 0
             updated:
               _request: get_company.0.updated
     requests:
@@ -121,7 +127,14 @@ _ref:
                           attributes:
                             _state: attributes
                           contacts:
-                            _state: contacts
+                            _array.map:
+                              on:
+                                _if_none:
+                                  - _state: contacts
+                                  - []
+                              callback:
+                                _function:
+                                  __args: 0.contact_id
                           updated:
                             _state: updated
                       messages:

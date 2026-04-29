@@ -1,0 +1,362 @@
+{# ContactSelector wrapper — renders the rich picker against the contacts module's requests + APIs.
+
+   Per-call vars (passed via `_ref: { module: contacts, component: contact-selector, vars: {...} }`):
+     id                 (string, required) — block id; also drives instance-scoped state keys and request ids.
+                        Dots are replaced with underscores for state paths (e.g. id "edit.ticket.subs" →
+                        state keys "edit_ticket_subs_contact", request id "edit_ticket_subs_contact_search"),
+                        but the block's own `id` keeps the dots so parent state paths stay addressable.
+     keyword            (string) — label in titles/placeholders (e.g. "Subscribers"). Nunjucks-interpolated. ##TODO: Find a better name for this
+     title              (string) — picker title override; defaults to "{{ keyword }} details" or "Contact details".
+     placeholder        (string) — search input placeholder; defaults to "Search contacts...".
+     label              (object) — passed to the block's Label wrapper (extra, tooltip, etc.).
+     required           (boolean) — when true, prepends a required-non-empty validate clause.
+     validate           (array)   — extra validate clauses to append.
+     visible            (runtime) — block visibility.
+     layout             (object)  — block layout overrides.
+     max                (number)  — maximum selected contacts (passed to the block).
+     filter             (object)  — extra Mongo $match clauses merged into the search pipeline.
+     extra_options      (array)   — options appended after search results (ad-hoc entries).
+     default_company_ids (array)  — if set, onOpen prefills the form's global_attributes.company_ids.
+     disable_new_contacts (boolean) — when true, hides Add button; allowNewContacts = false.
+     disable_edit       (boolean) — when true, hides Edit button; allowEdit = false.
+     onAddContact       (array)   — extra actions appended to the onAddContact chain.
+     form_extra_blocks  (array)   — input blocks appended to the default form's
+                                    core three (given_name, family_name, email).
+                                    Mirrors the form_profile / fields.profile
+                                    pattern — extend by adding, not by replacing.
+     form_required      (object)  — { given_name, family_name, email } flags forwarded to the default form.
+     verified           (boolean) — when the module's `use_verified` is true,
+                                    this picker writes `global_attributes.verified`
+                                    = <verified> on add/edit. Each picker instance
+                                    can set a different value (e.g. a public
+                                    self-service picker creates unverified contacts,
+                                    an admin picker creates verified ones). Ignored
+                                    when `use_verified` is false.
+     company_only_contacts (boolean) — when true, search is scoped to the user's
+                                    global_attributes.company_ids. When false
+                                    (default), the picker searches all contacts.
+                                    Per-call so different pickers in the same app
+                                    can scope differently.
+
+   Module-level vars (read via _module.var):
+     use_verified       (boolean) — master on/off for verification UI + payload writes.
+                                    When true, Verify button appears for unverified
+                                    rows and the payload writes global_attributes.verified.
+#}
+id: {{ id }}
+type: ContactSelector
+required:
+  _var:
+    key: required
+    default: false
+validate:
+  _build.array.concat:
+    - _build.if:
+        test:
+          _var:
+            key: required
+            default: false
+        then:
+          - message: Please select at least one contact.
+            status: error
+            pass:
+              _and:
+                - _ne:
+                    - _state: {{ id | replace(".", "_") }}
+                    - null
+                - _gt:
+                    - _array.length:
+                        _if_none:
+                          - _state: {{ id | replace(".", "_") }}
+                          - []
+                    - 0
+        else: []
+    - _var:
+        key: validate
+        default: []
+visible:
+  _var:
+    key: visible
+    default: true
+layout:
+  _var:
+    key: layout
+    default: {}
+requests:
+  - _ref:
+      path: requests/search_contacts.yaml
+      vars:
+        id: {{ id | replace(".", "_") }}_contact_search
+        input:
+          _state: {{ id | replace(".", "_") }}_input
+          ~ignoreBuildChecks: true
+        company_only_contacts:
+          _var:
+            key: company_only_contacts
+            default: false
+        filter:
+          _var:
+            key: filter
+            default: {}
+  - _ref:
+      path: requests/get_contact.yaml
+      vars:
+        id: {{ id | replace(".", "_") }}_get_contact
+        user_id:
+          _state: {{ id | replace(".", "_") }}_contact_id
+          ~ignoreBuildChecks: true
+  - _ref:
+      path: requests/get_contacts_data.yaml
+      vars:
+        id: {{ id | replace(".", "_") }}_contacts_data
+        contact_ids:
+          _state: {{ id | replace(".", "_") }}_fetch_contacts
+          ~ignoreBuildChecks: true
+events:
+  onOpen:
+    _build.array.concat:
+      # Flip the modal-open flag so the nested form's `required` props engage.
+      # Child input blocks auto-materialize their state paths with null values
+      # at page mount, so {id}_contact is non-null even before the modal opens;
+      # we need an independent signal.
+      - - id: mark_modal_open
+          type: SetState
+          params:
+            {{ id | replace(".", "_") }}_contact_modal_open: true
+      - _build.if:
+          test:
+            _build.ne:
+              - _var:
+                  key: default_company_ids
+                  default: null
+              - null
+          then:
+            - id: prefill_company
+              type: SetState
+              skip:
+                _ne:
+                  - _state: {{ id | replace(".", "_") }}_edit
+                  - false
+              params:
+                {{ id | replace(".", "_") }}_contact.global_attributes.company_ids:
+                  _var:
+                    key: default_company_ids
+                    default: []
+          else: []
+  onClose:
+    - id: mark_modal_closed
+      type: SetState
+      params:
+        {{ id | replace(".", "_") }}_contact_modal_open: false
+  onAddContact:
+    _build.array.concat:
+      - - id: validate
+          type: Validate
+          params:
+            regex: '^{{ id | replace(".", "_") }}_contact\.'
+        - id: generate_id
+          type: SetState
+          skip:
+            _ne:
+              - _state: {{ id | replace(".", "_") }}_contact._id
+              - null
+          params:
+            {{ id | replace(".", "_") }}_contact._id:
+              _uuid: true
+        - id: generate_avatar
+          type: SetState
+          skip:
+            _ne:
+              - _state: {{ id | replace(".", "_") }}_contact.profile.picture
+              - null
+          params:
+            {{ id | replace(".", "_") }}_contact.profile.picture:
+              _js:
+                _ref:
+                  path: ../shared/profile/generate-avatar-svg.js.njk
+                  vars:
+                    prefix: {{ id | replace(".", "_") }}_contact.profile
+        - id: create_contact
+          type: CallAPI
+          params:
+            endpointId:
+              _module.endpointId: create-contact
+            payload:
+              _object.assign:
+                - _state: {{ id | replace(".", "_") }}_contact
+                - _build.if:
+                    test:
+                      _module.var: use_verified
+                    then:
+                      global_attributes:
+                        _object.assign:
+                          - _if_none:
+                              - _state: {{ id | replace(".", "_") }}_contact.global_attributes
+                              - {}
+                          - verified:
+                              _var:
+                                key: verified
+                                default: false
+                    else: {}
+        - id: append_contact
+          type: CallMethod
+          params:
+            blockId: {{ id }}
+            method: appendContact
+            args:
+              - contact:
+                  _state: {{ id | replace(".", "_") }}_contact
+                contactId:
+                  _actions: create_contact.response.response.contactId
+      - _var:
+          key: onAddContact
+          default: []
+  onEditContact:
+    - id: validate
+      type: Validate
+      params:
+        regex: '^{{ id | replace(".", "_") }}_contact\.'
+    - id: update_contact
+      type: CallAPI
+      params:
+        endpointId:
+          _module.endpointId: update-contact
+        payload:
+          _id:
+            _state: {{ id | replace(".", "_") }}_contact._id
+          profile:
+            _state: {{ id | replace(".", "_") }}_contact.profile
+          # Always write global_attributes from form state so consumers extending
+          # form_extra_blocks with global_attributes.* fields don't silently lose
+          # them on save. Layer `verified` on top only when use_verified is true.
+          global_attributes:
+            _object.assign:
+              - _if_none:
+                  - _state: {{ id | replace(".", "_") }}_contact.global_attributes
+                  - {}
+              - _build.if:
+                  test:
+                    _module.var: use_verified
+                  then:
+                    verified:
+                      _var:
+                        key: verified
+                        default: false
+                  else: {}
+    # Re-fetch enrichment so the list row picks up the edited fields.
+    # Block value doesn't change on edit (same contact_id), so the
+    # useEffect that normally drives getContactsData won't re-fire.
+    - id: refresh_contacts_data
+      type: Request
+      params: {{ id | replace(".", "_") }}_contacts_data
+properties:
+  title:
+    _if_none:
+      - _var:
+          key: title
+          default: null
+      - _nunjucks:
+          template: |
+            {% if keyword %}{{ '{{' }} keyword {{ '}}' }} details{% else %}Contact details{% endif %}
+          on:
+            keyword:
+              _var:
+                key: keyword
+                default: null
+  placeholder:
+    _var:
+      key: placeholder
+      default: Search contacts...
+  label:
+    _var:
+      key: label
+      default: {}
+  max:
+    _var: max
+  allowNewContacts:
+    _not:
+      _var:
+        key: disable_new_contacts
+        default: false
+  allowEdit:
+    _not:
+      _var:
+        key: disable_edit
+        default: false
+  allowVerify:
+    _module.var: use_verified
+  searchContactsRequest: {{ id | replace(".", "_") }}_contact_search
+  getContactRequest: {{ id | replace(".", "_") }}_get_contact
+  getContactsDataRequest: {{ id | replace(".", "_") }}_contacts_data
+  options:
+    _array.concat:
+      - _if_none:
+          - _request: {{ id | replace(".", "_") }}_contact_search
+          - []
+      - _var:
+          key: extra_options
+          default: []
+  data:
+    _request: {{ id | replace(".", "_") }}_contacts_data
+  list:
+    title:
+      _nunjucks:
+        template: |
+          {% if keyword %}Selected {{ '{{' }} keyword {{ '}}' }}{% else %}Selected contacts{% endif %}
+        on:
+          keyword:
+            _var:
+              key: keyword
+              default: null
+    placeholder:
+      _nunjucks:
+        template: |
+          {% if keyword %}No {{ '{{' }} keyword {{ '}}' }} selected{% else %}No contacts selected{% endif %}
+        on:
+          keyword:
+            _var:
+              key: keyword
+              default: null
+    item:
+      _var:
+        key: item
+        default:
+          title: "{{ '{{' }} name {{ '}}' }}"
+          description: "{{ '{{' }} email {{ '}}' }}"
+  modal:
+    title:
+      _nunjucks:
+        template: |
+          Add {% if keyword %}{{ '{{' }} keyword {{ '}}' }}{% else %}contact{% endif %}
+        on:
+          keyword:
+            _var:
+              key: keyword
+              default: null
+    editTitle:
+      _nunjucks:
+        template: |
+          Edit {% if keyword %}{{ '{{' }} keyword {{ '}}' }}{% else %}contact{% endif %}
+        on:
+          keyword:
+            _var:
+              key: keyword
+              default: null
+    okText: Save
+blocks:
+  - _ref:
+      path: components/form_contact_short.yaml.njk
+      vars:
+        key: {{ id | replace(".", "_") }}_contact
+        new_contact:
+          _not:
+            _state: {{ id | replace(".", "_") }}_edit
+            ~ignoreBuildChecks: true
+        required:
+          _var:
+            key: form_required
+            default: {}
+        extra_blocks:
+          _var:
+            key: form_extra_blocks
+            default: []

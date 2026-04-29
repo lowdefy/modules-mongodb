@@ -154,7 +154,9 @@ routine:
           then:
             _step: check-existing._id
           else:
-            _step: insert.upsertedId
+            _if_none:
+              - _step: insert.upsertedId
+              - _step: insert.lastErrorObject.upserted
       existing:
         _ne:
           - _step: check-existing

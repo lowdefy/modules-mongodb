@@ -1,0 +1,47 @@
+// Per-row action controls (passed via `properties`):
+//   allowEdit    — boolean, default true. Render an Edit (icon) button per row.
+//   allowVerify  — boolean, default false. When true, rows where
+//                  `contact.verified !== true` render a danger-styled
+//                  "Verify" button in place of Edit; clicking it fires the
+//                  same edit flow (no separate onVerify event).
+//   allowDelete  — boolean, default true. Render a Delete (icon) button per row.
+export default {
+  category: "input-container",
+  valueType: "array",
+  icons: [
+    "AiFillCloseCircle",
+    "AiFillCheckCircle",
+    "AiOutlineLoading",
+    "AiFillExclamationCircle",
+    "AiOutlineDelete",
+    "AiOutlineEdit",
+  ],
+  styles: ["blocks/ContactSelector/style.less"],
+  slots: {
+    content: "The form shown inside the add/edit contact modal.",
+    footer: "Optional footer replacing the default modal OK/Cancel buttons.",
+  },
+  cssKeys: {
+    element: "The outer ContactSelector container.",
+    selector: "The search/select input wrapper.",
+    list: "The selected-contacts list container.",
+    listItem: "An individual selected contact row.",
+    modal: "The add/edit contact modal wrapper.",
+  },
+  events: {
+    onChange: "Triggered when the selected contact set changes.",
+    onBlur: "Triggered when the selector input loses focus.",
+    onFocus: "Triggered when the selector input gains focus.",
+    onClear: "Triggered when the selector input is cleared.",
+    afterSearch: {
+      description: "Triggered after a search query runs in the selector.",
+      event: { value: "The search input value." },
+    },
+    onOpen: "Triggered when the add/edit contact modal opens.",
+    onClose: "Triggered when the add/edit contact modal closes.",
+    onCancel: "Triggered when the modal is dismissed via cancel.",
+    afterClose: "Triggered after the modal close animation completes.",
+    onAddContact: "Triggered when the add-contact form is submitted.",
+    onEditContact: "Triggered when the edit-contact form is submitted.",
+  },
+};
