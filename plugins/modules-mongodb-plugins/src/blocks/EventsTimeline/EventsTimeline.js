@@ -15,7 +15,7 @@
 */
 
 import React, { useState, useMemo } from "react";
-import { Timeline, Modal, Badge, Tooltip, Card } from "antd";
+import { Timeline, Modal, Badge, Tooltip, Popover, Card } from "antd";
 import { withBlockDefaults } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
@@ -75,13 +75,15 @@ function stringToColor(str) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-function Avatar({ user }) {
+function Avatar({ user, contactPageUrl, disableContactLink, compact }) {
   if (!user) return null;
 
-  const size = 32;
+  const size = compact ? 22 : 32;
+  const fontSize = compact ? 10 : 13;
 
+  let visual;
   if (user.picture) {
-    return (
+    visual = (
       <img
         src={user.picture}
         alt={user.name || "User"}
@@ -91,37 +93,76 @@ function Avatar({ user }) {
           borderRadius: "50%",
           objectFit: "cover",
           flexShrink: 0,
+          display: "block",
         }}
       />
     );
+  } else {
+    const initials = getInitials(user.name);
+    const bg = stringToColor(user.name);
+    visual = (
+      <div
+        style={{
+          width: size,
+          height: size,
+          borderRadius: "50%",
+          backgroundColor: bg,
+          color: "#fff",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: fontSize,
+          fontWeight: 600,
+          flexShrink: 0,
+          lineHeight: 1,
+        }}
+      >
+        {initials}
+      </div>
+    );
   }
 
-  const initials = getInitials(user.name);
-  const bg = stringToColor(user.name);
+  const popoverContent = user.name || "Unknown user";
+  const href = !disableContactLink
+    ? buildContactHref(contactPageUrl, user.id)
+    : null;
+
+  const wrapper = href ? (
+    <a
+      href={href}
+      style={{ display: "inline-block", lineHeight: 0, flexShrink: 0 }}
+    >
+      {visual}
+    </a>
+  ) : (
+    <span style={{ display: "inline-block", lineHeight: 0, flexShrink: 0 }}>
+      {visual}
+    </span>
+  );
 
   return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "50%",
-        backgroundColor: bg,
-        color: "#fff",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 13,
-        fontWeight: 600,
-        flexShrink: 0,
-        lineHeight: 1,
-      }}
-    >
-      {initials}
-    </div>
+    <Popover content={popoverContent} trigger="hover" mouseEnterDelay={0.2}>
+      {wrapper}
+    </Popover>
   );
 }
 
-function TimeAgo({ timestamp, userName }) {
+function buildContactHref(contactPageUrl, userId) {
+  if (!contactPageUrl || !userId) return null;
+  const id = encodeURIComponent(userId);
+  if (contactPageUrl.includes("{id}"))
+    return contactPageUrl.replace(/\{id\}/g, id);
+  const sep = contactPageUrl.includes("?") ? "&" : "?";
+  return `${contactPageUrl}${sep}_id=${id}`;
+}
+
+function TimeAgo({
+  timestamp,
+  userName,
+  userId,
+  contactPageUrl,
+  disableContactLink,
+}) {
   if (!timestamp) return null;
 
   const ts = dayjs(timestamp);
@@ -154,23 +195,47 @@ function TimeAgo({ timestamp, userName }) {
     .filter(Boolean)
     .join(" ");
 
-  return (
-    <Tooltip title={tooltipTitle}>
-      <span style={{ color: "var(--ant-color-text-tertiary)", fontSize: 12, whiteSpace: "nowrap" }}>
-        {label}
-      </span>
-    </Tooltip>
+  const href = !disableContactLink
+    ? buildContactHref(contactPageUrl, userId)
+    : null;
+  const baseStyle = {
+    color: "var(--ant-color-text-tertiary)",
+    fontSize: 12,
+    whiteSpace: "nowrap",
+  };
+
+  const content = href ? (
+    <a href={href} style={{ ...baseStyle, textDecoration: "none" }}>
+      {label}
+    </a>
+  ) : (
+    <span style={baseStyle}>{label}</span>
   );
+
+  return <Tooltip title={tooltipTitle}>{content}</Tooltip>;
 }
 
-function EventTitle({ title, timestamp, userName }) {
+function EventTitle({
+  title,
+  timestamp,
+  userName,
+  userId,
+  contactPageUrl,
+  disableContactLink,
+}) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
       <span
         dangerouslySetInnerHTML={{ __html: sanitize(title) }}
         style={{ fontWeight: 500 }}
       />
-      <TimeAgo timestamp={timestamp} userName={userName} />
+      <TimeAgo
+        timestamp={timestamp}
+        userName={userName}
+        userId={userId}
+        contactPageUrl={contactPageUrl}
+        disableContactLink={disableContactLink}
+      />
     </div>
   );
 }
@@ -178,10 +243,13 @@ function EventTitle({ title, timestamp, userName }) {
 function EventDescription({
   event,
   typeConfig,
+  contactPageUrl,
+  disableContactLink,
+  compact,
 }) {
   const user = event.created?.user;
 
-  const cardStyle = { marginBottom: 4 };
+  const cardStyle = { marginBottom: compact ? 2 : 4 };
   if (typeConfig.card_color) {
     cardStyle.backgroundColor = typeConfig.card_color;
   }
@@ -193,15 +261,29 @@ function EventDescription({
     <Card
       size="small"
       style={cardStyle}
-      styles={{ body: { padding: "12px 16px" } }}
+      styles={{ body: { padding: compact ? "6px 10px" : "12px 16px" } }}
     >
-      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <Avatar user={user} />
+      <div
+        style={{
+          display: "flex",
+          gap: compact ? 8 : 10,
+          alignItems: "flex-start",
+        }}
+      >
+        <Avatar
+          user={user}
+          contactPageUrl={contactPageUrl}
+          disableContactLink={disableContactLink}
+          compact={compact}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <EventTitle
             title={event.title}
             timestamp={event.created?.timestamp}
             userName={user?.name}
+            userId={user?.id}
+            contactPageUrl={contactPageUrl}
+            disableContactLink={disableContactLink}
           />
           <div
             dangerouslySetInnerHTML={{ __html: sanitize(event.description) }}
@@ -228,7 +310,15 @@ function EventInfo({ info, onOpenModal }) {
   );
 }
 
-function EventInfoModal({ open, onClose, event, typeConfig }) {
+function EventInfoModal({
+  open,
+  onClose,
+  event,
+  typeConfig,
+  contactPageUrl,
+  disableContactLink,
+  compact,
+}) {
   const user = event?.created?.user;
   return (
     <Modal
@@ -239,7 +329,12 @@ function EventInfoModal({ open, onClose, event, typeConfig }) {
       destroyOnClose
     >
       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-        <Avatar user={user} />
+        <Avatar
+          user={user}
+          contactPageUrl={contactPageUrl}
+          disableContactLink={disableContactLink}
+          compact={compact}
+        />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div
             dangerouslySetInnerHTML={{ __html: sanitize(event?.title) }}
@@ -248,6 +343,9 @@ function EventInfoModal({ open, onClose, event, typeConfig }) {
           <TimeAgo
             timestamp={event?.created?.timestamp}
             userName={user?.name}
+            userId={user?.id}
+            contactPageUrl={contactPageUrl}
+            disableContactLink={disableContactLink}
           />
         </div>
       </div>
@@ -274,8 +372,10 @@ function EventAction({ action, actionStatusConfig, methods }) {
       <Card
         size="small"
         style={{
-          borderColor: statusConf.border_color || "var(--ant-color-border-secondary)",
-          backgroundColor: statusConf.card_color || "var(--ant-color-fill-quaternary)",
+          borderColor:
+            statusConf.border_color || "var(--ant-color-border-secondary)",
+          backgroundColor:
+            statusConf.card_color || "var(--ant-color-fill-quaternary)",
         }}
         styles={{ body: { padding: "8px 12px" } }}
       >
@@ -293,7 +393,7 @@ function EventAction({ action, actionStatusConfig, methods }) {
               <span
                 dangerouslySetInnerHTML={{
                   __html: sanitize(
-                    action.message || statusConf.title || action.status
+                    action.message || statusConf.title || action.status,
                   ),
                 }}
                 style={{ fontSize: 13 }}
@@ -366,6 +466,9 @@ function EventTimelineItem({
   typeConfig,
   actionStatusConfig,
   s3GetPolicyRequestId,
+  contactPageUrl,
+  disableContactLink,
+  compact,
   methods,
   components,
 }) {
@@ -374,24 +477,56 @@ function EventTimelineItem({
   const hasDescription = !!event.description;
   const hasInfo = !!event.info;
   const hasActions =
-    actionStatusConfig && Array.isArray(event.actions) && event.actions.length > 0;
+    actionStatusConfig &&
+    Array.isArray(event.actions) &&
+    event.actions.length > 0;
   const hasFiles =
-    s3GetPolicyRequestId && Array.isArray(event.files) && event.files.length > 0;
+    s3GetPolicyRequestId &&
+    Array.isArray(event.files) &&
+    event.files.length > 0;
 
   return (
     <div>
       {hasDescription ? (
-        <EventDescription event={event} typeConfig={typeConfig} />
-      ) : (
-        <EventTitle
-          title={event.title}
-          timestamp={event.created?.timestamp}
-          userName={event.created?.user?.name}
+        <EventDescription
+          event={event}
+          typeConfig={typeConfig}
+          contactPageUrl={contactPageUrl}
+          disableContactLink={disableContactLink}
+          compact={compact}
         />
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            gap: compact ? 8 : 10,
+            alignItems: "center",
+          }}
+        >
+          <Avatar
+            user={event.created?.user}
+            contactPageUrl={contactPageUrl}
+            disableContactLink={disableContactLink}
+            compact={compact}
+          />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <EventTitle
+              title={event.title}
+              timestamp={event.created?.timestamp}
+              userName={event.created?.user?.name}
+              userId={event.created?.user?.id}
+              contactPageUrl={contactPageUrl}
+              disableContactLink={disableContactLink}
+            />
+          </div>
+        </div>
       )}
 
       {hasInfo && !hasDescription && (
-        <EventInfo info={event.info} onOpenModal={() => setModalVisible(true)} />
+        <EventInfo
+          info={event.info}
+          onOpenModal={() => setModalVisible(true)}
+        />
       )}
 
       {hasInfo && (
@@ -400,6 +535,9 @@ function EventTimelineItem({
           onClose={() => setModalVisible(false)}
           event={event}
           typeConfig={typeConfig}
+          contactPageUrl={contactPageUrl}
+          disableContactLink={disableContactLink}
+          compact={compact}
         />
       )}
 
@@ -428,12 +566,22 @@ function EventTimelineItem({
 // Main Component
 // ---------------------------------------------------------------------------
 
-const EventsTimeline = ({ blockId, classNames = {}, properties, methods, components, styles = {} }) => {
+const EventsTimeline = ({
+  blockId,
+  classNames = {},
+  properties,
+  methods,
+  components,
+  styles = {},
+}) => {
   const {
     data = [],
     eventTypeConfig = {},
     actionStatusConfig,
     s3GetPolicyRequestId,
+    contactPageUrl,
+    disableContactLink = false,
+    compact = false,
     reverse = false,
     mode = "left",
   } = properties || {};
@@ -463,6 +611,9 @@ const EventsTimeline = ({ blockId, classNames = {}, properties, methods, compone
             typeConfig={_typeConfig}
             actionStatusConfig={actionStatusConfig}
             s3GetPolicyRequestId={s3GetPolicyRequestId}
+            contactPageUrl={contactPageUrl}
+            disableContactLink={disableContactLink}
+            compact={compact}
             methods={methods}
             components={components}
           />
@@ -473,9 +624,7 @@ const EventsTimeline = ({ blockId, classNames = {}, properties, methods, compone
         const Icon = components?.Icon;
         if (Icon) {
           item.dot = (
-            <Icon
-              properties={{ name: _typeConfig.icon, color: color }}
-            />
+            <Icon properties={{ name: _typeConfig.icon, color: color }} />
           );
         }
       }
@@ -486,12 +635,22 @@ const EventsTimeline = ({ blockId, classNames = {}, properties, methods, compone
     enrichedData,
     actionStatusConfig,
     s3GetPolicyRequestId,
+    contactPageUrl,
+    disableContactLink,
+    compact,
     methods,
     components,
   ]);
 
+  const rootClassName = [
+    classNames.element,
+    compact && "events-timeline-compact",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
-    <div id={blockId} className={classNames.element} style={styles.element}>
+    <div id={blockId} className={rootClassName} style={styles.element}>
       <Timeline
         className={classNames.timeline}
         style={styles.timeline}
