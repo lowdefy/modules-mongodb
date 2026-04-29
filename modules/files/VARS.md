@@ -92,7 +92,7 @@ Documents in the `files` collection:
   file: {
     name: "report.pdf",
     key: "lot/20260402.../report.pdf",
-    bucket: "hydra-files",
+    bucket: "example-app-files",
     size: 245678,
     type: "application/pdf",
     thumbnail: "data:image/jpeg;base64,..."     // images only

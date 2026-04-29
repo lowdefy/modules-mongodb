@@ -2,6 +2,10 @@
 
 Monorepo of reusable Lowdefy modules backed by MongoDB.
 
+## Client Names
+
+Never use client names in design documents, commits, or any content tracked in git. Use generic terms — "an existing app", "existing solutions", "production apps". If a design requires app-specific configuration details (e.g., extracting code from a specific app), add a single anonymous reference at the top of the design file and use that name throughout. Designs that don't need app-specific config (e.g., performance improvements) should not reference specific apps at all.
+
 ## Project Structure
 
 ```

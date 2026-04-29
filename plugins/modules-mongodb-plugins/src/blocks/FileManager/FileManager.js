@@ -60,7 +60,7 @@ const downloadFile = async ({ fileDoc, methods }) => {
 };
 
 /**
- * FileManager block for hydra.
+ * FileManager block.
  *
  * Expects `properties.files` to be an array of file documents from the
  * `files` MongoDB collection. Each doc has shape:

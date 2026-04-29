@@ -1,7 +1,7 @@
 {
   "name": "@lowdefy/modules-mongodb-plugins",
-  "version": "0.1.0",
-  "license": "Apache-2.0",
+  "version": "0.1.1",
+  "license": "MIT",
   "type": "module",
   "publishConfig": {
     "access": "public"
@@ -27,6 +27,7 @@
     "prepare": "pnpm build"
   },
   "dependencies": {
+    "@lowdefy/nunjucks": "0.0.0-experimental-20260421070726",
     "dayjs": "^1.11.0",
     "dompurify": "^3"
   },

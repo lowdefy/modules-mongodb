@@ -8,7 +8,7 @@ Every significant action (create, update, status change, comment) inserts an imm
 
 **Event document shape**: `{ _id (UUID), type, date, created (change_stamp), {app-key}: { title, description, info }, {entity}_ids, metadata, files, action_ids }`. Events only have a `created` stamp — they are never updated.
 
-**Per-app display**: events store display data keyed by app name (e.g., `hydra`, `prp-team`, `prp-support`). This lets multiple apps render the same event differently — an internal app can show clickable links while a customer-facing app shows plain text. Titles use `_nunjucks` templates with HTML for rich rendering.
+**Per-app display**: events store display data keyed by app name (e.g., `example-app`, `admin-app`, `customer-app`). This lets multiple apps render the same event differently — an internal app can show clickable links while a customer-facing app shows plain text. Titles use `_nunjucks` templates with HTML for rich rendering.
 
 **Entity reference arrays**: events carry arrays like `lot_ids`, `ticket_ids`, `device_ids`, `company_ids`, `contact_ids`. These are the filter keys — the timeline component matches events by checking if the current entity's ID appears in the relevant array. Without these references, the event won't appear on that entity's timeline.
 
@@ -140,8 +140,8 @@ Every significant action (create, update, status change, comment) inserts an imm
 - `modules/events/connections/events-collection.yaml` — events collection connection with changeLog enabled
 - `modules/contacts/api/create-contact.yaml` — module-level CallApi event logging with build-time display templates
 - `modules/shared/enums/event_types.yaml` — shared event type enum composition (merges module-level enums)
-- `apps/hydra/pages/lot-view/enums/lot_event_types.yaml` — app-level event type additions
-- `apps/hydra/pages/lot-view/components/activity-tab.yaml` — timeline embedded in detail page with comment input
+- `apps/example-app/pages/lot-view/enums/lot_event_types.yaml` — app-level event type additions
+- `apps/example-app/pages/lot-view/components/activity-tab.yaml` — timeline embedded in detail page with comment input
 - `docs/data-design/app-schema-example/log_events.yaml` — full schema documentation with examples
 
 ## Checklist

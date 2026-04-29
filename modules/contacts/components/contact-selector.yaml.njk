@@ -222,25 +222,27 @@ events:
         endpointId:
           _module.endpointId: update-contact
         payload:
-          _object.assign:
-            - _id:
-                _state: {{ id | replace(".", "_") }}_contact._id
-              profile:
-                _state: {{ id | replace(".", "_") }}_contact.profile
-            - _build.if:
-                test:
-                  _module.var: use_verified
-                then:
-                  global_attributes:
-                    _object.assign:
-                      - _if_none:
-                          - _state: {{ id | replace(".", "_") }}_contact.global_attributes
-                          - {}
-                      - verified:
-                          _var:
-                            key: verified
-                            default: false
-                else: {}
+          _id:
+            _state: {{ id | replace(".", "_") }}_contact._id
+          profile:
+            _state: {{ id | replace(".", "_") }}_contact.profile
+          # Always write global_attributes from form state so consumers extending
+          # form_extra_blocks with global_attributes.* fields don't silently lose
+          # them on save. Layer `verified` on top only when use_verified is true.
+          global_attributes:
+            _object.assign:
+              - _if_none:
+                  - _state: {{ id | replace(".", "_") }}_contact.global_attributes
+                  - {}
+              - _build.if:
+                  test:
+                    _module.var: use_verified
+                  then:
+                    verified:
+                      _var:
+                        key: verified
+                        default: false
+                  else: {}
     # Re-fetch enrichment so the list row picks up the edited fields.
     # Block value doesn't change on edit (same contact_id), so the
     # useEffect that normally drives getContactsData won't re-fire.
