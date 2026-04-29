@@ -19,6 +19,21 @@ vars:
     type: object
     default: {}
     description: "Sider properties forwarded to the page block: { width, initialCollapsed, collapsible, hideToggleButton, collapsedWidth }. `collapsible` applies to PageSidebarLayout only. Ignored for page_type 'header-menu' (PageHeaderMenu has no sider)."
+    properties:
+      width:
+        description: Width of the expanded sider (number in pixels or CSS length string).
+      initialCollapsed:
+        description: >-
+          Initial collapsed state on first load. Subsequent visits read the
+          persisted state from localStorage (see `sider_storage_key`).
+      collapsible:
+        description: >-
+          Whether the sider can be collapsed by the user. PageSidebarLayout
+          only.
+      hideToggleButton:
+        description: Hide the collapse toggle button rendered in the sider.
+      collapsedWidth:
+        description: Width of the collapsed sider in pixels.
   sider_open_blocks:
     type: array
     default: []
@@ -33,20 +48,25 @@ vars:
     description: localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist).
   logo:
     type: object
-    description: "Logo config: { primary_light, primary_dark, icon, style }"
+    description: "Logo config: { primary_light, primary_dark, primary, icon, style }"
     properties:
       primary_light:
-        description: Logo for light header background
+        description: >-
+          Logo rendered in the page header on light backgrounds. Consumers
+          must set this — there is no default.
       primary_dark:
         default: /logo-dark-theme.png
-        description: Logo for dark backgrounds (auth cover)
+        description: >-
+          Logo rendered on dark backgrounds (auth-page cover, dark-theme
+          header).
       primary:
         default: /logo-light-theme.png
-        description: Primary logo (brand panel, mobile auth)
+        description: >-
+          Logo rendered in the auth-page brand panel and mobile auth view.
       icon:
-        description: Small icon logo for mobile header
+        description: Square icon logo used in the mobile header.
       style:
-        description: Custom logo style object
+        description: Inline style object applied to the header logo.
   menu:
     type: object
     default:
@@ -62,8 +82,12 @@ vars:
     properties:
       requests:
         default: []
+        description: >-
+          Requests loaded with every page that uses the page component. Use
+          for shared header data (e.g. notification counts).
       blocks:
         default: []
+        description: Blocks rendered in the header slot on the right side.
   title_block:
     type: object
     default: null
@@ -89,12 +113,16 @@ vars:
       register a menu with this id in its menus list.
   auth_page:
     type: object
-    description: "Auth page overrides: { cover_background, card_style, max_width, logo_max_width }"
+    description: "Auth page overrides: { cover_background, card_style, max_width, logo_max_width, brand_panel_background }"
     properties:
       max_width:
         default: 360
+        description: Max width of the auth card container in pixels.
       card_style:
         default: {}
+        description: >-
+          Inline style object applied to the auth card (e.g. shadows, borders,
+          radius overrides).
       cover_background:
         default:
           _if:
@@ -102,10 +130,17 @@ vars:
               _media: darkMode
             then: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 40%, black) 0%, color-mix(in srgb, var(--ant-color-primary) 60%, black) 100%)"
             else: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)"
+        description: >-
+          CSS `background` for the auth card cover area. Defaults to a
+          colorPrimary gradient that auto-adapts to dark mode.
       logo_max_width:
         default: 160
+        description: Max width of the logo in the cover area in pixels.
       brand_panel_background:
         default: "linear-gradient(160deg, color-mix(in srgb, var(--ant-color-primary) 70%, black) 0%, var(--ant-color-primary) 100%)"
+        description: >-
+          CSS `background` for the auth-page brand panel (alternate auth
+          layout). Defaults to a colorPrimary gradient.
 
 exports:
   components:

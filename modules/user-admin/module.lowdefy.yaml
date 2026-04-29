@@ -33,40 +33,75 @@ vars:
       show_honorific:
         type: boolean
         default: false
+        description: Show the honorific/title selector (Mr/Ms/Dr) in the profile form.
       profile:
         default: []
+        description: >-
+          Profile field blocks rendered in the user edit/invite form and view.
+          Block ids must be prefixed with `profile.` so they bind to
+          `state.profile.*`.
       global_attributes:
         default: []
+        description: >-
+          Cross-app attribute field blocks rendered in the user form and view.
+          Block ids must be prefixed with `global_attributes.` so they bind
+          to `state.global_attributes.*`.
       app_attributes:
         default: []
+        description: >-
+          Per-app attribute field blocks scoped to `app_name`. Block ids must
+          be prefixed with `app_attributes.` so they bind to
+          `state.app_attributes.*` and write to `app_attributes.{app_name}`
+          on save.
   components:
     type: object
     description: "Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots"
     properties:
       download_columns:
         default: []
+        description: Extra columns appended to the Excel export.
       table_columns:
         default: []
+        description: Extra column definitions appended to the users list table.
       filters:
         default: []
+        description: >-
+          Extra filter blocks rendered below the built-in search bar on the
+          users list page. Pair with `filter_requests` for custom data sources.
       main_slots:
         default: []
+        description: Extra blocks appended to the main column on the users-view page.
       sidebar_slots:
         default: []
+        description: Extra blocks appended to the sidebar column on the users-view page.
       view_access_tile:
         default:
           _ref: components/view_access.yaml
+        description: >-
+          Override for the access tile rendered on the users-view page. Defaults
+          to the built-in roles/access summary; replace with custom blocks to
+          show app-specific access information.
   request_stages:
     type: object
     description: "MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows."
     properties:
       filter_match:
         default: []
+        description: >-
+          Atlas Search compound clauses appended to the list-page `$search`
+          query. Used to add custom filter conditions to the users list.
       get_all_users:
         default:
           - $addFields: {}
+        description: >-
+          Pipeline stages appended after filtering on the users list and
+          Excel export aggregations.
       write:
         default: []
+        description: >-
+          Pipeline update stages appended to both update-user and invite-user
+          flows. Used for derived fields or extra transforms beyond the
+          built-in profile/attribute writes.
   filter_requests:
     default: []
     description: Additional requests for the custom filters section

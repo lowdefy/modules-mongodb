@@ -21,7 +21,12 @@ vars:
     description: Log file upload/delete events via the events module
   components:
     type: object
-    description: "Overrides: file_list (deprecated)"
+    description: "Component overrides: file_list (deprecated)"
+    properties:
+      file_list:
+        description: >-
+          Deprecated. Override block list rendered by the file-list component.
+          Prefer the file-manager or file-card components going forward.
 
 exports:
   connections:

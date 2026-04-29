@@ -27,7 +27,12 @@ vars:
         description: Column name used as the unique row identifier in uploads
       columns:
         required: true
-        description: "List of column definitions for the upload template [{field, headerName}]"
+        description: >-
+          List of column definitions for the upload template. Each entry is
+          an object: `field` (required, the spreadsheet header / row key),
+          `type` (column data type, used in the download template, e.g.
+          `String`), `required` (boolean — flags columns that must be present
+          on every uploaded row).
       api:
         required: true
         description: API endpoint config for processing staged rows

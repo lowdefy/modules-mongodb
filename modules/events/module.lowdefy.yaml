@@ -21,6 +21,7 @@ vars:
   collection:
     type: string
     default: log-events
+    description: MongoDB collection name for the event log records.
   display_key:
     type: string
     required: true

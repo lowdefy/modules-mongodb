@@ -13,16 +13,16 @@ Conventions:
 
 Goal: every var (top-level and nested) in every `module.lowdefy.yaml` has a `description:`. Manifest is the source of truth before READMEs are written.
 
-- [ ] `modules/companies/module.lowdefy.yaml` — add nested descriptions for `fields.attributes`, `components.{table_columns, filters, main_slots, sidebar_slots, download_columns, contact_card_extra_fields}`, `request_stages.{filter_match, get_all_companies, selector, write}`. Remove the `# TODO` comment block.
-- [ ] `modules/contacts/module.lowdefy.yaml` — add nested descriptions for `fields.{show_honorific, profile, global_attributes}`, `components.*`, `request_stages.*`. Remove the `# TODO` comment block.
-- [ ] `modules/data-upload/module.lowdefy.yaml` — verify `tool.*` is complete; expand `tool.columns` description to spell out optional column properties.
-- [ ] `modules/events/module.lowdefy.yaml` — verify (likely no change; top-level only).
-- [ ] `modules/files/module.lowdefy.yaml` — describe `components.file_list` and mark it deprecated.
-- [ ] `modules/layout/module.lowdefy.yaml` — reconcile `logo.{primary, primary_light, primary_dark, icon, style}` keys and defaults with `modules/layout/README.md`. Fill nested descriptions for `header_extra.{requests, blocks}` and `auth_page.{max_width, card_style, cover_background, logo_max_width, brand_panel_background}`.
-- [ ] `modules/notifications/module.lowdefy.yaml` — verify (likely no change).
-- [ ] `modules/release-notes/module.lowdefy.yaml` — verify.
-- [ ] `modules/user-account/module.lowdefy.yaml` — add nested descriptions for `fields.{show_honorific, profile}`, `components.main_slots`, `request_stages.write`.
-- [ ] `modules/user-admin/module.lowdefy.yaml` — add nested descriptions for `fields.{show_honorific, profile, global_attributes, app_attributes}`, `components.{download_columns, table_columns, filters, main_slots, sidebar_slots, view_access_tile}`, `request_stages.{filter_match, get_all_users, write}`.
+- [x] `modules/companies/module.lowdefy.yaml` — add nested descriptions for `fields.attributes`, `components.{table_columns, filters, main_slots, sidebar_slots, download_columns, contact_card_extra_fields}`, `request_stages.{filter_match, get_all_companies, selector, write}`. Remove the `# TODO` comment block.
+- [x] `modules/contacts/module.lowdefy.yaml` — add nested descriptions for `fields.{show_honorific, profile, global_attributes}`, `components.*`, `request_stages.*`. Remove the `# TODO` comment block.
+- [x] `modules/data-upload/module.lowdefy.yaml` — verify `tool.*` is complete; expand `tool.columns` description to spell out optional column properties.
+- [x] `modules/events/module.lowdefy.yaml` — verify (likely no change; top-level only).
+- [x] `modules/files/module.lowdefy.yaml` — describe `components.file_list` and mark it deprecated.
+- [x] `modules/layout/module.lowdefy.yaml` — reconcile `logo.{primary, primary_light, primary_dark, icon, style}` keys and defaults with `modules/layout/README.md`. Fill nested descriptions for `header_extra.{requests, blocks}` and `auth_page.{max_width, card_style, cover_background, logo_max_width, brand_panel_background}`.
+- [x] `modules/notifications/module.lowdefy.yaml` — verify (likely no change).
+- [x] `modules/release-notes/module.lowdefy.yaml` — verify.
+- [x] `modules/user-account/module.lowdefy.yaml` — add nested descriptions for `fields.{show_honorific, profile}`, `components.main_slots`, `request_stages.write`.
+- [x] `modules/user-admin/module.lowdefy.yaml` — add nested descriptions for `fields.{show_honorific, profile, global_attributes, app_attributes}`, `components.{download_columns, table_columns, filters, main_slots, sidebar_slots, view_access_tile}`, `request_stages.{filter_match, get_all_users, write}`.
 
 ---
 
