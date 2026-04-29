@@ -5,7 +5,7 @@ blocks:
     - - id: company_details
         type: SmartDescriptions
         properties:
-          column: 2
+          column: 1
           size: small
           data:
             _request: get_company.0
