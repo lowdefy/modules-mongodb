@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Upload, Typography, Button, Tooltip, Modal, Progress, theme } from "antd";
+import {
+  Upload,
+  Typography,
+  Button,
+  Tooltip,
+  Modal,
+  Progress,
+  theme,
+} from "antd";
 import { withBlockDefaults, renderHtml } from "@lowdefy/block-utils";
 import { type } from "@lowdefy/helpers";
 import { Label } from "@lowdefy/blocks-antd/blocks";
@@ -387,7 +395,12 @@ const FileManager = ({
     deleteTarget?.file_title || deleteTarget?.file?.name || "this file";
 
   const renderContent = () => (
-    <div id={blockId} className={classNames.element} style={styles.element} onPaste={viewOnly ? undefined : onPaste}>
+    <div
+      id={blockId}
+      className={classNames.element}
+      style={styles.element}
+      onPaste={viewOnly ? undefined : onPaste}
+    >
       {!hideDragger && (
         <Dragger
           accept={properties.accept ?? "*"}
@@ -422,7 +435,9 @@ const FileManager = ({
       )}
 
       {fileDocs.length > 0 ? (
-        <div className={classNames.fileList} style={styles.fileList}>{fileDocs.map((doc, i) => renderFileItem(doc, i))}</div>
+        <div className={classNames.fileList} style={styles.fileList}>
+          {fileDocs.map((doc, i) => renderFileItem(doc, i))}
+        </div>
       ) : viewOnly ? (
         <Text type="secondary" style={{ fontSize: 12, fontStyle: "italic" }}>
           No files

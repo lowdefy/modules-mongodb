@@ -32,21 +32,21 @@ _ref:
       _url_query: _id
 ```
 
-| Var | Default | Description |
-|---|---|---|
-| `title` | `Files` | Card title |
-| `entity_type` | — | Entity collection name (e.g. `lot`, `contact`) |
-| `entity_id` | — | Entity document ID |
-| `file_category` | `null` | Filter/tag files by category |
-| `view_only` | `false` | Hide upload and delete (display-only) |
-| `disabled` | `false` | Disable upload button |
-| `allow_delete` | `true` | Show delete buttons |
-| `single_file` | `false` | Allow only one file (hides uploader when file exists) |
-| `max_count` | `null` | Max number of files (hides uploader at limit) |
-| `accept` | `*` | File type filter (e.g. `.pdf,.jpg`, `image/*`) |
-| `hint` | `Click or drag file to upload` | Dragger hint text |
-| `file_title` | `null` | Optional title saved with every file |
-| `block_id` | `file_manager` | Unique block ID (use when multiple on one page) |
+| Var             | Default                        | Description                                           |
+| --------------- | ------------------------------ | ----------------------------------------------------- |
+| `title`         | `Files`                        | Card title                                            |
+| `entity_type`   | —                              | Entity collection name (e.g. `lot`, `contact`)        |
+| `entity_id`     | —                              | Entity document ID                                    |
+| `file_category` | `null`                         | Filter/tag files by category                          |
+| `view_only`     | `false`                        | Hide upload and delete (display-only)                 |
+| `disabled`      | `false`                        | Disable upload button                                 |
+| `allow_delete`  | `true`                         | Show delete buttons                                   |
+| `single_file`   | `false`                        | Allow only one file (hides uploader when file exists) |
+| `max_count`     | `null`                         | Max number of files (hides uploader at limit)         |
+| `accept`        | `*`                            | File type filter (e.g. `.pdf,.jpg`, `image/*`)        |
+| `hint`          | `Click or drag file to upload` | Dragger hint text                                     |
+| `file_title`    | `null`                         | Optional title saved with every file                  |
+| `block_id`      | `file_manager`                 | Unique block ID (use when multiple on one page)       |
 
 ### file-manager
 
@@ -54,10 +54,10 @@ Unified component using the FileManager React block. Handles upload (drag-drop, 
 
 Same vars as file-card (except `title`), plus:
 
-| Var | Default | Description |
-|---|---|---|
-| `label` | `null` | Ant Design Label wrapper config |
-| `modal_title` | `Upload File` | Form modal title |
+| Var           | Default       | Description                     |
+| ------------- | ------------- | ------------------------------- |
+| `label`       | `null`        | Ant Design Label wrapper config |
+| `modal_title` | `Upload File` | Form modal title                |
 
 ### file-list
 
@@ -73,12 +73,12 @@ _ref:
       _url_query: _id
 ```
 
-| Var | Default | Description |
-|---|---|---|
-| `block_id` | `file_list` | Unique block ID (use when multiple on one page) |
-| `entity_type` | — | Entity collection name |
-| `entity_id` | — | Entity document ID |
-| `file_category` | `null` | Filter files by category |
+| Var             | Default     | Description                                     |
+| --------------- | ----------- | ----------------------------------------------- |
+| `block_id`      | `file_list` | Unique block ID (use when multiple on one page) |
+| `entity_type`   | —           | Entity collection name                          |
+| `entity_id`     | —           | Entity document ID                              |
+| `file_category` | `null`      | Filter files by category                        |
 
 ## File Document Schema
 
