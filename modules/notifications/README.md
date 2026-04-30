@@ -15,7 +15,7 @@ The send routine itself is provided by the consuming app — this module ships t
 ```yaml
 modules:
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.1.1"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.2.0"
     vars:
       app_name: my-app
       send_routine:

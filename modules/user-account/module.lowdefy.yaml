@@ -1,5 +1,5 @@
 name: User Account
-version: 0.1.1
+version: 0.2.0
 description: User account pages — login, email verification, profile view/edit/create
 
 dependencies:

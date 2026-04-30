@@ -50,7 +50,7 @@ To extend the stamp (e.g. add `app_name` to track which app produced the write),
 
 ```yaml
 - id: events
-  source: "github:lowdefy/modules-mongodb/modules/events@v0.1.1"
+  source: "github:lowdefy/modules-mongodb/modules/events@v0.2.0"
   vars:
     display_key: my-app
     change_stamp:
@@ -109,7 +109,7 @@ default:
 
 ```yaml
 - id: companies
-  source: "github:lowdefy/modules-mongodb/modules/companies@v0.1.1"
+  source: "github:lowdefy/modules-mongodb/modules/companies@v0.2.0"
   vars:
     event_display:
       my-app:
@@ -166,7 +166,7 @@ Add an "Industry" attribute to the company form and a matching column to the lis
 
 ```yaml
 - id: companies
-  source: "github:lowdefy/modules-mongodb/modules/companies@v0.1.1"
+  source: "github:lowdefy/modules-mongodb/modules/companies@v0.2.0"
   vars:
     fields:
       attributes:

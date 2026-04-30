@@ -1,5 +1,5 @@
 name: Companies
-version: 0.1.1
+version: 0.2.0
 description: Company management — list, detail, edit, create, selector
 
 dependencies:
