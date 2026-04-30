@@ -22,7 +22,6 @@ modules:
   - id: companies
     source: "github:lowdefy/modules-mongodb/modules/companies@v0.1.1"
     vars:
-      collection: companies
       label: Company
       label_plural: Companies
       name_field: trading_name
@@ -30,7 +29,7 @@ modules:
       id_length: 4
 ```
 
-Defaults work out of the box. To add custom fields, table columns, sidebar tiles, or pipeline stages, see [Slots](../../docs/idioms.md#slots). See `apps/demo/modules/companies/index.yaml` for a worked example.
+Defaults work out of the box. To add custom fields, table columns, sidebar tiles, or pipeline stages, see [Slots](../../docs/idioms.md#slots). To point the module at a different MongoDB collection, remap `companies-collection` via the entry's `connections` mapping. See `apps/demo/modules/companies/index.yaml` for a worked example.
 
 ## Exports
 
@@ -67,7 +66,7 @@ Defaults work out of the box. To add custom fields, table columns, sidebar tiles
 
 | ID | Collection |
 |---|---|
-| `companies-collection` | `vars.collection` (default `companies`) |
+| `companies-collection` | `companies` |
 
 ### Menus
 
@@ -83,10 +82,6 @@ links:
 ```
 
 ## Vars
-
-### `collection`
-
-`string` — Default `companies`. MongoDB collection for company records.
 
 ### `label` / `label_plural`
 

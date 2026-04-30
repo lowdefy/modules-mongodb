@@ -88,17 +88,13 @@ To extend the change stamp (e.g. add `app_name` so writes record which app produ
 
 | ID | Collection |
 |---|---|
-| `events-collection` | `vars.collection` (default `log-events`) |
+| `events-collection` | `log-events` |
 
 ## Vars
 
 ### `display_key` (required)
 
 `string` — App identifier used to select which per-app title to render from each event's `display.{display_key}` field. Must not contain dots — see [App name scoping](../../docs/idioms.md#app-name).
-
-### `collection`
-
-`string` — Default `log-events`. MongoDB collection name for event records.
 
 ### `change_stamp`
 

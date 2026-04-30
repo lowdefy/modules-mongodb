@@ -13,9 +13,6 @@ dependencies:
     description: File attachments (optional sidebar tile)
 
 vars:
-  collection:
-    default: companies
-    description: MongoDB collection name
   label:
     default: Company
     description: Singular display label

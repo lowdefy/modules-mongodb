@@ -3,8 +3,7 @@ type: MongoDBCollection
 properties:
   databaseUri:
     _secret: MONGODB_URI
-  collection:
-    _module.var: collection
+  collection: log-events
   changeLog:
     collection: log-changes
     meta:

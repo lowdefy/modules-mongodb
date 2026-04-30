@@ -9,9 +9,6 @@ dependencies:
     description: Change stamp and event logging for file audit
 
 vars:
-  collection:
-    default: files
-    description: MongoDB collection name for file metadata
   s3_region:
     required: true
     description: AWS region for S3 buckets (e.g., us-east-1, ca-central-1)

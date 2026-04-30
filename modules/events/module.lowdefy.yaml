@@ -18,10 +18,6 @@ exports:
       description: Log a new audit event
 
 vars:
-  collection:
-    type: string
-    default: log-events
-    description: MongoDB collection name for the event log records.
   display_key:
     type: string
     required: true

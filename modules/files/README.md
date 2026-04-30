@@ -75,15 +75,11 @@ modules:
 
 | ID | Resource |
 |---|---|
-| `files-collection` | MongoDB collection for file metadata |
+| `files-collection` | MongoDB collection `files` for file metadata |
 | `files-bucket` | Private S3 bucket (signed URLs) |
 | `files-bucket-public` | Public S3 bucket (assets served without auth) |
 
 ## Vars
-
-### `collection`
-
-`string` — Default `files`. MongoDB collection name for file metadata.
 
 ### `s3_region` (required)
 
