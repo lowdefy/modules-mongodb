@@ -16,7 +16,7 @@ The module ships three rendering components (`file-manager`, `file-card`, `file-
 ```yaml
 modules:
   - id: files
-    source: "github:lowdefy/modules-mongodb/modules/files@v0.1.1"
+    source: "github:lowdefy/modules-mongodb/modules/files@v0.2.0"
     vars:
       s3_region: us-east-1
 ```

@@ -1,5 +1,5 @@
 name: Events
-version: 0.1.1
+version: 0.2.0
 description: Event logging — new-event API, event timeline panel, shared event metadata
 
 exports:
