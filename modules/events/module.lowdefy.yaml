@@ -55,7 +55,7 @@ vars:
       URL template for linking a user avatar/timestamp to their profile page.
       Use `{id}` as the placeholder for the user id; if omitted, the id is
       appended as `?_id=<id>`. Leave empty to render the timestamp/avatar
-      without a link. Example: `/user-admin/users-view?user_id={id}`.
+      without a link. Example: `/user-admin/view?user_id={id}`.
       Per-call overrides via `contact_page_url` and `disable_contact_link`
       vars on the events-timeline component.
 

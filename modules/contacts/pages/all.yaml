@@ -2,26 +2,20 @@ _ref:
   module: layout
   component: page
   vars:
-    id: users
+    id: all
     title:
-      _build.string.trim:
-        _build.string.concat:
-          - _module.var: app_title
-          - " User Admin"
+      _module.var: label_plural
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _build.string.trim:
-            _build.string.concat:
-              - _module.var: app_title
-              - " User Admin"
+          _module.var: label_plural
     page_actions:
       - _ref: components/excel_download.yaml
-      - _ref: components/button_new_invite.yaml
+      - _ref: components/button_new_contact.yaml
     events:
       onInit:
-        - id: set_sort_filter
+        - id: set_sort
           type: SetState
           params:
             sort:
@@ -38,12 +32,12 @@ _ref:
         - id: get_all
           type: Request
           params:
-            - get_all_users
+            - get_all_contacts
     requests:
-      - _ref: requests/get_all_users.yaml
-      - _ref: requests/get_user_excel_data.yaml
+      - _ref: requests/get_all_contacts.yaml
+      - _ref: requests/get_contact_excel_data.yaml
     blocks:
-      - _ref: components/users_filter.yaml
+      - _ref: components/filter_contacts.yaml
       - id: custom_filters_box
         type: Box
         layout:
@@ -70,14 +64,8 @@ _ref:
                 value: updated.timestamp
               - label: Date Created
                 value: created.timestamp
-              - label: Date Signed Up
-                value:
-                  _string.concat:
-                    - "apps."
-                    - _module.var: app_name
-                    - ".sign_up"
-      - _ref: components/table_users.yaml
+      - _ref: components/table_contacts.yaml
       - _ref:
           path: ../shared/layout/pagination.yaml
           vars:
-            request_id: get_all_users
+            request_id: get_all_contacts

@@ -103,7 +103,7 @@ export const fieldTypeRegistry = {
       });
 
       const contactDetailPageId =
-        properties?.contactDetailPageId ?? "contacts/contact-detail";
+        properties?.contactDetailPageId ?? "contacts/view";
 
       return (
         <span className="dataview-value">
@@ -139,7 +139,7 @@ export const fieldTypeRegistry = {
       const contactId = value.contact_id ?? value._id;
 
       const contactDetailPageId =
-        properties?.contactDetailPageId ?? "contacts/contact-detail";
+        properties?.contactDetailPageId ?? "contacts/view";
 
       if (contactId && !properties?.disableCrmLinks) {
         return (
@@ -171,7 +171,7 @@ export const fieldTypeRegistry = {
     render: ({ value, Icon, properties }) => {
       const companyId = value.company_id ?? value._id;
       const companyDetailPageId =
-        properties?.companyDetailPageId ?? "companies/company-detail";
+        properties?.companyDetailPageId ?? "companies/view";
 
       if (companyId && !properties?.disableCrmLinks) {
         return (

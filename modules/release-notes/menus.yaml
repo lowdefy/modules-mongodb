@@ -3,7 +3,7 @@ links:
   - id: release-notes
     type: MenuLink
     pageId:
-      _module.pageId: release-notes
+      _module.pageId: all
     properties:
       title: Release Notes
       icon: AiOutlineFileText

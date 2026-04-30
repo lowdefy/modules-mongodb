@@ -13,7 +13,7 @@ Company management module — list, detail, edit, and create company records wit
 
 ## Pages
 
-### `companies`
+### `all`
 
 Main list page. Paginated, searchable table of companies.
 
@@ -23,15 +23,15 @@ Main list page. Paginated, searchable table of companies.
 - Row click navigates to detail page
 - Excel export of filtered results
 
-### `company-detail`
+### `view`
 
 Read-only company detail with main info card (rendered by `SmartDescriptions`), optional `fields.attributes` block, contacts tile, events tile, and main/sidebar tile slots.
 
-### `company-edit`
+### `edit`
 
 Edit an existing company. Uses `$mergeObjects` on `contact`, `address`, and `attributes` so fields set outside the form are preserved. Logs `update-company` audit event on save.
 
-### `company-new`
+### `new`
 
 Create a new company. Generates a consecutive ID (e.g., `C-0001`), links selected contacts via `global_attributes.company_ids`, and logs `create-company` event.
 

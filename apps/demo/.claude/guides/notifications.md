@@ -103,7 +103,7 @@ jobs: {
 **Module (Lowdefy UI):**
 
 - `modules/notifications/module.lowdefy.yaml` — module manifest with vars, exports, dependencies
-- `modules/notifications/pages/inbox.yaml` — two-column inbox: list (span 10) + detail (span 14), filters, pagination
+- `modules/notifications/pages/all.yaml` — two-column inbox: list (span 10) + detail (span 14), filters, pagination
 - `modules/notifications/pages/link.yaml` — deep-link router: fetch → invite check → auth check → mark read → redirect
 - `modules/notifications/components/notification-config.yaml` — bell badge config (count, icon, link)
 - `modules/notifications/components/unread-count-request.yaml` — unread count aggregation ($match + $count)

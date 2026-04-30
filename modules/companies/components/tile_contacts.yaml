@@ -17,7 +17,7 @@ _ref:
               params:
                 pageId:
                   _module.pageId:
-                    id: contacts
+                    id: all
                     module: contacts
                 urlQuery:
                   company_id:

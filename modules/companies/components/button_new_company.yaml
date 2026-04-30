@@ -15,4 +15,4 @@ events:
       type: Link
       params:
         pageId:
-          _module.pageId: company-new
+          _module.pageId: new

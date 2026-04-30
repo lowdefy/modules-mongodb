@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: create-profile
+    id: new
     title: Create Profile
     content_width: 600
     breadcrumbs: []

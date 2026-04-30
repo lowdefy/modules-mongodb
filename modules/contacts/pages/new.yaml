@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: contact-new
+    id: new
     title:
       _string.concat:
         - "New "
@@ -14,7 +14,7 @@ _ref:
       - label:
           _module.var: label_plural
         pageId:
-          _module.pageId: contacts
+          _module.pageId: all
       - label:
           _string.concat:
             - "New "
@@ -41,7 +41,6 @@ _ref:
         layout:
           gap: 16
         blocks:
-          - _ref: ../shared/profile/avatar-preview.yaml
           - _ref: components/form_email.yaml
           - id: divider_profile
             type: Divider
@@ -103,10 +102,10 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: contact-detail
+                          _module.pageId: view
                         urlQuery:
                           _id:
-                            _actions: create_contact.response.contactId
+                            _actions: create_contact.response.response.contactId
               - id: cancel_button
                 type: Button
                 layout:
@@ -121,4 +120,4 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: contacts
+                          _module.pageId: all

@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: contact-edit
+    id: edit
     title:
       _string.concat:
         - "Edit "
@@ -18,7 +18,7 @@ _ref:
       - label:
           _module.var: label_plural
         pageId:
-          _module.pageId: contacts
+          _module.pageId: all
       - label:
           _string.concat:
             - "Edit "
@@ -43,7 +43,7 @@ _ref:
                   _request: get_contact.0
           params:
             pageId:
-              _module.pageId: contact-detail
+              _module.pageId: view
             urlQuery:
               _id:
                 _url_query: _id
@@ -55,7 +55,7 @@ _ref:
               - null
           params:
             pageId:
-              _module.pageId: contacts
+              _module.pageId: all
         - id: set_state
           type: SetState
           params:

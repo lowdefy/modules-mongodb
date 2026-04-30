@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: data-upload
+    id: all
     title:
       _module.var: tool.label
     breadcrumbs:

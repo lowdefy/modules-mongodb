@@ -12,10 +12,10 @@ The monorepo has three layers, each with its own file organization rules:
 modules/{name}/
 ├── module.lowdefy.yaml       # manifest — pages, api, connections, exports, vars
 ├── pages/
-│   ├── {entities}.yaml        # list page
-│   ├── {entity}-detail.yaml   # detail/view page
-│   ├── {entity}-edit.yaml     # edit page
-│   └── {entity}-new.yaml      # create page
+│   ├── all.yaml               # list page
+│   ├── view.yaml              # detail/view page
+│   ├── edit.yaml              # edit page
+│   └── new.yaml               # create page
 ├── requests/
 │   ├── get_all_{entities}.yaml
 │   ├── get_{entity}.yaml
@@ -128,8 +128,9 @@ When adding a new file, ask these questions in order:
 
 | Type             | Convention                   | Example                                                 |
 | ---------------- | ---------------------------- | ------------------------------------------------------- |
-| Pages            | `kebab-case`                 | `contact-detail.yaml`, `ticket-data.yaml`               |
-| Page directories | same as page                 | `pages/contact-detail/`, `pages/ticket-data/`           |
+| Module pages     | semantic verb                | `all.yaml`, `view.yaml`, `edit.yaml`, `new.yaml`        |
+| App pages        | `kebab-case`                 | `ticket-data.yaml`, `lot-overview.yaml`                 |
+| Page directories | same as page                 | `pages/ticket-data/`, `pages/lot-overview/`             |
 | Requests         | `snake_case`                 | `get_all_contacts.yaml`, `selector_filter_options.yaml` |
 | Components       | `snake_case`                 | `table_contacts.yaml`, `filter_contacts.yaml`           |
 | API routines     | `kebab-case`                 | `create-contact.yaml`, `advance-gate.yaml`              |

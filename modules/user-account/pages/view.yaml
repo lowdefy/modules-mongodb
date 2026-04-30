@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: profile
+    id: view
     title: Profile
     content_width: 600
     breadcrumbs:
@@ -50,7 +50,7 @@ _ref:
                           type: Link
                           params:
                             pageId:
-                              _module.pageId: edit-profile
+                              _module.pageId: edit
                   - id: logout_button
                     type: Button
                     layout:

@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: company-edit
+    id: edit
     title:
       _string.concat:
         - "Edit "
@@ -18,7 +18,7 @@ _ref:
       - label:
           _module.var: label_plural
         pageId:
-          _module.pageId: companies
+          _module.pageId: all
       - label:
           _string.concat:
             - "Edit "
@@ -38,7 +38,7 @@ _ref:
               - null
           params:
             pageId:
-              _module.pageId: companies
+              _module.pageId: all
         - id: set_state
           type: SetState
           params:

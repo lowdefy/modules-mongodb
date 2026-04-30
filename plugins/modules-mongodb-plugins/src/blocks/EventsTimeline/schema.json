@@ -22,7 +22,7 @@
     },
     "contactPageUrl": {
       "type": "string",
-      "description": "URL template for linking the avatar and timestamp of each event to the actor's contact page. Use {id} as a placeholder for the user id; if omitted, the id is appended as ?_id=<id>. Example: '/contacts/contact-detail?_id={id}'."
+      "description": "URL template for linking the avatar and timestamp of each event to the actor's contact page. Use {id} as a placeholder for the user id; if omitted, the id is appended as ?_id=<id>. Example: '/contacts/view?_id={id}'."
     },
     "disableContactLink": {
       "type": "boolean",

@@ -57,5 +57,5 @@ properties:
           _module.var: components.contact_card_extra_fields
         contact_detail_page:
           _module.pageId:
-            id: contact-detail
+            id: view
             module: contacts

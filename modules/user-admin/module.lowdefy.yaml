@@ -77,15 +77,15 @@ vars:
 
 exports:
   pages:
-    - id: users
+    - id: all
       description: User administration list with filtering, sorting, pagination, and Excel download
-    - id: users-view
+    - id: view
       description: Read-only user detail with profile, attributes, and access sidebar
-    - id: users-edit
+    - id: edit
       description: Edit existing user profile and access settings
-    - id: users-invite
+    - id: new
       description: Invite a new user with profile and access settings
-    - id: check-invite-email
+    - id: check
       description: Verify email availability before sending invite
   connections:
     - id: user-contacts-collection
@@ -113,11 +113,11 @@ api:
   - _ref: api/resend-invite.yaml
 
 pages:
-  - _ref: pages/users.yaml
-  - _ref: pages/users-view.yaml
-  - _ref: pages/users-edit.yaml
-  - _ref: pages/users-invite.yaml
-  - _ref: pages/check-invite-email.yaml
+  - _ref: pages/all.yaml
+  - _ref: pages/view.yaml
+  - _ref: pages/edit.yaml
+  - _ref: pages/new.yaml
+  - _ref: pages/check.yaml
 
 components:
   - id: user-selector

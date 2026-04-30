@@ -55,7 +55,7 @@ On update, `company_ids` can be replaced (contacts module) or union-merged via `
 
 | Field                            | Type     | Notes                                                              |
 | -------------------------------- | -------- | ------------------------------------------------------------------ |
-| `apps.{app_name}.is_user`        | Boolean  | `true` = has app access; blocks contact-edit (must use user-admin) |
+| `apps.{app_name}.is_user`        | Boolean  | `true` = has app access; blocks the contacts edit page (must use user-admin) |
 | `apps.{app_name}.disabled`       | Boolean  | Per-app disable (independent of global `disabled`)                 |
 | `apps.{app_name}.roles`          | String[] | Role names for this app (e.g., `["admin", "procurement-lead"]`)    |
 | `apps.{app_name}.invite.open`    | Boolean  | `true` = invite link is active/pending                             |

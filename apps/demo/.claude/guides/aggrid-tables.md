@@ -125,7 +125,7 @@ Place a `Result` block alongside the table, toggled with `visible`:
 ## Anti-patterns
 
 - **Don't use `_js` when `_function` + `__nunjucks` suffices** — `_js` is harder to read, maintain, and debug. Reserve it for cases that genuinely need JavaScript logic (e.g., `lowdefyGlobal()` calls).
-- **Don't hardcode `pageId` in modules** — use `_module.pageId: {entity}-detail` so the page ID is scoped to the module instance.
+- **Don't hardcode `pageId` in modules** — use `_module.pageId: view` so the page ID is scoped to the module instance.
 - **Don't skip `defaultColDef`** — without it, every column needs individual styling. Copy the standard block from the Pattern section.
 - **Don't inline tables in the page file** — extract to `components/table_{entities}.yaml` and ref it. This keeps the page file under 80 lines and keeps the table independently testable.
 - **Don't forget `wrapText: true` + `autoHeight: true`** on columns with long content (descriptions, lists) — without these, content truncates silently.
@@ -197,7 +197,7 @@ events:
       type: Link
       params:
         pageId:
-          _module.pageId: {entity}-detail
+          _module.pageId: view
         urlQuery:
           _id:
             _event: row._id

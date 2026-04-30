@@ -40,7 +40,7 @@ events:
       type: Link
       params:
         pageId:
-          _module.pageId: company-detail
+          _module.pageId: view
         urlQuery:
           _id:
             _event: row._id

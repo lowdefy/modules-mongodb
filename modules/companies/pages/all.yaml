@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: contacts
+    id: all
     title:
       _module.var: label_plural
     breadcrumbs:
@@ -12,7 +12,7 @@ _ref:
           _module.var: label_plural
     page_actions:
       - _ref: components/excel_download.yaml
-      - _ref: components/button_new_contact.yaml
+      - _ref: components/button_new_company.yaml
     events:
       onInit:
         - id: set_sort
@@ -32,12 +32,12 @@ _ref:
         - id: get_all
           type: Request
           params:
-            - get_all_contacts
+            - get_all_companies
     requests:
-      - _ref: requests/get_all_contacts.yaml
-      - _ref: requests/get_contact_excel_data.yaml
+      - _ref: requests/get_all_companies.yaml
+      - _ref: requests/get_company_excel_data.yaml
     blocks:
-      - _ref: components/filter_contacts.yaml
+      - _ref: components/filter_companies.yaml
       - id: custom_filters_box
         type: Box
         layout:
@@ -57,15 +57,14 @@ _ref:
               _ref: actions/search.yaml
             sort_options:
               - label: Name
-                value: profile.name
-              - label: Email
-                value: email
+                value:
+                  _module.var: name_field
               - label: Date Updated
                 value: updated.timestamp
               - label: Date Created
                 value: created.timestamp
-      - _ref: components/table_contacts.yaml
+      - _ref: components/table_companies.yaml
       - _ref:
           path: ../shared/layout/pagination.yaml
           vars:
-            request_id: get_all_contacts
+            request_id: get_all_companies

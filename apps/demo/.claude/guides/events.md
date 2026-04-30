@@ -73,7 +73,7 @@ Every significant action (create, update, status change, comment) inserts an imm
               user:
                 _user: true
             template: |
-              <a href='/contacts-details?_id={{ user.id }}'>{{ user.profile.name | safe }}</a> did something
+              <a href='/contacts/view?_id={{ user.id }}'>{{ user.profile.name | safe }}</a> did something
         description: null
       {entity}_ids:
         - _payload: {entity}._id

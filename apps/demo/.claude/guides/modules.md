@@ -8,7 +8,7 @@ A module is a self-contained feature package under `modules/{name}/` with a `mod
 
 **Var system**: modules receive configuration through `_module.var` — values set by the app in the module entry's `vars:`. Inside module files, `_module.var` works at any nesting depth without threading through `_ref` chains. For local composition between files within a module, use `_var` (ref-level vars). Always declare vars with `default:` values so the module works standalone. Object vars with `properties:` merge recursively — the app overrides only the keys it provides.
 
-**ID scoping**: the build auto-scopes page, connection, API, and menu IDs using the entry's `id`. Module authors write bare IDs (`users-list`, not `user-admin/users-list`). Use `_module.pageId`, `_module.connectionId`, `_module.endpointId` for sibling references within the module. For cross-module references (linking to another module's pages, calling its APIs, embedding its components), use the object form with `module:` key — where `module` is the abstract dependency name declared in the manifest.
+**ID scoping**: the build auto-scopes page, connection, API, and menu IDs using the entry's `id`. Module authors write bare IDs (`all`, `view`, `edit`, `new` — not `user-admin/all`). Use `_module.pageId`, `_module.connectionId`, `_module.endpointId` for sibling references within the module. For cross-module references (linking to another module's pages, calling its APIs, embedding its components), use the object form with `module:` key — where `module` is the abstract dependency name declared in the manifest.
 
 **Extension points**: modules expose two categories of injection points via vars. **Component overrides** (`components.*`) let apps inject UI blocks — extra table columns, form fields, sidebar tiles. **Request stage overrides** (`request_stages.*`) let apps inject MongoDB pipeline stages — extra `$set` fields, extra `$match` filters, extra `$addFields`. Both use `_module.var` with `key:` + `default:` syntax so they resolve to safe defaults when not overridden.
 
@@ -59,7 +59,7 @@ A module is a self-contained feature package under `modules/{name}/` with a `mod
 # Link to another module's page
 pageId:
   _module.pageId:
-    id: contact-detail
+    id: view
     module: contacts
 
 # Call another module's API
@@ -83,7 +83,7 @@ links:
   - id: contacts
     type: MenuLink
     pageId:
-      _module.pageId: contacts
+      _module.pageId: all
     properties:
       title:
         _module.var: label_plural
@@ -103,7 +103,7 @@ links:
 ## Anti-patterns
 
 - **Don't use `_var` for module-entry vars** — use `_module.var`. `_var` is for ref-level local composition; `_module.var` reads from the app's module entry config and works at any depth without threading.
-- **Don't hardcode scoped IDs** — never write `user-admin/users-list` in module code. Use `_module.pageId: users-list` and let the build resolve the scope. Hardcoding breaks multi-instance.
+- **Don't hardcode scoped IDs** — never write `user-admin/all` in module code. Use `_module.pageId: all` and let the build resolve the scope. Hardcoding breaks multi-instance.
 - **Don't omit defaults on vars** — if a var has no `default:` and the app doesn't provide it, the module breaks silently. Always provide sensible defaults (empty array `[]`, empty object `{}`, or a meaningful value).
 - **Don't nest MenuGroups in module menus** — export flat MenuLink items. The app controls grouping. Nested groups are not composable.
 - **Don't forget to declare `exports`** — the build validates cross-module references against declared exports. Missing exports cause build errors in consuming modules.
