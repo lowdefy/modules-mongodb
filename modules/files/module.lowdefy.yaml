@@ -13,8 +13,8 @@ vars:
     default: files
     description: MongoDB collection name for file metadata
   s3_region:
-    default: ca-central-1
-    description: AWS region for S3 buckets
+    required: true
+    description: AWS region for S3 buckets (e.g., us-east-1, ca-central-1)
   log_events:
     type: boolean
     default: true

@@ -9,6 +9,9 @@ dependencies:
     description: Audit event logging and change stamp
 
 vars:
+  s3_region:
+    required: true
+    description: AWS region for the upload staging S3 bucket (e.g., us-east-1, ca-central-1)
   tool:
     required: true
     description: Tool config object (id, label, target_collection, id_column, columns, api, s3_prefix, view_page)

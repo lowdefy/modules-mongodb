@@ -3,7 +3,7 @@
 ## Module Vars
 
 - **`collection`** — MongoDB collection name for file metadata. Default: `files`.
-- **`s3_region`** — AWS region for S3 buckets. Default: `ca-central-1`.
+- **`s3_region`** (required) — AWS region for S3 buckets (e.g., `us-east-1`, `ca-central-1`).
 - **`log_events`** — Log file upload/delete events via the events module. Default: `true`. Set `false` to disable.
 - **`components`** — Override for file_list (deprecated — use file-manager instead).
 

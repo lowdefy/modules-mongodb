@@ -13,6 +13,8 @@
 
 - id: files
   source: "file:../../modules/files"
+  vars:
+    s3_region: us-east-1
 
 - id: layout
   source: "file:../../modules/layout"
@@ -33,6 +35,7 @@
 # - id: upload-companies
 #   source: 'file:../../modules/data-upload'
 #   vars:
+#     s3_region: us-east-1
 #     tool:
 #       _ref: modules/data-upload/load_companies.yaml
 #     change_stamp:
