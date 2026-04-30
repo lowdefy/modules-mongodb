@@ -157,7 +157,7 @@ routine:
                               _step: invite.value.email
                     description: null
         references:
-          user_ids:
+          contact_ids:
             - _step: invite.value._id
         metadata:
           app_name:

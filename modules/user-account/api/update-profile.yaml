@@ -92,7 +92,7 @@ routine:
                             _step: updated_user
                     description: null
         references:
-          user_ids:
+          contact_ids:
             - _user: id
         metadata:
           app_name:
