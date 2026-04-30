@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: company-new
+    id: new
     title:
       _string.concat:
         - "New "
@@ -14,7 +14,7 @@ _ref:
       - label:
           _module.var: label_plural
         pageId:
-          _module.pageId: companies
+          _module.pageId: all
       - label:
           _string.concat:
             - "New "
@@ -99,10 +99,10 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: company-detail
+                          _module.pageId: view
                         urlQuery:
                           _id:
-                            _actions: create_company.response.companyId
+                            _actions: create_company.response.response.companyId
               - id: cancel_button
                 type: Button
                 layout:
@@ -117,4 +117,4 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: companies
+                          _module.pageId: all

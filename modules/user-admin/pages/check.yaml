@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: check-invite-email
+    id: check
     title: Check Invite Email
     content_width: 500
     breadcrumbs:
@@ -14,7 +14,7 @@ _ref:
               - _module.var: app_title
               - " User Admin"
         pageId:
-          _module.pageId: users
+          _module.pageId: all
       - label: Check Invite Email
     requests:
       - _ref: requests/check_invite_email.yaml

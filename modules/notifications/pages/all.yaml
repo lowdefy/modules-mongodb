@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: inbox
+    id: all
     title: Notifications
     hide_title: true
     requests:

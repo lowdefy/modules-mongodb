@@ -3,7 +3,7 @@ links:
   - id: data-upload
     type: MenuLink
     pageId:
-      _module.pageId: data-upload
+      _module.pageId: all
     properties:
       title:
         _module.var: tool.label

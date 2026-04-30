@@ -17,6 +17,6 @@ columns:
 view_page:
   _module.pageId:
     module: companies
-    id: company-detail
+    id: view
 
 s3_prefix: tools/load_companies

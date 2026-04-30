@@ -44,7 +44,7 @@ vars:
 
 exports:
   pages:
-    - id: data-upload
+    - id: all
       description: Data upload page with staging tabs
   connections:
     - id: data_upload_stage
@@ -72,7 +72,7 @@ api:
   - _ref: api/set-status-discard.yaml
 
 pages:
-  - _ref: pages/data-upload.yaml
+  - _ref: pages/all.yaml
 
 menus:
   - _ref: menus.yaml

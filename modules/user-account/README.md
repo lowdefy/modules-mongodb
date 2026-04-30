@@ -19,15 +19,15 @@ Email-based passwordless login page.
 
 Confirmation page after the sign-in link is sent.
 
-### `profile`
+### `view`
 
 View user profile details.
 
-### `edit-profile`
+### `edit`
 
 Edit user profile fields.
 
-### `create-profile`
+### `new`
 
 First-time profile creation after sign-up.
 

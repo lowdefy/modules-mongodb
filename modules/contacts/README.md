@@ -13,7 +13,7 @@ Contact management module — list, detail, edit, and create contact records in 
 
 ## Pages
 
-### `contacts`
+### `all`
 
 Main list page. Paginated, searchable table of contacts for the current app.
 
@@ -23,18 +23,18 @@ Main list page. Paginated, searchable table of contacts for the current app.
 - Row click navigates to detail page
 - Excel export of filtered results
 
-### `contact-detail`
+### `view`
 
 Read-only contact detail with main info card, companies tile, events tile, and optional main/sidebar tile slots.
 
-### `contact-edit`
+### `edit`
 
 Edit an existing contact's profile and attributes. Blocked for user records (those with `apps.{app_name}.is_user === true`) — the edit page redirects to the detail page.
 
 - Logs `update-contact` audit event on save
 - Triggers avatar regeneration from initials
 
-### `contact-new`
+### `new`
 
 Create a new contact with duplicate detection (by email).
 

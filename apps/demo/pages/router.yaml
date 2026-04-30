@@ -17,5 +17,5 @@ events:
                   _ne:
                     - _user: profile.profile_created
                     - true
-                then: user-account/create-profile
+                then: user-account/new
             default: home

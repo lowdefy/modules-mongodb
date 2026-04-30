@@ -102,12 +102,12 @@
     },
     "contactDetailPageId": {
       "type": "string",
-      "default": "contacts/contact-detail",
+      "default": "contacts/view",
       "description": "Page ID for contact detail links."
     },
     "companyDetailPageId": {
       "type": "string",
-      "default": "companies/company-detail",
+      "default": "companies/view",
       "description": "Page ID for company detail links."
     },
     "s3GetPolicyRequestId": {

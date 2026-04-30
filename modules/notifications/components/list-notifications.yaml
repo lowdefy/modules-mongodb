@@ -45,7 +45,7 @@ blocks:
                   type: Link
                   params:
                     pageId:
-                      _module.pageId: inbox
+                      _module.pageId: all
                     urlQuery:
                       _id:
                         _state: list.$._id

@@ -81,7 +81,10 @@ _step: check-existing._id
 _step: insert.upsertedId
 
 # Action chain results (after CallAPI/Request in event handlers)
-_actions: create_contact.response.contactId
+# CallAPI double-wraps the API return — use .response.response.<field>
+# Request returns the result directly under .response
+_actions: create_contact.response.response.contactId  # CallAPI
+_actions: get_all_contacts.response.0._id             # Request
 
 # Logged-in user
 _user: id
@@ -105,7 +108,7 @@ _module.var: label
 _module.var: { key: components.table_columns, default: [] }
 
 # Module ID scoping
-_module.pageId: contact-detail
+_module.pageId: view
 _module.connectionId: contacts-collection
 _module.endpointId: create-contact
 ```

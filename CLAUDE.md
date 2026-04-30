@@ -57,7 +57,8 @@ dependencies:
 
 exports:
   pages:
-    - id: users-list
+    - id: all
+    - id: view
   components:
     - id: user-avatar
   menus:
@@ -69,7 +70,8 @@ components:
       _ref: components/user-avatar.yaml
 
 pages:
-  - _ref: pages/users-list.yaml
+  - _ref: pages/all.yaml
+  - _ref: pages/view.yaml
 
 menus:
   - _ref: menus.yaml
@@ -108,7 +110,7 @@ Modules reference each other via dependencies declared in the manifest.
     module: layout
     component: page
     vars:
-      id: contacts
+      id: all
       title: Contacts
       blocks: [...]
 ```
@@ -153,7 +155,7 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 - **Enum files for config maps** — Extract hard-coded maps keyed by a pre-defined set (e.g. gate colors, discipline labels, status config) into enum files (e.g. `enums/gates.yaml`, `enums/disciplines.yaml`). Load these into global state nested under the `enums` key (e.g., `_global: enums.gates`, `_global: enums.disciplines`) instead of duplicating the maps inline in `_js` blocks. Do NOT extract plain selector `options` (label/value arrays) into enum files — the label/value schema is exclusive to selectors. Only create an enum for selector options when there are styling values (colors, icons) associated with the value, or the value needs to be prettified on a view page or filter.
 - **JS operator globals** — In `_js` blocks, access global state with `lowdefyGlobal('key')` (not `global('key')`). Access page state with `state('key')` (not `state.key`). Outside `_js`, use the standard `_global` and `_state` operators.
 - **File naming conventions** — Use kebab-case for page files, API files, and directory names (e.g., `lot-view.yaml`, `save-linked-document.yaml`). Use snake_case for component files, request files, action files, and enum files (e.g., `gate_modal_s0.yaml`, `get_lot.yaml`, `options_enum.yaml`).
-- **Kebab-case page IDs** — Use kebab-case for page IDs since they become URL paths (e.g., `my-tickets`, `ticket-view`, `companies-new`).
+- **Kebab-case page IDs** — Use kebab-case for app page IDs since they become URL paths (e.g., `my-tickets`, `ticket-view`). Module pages use semantic verbs instead: `all`, `view`, `edit`, `new` (URLs become `/{module-entry}/all`, `/{module-entry}/view`, etc.).
 - **Request ID verb prefixes** — Prefix request IDs with the operation verb: `get_`, `insert_`, `update_`, `set_`, `event_`, `selector_` (e.g., `get_company`, `insert_company`, `event_insert_company`).
 - **Change stamp on writes** — Include a change stamp (`_ref: change_stamp.yaml`) on all database write operations to track timestamp, user, and app context.
 - **Extract deep blocks via \_ref** — Extract blocks into separate component files via `_ref` when nesting exceeds ~3-4 levels or when a block is reused across pages. Pass data via `vars`.

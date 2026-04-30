@@ -3,7 +3,7 @@ links:
   - id: companies
     type: MenuLink
     pageId:
-      _module.pageId: companies
+      _module.pageId: all
     properties:
       title:
         _module.var: label_plural

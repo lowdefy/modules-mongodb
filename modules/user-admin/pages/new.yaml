@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: users-invite
+    id: new
     title:
       _nunjucks:
         template: |
@@ -22,7 +22,7 @@ _ref:
               - _module.var: app_title
               - " User Admin"
         pageId:
-          _module.pageId: users
+          _module.pageId: all
       - label: Invite User
     requests:
       - _ref: requests/get_user.yaml
@@ -148,4 +148,4 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: users
+                          _module.pageId: all

@@ -27,19 +27,19 @@
   links:
     - id: profile
       type: MenuLink
-      pageId: user-account/profile
+      pageId: user-account/view
       properties:
         title: Profile
         icon: AiOutlineUser
     - id: release-notes
       type: MenuLink
-      pageId: release-notes/release-notes
+      pageId: release-notes/all
       properties:
         title: Release Notes
         icon: AiOutlineFileText
     - id: users
       type: MenuLink
-      pageId: user-admin/users
+      pageId: user-admin/all
       properties:
         title: User Admin
         icon: AiOutlineTeam

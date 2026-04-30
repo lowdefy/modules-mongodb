@@ -12,7 +12,7 @@ User administration module — list, search, invite, edit, and manage user acces
 
 ## Pages
 
-### `users`
+### `all`
 
 Main administration page. Displays a paginated, searchable table of all users belonging to the current app.
 
@@ -22,7 +22,7 @@ Main administration page. Displays a paginated, searchable table of all users be
 - Row click navigates to edit page
 - Excel export of filtered results
 
-### `users-edit`
+### `edit`
 
 Edit an existing user's profile and access settings.
 
@@ -31,18 +31,18 @@ Edit an existing user's profile and access settings.
 - Resend Invite button (visible when user hasn't accepted yet)
 - Logs `update-user` audit event on save
 
-### `users-invite`
+### `new`
 
 Invite a new user with profile and access settings.
 
-- Reached via `check-invite-email` page (validates email first)
-- If the email already exists with an active account or open invite, redirects to `users-edit` instead
+- Reached via `check` page (validates email first)
+- If the email already exists with an active account or open invite, redirects to `edit` instead
 - Sets up invite link, profile, roles
 - Logs `invite-user` audit event and dispatches notification on submit
 
-### `check-invite-email`
+### `check`
 
-Entry point for the invite flow. Validates the email address, checks if the user already exists, and routes to either `users-invite` (new) or `users-edit` (existing).
+Entry point for the invite flow. Validates the email address, checks if the user already exists, and routes to either `new` (new invite) or `edit` (existing user).
 
 ## Components
 

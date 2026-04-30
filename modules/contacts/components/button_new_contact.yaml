@@ -15,4 +15,4 @@ events:
       type: Link
       params:
         pageId:
-          _module.pageId: contact-new
+          _module.pageId: new

@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: edit-profile
+    id: edit
     title: Edit Profile
     content_width: 600
     breadcrumbs:
@@ -10,7 +10,7 @@ _ref:
         icon: AiOutlineHome
       - label: Profile
         pageId:
-          _module.pageId: profile
+          _module.pageId: view
       - label: Edit Profile
     events:
       onInit:
@@ -67,7 +67,7 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: profile
+                          _module.pageId: view
               - id: cancel_button
                 type: Button
                 layout:
@@ -82,4 +82,4 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: profile
+                          _module.pageId: view

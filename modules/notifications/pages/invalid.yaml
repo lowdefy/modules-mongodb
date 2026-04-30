@@ -38,4 +38,4 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: inbox
+                          _module.pageId: all

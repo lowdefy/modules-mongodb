@@ -6,4 +6,4 @@ icon:
   name: AiOutlineBell
 link:
   pageId:
-    _module.pageId: inbox
+    _module.pageId: all

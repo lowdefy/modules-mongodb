@@ -65,7 +65,7 @@ _ref:
           skip:
             _ne: [_request: get_{entity}.0, null]
           params:
-            pageId: { _module.pageId: {entities} }
+            pageId: { _module.pageId: all }
     blocks:
       - id: detail_layout
         type: Box
@@ -158,19 +158,19 @@ onMount:
 
 ## Reference Files
 
-- `modules/contacts/pages/contact-detail.yaml` — canonical module detail: two-column, doc var, sidebar tiles with module var injection
+- `modules/contacts/pages/view.yaml` — canonical module detail: two-column, doc var, sidebar tiles with module var injection
 - `modules/contacts/components/tile_companies.yaml` — self-contained sidebar tile: card + request + onMount
 - `modules/shared/layout/card.yaml` — card component with loading, skeleton, doc metadata, header buttons
 
 ## Template
 
 ```yaml
-# pages/{entity}-detail.yaml
+# pages/view.yaml
 _ref:
   module: layout
   component: page
   vars:
-    id: {entity}-detail
+    id: view
     title:
       _if_none:
         - _request: get_{entity}.0.{name_field}
@@ -183,7 +183,7 @@ _ref:
             key: label_plural
             default: {Entity Plural}
         pageId:
-          _module.pageId: {entities}
+          _module.pageId: all
       - label:
           _if_none:
             - _request: get_{entity}.0.{name_field}
@@ -203,7 +203,7 @@ _ref:
               type: Link
               params:
                 pageId:
-                  _module.pageId: {entity}-edit
+                  _module.pageId: edit
                 urlQuery:
                   _id:
                     _url_query: _id
@@ -223,7 +223,7 @@ _ref:
               - null
           params:
             pageId:
-              _module.pageId: {entities}
+              _module.pageId: all
     requests:
       - _ref: requests/get_{entity}.yaml
     blocks:

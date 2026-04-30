@@ -3,7 +3,7 @@ links:
   - id: profile
     type: MenuLink
     pageId:
-      _module.pageId: profile
+      _module.pageId: view
     properties:
       title: Profile
       icon: AiOutlineUser

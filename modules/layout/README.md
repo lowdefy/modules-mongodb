@@ -126,13 +126,13 @@ The app must register a top-level menu with this id in its `menus.yaml`. Two sup
   links:
     - id: profile
       type: MenuLink
-      pageId: user-account/profile
+      pageId: user-account/view
       properties:
         title: Profile
         icon: AiOutlineUser
     - id: settings
       type: MenuLink
-      pageId: settings/settings
+      pageId: settings/all
       properties:
         title: Settings
         icon: AiOutlineSetting
