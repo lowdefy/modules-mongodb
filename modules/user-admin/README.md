@@ -129,9 +129,9 @@ links:
 - **`table_columns`** — Extra columns on the users list table.
 - **`download_columns`** — Extra columns on the Excel export.
 - **`filters`** — Extra filter blocks below the search bar.
-- **`main_slots`** — Extra blocks on the users-view main column.
-- **`sidebar_slots`** — Extra blocks on the users-view sidebar.
-- **`view_access_tile`** — Override for the access tile on users-view (default is the built-in roles/access summary).
+- **`main_slots`** — Extra blocks on the `view` page main column.
+- **`sidebar_slots`** — Extra blocks on the `view` page sidebar.
+- **`view_access_tile`** — Override for the access tile on the `view` page (default is the built-in roles/access summary).
 
 ### `request_stages`
 

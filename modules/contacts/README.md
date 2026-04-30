@@ -113,7 +113,7 @@ modules:
 - **`main_slots`** — Extra blocks on the detail page main column.
 - **`sidebar_slots`** — Extra blocks on the detail page sidebar.
 - **`download_columns`** — Extra columns on the Excel export.
-- **`company_card_extra_fields`** — `[{ label, value }]` pairs appended under each company in the contact-detail companies tile. `value` is a top-level key on the company doc projected by `get_contact_companies`.
+- **`company_card_extra_fields`** — `[{ label, value }]` pairs appended under each company in the contact `view` page companies tile. `value` is a top-level key on the company doc projected by `get_contact_companies`.
 
 ### `request_stages`
 

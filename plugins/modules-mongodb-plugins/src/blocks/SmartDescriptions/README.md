@@ -64,8 +64,8 @@ This is the path most consumers want — it lets a single field config drive bot
 | `size` | `"default"` \| `"small"` | — | Antd `Descriptions` size. |
 | `theme` | object | — | Antd design token overrides. See the [Antd docs](https://ant.design/components/descriptions#design-token). |
 | `disableCrmLinks` | boolean | `false` | Disable hyperlinks on detected `contact` and `company` values. |
-| `contactDetailPageId` | string | `contacts/contact-detail` | Page id used to build contact detail links. |
-| `companyDetailPageId` | string | `companies/company-detail` | Page id used to build company detail links. |
+| `contactDetailPageId` | string | `contacts/view` | Page id used to build contact detail links. |
+| `companyDetailPageId` | string | `companies/view` | Page id used to build company detail links. |
 | `s3GetPolicyRequestId` | string | — | Request id resolving to an S3 download-policy URL. Required for `file` and `fileList` field types to render download links. |
 
 ### `fields` items

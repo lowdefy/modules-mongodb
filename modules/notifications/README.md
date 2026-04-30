@@ -8,7 +8,7 @@ The send routine itself is provided by the consuming app — this module ships t
 
 | Module | Why |
 |---|---|
-| [layout](../layout/README.md) | Page wrapper for the inbox, link, and invalid pages |
+| [layout](../layout/README.md) | Page wrapper for the `all`, `link`, and `invalid` pages |
 
 ## How to Use
 
@@ -32,7 +32,7 @@ The bell is rendered automatically by the [`layout`](../layout/README.md) page c
 
 | ID | Description | Path |
 |---|---|---|
-| `inbox` | Notifications inbox — list, filter, and view notifications | `/{entryId}/inbox` |
+| `all` | Notifications inbox — list, filter, and view notifications | `/{entryId}/all` |
 | `link` | Deep-link handler — routes notification links to target pages | `/{entryId}/link` |
 | `invalid` | Error page for invalid notification links | `/{entryId}/invalid` |
 

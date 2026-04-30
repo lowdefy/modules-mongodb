@@ -2,7 +2,7 @@
 
 Company management — list, detail, edit, and create pages plus a company selector. Companies are stored in their own collection with auto-generated consecutive IDs (`C-0001`, `C-0002`, …) and a configurable display name field.
 
-The module is paired with [`contacts`](../contacts/README.md): the company-detail page renders a contacts tile, and create/update reconciles bidirectional links on linked contact records.
+The module is paired with [`contacts`](../contacts/README.md): the company `view` page renders a contacts tile, and create/update reconciles bidirectional links on linked contact records.
 
 ## Dependencies
 
@@ -114,7 +114,7 @@ links:
 - **`main_slots`** — Extra blocks appended to the main column on the detail page.
 - **`sidebar_slots`** — Extra blocks appended to the sidebar.
 - **`download_columns`** — Extra columns on the Excel export.
-- **`contact_card_extra_fields`** — `[{ label, value }]` pairs appended under each contact in the company-detail contacts tile. `value` is a top-level key on the contact doc projected by `get_company_contacts`.
+- **`contact_card_extra_fields`** — `[{ label, value }]` pairs appended under each contact in the company `view` page contacts tile. `value` is a top-level key on the contact doc projected by `get_company_contacts`.
 
 ### `request_stages`
 
