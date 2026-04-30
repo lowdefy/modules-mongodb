@@ -17,7 +17,7 @@ Page ID changes per module:
 - `user-admin`: `users` → `all`, `users-view` → `view`, `users-edit` → `edit`, `users-invite` → `new`, `check-invite-email` → `check`
 - `user-account`: `profile` → `view`, `edit-profile` → `edit`, `create-profile` → `new` (`login`/`logout`/`verify-email-request` unchanged)
 - `data-upload`: `data-upload` → `all`
-- `release-notes`: `release-notes` → `all`
+- `release-notes`: `release-notes` → `view`
 - `notifications`: `inbox` → `all` (`link`/`invalid` unchanged)
 
 Plugin defaults updated to match: `SmartDescriptions` now defaults `contactDetailPageId` to `contacts/view` and `companyDetailPageId` to `companies/view`; `EventsTimeline` schema example updated; `DataDescriptions` field-type fallbacks updated.

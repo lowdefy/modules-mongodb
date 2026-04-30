@@ -29,7 +29,7 @@ Loading the changelog with `_ref` reads the file at build time and inlines it as
 
 | ID | Description | Path |
 |---|---|---|
-| `release-notes` | Renders `vars.content` as Markdown | `/{entryId}/release-notes` |
+| `view` | Renders `vars.content` as Markdown | `/{entryId}/view` |
 
 ### Menus
 

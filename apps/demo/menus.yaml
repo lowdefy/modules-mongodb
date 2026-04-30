@@ -33,7 +33,7 @@
         icon: AiOutlineUser
     - id: release-notes
       type: MenuLink
-      pageId: release-notes/all
+      pageId: release-notes/view
       properties:
         title: Release Notes
         icon: AiOutlineFileText
