@@ -145,7 +145,6 @@ $push:
 ## Reference Files
 
 - `modules/shared/enums/event_types.yaml` — simple event type enum (color, title, icon)
-- `modules/data-upload/api/set-status-discard.yaml` — module-level `$push` status with `$position: 0`
 - `modules/contacts/requests/get_all_contacts.yaml` — aggregation filtering on `hidden`/`disabled` flags
 
 ## Template

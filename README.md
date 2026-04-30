@@ -1,6 +1,6 @@
 # Lowdefy modules — MongoDB
 
-A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB. Drop them into a Lowdefy app to get authentication, user admin, contacts, companies, file attachments, audit events, notifications, and spreadsheet imports without writing the YAML for each.
+A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB. Drop them into a Lowdefy app to get authentication, user admin, contacts, companies, file attachments, audit events, and notifications without writing the YAML for each.
 
 The repo is for app builders who already use Lowdefy and want a curated set of modules that work together — shared change stamps, shared event collection, shared layout — instead of assembling them piece by piece.
 
@@ -16,7 +16,6 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [user-admin](modules/user-admin/README.md) | User administration — list, edit, invite |
 | [contacts](modules/contacts/README.md) | Contact management — list, detail, edit, create, selector |
 | [companies](modules/companies/README.md) | Company management — list, detail, edit, create, selector |
-| [data-upload](modules/data-upload/README.md) | Spreadsheet import staging — upload, review, confirm/discard |
 | [release-notes](modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page |
 
 ## Dependency graph
@@ -41,8 +40,6 @@ graph TD
   companies --> files
   files --> layout
   files --> events
-  data-upload --> layout
-  data-upload --> events
   release-notes --> layout
   events
 ```
@@ -64,7 +61,6 @@ A few notes on the shape:
 | Contact management with company links | + `contacts`, `companies`, `files` |
 | File attachments on any entity | + `files` |
 | An audit log on writes anywhere in the app | + `events` (most other modules already log) |
-| Spreadsheet imports with review/confirm | + `data-upload` |
 | A release-notes page from `CHANGELOG.md` | + `release-notes` |
 
 The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. Everything else is opt-in.

@@ -113,7 +113,6 @@ $push:
 - `modules/contacts/api/create-contact.yaml` — upsert pattern with `$ifNull` for created, `_object.assign` for module var injection
 - `modules/contacts/api/update-contact.yaml` — optimistic concurrency filter, update-only stamp
 - `modules/files/api/save-file.yaml` — `$setOnInsert` alternative for created stamp
-- `modules/data-upload/api/set-status-discard.yaml` — status array prepend with `$push` + `$position: 0`
 - `modules/shared/layout/title-block.yaml` — Nunjucks template displaying stamp metadata
 - `docs/data-design/app-schema-example/_change_stamp.yaml` — full schema documentation with DB examples
 

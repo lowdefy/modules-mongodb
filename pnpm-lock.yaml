@@ -324,8 +324,6 @@ importers:
 
   modules/contacts: {}
 
-  modules/data-upload: {}
-
   modules/events: {}
 
   modules/files: {}

@@ -134,7 +134,6 @@ Place a `Result` block alongside the table, toggled with `visible`:
 
 - `modules/contacts/components/table_contacts.yaml` — module table with `_build.array.concat` column injection, image + name renderer
 - `modules/user-admin/components/table_users.yaml` — module table with status badge, roles array join, `_module.var` column injection
-- `modules/data-upload/components/staging-table.yaml` — `AgGridBalham` with row selection, conditional columns, `_js` rowData transform
 
 ## Template
 

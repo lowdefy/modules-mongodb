@@ -3,7 +3,6 @@
 "@lowdefy/modules-mongodb-contacts": minor
 "@lowdefy/modules-mongodb-user-admin": minor
 "@lowdefy/modules-mongodb-user-account": minor
-"@lowdefy/modules-mongodb-data-upload": minor
 "@lowdefy/modules-mongodb-release-notes": minor
 "@lowdefy/modules-mongodb-notifications": minor
 "@lowdefy/modules-mongodb-plugins": patch
@@ -16,7 +15,6 @@ Page ID changes per module:
 - `contacts`: `contacts` → `all`, `contact-detail` → `view`, `contact-edit` → `edit`, `contact-new` → `new`
 - `user-admin`: `users` → `all`, `users-view` → `view`, `users-edit` → `edit`, `users-invite` → `new`, `check-invite-email` → `check`
 - `user-account`: `profile` → `view`, `edit-profile` → `edit`, `create-profile` → `new` (`login`/`logout`/`verify-email-request` unchanged)
-- `data-upload`: `data-upload` → `all`
 - `release-notes`: `release-notes` → `view`
 - `notifications`: `inbox` → `all` (`link`/`invalid` unchanged)
 

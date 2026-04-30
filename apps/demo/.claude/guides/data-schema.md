@@ -186,7 +186,7 @@ properties:
   write: true
 ```
 
-Collection names use **kebab-case or snake_case**: `user-contacts`, `log-events`, `log-changes`, `data-upload-stage`.
+Collection names use **kebab-case or snake_case**: `user-contacts`, `log-events`, `log-changes`.
 
 ## Anti-patterns
 

@@ -38,21 +38,6 @@ A module is a self-contained feature package under `modules/{name}/` with a `mod
     _ref: modules/user-admin/vars.yaml
 ```
 
-**Multi-instance** (same source, different config):
-
-```yaml
-- id: upload-lots
-  source: "file:../../modules/data-upload"
-  vars:
-    tool:
-      _ref: modules/data-upload/load_lots.yaml
-- id: upload-rooms
-  source: "file:../../modules/data-upload"
-  vars:
-    tool:
-      _ref: modules/data-upload/load_rooms.yaml
-```
-
 **Cross-module reference** (object form with module key):
 
 ```yaml

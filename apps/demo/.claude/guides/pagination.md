@@ -157,7 +157,6 @@ events:
 
 - `modules/contacts/components/pagination.yaml` — standard inline pagination with showSizeChanger
 - `modules/user-admin/components/pagination.yaml` — pagination with disabled state and loading messages
-- `modules/data-upload/components/pagination-staged.yaml` — pagination with custom page sizes and onSizeChange
 - `modules/contacts/requests/get_all_contacts.yaml` — Convention A: `$facet` with unwinding to `total_results`
 - `modules/contacts/actions/search.yaml` — search action that resets pagination on filter change
 

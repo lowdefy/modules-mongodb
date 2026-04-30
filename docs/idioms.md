@@ -285,9 +285,6 @@ Master list of every secret read by modules in this repo. Bucket names, keys, an
 | `FILES_S3_SECRET_ACCESS_KEY` | `files` | AWS secret access key for the file storage bucket |
 | `FILES_S3_BUCKET` | `files` | Private S3 bucket for file uploads |
 | `FILES_S3_BUCKET_PUB` | `files` | Public S3 bucket for files served without auth |
-| `SYNC_S3_ACCESS_KEY_ID` | `data-upload` | AWS access key for the upload staging bucket |
-| `SYNC_S3_SECRET_ACCESS_KEY` | `data-upload` | AWS secret access key for the upload staging bucket |
-| `SYNC_S3_BUCKET` | `data-upload` | S3 bucket for spreadsheet upload staging |
 
 Email/SMTP and other transport secrets are not used by any module here — `notifications.send_routine` is a configurable routine on the consuming app and uses whatever secrets that routine requires.
 
@@ -297,8 +294,6 @@ Email/SMTP and other transport secrets are not used by any module here — `noti
 
 **File storage (S3).** Used by `files`. Two buckets: a private one (signed URLs, default for new uploads) and a public one (for assets served without auth).
 
-**Upload staging (S3).** Used by `data-upload`. A separate bucket from file storage so retention, access policies, and lifecycle rules can differ.
-
 ### Region
 
-`files.s3_region` and `data-upload.s3_region` are both **required** vars — set them on each module entry. There's no default; the build will fail if either is missing.
+`files.s3_region` is a **required** var — set it on the module entry. There's no default; the build will fail if it is missing.

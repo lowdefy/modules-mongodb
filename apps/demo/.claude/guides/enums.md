@@ -122,7 +122,6 @@ urgent:
 _build.object.assign:
   - _ref: ../user-admin/enums/event_types.yaml
   - _ref: ../contacts/enums/event_types.yaml
-  - _ref: ../data-upload/enums/event_types.yaml
 ```
 
 **Options helper without color** — for cases where the selector shouldn't show colored badges:

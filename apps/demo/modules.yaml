@@ -34,15 +34,6 @@
     content:
       _ref: ../../CHANGELOG.md
 
-# - id: upload-companies
-#   source: 'file:../../modules/data-upload'
-#   vars:
-#     s3_region: us-east-1
-#     tool:
-#       _ref: modules/data-upload/load_companies.yaml
-#     change_stamp:
-#       _ref: ../shared/change_stamp.yaml
-
 - id: user-account
   source: "file:../../modules/user-account"
   vars:
