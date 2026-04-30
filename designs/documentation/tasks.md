@@ -65,13 +65,13 @@ Goal: every module has a `README.md` matching the template in `design.md` (Descr
 
 Goal: `@lowdefy/modules-mongodb-plugins` package and each custom block have their own README.
 
-- [ ] **Define per-block README template** — likely a refinement of the existing `ContactSelector/README.md` shape (props / events / slots / examples / theme tokens). Capture in `design.md` or as a stub at the top of this section before writing the new files.
-- [ ] **New `plugins/modules-mongodb-plugins/README.md`** — package overview: what's in the plugin (5 blocks + 1 action), peer dependencies, install instructions, links to per-block READMEs, `FetchRequest` action documented inline.
-- [ ] **Rewrite (verify) `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/README.md`** — update to match the new per-block template if it diverges.
-- [ ] **New `plugins/modules-mongodb-plugins/src/blocks/DataDescriptions/README.md`**
-- [ ] **New `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/README.md`**
-- [ ] **New `plugins/modules-mongodb-plugins/src/blocks/FileManager/README.md`**
-- [ ] **New `plugins/modules-mongodb-plugins/src/blocks/SmartDescriptions/README.md`**
+- [x] **Define per-block README template** — likely a refinement of the existing `ContactSelector/README.md` shape (props / events / slots / examples / theme tokens). Capture in `design.md` or as a stub at the top of this section before writing the new files.
+- [x] **New `plugins/modules-mongodb-plugins/README.md`** — package overview: what's in the plugin (5 blocks + 1 action), peer dependencies, install instructions, links to per-block READMEs, `FetchRequest` action documented inline.
+- [x] **Rewrite (verify) `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/README.md`** — update to match the new per-block template if it diverges.
+- [x] **New `plugins/modules-mongodb-plugins/src/blocks/DataDescriptions/README.md`**
+- [x] **New `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/README.md`**
+- [x] **New `plugins/modules-mongodb-plugins/src/blocks/FileManager/README.md`**
+- [x] **New `plugins/modules-mongodb-plugins/src/blocks/SmartDescriptions/README.md`**
 
 ---
 
