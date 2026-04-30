@@ -77,6 +77,6 @@ Goal: `@lowdefy/modules-mongodb-plugins` package and each custom block have thei
 
 ## Phase 5 — Cleanup
 
-- [ ] Delete `temp.md` (TODO scratchpad — no longer needed).
-- [ ] Update `CLAUDE.md` — add a section pointing agents at the new doc structure (`README.md`, `docs/idioms.md`, per-module READMEs, plugin README, per-block READMEs) and the rule that manifest is source of truth for var schema.
-- [ ] Final pass: confirm every link across the new docs resolves (no broken `_ref:` to `docs/idioms.md` anchors, no broken module README cross-links).
+- [x] Delete `temp.md` (TODO scratchpad — no longer needed).
+- [x] Update `CLAUDE.md` — add a section pointing agents at the new doc structure (`README.md`, `docs/idioms.md`, per-module READMEs, plugin README, per-block READMEs) and the rule that manifest is source of truth for var schema.
+- [x] Final pass: confirm every link across the new docs resolves (no broken `_ref:` to `docs/idioms.md` anchors, no broken module README cross-links).
