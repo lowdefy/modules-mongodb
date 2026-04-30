@@ -2,7 +2,7 @@
 
 A read-only data view built on Antd `Descriptions` that auto-detects how to render each field straight from the data — no schema needed. Drop in a data object and get a labelled, type-aware view: contacts and companies become links, change stamps become "by Alice on 2026-04-30", phone numbers become tappable, files become download buttons, and so on.
 
-Use it for quick views over data with a known shape but no declared layout. Use [`DataDescriptions`](../DataDescriptions/README.md) instead when you want explicit grouping (sections, ordering) or array iteration.
+Use it for quick views over data with a known shape but no declared layout.
 
 ## Usage
 
@@ -126,4 +126,4 @@ In the no-`fields` path:
 - **Empty state.** When no items resolve from `data`, the block renders the literal string `No data to display`.
 - **Selector options.** A `Selector` field with no `options` still renders the value as a tag — supplying `options` only changes the dropdown source, not the read-only render.
 - **Field-mode label fallback.** When `properties.title` is absent on a `fields` entry, the label is `formatFieldName(lastSegmentOf(id))` — so `id: profile.given_name` becomes `Given Name`.
-- **No grouping.** This block renders a flat list of items. Use `DataDescriptions` when you need sections or array iteration.
+- **No grouping.** This block renders a flat list of items; sections and array iteration are not supported.

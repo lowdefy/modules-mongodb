@@ -107,7 +107,7 @@ Per-module READMEs cover the vars, exports, and a worked example for each module
 
 ## Plugins
 
-Some modules require [`@lowdefy/modules-mongodb-plugins`](plugins/modules-mongodb-plugins/README.md), a peer plugin package shipped from this repo with custom blocks (ContactSelector, DataDescriptions, EventsTimeline, FileManager, SmartDescriptions) and a `FetchRequest` action.
+Some modules require [`@lowdefy/modules-mongodb-plugins`](plugins/modules-mongodb-plugins/README.md), a peer plugin package shipped from this repo with custom blocks (ContactSelector, EventsTimeline, FileManager, SmartDescriptions) and a `FetchRequest` action.
 
 ## Versioning
 
