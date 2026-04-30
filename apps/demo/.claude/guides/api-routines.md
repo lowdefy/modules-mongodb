@@ -244,11 +244,9 @@ MongoDBAggregation query → `:set_state:` counters → `:for:` each row → `:t
 - `modules/user-admin/api/invite-user.yaml` — complex upsert with dynamic app-scoped fields via `_object.defineProperty`, notification dispatch
 - `modules/user-admin/api/resend-invite.yaml` — event-only routine (no document mutation)
 - `modules/events/api/new-event.yaml` — the event logging endpoint all routines call (`_object.assign` merges display + references + core fields)
-- `modules/data-upload/api/set-status-discard.yaml` — `MongoDBUpdateMany` for bulk status change
 - `apps/example-app/api/lot-view/advance-gate.yaml` — branching domain action: read-then-branch with `:if:`, multi-step state machine
 - `apps/example-app/api/lot-view/save-gate.yaml` — incremental `:set_state:` with `_object.assign` to build `$set` dynamically
 - `apps/example-app/api/lot-view/save-linked-document.yaml` — `:if:` branch for edit vs add, `$push` for array subdocuments
-- `apps/example-app/api/data-upload/lots/process-staged-lots.yaml` — `:for:` / `:try:` / `:catch:` bulk processing
 
 ## Template
 

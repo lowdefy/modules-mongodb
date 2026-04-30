@@ -33,20 +33,30 @@ vars:
       show_honorific:
         type: boolean
         default: false
+        description: Show the honorific/title selector (Mr/Ms/Dr) in the profile form.
       profile:
         default: []
+        description: >-
+          Profile field blocks rendered in the user-account profile form and
+          view. Block ids must be prefixed with `profile.` so they bind to
+          `state.profile.*`.
   components:
     type: object
     description: "Component overrides: main_slots"
     properties:
       main_slots:
         default: []
+        description: Extra blocks appended to the main column on the profile page.
   request_stages:
     type: object
     description: "MongoDB pipeline stage overrides: write. write stages are appended to both create and update profile flows."
     properties:
       write:
         default: []
+        description: >-
+          Pipeline update stages appended to both create-profile and
+          update-profile flows. Used for derived fields or extra transforms
+          beyond the built-in profile write.
 
 connections:
   - _ref: connections/user-contacts-collection.yaml

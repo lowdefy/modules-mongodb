@@ -13,9 +13,6 @@ dependencies:
     description: File attachments (optional sidebar tile)
 
 vars:
-  collection:
-    default: companies
-    description: MongoDB collection name
   label:
     default: Company
     description: Singular display label
@@ -35,28 +32,38 @@ vars:
     default:
       _ref: defaults/event_display.yaml
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates."
-  # TODO: add a `description:` to every nested property below (fields.*, components.*, request_stages.*).
-  # User-facing copy — describe what the var is for from the consumer's perspective, no implementation details.
   fields:
     type: object
     description: "Field block arrays rendered in both the edit form and SmartDescriptions view."
     properties:
       attributes:
         default: []
+        description: >-
+          Custom field blocks appended after the built-in company sections in
+          the edit form and view page. Block ids must be prefixed with
+          `attributes.` so they bind to `state.attributes.*`.
   components:
     type: object
     description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, contact_card_extra_fields"
     properties:
       table_columns:
         default: []
+        description: Extra column definitions appended to the companies list table.
       filters:
         default: []
+        description: >-
+          Extra filter blocks rendered below the built-in search bar on the
+          companies list page. Pair with `filter_requests` for custom data
+          sources.
       main_slots:
         default: []
+        description: Extra blocks appended to the main column on the company-detail page.
       sidebar_slots:
         default: []
+        description: Extra blocks appended to the sidebar column on the company-detail page.
       download_columns:
         default: []
+        description: Extra columns appended to the Excel export.
       contact_card_extra_fields:
         default: []
         description: |
@@ -69,13 +76,24 @@ vars:
     properties:
       filter_match:
         default: []
+        description: >-
+          Atlas Search compound clauses appended to the list-page `$search`
+          query. Used to add custom filter conditions to the companies list.
       get_all_companies:
         default:
           - $addFields: {}
+        description: >-
+          Pipeline stages appended after filtering on the companies list and
+          Excel export aggregations.
       selector:
         default: []
+        description: Pipeline stages appended to the company-selector aggregation.
       write:
         default: []
+        description: >-
+          Pipeline update stages appended to both create-company and
+          update-company flows. On create, runs as a follow-up update on the
+          newly inserted document; skipped at build time when empty.
   filter_requests:
     default: []
     description: Additional requests for the custom filters section

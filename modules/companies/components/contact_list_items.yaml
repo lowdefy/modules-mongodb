@@ -27,18 +27,28 @@ properties:
         <div>
           {% for contact in contacts %}
           <div style="padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}">
-            <a href="/{{ contact_detail_page }}?_id={{ contact._id }}" style="color:inherit; text-decoration:none">
-              <div><b>{{ contact.profile.name }}</b></div>
-              {% if contact.email %}
-              <div style="color:var(--ant-color-text-secondary); font-size:12px">{{ contact.email }}</div>
+            <a href="/{{ contact_detail_page }}?_id={{ contact._id }}" style="color:inherit; text-decoration:none; display:flex; align-items:center; gap:12px">
+              {% if contact.profile.picture %}
+              <img src="{{ contact.profile.picture }}" alt="" style="width:36px; height:36px; border-radius:50%; flex:0 0 auto; object-fit:cover" />
+              {% else %}
+              {% set initials = ((contact.profile.given_name or '') | upper | truncate(1, true, '')) ~ ((contact.profile.family_name or '') | upper | truncate(1, true, '')) %}
+              <div style="width:36px; height:36px; border-radius:50%; flex:0 0 auto; background:var(--ant-color-fill-secondary); color:var(--ant-color-text-secondary); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:600">
+                {{ initials or '?' }}
+              </div>
               {% endif %}
-              {% for field in extra_fields %}
-                {% if contact[field.value] != null %}
-                <div style="color:var(--ant-color-text-secondary); font-size:11px">
-                  <b>{{ field.label }}:</b> {{ contact[field.value] }}
-                </div>
+              <div style="flex:1 1 auto; min-width:0">
+                <div><b>{{ contact.profile.name }}</b></div>
+                {% if contact.email %}
+                <div style="color:var(--ant-color-text-secondary); font-size:12px">{{ contact.email }}</div>
                 {% endif %}
-              {% endfor %}
+                {% for field in extra_fields %}
+                  {% if contact[field.value] != null %}
+                  <div style="color:var(--ant-color-text-secondary); font-size:11px">
+                    <b>{{ field.label }}:</b> {{ contact[field.value] }}
+                  </div>
+                  {% endif %}
+                {% endfor %}
+              </div>
             </a>
           </div>
           {% endfor %}

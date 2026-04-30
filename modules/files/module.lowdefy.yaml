@@ -9,19 +9,21 @@ dependencies:
     description: Change stamp and event logging for file audit
 
 vars:
-  collection:
-    default: files
-    description: MongoDB collection name for file metadata
   s3_region:
-    default: ca-central-1
-    description: AWS region for S3 buckets
+    required: true
+    description: AWS region for S3 buckets (e.g., us-east-1, ca-central-1)
   log_events:
     type: boolean
     default: true
     description: Log file upload/delete events via the events module
   components:
     type: object
-    description: "Overrides: file_list (deprecated)"
+    description: "Component overrides: file_list (deprecated)"
+    properties:
+      file_list:
+        description: >-
+          Deprecated. Override block list rendered by the file-list component.
+          Prefer the file-manager or file-card components going forward.
 
 exports:
   connections:

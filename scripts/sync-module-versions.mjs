@@ -20,9 +20,12 @@
  * Sync Module Versions
  *
  * Copies each module's package.json version to its module.lowdefy.yaml so the
- * manifest exposes the same version that Changesets just wrote. Runs after
- * `changeset version` as part of `release:version`, so the version bumps land
- * in the "Publish new release" PR and ship with the rest of the release.
+ * manifest exposes the same version that Changesets just wrote, and rewrites
+ * the `github:lowdefy/modules-mongodb/modules/{name}@v{version}` references
+ * in repo Markdown docs (root README, docs/, per-module READMEs) to match.
+ * Runs after `changeset version` as part of `release:version`, so the version
+ * bumps land in the "Publish new release" PR and ship with the rest of the
+ * release.
  *
  * Zero external dependencies.
  */
@@ -35,6 +38,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, '..');
 const MODULES_DIR = join(ROOT, 'modules');
+const DOCS_DIR = join(ROOT, 'docs');
 
 function syncOne(moduleDir) {
   const pkgPath = join(moduleDir, 'package.json');
@@ -64,6 +68,51 @@ function syncOne(moduleDir) {
   return { name: pkgJson.name, version, changed: true, inserted: true };
 }
 
+function collectMarkdownFiles() {
+  const files = [];
+  const rootReadme = join(ROOT, 'README.md');
+  if (existsSync(rootReadme)) files.push(rootReadme);
+
+  if (existsSync(DOCS_DIR) && statSync(DOCS_DIR).isDirectory()) {
+    for (const entry of readdirSync(DOCS_DIR)) {
+      if (!entry.endsWith('.md')) continue;
+      files.push(join(DOCS_DIR, entry));
+    }
+  }
+
+  for (const entry of readdirSync(MODULES_DIR)) {
+    if (entry.startsWith('.') || entry === 'node_modules') continue;
+    const readme = join(MODULES_DIR, entry, 'README.md');
+    if (existsSync(readme)) files.push(readme);
+  }
+
+  return files;
+}
+
+function syncDocVersions(versions) {
+  // Match: github:lowdefy/modules-mongodb/modules/{name}@v{semver-or-anything-non-quote}
+  const pattern = /(github:lowdefy\/modules-mongodb\/modules\/)([\w-]+)(@v)([^"'\s)]+)/g;
+  const updates = [];
+
+  for (const file of collectMarkdownFiles()) {
+    const original = readFileSync(file, 'utf-8');
+    let changes = 0;
+    const updated = original.replace(pattern, (match, prefix, name, at, oldVersion) => {
+      const target = versions[name];
+      if (!target || target === oldVersion) return match;
+      changes += 1;
+      return `${prefix}${name}${at}${target}`;
+    });
+
+    if (changes > 0) {
+      writeFileSync(file, updated, 'utf-8');
+      updates.push({ file, changes });
+    }
+  }
+
+  return updates;
+}
+
 function main() {
   if (!existsSync(MODULES_DIR) || !statSync(MODULES_DIR).isDirectory()) {
     console.error(`modules/ directory not found at ${MODULES_DIR}`);
@@ -72,6 +121,7 @@ function main() {
 
   console.log('Syncing module.lowdefy.yaml versions from package.json...');
   let updatedCount = 0;
+  const versions = {};
 
   for (const entry of readdirSync(MODULES_DIR)) {
     if (entry.startsWith('.') || entry === 'node_modules' || entry === 'shared') continue;
@@ -81,12 +131,26 @@ function main() {
     const result = syncOne(moduleDir);
     if (!result) continue;
 
+    versions[entry] = result.version;
     const tag = result.changed ? (result.inserted ? 'inserted' : 'updated') : 'unchanged';
     console.log(`  ${entry}: ${result.version} (${tag})`);
     if (result.changed) updatedCount += 1;
   }
 
-  console.log(`\nDone. ${updatedCount} manifest(s) updated.`);
+  console.log(`\n${updatedCount} manifest(s) updated.`);
+
+  console.log('\nSyncing module version refs in Markdown docs...');
+  const docUpdates = syncDocVersions(versions);
+  if (docUpdates.length === 0) {
+    console.log('  no doc version refs needed updating');
+  } else {
+    for (const { file, changes } of docUpdates) {
+      const rel = file.startsWith(ROOT) ? file.slice(ROOT.length + 1) : file;
+      console.log(`  ${rel}: ${changes} ref(s) updated`);
+    }
+  }
+
+  console.log('\nDone.');
 }
 
 main();

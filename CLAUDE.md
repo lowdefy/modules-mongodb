@@ -12,7 +12,20 @@ Never use client names in design documents, commits, or any content tracked in g
 apps/demo/          — Demo app that imports all modules
 modules/            — Reusable Lowdefy modules
 plugins/            — Custom Lowdefy plugins
+docs/               — Repo-level docs (idioms shared across modules)
 ```
+
+## Documentation
+
+Consumer-facing documentation for this repo follows a fixed layout. When adding or changing a module, plugin, or block, update the relevant doc.
+
+- `README.md` — Central landing page: module list, dependency graph, "what to use when", consumer basics, and pointers into the rest of the docs.
+- `docs/idioms.md` — Single page covering every cross-cutting idiom (`change_stamp`, `event_display`, `fields`/`components`/`request_stages` slots, `app_name`, `avatar_colors`, secrets). Per-module READMEs link to anchors here instead of repeating explanations. Anchors: `#change-stamps`, `#event-display`, `#slots`, `#app-name`, `#avatar-colors`, `#secrets`.
+- `modules/{name}/README.md` — Per-module reference. Fixed template: Description, Dependencies, How to Use, Exports (Pages / Components / API Endpoints / Connections / Menus), Vars, Secrets, Plugins, Notes.
+- `plugins/modules-mongodb-plugins/README.md` — Plugin package overview (blocks + actions, peer deps, install).
+- `plugins/modules-mongodb-plugins/src/blocks/{Block}/README.md` — Per-block doc (props, events, slots, examples).
+
+**Manifest is the source of truth for var schema.** Every var (top-level and nested) in `module.lowdefy.yaml` must carry `description:`, `type:`, and (where applicable) `default:` / `required:` / `enum:`. The README "Vars" section restates the manifest descriptions in narrative form for readers, but if README and manifest disagree the manifest wins. When you add or change a var, update the manifest first, then the README.
 
 ## Lowdefy Module System
 

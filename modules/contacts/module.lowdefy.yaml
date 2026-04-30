@@ -26,8 +26,6 @@ vars:
     default:
       _ref: defaults/event_display.yaml
     description: "Per-app event display templates"
-  # TODO: add a `description:` to every nested property below (fields.*, components.*, request_stages.*).
-  # User-facing copy — describe what the var is for from the consumer's perspective, no implementation details.
   fields:
     type: object
     description: "Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
@@ -35,24 +33,41 @@ vars:
       show_honorific:
         type: boolean
         default: false
+        description: Show the honorific/title selector (Mr/Ms/Dr) in the profile form.
       profile:
         default: []
+        description: >-
+          Extended profile field blocks rendered in the contact form and view.
+          Block ids must be prefixed with `profile.` so they bind to
+          `state.profile.*`.
       global_attributes:
         default: []
+        description: >-
+          Cross-app attribute field blocks rendered in the contact form and
+          view. Block ids must be prefixed with `global_attributes.` so they
+          bind to `state.global_attributes.*`.
   components:
     type: object
     description: "Component slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, company_card_extra_fields"
     properties:
       table_columns:
         default: []
+        description: Extra column definitions appended to the contacts list table.
       filters:
         default: []
+        description: >-
+          Extra filter blocks rendered below the built-in search bar on the
+          contacts list page. Pair with `filter_requests` for custom data
+          sources.
       main_slots:
         default: []
+        description: Extra blocks appended to the main column on the contact-detail page.
       sidebar_slots:
         default: []
+        description: Extra blocks appended to the sidebar column on the contact-detail page.
       download_columns:
         default: []
+        description: Extra columns appended to the Excel export.
       company_card_extra_fields:
         default: []
         description: |
@@ -66,15 +81,27 @@ vars:
       get_all_contacts:
         default:
           - $addFields: {}
+        description: >-
+          Pipeline stages appended after filtering on the contacts list and
+          Excel export aggregations.
       get_contact:
         default: []
         description: Additional pipeline stages appended to get_contact (e.g. $lookup, $addFields).
       selector:
         default: []
+        description: Pipeline stages appended to the contact-selector aggregation.
       filter_match:
         default: []
+        description: >-
+          Atlas Search compound clauses appended to the list-page `$search`
+          query. Used to add custom filter conditions to the contacts list.
       write:
         default: []
+        description: >-
+          Pipeline update stages appended to both create-contact and
+          update-contact flows. Runs after the built-in `$mergeObjects` merge
+          of profile and global_attributes; used for derived fields or extra
+          transforms.
   filter_requests:
     default: []
     description: Additional requests for the custom filters section

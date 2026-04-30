@@ -168,10 +168,6 @@ properties:
 - **Don't hardcode transitions in the UI** — use a transitions config and compute available transitions from user roles at runtime. Centralizes role logic and is auditable.
 - **Don't skip same-status check** — before pushing, compare `status.0.stage` to the new stage. Writing the same status again pollutes the history.
 
-## Reference Files
-
-- `modules/data-upload/api/set-status-discard.yaml` — simple `$push` with `$position: 0` in API routine
-
 ## Template
 
 ```yaml
