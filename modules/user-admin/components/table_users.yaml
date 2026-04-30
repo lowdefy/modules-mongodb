@@ -2,6 +2,13 @@ id: users_table
 type: AgGridBalham
 properties:
   height: 70vh
+  overlayNoRowsTemplate:
+    _if:
+      test:
+        _not:
+          _request: get_all_users
+      then: Loading...
+      else: No rows
   rowStyle:
     cursor: pointer
   rowData:

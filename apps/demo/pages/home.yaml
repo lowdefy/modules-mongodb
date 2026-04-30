@@ -20,6 +20,10 @@ _ref:
         blocks:
           - id: user_admin_link
             type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
             properties:
               title: User Admin
               icon: AiOutlineTeam
@@ -32,9 +36,13 @@ _ref:
                     pageId: user-admin/all
           - id: companies_link
             type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
             properties:
               title: Companies
-              icon: AiOutlineBank
+              icon: AiOutlineShop
               block: true
             events:
               onClick:
@@ -42,3 +50,67 @@ _ref:
                   type: Link
                   params:
                     pageId: companies/all
+          - id: contacts_link
+            type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Contacts
+              icon: AiOutlineContacts
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: contacts/all
+          - id: notifications_link
+            type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Notifications
+              icon: AiOutlineBell
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: notifications/all
+          - id: profile_link
+            type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Profile
+              icon: AiOutlineUser
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: user-account/view
+          - id: release_notes_link
+            type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Release Notes
+              icon: AiOutlineFileText
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: release-notes/view

@@ -44,7 +44,7 @@ routine:
                               _payload: email
                     description: null
         references:
-          user_ids:
+          contact_ids:
             - _payload: _id
         metadata:
           app_name:
