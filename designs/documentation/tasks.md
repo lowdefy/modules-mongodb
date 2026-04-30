@@ -45,19 +45,19 @@ Goal: produce the central doc and the cross-cutting idioms reference. Both are l
 
 Goal: every module has a `README.md` matching the template in `design.md` (Description / Dependencies / How to Use / Exports / Vars / Secrets / Plugins / Notes).
 
-- [ ] **New `modules/companies/README.md`**
-- [ ] **New `modules/contacts/README.md`**
-- [ ] **New `modules/data-upload/README.md`**
-- [ ] **New `modules/events/README.md`** (folds in existing `VARS.md`)
-- [ ] Delete `modules/events/VARS.md`
-- [ ] **New `modules/files/README.md`** (folds in existing `VARS.md`)
-- [ ] Delete `modules/files/VARS.md`
-- [ ] **Rewrite `modules/layout/README.md`** — restructure to match the new template; auth-page section either stays as a Notes section or moves into `docs/idioms.md` if it generalizes.
-- [ ] **New `modules/notifications/README.md`** (folds in existing `VARS.md`)
-- [ ] Delete `modules/notifications/VARS.md`
-- [ ] **New `modules/release-notes/README.md`**
-- [ ] **New `modules/user-account/README.md`**
-- [ ] **New `modules/user-admin/README.md`**
+- [x] **New `modules/companies/README.md`**
+- [x] **New `modules/contacts/README.md`**
+- [x] **New `modules/data-upload/README.md`**
+- [x] **New `modules/events/README.md`** (folds in existing `VARS.md`)
+- [x] Delete `modules/events/VARS.md`
+- [x] **New `modules/files/README.md`** (folds in existing `VARS.md`)
+- [x] Delete `modules/files/VARS.md`
+- [x] **Rewrite `modules/layout/README.md`** — restructure to match the new template; auth-page section either stays as a Notes section or moves into `docs/idioms.md` if it generalizes.
+- [x] **New `modules/notifications/README.md`** (folds in existing `VARS.md`)
+- [x] Delete `modules/notifications/VARS.md`
+- [x] **New `modules/release-notes/README.md`**
+- [x] **New `modules/user-account/README.md`**
+- [x] **New `modules/user-admin/README.md`**
 
 ---
 

@@ -1,70 +1,79 @@
 # Companies
 
-Company management module — list, detail, edit, and create company records with linked contacts and audit events.
+Company management — list, detail, edit, and create pages plus a company selector. Companies are stored in their own collection with auto-generated consecutive IDs (`C-0001`, `C-0002`, …) and a configurable display name field.
+
+The module is paired with [`contacts`](../contacts/README.md): the company-detail page renders a contacts tile, and create/update reconciles bidirectional links on linked contact records.
 
 ## Dependencies
 
-| Dependency   | Purpose                                            |
-| ------------ | -------------------------------------------------- |
-| **layout**   | Page layout wrapper (page, card, floating-actions) |
-| **events**   | Audit event logging and change stamps              |
-| **contacts** | Contact selector for linking contacts to companies |
-| **files**    | File attachments (optional sidebar tile)           |
+| Module | Why |
+|---|---|
+| [layout](../layout/README.md) | Page wrapper |
+| [events](../events/README.md) | Audit logging and `change_stamp` |
+| [contacts](../contacts/README.md) | Contacts tile and bidirectional linking |
+| [files](../files/README.md) | Optional file-attachments sidebar tile |
 
-## Pages
+Cross-module cycle: `companies ↔ contacts`. Both must be added as separate entries in `lowdefy.yaml`; the build resolves the cycle at runtime.
 
-### `companies`
-
-Main list page. Paginated, searchable table of companies.
-
-- Full-text search via MongoDB Atlas Search
-- Customizable filter section
-- Sortable columns
-- Row click navigates to detail page
-- Excel export of filtered results
-
-### `company-detail`
-
-Read-only company detail with main info card (rendered by `SmartDescriptions`), optional `fields.attributes` block, contacts tile, events tile, and main/sidebar tile slots.
-
-### `company-edit`
-
-Edit an existing company. Uses `$mergeObjects` on `contact`, `address`, and `attributes` so fields set outside the form are preserved. Logs `update-company` audit event on save.
-
-### `company-new`
-
-Create a new company. Generates a consecutive ID (e.g., `C-0001`), links selected contacts via `global_attributes.company_ids`, and logs `create-company` event.
-
-## Components
-
-### `company-selector`
-
-Selector/MultipleSelector for picking companies from the current app. Useful in modules that need a company picker (e.g. a contact's linked companies).
+## How to Use
 
 ```yaml
-- _ref:
+modules:
+  - id: companies
+    source: "github:lowdefy/modules-mongodb/modules/companies@v0.1.1"
+    vars:
+      collection: companies
+      label: Company
+      label_plural: Companies
+      name_field: trading_name
+      id_prefix: "C-"
+      id_length: 4
+```
+
+Defaults work out of the box. To add custom fields, table columns, sidebar tiles, or pipeline stages, see [Slots](../../docs/idioms.md#slots). See `apps/demo/modules/companies/index.yaml` for a worked example.
+
+## Exports
+
+### Pages
+
+| ID | Description | Path |
+|---|---|---|
+| `companies` | List with filtering, sorting, pagination, Excel download | `/{entryId}/companies` |
+| `company-detail` | Read-only detail with sidebar tiles | `/{entryId}/company-detail` |
+| `company-edit` | Edit existing company | `/{entryId}/company-edit` |
+| `company-new` | Create a new company | `/{entryId}/company-new` |
+
+### Components
+
+- **`company-selector`** — `Selector` / `MultipleSelector` block over all companies. Use via `_ref`:
+
+  ```yaml
+  _ref:
     module: companies
     component: company-selector
     vars:
       label: Employer
       field_id: global_attributes.company_ids
-```
+  ```
 
-## API Endpoints
+### API Endpoints
 
-### `create-company`
+| ID | Description |
+|---|---|
+| `create-company` | Insert a company; auto-assigns the next consecutive ID, reconciles linked contacts, logs `create-company` |
+| `update-company` | Update a company; reconciles contact link changes, logs `update-company` |
 
-Inserts a company with an auto-incrementing consecutive ID, runs optional `request_stages.write` stages, links the selected contacts, and logs a `create-company` event.
+### Connections
 
-### `update-company`
+| ID | Collection |
+|---|---|
+| `companies-collection` | `vars.collection` (default `companies`) |
 
-Pipeline update with `$mergeObjects` on `contact` / `address` / `attributes`, derived `lowercase_email`, unlink/relink selected contacts on `global_attributes.company_ids`, and a `update-company` event log.
+### Menus
 
-## Menus
-
-### `default`
-
-Single menu link to the `companies` page.
+| ID | Contents |
+|---|---|
+| `default` | Single link to the companies list |
 
 ```yaml
 links:
@@ -77,153 +86,66 @@ links:
 
 ### `collection`
 
-Type: `string`
-Default: `companies`
-
-MongoDB collection name.
+`string` — Default `companies`. MongoDB collection for company records.
 
 ### `label` / `label_plural`
 
-Type: `string`
-Defaults: `Company` / `Companies`
-
-Display labels used throughout the UI.
+`string` — Defaults `Company` / `Companies`. Singular and plural display labels used in page titles, buttons, and selector placeholders.
 
 ### `name_field`
 
-Type: `string`
-Default: `trading_name`
-
-Field used as the display name in selectors, event titles, and page titles.
+`string` — Default `trading_name`. Top-level field on company documents used as the display name in selectors, table titles, and event templates.
 
 ### `id_prefix` / `id_length`
 
-Type: `string` / `number`
-Defaults: `C-` / `4`
-
-Prefix and zero-padded length of the auto-generated consecutive ID (e.g., `C-0001`).
-
-### `fields`
-
-Type: `object`
-
-Field block arrays rendered in both the edit form and the SmartDescriptions view. All keys default to `[]`.
-
-- **`attributes`** (array) — Custom fields appended after the built-in company sections. IDs must be prefixed with `attributes.` (e.g. `attributes.industry`) so they bind to `state.attributes.*` and resolve correctly in `SmartDescriptions`.
-
-```yaml
-fields:
-  attributes:
-    - id: attributes.industry
-      type: Selector
-      properties:
-        title: Industry
-        options:
-          - Technology
-          - Finance
-    - id: attributes.employee_count
-      type: NumberInput
-      properties:
-        title: Employees
-```
-
-### `components`
-
-Type: `object`
-
-Page-level slot overrides.
-
-- **`table_columns`** — Extra column definitions appended to the default table
-- **`filters`** — Extra filter blocks rendered below the built-in search bar (use with `filter_requests` for custom filter data sources)
-- **`main_slots`** / **`sidebar_slots`** — Extra blocks appended to the main / sidebar columns on the detail page
-- **`download_columns`** — Extra columns appended to the Excel export
-
-### `request_stages`
-
-Type: `object`
-
-MongoDB pipeline-stage overrides.
-
-- **`get_all_companies`** — Stages appended to the list aggregation
-- **`selector`** — Stages appended to the company-selector aggregation
-- **`filter_match`** — `$search` compound clauses appended to the Atlas Search query on the list page
-- **`write`** — Pipeline update stages appended to both `create-company` and `update-company` flows. On create, these run as a follow-up `MongoDBUpdateOne` on the newly inserted document and are skipped at build time when empty.
-
-```yaml
-request_stages:
-  write:
-    - $set:
-        lowercase_trading_name:
-          $toLower: "$trading_name"
-```
-
-### `filter_requests`
-
-Type: `array`
-Default: `[]`
-
-Additional request definitions loaded on the companies list page alongside the built-in requests.
+`string` / `number` — Defaults `"C-"` / `4`. Auto-generated consecutive IDs are formatted as `{id_prefix}{n.padStart(id_length)}`, producing `C-0001`, `C-0002`, …
 
 ### `event_display`
 
-Type: `object`
+`object` — See [Event display](../../docs/idioms.md#event-display). Defaults from `defaults/event_display.yaml`. Event types: `create-company`, `update-company`. The `target` shape is `{ name }`, where `name` is the `name_field` on the saved doc.
 
-Per-app event display templates. Same shape and semantics as `user-admin.event_display`. Merged with the module's default templates for `create-company` and `update-company`.
+### `fields`
 
-## Data Model
+`object` — Field-block slots. See [Slots](../../docs/idioms.md#slots).
 
-Company documents live in the configured `collection` (default `companies`):
+- **`attributes`** — Custom field blocks appended after the built-in sections in the edit form and detail view. Block ids must be prefixed with `attributes.`.
 
-```
-{
-  _id: "C-0001",
-  trading_name: "Acme Ltd",
-  description: "...",
-  registered_name: "Acme Limited",
-  registration_number: "12345",
-  vat_number: "GB123456789",
-  website: "https://acme.example",
-  contact: {
-    primary_email: "info@acme.example",
-    primary_phone: "+44..."
-  },
-  address: {
-    registered: {
-      formatted_address: "10 Downing St, London",
-      extra: "Suite 5"
-    }
-  },
-  attributes: { ... },
-  lowercase_email: "info@acme.example",
-  removed: null,
-  created: { ... },
-  updated: { ... }
-}
-```
+### `components`
 
-Linked contacts are stored on the contact side as `global_attributes.company_ids: [company_id, ...]`. The company detail page looks up linked contacts via `$lookup`, and the edit page reconciles the link set on save.
+`object` — Component slot overrides. See [Slots](../../docs/idioms.md#slots).
 
-## Event Types
+- **`table_columns`** — Extra columns on the list table.
+- **`filters`** — Extra filter blocks below the search bar (pair with `filter_requests`).
+- **`main_slots`** — Extra blocks appended to the main column on the detail page.
+- **`sidebar_slots`** — Extra blocks appended to the sidebar.
+- **`download_columns`** — Extra columns on the Excel export.
+- **`contact_card_extra_fields`** — `[{ label, value }]` pairs appended under each contact in the company-detail contacts tile. `value` is a top-level key on the contact doc projected by `get_company_contacts`.
 
-| Event Type       | When                   |
-| ---------------- | ---------------------- |
-| `create-company` | New company created    |
-| `update-company` | Company fields updated |
+### `request_stages`
 
-## Example
+`object` — Pipeline overrides. See [Slots](../../docs/idioms.md#slots).
 
-```yaml
-modules:
-  - id: companies
-    source: "github:lowdefy/modules-mongodb/modules/companies@v0.1.1"
-    vars:
-      id_prefix: "ACME-"
-      id_length: 5
-      fields:
-        attributes:
-          - id: attributes.industry
-            type: Selector
-            properties:
-              title: Industry
-              options: [Technology, Finance, Healthcare]
-```
+- **`filter_match`** — Atlas Search compound clauses appended to the list `$search` query.
+- **`get_all_companies`** — Stages appended after filtering on the list and Excel export aggregations.
+- **`selector`** — Stages appended to the company-selector aggregation.
+- **`write`** — Update stages appended to both create and update flows. On create, runs as a follow-up update on the inserted document; skipped at build time when empty.
+
+### `filter_requests`
+
+`array` — Default `[]`. Additional requests fetched alongside the custom `filters` blocks (e.g. dropdown option sources).
+
+## Secrets
+
+| Name | Used for |
+|---|---|
+| `MONGODB_URI` | MongoDB connection |
+
+## Plugins
+
+- `@lowdefy/community-plugin-mongodb` — collection connections and read/write
+- `@lowdefy/community-plugin-xlsx` — Excel download
+- `@lowdefy/modules-mongodb-plugins` — `ContactSelector`, `SmartDescriptions`, `EventsTimeline`, `FetchRequest`
+
+## Notes
+
+Linked contacts are stored on the contact side as `global_attributes.company_ids: [company_id, ...]`. The detail page resolves linked contacts via `$lookup`, and the edit page reconciles the link set on save.

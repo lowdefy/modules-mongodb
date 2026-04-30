@@ -119,15 +119,6 @@ default:
 
 The build merges `defaults/event_display.yaml` with the var, so you only need to specify the apps and event types you want to override or add. Apps not listed fall back to the `default` key in the defaults file.
 
-### Custom event types
-
-Custom event types are not added through `event_display`. A module's write APIs hardcode the event `type` they emit and only filter templates with matching keys. To log a custom event type:
-
-- Call the `events/new-event` API directly from your own code, building the `display` map (`{ [app_name]: { title } }`) yourself, or
-- Fork the relevant module's write API and add the new type alongside the existing ones.
-
-In both cases, the title rendering is done at write time — `event_display` only matters for the modules that already consume it.
-
 ### Display metadata vs templates
 
 `event_display` covers titles only. Color, icon, and human-readable type names live in the separate `event_types` component on the events module — see [Events module README](../modules/events/README.md).

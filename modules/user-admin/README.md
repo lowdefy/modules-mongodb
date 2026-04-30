@@ -1,244 +1,18 @@
 # User Admin
 
-User administration module — list, search, invite, edit, and manage user access across multi-app MongoDB environments.
+User administration — list, search, invite, edit, and manage user access for an app. Operates on the shared `user-contacts` collection with per-app data namespaced under `apps.{app_name}`, so a single collection serves multiple apps.
+
+The end-user counterpart is [`user-account`](../user-account/README.md).
 
 ## Dependencies
 
-| Dependency        | Purpose                                                 |
-| ----------------- | ------------------------------------------------------- |
-| **layout**        | Page layout wrapper (page, floating-actions components) |
-| **events**        | Audit event logging and change stamps                   |
-| **notifications** | Notification dispatch (invite and resend emails)        |
-
-## Pages
-
-### `users`
-
-Main administration page. Displays a paginated, searchable table of all users belonging to the current app.
-
-- Full-text search by name, surname, or email (MongoDB Atlas Search)
-- Filter by roles, status (Active, Disabled, Open Invite)
-- Sortable by name, email, date updated, date created, date signed up
-- Row click navigates to edit page
-- Excel export of filtered results
-
-### `users-edit`
-
-Edit an existing user's profile and access settings.
-
-- Displays avatar preview, signed-up date, invite link, email
-- Profile and access form sections (customizable via `components` var)
-- Resend Invite button (visible when user hasn't accepted yet)
-- Logs `update-user` audit event on save
-
-### `users-invite`
-
-Invite a new user with profile and access settings.
-
-- Reached via `check-invite-email` page (validates email first)
-- If the email already exists with an active account or open invite, redirects to `users-edit` instead
-- Sets up invite link, profile, roles
-- Logs `invite-user` audit event and dispatches notification on submit
-
-### `check-invite-email`
-
-Entry point for the invite flow. Validates the email address, checks if the user already exists, and routes to either `users-invite` (new) or `users-edit` (existing).
-
-## Components
-
-### `user-selector`
-
-Autocomplete selector that returns all active users for the current app. Useful in other modules that need a user picker (e.g. assigning a contact owner).
-
-```yaml
-- _ref:
-    module: user-admin
-    component: user-selector
-    vars:
-      label: Assigned To
-```
-
-## API Endpoints
-
-### `invite-user`
-
-Creates or upserts a user document in MongoDB, logs an `invite-user` event, and dispatches a notification (email).
-
-### `update-user`
-
-Updates an existing user's profile, roles, and access flags. Logs an `update-user` event.
-
-### `resend-invite`
-
-Re-dispatches the invite notification for a user with an open invite. Logs a `resend-user-invite` event.
-
-## Menus
-
-### `default`
-
-Single menu link to the `users` page. Title adapts to `app_title` — shows "{app_title} User Admin" or just "User Admin".
-
-```yaml
-links:
-  - id: user-admin-group
-    type: MenuGroup
-    properties:
-      title: User Admin
-    links:
-      _ref:
-        module: user-admin
-        menu: default
-```
-
-## Vars
-
-### `app_name` (required)
-
-Type: `string`
-
-App identifier used to construct MongoDB field paths. User documents store per-app data under `apps.{app_name}` — this includes roles, disabled status, invite state, and sign-up date.
-
-### `roles` (required)
-
-Type: `array` of `{label, value}`
-
-Available user roles shown in role selectors on the invite and edit pages, role filters on the list page, and role columns in the table and Excel export.
-
-```yaml
-roles:
-  - label: Admin
-    value: admin
-  - label: Editor
-    value: editor
-  - label: Viewer
-    value: viewer
-```
-
-### `app_title`
-
-Type: `string`
-
-Display prefix for page titles and menu labels. Appears throughout the UI:
-
-| `app_title` | Page title examples                                     |
-| ----------- | ------------------------------------------------------- |
-| _(not set)_ | "User Admin", "Invite User", "Edit User"                |
-| `"Team"`    | "Team User Admin", "Invite Team User", "Edit Team User" |
-
-### `app_domain`
-
-Type: `string`
-
-Base URL for invite links shown on the invite and edit pages. Falls back to the current browser origin if not provided. The invite link format is `{app_domain}/login?hint={email}`.
-
-### `event_display`
-
-Type: `object`
-
-Per-app event display templates. Each key is an app identifier (matching the viewing app's `display_key` in the events module). Each value maps event types to Nunjucks title templates. Templates receive `user` (current user) and `target` (affected user with `name` and `email`).
-
-Merged with the built-in defaults:
-
-```yaml
-# defaults/event_display.yaml
-default:
-  invite-user: "{{ user.profile.name }} invited {{ target.name }}"
-  update-user: "{{ user.profile.name }} updated {{ target.name }}"
-  resend-user-invite: "{{ user.profile.name }} resent invite to {{ target.name }}"
-```
-
-The `default` key is a fallback — events always render a title even without app-specific configuration. Apps that need events to render in specific app contexts add their own keys:
-
-```yaml
-# App managing users for multiple apps
-event_display:
-  team-app:
-    invite-user: "{{ user.profile.name }} invited {{ target.name }}"
-    update-user: "{{ user.profile.name }} updated {{ target.name }}"
-    resend-user-invite: "{{ user.profile.name }} resent invite to {{ target.name }}"
-  support-app:
-    invite-user: "New user {{ target.name }} invited"
-    update-user: "{{ target.name }} was updated"
-```
-
-Omitting a template for an event type under a given key means no display entry is produced for that app — `support-app` above has no `resend-user-invite`, so resend events won't appear in the support app's event log.
-
-### `components`
-
-Type: `object`
-
-Page-level slot overrides. All keys optional.
-
-- **`table_columns`** — Extra AgGrid column definitions appended to the users table
-- **`download_columns`** — Extra column definitions appended to the Excel export
-- **`filters`** — Extra filter blocks rendered below the built-in search bar
-- **`main_slots`** — Extra blocks appended to the main column on the view/edit pages
-- **`sidebar_slots`** — Extra blocks appended after the default sidebar (access tile)
-- **`view_access_tile`** — Override the default access sidebar tile wholesale
-
-### `request_stages`
-
-Type: `object`
-
-Inject additional MongoDB aggregation pipeline stages into the module's requests. Useful for adding custom computed fields, extra match conditions, or projections.
-
-- **`get_all_users`** — Stages appended to the user list aggregation (after default projections)
-- **`invite_user`** — Stages appended to the invite upsert operation
-- **`update_user`** — Stages appended to the update operation
-- **`filter_match`** — Additional `$search` compound filter clauses added to the Atlas Search query
-
-### `filter_requests`
-
-Type: `array`
-Default: `[]`
-
-Additional request definitions loaded on the users list page alongside the built-in requests. Use when custom filter components need their own data sources (e.g. a department list for a department filter).
-
-## Data Model
-
-User documents are stored in the `user_contacts` collection. Per-app data is namespaced under `apps.{app_name}`:
-
-```
-{
-  _id: "uuid",
-  email: "jane@example.com",
-  lowercase_email: "jane@example.com",
-  profile: {
-    name: "Jane Smith",
-    given_name: "Jane",
-    family_name: "Smith",
-    title: "Ms",
-    picture: "https://api.dicebear.com/6.x/initials/svg?..."
-  },
-  global_attributes: { ... },
-  apps: {
-    "my-app": {
-      is_user: true,
-      disabled: false,
-      roles: ["admin"],
-      invite: { open: false },
-      sign_up: "2026-01-15T10:30:00Z",
-      app_attributes: { ... }
-    }
-  },
-  created: { user: { ... }, timestamp: "..." },
-  updated: { user: { ... }, timestamp: "..." }
-}
-```
-
-This structure allows a single `user_contacts` collection to serve multiple apps — each app reads and writes only its own `apps.{app_name}` namespace.
-
-## Event Types
-
-The module logs three audit event types via the events dependency:
-
-| Event Type           | Icon             | Color  | When                           |
-| -------------------- | ---------------- | ------ | ------------------------------ |
-| `invite-user`        | AiOutlineUserAdd | Blue   | New user invited               |
-| `update-user`        | AiOutlineEdit    | Green  | User profile or access updated |
-| `resend-user-invite` | AiOutlineSend    | Orange | Invite notification resent     |
-
-## Example
+| Module | Why |
+|---|---|
+| [layout](../layout/README.md) | Page wrapper |
+| [events](../events/README.md) | Audit logging and `change_stamp` |
+| [notifications](../notifications/README.md) | Invite + resend dispatch |
+
+## How to Use
 
 ```yaml
 modules:
@@ -246,31 +20,147 @@ modules:
     source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.1.1"
     vars:
       app_name: my-app
-      app_title: My App
+      app_title: Team
       roles:
-        - label: Admin
-          value: admin
-        - label: Editor
-          value: editor
-      components:
-        form_profile:
-          id: form_profile
-          type: Box
-          blocks:
-            - id: user.profile.given_name
-              type: TextInput
-              properties:
-                title: First Name
-            - id: user.profile.family_name
-              type: TextInput
-              properties:
-                title: Last Name
-            - id: user.profile.title
-              type: Selector
-              properties:
-                title: Title
-                options:
-                  - Mr
-                  - Ms
-                  - Dr
+        _ref: modules/user-admin/roles.yaml
+      fields:
+        show_honorific: true
+        profile:
+          _ref: modules/shared/profile/fields.yaml
+        global_attributes:
+          _ref: modules/user-admin/global_attributes_fields.yaml
+        app_attributes:
+          _ref: modules/user-admin/app_attributes_fields.yaml
 ```
+
+`app_name` and `roles` are required. See `apps/demo/modules/user-admin/vars.yaml` for a worked example, [App name scoping](../../docs/idioms.md#app-name), and [Slots](../../docs/idioms.md#slots).
+
+## Exports
+
+### Pages
+
+| ID | Description | Path |
+|---|---|---|
+| `users` | List with filtering, sorting, pagination, Excel download | `/{entryId}/users` |
+| `users-view` | Read-only detail with profile, attributes, access sidebar | `/{entryId}/users-view` |
+| `users-edit` | Edit existing user profile and access | `/{entryId}/users-edit` |
+| `users-invite` | Invite a new user with profile and access | `/{entryId}/users-invite` |
+| `check-invite-email` | Verify email availability before sending an invite | `/{entryId}/check-invite-email` |
+
+### Components
+
+- **`user-selector`** — Autocomplete selector returning all active users for the current app. Use in other modules that need a user picker.
+
+  ```yaml
+  _ref:
+    module: user-admin
+    component: user-selector
+    vars:
+      label: Assigned To
+  ```
+
+### API Endpoints
+
+| ID | Description |
+|---|---|
+| `invite-user` | Create user invite with profile, access, and notification. Logs `invite-user`. |
+| `update-user` | Update existing user profile and access. Logs `update-user`. |
+| `resend-invite` | Resend the invite email for a user with an open invite. Logs `resend-user-invite`. |
+
+### Connections
+
+| ID | Collection |
+|---|---|
+| `user-contacts-collection` | `user-contacts` |
+
+### Menus
+
+| ID | Contents |
+|---|---|
+| `default` | Single link to the users list. Title adapts to `app_title`. |
+
+```yaml
+links:
+  _ref:
+    module: user-admin
+    menu: default
+```
+
+## Vars
+
+### `app_name` (required)
+
+`string` — App identifier used in MongoDB field paths. Per-app data is stored under `apps.{app_name}` (roles, disabled status, invite state, sign-up date, app attributes). See [App name scoping](../../docs/idioms.md#app-name).
+
+### `roles` (required)
+
+`array` of `{ label, value }` — Roles shown in role selectors on the invite/edit pages, role filters on the list page, and role columns in the table and Excel export.
+
+### `app_title`
+
+`string`, default `""`. Optional display prefix for page titles and menu labels:
+
+| `app_title` | Page title examples |
+|---|---|
+| _(not set)_ | "User Admin", "Invite User", "Edit User" |
+| `"Team"` | "Team User Admin", "Invite Team User", "Edit Team User" |
+
+### `app_domain`
+
+`string` — Base URL for invite links shown on the invite and edit pages. Falls back to the current browser origin. Invite link format: `{app_domain}/login?hint={email}`.
+
+### `event_display`
+
+`object` — See [Event display](../../docs/idioms.md#event-display). Defaults from `defaults/event_display.yaml`. Event types: `invite-user`, `update-user`, `resend-user-invite`. Templates receive `user` (current user) and `target` (`{ name, email }` of the affected user).
+
+### `fields`
+
+`object` — Field-block slots. See [Slots](../../docs/idioms.md#slots).
+
+- **`show_honorific`** — `boolean`, default `false`. Show the honorific (Mr/Ms/Dr) selector in the profile form.
+- **`profile`** — Profile field blocks; ids prefixed with `profile.`.
+- **`global_attributes`** — Cross-app attribute field blocks; ids prefixed with `global_attributes.`.
+- **`app_attributes`** — Per-app attribute field blocks scoped to `app_name`; ids prefixed with `app_attributes.`. Saved to `apps.{app_name}.app_attributes` on write.
+
+### `components`
+
+`object` — Component slot overrides. See [Slots](../../docs/idioms.md#slots).
+
+- **`table_columns`** — Extra columns on the users list table.
+- **`download_columns`** — Extra columns on the Excel export.
+- **`filters`** — Extra filter blocks below the search bar.
+- **`main_slots`** — Extra blocks on the users-view main column.
+- **`sidebar_slots`** — Extra blocks on the users-view sidebar.
+- **`view_access_tile`** — Override for the access tile on users-view (default is the built-in roles/access summary).
+
+### `request_stages`
+
+`object` — Pipeline overrides. See [Slots](../../docs/idioms.md#slots).
+
+- **`filter_match`** — Atlas Search compound clauses appended to the list `$search` query.
+- **`get_all_users`** — Stages appended after filtering on the list and Excel export aggregations.
+- **`write`** — Update stages appended to both `update-user` and `invite-user` flows.
+
+### `filter_requests`
+
+`array`, default `[]`. Additional requests fetched alongside the custom `filters` blocks.
+
+### `avatar_colors`
+
+`array` — Default loaded from `modules/shared/profile/avatar_colors.yaml`. See [Avatar colors](../../docs/idioms.md#avatar-colors).
+
+## Secrets
+
+| Name | Used for |
+|---|---|
+| `MONGODB_URI` | MongoDB connection |
+
+## Plugins
+
+- `@lowdefy/community-plugin-mongodb`
+- `@lowdefy/community-plugin-xlsx` — Excel download
+- `@lowdefy/modules-mongodb-plugins` — `SmartDescriptions`, `EventsTimeline`
+
+## Notes
+
+User documents share the `user-contacts` collection with plain contacts managed by the [`contacts`](../contacts/README.md) module — users are distinguished by `apps.{app_name}.is_user === true`. The `contacts` module excludes user records from its list and refuses to edit them; this module is the only writer for users.
