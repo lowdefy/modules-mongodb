@@ -4,6 +4,8 @@ A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB. Drop
 
 The repo is for app builders who already use Lowdefy and want a curated set of modules that work together — shared change stamps, shared event collection, shared layout — instead of assembling them piece by piece.
 
+> **Prerelease.** This repo is in a prerelease state (0.x). Breaking changes can land in any minor release. Pin to an exact version or commit SHA in production and review the changelog before upgrading.
+
 ## Modules
 
 | Module | One-liner |
