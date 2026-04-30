@@ -15,6 +15,7 @@ Every significant action (create, update, status change, comment) inserts an imm
 **Event types**: each `type` string maps to display metadata (color, title, icon) defined in enum files. These get merged at build time or loaded into `_global` state. The timeline component uses this config to render colored icons and styled cards.
 
 **Two insertion approaches**:
+
 - **Module-level**: `CallApi` to the events module's `new-event` endpoint, passing display/references/metadata via payload. The API assembles the document. This ensures consistent structure.
 - **App-level**: direct `MongoDBInsertOne` to the events connection. More flexible — supports multi-app display keys and complex conditional logic. The caller builds the full document.
 
@@ -72,7 +73,7 @@ Every significant action (create, update, status change, comment) inserts an imm
               user:
                 _user: true
             template: |
-              <a href='/contacts-details?_id={{ user.id }}'>{{ user.profile.name | safe }}</a> did something
+              <a href='/contacts/view?_id={{ user.id }}'>{{ user.profile.name | safe }}</a> did something
         description: null
       {entity}_ids:
         - _payload: {entity}._id

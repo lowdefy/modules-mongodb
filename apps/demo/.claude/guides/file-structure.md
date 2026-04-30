@@ -12,10 +12,10 @@ The monorepo has three layers, each with its own file organization rules:
 modules/{name}/
 ├── module.lowdefy.yaml       # manifest — pages, api, connections, exports, vars
 ├── pages/
-│   ├── {entities}.yaml        # list page
-│   ├── {entity}-detail.yaml   # detail/view page
-│   ├── {entity}-edit.yaml     # edit page
-│   └── {entity}-new.yaml      # create page
+│   ├── all.yaml               # list page
+│   ├── view.yaml              # detail/view page
+│   ├── edit.yaml              # edit page
+│   └── new.yaml               # create page
 ├── requests/
 │   ├── get_all_{entities}.yaml
 │   ├── get_{entity}.yaml
@@ -98,6 +98,7 @@ shared/                         # shared across the entire monorepo
 ```
 
 And `modules/shared/` for shared module-level layout and enum resources:
+
 ```
 modules/shared/
 ├── layout/
@@ -125,16 +126,17 @@ When adding a new file, ask these questions in order:
 
 ## Naming Conventions
 
-| Type | Convention | Example |
-|---|---|---|
-| Pages | `kebab-case` | `contact-detail.yaml`, `ticket-data.yaml` |
-| Page directories | same as page | `pages/contact-detail/`, `pages/ticket-data/` |
-| Requests | `snake_case` | `get_all_contacts.yaml`, `selector_filter_options.yaml` |
-| Components | `snake_case` | `table_contacts.yaml`, `filter_contacts.yaml` |
-| API routines | `kebab-case` | `create-contact.yaml`, `advance-gate.yaml` |
-| Actions | `snake_case` or `kebab-case` | `search.yaml`, `filter-onchange.yaml` |
-| Connections | `kebab-case` | `contacts-collection.yaml` |
-| Enums | `snake_case` | `event_types.yaml`, `ticket_statuses.yaml` |
+| Type             | Convention                   | Example                                                 |
+| ---------------- | ---------------------------- | ------------------------------------------------------- |
+| Module pages     | semantic verb                | `all.yaml`, `view.yaml`, `edit.yaml`, `new.yaml`        |
+| App pages        | `kebab-case`                 | `ticket-data.yaml`, `lot-overview.yaml`                 |
+| Page directories | same as page                 | `pages/ticket-data/`, `pages/lot-overview/`             |
+| Requests         | `snake_case`                 | `get_all_contacts.yaml`, `selector_filter_options.yaml` |
+| Components       | `snake_case`                 | `table_contacts.yaml`, `filter_contacts.yaml`           |
+| API routines     | `kebab-case`                 | `create-contact.yaml`, `advance-gate.yaml`              |
+| Actions          | `snake_case` or `kebab-case` | `search.yaml`, `filter-onchange.yaml`                   |
+| Connections      | `kebab-case`                 | `contacts-collection.yaml`                              |
+| Enums            | `snake_case`                 | `event_types.yaml`, `ticket_statuses.yaml`              |
 
 **Request prefixes**: `get_` (read), `insert_` (create), `update_` (modify), `event_` (event log entry), `selector_` (dropdown options), `search_` (search), `socket_` (websocket).
 
@@ -160,8 +162,8 @@ When adding a new file, ask these questions in order:
 - [ ] New module follows the standard flat directory layout (pages/, requests/, components/, api/, actions/, connections/)
 - [ ] File name uses the correct naming convention (kebab-case for pages/api, snake_case for requests/components)
 - [ ] Page-specific files live in the page's own directory, not in shared/
-- [ ] Request prefix matches its purpose (get_, insert_, update_, selector_, event_)
-- [ ] No file exceeds ~80 lines — extract to _ref'd sub-files when needed
+- [ ] Request prefix matches its purpose (get*, insert*, update*, selector*, event\_)
+- [ ] No file exceeds ~80 lines — extract to \_ref'd sub-files when needed
 - [ ] Complex pipeline stages extracted to `stages/` subfolder
 - [ ] Report tiles are self-contained in `tiles/{name}/` with component + request
 - [ ] Module manifest (`module.lowdefy.yaml`) updated when adding pages, api, or connections

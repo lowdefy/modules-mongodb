@@ -3,7 +3,7 @@ links:
   - id: contacts
     type: MenuLink
     pageId:
-      _module.pageId: contacts
+      _module.pageId: all
     properties:
       title:
         _module.var: label_plural

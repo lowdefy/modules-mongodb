@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: release-notes
+    id: all
     title: Release Notes
     hide_title: true
     content_width: 900

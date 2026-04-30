@@ -37,10 +37,10 @@ Defaults work out of the box. To add custom fields, table columns, sidebar tiles
 
 | ID | Description | Path |
 |---|---|---|
-| `companies` | List with filtering, sorting, pagination, Excel download | `/{entryId}/companies` |
-| `company-detail` | Read-only detail with sidebar tiles | `/{entryId}/company-detail` |
-| `company-edit` | Edit existing company | `/{entryId}/company-edit` |
-| `company-new` | Create a new company | `/{entryId}/company-new` |
+| `all` | List with filtering, sorting, pagination, Excel download | `/{entryId}/all` |
+| `view` | Read-only detail with sidebar tiles | `/{entryId}/view` |
+| `edit` | Edit existing company | `/{entryId}/edit` |
+| `new` | Create a new company | `/{entryId}/new` |
 
 ### Components
 

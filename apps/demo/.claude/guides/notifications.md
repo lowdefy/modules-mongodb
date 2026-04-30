@@ -59,7 +59,7 @@ pipeline:
         title: $title
       links:
         button:
-          pageId: {target-page}
+          pageId: { target-page }
           urlQuery:
             _id: $_id
 ```
@@ -101,8 +101,9 @@ jobs: {
 ## Reference Files
 
 **Module (Lowdefy UI):**
+
 - `modules/notifications/module.lowdefy.yaml` — module manifest with vars, exports, dependencies
-- `modules/notifications/pages/inbox.yaml` — two-column inbox: list (span 10) + detail (span 14), filters, pagination
+- `modules/notifications/pages/all.yaml` — two-column inbox: list (span 10) + detail (span 14), filters, pagination
 - `modules/notifications/pages/link.yaml` — deep-link router: fetch → invite check → auth check → mark read → redirect
 - `modules/notifications/components/notification-config.yaml` — bell badge config (count, icon, link)
 - `modules/notifications/components/unread-count-request.yaml` — unread count aggregation ($match + $count)
@@ -110,6 +111,7 @@ jobs: {
 - `modules/notifications/actions/update-list.yaml` — reset pagination → fetch → set list → set types
 
 **Lambda pipeline:**
+
 - `lambda/internal/src/notifications/consumeNotifications/handler.js` — consumer handler with apps config and jobs map
 - `lambda/internal/src/notifications/sendNotifications/handler.js` — SQS email sender with SendGrid config
 - `lambda/internal/src/notifications/consumeNotifications/config/ExampleEventNotifyRecipient.js` — example template with createNotificationTemplate, ContentComponent, Layout, testData
@@ -118,6 +120,7 @@ jobs: {
 - `lambda/internal/serverless.yml` — SQS FIFO queue, DLQ, Lambda functions, IAM permissions
 
 **App wiring:**
+
 - `apps/example-app/modules/notifications/send-routine.yaml` — AxiosHttp call to consume-notifications Lambda
 - `apps/example-app/connections.yaml` — `consume-notifications` AxiosHttp connection with API key
 - `modules/user-admin/api/invite-user.yaml` — example of triggering send-notification from API routine (line 201)

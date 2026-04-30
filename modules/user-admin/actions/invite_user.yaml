@@ -41,4 +41,4 @@
   type: Link
   params:
     pageId:
-      _module.pageId: users
+      _module.pageId: all

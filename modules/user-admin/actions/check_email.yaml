@@ -13,7 +13,7 @@
     success: User already exists, confirm user access details.
   params:
     pageId:
-      _module.pageId: users-edit
+      _module.pageId: edit
     input:
       user_id:
         _request: check_invite_email.0._id
@@ -25,7 +25,7 @@
       - true
   params:
     pageId:
-      _module.pageId: users-invite
+      _module.pageId: new
     input:
       user_id:
         _request: check_invite_email.0._id

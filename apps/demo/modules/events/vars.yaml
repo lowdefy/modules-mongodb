@@ -2,6 +2,7 @@ display_key:
   _ref:
     path: app_config.yaml
     key: app_name
+contact_page_url: "/contacts/view?_id={id}"
 change_stamp:
   timestamp:
     _date: now

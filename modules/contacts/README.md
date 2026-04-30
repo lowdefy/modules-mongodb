@@ -42,10 +42,10 @@ modules:
 
 | ID | Description | Path |
 |---|---|---|
-| `contacts` | List with filtering, sorting, pagination, Excel download | `/{entryId}/contacts` |
-| `contact-detail` | Read-only detail with sidebar tiles | `/{entryId}/contact-detail` |
-| `contact-edit` | Edit existing contact (blocked for user records) | `/{entryId}/contact-edit` |
-| `contact-new` | Create a new contact with duplicate detection | `/{entryId}/contact-new` |
+| `all` | List with filtering, sorting, pagination, Excel download | `/{entryId}/all` |
+| `view` | Read-only detail with sidebar tiles | `/{entryId}/view` |
+| `edit` | Edit existing contact (blocked for user records) | `/{entryId}/edit` |
+| `new` | Create a new contact with duplicate detection | `/{entryId}/new` |
 
 ### Components
 

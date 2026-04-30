@@ -13,13 +13,13 @@ vars:
 
 exports:
   pages:
-    - id: release-notes
+    - id: all
       description: Release notes page
   menus:
     - id: default
 
 pages:
-  - _ref: pages/release-notes.yaml
+  - _ref: pages/all.yaml
 
 menus:
   - _ref: menus.yaml

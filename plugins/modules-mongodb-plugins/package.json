@@ -31,11 +31,11 @@
     "dompurify": "^3"
   },
   "peerDependencies": {
-    "@lowdefy/block-utils": "0.0.0-experimental-20260428103147",
-    "@lowdefy/blocks-antd": "0.0.0-experimental-20260428103147",
-    "@lowdefy/blocks-basic": "0.0.0-experimental-20260428103147",
-    "@lowdefy/helpers": "0.0.0-experimental-20260428103147",
-    "@lowdefy/nunjucks": "0.0.0-experimental-20260428103147",
+    "@lowdefy/block-utils": "0.0.0-experimental-20260429140004",
+    "@lowdefy/blocks-antd": "0.0.0-experimental-20260429140004",
+    "@lowdefy/blocks-basic": "0.0.0-experimental-20260429140004",
+    "@lowdefy/helpers": "0.0.0-experimental-20260429140004",
+    "@lowdefy/nunjucks": "0.0.0-experimental-20260429140004",
     "@lowdefy/plugin-aws": ">=4.0.0",
     "antd": ">=6",
     "react": ">=18",

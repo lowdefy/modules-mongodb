@@ -1,0 +1,49 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "data": {
+      "type": "array",
+      "default": [],
+      "description": "Array of event documents. Each event is rendered as a timeline item. Expected fields: type, title, description (optional), info (optional), created.user, created.timestamp, actions (optional), files (optional)."
+    },
+    "eventTypeConfig": {
+      "type": "object",
+      "default": {},
+      "description": "Map of event type → display metadata (color, icon, title, card_color, border_color). Used to style the timeline dot, icon, and card per event type."
+    },
+    "actionStatusConfig": {
+      "type": "object",
+      "description": "Map of action status → display metadata (color, title, card_color, border_color). Used to render action status badges within events."
+    },
+    "s3GetPolicyRequestId": {
+      "type": "string",
+      "description": "Request ID for S3 file download policy. When provided, events with a files array render an attachment list."
+    },
+    "contactPageUrl": {
+      "type": "string",
+      "description": "URL template for linking the avatar and timestamp of each event to the actor's contact page. Use {id} as a placeholder for the user id; if omitted, the id is appended as ?_id=<id>. Example: '/contacts/view?_id={id}'."
+    },
+    "disableContactLink": {
+      "type": "boolean",
+      "default": false,
+      "description": "Opt out of contact-page wrapping for the avatar and timestamp."
+    },
+    "compact": {
+      "type": "boolean",
+      "default": false,
+      "description": "Render smaller avatars and tighter padding. Adds an 'events-timeline-compact' class on the root for additional dense styling."
+    },
+    "reverse": {
+      "type": "boolean",
+      "default": false,
+      "description": "Reverse the order of events in the timeline."
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["left", "right", "alternate"],
+      "default": "left",
+      "description": "AntD Timeline mode controlling which side timeline items render on."
+    }
+  }
+}

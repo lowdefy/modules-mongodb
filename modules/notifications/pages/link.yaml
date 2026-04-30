@@ -20,7 +20,7 @@ events:
         pageId:
           _if_none:
             - _request: get_notification_for_link.0.links.button.pageId
-            - _module.pageId: inbox
+            - _module.pageId: all
         urlQuery:
           _if_none:
             - _request: get_notification_for_link.0.links.button.urlQuery
@@ -101,7 +101,7 @@ events:
         pageId:
           _if_none:
             - _request: get_notification_for_link.0.links.button.pageId
-            - _module.pageId: inbox
+            - _module.pageId: all
         urlQuery:
           _if_none:
             - _request: get_notification_for_link.0.links.button.urlQuery

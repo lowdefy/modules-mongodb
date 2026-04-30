@@ -68,7 +68,7 @@ vars:
         default: []
         description: |
           List of { label, value } pairs appended under each contact's name/email
-          in the company-detail contacts tile. `value` is a top-level key on the
+          in the company view contacts tile. `value` is a top-level key on the
           contact doc projected by get_company_contacts.
   request_stages:
     type: object
@@ -100,13 +100,13 @@ vars:
 
 exports:
   pages:
-    - id: companies
+    - id: all
       description: Company list with filtering, sorting, pagination, and Excel download
-    - id: company-detail
+    - id: view
       description: Read-only company detail with sidebar tiles
-    - id: company-edit
+    - id: edit
       description: Edit existing company
-    - id: company-new
+    - id: new
       description: Create a new company
   connections:
     - id: companies-collection
@@ -131,10 +131,10 @@ api:
   - _ref: api/update-company.yaml
 
 pages:
-  - _ref: pages/companies.yaml
-  - _ref: pages/company-detail.yaml
-  - _ref: pages/company-edit.yaml
-  - _ref: pages/company-new.yaml
+  - _ref: pages/all.yaml
+  - _ref: pages/view.yaml
+  - _ref: pages/edit.yaml
+  - _ref: pages/new.yaml
 
 components:
   - id: company-selector

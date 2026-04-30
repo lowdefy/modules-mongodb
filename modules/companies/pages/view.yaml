@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: company-detail
+    id: view
     title:
       _nunjucks:
         template: |
@@ -18,7 +18,7 @@ _ref:
       - label:
           _module.var: label_plural
         pageId:
-          _module.pageId: companies
+          _module.pageId: all
       - label:
           _if_none:
             - _request: get_company.0.display_name
@@ -38,7 +38,7 @@ _ref:
               type: Link
               params:
                 pageId:
-                  _module.pageId: company-edit
+                  _module.pageId: edit
                 urlQuery:
                   _id:
                     _url_query: _id
@@ -65,7 +65,7 @@ _ref:
               - null
           params:
             pageId:
-              _module.pageId: companies
+              _module.pageId: all
     requests:
       - _ref: requests/get_company.yaml
     blocks:

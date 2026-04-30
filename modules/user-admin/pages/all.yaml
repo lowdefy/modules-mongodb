@@ -2,20 +2,26 @@ _ref:
   module: layout
   component: page
   vars:
-    id: companies
+    id: all
     title:
-      _module.var: label_plural
+      _build.string.trim:
+        _build.string.concat:
+          - _module.var: app_title
+          - " User Admin"
     breadcrumbs:
       - home: true
         icon: AiOutlineHome
       - label:
-          _module.var: label_plural
+          _build.string.trim:
+            _build.string.concat:
+              - _module.var: app_title
+              - " User Admin"
     page_actions:
       - _ref: components/excel_download.yaml
-      - _ref: components/button_new_company.yaml
+      - _ref: components/button_new_invite.yaml
     events:
       onInit:
-        - id: set_sort
+        - id: set_sort_filter
           type: SetState
           params:
             sort:
@@ -32,12 +38,12 @@ _ref:
         - id: get_all
           type: Request
           params:
-            - get_all_companies
+            - get_all_users
     requests:
-      - _ref: requests/get_all_companies.yaml
-      - _ref: requests/get_company_excel_data.yaml
+      - _ref: requests/get_all_users.yaml
+      - _ref: requests/get_user_excel_data.yaml
     blocks:
-      - _ref: components/filter_companies.yaml
+      - _ref: components/users_filter.yaml
       - id: custom_filters_box
         type: Box
         layout:
@@ -57,14 +63,21 @@ _ref:
               _ref: actions/search.yaml
             sort_options:
               - label: Name
-                value:
-                  _module.var: name_field
+                value: profile.name
+              - label: Email
+                value: email
               - label: Date Updated
                 value: updated.timestamp
               - label: Date Created
                 value: created.timestamp
-      - _ref: components/table_companies.yaml
+              - label: Date Signed Up
+                value:
+                  _string.concat:
+                    - "apps."
+                    - _module.var: app_name
+                    - ".sign_up"
+      - _ref: components/table_users.yaml
       - _ref:
           path: ../shared/layout/pagination.yaml
           vars:
-            request_id: get_all_companies
+            request_id: get_all_users

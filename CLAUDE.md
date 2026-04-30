@@ -57,7 +57,8 @@ dependencies:
 
 exports:
   pages:
-    - id: users-list
+    - id: all
+    - id: view
   components:
     - id: user-avatar
   menus:
@@ -69,7 +70,8 @@ components:
       _ref: components/user-avatar.yaml
 
 pages:
-  - _ref: pages/users-list.yaml
+  - _ref: pages/all.yaml
+  - _ref: pages/view.yaml
 
 menus:
   - _ref: menus.yaml
@@ -108,7 +110,7 @@ Modules reference each other via dependencies declared in the manifest.
     module: layout
     component: page
     vars:
-      id: contacts
+      id: all
       title: Contacts
       blocks: [...]
 ```
@@ -145,7 +147,6 @@ The build auto-scopes page IDs, connection IDs, API endpoint IDs, and menu item 
 - `_module.endpointId: endpoint-name` — resolve to scoped endpoint ID
 - Cross-module page reference: `_module.pageId: { id: page, module: dep-name }`
 
-
 ## Lowdefy Project Rules
 
 Rules and patterns for working with Lowdefy projects. These are practical conventions learned from development — not documentation.
@@ -154,10 +155,10 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 - **Enum files for config maps** — Extract hard-coded maps keyed by a pre-defined set (e.g. gate colors, discipline labels, status config) into enum files (e.g. `enums/gates.yaml`, `enums/disciplines.yaml`). Load these into global state nested under the `enums` key (e.g., `_global: enums.gates`, `_global: enums.disciplines`) instead of duplicating the maps inline in `_js` blocks. Do NOT extract plain selector `options` (label/value arrays) into enum files — the label/value schema is exclusive to selectors. Only create an enum for selector options when there are styling values (colors, icons) associated with the value, or the value needs to be prettified on a view page or filter.
 - **JS operator globals** — In `_js` blocks, access global state with `lowdefyGlobal('key')` (not `global('key')`). Access page state with `state('key')` (not `state.key`). Outside `_js`, use the standard `_global` and `_state` operators.
 - **File naming conventions** — Use kebab-case for page files, API files, and directory names (e.g., `lot-view.yaml`, `save-linked-document.yaml`). Use snake_case for component files, request files, action files, and enum files (e.g., `gate_modal_s0.yaml`, `get_lot.yaml`, `options_enum.yaml`).
-- **Kebab-case page IDs** — Use kebab-case for page IDs since they become URL paths (e.g., `my-tickets`, `ticket-view`, `companies-new`).
+- **Kebab-case page IDs** — Use kebab-case for app page IDs since they become URL paths (e.g., `my-tickets`, `ticket-view`). Module pages use semantic verbs instead: `all`, `view`, `edit`, `new` (URLs become `/{module-entry}/all`, `/{module-entry}/view`, etc.).
 - **Request ID verb prefixes** — Prefix request IDs with the operation verb: `get_`, `insert_`, `update_`, `set_`, `event_`, `selector_` (e.g., `get_company`, `insert_company`, `event_insert_company`).
 - **Change stamp on writes** — Include a change stamp (`_ref: change_stamp.yaml`) on all database write operations to track timestamp, user, and app context.
-- **Extract deep blocks via _ref** — Extract blocks into separate component files via `_ref` when nesting exceeds ~3-4 levels or when a block is reused across pages. Pass data via `vars`.
+- **Extract deep blocks via \_ref** — Extract blocks into separate component files via `_ref` when nesting exceeds ~3-4 levels or when a block is reused across pages. Pass data via `vars`.
 - **Conditional skip on actions** — Use the `skip` property with operators (`_eq`, `_ne`) to conditionally execute actions rather than wrapping in complex `_if` blocks.
 - **Format dates with `_dayjs`** — Use `_dayjs.format` or `_dayjs` chain mode to format dates, not `_date.format`. The `_date` operator is only for creating date objects (e.g., `_date: now`), not for formatting display strings.
 - **Kebab-case API IDs** — Use kebab-case for API endpoint IDs (e.g., `save-linked-document`, `remove-linked-document`). This matches the kebab-case file naming convention and applies to the `id` field in API YAML files.
@@ -181,7 +182,7 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 - **Audit state refs when changing input blocks** — When adding, removing, or renaming an input block, audit all references to its `id` across the page (operators like `_state`, `_if`, `_eq`, requests, actions, and API payloads) since input block IDs are auto-bound state paths and any change silently breaks code that reads from or writes to that path.
 - **Gap before margins** — When adjusting spacing between sibling components, first use the parent's `layout.gap` property to set uniform spacing between all direct children. Only add individual `margin` styles when the spacing needs to be non-uniform or when extra spacing is needed beyond the gap.
 - **Modular component extraction** — Extract repeated block patterns into reusable component files and reference them via `_ref` with `vars`. Place cross-page components under `apps/shared/components/`. Use `.yaml.njk` when vars need string interpolation in IDs or inline values; use plain `.yaml` with `_var` when vars only appear in operator positions.
-- **Nunjucks over Html+_js** — Prefer the `_nunjucks` operator over `Html` blocks with `_js`-constructed HTML strings. Nunjucks templates are more readable and keep markup declarative.
+- **Nunjucks over Html+\_js** — Prefer the `_nunjucks` operator over `Html` blocks with `_js`-constructed HTML strings. Nunjucks templates are more readable and keep markup declarative.
 - **Payload, not state**: requests receive state via `payload:` mapping, never inline `_state` in pipeline properties.
 - **`_build.*`** operators for build-time logic; `_if`/`_eq`/etc. for runtime.
 
@@ -189,32 +190,32 @@ Rules and patterns for working with Lowdefy projects. These are practical conven
 
 Read the relevant guide **before** writing code for that topic.
 
-| When you are...                                | Read                              |
-| ---------------------------------------------- | --------------------------------- |
-| Building a list page with table and pagination | `.claude/guides/list-pages.md`    |
-| Configuring an AgGrid table                    | `.claude/guides/aggrid-tables.md` |
-| Writing MongoDB aggregation pipelines          | `.claude/guides/aggregations.md`  |
-| Adding search/filter controls to a page        | `.claude/guides/filters.md`       |
-| Adding pagination to a list                    | `.claude/guides/pagination.md`    |
-| Building a detail/view page                    | `.claude/guides/detail-pages.md`  |
-| Building an edit/create form page              | `.claude/guides/edit-pages.md`    |
-| Defining enums (colors, titles, options helpers)           | `.claude/guides/enums.md`          |
-| Working with status arrays, transitions, and history       | `.claude/guides/status-fields.md`  |
-| Adding created/updated audit stamps            | `.claude/guides/change-stamps.md` |
-| Wrapping content in page layout or cards       | `.claude/guides/page-layouts.md`  |
-| Adding sidebar tiles (events, files, related)  | `.claude/guides/sidebar-tiles.md` |
-| Logging audit events and displaying timelines  | `.claude/guides/events.md`        |
-| Building charts, reports, and KPI dashboards   | `.claude/guides/charts.md`        |
-| Writing API routines (create/update endpoints) | `.claude/guides/api-routines.md`  |
-| Working with contact fields or the user_contacts schema | `.claude/guides/contact-fields.md` |
-| Designing data schemas, naming fields, or adding collections | `.claude/guides/data-schema.md` |
-| Adding notifications (inbox, bell, emails, Lambda pipeline) | `.claude/guides/notifications.md` |
-| Using Lowdefy operators (build-time, runtime, functions)    | `.claude/guides/operators.md`     |
-| Writing inline JavaScript with the `_js` operator          | `.claude/guides/js-operator.md`   |
-| Rendering dynamic arrays with List or ControlledList       | `.claude/guides/lists.md`         |
-| Styling blocks with Tailwind, inline CSS, and theme tokens | `.claude/guides/styling.md`       |
-| Deciding where new files go and naming them                 | `.claude/guides/file-structure.md` |
-| Authoring, wiring, or extending a Lowdefy module           | `.claude/guides/modules.md`       |
+| When you are...                                              | Read                               |
+| ------------------------------------------------------------ | ---------------------------------- |
+| Building a list page with table and pagination               | `.claude/guides/list-pages.md`     |
+| Configuring an AgGrid table                                  | `.claude/guides/aggrid-tables.md`  |
+| Writing MongoDB aggregation pipelines                        | `.claude/guides/aggregations.md`   |
+| Adding search/filter controls to a page                      | `.claude/guides/filters.md`        |
+| Adding pagination to a list                                  | `.claude/guides/pagination.md`     |
+| Building a detail/view page                                  | `.claude/guides/detail-pages.md`   |
+| Building an edit/create form page                            | `.claude/guides/edit-pages.md`     |
+| Defining enums (colors, titles, options helpers)             | `.claude/guides/enums.md`          |
+| Working with status arrays, transitions, and history         | `.claude/guides/status-fields.md`  |
+| Adding created/updated audit stamps                          | `.claude/guides/change-stamps.md`  |
+| Wrapping content in page layout or cards                     | `.claude/guides/page-layouts.md`   |
+| Adding sidebar tiles (events, files, related)                | `.claude/guides/sidebar-tiles.md`  |
+| Logging audit events and displaying timelines                | `.claude/guides/events.md`         |
+| Building charts, reports, and KPI dashboards                 | `.claude/guides/charts.md`         |
+| Writing API routines (create/update endpoints)               | `.claude/guides/api-routines.md`   |
+| Working with contact fields or the user_contacts schema      | `.claude/guides/contact-fields.md` |
+| Designing data schemas, naming fields, or adding collections | `.claude/guides/data-schema.md`    |
+| Adding notifications (inbox, bell, emails, Lambda pipeline)  | `.claude/guides/notifications.md`  |
+| Using Lowdefy operators (build-time, runtime, functions)     | `.claude/guides/operators.md`      |
+| Writing inline JavaScript with the `_js` operator            | `.claude/guides/js-operator.md`    |
+| Rendering dynamic arrays with List or ControlledList         | `.claude/guides/lists.md`          |
+| Styling blocks with Tailwind, inline CSS, and theme tokens   | `.claude/guides/styling.md`        |
+| Deciding where new files go and naming them                  | `.claude/guides/file-structure.md` |
+| Authoring, wiring, or extending a Lowdefy module             | `.claude/guides/modules.md`        |
 
 ## Skills
 

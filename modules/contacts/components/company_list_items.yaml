@@ -53,5 +53,5 @@ properties:
           _module.var: components.company_card_extra_fields
         company_detail_page:
           _module.pageId:
-            id: company-detail
+            id: view
             module: companies

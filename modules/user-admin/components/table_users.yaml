@@ -64,7 +64,7 @@ events:
       type: Link
       params:
         pageId:
-          _module.pageId: users-view
+          _module.pageId: view
         input:
           user_id:
             _event: row._id

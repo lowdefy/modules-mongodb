@@ -41,11 +41,11 @@ modules:
 
 | ID | Description | Path |
 |---|---|---|
-| `users` | List with filtering, sorting, pagination, Excel download | `/{entryId}/users` |
-| `users-view` | Read-only detail with profile, attributes, access sidebar | `/{entryId}/users-view` |
-| `users-edit` | Edit existing user profile and access | `/{entryId}/users-edit` |
-| `users-invite` | Invite a new user with profile and access | `/{entryId}/users-invite` |
-| `check-invite-email` | Verify email availability before sending an invite | `/{entryId}/check-invite-email` |
+| `all` | List with filtering, sorting, pagination, Excel download | `/{entryId}/all` |
+| `view` | Read-only detail with profile, attributes, access sidebar | `/{entryId}/view` |
+| `edit` | Edit existing user profile and access | `/{entryId}/edit` |
+| `new` | Invite a new user with profile and access | `/{entryId}/new` |
+| `check` | Verify email availability before sending an invite | `/{entryId}/check` |
 
 ### Components
 

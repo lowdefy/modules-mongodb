@@ -44,9 +44,9 @@ See `apps/demo/modules/user-account/vars.yaml` for a worked example.
 |---|---|---|
 | `login` | Email-based passwordless login | `/{entryId}/login` |
 | `verify-email-request` | Confirmation page after sign-in link is sent | `/{entryId}/verify-email-request` |
-| `profile` | View profile details | `/{entryId}/profile` |
-| `edit-profile` | Edit profile fields | `/{entryId}/edit-profile` |
-| `create-profile` | First-time profile creation after sign-up | `/{entryId}/create-profile` |
+| `view` | View profile details | `/{entryId}/view` |
+| `edit` | Edit profile fields | `/{entryId}/edit` |
+| `new` | First-time profile creation after sign-up | `/{entryId}/new` |
 | `logout` | Logs the user out and shows the login link | `/{entryId}/logout` |
 
 ### Components

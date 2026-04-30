@@ -3,7 +3,7 @@ links:
   - id: users
     type: MenuLink
     pageId:
-      _module.pageId: users
+      _module.pageId: all
     properties:
       title:
         _build.string.trim:

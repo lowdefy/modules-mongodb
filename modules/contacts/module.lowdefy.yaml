@@ -72,7 +72,7 @@ vars:
         default: []
         description: |
           List of { label, value } pairs appended under each company's display
-          name in the contact-detail companies tile. `value` is a top-level key
+          name in the contact view companies tile. `value` is a top-level key
           on the company doc projected by get_contact_companies.
   request_stages:
     type: object
@@ -122,13 +122,13 @@ vars:
 
 exports:
   pages:
-    - id: contacts
+    - id: all
       description: Contact list with filtering, sorting, pagination, and Excel download
-    - id: contact-detail
+    - id: view
       description: Read-only contact detail with sidebar tiles
-    - id: contact-edit
+    - id: edit
       description: Edit existing contact (blocked for user records)
-    - id: contact-new
+    - id: new
       description: Create a new contact with duplicate detection
   connections:
     - id: contacts-collection
@@ -155,10 +155,10 @@ api:
   - _ref: api/update-contact.yaml
 
 pages:
-  - _ref: pages/contacts.yaml
-  - _ref: pages/contact-detail.yaml
-  - _ref: pages/contact-edit.yaml
-  - _ref: pages/contact-new.yaml
+  - _ref: pages/all.yaml
+  - _ref: pages/view.yaml
+  - _ref: pages/edit.yaml
+  - _ref: pages/new.yaml
 
 components:
   - id: contact-selector

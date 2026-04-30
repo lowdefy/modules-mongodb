@@ -4,6 +4,12 @@ style:
   maxHeight: 600
   overflowY: auto
 
+events:
+  onMount:
+    - id: fetch_events
+      type: Request
+      params: get-events
+
 requests:
   - id: get-events
     type: MongoDBAggregation
@@ -80,3 +86,16 @@ blocks:
           default: true
       s3GetPolicyRequestId:
         _var: s3GetPolicyRequestId
+      contactPageUrl:
+        _var:
+          key: contact_page_url
+          default:
+            _module.var: contact_page_url
+      disableContactLink:
+        _var:
+          key: disable_contact_link
+          default: false
+      compact:
+        _var:
+          key: compact
+          default: false

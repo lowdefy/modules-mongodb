@@ -16,7 +16,7 @@ Edit and create pages share the same layout structure: a centered Card containin
 
 Some edit pages add a pre-check before the fetch: redirect back if the URL has no `_id` param at all. Complex edit pages may add additional guards (e.g., redirect if the record is a user managed elsewhere).
 
-**Create pages** skip the entire onMount fetch/redirect sequence. If the form needs selector data (e.g., company dropdown), load it in `onMountAsync` to avoid blocking the initial render. Some create pages use `onInit` to seed state from `_user` (e.g., create-profile populates name/email from the logged-in user).
+**Create pages** skip the entire onMount fetch/redirect sequence. If the form needs selector data (e.g., company dropdown), load it in `onMountAsync` to avoid blocking the initial render. Some create pages use `onInit` to seed state from `_user` (e.g., the user-account `new` page populates name/email from the logged-in user).
 
 **Form component** is always a separate `_ref`'d file (`components/form_{entity}.yaml`). The same form component is shared between edit and create pages. Differences between modes are handled via `_var` (e.g., `email_disabled: true` on edit, `enable_email: true` on create). For module-provided pages, the module owns the form layout directly (no wholesale `form_fields` override var); consumers extend via `_module.var: fields.*` field-array slots (e.g. `fields.profile`, `fields.attributes`).
 
@@ -132,11 +132,13 @@ actions:
   type: Link
   params:
     pageId:
-      _module.pageId: {entity}-detail
+      _module.pageId: view
     urlQuery:
       _id:
-        _actions: create_{entity}.response.{idField}
+        _actions: create_{entity}.response.response.{idField}
 ```
+
+> CallAPI double-wraps the API's return value: `_actions: <id>.response.response.<field>`. Plain `Request` actions use a single `_actions: <id>.response.<field>` (or `.response.0.<field>` for find arrays).
 
 **content_width instead of card width** — when the page layout should constrain width (not just the card), pass `content_width` to the page component. This affects the entire page content area:
 
@@ -145,7 +147,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: users-edit
+    id: edit
     content_width: 600
 ```
 
@@ -160,15 +162,15 @@ _ref:
 
 ## Reference Files
 
-- `modules/contacts/pages/contact-edit.yaml` — canonical edit page: fetch → redirect → card + floating-actions with CallAPI
-- `modules/contacts/pages/contact-new.yaml` — canonical create page: card + floating-actions, redirect to detail on success
+- `modules/contacts/pages/edit.yaml` — canonical edit page: fetch → redirect → card + floating-actions with CallAPI
+- `modules/contacts/pages/new.yaml` — canonical create page: card + floating-actions, redirect to detail on success
 - `modules/contacts/components/form_contact.yaml` — shared form with `_build.if` for edit/create differences and `_module.var` injection points
 - `modules/contacts/api/update-contact.yaml` — API routine with optimistic concurrency (`updated.timestamp` filter), event logging, `_module.var` extension stages
 - `modules/contacts/api/create-contact.yaml` — API routine with duplicate check, upsert, `$ifNull` for insert-only fields
-- `modules/user-admin/pages/users-edit.yaml` — multi-section edit: dividers, extra floating-action buttons (resend invite), `content_width`
-- `modules/user-admin/pages/users-invite.yaml` — create variant with pre-check (`_input: email`)
-- `modules/user-account/pages/edit-profile.yaml` — simple edit using `onInit` for `_user` state
-- `modules/user-account/pages/create-profile.yaml` — create with `onInit` seeding from `_user`, hidden menu/profile
+- `modules/user-admin/pages/edit.yaml` — multi-section edit: dividers, extra floating-action buttons (resend invite), `content_width`
+- `modules/user-admin/pages/new.yaml` — create variant with pre-check (`_input: email`)
+- `modules/user-account/pages/edit.yaml` — simple edit using `onInit` for `_user` state
+- `modules/user-account/pages/new.yaml` — create with `onInit` seeding from `_user`, hidden menu/profile
 - `modules/shared/layout/floating-actions.yaml` — sticky Affix + Card, blocks injected via `_var: actions`
 - `modules/shared/layout/card.yaml` — card with loading skeleton, doc metadata, header buttons, footer buttons
 
@@ -177,12 +179,12 @@ _ref:
 ### Edit Page
 
 ```yaml
-# pages/{entity}-edit.yaml
+# pages/edit.yaml
 _ref:
   module: layout
   component: page
   vars:
-    id: {entity}-edit
+    id: edit
     title:
       _string.concat:
         - "Edit "
@@ -206,7 +208,7 @@ _ref:
               - null
           params:
             pageId:
-              _module.pageId: {entities}
+              _module.pageId: all
         - id: set_state
           type: SetState
           params:
@@ -294,12 +296,12 @@ _ref:
 ### Create Page
 
 ```yaml
-# pages/{entity}-new.yaml
+# pages/new.yaml
 _ref:
   module: layout
   component: page
   vars:
-    id: {entity}-new
+    id: new
     title:
       _string.concat:
         - "New "
@@ -344,7 +346,7 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: {entities}
+                          _module.pageId: all
               - id: save_button
                 type: Button
                 layout:
@@ -379,10 +381,10 @@ _ref:
                       type: Link
                       params:
                         pageId:
-                          _module.pageId: {entity}-detail
+                          _module.pageId: view
                         urlQuery:
                           _id:
-                            _actions: create_{entity}.response.{idField}
+                            _actions: create_{entity}.response.response.{idField}
 ```
 
 ## Checklist
@@ -397,4 +399,4 @@ _ref:
 - [ ] Endpoint via `_module.endpointId`, payload wraps `_state: {entity}`
 - [ ] Floating-actions: spacer (flex 1 0 auto) + Cancel + Save — buttons use `flex: 0 1 auto`
 - [ ] Create page Save button uses `type: primary`; edit page uses default
-- [ ] Create page Cancel links to list page (`_module.pageId: {entities}`); edit page uses `back: true`
+- [ ] Create page Cancel links to list page (`_module.pageId: all`); edit page uses `back: true`

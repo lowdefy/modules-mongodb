@@ -13,13 +13,13 @@ Lists render a template of child blocks once per item in a state array. The list
 
 **Methods** available on both (invoked via `CallMethod` action):
 
-| Method | Args | Description |
-|---|---|---|
-| `pushItem` | `(initialValue?)` | Add item to end |
-| `unshiftItem` | `(initialValue?)` | Add item to front |
-| `removeItem` | `(index)` | Remove item at index |
-| `moveItemUp` | `(index)` | Swap with previous item |
-| `moveItemDown` | `(index)` | Swap with next item |
+| Method         | Args              | Description             |
+| -------------- | ----------------- | ----------------------- |
+| `pushItem`     | `(initialValue?)` | Add item to end         |
+| `unshiftItem`  | `(initialValue?)` | Add item to front       |
+| `removeItem`   | `(index)`         | Remove item at index    |
+| `moveItemUp`   | `(index)`         | Swap with previous item |
+| `moveItemDown` | `(index)`         | Swap with next item     |
 
 **The `_index` operator** returns the current item's index inside a list. Use it as the `args` value for `removeItem`, `moveItemUp`, and `moveItemDown`:
 

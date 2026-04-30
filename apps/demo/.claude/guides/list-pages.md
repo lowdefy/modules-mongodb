@@ -12,8 +12,8 @@ Module var injection points allow consumers to add to the filter bar (`component
 
 ## Reference Files
 
-- `modules/contacts/pages/contacts.yaml` — canonical list page with all standard sections
-- `modules/user-admin/pages/users.yaml` — list page with role-based filters
+- `modules/contacts/pages/all.yaml` — canonical list page with all standard sections
+- `modules/user-admin/pages/all.yaml` — list page with role-based filters
 
 ## Template
 
@@ -22,7 +22,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: {entity-plural}
+    id: all
     title:
       _module.var:
         key: label_plural
@@ -52,7 +52,7 @@ _ref:
               type: Link
               params:
                 pageId:
-                  _module.pageId: {entity}-new
+                  _module.pageId: new
     events:
       onInit:
         - id: set_sort

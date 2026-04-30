@@ -11,4 +11,4 @@ events:
       type: Link
       params:
         pageId:
-          _module.pageId: check-invite-email
+          _module.pageId: check

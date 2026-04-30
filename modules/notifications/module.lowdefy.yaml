@@ -24,13 +24,13 @@ connections:
   - _ref: connections/notifications-collection.yaml
 
 pages:
-  - _ref: pages/inbox.yaml
+  - _ref: pages/all.yaml
   - _ref: pages/link.yaml
   - _ref: pages/invalid.yaml
 
 exports:
   pages:
-    - id: inbox
+    - id: all
       description: Notifications inbox — list, filter, and view notifications
     - id: link
       description: Deep-link handler — routes notification links to target pages

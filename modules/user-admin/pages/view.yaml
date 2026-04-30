@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: users-view
+    id: view
     title:
       _nunjucks:
         template: |
@@ -22,7 +22,7 @@ _ref:
               - _module.var: app_title
               - " User Admin"
         pageId:
-          _module.pageId: users
+          _module.pageId: all
       - label:
           _if_none:
             - _request: get_user.0.profile.name
@@ -42,7 +42,7 @@ _ref:
               type: Link
               params:
                 pageId:
-                  _module.pageId: users-edit
+                  _module.pageId: edit
                 input:
                   user_id:
                     _input: user_id
