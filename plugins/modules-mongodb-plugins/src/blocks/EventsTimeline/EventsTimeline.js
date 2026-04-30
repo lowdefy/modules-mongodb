@@ -15,7 +15,7 @@
 */
 
 import React, { useState, useMemo } from "react";
-import { Timeline, Modal, Badge, Tooltip, Popover, Card } from "antd";
+import { Timeline, Modal, Badge, Tooltip, Card } from "antd";
 import { withBlockDefaults } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
@@ -122,7 +122,7 @@ function Avatar({ user, contactPageUrl, disableContactLink, compact }) {
     );
   }
 
-  const popoverContent = user.name || "Unknown user";
+  const tooltipTitle = user.name || "Unknown user";
   const href = !disableContactLink
     ? buildContactHref(contactPageUrl, user.id)
     : null;
@@ -140,11 +140,7 @@ function Avatar({ user, contactPageUrl, disableContactLink, compact }) {
     </span>
   );
 
-  return (
-    <Popover content={popoverContent} trigger="hover" mouseEnterDelay={0.2}>
-      {wrapper}
-    </Popover>
-  );
+  return <Tooltip title={tooltipTitle}>{wrapper}</Tooltip>;
 }
 
 function buildContactHref(contactPageUrl, userId) {
