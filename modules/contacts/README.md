@@ -221,7 +221,7 @@ The `apps.{app_name}.is_user` flag distinguishes user records (managed by `user-
 ```yaml
 modules:
   - id: contacts
-    source: "github:lowdefy/modules-mongodb/modules/contacts@v1"
+    source: "github:lowdefy/modules-mongodb/modules/contacts@v0.1.1"
     vars:
       app_name: my-app
       fields:

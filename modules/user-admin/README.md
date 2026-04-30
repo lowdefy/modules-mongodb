@@ -243,7 +243,7 @@ The module logs three audit event types via the events dependency:
 ```yaml
 modules:
   - id: user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v1"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.1.1"
     vars:
       app_name: my-app
       app_title: My App

@@ -193,7 +193,7 @@ Centered login/auth layout with a branded card cover and form body.
 ```yaml
 modules:
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v1"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.1.1"
     vars:
       logo:
         primary_light: /my-logo.png

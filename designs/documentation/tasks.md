@@ -30,14 +30,14 @@ Goal: every var (top-level and nested) in every `module.lowdefy.yaml` has a `des
 
 Goal: produce the central doc and the cross-cutting idioms reference. Both are linked from per-module READMEs in Phase 3, so they go first.
 
-- [ ] **Rewrite `README.md`** — central doc covering: what this repo is, module list with one-line descriptions and links, Mermaid dependency graph, "what to use when" section, "Using modules in an app" basics snippet linking to <https://docs.lowdefy.com/modules>, link to `docs/idioms.md`, link to `plugins/modules-mongodb-plugins/README.md`, link to demo app, versioning/release info linking to CHANGELOG.
-- [ ] **New `docs/idioms.md`** — single page with anchored sections:
-  - [ ] `#change-stamps` — `change_stamp` audit metadata template, default schema, how to consume via `_ref: { module: events, component: change_stamp }`, override pattern, why it's a runtime template.
-  - [ ] `#event-display` — per-app Nunjucks templates, default file shape (`{module}/defaults/event_display.yaml`), template variables, why per-app, how to extend with custom event types.
-  - [ ] `#slots` — `fields` / `components` / `request_stages` slot pattern, rationale, conventions per module, worked example (companies).
-  - [ ] `#app-name` — why apps need a name, MongoDB field path constraints (no `.`), where it appears (`user.app_attributes.{app_name}`, `created.app_name`, `display.{app_name}`), modules that require it.
-  - [ ] `#avatar-colors` — shared default at `modules/shared/profile/avatar_colors.yaml`, `{ from, to }` shape, deterministic color picking, how to override.
-  - [ ] `#secrets` — master list grouped by category (Mongo, S3 file storage, S3 sync bucket, email), which modules need each.
+- [x] **Rewrite `README.md`** — central doc covering: what this repo is, module list with one-line descriptions and links, Mermaid dependency graph, "what to use when" section, "Using modules in an app" basics snippet linking to <https://docs.lowdefy.com/modules>, link to `docs/idioms.md`, link to `plugins/modules-mongodb-plugins/README.md`, link to demo app, versioning/release info linking to CHANGELOG.
+- [x] **New `docs/idioms.md`** — single page with anchored sections:
+  - [x] `#change-stamps` — `change_stamp` audit metadata template, default schema, how to consume via `_ref: { module: events, component: change_stamp }`, override pattern, why it's a runtime template.
+  - [x] `#event-display` — per-app Nunjucks templates, default file shape (`{module}/defaults/event_display.yaml`), template variables, why per-app, how to extend with custom event types.
+  - [x] `#slots` — `fields` / `components` / `request_stages` slot pattern, rationale, conventions per module, worked example (companies).
+  - [x] `#app-name` — why apps need a name, MongoDB field path constraints (no `.`), where it appears (`user.app_attributes.{app_name}`, `created.app_name`, `display.{app_name}`), modules that require it.
+  - [x] `#avatar-colors` — shared default at `modules/shared/profile/avatar_colors.yaml`, `{ from, to }` shape, deterministic color picking, how to override.
+  - [x] `#secrets` — master list grouped by category (Mongo, S3 file storage, S3 sync bucket, email), which modules need each.
 
 ---
 

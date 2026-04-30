@@ -215,7 +215,7 @@ Linked contacts are stored on the contact side as `global_attributes.company_ids
 ```yaml
 modules:
   - id: companies
-    source: "github:lowdefy/modules-mongodb/modules/companies@v1"
+    source: "github:lowdefy/modules-mongodb/modules/companies@v0.1.1"
     vars:
       id_prefix: "ACME-"
       id_length: 5
