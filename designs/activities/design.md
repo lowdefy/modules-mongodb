@@ -2,7 +2,7 @@
 
 ## Problem
 
-The monorepo models CRM entities (`companies`, `contacts`) and immutable audit (`events`) but has no place for **editable, user-owned records of work done with or for those entities** — calls made, meetings held, emails sent, notes taken, tasks to do.
+The monorepo models CRM entities (`companies`, `contacts`) and immutable audit (`events`) but has no place for **editable, user-owned records of work done with or for those entities** — calls made, meetings held, emails sent.
 
 Apps building on these modules need:
 
@@ -24,23 +24,23 @@ questions and why each choice was made.
 
 **Status modelled as a newest-first array of `{stage, created}` entries**, following the repo's status-array convention. Current stage = `status[0].stage`. Completion timestamp = `status.find(s => s.stage === 'done').created.timestamp`. One schema, full history, no separate `completed_at`/`cancelled_at` fields needed.
 
-**Uniform status lifecycle across all types.** Every activity has a status stage: `open`, `done`, or `cancelled`. A note is created with `done`; a task is created with `open`. The initial stage is driven by a `default_stage` in the activity-type enum so the form can default sensibly per type.
+**Uniform status lifecycle across all types.** Every activity has a status stage: `open`, `done`, or `cancelled`. v1's built-in types (`call`, `meeting`, `email`) are all logged after the fact and created `done`. The initial stage is driven by a `default_stage` in the activity-type enum so the form can default sensibly per type — consumer-added types (or a future `meeting` flip once `scheduled_at` lands) can default to `open` instead.
 
-**Extensible `activity_types` enum, same shape as `event_types`.** Core types shipped: `call`, `meeting`, `email`, `note`, `task`. Consuming apps add their own via the `activity_types` module var, merged with built-ins.
+**Extensible `activity_types` enum, same shape as `event_types`.** Core types shipped: `call`, `meeting`, `email` — past-tense external interactions, all with future auto-ingestion channels. Consuming apps add their own via the `activity_types` module var, merged with built-ins. **`task` and `note` are deliberately not built-in types in v1** — see "Non-goals" and `decisions.md`. Tasks (forward-looking work items) belong in a separate module designed alongside due-date, assignee, and priority. Notes (text jotted against an entity) belong in the existing event-based comments pattern that production apps already implement (`*_comment` event types — comment text + author + timestamp + entity reference, surfaced in the events timeline) — append-only, attached via event `references`, no separate editable entity needed.
 
 **Events still get emitted for lifecycle transitions.** `create-activity`, `update-activity`, `complete-activity`, `cancel-activity`, `reopen-activity`, `delete-activity` — each with `references` carrying the linked contact/company IDs so the system-events timeline on those entities reflects activity churn. The activity's own detail page shows its own system-events timeline.
 
-**Separate `tile_activities` and `tile_events` on parent-entity detail pages.** Users see _what was done_ (activities) distinct from _what happened in the system_ (events). `tile_activities` is added as a new, parallel component titled "Activity". The existing `tile_events` on company/contact pages is retitled from "Activity" → "History" to resolve the name collision and align the UI labels with the user's mental model (activities = things users did; history = system audit log).
+**Separate `tile_activities` and `tile_events` on parent-entity detail pages, with activities as an optional dependency.** Users should see _what was done_ (activities) distinct from _what happened in the system_ (events). The activities module exports `tile_activities` as a self-contained, parameterised tile; apps that want activities surfacing on companies/contacts wire it via app-level `components.sidebar_slots` overrides. Companies and contacts do **not** depend on activities — same shape as how files-on-companies works (companies declares files as a dep but doesn't bake `tile_files` into its view). The existing `tile_events` on company/contact pages is retitled from "Activity" → "History" pre-emptively, so apps that DO add activities tiles don't hit the title collision; "History" is also the better label for the system-audit log regardless.
 
 **Reserved `source` field for future auto-ingestion channels.** `source: { channel, external_ref, raw }` where `channel ∈ {manual, calendar, email-forward, whatsapp, voicenote}` and `external_ref` is the upstream ID (calendar event id, email message-id, WhatsApp message id). `raw` holds the original payload. Channel ingestion endpoints land in a later phase; the field is carved out now so the v1 schema is forward-compatible.
 
 ## Data model
 
-Collection: `activities` (configurable via `collection` var, default `activities`).
+Collection: `activities` — hardcoded in `connections/activities-collection.yaml` alongside the `databaseUri` and `changeLog` config (matches the convention in `modules/companies/connections/companies-collection.yaml` and `modules/contacts/connections/contacts-collection.yaml`). Apps wanting a different collection name override the `activities-collection` connection in their `modules.yaml`. There's no `collection` module var — the codebase has consolidated to one way of configuring this (override the connection), not two.
 
 ```yaml
 _id: UUID # generated client-side
-type: call | meeting | email | note | task # extensible string — keyed into activity_types enum
+type: call | meeting | email # extensible string — keyed into activity_types enum
 title: string # short subject line
 description: string # longer body — rich-text HTML, edited and rendered via the Tiptap block (Lowdefy v5)
 status: # newest-first array
@@ -109,22 +109,33 @@ keyed by `(entity_type: 'activity', entity_id: <activity uuid>)` — the
 same indexing surface every other entity module uses. Nothing is
 inlined on the activity doc; S3 lifecycle stays in the files module.
 
-The activities module ships a local
-`modules/activities/components/tile_files.yaml` wrapper, mirroring
-`modules/companies/components/tile_files.yaml` — refs `files.file-card`
-with `entity_type: activity` and `entity_id: { _url_query: _id }`. The
-detail page's sidebar embeds this local tile (not a cross-module one;
-the files module exports `file-card` / `file-manager` / `file-list`,
-not a `tile_files`).
+The detail page's sidebar refs `files.file-card` directly:
 
-> **Future cleanup — `tile_files` consolidation.** Every entity module
-> ships a near-identical 7-line `tile_files.yaml` wrapping
-> `files.file-card`. The wrapping mostly renames + hardcodes
-> `entity_type`. Worth a separate cross-cutting PR (companies, contacts,
-> activities, files) to either drop the local wrappers in favour of
-> consumers using `files.file-card` inline, or push a parameterised
-> `tile_files` into the files module as the canonical export. Out of
-> scope here — activities follows the existing convention.
+```yaml
+- _ref:
+    module: files
+    component: file-card
+    vars:
+      entity_type: activity
+      entity_id:
+        _url_query: _id
+```
+
+No local `tile_files.yaml` wrapper. `file-card` is already a
+card-styled component (its own name says so) that takes
+`entity_type` + `entity_id` as vars. A local wrapper that hardcodes
+`entity_type` and forwards `entity_id` adds an indirection without
+adding behaviour — Sam flagged this on PR #32 and we deleted the
+unused wrappers in companies and contacts as part of the same change.
+The `files` module's existing exports (`file-card`, `file-manager`,
+`file-list`) are the canonical surface; consumers ref them directly.
+
+If activities ever needs a wrapper that does real work — header
+buttons, custom card title, additional blocks alongside the file
+card — we add a local `tile_activity_files.yaml` THEN, mirroring how
+`tile_events.yaml` wraps the cross-module `events-timeline` with a
+`layout.card`. Until there's something to wrap, the inline ref is
+the right shape.
 
 ### Default sort
 
@@ -147,7 +158,7 @@ modules/activities/
 ├── connections/
 │   └── activities-collection.yaml
 ├── enums/
-│   ├── activity_types.yaml          # call, meeting, email, note, task — built-in set
+│   ├── activity_types.yaml          # call, meeting, email — built-in set (no `task` or `note` in v1)
 │   └── event_types.yaml             # create-activity, update-activity, complete-activity, cancel-activity, reopen-activity, delete-activity
 ├── defaults/
 │   ├── event_display.yaml           # Nunjucks templates for the events this module emits
@@ -164,7 +175,8 @@ modules/activities/
 │   └── delete-activity.yaml         # soft-delete — sets removed: change_stamp, emits delete-activity event
 ├── components/
 │   ├── activity-selector.yaml       # MultipleSelector, for other modules linking TO activities
-│   ├── activities-timeline.yaml     # cross-module content block: list + filters, no card. Consumers wrap in their own tile_activities.yaml (mirrors events.events-timeline pattern).
+│   ├── tile_activities.yaml         # cross-module self-contained tile: layout.card + activities-timeline + capture_activity in header. Apps drop this into companies/contacts sidebar slots.
+│   ├── activities-timeline.yaml     # cross-module content-only block: list + filters + view-all link, no card. Building block for apps wanting custom wrappers.
 │   ├── capture_activity.yaml        # button + modal bundle for creating an activity from anywhere (see "Capture entry points")
 │   ├── open_capture.yaml            # exported action sequence — navigates to `pageId: new` with prefill in urlQuery
 │   ├── form_activity.yaml           # shared form (used by new + edit + capture modal)
@@ -172,7 +184,6 @@ modules/activities/
 │   ├── table_activities.yaml        # AgGridBalham list
 │   ├── filter_activities.yaml       # filter block for list page
 │   ├── excel_download.yaml          # Excel export trigger on list page (mirrors companies/contacts)
-│   ├── tile_files.yaml              # local wrapper around `files.file-card` (entity_type: activity)
 │   ├── contact_list_items.yaml      # contact chips (parallels companies pattern)
 │   ├── company_list_items.yaml      # company chips
 │   └── fields/
@@ -206,14 +217,14 @@ modules/activities/
 | `pages`       | `all`, `view`, `edit`, `new`                                                                      |
 | `connections` | `activities-collection`                                                                           |
 | `api`         | `create-activity`, `update-activity`, `change-activity-status`, `delete-activity`                 |
-| `components`  | `activity-selector`, `activities-timeline`, `capture_activity`, `open_capture`                    |
+| `components`  | `activity-selector`, `tile_activities`, `activities-timeline`, `capture_activity`, `open_capture` |
 | `menus`       | `default`                                                                                         |
 
-The other `components/` files (`form_activity`, `view_activity`, `table_activities`, `filter_activities`, `tile_files`, `contact_list_items`, `company_list_items`, `fields/*`) are internal — referenced by this module's own pages and not exposed to consumers.
+The other `components/` files (`form_activity`, `view_activity`, `table_activities`, `filter_activities`, `excel_download`, `contact_list_items`, `company_list_items`, `fields/*`) are internal — referenced by this module's own pages and not exposed to consumers.
 
 The cross-module export surface is wider than companies (1 component) or contacts (2 components). Two reasons specific to this module:
 
-- `activities-timeline` is the analogue of `events.events-timeline` — every entity module that wraps it pays a small local-wrapper file (`tile_*.yaml`) for the cross-module timeline export.
+- `tile_activities` (self-contained card + content drop-in) and `activities-timeline` (content-only block) mirror the files module's `file-card` (self-contained drop-in) + `file-manager` (content-only) pair. Apps drop `tile_activities` into companies/contacts sidebar slots for the standard "show activities for this entity" affordance; apps wanting custom layouts use `activities-timeline` as a building block. The shape follows the **files pattern** because activities is an optional dep for parent entities — there are no consumer-side files to wrap in, so the self-contained tile is the integration surface, just like `file-card` is for files. (Contrast: `events.events-timeline` is content-only and consumers ship local `tile_events.yaml` wrappers in companies/contacts — but events is a **required** dep for parent entities, so the consumer-wrapper pattern works there.)
 - `capture_activity` and `open_capture` codify the "log activity from anywhere" flow, which is more involved than companies' "create company" flow. The capture modal carries form prefill, validation, action wiring, and `on_created` callbacks — all of which would have to be recreated by every consumer reaching for an inline create button. Companies/contacts can stay internal because their "create" flow is a page navigation (`_module.pageId: { id: new, module: companies }`) — replicable in any consumer with one Link action. Activities' equivalent is `open_capture` (page mode); `capture_activity` adds the in-context modal flow that page navigation can't deliver.
 
 ### Module vars
@@ -224,7 +235,6 @@ The table below is shorthand. The actual `module.lowdefy.yaml` declares vars in 
 
 | Var                                 | Default                             | Purpose                                                                                                                                                   |
 | ----------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `collection`                        | `activities`                        | MongoDB collection name                                                                                                                                   |
 | `label`                             | `Activity`                          | Singular display label                                                                                                                                    |
 | `label_plural`                      | `Activities`                        | Plural display label                                                                                                                                      |
 | `activity_types`                    | `{}`                                | App-level additions to the built-in type enum. Same shape as `event_types`: keys are type strings, values have `title`, `color`, `icon`, `default_stage`. |
@@ -260,7 +270,9 @@ module for a consumer who doesn't exist yet. `files`, by contrast, is
 genuinely auxiliary — activities are still useful without
 attachments, so that dep is optional.
 
-The required/optional distinction above is editorial — the manifest's `dependencies:` list (see `modules/companies/module.lowdefy.yaml:5-13`) doesn't carry a `required` flag; the runtime treats every declared dep the same. The labels here document which deps the module assumes present at runtime: a consumer omitting `contacts` or `companies` from its `modules.yaml` will get build-time errors when the activities module tries to ref `contacts.contact-selector` etc., while omitting `files` will only surface as a missing `tile_files` (the activity detail page's attachment tile) — the rest of the module keeps working.
+The required/optional distinction above is editorial — the manifest's `dependencies:` list (see `modules/companies/module.lowdefy.yaml:5-13`) doesn't carry a `required` flag; the runtime treats every declared dep the same. The labels here document which deps the module assumes present at runtime: a consumer omitting `contacts` or `companies` from its `modules.yaml` will get build-time errors when the activities module tries to ref `contacts.contact-selector` etc., while omitting `files` will only surface as a missing `files.file-card` ref in the activity detail page's sidebar — the rest of the module keeps working.
+
+Symmetrically, **companies and contacts do NOT depend on activities** — apps that wire activities-tiles into companies/contacts ship the slot override at app config level. See "Linking → Forward" and "Integration with companies / contacts" sections.
 
 ## Activity types enum (built-in)
 
@@ -282,16 +294,6 @@ email:
   color: "#13c2c2"
   icon: AiOutlineMail
   default_stage: done # logged after sending
-note:
-  title: Note
-  color: "#8c8c8c"
-  icon: AiOutlineFileText
-  default_stage: done # instant
-task:
-  title: Task
-  color: "#fa8c16"
-  icon: AiOutlineCheckSquare
-  default_stage: open # awaiting completion
 ```
 
 Merging pattern copied from `events.event_types`:
@@ -355,47 +357,49 @@ Same `target` shape used by every emitted event (`create-activity`, `update-acti
 
 ### Forward: list of activities on company / contact detail
 
-The activities module exports `activities-timeline` — a content-only block (list + filters, no card). Each consuming module ships a local `tile_activities.yaml` wrapper that sets the card title, embeds `capture_activity` in the header, and embeds `activities-timeline` as the body. Mirrors the `events.events-timeline` ↔ `tile_events.yaml` pattern already used by every entity module.
+**Activities is an optional dependency for companies and contacts.** Neither module declares `activities` in its manifest's `dependencies:`, neither ships a local `tile_activities.yaml`, neither embeds activities tiles in `view.yaml`. Apps that want activity tiles surfacing on companies/contacts wire them at app level via `components.sidebar_slots` overrides — same shape as how files-on-companies works today (companies declares `files` as a dep but doesn't bake `tile_files` into its view; apps that want files-on-companies slot the embed themselves; per `decisions.md` §4 we deleted the unused `tile_files.yaml` wrappers as part of this PR's `tile_files` consolidation).
+
+This is a deliberate departure from how events couples to companies/contacts (where `events` is a required dep and `tile_events.yaml` lives in each entity module). Sam's PR-32 review flagged the question: *"Do these modules get a dependancy on activities now? Do we want this to be optional? I'm not sure"* — and we agreed that not every consumer of companies/contacts is doing CRM. A company-directory app shouldn't have to ship activities just to use companies.
+
+**The activities module exports `tile_activities`** — a self-contained, parameterised tile (`layout.card` wrapping `activities-timeline` content + `capture_activity` in header buttons). Apps drop it into companies' / contacts' sidebar slots from their own config:
 
 ```yaml
-# modules/companies/components/tile_activities.yaml — local wrapper, parallels tile_events.yaml
-_ref:
-  module: layout
-  component: card
-  vars:
-    title: Activity
-    header_buttons:
-      - _ref:
-          module: activities
-          component: capture_activity
-          vars:
-            prefill:
-              company_ids:
-                - _url_query: _id
-            label: Log activity
-            on_created:
-              - id: refetch_activities
-                type: Request
-                params: get_activities_for_entity
-    blocks:
-      - _ref:
-          module: activities
-          component: activities-timeline
-          vars:
-            reference_field: company_ids
-            reference_value:
-              _url_query: _id  # matches how tile_events resolves the detail-page entity
+# in apps/<app>/modules/companies/vars.yaml (or wherever the app overrides companies' vars)
+components:
+  sidebar_slots:
+    - _ref:
+        module: activities
+        component: tile_activities
+        vars:
+          reference_field: company_ids
+          reference_value:
+            _url_query: _id
+          # Optional: title override (defaults to "Activity")
+          # Optional: prefill passthrough to the embedded capture_activity
+          prefill:
+            company_ids:
+              - _url_query: _id
 ```
 
-The local wrapper owns the title (`Activity`), the header capture button (with company-specific prefill and an `on_created` that refetches the embedded timeline's list request), and the embedding. The cross-module `activities-timeline` owns:
+Same shape on the contacts side, swapping `company_ids` → `contact_ids`.
 
-- Pulling recent activities via `get_activities_for_entity` request, parameterised by `reference_field` + `reference_value`.
-- Showing a compact list ordered by `updated.timestamp` desc, with type icon, title, current-stage badge, and relative time.
-- The "View all" link to the activities list page with a pre-applied filter, mirroring `tile_contacts.yaml`'s pattern. URL param name varies by `reference_field`: `?contact_id=<uuid>` when `reference_field: contact_ids`, `?company_id=<uuid>` when `reference_field: company_ids`. Singular keys, matching how `tile_contacts` already passes `company_id` into the contacts list.
+`tile_activities` accepts:
 
-The contact wrapper (`modules/contacts/components/tile_activities.yaml`) is the same shape, swapping `company_ids` → `contact_ids`. Consumers wanting a different title, extra header buttons, or to omit the capture button just edit their local wrapper — no var-explosion on the cross-module export.
+| Var | Default | Purpose |
+| --- | --- | --- |
+| `reference_field` | required | Which activity-link array to filter by — `contact_ids` / `company_ids` (and later `deal_ids`). |
+| `reference_value` | required | The entity ID to filter on. Typically `{ _url_query: _id }` for detail-page hosts. |
+| `title` | `Activity` | Card title. |
+| `prefill` | `{}` | Forwarded to the embedded `capture_activity`'s `prefill` var so logged activities pre-link to the host entity. |
+| `show_capture` | `true` | Set `false` to hide the header capture button (read-only sidebar tile). |
 
-The "View all" link inside `activities-timeline`:
+`tile_activities` also auto-wires its own list-refetch as the embedded `capture_activity`'s `on_created`, so a freshly captured activity appears in the tile immediately without a page refresh.
+
+**Why `tile_activities` is self-contained, not a content-only block plus consumer wrappers.** This mirrors the files module: `file-card` is a self-contained card-styled drop-in that apps slot into companies/contacts sidebars; `file-manager` is the content-only building block for custom wrappers. Activities follows the same pair-of-exports shape — `tile_activities` (drop-in) + `activities-timeline` (content-only) — because it sits in the same architectural position: optional dependency for parent entities, app-level slot wiring, no consumer module to host a wrapper file in. The tile has to live in activities itself.
+
+(This partially reverses review-5 #4's resolution, which had landed on the events-style pattern — content-only `activities-timeline` + local `tile_activities.yaml` wrappers in companies/contacts. That made sense when activities was a required dep. Once Sam's PR-32 #4 review pushed us toward optional, the whole topology flipped: no consumer modules to put wrappers in, so the tile centralises in activities and apps wire it themselves. See `decisions.md` §7 for the full chain of reasoning.)
+
+The "View all" link inside `tile_activities`:
 
 ```yaml
 events:
@@ -488,7 +492,7 @@ events:
       component: open_capture
       vars:
         prefill:
-          type: note
+          type: call
 ```
 
 **Behaviour:** always links to `pageId: new` with the prefill carried
@@ -525,7 +529,7 @@ config:
 ```
 ?type=call&contact_id=<uuid>&company_id=<uuid>
 ?type=meeting&contact_ids[]=<uuid>&contact_ids[]=<uuid>
-?type=note&title=Quick%20follow-up
+?type=email&title=Quick%20follow-up
 ```
 
 Supported params: `type`, `title`, `contact_id`, `contact_ids[]`,
@@ -545,7 +549,7 @@ contract and call `create-activity` directly with `source: { … }` set.
 
 Set up once by the module; consumers get these for free.
 
-- **`tile_activities` header** — each consumer's local `tile_activities.yaml` wrapper embeds `capture_activity` in the card's `header_buttons`, prefilled with the tile's entity (e.g. `company_ids: [_url_query: _id]` on company-detail), and wires `on_created` to refetch the embedded `activities-timeline`'s list. So a contact detail page renders the tile and its "Log activity" button is pre-linked to that contact, and the new activity appears immediately without a page refresh.
+- **`tile_activities` header** — the cross-module `tile_activities` export embeds `capture_activity` in its `header_buttons`, forwards the host's entity as prefill (via the consumer-passed `prefill` var), and auto-wires `on_created` to refetch the embedded `activities-timeline`. Apps that slot `tile_activities` into companies/contacts get a "Log activity" button on the tile pre-linked to the host entity, with the new activity appearing immediately without a page refresh — no per-app wiring needed beyond the slot ref.
 - **Main nav entry** — the module's `menus.yaml` includes a "New
   activity" item triggering `open_capture` (or linking to
   `pageId: new` directly if the consumer prefers).
@@ -694,8 +698,8 @@ Standard list page: AgGridBalham table, filters panel (type, current stage, date
 **URL param hydration.** On `onInit`, `SetState` on `filter` from
 `_url_query: contact_id` and `_url_query: company_id` (singular,
 optional). When present, the list mounts with the corresponding
-linked-entity filter pre-applied — feeds `activities-timeline`'s "View
-all" link (embedded inside each consumer's `tile_activities.yaml` wrapper) and works as a deep-link contract for external triggers
+linked-entity filter pre-applied — feeds `tile_activities`'s "View
+all" link and works as a deep-link contract for external triggers
 (reminder emails, dashboards, Slack unfurls landing on
 "activities for this contact"). Mirrors `pageId: new`'s URL-prefill
 contract — same query-string-only convention, no path params.
@@ -724,14 +728,31 @@ chat messages, shortcuts).
 
 ## Integration with companies / contacts
 
-No schema changes to `companies` or `contacts` — linking is one-way on the activity doc.
+No schema changes to `companies` or `contacts` — linking is one-way on the activity doc. Companies and contacts do not declare `activities` as a dependency; activities is genuinely optional for any consumer of these modules.
 
 Two touch points:
 
-1. **Add a local `tile_activities.yaml` wrapper to each consuming module** (companies, contacts) and embed it in their `company-detail.yaml` / `contact-detail.yaml` sidebar slots. The wrapper sets the card title, embeds `capture_activity` in the header with the right entity prefill, and embeds the cross-module `activities.activities-timeline` content block. Mirrors the existing `tile_events.yaml` ↔ `events.events-timeline` pattern.
-2. **No changes to `events`**. The events module is consumed as-is for event emission and change-stamp generation.
+1. **Apps that want activity tiles on companies/contacts wire `tile_activities` into the parent module's sidebar slots** at app config level — e.g., in the app's `modules/companies/vars.yaml` (or wherever the app overrides companies' vars):
 
-If an app wants activities but doesn't want the tile on companies by default, it can omit the tile from its `components.sidebar_slots` override.
+   ```yaml
+   components:
+     sidebar_slots:
+       - _ref:
+           module: activities
+           component: tile_activities
+           vars:
+             reference_field: company_ids
+             reference_value:
+               _url_query: _id
+   ```
+
+   No changes to companies' or contacts' module manifests; no new files in companies' or contacts' `components/`. The wiring lives where it makes sense — at the app level where activities + companies are both wired together.
+
+2. **Rename `tile_events`'s card title from "Activity" to "History"** in companies and contacts. Pre-emptive collision protection for apps that wire `tile_activities`; also a better label for the system-audit log regardless of whether activities is wired.
+
+**No changes to `events`.** The events module is consumed as-is for event emission and change-stamp generation.
+
+Apps that want companies/contacts without activities ship neither the activities module nor the slot override — companies/contacts work standalone. Apps that want activities-without-companies-or-contacts won't compile (activities still depends on contacts and companies for its own selectors and form fields, per the Dependencies section above), but the inverse is fully supported.
 
 ## Future channels (reserved, not implemented in v1)
 
@@ -760,17 +781,17 @@ Design decisions this phase locks in:
 
 **Touched modules:**
 
-- `modules/companies/components/tile_activities.yaml` — **new local wrapper.** `layout.card` titled "Activity", embeds `capture_activity` in `header_buttons` (prefill: `company_ids: [_url_query: _id]`), and embeds `activities.activities-timeline` (`reference_field: company_ids`). Mirrors `companies/components/tile_events.yaml`'s shape.
-- `modules/contacts/components/tile_activities.yaml` — **new local wrapper.** Same shape as the companies wrapper, swapping `company_ids` → `contact_ids`.
-- `modules/companies/pages/company-detail.yaml` — add the local `tile_activities` to sidebar slots.
-- `modules/contacts/pages/contact-detail.yaml` — add the local `tile_activities` to sidebar slots.
-- `modules/companies/components/tile_events.yaml` — rename card `title` from `Activity` to `History`. The existing system-events tile is currently labelled "Activity" in the UI, which collides with the new `tile_activities`. Activities (user-created) keep the "Activity" label; the system-audit log becomes "History".
+- `modules/companies/components/tile_events.yaml` — rename card `title` from `Activity` to `History`. Pre-emptive collision protection for apps that wire `tile_activities` via slot overrides; also a better label for the system-audit log regardless.
 - `modules/contacts/components/tile_events.yaml` — same `title: Activity` → `title: History` rename.
+- `modules/companies/components/tile_files.yaml` — **deleted** (unused dead-indirection wrapper; per `decisions.md` §4 / Sam's PR-32 review).
+- `modules/contacts/components/tile_files.yaml` — **deleted** (same reason).
 - `modules/shared/enums/event_types.yaml` — include `_ref: ../activities/enums/event_types.yaml` in the assign chain, so app-level `event_types` aggregations pick up activity events.
+
+**No changes to** companies' or contacts' module manifests (no new dependency on activities), `view.yaml` files (no new sidebar embeds — apps wire `tile_activities` themselves), or any other companies/contacts production files.
 
 **Demo app:**
 
-- `apps/demo/modules.yaml` — register the `activities` module entry, wire `layout`/`events`/`contacts`/`companies`/`files` dependencies.
+- `apps/demo/modules.yaml` — register the `activities` module entry, wire `layout`/`events`/`contacts`/`companies`/`files` dependencies. Plus: in the `companies` and `contacts` module entries' vars overrides, add `tile_activities` to `components.sidebar_slots` so the demo app's company / contact detail pages show the activities tile. Working reference for consumers wiring activities into a CRM-flavored deployment.
 - `apps/demo/menus.yaml` — add nav link to activities list (via the module's `menus` export).
 - `apps/demo/pages/` — home page embeds a prominent `capture_activity` (no prefill) as a working reference for consumers.
 
@@ -780,7 +801,9 @@ Design decisions this phase locks in:
 
 - **Scheduled / due dates** — no `scheduled_at` field in v1. Adding it later is cheap (append a field, extend the form, extend indexes) and we avoid guessing the right shape now. See "Deferred" below.
 - **Consecutive human IDs** (`A-0001`) — UUIDs only.
-- **Priority field on tasks** — not a first-class field. Consumers needing it can add it via `attributes`; it can be promoted later if demand is proven.
+- **`task` as a built-in activity type** — deferred. Activities are past-tense external interactions (calls made, emails sent, meetings held). Forward-looking work items — to-dos, action items — depend on supporting features (`scheduled_at` / due-date, `assigned_to`, priority) that aren't in v1, and folding them into the activity grammar without those fields makes "task" a thin entity. A separate `tasks` (or `actions`) module is the right home, designed alongside scheduling and assignment. Consumers needing a v1 stop-gap can add `task: { default_stage: open, ... }` via the `activity_types` consumer-extensibility hook, accepting the limitations.
+- **`note` as a built-in activity type** — deferred. Notes (text jotted against an entity) structurally resemble events more than activities — append-only, immutable, attached via `references`. Existing production apps already implement notes-as-events (per-entity `*_comment` event types — comment text + author + timestamp + entity reference, surfaced in the events timeline) and that pattern continues to be the right home for note-taking. Activities reduces to types with strong external-interaction grammar (`call`, `meeting`, `email`) and clean ingestion-channel mapping (calendar / email / WhatsApp / voicenote). Consumers wanting an editable activity-shaped note in v1 can add `note: { default_stage: done, ... }` via the `activity_types` consumer-extensibility hook.
+- **Priority field** — not a first-class field. Consumers needing it can add it via `attributes`; can be promoted later if demand is proven.
 - **File attachments inlined on the activity doc** — handled by the `files` module's own collection, keyed by `activity_id`.
 - **Auto-ingestion from calendar / email / WhatsApp / voicenotes** — schema reserves space; implementation is a later phase.
 - **Recurrence** — no "repeats weekly" modelling. A recurring meeting is N separate activities until we need otherwise.

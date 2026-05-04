@@ -2,12 +2,13 @@
 
 ## Context
 
-After Tasks 1–17, the activities module is fully built and consumers (companies, contacts, shared) are wired. This final task integrates the module into the demo app at `apps/demo/`:
+After Tasks 1–17, the activities module is fully built and the `tile_events` rename has landed in companies + contacts. This final task integrates the module into the demo app at `apps/demo/`:
 
 1. Register the `activities` module in `apps/demo/modules.yaml` with deps wired (layout, events, contacts, companies, files).
-2. Wire any required vars (likely just `s3_region` if it inherits, or activities' own minimal var defaults).
-3. Add nav link to the activities list (the module exports a `default` menu — verify it's auto-included or needs explicit reference).
-4. Drop a reference `capture_activity` on the demo app's home page so consumers have a working example of out-of-tile usage (per design's "Files changed / added → Demo app" section).
+2. **Wire `tile_activities` into companies' and contacts' sidebar slots via app-level vars overrides** — the demo is the working reference for consumers wiring activities-on-companies/contacts. Companies and contacts don't depend on activities at module level (per `decisions.md` §7 / Sam's PR-32 #4 review); apps wire the tile themselves.
+3. Wire any required vars (likely just `s3_region` if it inherits, or activities' own minimal var defaults).
+4. Add nav link to the activities list (the module exports a `default` menu — verify it's auto-included or needs explicit reference).
+5. Drop a reference `capture_activity` on the demo app's home page so consumers have a working example of out-of-tile usage.
 
 Reference: `apps/demo/modules.yaml` — current shape. `apps/demo/menus.yaml` — current nav config. `apps/demo/pages/` — home page.
 
@@ -35,6 +36,44 @@ Or if using inline vars (no separate vars file):
 If a `modules/activities/vars.yaml` file is the convention (companies/contacts use this — verify), create it with empty defaults that the demo doesn't need to override. Otherwise omit.
 
 The activities entry can go anywhere in the list, but conventionally near contacts/companies (the entity-modules block).
+
+### Slot wiring: `apps/demo/modules/companies/vars.yaml` (modify or create)
+
+Demo's companies vars override needs `tile_activities` slotted into the sidebar. If the file already exists, add to its `components.sidebar_slots`; otherwise create it.
+
+```yaml
+components:
+  sidebar_slots:
+    - _ref:
+        module: activities
+        component: tile_activities
+        vars:
+          reference_field: company_ids
+          reference_value:
+            _url_query: _id
+          prefill:
+            company_ids:
+              - _url_query: _id
+```
+
+### Slot wiring: `apps/demo/modules/contacts/vars.yaml` (modify or create)
+
+Same shape, swapping `company_ids` → `contact_ids`:
+
+```yaml
+components:
+  sidebar_slots:
+    - _ref:
+        module: activities
+        component: tile_activities
+        vars:
+          reference_field: contact_ids
+          reference_value:
+            _url_query: _id
+          prefill:
+            contact_ids:
+              - _url_query: _id
+```
 
 ### `apps/demo/vars.yaml` or wherever menus are configured (if needed)
 
@@ -72,6 +111,8 @@ This is the reference example. Consumers landing on the demo see a "New activity
 ## Files
 
 - `apps/demo/modules.yaml` — modify — register activities module.
+- `apps/demo/modules/companies/vars.yaml` — modify or create — slot `tile_activities` into companies' sidebar.
+- `apps/demo/modules/contacts/vars.yaml` — modify or create — slot `tile_activities` into contacts' sidebar.
 - `apps/demo/menus.yaml` — modify (if needed) — wire nav link.
 - `apps/demo/pages/home.yaml` — modify — add reference `capture_activity`.
 - `apps/demo/modules/activities/vars.yaml` — create (if convention requires) — minimal vars override file.

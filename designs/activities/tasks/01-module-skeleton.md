@@ -17,7 +17,7 @@ Top-level structure (mirror companies'):
 ```yaml
 name: Activities
 version: 0.1.0
-description: CRM activities — calls, meetings, emails, notes, tasks linked to contacts and companies
+description: CRM activities — calls, meetings, emails linked to contacts and companies
 
 dependencies:
   - id: layout
@@ -32,9 +32,6 @@ dependencies:
     description: File attachments (optional)
 
 vars:
-  collection:
-    default: activities
-    description: MongoDB collection name
   label:
     default: Activity
     description: Singular display label
@@ -116,8 +113,10 @@ exports:
   components:
     - id: activity-selector
       description: Selector/MultipleSelector for picking activities
+    - id: tile_activities
+      description: Self-contained sidebar tile (layout.card + activities-timeline + capture_activity in header). For app-level slot wiring on companies/contacts.
     - id: activities-timeline
-      description: Cross-module content block — list of activities for a parent entity (consumers wrap in their own tile_activities.yaml)
+      description: Content-only block (list + filters + view-all link, no card). Building block for apps wanting custom wrappers.
     - id: capture_activity
       description: Button + modal capture flow with prefill vars
     - id: open_capture
@@ -166,7 +165,7 @@ Minimal — single `## 0.1.0` entry: "Initial activities module."
 
 ### `modules/activities/README.md`
 
-Mirror `modules/companies/README.md`'s shape. Brief overview: "CRM activities — calls, meetings, emails, notes, tasks. Linked to contacts and companies. Lifecycle: open → done | cancelled, with reopen. Reserved schema for future auto-ingestion (calendar, email, WhatsApp, voicenote)."
+Mirror `modules/companies/README.md`'s shape. Brief overview: "CRM activities — calls, meetings, emails. Past-tense external-interaction logs linked to contacts and companies. Lifecycle: open → done | cancelled, with reopen (built-in types are created `done` since they're logged after the fact). Reserved schema for future auto-ingestion (calendar, email, WhatsApp, voicenote). Forward-looking work items (tasks, action items) and ad-hoc text notes are deliberately out of scope — see `decisions.md` §5 (tasks → separate module designed alongside `scheduled_at`/`assigned_to`/priority) and §6 (notes → existing event-based comments pattern that production apps already implement via per-entity `*_comment` event types)."
 
 ### `modules/activities/VARS.md`
 
@@ -191,7 +190,7 @@ Mirror `modules/companies/menus.yaml` — single default menu with one MenuLink:
 
 ### `modules/activities/connections/activities-collection.yaml`
 
-Mirror `modules/companies/connections/companies-collection.yaml`. MongoDB connection wired to the `MONGODB_URI` secret, collection name from `_module.var: collection`.
+Mirror `modules/companies/connections/companies-collection.yaml` exactly. MongoDB connection wired to the `MONGODB_URI` secret with `collection: activities` hardcoded (not `_module.var: collection` — there's no `collection` var; per Sam's PR-32 review the codebase has consolidated to "override the connection" as the single configuration path). Include the same `changeLog` block (logs to `log-changes` with user metadata) and `write: true` flag.
 
 ### `modules/activities/enums/activity_types.yaml`
 
@@ -213,17 +212,9 @@ email:
   color: "#13c2c2"
   icon: AiOutlineMail
   default_stage: done
-note:
-  title: Note
-  color: "#8c8c8c"
-  icon: AiOutlineFileText
-  default_stage: done
-task:
-  title: Task
-  color: "#fa8c16"
-  icon: AiOutlineCheckSquare
-  default_stage: open
 ```
+
+No `task` or `note` types in v1 — past-tense external-interaction logs only. Tasks belong in a separate `tasks` / `actions` module (per `decisions.md` §5); notes belong in the existing event-based comments pattern (per `decisions.md` §6). Consumers needing either type before the proper home exists can add them via the `activity_types` consumer-extensibility hook on their app's `modules.yaml` entry.
 
 ### `modules/activities/enums/event_types.yaml`
 

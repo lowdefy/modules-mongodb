@@ -59,10 +59,10 @@ Across the list page, the detail-page sidebar tiles
 (`tile_activities`), and the activities-for-entity requests.
 
 **Why:** "Most recent activity" is the CRM-default expectation — it
-surfaces whatever a user last touched, whether that was a new note, a
-status flip, or an edit to an existing activity. `created.timestamp`
-would hide edits; `status[0].created.timestamp` would privilege status
-churn over content edits.
+surfaces whatever a user last touched, whether that was a newly logged
+call, a status flip, or an edit to an existing activity.
+`created.timestamp` would hide edits; `status[0].created.timestamp`
+would privilege status churn over content edits.
 
 **Follow-up:** once `scheduled_at` exists (see #1), the list page can
 offer a filter preset ("open work, next up") that switches sort to
@@ -70,23 +70,35 @@ offer a filter preset ("open work, next up") that switches sort to
 
 ## 4. File attachments — inline or via the `files` module?
 
-**Decision:** Via the `files` module.
+**Decision:** Via the `files` module. Activities' detail page refs
+`files.file-card` directly — no local wrapper.
 
 Files are stored in the `files` module's own collection, keyed by
 `(entity_type: 'activity', entity_id: <activity uuid>)` — the same
-indexing surface every other entity uses. The activity detail page
-embeds a local `modules/activities/components/tile_files.yaml` wrapper
-around `files.file-card` (the files module exports `file-card` /
-`file-manager` / `file-list`, not a `tile_files`), wired with
-`entity_type: activity` and `entity_id: { _url_query: _id }`. No
-`files: []` array on the activity doc.
+indexing surface every other entity uses. The detail page sidebar
+embeds `files.file-card` inline, passing `entity_type: activity` and
+`entity_id: { _url_query: _id }` as vars. No local
+`tile_files.yaml` wrapper, no `files: []` array on the activity doc.
 
 **Why:** Consistency with `companies`, `contacts`, and any other
 entity that attaches files. S3 lifecycle (uploads, signed URLs,
-deletion, orphan cleanup) lives in one place. Inlining would be a
-micro-optimisation (one fewer request on detail) but forks from the
-codebase pattern — every other module that grows attachments would
-then face the same choice.
+deletion, orphan cleanup) lives in one place. Inlining (a `files: []`
+array on the activity doc) would be a micro-optimisation (one fewer
+request on detail) but forks from the codebase pattern — every
+other module that grows attachments would then face the same choice.
+
+**Why no local `tile_files.yaml` wrapper:** the previous convention
+(used by companies and contacts) was a one-line ref-forward
+component that hardcoded `entity_type` per consumer. Sam flagged
+this on PR #32 as dead indirection — `file-card` already takes
+`entity_type` as a var, so the wrapper added no behaviour. Same PR
+deletes the unused `tile_files.yaml` files in companies and
+contacts. Activities never adds one. If a consumer later needs a
+real wrapper (header buttons, custom card title, additional
+sidebar blocks alongside the file card), they create it THEN —
+mirroring how `tile_events.yaml` wraps the cross-module
+`events-timeline` with a `layout.card` because there is something
+to wrap.
 
 **Consequence:** `create-activity` and `update-activity` payloads do
 not carry files. File upload is a separate flow handled by the `files`
@@ -94,22 +106,183 @@ module's own API, with the activity ID passed as the reference. A
 brand-new activity therefore has to be inserted first, then files
 attached — which matches the UX in `companies` already.
 
-## 5. `priority` field on tasks?
+## 5. `task` as a built-in activity type?
 
-**Decision:** Not in v1.
+**Decision:** Not in v1. Tasks belong in a separate module.
 
-No built-in `priority` enum, no priority column, no priority filter.
+Built-in `activity_types` ships only past-tense external interactions:
+`call`, `meeting`, `email`. No `task` type. (Notes also dropped — see
+§6.)
 
-**Why:** A priority field only matters for `task`-type activities and
-is easy to layer on later via `attributes` for consumers who need it
-immediately. Adding it as a first-class field across all types pollutes
-the schema for notes/emails/calls/meetings, and baking it into the
-table/filter UI commits to a specific priority scale (low/med/high?
-P0/P1/P2?) without a real use case to anchor the choice.
+**Why:** Activities are records of work done — calls made, meetings
+held, emails sent. Tasks are forward-looking work items — "send the
+proposal", "follow up Friday." Folding both into the activity
+grammar is convenient because the status array carries both "already
+done" and "still open" states, but the supporting features that
+make tasks actually useful — `scheduled_at` / due-date, `assigned_to`,
+`priority` — are all explicitly out of scope for v1. A task without
+a due date or assignee is a thin entity. Sam's PR-32 review:
+*"Tasks should be actions, not an activity"* — directional pushback we
+agreed with after surfacing the v1-thinness of the current model.
 
-**Promotion path:** If usage proves out, promote from `attributes` to
-a first-class top-level field. Since `attributes` is a consumer-owned
-object, we avoid coupling the module to a scheme that might be wrong.
+**Where tasks belong:** A separate `tasks` (or `actions`) module,
+designed alongside scheduling and assignment so the data model has
+real legs. The dependencies discussion in `design.md` already named
+this as the architectural alternative for project-management-flavoured
+consumers; that line now reflects v1 reality, not an aspirational
+non-choice.
+
+**v1 stop-gap:** Consumers needing task-shaped activities before the
+separate module lands can extend the enum:
+
+```yaml
+# in the consuming app's modules.yaml entry for activities
+vars:
+  activity_types:
+    task:
+      title: Task
+      color: "#fa8c16"
+      icon: AiOutlineCheckSquare
+      default_stage: open
+```
+
+They get the same thin-task feature set the v1 design originally
+shipped, with the explicit understanding that the proper task module
+will replace this when it lands.
+
+**Priority field follow-on:** Priority was previously called out as
+not-in-v1 because it only mattered for tasks. Tasks being out of v1
+moots the discussion. If a consumer adds `task` via the extensibility
+hook and wants priority, they layer it on via `attributes` — same
+treatment as before.
+
+## 6. `note` as a built-in activity type?
+
+**Decision:** Not in v1. Notes belong in the existing event-based
+comments pattern.
+
+Built-in `activity_types` ships only past-tense external interactions:
+`call`, `meeting`, `email`. No `note` type.
+
+**Why:** Notes (text jotted against an entity) structurally resemble
+events more than activities — append-only, immutable, attached to
+entities via `references`. Activities exist to capture work with
+multi-entity linking, lifecycle, rich-text descriptions, and forward
+compatibility with auto-ingestion channels (calendar, email, WhatsApp,
+voicenote) — none of which apply meaningfully to notes. A note is
+just text someone wrote about a contact/company; the event-shape
+(append-only, immutable, multi-keyed `references`) is the natural fit.
+
+**Existing precedent.** Production apps in the monorepo already
+implement notes-as-events through per-entity `*_comment` event
+types (e.g. `discussion_comment`, `order_comment`) registered
+alongside their other event-types. The pattern works: comment text +
+author + timestamp + entity reference, surfaced in the events
+timeline. Activities consumers continue using
+this pattern for note-taking; activities lives alongside, owning
+past-tense external-interaction logs only.
+
+**Sam's PR-32 review:** *"Don't know if notes are events (like
+comments currently) - think they should be. But not sure of that."*
+The "comments currently" pointer is to the existing production-app
+pattern. Confirmed on inspection — directional pushback we agreed
+with after surfacing that activities' three motivations (lifecycle,
+multi-entity linking, ingestion-channel forward-compatibility) all
+apply weakly or not at all to notes.
+
+**v1 stop-gap:** Consumers needing an editable activity-shaped note
+before any future notes-as-events design lands can extend the enum:
+
+```yaml
+# in the consuming app's modules.yaml entry for activities
+vars:
+  activity_types:
+    note:
+      title: Note
+      color: "#8c8c8c"
+      icon: AiOutlineFileText
+      default_stage: done
+```
+
+They get the same activity-shaped notes the original design shipped,
+with the explicit understanding that the proper home for notes is
+the event-comments pattern.
+
+**Why drop rather than implement notes-as-events here:** notes-as-events
+has its own design questions (rich-text body? edit affordance vs
+strict immutability? attachments? threading? where in the UI?). A
+proper notes-as-events design — generalising the existing
+production-app `*_comment` pattern into a reusable shape — is a
+separate piece of work. Activities v1 stays focused.
+
+## 7. Activities-on-companies/contacts — required dep or optional + app-wired?
+
+**Decision:** Optional. Companies and contacts do not declare
+`activities` as a dependency. Apps that want activity tiles on
+companies/contacts wire `tile_activities` into the parent module's
+sidebar slots from app config.
+
+The activities module exports a self-contained, parameterised
+`tile_activities` (`layout.card` + `activities-timeline` content +
+`capture_activity` in header). Apps drop it into companies' or
+contacts' `components.sidebar_slots` from their own `vars.yaml`
+overrides; companies/contacts' module manifests are unchanged, no
+new files in their `components/` folders, no embeds in `view.yaml`.
+
+**Sam's PR-32 review:** *"Do these modules get a dependancy on
+activities now? Do we want this to be optional? I'm not sure."*
+Pointed at the previous design which baked activities into
+companies/contacts as a required dep with local wrapper files
+(review-5 #4's resolution). After surfacing that not every consumer
+of companies/contacts is doing CRM (a company-directory app
+shouldn't have to ship activities just to use companies), we
+agreed: optional.
+
+**Existing precedent:** files. Companies declares `files` as a dep
+but doesn't bake `tile_files` into its view (we just confirmed —
+and deleted the unused `tile_files.yaml` wrappers as part of this
+PR's `tile_files` consolidation, see §4). Apps that want files on
+companies wire it themselves. Activities now follows the same
+shape, except we drop the dep declaration too — companies/contacts
+genuinely don't need to know about activities at module level.
+
+**What partially reverses from review-5 #4:** The cross-module
+export topology. Review-5 #4 said `activities-timeline` is
+content-only and consumers ship local `tile_activities.yaml`
+wrappers (mirroring `events.events-timeline` ↔ `tile_events.yaml`).
+With activities optional + app-side wiring, there are no
+consumer-side files to wrap in. So the activities module exports
+both:
+
+- `tile_activities` — self-contained tile, the integration surface
+  for apps. Drop into companies/contacts sidebar slots.
+- `activities-timeline` — content-only block, kept as a
+  power-user export for apps wanting fully custom wrappers.
+
+Pattern mirrors files' `file-card` (drop-in card) plus
+`file-manager` (content-only) — primitives for power users plus a
+convenient drop-in for the common case.
+
+**Why drop the consumer-wrapper pattern for activities:** because
+there's no consumer to wrap in. With activities required and the
+wrapper in companies, the wrapper file made sense. With activities
+optional and wiring at app level, the wrapper would have to live
+in the app — multiplying per-app boilerplate. Better to push the
+self-contained tile into the activities module so apps wire one
+ref, not a card-wrapping wrapper.
+
+**Asymmetry with events:** events stays a required dep for
+companies/contacts because **every** consumer needs the event log
+(create/update events fire on every entity mutation; without
+events the audit trail breaks). Activities is genuinely optional —
+a non-CRM consumer can skip it.
+
+**Files changed scope:** Companies and contacts are unchanged
+beyond the `tile_events` "Activity" → "History" rename — retained
+for collision protection if apps wire activities, and a better
+label for the system-audit log regardless. The demo app gains slot
+overrides for both companies and contacts to show consumers the
+wiring pattern.
 
 ---
 
@@ -141,7 +314,7 @@ questions but shape the design materially:
   prose, but not materialised in YAML, indexes, or pipelines until the
   `deals` module exists. Avoids shipping dead schema.
 
-## 6. Capture entry points — one component or many?
+## 8. Capture entry points — one component or many?
 
 **Decision:** One reusable `capture_activity` component (button + modal),
 driven entirely by prefill vars. Plus an `open_capture` action sequence

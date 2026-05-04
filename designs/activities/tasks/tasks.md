@@ -17,15 +17,15 @@ These tasks implement the `activities` module described in `designs/activities/d
 | 7   | `07-requests.md`                              | Requests: list, detail, selector feed, for-entity, Excel data                                 | 1, 6       |
 | 8   | `08-form-and-fields.md`                       | Form: `form_activity` + `fields/core` + `fields/links`                                        | 1          |
 | 9   | `09-display-components.md`                    | Internal display: `view_activity`, `table_activities`, `filter_activities`, `excel_download`  | 1, 7       |
-| 10  | `10-chips-and-tile-files.md`                  | Chips and attachment tile: `contact_list_items`, `company_list_items`, `tile_files`           | 1          |
-| 11  | `11-export-selector-and-timeline.md`          | Cross-module exports: `activity-selector`, `activities-timeline`                              | 1, 7, 9    |
+| 10  | `10-chips.md`                                 | Chips: `contact_list_items`, `company_list_items` (no `tile_files` — view page refs `files.file-card` inline) | 1          |
+| 11  | `11-export-selector-and-timeline.md`          | Cross-module exports: `activity-selector`, `activities-timeline`, `tile_activities` (self-contained drop-in) | 1, 7, 9, 12 |
 | 12  | `12-export-capture-flow.md`                   | Cross-module exports: `capture_activity` (button + modal), `open_capture` (action sequence)   | 1, 8       |
 | 13  | `13-pages-new-edit.md`                        | Pages: `new` (with URL prefill) and `edit`                                                    | 1, 8, 12   |
 | 14  | `14-pages-view-and-all.md`                    | Pages: `view` (detail) and `all` (list, with URL hydration)                                   | 1, 9, 11   |
-| 15  | `15-companies-wiring.md`                      | Companies: local `tile_activities.yaml`, sidebar embed, `tile_events` "Activity"→"History"    | 1, 11, 12  |
-| 16  | `16-contacts-wiring.md`                       | Contacts: local `tile_activities.yaml`, sidebar embed, `tile_events` "Activity"→"History"     | 1, 11, 12  |
+| 15  | `15-companies-wiring.md`                      | Companies: `tile_events` "Activity"→"History" rename only (no activities dep, no tile_activities embed — apps wire via slots) | 1          |
+| 16  | `16-contacts-wiring.md`                       | Contacts: `tile_events` "Activity"→"History" rename only (mirror of Task 15)                  | 1          |
 | 17  | `17-shared-event-types-ref.md`                | Add activities event_types `_ref` to `modules/shared/enums/event_types.yaml`                  | 1          |
-| 18  | `18-demo-app-integration.md`                  | Demo app: register module + vars + nav + home-page `capture_activity` reference               | 1, 12, 14  |
+| 18  | `18-demo-app-integration.md`                  | Demo app: register module + slot `tile_activities` into companies/contacts sidebar overrides + nav + home `capture_activity` | 1, 11, 12, 14, 15, 16 |
 
 ## Ordering Rationale
 
@@ -35,23 +35,24 @@ These tasks implement the `activities` module described in `designs/activities/d
 
 **Layer 3 — Data plumbing (Tasks 6–7):** Pipeline stages (Task 6) factor the shared aggregation logic — derived fields, filter match, lookups. Requests (Task 7) compose the stages into list/detail/selector/for-entity/excel queries. Both can run in parallel with API work but must complete before any UI component reads from the database.
 
-**Layer 4 — Internal UI (Tasks 8–10):** Form + fields (Task 8), display components (Task 9), and chips + tile_files (Task 10). These are internal — referenced only by the activities module's own pages and exports. They consume APIs and requests from Layers 2 and 3.
+**Layer 4 — Internal UI (Tasks 8–10):** Form + fields (Task 8), display components (Task 9), and chips (Task 10). These are internal — referenced only by the activities module's own pages and exports. They consume APIs and requests from Layers 2 and 3.
 
 **Layer 5 — Cross-module exports (Tasks 11–12):** `activity-selector` + `activities-timeline` (Task 11) and the capture flow (Task 12). These are the components consumers (companies/contacts) reach for. They depend on internal UI being in place.
 
 **Layer 6 — Pages (Tasks 13–14):** `new` + `edit` (Task 13) compose form + capture flow. `view` + `all` (Task 14) compose display components and the timeline. These are the activities module's own pages.
 
-**Layer 7 — Cross-module wiring (Tasks 15–17):** Companies + contacts wiring (Tasks 15, 16) embed the local `tile_activities.yaml` wrapper and rename `tile_events` titles. These are independent of each other and can run in parallel. Shared `event_types` ref (Task 17) is a one-line update to `modules/shared/enums/event_types.yaml`.
+**Layer 7 — Cross-module touch-ups (Tasks 15–17):** Tasks 15 + 16 are now reduced to a single-line `tile_events` title rename in companies + contacts. No new files, no manifest changes, no view embeds — apps wire `tile_activities` themselves via slot overrides at app config level (see Task 18). Shared `event_types` ref (Task 17) is a one-line update to `modules/shared/enums/event_types.yaml`.
 
 **Layer 8 — Demo app (Task 18):** Final integration in `apps/demo/`. Registers the module, wires deps, adds nav link, drops a reference `capture_activity` on the home page.
 
 **Parallel-safe pairs:**
 - Tasks 2/3/5 (different APIs) — can be done in any order after Task 1.
 - Tasks 6 and 8 — pipeline stages and form/fields work in parallel.
-- Tasks 11 and 12 — selector/timeline export and capture-flow export are independent.
 - Tasks 13 and 14 — different pages (new+edit vs view+all) can be in parallel.
 - Tasks 15 and 16 — companies and contacts wiring are mirror-image independent.
 - Task 17 has only Task 1 as a dependency and can run very early.
+
+**Note on Tasks 11 + 12.** Previously parallel-safe; no longer. Task 11's `tile_activities` embeds `capture_activity` (created in Task 12), so Task 12 lands first.
 
 ## Scope
 

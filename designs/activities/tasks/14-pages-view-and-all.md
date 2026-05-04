@@ -36,7 +36,16 @@ Layout mirrors `modules/companies/pages/view.yaml`. Two-column layout: main + si
    ```
 
 **Sidebar tiles:**
-- Files: `_ref: ../components/tile_files.yaml` (Task 10's local wrapper).
+- Files: inline `files.file-card` ref (no local wrapper — per `decisions.md` §4):
+  ```yaml
+  - _ref:
+      module: files
+      component: file-card
+      vars:
+        entity_type: activity
+        entity_id:
+          _url_query: _id
+  ```
 - Linked contacts tile (custom block reading `state.<doc>.contacts`, rendered via `contact_list_items`).
 - Linked companies tile (custom block reading `state.<doc>.companies`, rendered via `company_list_items`).
 - Plus consumer hook: `_module.var: components.sidebar_slots`.

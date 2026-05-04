@@ -140,7 +140,7 @@ events:
       component: open_capture
       vars:
         prefill:
-          type: note
+          type: call
           contact_id: { _url_query: _id }
 ```
 
