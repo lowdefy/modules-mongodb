@@ -1,7 +1,0 @@
-_ref:
-  module: files
-  component: file-card
-  vars:
-    entity_type: contact
-    entity_id:
-      _url_query: _id
