@@ -70,6 +70,7 @@ removed: null | change_stamp # null on insert (matches create-company); set to c
 - `{ 'status.0.stage': 1, 'updated.timestamp': -1 }` — list filters + sort. **Fixed-position, not multikey** — we only ever query current stage; a multikey index on `status.stage` would incorrectly match "has ever been in stage X".
 - `{ type: 1 }` — type filter on list page
 - `{ 'source.channel': 1, 'source.external_ref': 1 }` with `partialFilterExpression: { 'source.external_ref': { $exists: true } }` — dedupe for ingestion channels. (Not `sparse`: on a compound index, `sparse` only skips docs missing _all_ indexed fields, and `source.channel` is always set — so `sparse` would index every doc. A partial index on `external_ref` existence is the correct shape.)
+- **Atlas Search index** on `activities` covering `removed.timestamp`, `title`, `description`, `type`, `status.0.stage` (and any consumer-added filter fields via `request_stages.filter_match`) — feeds the list page's free-text search + filter clauses, mirroring how `get_all_companies.yaml` uses `$search`.
 
 ### Derived values (pipeline)
 
@@ -149,7 +150,8 @@ modules/activities/
 │   ├── activity_types.yaml          # call, meeting, email, note, task — built-in set
 │   └── event_types.yaml             # create-activity, update-activity, complete-activity, cancel-activity, reopen-activity, delete-activity
 ├── defaults/
-│   └── event_display.yaml           # Nunjucks templates for the events this module emits
+│   ├── event_display.yaml           # Nunjucks templates for the events this module emits
+│   └── event_target.yaml            # shared `target` object built at every emit site (title/type/type_label lookup) — see "Events emitted"
 ├── pages/
 │   ├── all.yaml                     # list (pageId: all)
 │   ├── view.yaml                    # detail (pageId: view)
@@ -162,13 +164,14 @@ modules/activities/
 │   └── delete-activity.yaml         # soft-delete — sets removed: change_stamp, emits delete-activity event
 ├── components/
 │   ├── activity-selector.yaml       # MultipleSelector, for other modules linking TO activities
-│   ├── tile_activities.yaml         # embeddable tile for contact/company (and later deal) detail pages
+│   ├── activities-timeline.yaml     # cross-module content block: list + filters, no card. Consumers wrap in their own tile_activities.yaml (mirrors events.events-timeline pattern).
 │   ├── capture_activity.yaml        # button + modal bundle for creating an activity from anywhere (see "Capture entry points")
 │   ├── open_capture.yaml            # exported action sequence — navigates to `pageId: new` with prefill in urlQuery
 │   ├── form_activity.yaml           # shared form (used by new + edit + capture modal)
 │   ├── view_activity.yaml           # SmartDescriptions view
 │   ├── table_activities.yaml        # AgGridBalham list
 │   ├── filter_activities.yaml       # filter block for list page
+│   ├── excel_download.yaml          # Excel export trigger on list page (mirrors companies/contacts)
 │   ├── tile_files.yaml              # local wrapper around `files.file-card` (entity_type: activity)
 │   ├── contact_list_items.yaml      # contact chips (parallels companies pattern)
 │   ├── company_list_items.yaml      # company chips
@@ -179,7 +182,8 @@ modules/activities/
 │   ├── get_activities.yaml          # list
 │   ├── get_activity.yaml            # detail
 │   ├── get_activity_options.yaml    # selector feed
-│   ├── get_activities_for_entity.yaml   # parameterised by { field, id } — feeds tile_activities
+│   ├── get_activities_for_entity.yaml   # parameterised by { field, id } — feeds activities-timeline
+│   ├── get_activities_excel_data.yaml   # Excel export aggregation (mirrors get_company_excel_data.yaml)
 │   └── stages/
 │       ├── add_derived_fields.yaml  # current_stage, completed_at, etc.
 │       ├── match_filter.yaml
@@ -193,9 +197,30 @@ modules/activities/
     └── activity.yaml                # field validation shared between create + update
 ```
 
+### Exports
+
+`module.lowdefy.yaml`'s `exports:` block (matches the shape companies/contacts use):
+
+| Section       | Exported                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------- |
+| `pages`       | `all`, `view`, `edit`, `new`                                                                      |
+| `connections` | `activities-collection`                                                                           |
+| `api`         | `create-activity`, `update-activity`, `change-activity-status`, `delete-activity`                 |
+| `components`  | `activity-selector`, `activities-timeline`, `capture_activity`, `open_capture`                    |
+| `menus`       | `default`                                                                                         |
+
+The other `components/` files (`form_activity`, `view_activity`, `table_activities`, `filter_activities`, `tile_files`, `contact_list_items`, `company_list_items`, `fields/*`) are internal — referenced by this module's own pages and not exposed to consumers.
+
+The cross-module export surface is wider than companies (1 component) or contacts (2 components). Two reasons specific to this module:
+
+- `activities-timeline` is the analogue of `events.events-timeline` — every entity module that wraps it pays a small local-wrapper file (`tile_*.yaml`) for the cross-module timeline export.
+- `capture_activity` and `open_capture` codify the "log activity from anywhere" flow, which is more involved than companies' "create company" flow. The capture modal carries form prefill, validation, action wiring, and `on_created` callbacks — all of which would have to be recreated by every consumer reaching for an inline create button. Companies/contacts can stay internal because their "create" flow is a page navigation (`_module.pageId: { id: new, module: companies }`) — replicable in any consumer with one Link action. Activities' equivalent is `open_capture` (page mode); `capture_activity` adds the in-context modal flow that page navigation can't deliver.
+
 ### Module vars
 
 Mirrors `companies`/`contacts` for consistency, plus the activity-specific `activity_types`.
+
+The table below is shorthand. The actual `module.lowdefy.yaml` declares vars in the structured form used by `modules/companies/module.lowdefy.yaml:15-99` — `type:`, `default:`, `description:`, with nested `properties:` for object-typed vars (`fields`, `components`, `request_stages`). Flattened keys like `request_stages.write` and `components.main_slots` expand to nested `properties:` blocks; defaults and descriptions sit on the leaves.
 
 | Var                                 | Default                             | Purpose                                                                                                                                                   |
 | ----------------------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -234,6 +259,8 @@ layer conditional field, selector, and detail-page wiring across the
 module for a consumer who doesn't exist yet. `files`, by contrast, is
 genuinely auxiliary — activities are still useful without
 attachments, so that dep is optional.
+
+The required/optional distinction above is editorial — the manifest's `dependencies:` list (see `modules/companies/module.lowdefy.yaml:5-13`) doesn't carry a `required` flag; the runtime treats every declared dep the same. The labels here document which deps the module assumes present at runtime: a consumer omitting `contacts` or `companies` from its `modules.yaml` will get build-time errors when the activities module tries to ref `contacts.contact-selector` etc., while omitting `files` will only surface as a missing `tile_files` (the activity detail page's attachment tile) — the rest of the module keeps working.
 
 ## Activity types enum (built-in)
 
@@ -301,51 +328,89 @@ Every emitted event carries `references: { contact_ids, company_ids, activity_id
 
 The `event_display` default provides Nunjucks titles like `{{ user.profile.name }} logged a {{ target.type_label }} with {{ target.title }}`.
 
+The `target` object is built at each emit site (mirroring `update-company.yaml:128-138`'s `target.name = _payload[name_field]` pattern), with one extra step — `target.type_label` looks up the human label from the merged `activity_types` enum at runtime via `_get`:
+
+```yaml
+target:
+  title: { _payload: title }
+  type:  { _payload: type }
+  type_label:
+    _get:
+      from:
+        _build.object.assign:
+          - _ref: enums/activity_types.yaml
+          - _module.var: activity_types
+      key:
+        _string.concat:
+          - _payload: type
+          - .title
+      default: { _payload: type }
+```
+
+`from` is build-time-resolved (the merged enum, including consumer-added types via `_module.var: activity_types`). `key` is runtime — `_payload.type` concatenated with `".title"` produces e.g. `"call.title"`, which `_get` resolves as a deep path into `from`. `default: _payload.type` falls back to the raw type string if the lookup misses, so the rendered title degrades to "logged a call" rather than erroring.
+
+Same `target` shape used by every emitted event (`create-activity`, `update-activity`, `complete-activity`, `cancel-activity`, `reopen-activity`, `delete-activity`). Factored into `defaults/event_target.yaml` and `_ref`'d from each API call site so the lookup isn't duplicated across the six emit points.
+
 ## Linking: how parent entities surface activities
 
 ### Forward: list of activities on company / contact detail
 
-New component `tile_activities` added to the `activities` module, consumed by `companies` and `contacts` (and later `deals`) in their existing sidebar-tile slots.
+The activities module exports `activities-timeline` — a content-only block (list + filters, no card). Each consuming module ships a local `tile_activities.yaml` wrapper that sets the card title, embeds `capture_activity` in the header, and embeds `activities-timeline` as the body. Mirrors the `events.events-timeline` ↔ `tile_events.yaml` pattern already used by every entity module.
 
 ```yaml
-# inside company-detail.yaml, sidebar_slots area (or via components.sidebar_slots var)
-- _ref:
-    module: activities
-    component: tile_activities
-    vars:
-      reference_field: company_ids
-      reference_value:
-        _url_query: _id # matches how tile_events resolves the detail-page entity
+# modules/companies/components/tile_activities.yaml — local wrapper, parallels tile_events.yaml
+_ref:
+  module: layout
+  component: card
+  vars:
+    title: Activity
+    header_buttons:
+      - _ref:
+          module: activities
+          component: capture_activity
+          vars:
+            prefill:
+              company_ids:
+                - _url_query: _id
+            label: Log activity
+            on_created:
+              - id: refetch_activities
+                type: Request
+                params: get_activities_for_entity
+    blocks:
+      - _ref:
+          module: activities
+          component: activities-timeline
+          vars:
+            reference_field: company_ids
+            reference_value:
+              _url_query: _id  # matches how tile_events resolves the detail-page entity
 ```
 
-The tile:
+The local wrapper owns the title (`Activity`), the header capture button (with company-specific prefill and an `on_created` that refetches the embedded timeline's list request), and the embedding. The cross-module `activities-timeline` owns:
 
-- Pulls recent activities via `get_activities_for_entity` request, parameterised by `reference_field` + `reference_value`.
-- Shows a compact list ordered by `updated.timestamp` desc, with type icon, title, current-stage badge, and relative time.
-- Embeds `capture_activity` in its header, prefilled with the current entity linked (see "Capture entry points" below). The tile **auto-wires its own list refetch** as the embedded `capture_activity`'s `on_created`, so a freshly captured activity appears immediately without a page refresh. Consumers placing `capture_activity` elsewhere (their own panel with its own list) follow the same pattern explicitly.
-- "View all" link navigates to the activities list page with a
-  pre-applied filter, mirroring `tile_contacts.yaml`'s pattern. URL
-  param name varies by `reference_field`: `?contact_id=<uuid>` when
-  `reference_field: contact_ids`, `?company_id=<uuid>` when
-  `reference_field: company_ids`. Singular keys, matching how
-  `tile_contacts` already passes `company_id` into the contacts list.
+- Pulling recent activities via `get_activities_for_entity` request, parameterised by `reference_field` + `reference_value`.
+- Showing a compact list ordered by `updated.timestamp` desc, with type icon, title, current-stage badge, and relative time.
+- The "View all" link to the activities list page with a pre-applied filter, mirroring `tile_contacts.yaml`'s pattern. URL param name varies by `reference_field`: `?contact_id=<uuid>` when `reference_field: contact_ids`, `?company_id=<uuid>` when `reference_field: company_ids`. Singular keys, matching how `tile_contacts` already passes `company_id` into the contacts list.
 
-  ```yaml
-  events:
-    onClick:
-      - id: go_activities
-        type: Link
-        params:
-          pageId: { _module.pageId: { id: all, module: activities } }
-          urlQuery:
-            # one of these — driven by reference_field
-            contact_id: { _url_query: _id }
-            # company_id: { _url_query: _id }
-  ```
+The contact wrapper (`modules/contacts/components/tile_activities.yaml`) is the same shape, swapping `company_ids` → `contact_ids`. Consumers wanting a different title, extra header buttons, or to omit the capture button just edit their local wrapper — no var-explosion on the cross-module export.
 
-  The activities list page (`pageId: all`) reads `_url_query: contact_id`
-  and `_url_query: company_id` on `onInit` and pre-populates its filter
-  state — see the list page section below.
+The "View all" link inside `activities-timeline`:
+
+```yaml
+events:
+  onClick:
+    - id: go_activities
+      type: Link
+      params:
+        pageId: { _module.pageId: { id: all, module: activities } }
+        urlQuery:
+          # one of these — driven by reference_field
+          contact_id: { _url_query: _id }
+          # company_id: { _url_query: _id }
+```
+
+The activities list page (`pageId: all`) reads `_url_query: contact_id` and `_url_query: company_id` on `onInit` and pre-populates its filter state — see the list page section below.
 
 ### Backward: picking activities from elsewhere
 
@@ -480,10 +545,7 @@ contract and call `create-activity` directly with `source: { … }` set.
 
 Set up once by the module; consumers get these for free.
 
-- **`tile_activities` header** — embeds `capture_activity` prefilled with
-  the tile's `reference_field` and `reference_value`. So a contact
-  detail page renders the tile, and its "Log activity" button is
-  pre-linked to that contact.
+- **`tile_activities` header** — each consumer's local `tile_activities.yaml` wrapper embeds `capture_activity` in the card's `header_buttons`, prefilled with the tile's entity (e.g. `company_ids: [_url_query: _id]` on company-detail), and wires `on_created` to refetch the embedded `activities-timeline`'s list. So a contact detail page renders the tile and its "Log activity" button is pre-linked to that contact, and the new activity appears immediately without a page refresh.
 - **Main nav entry** — the module's `menus.yaml` includes a "New
   activity" item triggering `open_capture` (or linking to
   `pageId: new` directly if the consumer prefers).
@@ -502,6 +564,8 @@ don't choose between `button_new_activity_for_contact` vs
 they just pass prefill.
 
 ## API surface
+
+Four endpoints: `create-activity`, `update-activity`, `change-activity-status`, `delete-activity`. The three files under `actions/` (`complete_activity.yaml`, `cancel_activity.yaml`, `reopen_activity.yaml`) are CallApi wrappers around `change-activity-status` with the target stage hardcoded — they let UI elements (Mark done, Reopen, Cancel buttons) trigger the transition without rebuilding the call site each time.
 
 ### `create-activity`
 
@@ -526,7 +590,7 @@ Attachments are uploaded separately via the `files` module, keyed by an
 Routine (high-level):
 
 1. Resolve initial stage (`initial_stage` || type's `default_stage`).
-2. Insert activity doc with `status: [{ stage, created: change_stamp }]`, `created` + `updated` stamps, and `removed: null` (matching `create-company.yaml`). List and detail requests exclude soft-deleted docs via `removed.timestamp: { $exists: false }`, the shape used by `get_all_companies.yaml` — not `{ removed: null }` literally.
+2. Insert activity doc with `status: [{ stage, created: change_stamp }]`, `created` + `updated` stamps, and `removed: null` (matching `create-company.yaml`). List requests filter soft-deletes via Atlas Search `compound.filter.mustNot: exists: path: removed.timestamp` (the shape used by `get_all_companies.yaml`). Detail and tile requests use plain `$match: { 'removed.timestamp': { $exists: false } }`. Don't copy `get_company.yaml`'s `removed: { $ne: true }` — it's a bug (the `removed` change_stamp object is `≠ true`, so deleted docs match).
 3. Apply `request_stages.write` hook.
 4. Emit `create-activity` event via `events.new-event` with:
    - `references: { contact_ids, company_ids, activity_ids: [new id] }`
@@ -559,7 +623,7 @@ Input:
 
 Routine:
 
-1. Load activity, read `status[0].stage` and `updated.timestamp`.
+1. Load activity, read `status[0].stage` and `updated.timestamp`. (This is a deliberate departure from `update-company.yaml`, which trusts the client to send `updated.timestamp`. The load step buys idempotency on concurrent same-direction flips: if user A marks done and user B clicks "Mark done" before refetching, B silently succeeds in step 2 instead of getting a stale-state error. For interactive status buttons on a multi-user CRM the smoother UX is worth one extra Mongo round-trip.)
 2. If `loaded.status[0].stage === stage`, no-op (return).
 3. `MongoDBUpdateOne` with optimistic concurrency on both the loaded
    stage and timestamp — both must still match at write time:
@@ -630,8 +694,8 @@ Standard list page: AgGridBalham table, filters panel (type, current stage, date
 **URL param hydration.** On `onInit`, `SetState` on `filter` from
 `_url_query: contact_id` and `_url_query: company_id` (singular,
 optional). When present, the list mounts with the corresponding
-linked-entity filter pre-applied — feeds `tile_activities`'s "View
-all" link and works as a deep-link contract for external triggers
+linked-entity filter pre-applied — feeds `activities-timeline`'s "View
+all" link (embedded inside each consumer's `tile_activities.yaml` wrapper) and works as a deep-link contract for external triggers
 (reminder emails, dashboards, Slack unfurls landing on
 "activities for this contact"). Mirrors `pageId: new`'s URL-prefill
 contract — same query-string-only convention, no path params.
@@ -664,7 +728,7 @@ No schema changes to `companies` or `contacts` — linking is one-way on the act
 
 Two touch points:
 
-1. **Add `tile_activities` to `company-detail.yaml` and `contact-detail.yaml`** — belongs in the sidebar. Wired with the appropriate `reference_field`. Done in each entity module, not on the activities side, since that's where the sidebar slot lives.
+1. **Add a local `tile_activities.yaml` wrapper to each consuming module** (companies, contacts) and embed it in their `company-detail.yaml` / `contact-detail.yaml` sidebar slots. The wrapper sets the card title, embeds `capture_activity` in the header with the right entity prefill, and embeds the cross-module `activities.activities-timeline` content block. Mirrors the existing `tile_events.yaml` ↔ `events.events-timeline` pattern.
 2. **No changes to `events`**. The events module is consumed as-is for event emission and change-stamp generation.
 
 If an app wants activities but doesn't want the tile on companies by default, it can omit the tile from its `components.sidebar_slots` override.
@@ -696,8 +760,10 @@ Design decisions this phase locks in:
 
 **Touched modules:**
 
-- `modules/companies/pages/company-detail.yaml` — add `tile_activities` to sidebar slots.
-- `modules/contacts/pages/contact-detail.yaml` — add `tile_activities` to sidebar slots.
+- `modules/companies/components/tile_activities.yaml` — **new local wrapper.** `layout.card` titled "Activity", embeds `capture_activity` in `header_buttons` (prefill: `company_ids: [_url_query: _id]`), and embeds `activities.activities-timeline` (`reference_field: company_ids`). Mirrors `companies/components/tile_events.yaml`'s shape.
+- `modules/contacts/components/tile_activities.yaml` — **new local wrapper.** Same shape as the companies wrapper, swapping `company_ids` → `contact_ids`.
+- `modules/companies/pages/company-detail.yaml` — add the local `tile_activities` to sidebar slots.
+- `modules/contacts/pages/contact-detail.yaml` — add the local `tile_activities` to sidebar slots.
 - `modules/companies/components/tile_events.yaml` — rename card `title` from `Activity` to `History`. The existing system-events tile is currently labelled "Activity" in the UI, which collides with the new `tile_activities`. Activities (user-created) keep the "Activity" label; the system-audit log becomes "History".
 - `modules/contacts/components/tile_events.yaml` — same `title: Activity` → `title: History` rename.
 - `modules/shared/enums/event_types.yaml` — include `_ref: ../activities/enums/event_types.yaml` in the assign chain, so app-level `event_types` aggregations pick up activity events.
