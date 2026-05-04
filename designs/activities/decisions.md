@@ -72,10 +72,14 @@ offer a filter preset ("open work, next up") that switches sort to
 
 **Decision:** Via the `files` module.
 
-Files are stored in the `files` module's own collection, keyed by an
-`activity_id` reference. The activity detail page embeds the existing
-`tile_files` in its sidebar wired with `reference_field: activity_id`.
-No `files: []` array on the activity doc.
+Files are stored in the `files` module's own collection, keyed by
+`(entity_type: 'activity', entity_id: <activity uuid>)` — the same
+indexing surface every other entity uses. The activity detail page
+embeds a local `modules/activities/components/tile_files.yaml` wrapper
+around `files.file-card` (the files module exports `file-card` /
+`file-manager` / `file-list`, not a `tile_files`), wired with
+`entity_type: activity` and `entity_id: { _url_query: _id }`. No
+`files: []` array on the activity doc.
 
 **Why:** Consistency with `companies`, `contacts`, and any other
 entity that attaches files. S3 lifecycle (uploads, signed URLs,
@@ -119,10 +123,12 @@ questions but shape the design materially:
   "Reopen" / "Cancel" buttons, emits the correct event type per
   transition, and saves the API from diffing input against stored
   state to figure out what happened.
-- **Soft delete via `update-activity` with `removed: change_stamp`,
-  not a dedicated delete API.** Matches the `companies` pattern.
-  `delete-activity` event fires when the API sees `removed` move from
-  `null` to a stamp.
+- **Dedicated `delete-activity` API for soft-delete, not a flag on
+  `update-activity`.** Mirrors `change-activity-status` (single-purpose
+  endpoint) and the files module's `delete-file`. Sets `removed:
+  change_stamp` + bumps `updated`, emits `delete-activity` with full
+  references. Keeps `update-activity`'s editable-fields list clean and
+  the event-emission contract obvious from the call site.
 - **No reverse denormalization of activity IDs onto parent entities.**
   Contact ↔ company linking in this repo _does_ denormalize
   (`update-company` maintains `company_ids` on contact docs via
@@ -139,8 +145,8 @@ questions but shape the design materially:
 
 **Decision:** One reusable `capture_activity` component (button + modal),
 driven entirely by prefill vars. Plus an `open_capture` action sequence
-for non-button triggers, plus URL-param support on `/activities/new` for
-deep-links.
+for non-button triggers, plus URL query-param support on `pageId: new`
+for deep-links.
 
 **Options considered:**
 
@@ -163,12 +169,16 @@ keyboard shortcuts all want to open capture. Exposing `open_capture` as
 a raw action sequence lets those triggers reuse the same flow without
 wrapping a button.
 
-**Why support URL params on `/activities/new`:** deep-links from emails,
-chat messages, calendar notifications, and Slack unfurls need to land
-users on a pre-filled create flow. This also becomes the fallback
-target when `capture_activity` is used in `mode: page` (dedicated page,
-not modal) — single URL surface, no duplicate prefill logic.
+**Why support URL query params on `pageId: new`:** deep-links from
+emails, chat messages, calendar notifications, and Slack unfurls need
+to land users on a pre-filled create flow. This also becomes the
+fallback target when `capture_activity` is used in `mode: page`
+(dedicated page, not modal) — single URL-prefill surface, no
+duplicate prefill logic. (Lowdefy URLs don't carry path params, so the
+contract is purely the query string; the actual path is set by the
+consuming app's page config.)
 
-**Modes:** `mode: modal` (default) stays in context; `mode: page` navs
-to `/activities/new` with params. Consumers pick per placement — tiles
-and mid-page actions lean modal, main-nav links lean page.
+**Modes:** `mode: modal` (default) stays in context; `mode: page` links
+to `pageId: new` with prefill in `urlQuery`. Consumers pick per
+placement — tiles and mid-page actions lean modal, main-nav links lean
+page.

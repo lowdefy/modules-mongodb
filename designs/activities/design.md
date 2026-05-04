@@ -42,7 +42,7 @@ Collection: `activities` (configurable via `collection` var, default `activities
 _id: UUID # generated client-side
 type: call | meeting | email | note | task # extensible string — keyed into activity_types enum
 title: string # short subject line
-description: string # longer body (plain text for v1; markdown later if needed)
+description: string # longer body — rich-text HTML, edited and rendered via the Tiptap block (Lowdefy v5)
 status: # newest-first array
   - stage: open | done | cancelled
     created:
@@ -60,7 +60,7 @@ source:
   raw: object | null
 created: change_stamp
 updated: change_stamp
-removed: null | change_stamp # soft-delete, same pattern as companies
+removed: null | change_stamp # null on insert (matches create-company); set to change_stamp by `delete-activity`
 ```
 
 ### Indexes
@@ -75,10 +75,22 @@ removed: null | change_stamp # soft-delete, same pattern as companies
 
 On reads, a shared pipeline stage projects derived fields:
 
-- `current_stage: $arrayElemAt: [$status.stage, 0]`
-- `completed_at: $arrayElemAt: [{ $filter: { input: $status, cond: { $eq: [$$this.stage, 'done'] } } }.created.timestamp, 0]`
-- `cancelled_at`: same pattern for `cancelled`
-- `opened_at`: timestamp of the most recent `open` stage (handles reopens)
+```yaml
+$addFields:
+  current_stage: { $arrayElemAt: ["$status.stage", 0] }
+  completed_at:
+    $let:
+      vars:
+        done:
+          $arrayElemAt:
+            - $filter:
+                input: "$status"
+                cond: { $eq: ["$$this.stage", "done"] }
+            - 0
+      in: "$$done.created.timestamp"
+  cancelled_at: # same shape as completed_at, cond: { $eq: ["$$this.stage", "cancelled"] }
+  opened_at:    # same shape, cond: { $eq: ["$$this.stage", "open"] } — most recent open, handles reopens
+```
 
 Lives in `modules/activities/requests/stages/add_derived_fields.yaml` so list, selector, and detail all share one source of truth.
 
@@ -91,14 +103,27 @@ channels where monotonic ID coordination is more trouble than it's worth.
 
 ### Attachments
 
-Files attached to an activity live in the `files` module's own collection,
-not inlined on the activity doc. The file record carries an
-`activity_id` reference; the activity's detail page queries the files
-collection to list them. This matches how `companies` handles attachments
-and keeps S3 lifecycle logic in one place.
+Files attached to an activity live in the `files` module's collection,
+keyed by `(entity_type: 'activity', entity_id: <activity uuid>)` — the
+same indexing surface every other entity module uses. Nothing is
+inlined on the activity doc; S3 lifecycle stays in the files module.
 
-`tile_files` (from the `files` module) is embedded in the activity detail
-page's sidebar with `reference_field: activity_id`.
+The activities module ships a local
+`modules/activities/components/tile_files.yaml` wrapper, mirroring
+`modules/companies/components/tile_files.yaml` — refs `files.file-card`
+with `entity_type: activity` and `entity_id: { _url_query: _id }`. The
+detail page's sidebar embeds this local tile (not a cross-module one;
+the files module exports `file-card` / `file-manager` / `file-list`,
+not a `tile_files`).
+
+> **Future cleanup — `tile_files` consolidation.** Every entity module
+> ships a near-identical 7-line `tile_files.yaml` wrapping
+> `files.file-card`. The wrapping mostly renames + hardcodes
+> `entity_type`. Worth a separate cross-cutting PR (companies, contacts,
+> activities, files) to either drop the local wrappers in favour of
+> consumers using `files.file-card` inline, or push a parameterised
+> `tile_files` into the files module as the canonical export. Out of
+> scope here — activities follows the existing convention.
 
 ### Default sort
 
@@ -126,23 +151,25 @@ modules/activities/
 ├── defaults/
 │   └── event_display.yaml           # Nunjucks templates for the events this module emits
 ├── pages/
-│   ├── activities.yaml              # list
-│   ├── activity-detail.yaml         # view
-│   ├── activity-edit.yaml           # edit existing
-│   └── activity-new.yaml            # create
+│   ├── all.yaml                     # list (pageId: all)
+│   ├── view.yaml                    # detail (pageId: view)
+│   ├── edit.yaml                    # edit existing (pageId: edit)
+│   └── new.yaml                     # create (pageId: new)
 ├── api/
 │   ├── create-activity.yaml
 │   ├── update-activity.yaml
-│   └── change-activity-status.yaml  # status transitions — prepends to status array, emits stage-specific event
+│   ├── change-activity-status.yaml  # status transitions — prepends to status array, emits stage-specific event
+│   └── delete-activity.yaml         # soft-delete — sets removed: change_stamp, emits delete-activity event
 ├── components/
 │   ├── activity-selector.yaml       # MultipleSelector, for other modules linking TO activities
 │   ├── tile_activities.yaml         # embeddable tile for contact/company (and later deal) detail pages
 │   ├── capture_activity.yaml        # button + modal bundle for creating an activity from anywhere (see "Capture entry points")
-│   ├── open_capture.yaml            # exported action sequence — opens the capture modal or navigates to /activities/new
+│   ├── open_capture.yaml            # exported action sequence — navigates to `pageId: new` with prefill in urlQuery
 │   ├── form_activity.yaml           # shared form (used by new + edit + capture modal)
 │   ├── view_activity.yaml           # SmartDescriptions view
 │   ├── table_activities.yaml        # AgGridBalham list
 │   ├── filter_activities.yaml       # filter block for list page
+│   ├── tile_files.yaml              # local wrapper around `files.file-card` (entity_type: activity)
 │   ├── contact_list_items.yaml      # contact chips (parallels companies pattern)
 │   ├── company_list_items.yaml      # company chips
 │   └── fields/
@@ -261,11 +288,11 @@ Consumers extend via the `activity_types` var.
 | Event type          | When                                                                              |
 | ------------------- | --------------------------------------------------------------------------------- |
 | `create-activity`   | New activity inserted                                                             |
-| `update-activity`   | Activity edited (non-status fields, or status edit that isn't a stage transition) |
+| `update-activity`   | Activity's editable fields edited (title, description, contact_ids, company_ids, attributes) |
 | `complete-activity` | Status transitions to `done`                                                      |
 | `cancel-activity`   | Status transitions to `cancelled`                                                 |
 | `reopen-activity`   | Status transitions to `open` after being `done` or `cancelled`                    |
-| `delete-activity`   | Soft-deleted via `removed` field                                                  |
+| `delete-activity`   | Activity soft-deleted                                                             |
 
 Every emitted event carries `references: { contact_ids, company_ids, activity_ids: [self] }` so:
 
@@ -296,7 +323,29 @@ The tile:
 - Pulls recent activities via `get_activities_for_entity` request, parameterised by `reference_field` + `reference_value`.
 - Shows a compact list ordered by `updated.timestamp` desc, with type icon, title, current-stage badge, and relative time.
 - Embeds `capture_activity` in its header, prefilled with the current entity linked (see "Capture entry points" below). The tile **auto-wires its own list refetch** as the embedded `capture_activity`'s `on_created`, so a freshly captured activity appears immediately without a page refresh. Consumers placing `capture_activity` elsewhere (their own panel with its own list) follow the same pattern explicitly.
-- "View all" link navigates to the activities list page with a pre-applied filter.
+- "View all" link navigates to the activities list page with a
+  pre-applied filter, mirroring `tile_contacts.yaml`'s pattern. URL
+  param name varies by `reference_field`: `?contact_id=<uuid>` when
+  `reference_field: contact_ids`, `?company_id=<uuid>` when
+  `reference_field: company_ids`. Singular keys, matching how
+  `tile_contacts` already passes `company_id` into the contacts list.
+
+  ```yaml
+  events:
+    onClick:
+      - id: go_activities
+        type: Link
+        params:
+          pageId: { _module.pageId: { id: all, module: activities } }
+          urlQuery:
+            # one of these — driven by reference_field
+            contact_id: { _url_query: _id }
+            # company_id: { _url_query: _id }
+  ```
+
+  The activities list page (`pageId: all`) reads `_url_query: contact_id`
+  and `_url_query: company_id` on `onInit` and pre-populates its filter
+  state — see the list page section below.
 
 ### Backward: picking activities from elsewhere
 
@@ -308,7 +357,7 @@ Users create activities from many places: contact/company detail tiles,
 page headers, the home page, a keyboard shortcut, a deep-link in an email
 or chat. Rather than each consumer reimplementing the "create activity"
 flow, the module exports one reusable component plus URL-param support on
-the `/activities/new` page.
+the new-activity page (`pageId: new`).
 
 ### `capture_activity` — primary export
 
@@ -346,17 +395,17 @@ Internals:
 - The component is a Button + Modal pair. Clicking the button sets local
   state (`state.capture.open = true`, plus the prefill fields) and opens
   the modal.
-- The modal renders `form_activity` (same form as the `/activities/new`
+- The modal renders `form_activity` (same form as the new-activity
   page) with prefill applied.
 - Submit calls the `create-activity` API, closes the modal, clears state,
   runs the consumer-provided `on_created` action sequence if present.
 - Multiple instances can coexist on a page (header + tile + row action);
   each carries its own state.
 
-The `mode: page` variant skips the modal and navigates to
-`/activities/new` with the prefill serialised as URL params. Useful for
-main-nav buttons where users expect a dedicated page, and for contexts
-where a modal would feel wrong.
+The `mode: page` variant skips the modal and links to `pageId: new`
+with the prefill carried in `urlQuery`. Useful for main-nav buttons
+where users expect a dedicated page, and for contexts where a modal
+would feel wrong.
 
 ### `open_capture` action — custom triggers
 
@@ -377,10 +426,10 @@ events:
           type: note
 ```
 
-**Behaviour:** always navigates to `/activities/new` with the prefill
-serialised as URL params — equivalent to `capture_activity`'s
-`mode: page`. Never opens a modal. Consumers wanting an in-context
-modal flow use `capture_activity` directly.
+**Behaviour:** always links to `pageId: new` with the prefill carried
+in `urlQuery` — equivalent to `capture_activity`'s `mode: page`. Never
+opens a modal. Consumers wanting an in-context modal flow use
+`capture_activity` directly.
 
 Why not "open the modal if `capture_activity` is on the page, else
 navigate"? Because multiple `capture_activity` instances can coexist on
@@ -401,20 +450,31 @@ manifest's `components:` list, same as the other exports.
 > with it) would be the cleanest extension, without having to reinstate
 > the cross-instance targeting problem on `open_capture`.
 
-### `/activities/new` page inputs — deep-link capture
+### `pageId: new` query params — deep-link capture
 
-The existing new-activity page accepts URL params so deep-links work:
+The new-activity page accepts URL query params so deep-links work.
+Lowdefy URLs don't carry path params, so the contract is purely the
+query string — the path itself is set by the consuming app's page
+config:
 
 ```
-/activities/new?type=call&contact_id=<uuid>&company_id=<uuid>
-/activities/new?type=meeting&contact_ids[]=<uuid>&contact_ids[]=<uuid>
-/activities/new?type=note&title=Quick%20follow-up
+?type=call&contact_id=<uuid>&company_id=<uuid>
+?type=meeting&contact_ids[]=<uuid>&contact_ids[]=<uuid>
+?type=note&title=Quick%20follow-up
 ```
 
-Supported params: `type`, `title`, `description`, `contact_id`,
-`contact_ids[]`, `company_id`, `company_ids[]`. Missing params leave
-form fields empty. This is what `mode: page` serialises to, and what
-external links (emails, chat messages, Slack unfurls) target.
+Supported params: `type`, `title`, `contact_id`, `contact_ids[]`,
+`company_id`, `company_ids[]`. Missing params leave form fields empty.
+This is what `mode: page` serialises to (via `Link → pageId: new`,
+`urlQuery: { … }`), and what external links (emails, chat messages,
+Slack unfurls) target.
+
+`description` is deliberately not URL-prefillable. The field renders
+through the Tiptap block (rich-text HTML), and round-tripping HTML
+through URL params is awkward enough — and the use cases thin enough —
+to leave the field blank on landing. Channels that genuinely need to
+seed body content (calendar/email/WhatsApp ingestion) bypass the URL
+contract and call `create-activity` directly with `source: { … }` set.
 
 ### Built-in placements
 
@@ -426,7 +486,7 @@ Set up once by the module; consumers get these for free.
   pre-linked to that contact.
 - **Main nav entry** — the module's `menus.yaml` includes a "New
   activity" item triggering `open_capture` (or linking to
-  `/activities/new` if the consumer prefers).
+  `pageId: new` directly if the consumer prefers).
 
 Home-page placement is left to the consuming app — it drops
 `capture_activity` wherever makes sense, usually a prominent
@@ -466,7 +526,7 @@ Attachments are uploaded separately via the `files` module, keyed by an
 Routine (high-level):
 
 1. Resolve initial stage (`initial_stage` || type's `default_stage`).
-2. Insert activity doc with `status: [{ stage, created: change_stamp }]`, `created` + `updated` stamps, and `removed: null` (matches `create-company.yaml`; consumers downstream filter `{ removed: null }` on list queries).
+2. Insert activity doc with `status: [{ stage, created: change_stamp }]`, `created` + `updated` stamps, and `removed: null` (matching `create-company.yaml`). List and detail requests exclude soft-deleted docs via `removed.timestamp: { $exists: false }`, the shape used by `get_all_companies.yaml` — not `{ removed: null }` literally.
 3. Apply `request_stages.write` hook.
 4. Emit `create-activity` event via `events.new-event` with:
    - `references: { contact_ids, company_ids, activity_ids: [new id] }`
@@ -479,7 +539,13 @@ this module emits (`update-activity`, `complete-activity`,
 
 ### `update-activity`
 
-Updates editable fields (title, description, contact_ids, company_ids, attributes). Does **not** handle stage transitions — those go through `change-activity-status`. Emits `update-activity` with `references: { contact_ids, company_ids, activity_ids: [_id] }` carrying the **post-update** linked IDs only, matching the pattern used by `update-contact` and `update-company`.
+Updates editable fields (title, description, contact_ids, company_ids, attributes). Does **not** handle stage transitions (`change-activity-status`) or soft-delete (`delete-activity`).
+
+Routine mirrors `update-company.yaml`:
+
+1. `MongoDBUpdateOne` filtered on `_id` and `updated.timestamp` — optimistic concurrency. If the timestamp moved between load and write, the update misses and the API returns a stale-state error; client retries with the fresh stamp.
+2. `$set` editable fields plus `updated: change_stamp`. Apply `request_stages.write` hook.
+3. Emit `update-activity` with `references: { contact_ids, company_ids, activity_ids: [_id] }` carrying the **post-update** linked IDs only (matching `update-contact` / `update-company`) and `metadata: { activity_id }`.
 
 > **Future consideration — delink visibility.** If a user removes contact X from an activity, contact X's events timeline sees nothing; as far as that timeline is concerned, the activity silently disappeared. Making delinks visible would require loading the pre-update doc, diffing old vs new link arrays, emitting `references` as the union (and potentially a dedicated `unlink-contact-from-activity` event type). Left out of v1 to match existing modules and avoid churn from future automated ingestion channels re-linking on every poll — revisit if user feedback shows the silent-unlink is confusing.
 
@@ -493,52 +559,104 @@ Input:
 
 Routine:
 
-1. Load activity, read `status[0].stage` as current.
-2. If `current === stage`, no-op (return).
-3. Prepend the new stage entry to the status array:
+1. Load activity, read `status[0].stage` and `updated.timestamp`.
+2. If `loaded.status[0].stage === stage`, no-op (return).
+3. `MongoDBUpdateOne` with optimistic concurrency on both the loaded
+   stage and timestamp — both must still match at write time:
 
-   ```js
-   { $push: { status: { $each: [{ stage, created: change_stamp }], $position: 0 } } }
+   ```yaml
+   filter:
+     _id: { _payload: activity_id }
+     status.0.stage: { _step: load.0.status.0.stage }
+     updated.timestamp: { _step: load.0.updated.timestamp }
+   update:
+     $set:
+       updated: { _ref: { module: events, component: change_stamp } }
+     $push:
+       status:
+         $each: [{ stage, created: change_stamp }]
+         $position: 0
    ```
 
-   `$each` is required whenever `$position` is specified — without it,
-   MongoDB rejects the update.
+   `$each` is required whenever `$position` is specified — without it
+   MongoDB rejects the update. Bumping `updated.timestamp` keeps default
+   sort (`updated.timestamp desc`) reflecting status flips per
+   `decisions.md` §3. The filter on `status.0.stage` and
+   `updated.timestamp` prevents two simultaneous "Mark done" clicks
+   from each pushing a `done` entry — only the first lands; the
+   second's filter misses.
 
 4. Emit the matching event (`complete-activity` / `cancel-activity` / `reopen-activity`) with full references.
 5. Return `{ previous_stage, new_stage }`.
 
 Split from `update-activity` so the UI can expose one-click "Mark done" / "Cancel" / "Reopen" actions without a full form submit, and so the correct event type fires without the API having to diff input against current state.
 
-### Soft delete (no dedicated endpoint)
+### `delete-activity`
 
-Delete is a status-like lifecycle event but rare enough that it's a button on the detail page calling `update-activity` with `removed: change_stamp`. The `delete-activity` event is emitted by the update API when it sees `removed` move from `null` to a stamp. (This matches how `companies.update-company` handles `removed`.)
+Input:
+
+```yaml
+{ activity_id: UUID }
+```
+
+Routine:
+
+1. Update doc with `$set: { removed: change_stamp, updated: change_stamp }`,
+   filtered on `_id` and `updated.timestamp` (optimistic concurrency, same
+   as the other writes).
+2. Emit `delete-activity` event with `references: { contact_ids,
+   company_ids, activity_ids: [_id] }` and `metadata: { activity_id }`.
+3. Return `{ success: true }`.
+
+Dedicated single-purpose endpoint, mirroring the
+`change-activity-status` precedent and the `files` module's
+`delete-file`. Keeps `update-activity`'s editable-fields list clean
+(no `removed` smuggled in) and makes the event-emission contract
+obvious from the call site — the detail page's "Delete" button calls
+`delete-activity`, end of story.
 
 ## Pages
 
-### `/activities` (list)
+Page IDs follow the entity-module convention (`all`, `view`, `edit`,
+`new`). Lowdefy doesn't support nested URL paths or path params, so
+entity IDs travel as `?_id=<uuid>` query params; cross-module
+navigation goes via `pageId` rather than hard-coded URLs. The actual
+URL slug for each page is set by the consuming app's page config.
 
-Standard list page: AgGridBalham table, filters panel (type, current stage, date range, linked contact, linked company, assignee-style), Excel download, pagination. Follows `.claude/guides/list-pages.md`. Row click → detail page.
+### `pageId: all` — list
 
-### `/activities/<id>` (detail)
+Standard list page: AgGridBalham table, filters panel (type, current stage, date range, linked contact, linked company, assignee-style), Excel download, pagination. Follows `.claude/guides/list-pages.md`. Row click links to `pageId: view` with `urlQuery: { _id }`.
 
-Layout mirrors company-detail:
+**URL param hydration.** On `onInit`, `SetState` on `filter` from
+`_url_query: contact_id` and `_url_query: company_id` (singular,
+optional). When present, the list mounts with the corresponding
+linked-entity filter pre-applied — feeds `tile_activities`'s "View
+all" link and works as a deep-link contract for external triggers
+(reminder emails, dashboards, Slack unfurls landing on
+"activities for this contact"). Mirrors `pageId: new`'s URL-prefill
+contract — same query-string-only convention, no path params.
+
+### `pageId: view` — detail
+
+Layout mirrors company-detail. Resolves the activity from `_url_query: _id`.
 
 - **Main column** — `view_activity` (SmartDescriptions: type, title, description, current stage, linked contacts/companies as chips). Plus a status-history timeline (reading the status array). Plus the events-timeline scoped to this activity.
 - **Sidebar tiles** — files, linked contacts, linked companies, events.
 - **Header actions** — Edit, Mark done / Reopen / Cancel, Delete.
 
-### `/activities/<id>/edit` (edit)
+### `pageId: edit` — edit
 
-`form_activity` wrapped in the standard edit-page layout. Submits to `update-activity`.
+`form_activity` wrapped in the standard edit-page layout. Resolves the activity from `_url_query: _id`. Submits to `update-activity`.
 
-### `/activities/new` (create)
+### `pageId: new` — create
 
 `form_activity` wrapped in the standard new-page layout. Submits to
 `create-activity`.
 
-Accepts URL params for prefill — see "Capture entry points → `/activities/new` page inputs"
-for the full list. Used by `capture_activity` in `mode: page` and by
-external deep-links (emails, chat messages, shortcuts).
+Accepts URL query params for prefill — see "Capture entry points →
+`pageId: new` query params" for the full list. Used by
+`capture_activity` in `mode: page` and by external deep-links (emails,
+chat messages, shortcuts).
 
 ## Integration with companies / contacts
 
@@ -602,7 +720,6 @@ Design decisions this phase locks in:
 - **Recurrence** — no "repeats weekly" modelling. A recurring meeting is N separate activities until we need otherwise.
 - **Reminders / notifications for upcoming activities** — the `notifications` module can be wired in by a consumer, but the activities module doesn't push reminders itself in v1.
 - **Assignment to multiple users** — activities have a creator (via `created.user`). A dedicated `assigned_to` field is not in v1; can be added as an attribute by consumers, and promoted to a first-class field later.
-- **Rich-text description** — plain text for v1. Markdown or rich-text can land later without migration (field is already a string).
 - **Activity templates / canned responses** — out of scope.
 - **Deals linking** — `deal_ids` is reserved in the design but not added to the schema/pipeline/UI until the `deals` module exists.
 
