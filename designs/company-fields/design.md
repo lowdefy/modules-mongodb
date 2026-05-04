@@ -24,8 +24,8 @@ The `module-field-pattern` design (`designs/module-field-pattern/design.md`) alr
 1. **Universal core**: `name`, `description` only. Hardcoded by the module. Label is configurable via the existing `label` var; section dividers stay opinionated.
 2. **Configurable sections**: `fields.contact`, `fields.address`, `fields.registration`, `fields.attributes` — each defaults to `[]`. Section divider renders only when the section is non-empty.
 3. **Shipped presets**: `field-presets/contact-default.yaml`, `field-presets/address-text.yaml`, `field-presets/address-places.yaml`, `field-presets/registration-sa.yaml`. Apps `_ref` what they want. The module itself ships nothing wired up.
-4. **Whole-payload writes**: `create-company` and `update-company` stop enumerating fields. Each section saves as a sub-object via `$mergeObjects`. Adding a field becomes a one-line block change with no API edits.
-5. **Places autocomplete is optional**: the autocomplete preset depends on `@lowdefy/plugin-places-autocomplete` (to be upstreamed from `@mrmtech/plugin-places-autocomplete`) and a Google API key. Apps that don't want it use the text preset or roll their own.
+4. **Whole-payload writes**: `create-company` and `update-company` stop enumerating fields. Sections save as whole sub-objects — literal insert for create, `$mergeObjects` per section for update. Adding a field becomes a one-line block change with no API edits.
+5. **Places autocomplete is optional**: the autocomplete preset depends on a custom `PlacesAutocomplete` block plugin (to be implemented either inside this monorepo's `plugins/` directory or supplied by the consuming app) plus a Google API key. Apps that don't want it use the text preset or roll their own.
 
 ## Key decisions and rationale
 
@@ -45,44 +45,88 @@ Renaming `trading_name` → `name` removes the SA-flavor at the field level. The
 
 This makes the module work for any country out of the box: a brand new company app gets just `name` + `description` + the `Contacts` linker, with no fields the consumer didn't ask for. Anything more is opt-in via `_ref` to a preset or a custom block file.
 
-The demo app's `lowdefy.yaml` will need to wire up the SA presets explicitly. That's fine — the demo is meant to *show* configuration, not hide it.
+The demo app's module-entry vars (`apps/demo/modules/companies/vars.yaml`, `_ref`'d from `apps/demo/modules.yaml`) will need to wire up the SA presets explicitly. That's fine — the demo is meant to _show_ configuration, not hide it.
 
 **Alternative considered:** default `fields.contact` and `fields.address` to non-empty (since "every company has email and an address"), and only default `fields.registration` to empty. Rejected because (a) it's inconsistent — three slots with the same shape, two of which silently ship content — and (b) "contact" and "address" still vary by region (PhoneNumberInput formatting, address structure), so even the "universal" defaults aren't truly universal. Better to make the rule simple: all sections opt-in.
 
-### Whole-payload writes via `$mergeObjects`
+### Whole-payload writes
 
-`create-company` and `update-company` stop hand-mapping each field. Each section becomes a sub-object on the document, and the API merges the whole payload:
+`create-company` and `update-company` stop hand-mapping each field. Each section becomes a sub-object on the document, and the API writes the whole payload section. The two APIs use different syntax because one is a literal insert and the other is a pipeline update.
+
+**`create-company` (`MongoDBInsertConsecutiveId.doc`)** — literal insert. Each section is set from the payload, defaulting to `{}` so the form can omit a section without breaking the insert. The existing `contact` / `address` / `attributes` blocks already use this; add `registration` to match:
+
+```yaml
+doc:
+  name:
+    _payload: name
+  description:
+    _payload: description
+  contact:
+    _if_none:
+      - _payload: contact
+      - {}
+  address:
+    _if_none:
+      - _payload: address
+      - {}
+  registration:
+    _if_none:
+      - _payload: registration
+      - {}
+  attributes:
+    _if_none:
+      - _payload: attributes
+      - {}
+  lowercase_email:
+    _string.toLowerCase:
+      _string.trim:
+        _if_none:
+          - _payload: contact.primary_email
+          - ""
+  removed: null
+  created: { _ref: { module: events, component: change_stamp } }
+  updated: { _ref: { module: events, component: change_stamp } }
+```
+
+`MongoDBInsertConsecutiveId` doesn't support pipeline-update syntax, so `$mergeObjects` doesn't apply here. Inserts have nothing to merge with.
+
+**`update-company` (`MongoDBUpdateOne` pipeline)** — pipeline update. Each section is merged with `$mergeObjects` against the existing sub-object. The existing pipeline already does this for `contact` / `address` / `attributes`; add `registration` to match, and switch the previously-flat `name` / `description` / `registered_name` / `registration_number` / `vat_number` / `website` writes to the new shape:
 
 ```yaml
 update:
-  $set:
-    name:
-      _payload: name
-    description:
-      _payload: description
-    contact:
-      $mergeObjects:
-        - $ifNull: ["$$ROOT.contact", {}]
-        - { _payload: contact }
-    address:
-      $mergeObjects:
-        - $ifNull: ["$$ROOT.address", {}]
-        - { _payload: address }
-    registration:
-      $mergeObjects:
-        - $ifNull: ["$$ROOT.registration", {}]
-        - { _payload: registration }
-    attributes:
-      $mergeObjects:
-        - $ifNull: ["$$ROOT.attributes", {}]
-        - { _payload: attributes }
+  - $set:
+      name: { _payload: name }
+      description: { _payload: description }
+      contact:
+        $mergeObjects:
+          - { $ifNull: ["$$ROOT.contact", {}] }
+          - { _payload: contact }
+      address:
+        $mergeObjects:
+          - { $ifNull: ["$$ROOT.address", {}] }
+          - { _payload: address }
+      registration:
+        $mergeObjects:
+          - { $ifNull: ["$$ROOT.registration", {}] }
+          - { _payload: registration }
+      attributes:
+        $mergeObjects:
+          - { $ifNull: ["$$ROOT.attributes", {}] }
+          - { _payload: attributes }
+      updated: { _ref: { module: events, component: change_stamp } }
+  - $set:
+      lowercase_email:
+        $toLower:
+          $trim:
+            input:
+              $ifNull: ["$contact.primary_email", ""]
 ```
 
-Adding a field to `fields.contact` no longer requires touching the API. This is exactly what `module-field-pattern` did for profile.
+Adding a field to `fields.contact` no longer requires touching either API.
 
-`$mergeObjects` (rather than `$set`-replace) preserves keys written outside the form — e.g. a `lowercase_email` derived field, or fields written by a separate flow. Same rationale as profile.
+**Why `$mergeObjects` (not `$set`-replace) on the section:** to preserve `contact.*` (and `address.*`, `registration.*`, `attributes.*`) keys that aren't represented in the current form — either fields written by a separate flow, or fields a future form revision will add. `$set: { contact: _payload: contact }` would replace the whole sub-object and drop those keys.
 
-`lowercase_email` stays as a derived field computed in a second pipeline stage that reads from the merged `contact` sub-object.
+**`lowercase_email`** is a denormalized search-index field at the document root (used by Atlas Search in `get_all_companies` and `get_company_excel_data` — see `requests/get_all_companies.yaml:38,48`). It's not inside any section, so it's not preserved by `$mergeObjects` on `contact` — it survives because the update doesn't touch unlisted root keys, and is recomputed from the merged `contact.primary_email` in pipeline stage 2 so it reflects the post-merge value.
 
 ### Registration moves under `registration.*`
 
@@ -98,34 +142,64 @@ The `.registered` level implies a multi-address model (registered vs postal vs b
 
 If a future app needs multiple addresses, it can either (a) add a second top-level field like `postal_address`, or (b) put extra addresses inside `attributes.*`. We don't pre-build that.
 
-**Open question:** field key `address` vs `business_address`. See the open questions section.
+Field key is `address` (not `business_address`). Shorter, matches the field structure (`address.formatted_address`). If a future app needs additional address types, they live as siblings (`postal_address`, `billing_address`) at the document root rather than under a deeper nesting.
 
 ### Optional places-autocomplete preset
 
 For the address section we ship two presets:
 
 - `field-presets/address-text.yaml` — plain `TextInput` for `formatted_address` + `TextInput` for `extra`. Zero dependencies.
-- `field-presets/address-places.yaml` — `PlacesAutocomplete` block from `@lowdefy/plugin-places-autocomplete` (target after upstreaming) wired to write `formatted_address`, plus `TextInput` for `extra`.
+- `field-presets/address-places.yaml` — `PlacesAutocomplete` block (custom plugin — see below) wired to write `formatted_address`, plus `TextInput` for `extra`.
 
 The autocomplete preset depends on:
-1. The plugin being upstreamed into Lowdefy (currently `@mrmtech/plugin-places-autocomplete` v2.1.6 — see `/Users/sam/Developer/mrm/prp/plugins/plugin-places-autocomplete`).
+
+1. A custom `PlacesAutocomplete` block plugin. There is no Lowdefy core plugin that provides this; it must be implemented either in this monorepo's `plugins/` directory (e.g. as a new package or as a block inside `modules-mongodb-plugins`) or be supplied by the consuming app.
 2. The consuming app providing a Google API key (env var) and rendering a `GoogleAPIProvider` block somewhere on the page tree.
 
 Apps using `address-places.yaml` need to add the `GoogleAPIProvider` to their layout module (or directly on the relevant pages). The companies module does **not** auto-render it — the provider is page-level scaffolding, not a field.
 
 **Why not embed `GoogleAPIProvider` in the address preset itself?** Because there can only be one provider per page, and the provider needs the API key. A preset that includes the provider would force every page using the preset to re-supply the API key and would conflict with other pages that have their own provider.
 
-This work is partially blocked on upstreaming the plugin. The slot itself (`fields.address` accepting any block array) is not blocked — apps can wire their current `@mrmtech/...` plugin into the slot today, and the shipped preset lands once the plugin is upstreamed.
+This work is partially blocked on the plugin existing. The slot itself (`fields.address` accepting any block array) is not blocked — apps can wire any places-autocomplete block they have today into the slot, and the shipped `address-places.yaml` preset lands once a canonical plugin is available.
 
-### Section dividers stay hardcoded
+### Section structure (form and view)
 
-Sections render with hardcoded titles ("Registration", "Contact Details", "Address", "Additional Details") via dividers in `form_company.yaml`. Per your call: opinionated is fine, can add vars later if a real need shows up.
+Both pages render one logical block per section, and each section is gated on its `fields.*` array being non-empty. The form already does this for `attributes` via a divider; the design extends the same pattern to `registration` / `contact` / `address`, and mirrors it in the view.
 
-Dividers render conditionally — only when the corresponding `fields.*` array is non-empty. This is already the pattern for `fields.attributes` (form_company.yaml:25-39).
+**Form (`components/form_company.yaml`)** — section dividers with hardcoded titles ("Registration", "Contact Details", "Address", "Additional Details"). Each divider + its field array is wrapped in `_build.if(_build.array.length(fields.X) > 0)` so a section that the consumer didn't wire up disappears entirely. Section titles stay hardcoded — opinionated is fine; can add vars later if a real need shows up.
 
-### Excel download stops hardcoding registration columns
+**View (`components/view_company.yaml`)** — one `SmartDescriptions` per section instead of today's single big one + a separate attributes block. Each section's `data:` is the full `get_company.0` (dot-notation field IDs like `registration.vat_number` resolve into it directly — no per-section data wrapping needed), and each has a `visible:` gate matching the form:
 
-`excel_download.yaml` currently lists `registered_name`, `registration_number`, `vat_number` as fixed columns. After this design they're not part of the document root anymore. The fixed columns become just `id`, `name`, `description`, `created.timestamp`, `updated.timestamp`. Apps add registration / contact / address / attribute columns via the existing `components.download_columns` var.
+```yaml
+- id: view_core
+  type: SmartDescriptions
+  properties:
+    column: 1
+    size: small
+    data: { _request: get_company.0 }
+    fields: { _ref: components/fields/core.yaml }
+- id: view_registration
+  type: SmartDescriptions
+  visible:
+    _build.gt:
+      - _build.array.length: { _module.var: fields.registration }
+      - 0
+  properties:
+    title: Registration
+    column: 1
+    size: small
+    data: { _request: get_company.0 }
+    fields: { _module.var: fields.registration }
+# …same shape for view_contact, view_address, view_attributes
+```
+
+This keeps the form and view in lockstep: configure a section once via `fields.X`, both surfaces show or hide together.
+
+### Excel download keeps only universal-core columns
+
+`excel_download.yaml` currently hard-codes columns for every standard field: `registered_name`, `registration_number`, `vat_number`, `website`, `email` (`contact.primary_email`), `phone` (`contact.primary_phone`). After this design those keys all live inside opt-in sections, so the fixed-column list collapses to the same universal-core surface as the rest of the design: `id`, `name` (the existing `display_name` alias), `description`, `updated_at`, `created_at`.
+
+Apps that want any registration / contact / address / attribute columns add them through the existing `components.download_columns` slot. This is consistent with the "all sections opt-in" stance — the export shouldn't ship section-specific columns the consumer didn't ask for.
 
 ## Configuration shape
 
@@ -136,7 +210,7 @@ vars:
   collection: { default: companies }
   label: { default: Company }
   label_plural: { default: Companies }
-  name_field: { default: name }            # was: trading_name
+  name_field: { default: name } # was: trading_name
   id_prefix: { default: "C-" }
   id_length: { default: 4 }
   event_display: { default: { _ref: defaults/event_display.yaml } }
@@ -144,28 +218,28 @@ vars:
   fields:
     type: object
     properties:
-      contact:        { default: [] }
-      address:        { default: [] }
-      registration:   { default: [] }
-      attributes:     { default: [] }      # already present
+      contact: { default: [] }
+      address: { default: [] }
+      registration: { default: [] }
+      attributes: { default: [] } # already present
 
   components:
     type: object
     properties:
-      table_columns:               { default: [] }
-      filters:                     { default: [] }
-      main_slots:                  { default: [] }
-      sidebar_slots:               { default: [] }
-      download_columns:            { default: [] }
-      contact_card_extra_fields:   { default: [] }
+      table_columns: { default: [] }
+      filters: { default: [] }
+      main_slots: { default: [] }
+      sidebar_slots: { default: [] }
+      download_columns: { default: [] }
+      contact_card_extra_fields: { default: [] }
 
   request_stages:
     type: object
     properties:
-      filter_match:        { default: [] }
-      get_all_companies:   { default: [{ $addFields: {} }] }
-      selector:            { default: [] }
-      write:               { default: [] }
+      filter_match: { default: [] }
+      get_all_companies: { default: [{ $addFields: {} }] }
+      selector: { default: [] }
+      write: { default: [] }
 
   filter_requests: { default: [] }
 ```
@@ -173,7 +247,7 @@ vars:
 ### App config example: SA-flavored demo
 
 ```yaml
-# apps/demo/lowdefy.yaml
+# apps/demo/modules.yaml
 - id: companies
   source: file:../../modules/companies
   vars:
@@ -238,7 +312,7 @@ vars:
 modules/companies/field-presets/
 ├── contact-default.yaml      # website, email (with validate), phone
 ├── address-text.yaml         # address.formatted_address (TextInput), address.extra
-├── address-places.yaml       # PlacesAutocomplete + address.extra (depends on plugin)
+├── address-places.yaml       # PlacesAutocomplete + address.extra (depends on a custom plugin)
 └── registration-sa.yaml      # registered_name, registration_number, vat_number
                               #   keys namespaced as registration.*
 ```
@@ -282,7 +356,7 @@ Each preset is a plain block array consumable via `_ref`. Examples:
 ```
 
 ```yaml
-# field-presets/address-places.yaml (depends on @lowdefy/plugin-places-autocomplete)
+# field-presets/address-places.yaml (depends on a custom PlacesAutocomplete plugin)
 - id: address.places
   type: PlacesAutocomplete
   properties:
@@ -307,7 +381,9 @@ Each preset is a plain block array consumable via `_ref`. Examples:
 
 (Exact onChange wiring TBD during implementation — the autocomplete value object can be projected directly into `address.*` keys via `resultMapping` instead of a SetState; see plugin readme.)
 
-Note that `contact.website` is namespaced under `contact.*` rather than left at the root (current state has `website` flat). Same rationale as registration: keep a section's fields contained.
+Note that `contact.website` is namespaced under `contact.*` rather than left at the root (current state has `website` flat). Same rationale as registration: keep a section's fields contained. The derived `lowercase_email` index field reads from `contact.primary_email` and stays at the document root.
+
+`PhoneNumberInput` is a native Lowdefy block — no plugin dependency added to the module for the contact preset.
 
 ## Document shape (after)
 
@@ -347,39 +423,48 @@ All section-scoped fields under their section sub-object. `name`, `description`,
 
 ### Module (`modules/companies/`)
 
-| File                                       | Change                                                                                                                                              |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `module.lowdefy.yaml`                      | Add `fields.contact`, `fields.address`, `fields.registration`. Change `name_field` default to `name`.                                               |
-| `components/fields/core.yaml`              | Replace with `name`, `description` only. Field id is `name`, label is `"{label} Name"`.                                                             |
-| `components/fields/registration.yaml`      | Delete. Content moves to `field-presets/registration-sa.yaml` with `registration.*` prefix.                                                         |
-| `components/fields/contact.yaml`           | Delete. Content moves to `field-presets/contact-default.yaml` with `contact.*` prefix.                                                              |
-| `components/fields/address.yaml`           | Delete. Content moves to `field-presets/address-text.yaml` with `address.*` prefix (no `.registered` nesting).                                      |
-| `components/form_company.yaml`             | Render core + four conditional sections (registration, contact, address, attributes), each with divider gated on non-empty.                         |
-| `components/view_company.yaml`             | SmartDescriptions reads `fields.*` directly (already does this for `attributes`). Pass each section's data as a sub-object.                         |
-| `api/create-company.yaml`                  | Replace per-field `$set` with section-level `$mergeObjects`. `name` instead of `trading_name`.                                                      |
-| `api/update-company.yaml`                  | Same: per-section `$mergeObjects`. Stage-2 derived `lowercase_email` reads from merged `contact`.                                                   |
-| `components/excel_download.yaml`           | Strip the registration columns from the fixed list. Keep `id`, `name`, `description`, timestamps. Apps add per-section columns via `download_columns`. |
-| `components/table_companies.yaml`          | Default columns reference `name` (was `trading_name`).                                                                                              |
-| `components/filter_companies.yaml`         | Default name/keyword filter targets `name` and `lowercase_email`.                                                                                   |
-| `components/company-selector.yaml`         | Display field reads from `_module.var: name_field` (already does — just needs default change).                                                      |
-| `components/tile_contacts.yaml`            | Audit references to `trading_name`.                                                                                                                 |
-| `requests/get_*.yaml`                      | Audit projections — switch any `trading_name` references to `name`. Same for selector/match/sort.                                                   |
-| `field-presets/contact-default.yaml`       | New.                                                                                                                                                |
-| `field-presets/address-text.yaml`          | New.                                                                                                                                                |
-| `field-presets/address-places.yaml`        | New (depends on upstreamed plugin).                                                                                                                 |
-| `field-presets/registration-sa.yaml`       | New.                                                                                                                                                |
-| `README.md`                                | Rewrite the fields/sections section.                                                                                                                |
+| File                                  | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `module.lowdefy.yaml`                 | Add `fields.contact`, `fields.address`, `fields.registration`. Change `name_field` default to `name`.                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `components/fields/core.yaml`         | Rename `trading_name` block to `name` (label `"{label} Name"` stays). `description` block unchanged. Only file remaining under `components/fields/` after this design.                                                                                                                                                                                                                                                                                                                                                |
+| `components/fields/registration.yaml` | Delete. Content moves to `field-presets/registration-sa.yaml` with `registration.*` prefix.                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `components/fields/contact.yaml`      | Delete. Content moves to `field-presets/contact-default.yaml` with `contact.*` prefix.                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `components/fields/address.yaml`      | Delete. Content moves to `field-presets/address-text.yaml` with `address.*` prefix (no `.registered` nesting).                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `components/form_company.yaml`        | Render core + four conditional sections (registration, contact, address, attributes), each with divider gated on non-empty.                                                                                                                                                                                                                                                                                                                                                                                           |
+| `components/view_company.yaml`        | Replace today's single SmartDescriptions + separate attributes block with one SmartDescriptions per section (`view_core`, `view_registration`, `view_contact`, `view_address`, `view_attributes`). Each non-core section gets a `title`, a `visible:` gate on `_build.array.length(fields.X) > 0`, and `data: { _request: get_company.0 }`. See "Section structure (form and view)".                                                                                                                                  |
+| `api/create-company.yaml`             | Literal `MongoDBInsertConsecutiveId.doc`: replace flat `trading_name`/`registered_name`/`registration_number`/`vat_number`/`website` keys with `name`, plus `registration: _if_none: [_payload: registration, {}]` alongside the existing `contact`/`address`/`attributes` `_if_none` blocks. `lowercase_email` is still computed inline at insert time from `_payload: contact.primary_email`. (Insert, not pipeline — `$mergeObjects` doesn't apply here.)                                                          |
+| `api/update-company.yaml`             | `MongoDBUpdateOne` pipeline: rename stage-1 `trading_name` → `name`, drop the flat `registered_name`/`registration_number`/`vat_number`/`website` `$set`s, add `registration: $mergeObjects [$ifNull: $$ROOT.registration, _payload: registration]` alongside the existing `contact`/`address`/`attributes` merges. Stage-2 derived `lowercase_email` already reads from `$contact.primary_email` — unchanged.                                                                                                        |
+| `components/excel_download.yaml`      | Strip **all** section-specific fixed columns (`registered_name`, `registration_number`, `vat_number`, `website`, `email`/`contact.primary_email`, `phone`/`contact.primary_phone`). Keep only `id`, `name` (uses the `display_name` alias), `description`, `updated_at`, `created_at`. Apps add registration/contact/address/attribute columns via `components.download_columns`.                                                                                                                                     |
+| `pages/edit.yaml`                     | `onMount` `SetState`: collapse flat field reads into `name` + per-section reads (`contact: _request: get_company.0.contact`, `address: _request: get_company.0.address`, `registration: _request: get_company.0.registration`, plus existing `attributes`). `update-company` `CallAPI` payload: send `name`, `description`, `contact`, `address`, `registration`, `attributes` as section sub-objects (replacing today's flat `trading_name`/`registered_name`/`registration_number`/`vat_number`/`website` mapping). |
+| `pages/new.yaml`                      | `create-company` `CallAPI` payload: same collapse as `edit.yaml`. `onInit` `SetState`: add `registration: {}` alongside `contact: {}`, `address: {}`, `attributes: {}`.                                                                                                                                                                                                                                                                                                                                               |
+| `pages/view.yaml`                     | `onInit` `SetState`: add `registration: {}` alongside `contact: {}`, `address: {}`, `attributes: {}` for symmetry with the new section.                                                                                                                                                                                                                                                                                                                                                                               |
+| `components/table_companies.yaml`     | No direct change. Table column already uses the `display_name` alias derived in `get_all_companies` via `$getField` on `name_field`; flipping the `name_field` default carries the rename through automatically.                                                                                                                                                                                                                                                                                                      |
+| `components/filter_companies.yaml`    | No direct change. Search path is built from `name_field` in `get_all_companies`, so the default search automatically targets `name` once `name_field` flips. `lowercase_email` is already in the search path.                                                                                                                                                                                                                                                                                                         |
+| `components/company-selector.yaml`    | Display field reads from `_module.var: name_field` (already does — just needs default change).                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `components/tile_contacts.yaml`       | Audit references to `trading_name`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| `requests/get_*.yaml`                 | No direct change. Search paths, sort, and the `display_name` projection all read `_module.var: name_field`, so the `name_field` default flip carries through automatically.                                                                                                                                                                                                                                                                                                                                           |
+| `field-presets/contact-default.yaml`  | New.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `field-presets/address-text.yaml`     | New.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `field-presets/address-places.yaml`   | New (depends on a custom `PlacesAutocomplete` plugin — see Plugin work below).                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `field-presets/registration-sa.yaml`  | New.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `README.md`                           | Rewrite the fields/sections section. Also update the line that points readers at `apps/demo/modules/companies/index.yaml` (now removed) — point at `apps/demo/modules/companies/vars.yaml` instead, or drop the pointer if it was only there for connection-remap docs and `vars.yaml` doesn't demonstrate that.                                                                                                                                                                                                      |
 
 ### Demo app (`apps/demo/`)
 
-| File             | Change                                                                                                                |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------- |
-| `lowdefy.yaml`   | Wire `fields.contact`, `fields.address`, `fields.registration` to the shipped SA presets. Update any `trading_name` references. |
-| any seed data    | Migrate sample docs to new shape.                                                                                     |
+| File                           | Change                                                                                                                                                                                                                                                                                                                                              |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `modules/companies/vars.yaml`  | Wire `fields.contact`, `fields.address`, `fields.registration` to the shipped SA presets. Update any `trading_name` references. (`vars.yaml` is what `apps/demo/modules.yaml` actually `_ref`s.)                                                                                                                                                    |
+| `modules/companies/index.yaml` | Delete. Stale snapshot of var defaults from before `vars.yaml` existed; nothing in the build references it.                                                                                                                                                                                                                                         |
+| any seed data                  | Drop and reseed the demo `companies` collection with sample docs in the new shape (root-level `name`, sections under `contact.*`/`address.*`/`registration.*`/`attributes.*`). In-place migration via `update-company` would leave the legacy `address.registered` sub-object behind because `$mergeObjects` is shallow — reseeding sidesteps that. |
 
-### Plugin upstreaming (parallel work, not in this design's scope)
+### Plugin work (parallel, not in this design's scope)
 
-Move `@mrmtech/plugin-places-autocomplete` into the Lowdefy monorepo as `@lowdefy/plugin-places-autocomplete`. The `address-places.yaml` preset references this final name.
+A canonical `PlacesAutocomplete` block plugin needs to exist before `address-places.yaml` is functional. Two options for where it lives:
+
+- A new block inside `plugins/modules-mongodb-plugins/`, alongside `ContactSelector`, `EventsTimeline`, etc.
+- A separate plugin package in this monorepo's `plugins/` directory.
+
+Either is fine; the choice doesn't affect this design. Until the plugin lands, apps that need autocomplete can either supply their own implementation in the slot or stick with `address-text.yaml`.
 
 ## Non-goals
 
@@ -390,24 +475,15 @@ Move `@mrmtech/plugin-places-autocomplete` into the Lowdefy monorepo as `@lowdef
 - **Custom validators per region.** Validation lives on the field block (`validate:` property). Apps choose validators when they pick or write the preset.
 - **Section reordering.** Order is fixed: core → registration → contact → address → attributes → contacts linker. If apps need a different order, that's a future design.
 
-## Open questions
+## Resolved decisions
 
-1. **Address field key: `address` or `business_address`?**
-   `address` is shorter and matches the field structure (`address.formatted_address`). `business_address` is more semantically explicit and leaves room for a future `postal_address` / `billing_address` at the same nesting level. I lean `address` for simplicity, with the understanding that future address types live as siblings (`postal_address`, `billing_address`) rather than under a deeper nesting.
-
-2. **Should `contact.website` actually live under `contact.*`, or stay at the root as `website`?**
-   The current schema has `website` flat. Moving it under `contact.*` is cleaner (whole-section merge), but a website isn't really "contact info" in the same way email/phone are — it's more like a company property. Similarly, primary email is also used for `lowercase_email` indexing. Leaning: keep all three (`website`, `primary_email`, `primary_phone`) under `contact.*` for section coherence, and the derived `lowercase_email` reads from `contact.primary_email`.
-
-3. **`PhoneNumberInput` plugin dependency.** The contact preset uses `PhoneNumberInput`. Is this already a hard dep of the companies module, or only via the contact preset? If the latter, the `plugins:` list in `module.lowdefy.yaml` may need adjustment (or the preset documents its own plugin dependency).
-
-4. **Does any preset need a "show" toggle var?**
-   For example, `fields.show_description: false` to hide description for an app that doesn't want it. The pattern exists in `user-account` (`fields.show_honorific`). I'd say no for now — apps that don't want description can ignore the field; it'll just be empty. Hiding the input would need a real use case.
-
-5. **What about list page filters and table columns by default?**
-   Today the table shows `trading_name`, `registered_name`, `registration_number`, `vat_number`, etc. After this design, those don't exist by default. Default columns become: `id`, `name`, `description`. Apps add registration / address columns via `components.table_columns`. Confirming this is acceptable — the list page becomes notably sparser out of the box.
+- **Address field key: `address`.** Sibling root fields (`postal_address`, `billing_address`) cover any future multi-address need.
+- **`contact.*` nesting confirmed.** `website`, `primary_email`, `primary_phone` all live under `contact.*`. Derived `lowercase_email` at the document root reads from `contact.primary_email`.
+- **`PhoneNumberInput` is a native Lowdefy block.** No plugin entry needed in `module.lowdefy.yaml` for the contact preset.
+- **No `show` toggles.** Apps that don't want a field omit it from the relevant `fields.*` array. `description` is the one universal-core exception and stays.
+- **Default table stays as today: ID, Name (`display_name` derived from `name_field`), Description, then the `components.table_columns` slot, then Updated At / Created At.** No registration columns are shipped by default — they were already not in the default table. Apps add per-section columns via `components.table_columns`.
 
 ## Next steps
 
-1. Review and resolve open questions (especially #1 and #5).
-2. Run `/r:design-review company-fields`.
-3. Break into tasks: core rename, section split, write API, presets, demo wiring, plugin upstreaming (separate track).
+1. Run `/r:design-review company-fields`.
+2. Break into tasks: core rename, section split, write API, presets, demo wiring, places-autocomplete plugin (separate track).
