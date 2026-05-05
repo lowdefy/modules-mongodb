@@ -77,7 +77,7 @@ connections:
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.1.0"
+    version: "^0.2.0"
 
 secrets:
   - name: MONGODB_URI
