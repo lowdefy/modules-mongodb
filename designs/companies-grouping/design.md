@@ -224,7 +224,7 @@ modules:
 
 ### Edit form (when `hierarchy.enabled`)
 
-The edit page's `onMount` becomes a **two-step sequence** so the parent-selector's options request fires *after* the descendants are known. This avoids a first-render flash where self briefly appears as a valid parent.
+The edit page's `onMount` becomes a **three-step sequence** so the parent-selector's options request fires *after* both the descendants resolve and the resulting id list is written to state. This avoids a first-render flash where self briefly appears as a valid parent.
 
 ```yaml
 onMount:
@@ -234,19 +234,29 @@ onMount:
       - get_company
       - get_company_contact_ids
       - get_descendant_company_ids   # parallel with the others; shared request
-  - id: fetch_selector_options       # runs after step 1 — Lowdefy actions sequential by default
+  - id: set_state
+    type: SetState
+    params:
+      # ...existing scalar copies from get_company.0...
+      parent_ids:
+        _if_none: [_request: get_company.0.parent_ids, []]
+      cycle_check_ids:
+        _if_none: [_request: get_descendant_company_ids.0.ids, []]
+  - id: fetch_selector_options       # runs after set_state — Lowdefy actions sequential by default
     type: Request
     params: get_companies_for_selector
 ```
+
+The selector's underlying request reads `_state: cycle_check_ids` (not `_payload`), because Lowdefy's `_var` is build-time and we need run-time data to flow in. `set_state` between steps 1 and 3 writes that path so step 3's request payload sees the resolved descendants on its first invocation.
 
 The `parent_selector` wrapper component does **not** define its own `onMount` — the existing `company-selector.yaml:11-15` self-fetch is replaced by the page-driven sequence above. (For other pages that use `company-selector` outside the edit form, the existing self-fetch behaviour is preserved by leaving `company-selector.yaml` alone and putting the override on `parent_selector.yaml`.)
 
 Step-by-step:
 
-1. **Step 1** runs three requests in parallel: `get_company` (the doc itself, existing), `get_company_contact_ids` (existing), and `get_descendant_company_ids` (new shared request — payload `root_id: _state._id`, returns `{ ids: [self, ...descendants] }`).
-2. **Step 2** fires `get_companies_for_selector`. By the time it runs, `_request: get_descendant_company_ids.0.ids` is populated, so the selector's projection's `$cond: { $in: ["$_id", cycle_check_ids] }` evaluates correctly on the first render.
-3. The parent_selector block reads `_request: get_descendant_company_ids.0.ids` as its `cycle_check_ids` var — no separate self-concat needed since the request already includes the root.
-4. The parent_selector reuses `company-selector` in `MultipleSelector` mode with one new var: `cycle_check_ids` (default `[]`). The selector's request projects an extra `disabled` field per row using `$cond: { if: { $in: ["$_id", cycle_check_ids] }, then: true, else: false }` and rewrites `label` for matching rows to suffix `" (would create cycle)"`. The selector block's `optionConfig` gains `disabledField: disabled`. Self + descendants therefore appear in the dropdown as greyed-out options the user can see but cannot pick.
+1. **Step 1** runs three requests in parallel: `get_company` (the doc itself, existing), `get_company_contact_ids` (existing), and `get_descendant_company_ids` (new shared request — returns `{ ids: [self, ...descendants] }`).
+2. **Step 2** copies the loaded values into state — including `cycle_check_ids: [self, ...descendants]` from the descendants request, and the form's input fields from the doc.
+3. **Step 3** fires `get_companies_for_selector`. By the time it runs, `state.cycle_check_ids` is populated, so the selector's projection's `$cond: { $in: ["$_id", cycle_check_ids] }` evaluates correctly on the first render.
+4. The parent_selector reuses `company-selector` in `MultipleSelector` mode and reads `_state: cycle_check_ids` via the underlying request's payload. The selector's request projects an extra `disabled` field per row using `$cond: { if: { $in: ["$_id", cycle_check_ids] }, then: true, else: false }` and rewrites `label` for matching rows to suffix `" (would create cycle)"`. The selector block's `optionConfig` gains `disabledField: disabled`. Self + descendants therefore appear in the dropdown as greyed-out options the user can see but cannot pick.
 5. On submit, `parent_ids` (an array, possibly empty) is included in the form payload.
 
 (On the `new` page there are no descendants and no self. The descendants request can be skipped — payload `root_id: undefined` returns no rows, `cycle_check_ids` resolves to `[]`, every option is enabled, no `$cond` branches fire, the selector behaves as a plain company picker. The two-step `onMount` still applies but the descendants request returns immediately.)
@@ -269,7 +279,7 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
 2. The hierarchy filter is implemented by **pre-resolving descendants in a separate request**, then feeding the resulting id list into the existing Atlas Search `compound.must` array. `$graphLookup` cannot run inside a `$search` stage (Atlas Search must be the first pipeline stage), so the alternative — placing `$graphLookup` after `$search` but before `$facet` — was rejected because it bypasses the search index for hierarchy filtering and walks `$graphLookup` per result row.
 3. Concrete wiring:
 
-   The list page reuses the **same `get_descendant_company_ids` request** the edit form uses, with a different payload (`root_id: _state.filter.parent_scope` instead of `_state._id`). The request itself is defined once:
+   The list page reuses the **same `get_descendant_company_ids` request** the edit form uses. Lowdefy resolves a request's payload from the request file (not from the invocation site), so the request file uses an `_if_none` fallback chain that picks the right state path per consumer:
 
    ```yaml
    id: get_descendant_company_ids
@@ -277,9 +287,12 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
    connectionId:
      _module.connectionId: companies-collection
    payload:
+     # List page sets state.filter.parent_scope → wins.
+     # Edit page leaves filter.parent_scope undefined and sets state._id → falls through.
      root_id:
-       _state: filter.parent_scope     # list-page consumer
-       # edit-form consumer overrides this when invoking via params
+       _if_none:
+         - _state: filter.parent_scope
+         - _state: _id
    properties:
      pipeline:
        - $match:
@@ -288,7 +301,7 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
            removed:
              $ne: true
        - $graphLookup:
-           from: <companies-collection name>
+           from: companies
            startWith: "$_id"
            connectFromField: _id
            connectToField: parent_ids
@@ -300,7 +313,7 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
                - "$__descendants._id"
    ```
 
-   When `filter.parent_scope` is unset, the `$match` returns no rows, the request result is `[]`, and downstream consumers see no ids. (Each page that uses this request supplies its own state path for `root_id` — Lowdefy resolves the payload per request invocation, so the edit form and list page don't conflict.)
+   When `filter.parent_scope` is unset *and* `_id` is unset (e.g. on a brand-new page with no doc context), the `$match` returns no rows, the request result is `[]`, and downstream consumers see no ids.
 
    **`filter_companies.yaml`** appends the new selector with a chained `onChange` that resolves descendants then re-fetches the list:
 
@@ -372,7 +385,7 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
       - $match:
           _id: { $in: { _payload: parent_ids } }
       - $graphLookup:
-          from: <companies-collection>
+          from: companies
           startWith: "$_id"
           connectFromField: parent_ids
           connectToField: _id
@@ -384,6 +397,15 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
               - $concatArrays:
                   - [ "$_id" ]
                   - "$__ancestors._id"
+      # OR-reduce across all matched candidate parents into a single doc.
+      # Without this stage, the projection produces one doc per matched
+      # candidate parent — and downstream `_step.cycle_check.0.has_cycle`
+      # would only inspect the first doc, missing cycles via candidate
+      # parent #2 or later.
+      - $group:
+          _id: null
+          has_cycle:
+            $max: "$has_cycle"
 
 - :return:
     error: would_create_cycle
@@ -405,7 +427,7 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
 
 Three notes on this layout:
 
-- **`cycle_check` projects a single boolean.** Pulling the whole `__ancestors` array into the response would be wasteful; the routine only needs the boolean answer. Reading it back is `_step: cycle_check.0.has_cycle` (results from `MongoDBAggregation` are arrays).
+- **`cycle_check` projects a single boolean per matched candidate parent, then OR-reduces to a single doc.** The `$project` stage runs once per matched candidate parent doc (one per `_id` in `payload.parent_ids`), each producing its own `has_cycle` flag. The `$group` stage then OR-reduces (`$max` on booleans gives `true || false → true`) into a single output doc. Without the `$group`, downstream `_step.cycle_check.0.has_cycle` would only inspect the first matched candidate's flag and miss cycles formed via the second-or-later candidate. With `$group`, the result is always a one-element array whose `has_cycle` is the OR across all candidates.
 - **Why a `$match` before `$graphLookup`.** `$graphLookup` needs a starting document set; the simplest is to start at *the candidate parents themselves*, treat each as the root of an upward walk, and check whether self appears at any node visited (the candidate parents themselves count, hence the `$concatArrays` with `["$_id"]`).
 - **The defensive `skip` on every existing step is build-injected at the same time as the cycle-check step.** When `hierarchy.enabled: false`, none of the cycle-check infrastructure is emitted and the existing steps run unconditionally as today. When `hierarchy.enabled: true`, every existing step's YAML gains the `skip:` block via the same `_build.if` that injects the new steps.
 
