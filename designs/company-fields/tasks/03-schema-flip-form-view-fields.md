@@ -1,4 +1,4 @@
-# Task 3: Form & view restructure + delete obsolete fields
+# Task 3: Schema flip — core rename, form, view, delete obsolete fields
 
 ## Context
 
