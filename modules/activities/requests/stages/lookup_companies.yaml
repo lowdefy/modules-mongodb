@@ -1,0 +1,12 @@
+$lookup:
+  from: companies
+  localField: company_ids
+  foreignField: _id
+  as: companies
+  pipeline:
+    - $match:
+        removed.timestamp:
+          $exists: false
+    - $project:
+        _id: 1
+        trading_name: 1

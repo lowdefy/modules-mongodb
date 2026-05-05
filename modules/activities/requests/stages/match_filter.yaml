@@ -1,0 +1,64 @@
+$match:
+  $and:
+    _array.concat:
+      - - removed.timestamp:
+            $exists: false
+      - _if:
+          test:
+            _ne:
+              - _payload: filter.type
+              - null
+          then:
+            - type:
+                _payload: filter.type
+          else: []
+      - _if:
+          test:
+            _ne:
+              - _payload: filter.stage
+              - null
+          then:
+            - status.0.stage:
+                _payload: filter.stage
+          else: []
+      - _if:
+          test:
+            _ne:
+              - _payload: filter.contact_id
+              - null
+          then:
+            - contact_ids:
+                _payload: filter.contact_id
+          else: []
+      - _if:
+          test:
+            _ne:
+              - _payload: filter.company_id
+              - null
+          then:
+            - company_ids:
+                _payload: filter.company_id
+          else: []
+      - _if:
+          test:
+            _ne:
+              - _payload: filter.date_from
+              - null
+          then:
+            - updated.timestamp:
+                $gte:
+                  _date:
+                    _payload: filter.date_from
+          else: []
+      - _if:
+          test:
+            _ne:
+              - _payload: filter.date_to
+              - null
+          then:
+            - updated.timestamp:
+                $lte:
+                  _date:
+                    _payload: filter.date_to
+          else: []
+      - _module.var: request_stages.filter_match

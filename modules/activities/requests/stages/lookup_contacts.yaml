@@ -1,0 +1,14 @@
+$lookup:
+  from: user-contacts
+  localField: contact_ids
+  foreignField: _id
+  as: contacts
+  pipeline:
+    - $match:
+        removed.timestamp:
+          $exists: false
+    - $project:
+        _id: 1
+        profile: 1
+        email: 1
+        lowercase_email: 1
