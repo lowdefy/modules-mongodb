@@ -1,0 +1,219 @@
+# Detail-page main column for an activity.
+#
+# Renders the activity doc returned by `requests/get_activity.yaml` —
+# type chip, title, current-stage badge, rich-text description, linked
+# contact / company chips, status history, and consumer-extension
+# `main_slots` blocks. SmartDescriptions handles the change-stamp
+# footer (created / updated).
+#
+# The wrapping `pages/view.yaml` (Task 14) is responsible for two
+# pieces of state plumbing this component depends on:
+#   1. Triggering `get_activity` on mount.
+#   2. Mirroring `request.get_activity.0.contacts` into `state.contacts`
+#      and `request.get_activity.0.companies` into `state.companies`
+#      (the chip components read those state paths — see
+#      `contact_list_items.yaml` / `company_list_items.yaml` headers).
+#      A single `SetState` after the request resolves is sufficient.
+#
+# Consumer-extension hooks:
+#   - `_module.var: components.main_slots` — extra blocks appended
+#     after the built-in sections.
+#   - `_module.var: fields.attributes` — SmartDescriptions field rows
+#     rendered from `state.<doc>.attributes`.
+#   - `_module.var: components.contact_card_extra_fields` /
+#     `components.company_card_extra_fields` — forwarded by the chip
+#     components (see `contact_list_items.yaml` / `company_list_items.yaml`).
+id: view_activity
+type: Box
+layout:
+  contentGutter: 16
+blocks:
+  _build.array.concat:
+    # Type + current-stage chips (header row)
+    - - id: header_chips
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px">
+                  {% if type_entry %}
+                  <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:{{ type_entry.color }}; background:color-mix(in srgb, {{ type_entry.color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ type_entry.color }} 30%, transparent)">
+                    {{ type_entry.title or activity.type }}
+                  </span>
+                  {% elif activity.type %}
+                  <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:var(--ant-color-text-secondary); background:var(--ant-color-fill-secondary)">
+                    {{ activity.type }}
+                  </span>
+                  {% endif %}
+                  {% if stage %}
+                  <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 32%, transparent); text-transform:capitalize">
+                    {{ stage }}
+                  </span>
+                  {% endif %}
+                </div>
+              on:
+                activity:
+                  _if_none:
+                    - _request: get_activity.0
+                    - {}
+                type_entry:
+                  _get:
+                    from:
+                      _build.object.assign:
+                        - _ref: ../enums/activity_types.yaml
+                        - _module.var: activity_types
+                    key:
+                      _if_none:
+                        - _request: get_activity.0.type
+                        - ""
+                stage:
+                  _if_none:
+                    - _request: get_activity.0.current_stage
+                    - null
+                stage_color:
+                  _get:
+                    from:
+                      open: "#1890ff"
+                      done: "#52c41a"
+                      cancelled: "#8c8c8c"
+                    key:
+                      _if_none:
+                        - _request: get_activity.0.current_stage
+                        - ""
+                    default: "#8c8c8c"
+      # Title
+      - id: title_block
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                {% if title %}
+                <h2 style="margin:0 0 12px 0; font-size:20px; font-weight:600">{{ title }}</h2>
+                {% else %}
+                <h2 style="margin:0 0 12px 0; font-size:20px; font-weight:600; color:var(--ant-color-text-secondary); font-style:italic">Untitled</h2>
+                {% endif %}
+              on:
+                title:
+                  _if_none:
+                    - _request: get_activity.0.title
+                    - ""
+      # Description (rendered Tiptap HTML)
+      - id: description_block
+        type: Html
+        visible:
+          _ne:
+            - _if_none:
+                - _request: get_activity.0.description
+                - ""
+            - ""
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div class="tiptap-rendered" style="line-height:1.55">{{ description | safe }}</div>
+              on:
+                description:
+                  _if_none:
+                    - _request: get_activity.0.description
+                    - ""
+      # Linked contacts (chips)
+      - id: linked_contacts_section
+        type: Box
+        blocks:
+          - id: linked_contacts_label
+            type: Html
+            properties:
+              html: '<div style="font-size:11px; font-weight:600; color:var(--ant-color-text-secondary); text-transform:uppercase; letter-spacing:0.04em; margin:8px 0 4px 0">Linked Contacts</div>'
+          - _ref: components/contact_list_items.yaml
+      # Linked companies (chips)
+      - id: linked_companies_section
+        type: Box
+        blocks:
+          - id: linked_companies_label
+            type: Html
+            properties:
+              html: '<div style="font-size:11px; font-weight:600; color:var(--ant-color-text-secondary); text-transform:uppercase; letter-spacing:0.04em; margin:8px 0 4px 0">Linked Companies</div>'
+          - _ref: components/company_list_items.yaml
+      # Status history timeline (newest first — already in array order)
+      - id: status_history_section
+        type: Box
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _request: get_activity.0.status
+                  - []
+            - 0
+        blocks:
+          - id: status_history_label
+            type: Html
+            properties:
+              html: '<div style="font-size:11px; font-weight:600; color:var(--ant-color-text-secondary); text-transform:uppercase; letter-spacing:0.04em; margin:12px 0 4px 0">Status History</div>'
+          - id: status_history_html
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    <ul style="list-style:none; padding:0; margin:0">
+                      {% for entry in status %}
+                      <li style="display:flex; gap:10px; align-items:flex-start; padding:6px 0{% if not loop.last %}; border-bottom:1px dashed var(--ant-color-border-secondary){% endif %}">
+                        {% set entry_color = stage_palette[entry.stage] or '#8c8c8c' %}
+                        <span style="flex:0 0 auto; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; color:{{ entry_color }}; background:color-mix(in srgb, {{ entry_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ entry_color }} 30%, transparent); text-transform:capitalize">{{ entry.stage }}</span>
+                        <span style="flex:1 1 auto; min-width:0; font-size:12px; color:var(--ant-color-text-secondary)">
+                          {% if entry.created.user.name %}<b style="color:var(--ant-color-text)">{{ entry.created.user.name }}</b>{% endif %}
+                          {% if entry.created.timestamp %}<span style="margin-left:6px">{{ entry.created.timestamp }}</span>{% endif %}
+                        </span>
+                      </li>
+                      {% endfor %}
+                    </ul>
+                  on:
+                    status:
+                      _if_none:
+                        - _request: get_activity.0.status
+                        - []
+                    stage_palette:
+                      open: "#1890ff"
+                      done: "#52c41a"
+                      cancelled: "#8c8c8c"
+    # Consumer-defined attribute fields (only when provided)
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.attributes
+            - 0
+        then:
+          - - id: attributes_view
+              type: SmartDescriptions
+              properties:
+                title: Additional Details
+                column: 1
+                size: small
+                data:
+                  attributes:
+                    _request: get_activity.0.attributes
+                fields:
+                  _module.var: fields.attributes
+        else: []
+    # Consumer main-slot extension
+    - _module.var: components.main_slots
+    # Created / Updated footer
+    - - id: change_stamps
+        type: SmartDescriptions
+        properties:
+          column: 2
+          size: small
+          data:
+            _request: get_activity.0
+          fields:
+            - id: created_at
+              type: TextInput
+              properties:
+                title: Created
+            - id: updated_at
+              type: TextInput
+              properties:
+                title: Updated
