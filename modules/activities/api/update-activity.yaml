@@ -59,7 +59,7 @@ routine:
                   on:
                     _build.object.entries:
                       _build.object.assign:
-                        - _ref: ../defaults/event_display.yaml
+                        - _ref: defaults/event_display.yaml
                         - _module.var: event_display
                   callback:
                     _build.function:
@@ -79,7 +79,7 @@ routine:
                           user:
                             _user: true
                           target:
-                            _ref: ../defaults/event_target.yaml
+                            _ref: defaults/event_target.yaml
                     description: null
         references:
           contact_ids:

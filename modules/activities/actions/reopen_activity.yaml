@@ -1,5 +1,5 @@
 - id: reopen
-  type: CallApi
+  type: CallAPI
   params:
     endpointId: change-activity-status
     payload:

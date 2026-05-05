@@ -18,7 +18,7 @@
         on:
           _build.object.entries:
             _build.object.assign:
-              - _ref: ../../enums/activity_types.yaml
+              - _ref: enums/activity_types.yaml
               - _module.var: activity_types
         callback:
           _build.function:

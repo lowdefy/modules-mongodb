@@ -8,7 +8,7 @@ properties:
       - - $match:
             removed.timestamp:
               $exists: false
-        - _ref: stages/add_derived_fields.yaml
+        - _ref: requests/stages/add_derived_fields.yaml
         - $sort:
             updated.timestamp: -1
         - $limit: 50

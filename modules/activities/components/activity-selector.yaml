@@ -55,7 +55,7 @@ properties:
               - __get:
                   from:
                     _build.object.assign:
-                      - _ref: ../enums/activity_types.yaml
+                      - _ref: enums/activity_types.yaml
                       - _module.var: activity_types
                   key:
                     __string.concat:

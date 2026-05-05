@@ -20,9 +20,9 @@ properties:
               descriptor:
                 value:
                   _payload: reference_value
-    - _ref: stages/add_derived_fields.yaml
-    - _ref: stages/lookup_contacts.yaml
-    - _ref: stages/lookup_companies.yaml
+    - _ref: requests/stages/add_derived_fields.yaml
+    - _ref: requests/stages/lookup_contacts.yaml
+    - _ref: requests/stages/lookup_companies.yaml
     - $sort:
         updated.timestamp: -1
     - $limit: 20

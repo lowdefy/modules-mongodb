@@ -1,5 +1,5 @@
 - id: cancel
-  type: CallApi
+  type: CallAPI
   params:
     endpointId: change-activity-status
     payload:

@@ -13,10 +13,10 @@ payload:
 properties:
   pipeline:
     _build.array.concat:
-      - - _ref: stages/match_filter.yaml
-        - _ref: stages/add_derived_fields.yaml
-        - _ref: stages/lookup_contacts.yaml
-        - _ref: stages/lookup_companies.yaml
+      - - _ref: requests/stages/match_filter.yaml
+        - _ref: requests/stages/add_derived_fields.yaml
+        - _ref: requests/stages/lookup_contacts.yaml
+        - _ref: requests/stages/lookup_companies.yaml
         - $addFields:
             updated_at:
               $dateToString:

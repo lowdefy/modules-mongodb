@@ -13,6 +13,6 @@ properties:
         removed.timestamp:
           $exists: false
     - $limit: 1
-    - _ref: stages/add_derived_fields.yaml
-    - _ref: stages/lookup_contacts.yaml
-    - _ref: stages/lookup_companies.yaml
+    - _ref: requests/stages/add_derived_fields.yaml
+    - _ref: requests/stages/lookup_contacts.yaml
+    - _ref: requests/stages/lookup_companies.yaml

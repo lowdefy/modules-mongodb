@@ -76,7 +76,7 @@ _ref:
         events:
           onClick:
             - id: complete
-              type: CallApi
+              type: CallAPI
               params:
                 endpointId:
                   _module.endpointId: change-activity-status
@@ -122,7 +122,7 @@ _ref:
         events:
           onClick:
             - id: reopen
-              type: CallApi
+              type: CallAPI
               params:
                 endpointId:
                   _module.endpointId: change-activity-status
@@ -168,7 +168,7 @@ _ref:
         events:
           onClick:
             - id: cancel
-              type: CallApi
+              type: CallAPI
               params:
                 endpointId:
                   _module.endpointId: change-activity-status
@@ -296,13 +296,18 @@ _ref:
               gap: 16
             blocks:
               _build.array.concat:
-                - - _ref:
-                      module: files
-                      component: file-card
-                      vars:
-                        entity_type: activity
-                        entity_id:
-                          _url_query: _id
+                - - id: files_wrapper
+                    type: Box
+                    ~ignoreBuildChecks:
+                      - state-refs
+                    blocks:
+                      - _ref:
+                          module: files
+                          component: file-card
+                          vars:
+                            entity_type: activity
+                            entity_id:
+                              _url_query: _id
                   - _ref:
                       module: layout
                       component: card
@@ -329,7 +334,7 @@ _ref:
               - "?"
           footer: false
           width: 480
-        areas:
+        slots:
           content:
             blocks:
               - id: delete_warning
@@ -379,7 +384,7 @@ _ref:
                     events:
                       onClick:
                         - id: delete
-                          type: CallApi
+                          type: CallAPI
                           params:
                             endpointId:
                               _module.endpointId: delete-activity

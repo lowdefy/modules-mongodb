@@ -157,7 +157,7 @@ properties:
                   _payload: pagination.skip
               - $limit:
                   _payload: pagination.pageSize
-              - _ref: stages/add_derived_fields.yaml
+              - _ref: requests/stages/add_derived_fields.yaml
               - $addFields:
                   updated_at:
                     $dateToString:

@@ -26,7 +26,7 @@
 id: view_activity
 type: Box
 layout:
-  contentGutter: 16
+  gap: 16
 blocks:
   _build.array.concat:
     # Type + current-stage chips (header row)
@@ -61,7 +61,7 @@ blocks:
                   _get:
                     from:
                       _build.object.assign:
-                        - _ref: ../enums/activity_types.yaml
+                        - _ref: enums/activity_types.yaml
                         - _module.var: activity_types
                     key:
                       _if_none:

@@ -63,7 +63,7 @@ properties:
                     __get:
                       from:
                         _build.object.assign:
-                          - _ref: ../enums/activity_types.yaml
+                          - _ref: enums/activity_types.yaml
                           - _module.var: activity_types
                       key:
                         __args: 0.data.type
@@ -177,7 +177,7 @@ properties:
 events:
   onCellClick:
     - id: stage_complete
-      type: CallApi
+      type: CallAPI
       skip:
         _or:
           - _ne:
@@ -193,7 +193,7 @@ events:
             _event: row._id
           stage: done
     - id: stage_reopen
-      type: CallApi
+      type: CallAPI
       skip:
         _or:
           - _ne:
@@ -213,7 +213,7 @@ events:
             _event: row._id
           stage: open
     - id: stage_cancel
-      type: CallApi
+      type: CallAPI
       skip:
         _or:
           - _ne:
