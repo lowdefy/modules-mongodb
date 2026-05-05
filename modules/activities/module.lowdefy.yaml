@@ -131,7 +131,10 @@ exports:
 connections:
   - _ref: connections/activities-collection.yaml
 
-# api: list will be filled in by Tasks 2-5
+api:
+  - _ref: api/create-activity.yaml
+
+# api: more refs will be added by Tasks 3-5
 # pages: list will be filled in by Tasks 13-14
 # components: list will be filled in by later tasks
 
