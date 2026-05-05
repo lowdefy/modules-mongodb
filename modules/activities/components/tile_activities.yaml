@@ -1,0 +1,71 @@
+# Self-contained activities tile: `layout.card` wrapping
+# `activities-timeline` content + a `capture_activity` button in the
+# card header. Drop-in for app-level slot wiring on
+# companies/contacts sidebars (per `decisions.md` §7) — apps add this
+# to their `components.sidebar_slots` overrides; companies/contacts
+# themselves know nothing about activities.
+#
+# Mirrors `files/file-card.yaml` (self-contained card-styled drop-in
+# wrapping `file-manager`'s content). Activities is an optional dep
+# for parent entities, so the integration surface centralises here
+# rather than in consumer-side wrappers.
+#
+# Vars (consumer-passed):
+#   reference_field — required — `contact_ids` | `company_ids` | future
+#                                 `deal_ids`.
+#   reference_value — required — the host entity's id; typically
+#                                 `{ _url_query: _id }`.
+#   title           — optional — card title; defaults to module
+#                                 `label` ("Activity").
+#   prefill         — optional — forwarded to the embedded
+#                                `capture_activity`'s prefill var so
+#                                logged activities pre-link to the
+#                                host entity.
+#   show_capture    — optional — default `true`; set `false` for a
+#                                read-only sidebar tile.
+#
+# `on_created` is auto-wired here so a freshly captured activity
+# refetches the timeline immediately — consumers don't need to plumb
+# this themselves. The request id (`get_activities_for_entity`) must
+# match the request id declared inside `activities-timeline.yaml`.
+_ref:
+  module: layout
+  component: card
+  vars:
+    title:
+      _if_none:
+        - _var: title
+        - _module.var: label
+    header_buttons:
+      _if:
+        test:
+          _if_none:
+            - _var: show_capture
+            - true
+        then:
+          - _ref:
+              path: components/capture_activity.yaml
+              vars:
+                id: tile_activities_capture
+                label: Log activity
+                icon: AiOutlinePlus
+                button_type: link
+                size: small
+                mode: modal
+                prefill:
+                  _var:
+                    key: prefill
+                    default: {}
+                on_created:
+                  - id: refetch_activities
+                    type: Request
+                    params: get_activities_for_entity
+        else: []
+    blocks:
+      - _ref:
+          path: components/activities-timeline.yaml
+          vars:
+            reference_field:
+              _var: reference_field
+            reference_value:
+              _var: reference_value

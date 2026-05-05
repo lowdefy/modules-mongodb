@@ -155,6 +155,15 @@ components:
   - id: open_capture
     component:
       _ref: actions/open_capture.yaml
+  - id: activity-selector
+    component:
+      _ref: components/activity-selector.yaml
+  - id: activities-timeline
+    component:
+      _ref: components/activities-timeline.yaml
+  - id: tile_activities
+    component:
+      _ref: components/tile_activities.yaml
 
 menus:
   - _ref: menus.yaml

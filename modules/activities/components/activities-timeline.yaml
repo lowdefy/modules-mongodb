@@ -1,0 +1,159 @@
+# Content-only block: list of activities for a parent entity, plus an
+# empty state and a "View all" link. No card wrapper — `tile_activities`
+# wraps this in `layout.card`; consumers wanting custom wrappers (or no
+# wrapper at all) ref this directly.
+#
+# Mirrors `events/events-timeline.yaml` — declares its data request
+# inline (reading vars), fetches on mount, renders an empty state when
+# the response is empty, otherwise renders a list of rows.
+#
+# Vars:
+#   reference_field — required — `contact_ids` | `company_ids` | future
+#                                 `deal_ids`. The activity-doc field to
+#                                 filter on.
+#   reference_value — required — the entity ID to filter on. Typically
+#                                 `{ _url_query: _id }` for detail-page
+#                                 hosts.
+#
+# Request id is `get_activities_for_entity` so the auto-refetch wired
+# by `tile_activities` (after a successful capture) lands on this
+# block. Keep the id stable.
+id: activities_timeline
+type: Box
+layout:
+  gap: 8
+requests:
+  - id: get_activities_for_entity
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: activities-collection
+    payload:
+      reference_field:
+        _var: reference_field
+      reference_value:
+        _var: reference_value
+    properties:
+      pipeline:
+        - $match:
+            _object.assign:
+              - removed.timestamp:
+                  $exists: false
+              - _object.defineProperty:
+                  on: {}
+                  key:
+                    _payload: reference_field
+                  descriptor:
+                    value:
+                      _payload: reference_value
+        - _ref: ../requests/stages/add_derived_fields.yaml
+        - $sort:
+            updated.timestamp: -1
+        - $limit: 20
+events:
+  onMount:
+    - id: fetch_activities
+      type: Request
+      params: get_activities_for_entity
+blocks:
+  - id: activities_timeline_empty
+    type: Paragraph
+    visible:
+      _eq:
+        - _array.length:
+            _request: get_activities_for_entity
+        - 0
+    properties:
+      content: No activities yet
+      type: secondary
+      style:
+        fontSize: 12
+        fontStyle: italic
+  - id: activities_timeline_list
+    type: Html
+    visible:
+      _gt:
+        - _array.length:
+            _request: get_activities_for_entity
+        - 0
+    properties:
+      html:
+        _nunjucks:
+          template: |
+            <div>
+              {% for a in activities %}
+                {% set entry = type_map[a.type] %}
+                {% set color = entry.color or '#8c8c8c' %}
+                {% set type_label = entry.title or a.type %}
+                {% set stage_color = stage_colors[a.current_stage] or '#8c8c8c' %}
+                <a href="/{{ view_page }}?_id={{ a._id }}" style="display:flex; gap:10px; align-items:flex-start; padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}; color:inherit; text-decoration:none">
+                  <span style="display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600; color:{{ color }}; background:color-mix(in srgb, {{ color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ color }} 30%, transparent); flex:0 0 auto; margin-top:1px">{{ type_label }}</span>
+                  <div style="flex:1 1 auto; min-width:0">
+                    <div style="font-weight:500; word-break:break-word">{{ a.title or 'Untitled' }}</div>
+                    <div style="display:flex; gap:8px; align-items:center; margin-top:2px">
+                      <span style="display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; font-size:10px; font-weight:600; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 32%, transparent); text-transform:capitalize">{{ a.current_stage }}</span>
+                      {% if a.updated and a.updated.timestamp %}
+                      <span style="color:var(--ant-color-text-secondary); font-size:11px">{{ a.updated.timestamp | dateFormat('YYYY-MM-DD') }}</span>
+                      {% endif %}
+                    </div>
+                  </div>
+                </a>
+              {% endfor %}
+            </div>
+          on:
+            activities:
+              _if_none:
+                - _request: get_activities_for_entity
+                - []
+            type_map:
+              _build.object.assign:
+                - _ref: ../enums/activity_types.yaml
+                - _module.var: activity_types
+            stage_colors:
+              open: "#1890ff"
+              done: "#52c41a"
+              cancelled: "#8c8c8c"
+            view_page:
+              _module.pageId:
+                id: view
+                module: activities
+  - id: activities_timeline_view_all
+    type: Button
+    visible:
+      _gt:
+        - _array.length:
+            _request: get_activities_for_entity
+        - 0
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: View all
+      type: link
+      size: small
+    events:
+      onClick:
+        - id: go_activities_all
+          type: Link
+          params:
+            pageId:
+              _module.pageId:
+                id: all
+                module: activities
+            urlQuery:
+              contact_id:
+                _if:
+                  test:
+                    _eq:
+                      - _var: reference_field
+                      - contact_ids
+                  then:
+                    _var: reference_value
+                  else: null
+              company_id:
+                _if:
+                  test:
+                    _eq:
+                      - _var: reference_field
+                      - company_ids
+                  then:
+                    _var: reference_value
+                  else: null
