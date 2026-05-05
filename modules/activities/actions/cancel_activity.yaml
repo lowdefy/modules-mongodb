@@ -1,0 +1,8 @@
+- id: cancel
+  type: CallApi
+  params:
+    endpointId: change-activity-status
+    payload:
+      activity_id:
+        _payload: activity_id
+      stage: cancelled

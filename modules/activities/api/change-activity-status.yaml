@@ -1,0 +1,263 @@
+id: change-activity-status
+type: Api
+routine:
+  - id: load
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: activities-collection
+    properties:
+      pipeline:
+        - $match:
+            _id:
+              _payload: activity_id
+            removed.timestamp:
+              $exists: false
+        - $project:
+            _id: 1
+            type: 1
+            title: 1
+            contact_ids: 1
+            company_ids: 1
+            status: 1
+            updated: 1
+
+  # Idempotent no-op: if the current stage already matches the requested stage,
+  # skip the write and the event emission. Two clients flipping the same
+  # transition simultaneously: the first lands; the second's load sees the
+  # already-updated stage and returns without writing or emitting.
+  - id: update
+    type: MongoDBUpdateOne
+    skip:
+      _eq:
+        - _step: load.0.status.0.stage
+        - _payload: stage
+    connectionId:
+      _module.connectionId: activities-collection
+    properties:
+      filter:
+        _id:
+          _payload: activity_id
+        status.0.stage:
+          _step: load.0.status.0.stage
+        updated.timestamp:
+          _step: load.0.updated.timestamp
+      update:
+        $set:
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+        $push:
+          status:
+            $each:
+              - stage:
+                  _payload: stage
+                created:
+                  _ref:
+                    module: events
+                    component: change_stamp
+            $position: 0
+
+  - id: new-event
+    type: CallApi
+    skip:
+      _eq:
+        - _step: load.0.status.0.stage
+        - _payload: stage
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        # Map runtime stage to event type. New stage `done` → complete-activity,
+        # `cancelled` → cancel-activity, `open` → reopen-activity.
+        type:
+          _if:
+            test:
+              _eq:
+                - _payload: stage
+                - done
+            then: complete-activity
+            else:
+              _if:
+                test:
+                  _eq:
+                    - _payload: stage
+                    - cancelled
+                then: cancel-activity
+                else: reopen-activity
+        # Display dispatch: build all three template-rendered title sets at
+        # build time, pick at runtime via _if on the stage. The merged
+        # event_display has a separate Nunjucks template per event type
+        # (complete-activity / cancel-activity / reopen-activity); the right
+        # one lands in the events collection per transition.
+        display:
+          _if:
+            test:
+              _eq:
+                - _payload: stage
+                - done
+            then:
+              _build.object.fromEntries:
+                _build.array.map:
+                  on:
+                    _build.array.filter:
+                      on:
+                        _build.object.entries:
+                          _build.object.assign:
+                            - _ref: ../defaults/event_display.yaml
+                            - _module.var: event_display
+                      callback:
+                        _build.function:
+                          __build.ne:
+                            - __build.if_none:
+                                - __build.args: 0.1.complete-activity
+                                - null
+                            - null
+                  callback:
+                    _build.function:
+                      - __build.args: "0.0"
+                      - title:
+                          _nunjucks:
+                            template:
+                              __build.args: 0.1.complete-activity
+                            on:
+                              user:
+                                _user: true
+                              target:
+                                _id:
+                                  _payload: activity_id
+                                title:
+                                  _step: load.0.title
+                                type:
+                                  _step: load.0.type
+                                type_label:
+                                  _get:
+                                    from:
+                                      _build.object.assign:
+                                        - _ref: ../enums/activity_types.yaml
+                                        - _module.var: activity_types
+                                    key:
+                                      _string.concat:
+                                        - _step: load.0.type
+                                        - .title
+                                    default:
+                                      _step: load.0.type
+                        description: null
+            else:
+              _if:
+                test:
+                  _eq:
+                    - _payload: stage
+                    - cancelled
+                then:
+                  _build.object.fromEntries:
+                    _build.array.map:
+                      on:
+                        _build.array.filter:
+                          on:
+                            _build.object.entries:
+                              _build.object.assign:
+                                - _ref: ../defaults/event_display.yaml
+                                - _module.var: event_display
+                          callback:
+                            _build.function:
+                              __build.ne:
+                                - __build.if_none:
+                                    - __build.args: 0.1.cancel-activity
+                                    - null
+                                - null
+                      callback:
+                        _build.function:
+                          - __build.args: "0.0"
+                          - title:
+                              _nunjucks:
+                                template:
+                                  __build.args: 0.1.cancel-activity
+                                on:
+                                  user:
+                                    _user: true
+                                  target:
+                                    _id:
+                                      _payload: activity_id
+                                    title:
+                                      _step: load.0.title
+                                    type:
+                                      _step: load.0.type
+                                    type_label:
+                                      _get:
+                                        from:
+                                          _build.object.assign:
+                                            - _ref: ../enums/activity_types.yaml
+                                            - _module.var: activity_types
+                                        key:
+                                          _string.concat:
+                                            - _step: load.0.type
+                                            - .title
+                                        default:
+                                          _step: load.0.type
+                            description: null
+                else:
+                  _build.object.fromEntries:
+                    _build.array.map:
+                      on:
+                        _build.array.filter:
+                          on:
+                            _build.object.entries:
+                              _build.object.assign:
+                                - _ref: ../defaults/event_display.yaml
+                                - _module.var: event_display
+                          callback:
+                            _build.function:
+                              __build.ne:
+                                - __build.if_none:
+                                    - __build.args: 0.1.reopen-activity
+                                    - null
+                                - null
+                      callback:
+                        _build.function:
+                          - __build.args: "0.0"
+                          - title:
+                              _nunjucks:
+                                template:
+                                  __build.args: 0.1.reopen-activity
+                                on:
+                                  user:
+                                    _user: true
+                                  target:
+                                    _id:
+                                      _payload: activity_id
+                                    title:
+                                      _step: load.0.title
+                                    type:
+                                      _step: load.0.type
+                                    type_label:
+                                      _get:
+                                        from:
+                                          _build.object.assign:
+                                            - _ref: ../enums/activity_types.yaml
+                                            - _module.var: activity_types
+                                        key:
+                                          _string.concat:
+                                            - _step: load.0.type
+                                            - .title
+                                        default:
+                                          _step: load.0.type
+                            description: null
+        references:
+          contact_ids:
+            _step: load.0.contact_ids
+          company_ids:
+            _step: load.0.company_ids
+          activity_ids:
+            - _payload: activity_id
+        metadata:
+          activity_id:
+            _payload: activity_id
+
+  - :return:
+      previous_stage:
+        _step: load.0.status.0.stage
+      new_stage:
+        _payload: stage
