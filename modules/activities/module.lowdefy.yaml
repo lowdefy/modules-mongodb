@@ -1,0 +1,158 @@
+name: Activities
+version: 0.1.0
+description: CRM activities — calls, meetings, emails linked to contacts and companies
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper
+  - id: events
+    description: Audit event logging and change_stamp
+  - id: contacts
+    description: Contact selector and linking
+  - id: companies
+    description: Company selector and linking
+  - id: files
+    description: File attachments (optional)
+
+vars:
+  label:
+    default: Activity
+    description: Singular display label
+  label_plural:
+    default: Activities
+    description: Plural display label
+  activity_types:
+    type: object
+    default: {}
+    description: >-
+      App-level additions to the built-in activity-type enum. Same shape as
+      event_types — keys are type strings, values have title, color, icon,
+      default_stage.
+  event_display:
+    default:
+      _ref: defaults/event_display.yaml
+    description: Per-app Nunjucks templates for emitted events
+  fields:
+    type: object
+    description: Field block arrays rendered in the edit form and SmartDescriptions view
+    properties:
+      attributes:
+        default: []
+        description: >-
+          Custom field blocks appended after the built-in sections in the
+          form and view. Block ids must be prefixed with `attributes.` so
+          they bind to `state.attributes.*`.
+  components:
+    type: object
+    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
+    properties:
+      table_columns:
+        default: []
+        description: Extra column definitions appended to the activities list table.
+      filters:
+        default: []
+        description: >-
+          Extra filter blocks rendered below the built-in search bar on the
+          activities list page. Pair with `filter_requests` for custom data
+          sources.
+      main_slots:
+        default: []
+        description: Extra blocks appended to the main column on the activity-detail page.
+      sidebar_slots:
+        default: []
+        description: Extra blocks appended to the sidebar column on the activity-detail page.
+      download_columns:
+        default: []
+        description: Extra columns appended to the Excel export.
+  request_stages:
+    type: object
+    description: Pipeline overrides
+    properties:
+      get_all_activities:
+        default:
+          - $addFields: {}
+        description: >-
+          Pipeline stages appended after filtering on the activities list and
+          Excel export aggregations.
+      selector:
+        default: []
+        description: Pipeline stages appended to the activity-selector aggregation.
+      filter_match:
+        default: []
+        description: >-
+          Atlas Search compound clauses appended to the list-page `$search`
+          query.
+      write:
+        default: []
+        description: >-
+          Pipeline update stages appended to both create-activity and
+          update-activity flows.
+  filter_requests:
+    default: []
+    description: Additional requests for the custom filters section
+
+exports:
+  pages:
+    - id: all
+      description: Activity list with filtering, sorting, pagination, Excel download
+    - id: view
+      description: Activity detail
+    - id: edit
+      description: Edit existing activity
+    - id: new
+      description: Create new activity (accepts URL prefill query params)
+  connections:
+    - id: activities-collection
+      description: MongoDB connection for activity records
+  api:
+    - id: create-activity
+      description: Insert activity, emit create-activity event
+    - id: update-activity
+      description: Update activity editable fields, emit update-activity event
+    - id: change-activity-status
+      description: Transition activity stage, emit stage-specific event
+    - id: delete-activity
+      description: Soft-delete activity, emit delete-activity event
+  components:
+    - id: activity-selector
+      description: Selector/MultipleSelector for picking activities
+    - id: tile_activities
+      description: Self-contained sidebar tile (layout.card + activities-timeline + capture_activity in header). For app-level slot wiring on companies/contacts.
+    - id: activities-timeline
+      description: Content-only block (list + filters + view-all link, no card). Building block for apps wanting custom wrappers.
+    - id: capture_activity
+      description: Button + modal capture flow with prefill vars
+    - id: open_capture
+      description: Action sequence — navigates to pageId:new with prefill in urlQuery
+  menus:
+    - id: default
+      description: Activities navigation link
+
+connections:
+  - _ref: connections/activities-collection.yaml
+
+# api: list will be filled in by Tasks 2-5
+# pages: list will be filled in by Tasks 13-14
+# components: list will be filled in by later tasks
+
+components:
+  - id: activity_types
+    component:
+      _build.object.assign:
+        - _ref: enums/activity_types.yaml
+        - _module.var: activity_types
+
+menus:
+  - _ref: menus.yaml
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI
+
+plugins:
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^2"
+  - name: "@lowdefy/community-plugin-xlsx"
+    version: "^1"
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.1.0"

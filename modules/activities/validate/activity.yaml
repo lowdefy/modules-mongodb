@@ -1,0 +1,26 @@
+- message: Activity type is required.
+  status: error
+  pass:
+    _and:
+      - _type:
+          type: string
+          value:
+            _state: type
+      - _gt:
+          - _function:
+              __string.length:
+                _state: type
+          - 0
+- message: Activity title is required.
+  status: error
+  pass:
+    _and:
+      - _type:
+          type: string
+          value:
+            _state: title
+      - _gt:
+          - _function:
+              __string.length:
+                _state: title
+          - 0
