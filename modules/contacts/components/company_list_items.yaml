@@ -5,14 +5,26 @@
 # consuming app's vars (as a list of { label, value } pairs) to
 # render additional rows under each company's display name.
 #
+# `value` must be a top-level key on the company document as
+# projected by get_contact_companies. The default projection is
+# `_id` / `company_id` / `display_name` / `name` only; nested fields
+# like `registration.vat_number` need a flattening alias in $project
+# before they can be surfaced. Example wiring an SA registration setup:
+#
 #   components:
 #     company_card_extra_fields:
 #       - { label: Reg, value: registration_number }
 #       - { label: VAT, value: vat_number }
 #
-# `value` is a top-level key on the company document as projected
-# by get_contact_companies. For a nested source field, extend
-# the request's $project stage to flatten it to a top-level key.
+# Combined with extending get_contact_companies' $project stage:
+#
+#   $project:
+#     _id: 1
+#     company_id: 1
+#     display_name: 1
+#     name: 1
+#     registration_number: "$registration.registration_number"
+#     vat_number: "$registration.vat_number"
 #
 # Extra-field rows render when the field is non-null. Falsy primitives
 # (0, false, "") are shown — only `null`/`undefined` are skipped.

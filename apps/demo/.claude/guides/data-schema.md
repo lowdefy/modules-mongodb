@@ -112,7 +112,7 @@ ticket_ids: ["T-2600001"] # Action linked to these tickets
     as: companies
     pipeline:
       - $project:
-          trading_name: 1
+          name: 1
 ```
 
 **Denormalization** — duplicate frequently-read fields to avoid lookups. Use for display-only data:

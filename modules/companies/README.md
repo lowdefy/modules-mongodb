@@ -172,3 +172,5 @@ fields:
 ## Notes
 
 Linked contacts are stored on the contact side as `global_attributes.company_ids: [company_id, ...]`. The detail page resolves linked contacts via `$lookup`, and the edit page reconciles the link set on save.
+
+Section sub-objects (`contact`, `address`, `registration`, `attributes`) are merged on save (`$mergeObjects`), not replaced. Removing a field from `fields.X` leaves any existing key on the document — `$set` does not unset. Run a one-off cleanup migration if you need to remove legacy keys from saved docs.
