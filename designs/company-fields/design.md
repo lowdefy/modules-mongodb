@@ -267,6 +267,8 @@ vars:
             options: [Manufacturing, Services, Retail]
 ```
 
+> **Path note.** This example inlines `vars` directly in `apps/demo/modules.yaml`, so the `_ref` paths walk up two levels (`../../`) from `apps/demo/`. The actual demo externalises vars to `apps/demo/modules/companies/vars.yaml` (`_ref`'d from `modules.yaml`); when writing the wiring there, the relative paths walk up four levels (`../../../../modules/companies/field-presets/...`). The two forms are interchangeable; the depth depends on which file you put the wiring in.
+
 ### App config example: US-flavored
 
 ```yaml
@@ -475,13 +477,11 @@ Either is fine; the choice doesn't affect this design. Until the plugin lands, a
 - **Custom validators per region.** Validation lives on the field block (`validate:` property). Apps choose validators when they pick or write the preset.
 - **Section reordering.** Order is fixed: core → registration → contact → address → attributes → contacts linker. If apps need a different order, that's a future design.
 
-## Resolved decisions
+## Default list-page columns
 
-- **Address field key: `address`.** Sibling root fields (`postal_address`, `billing_address`) cover any future multi-address need.
-- **`contact.*` nesting confirmed.** `website`, `primary_email`, `primary_phone` all live under `contact.*`. Derived `lowercase_email` at the document root reads from `contact.primary_email`.
-- **`PhoneNumberInput` is a native Lowdefy block.** No plugin entry needed in `module.lowdefy.yaml` for the contact preset.
-- **No `show` toggles.** Apps that don't want a field omit it from the relevant `fields.*` array. `description` is the one universal-core exception and stays.
-- **Default table stays as today: ID, Name (`display_name` derived from `name_field`), Description, then the `components.table_columns` slot, then Updated At / Created At.** No registration columns are shipped by default — they were already not in the default table. Apps add per-section columns via `components.table_columns`.
+The list page (`components/table_companies.yaml`) keeps today's column layout: `_id`, `name` (via the `display_name` alias derived from `name_field`), `description`, then the `components.table_columns` consumer slot, then `updated_at` / `created_at`. No registration columns are shipped by default — they were already not in the default table. Apps add per-section columns via `components.table_columns`.
+
+(Other resolved decisions — address field key, `contact.*` nesting, `PhoneNumberInput` being native, no `show` toggles — are baked into the relevant subsections above.)
 
 ## Next steps
 

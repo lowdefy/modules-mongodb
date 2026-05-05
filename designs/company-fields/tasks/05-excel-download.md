@@ -59,10 +59,16 @@ Leave the rest of the file (button props, `onClick` events, `fetch_excel_data` a
 
 ## Acceptance Criteria
 
+**Authorable after task 4:**
+
 - `excel_download.yaml`'s fixed columns are exactly: `id`, `name`, `description`, `updated_at`, `created_at`.
 - No fixed columns for `registered_name`, `registration_number`, `vat_number`, `website`, `email`, `phone`.
 - The `components.download_columns` slot still sits between the universal-core columns and the timestamps.
-- An export from a freshly seeded demo (after task 6) lands a `.xlsx` with exactly those five default columns plus whatever the consumer wires through `download_columns`.
+- `pnpm ldf:b:i` for the demo app succeeds.
+
+**End-to-end verification (after task 6 lands new-shape seed data):**
+
+- An export from the freshly reseeded demo lands a `.xlsx` with exactly those five default columns plus whatever the consumer wires through `download_columns`.
 
 ## Files
 
