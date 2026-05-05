@@ -52,6 +52,8 @@ _ref:
               _request: get_company.0.contact
             address:
               _request: get_company.0.address
+            registration:
+              _request: get_company.0.registration
             attributes:
               _request: get_company.0.attributes
             contacts:
@@ -108,6 +110,8 @@ _ref:
                             _state: contact
                           address:
                             _state: address
+                          registration:
+                            _state: registration
                           attributes:
                             _state: attributes
                           contacts:
