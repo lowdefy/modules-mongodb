@@ -140,6 +140,8 @@ api:
 pages:
   - _ref: pages/new.yaml
   - _ref: pages/edit.yaml
+  - _ref: pages/view.yaml
+  - _ref: pages/all.yaml
 
 # components: list will be filled in by later tasks
 

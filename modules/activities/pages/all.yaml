@@ -1,0 +1,109 @@
+# Activities list page (`pageId: all`).
+#
+# AgGrid table + filter panel + Excel download + pagination, mirroring
+# `companies/pages/all.yaml`.
+#
+# URL hydration on mount. Reads `_url_query.contact_id` and
+# `_url_query.company_id` and seeds them into `state.filter.contact_id`
+# / `state.filter.company_id`. This is the contract used by
+# `tile_activities`'s "View all" link (and external deep-links): the
+# tile builds `?contact_id=<uuid>` / `?company_id=<uuid>`, the list
+# page hydrates the filter from the URL, and the `get_activities`
+# pipeline scopes results via Atlas Search `equals` clauses on
+# `contact_ids` / `company_ids`.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: all
+    title:
+      _module.var: label_plural
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+    page_actions:
+      - _ref: components/excel_download.yaml
+      - id: button_new_activity
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          title:
+            _string.concat:
+              - "New "
+              - _module.var: label
+          icon: AiOutlinePlusCircle
+          type: primary
+        events:
+          onClick:
+            - id: go_new
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: new
+    events:
+      onInit:
+        - id: init_filter
+          type: SetState
+          params:
+            filter:
+              search: null
+              type: null
+              stage: null
+              date_from: null
+              date_to: null
+              contact_id:
+                _if_none:
+                  - _url_query: contact_id
+                  - null
+              company_id:
+                _if_none:
+                  - _url_query: company_id
+                  - null
+            sort:
+              by: updated.timestamp
+              order: -1
+            pagination:
+              current: 1
+              skip: 0
+              pageSize: 500
+      onMountAsync:
+        - id: fetch
+          type: Request
+          params: get_activities
+    requests:
+      - _ref: requests/get_activities.yaml
+      - _ref: requests/get_activities_excel_data.yaml
+    blocks:
+      - _ref: components/filter_activities.yaml
+      - id: custom_filters_box
+        type: Box
+        layout:
+          gap: 8
+        requests:
+          _module.var: filter_requests
+        style:
+          maxWidth: 1200
+          margin: auto
+          marginTop: 4
+        blocks:
+          _module.var: components.filters
+      - _ref:
+          path: ../shared/layout/sort-filters.yaml
+          vars:
+            search_action:
+              _ref: components/actions/filter_changed.yaml
+            sort_options:
+              - label: Date Updated
+                value: updated.timestamp
+              - label: Date Created
+                value: created.timestamp
+              - label: Title
+                value: title
+      - _ref: components/table_activities.yaml
+      - _ref:
+          path: ../shared/layout/pagination.yaml
+          vars:
+            request_id: get_activities
