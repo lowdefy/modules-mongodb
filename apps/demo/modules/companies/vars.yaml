@@ -1,3 +1,21 @@
+label: Company
+label_plural: Companies
+fields:
+  registration:
+    _ref: ../../modules/companies/field-presets/registration-sa.yaml
+  contact:
+    _ref: ../../modules/companies/field-presets/contact-default.yaml
+  address:
+    _ref: ../../modules/companies/field-presets/address-text.yaml
+  attributes:
+    - id: attributes.industry
+      type: Selector
+      properties:
+        title: Industry
+        options:
+          - Manufacturing
+          - Services
+          - Retail
 event_display:
   demo:
     create-company: "{{ user.profile.name }} created {{ target.name }}"

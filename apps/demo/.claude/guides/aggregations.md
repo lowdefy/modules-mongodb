@@ -101,7 +101,7 @@ Conditional `$search` or `$match: {}`, extracted filter match stages, `$facet` w
     companies:
       - $group: { _id: $company_id }
       - $lookup: { from: companies, ... }
-      - $project: { label: $company.trading_name, value: $_id }
+      - $project: { label: $company.name, value: $_id }
 ```
 
 Use `$facet` to build multiple `{ label, value }` option lists in a single request for filter dropdowns.

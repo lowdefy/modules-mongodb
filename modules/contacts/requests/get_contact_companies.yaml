@@ -20,11 +20,13 @@ properties:
     - $addFields:
         display_name:
           $getField:
-            field: trading_name
+            field: name
             input: "$$ROOT"
+        company_id: "$_id"
     - $project:
         _id: 1
+        company_id: 1
         display_name: 1
-        trading_name: 1
+        name: 1
     - $sort:
         display_name: 1

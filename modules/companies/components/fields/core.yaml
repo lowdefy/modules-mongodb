@@ -1,4 +1,4 @@
-- id: trading_name
+- id: name
   type: TextInput
   required: true
   properties:

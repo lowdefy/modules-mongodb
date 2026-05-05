@@ -2,27 +2,58 @@ id: form_company
 type: Box
 blocks:
   _build.array.concat:
-    # Core fields
+    # Core: name + description
     - _ref: components/fields/core.yaml
+
     # Registration
-    - - id: divider_registration
-        type: Divider
-        properties:
-          title: Registration
-    - _ref: components/fields/registration.yaml
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.registration
+            - 0
+        then:
+          _build.array.concat:
+            - - id: divider_registration
+                type: Divider
+                properties:
+                  title: Registration
+            - _module.var: fields.registration
+        else: []
+
     # Contact details
-    - - id: divider_contact
-        type: Divider
-        properties:
-          title: Contact Details
-    - _ref: components/fields/contact.yaml
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.contact
+            - 0
+        then:
+          _build.array.concat:
+            - - id: divider_contact
+                type: Divider
+                properties:
+                  title: Contact Details
+            - _module.var: fields.contact
+        else: []
+
     # Address
-    - - id: divider_address
-        type: Divider
-        properties:
-          title: Address
-    - _ref: components/fields/address.yaml
-    # Consumer attributes (conditional — only when provided)
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.address
+            - 0
+        then:
+          _build.array.concat:
+            - - id: divider_address
+                type: Divider
+                properties:
+                  title: Address
+            - _module.var: fields.address
+        else: []
+
+    # Attributes
     - _build.if:
         test:
           _build.gt:
@@ -37,6 +68,7 @@ blocks:
                   title: Additional Details
             - _module.var: fields.attributes
         else: []
+
     # Linked contacts
     - - id: divider_contacts
         type: Divider
