@@ -133,8 +133,9 @@ connections:
 
 api:
   - _ref: api/create-activity.yaml
+  - _ref: api/update-activity.yaml
 
-# api: more refs will be added by Tasks 3-5
+# api: more refs will be added by Tasks 4-5
 # pages: list will be filled in by Tasks 13-14
 # components: list will be filled in by later tasks
 
