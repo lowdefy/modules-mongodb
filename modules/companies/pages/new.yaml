@@ -61,18 +61,10 @@ _ref:
                         endpointId:
                           _module.endpointId: create-company
                         payload:
-                          trading_name:
-                            _state: trading_name
+                          name:
+                            _state: name
                           description:
                             _state: description
-                          registered_name:
-                            _state: registered_name
-                          registration_number:
-                            _state: registration_number
-                          vat_number:
-                            _state: vat_number
-                          website:
-                            _state: website
                           contact:
                             _state: contact
                           address:

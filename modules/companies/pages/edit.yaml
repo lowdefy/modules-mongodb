@@ -44,18 +44,10 @@ _ref:
           params:
             _id:
               _request: get_company.0._id
-            trading_name:
-              _request: get_company.0.trading_name
+            name:
+              _request: get_company.0.name
             description:
               _request: get_company.0.description
-            registered_name:
-              _request: get_company.0.registered_name
-            registration_number:
-              _request: get_company.0.registration_number
-            vat_number:
-              _request: get_company.0.vat_number
-            website:
-              _request: get_company.0.website
             contact:
               _request: get_company.0.contact
             address:
@@ -108,18 +100,10 @@ _ref:
                         payload:
                           _id:
                             _state: _id
-                          trading_name:
-                            _state: trading_name
+                          name:
+                            _state: name
                           description:
                             _state: description
-                          registered_name:
-                            _state: registered_name
-                          registration_number:
-                            _state: registration_number
-                          vat_number:
-                            _state: vat_number
-                          website:
-                            _state: website
                           contact:
                             _state: contact
                           address:
