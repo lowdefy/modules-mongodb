@@ -1,0 +1,38 @@
+# Core activity fields: type, title, description.
+#
+# `type` Selector options come from the merged activity_types enum
+# (built-ins + consumer-added via the activity_types module var) so any
+# type a consumer registers shows up alongside the built-in set.
+#
+# `description` uses TiptapInput — the rich-text block per design.md. The
+# stored value is HTML edited and rendered through the same renderer.
+- id: type
+  type: Selector
+  required: true
+  layout:
+    flex: 0 0 200px
+  properties:
+    title: Type
+    options:
+      _build.array.map:
+        on:
+          _build.object.entries:
+            _build.object.assign:
+              - _ref: ../../enums/activity_types.yaml
+              - _module.var: activity_types
+        callback:
+          _build.function:
+            value:
+              __build.args: 0.0
+            label:
+              __build.args: 0.1.title
+- id: title
+  type: TextInput
+  required: true
+  properties:
+    title: Title
+    placeholder: Short subject line
+- id: description
+  type: TiptapInput
+  properties:
+    title: Description

@@ -1,0 +1,24 @@
+# Linked-entity selectors: contacts and companies.
+#
+# Both render multi-select pickers bound to the form's `contact_ids` and
+# `company_ids` state paths so the submit payload matches the API's
+# expected shape.
+#
+# contact-selector is the rich ContactSelector (valueType: array, always
+# multi-select). company-selector defaults to a single Selector — pass
+# `mode: MultipleSelector` to switch it to multi.
+- _ref:
+    module: contacts
+    component: contact-selector
+    vars:
+      id: contact_ids
+      keyword: contact
+      label:
+        title: Linked Contacts
+- _ref:
+    module: companies
+    component: company-selector
+    vars:
+      field_id: company_ids
+      mode: MultipleSelector
+      label: Linked Companies

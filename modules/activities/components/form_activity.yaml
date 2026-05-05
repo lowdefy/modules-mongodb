@@ -1,0 +1,37 @@
+# Shared activity form. Composes the core fields (type / title /
+# description), the linked-entity selectors (contacts + companies), and a
+# consumer-extension hook for app-level attribute fields.
+#
+# The form is stateless: it doesn't know whether it's creating or updating
+# an activity. The wrapping page or modal seeds initial state, runs
+# validation against `validate/activity.yaml`, and submits to
+# `create-activity` or `update-activity`.
+id: form_activity
+type: Box
+layout:
+  contentGutter: 16
+blocks:
+  _build.array.concat:
+    # Core fields: type, title, description
+    - _ref: components/fields/core.yaml
+    # Linked entities: contacts + companies multi-selectors
+    - - id: divider_links
+        type: Divider
+        properties:
+          title: Linked
+    - _ref: components/fields/links.yaml
+    # Consumer-defined attribute fields (only when provided)
+    - _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.attributes
+            - 0
+        then:
+          _build.array.concat:
+            - - id: divider_attributes
+                type: Divider
+                properties:
+                  title: Additional Details
+            - _module.var: fields.attributes
+        else: []
