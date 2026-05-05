@@ -2,7 +2,7 @@ _ref:
   module: layout
   component: card
   vars:
-    title: Activity
+    title: History
     blocks:
       - _ref:
           module: events
