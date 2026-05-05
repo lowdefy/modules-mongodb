@@ -1,0 +1,120 @@
+id: delete-activity
+type: Api
+routine:
+  # Load needed for references (contact_ids, company_ids) and target fields
+  # (type, title) on the emitted event, since the payload only carries
+  # activity_id. Filter excludes already-deleted docs — a second delete on
+  # the same id finds nothing here, so the soft-delete and emit steps no-op.
+  - id: load
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: activities-collection
+    properties:
+      pipeline:
+        - $match:
+            _id:
+              _payload: activity_id
+            removed.timestamp:
+              $exists: false
+        - $project:
+            _id: 1
+            type: 1
+            title: 1
+            contact_ids: 1
+            company_ids: 1
+            updated: 1
+
+  - id: soft-delete
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: activities-collection
+    properties:
+      filter:
+        _id:
+          _payload: activity_id
+        updated.timestamp:
+          _step: load.0.updated.timestamp
+      update:
+        $set:
+          removed:
+            _ref:
+              module: events
+              component: change_stamp
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
+
+  - id: new-event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: delete-activity
+        # Target is built from the loaded doc (not the payload, which only
+        # carries activity_id). Inlined here rather than via
+        # ../defaults/event_target.yaml because that default reads from
+        # _payload.
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: ../defaults/event_display.yaml
+                        - _module.var: event_display
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.delete-activity
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  - __build.args: "0.0"
+                  - title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.delete-activity
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            _id:
+                              _payload: activity_id
+                            title:
+                              _step: load.0.title
+                            type:
+                              _step: load.0.type
+                            type_label:
+                              _get:
+                                from:
+                                  _build.object.assign:
+                                    - _ref: ../enums/activity_types.yaml
+                                    - _module.var: activity_types
+                                key:
+                                  _string.concat:
+                                    - _step: load.0.type
+                                    - .title
+                                default:
+                                  _step: load.0.type
+                    description: null
+        references:
+          contact_ids:
+            _step: load.0.contact_ids
+          company_ids:
+            _step: load.0.company_ids
+          activity_ids:
+            - _payload: activity_id
+        metadata:
+          activity_id:
+            _payload: activity_id
+
+  - :return:
+      success: true
