@@ -1,0 +1,227 @@
+# Self-contained button + modal for creating an activity from anywhere.
+#
+# Drop this anywhere on a page; consumers pass prefill, appearance, and
+# behaviour vars. In `mode: modal` (default) the button opens a Modal
+# carrying `form_activity`. In `mode: page` the button skips the modal
+# and Links to `pageId: new` with prefill in `urlQuery`.
+#
+# Vars (all optional):
+#   id            — block id; namespace for the button + modal pair so
+#                   multiple instances on a page don't collide. Default
+#                   `capture_activity`. Pass a unique value per
+#                   instance (e.g. `header_capture`, `tile_capture`).
+#   prefill       — { type, title, description, contact_ids, company_ids }
+#                   seeded into form state when the modal opens (modal
+#                   mode) or carried in urlQuery (page mode, except
+#                   `description` — see design.md / decisions.md §8).
+#   label         — button text. Default "Log activity".
+#   icon          — button icon. Default `AiOutlinePlus`.
+#   button_type   — `primary | default | link | text`. Default `primary`.
+#   size          — `small | middle | large`. Default `middle`.
+#   mode          — `modal | page`. Default `modal`.
+#   on_created    — action sequence run after a successful create
+#                   (used by `tile_activities` to refetch its timeline).
+#                   Default `[]`.
+#
+# Multi-instance state: the modal's open/close is driven by the Modal
+# block's own method (`CallMethod blockId: <id>_modal method: setOpen`)
+# so each instance carries independent visibility. The embedded
+# `form_activity` writes to top-level state; users open one capture
+# modal at a time, so this matches form_activity's existing contract.
+id:
+  _var:
+    key: id
+    default: capture_activity
+type: Box
+layout:
+  flex: 0 0 auto
+blocks:
+  - id:
+      _build.string.concat:
+        - _var:
+            key: id
+            default: capture_activity
+        - _trigger
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title:
+        _var:
+          key: label
+          default: Log activity
+      icon:
+        _var:
+          key: icon
+          default: AiOutlinePlus
+      type:
+        _var:
+          key: button_type
+          default: primary
+      size:
+        _var:
+          key: size
+          default: middle
+    events:
+      onClick:
+        _build.if:
+          test:
+            _build.eq:
+              - _var:
+                  key: mode
+                  default: modal
+              - page
+          then:
+            - id: go_new
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: new
+                urlQuery:
+                  type:
+                    _var: prefill.type
+                  title:
+                    _var: prefill.title
+                  contact_ids:
+                    _var: prefill.contact_ids
+                  company_ids:
+                    _var: prefill.company_ids
+          else:
+            - id: open_modal
+              type: CallMethod
+              params:
+                blockId:
+                  _build.string.concat:
+                    - _var:
+                        key: id
+                        default: capture_activity
+                    - _modal
+                method: setOpen
+                args:
+                  - open: true
+  - _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: mode
+              default: modal
+          - modal
+      then:
+        - id:
+            _build.string.concat:
+              - _var:
+                  key: id
+                  default: capture_activity
+              - _modal
+          type: Modal
+          properties:
+            title:
+              _string.concat:
+                - "New "
+                - _module.var: label
+            footer: false
+            width: 720
+          events:
+            onOpen:
+              - id: seed_prefill
+                type: SetState
+                params:
+                  type:
+                    _if_none:
+                      - _var: prefill.type
+                      - null
+                  title:
+                    _if_none:
+                      - _var: prefill.title
+                      - null
+                  description:
+                    _if_none:
+                      - _var: prefill.description
+                      - null
+                  contact_ids:
+                    _if_none:
+                      - _var: prefill.contact_ids
+                      - []
+                  company_ids:
+                    _if_none:
+                      - _var: prefill.company_ids
+                      - []
+                  attributes: {}
+            onCancel:
+              - id: reset_form
+                type: Reset
+          areas:
+            content:
+              blocks:
+                - _ref: components/form_activity.yaml
+                - id:
+                    _build.string.concat:
+                      - _var:
+                          key: id
+                          default: capture_activity
+                      - _save
+                  type: Button
+                  layout:
+                    flex: 0 0 auto
+                  properties:
+                    title:
+                      _string.concat:
+                        - "Create "
+                        - _module.var: label
+                    icon: AiOutlineSave
+                    type: primary
+                    block: true
+                  events:
+                    onClick:
+                      _build.array.concat:
+                        - - id: validate
+                            type: Validate
+                          - id: create
+                            type: CallApi
+                            params:
+                              endpointId:
+                                _module.endpointId: create-activity
+                              payload:
+                                _id:
+                                  _uuid: true
+                                type:
+                                  _state: type
+                                title:
+                                  _state: title
+                                description:
+                                  _state: description
+                                contact_ids:
+                                  _if_none:
+                                    - _state: contact_ids
+                                    - []
+                                company_ids:
+                                  _if_none:
+                                    - _state: company_ids
+                                    - []
+                                attributes:
+                                  _if_none:
+                                    - _state: attributes
+                                    - {}
+                            messages:
+                              success:
+                                _string.concat:
+                                  - _module.var: label
+                                  - " created."
+                          - id: close_modal
+                            type: CallMethod
+                            params:
+                              blockId:
+                                _build.string.concat:
+                                  - _var:
+                                      key: id
+                                      default: capture_activity
+                                  - _modal
+                              method: setOpen
+                              args:
+                                - open: false
+                          - id: reset_form
+                            type: Reset
+                        - _if_none:
+                            - _var: on_created
+                            - []
+      else: []

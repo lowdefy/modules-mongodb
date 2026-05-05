@@ -146,6 +146,12 @@ components:
       _build.object.assign:
         - _ref: enums/activity_types.yaml
         - _module.var: activity_types
+  - id: capture_activity
+    component:
+      _ref: components/capture_activity.yaml
+  - id: open_capture
+    component:
+      _ref: actions/open_capture.yaml
 
 menus:
   - _ref: menus.yaml

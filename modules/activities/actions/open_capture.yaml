@@ -1,0 +1,46 @@
+# Always-navigate action sequence for opening the activity capture flow.
+#
+# Exposed as a cross-module component (Lowdefy's only cross-module
+# sharing surface — there is no `action:` key on `_ref`). Consumers ref
+# this from any event (`events.onClick`, list row action, menu item,
+# command palette entry, keyboard shortcut) to deep-link into
+# `pageId: new` with prefill carried in `urlQuery`.
+#
+# Behaviour: always Links to the new-activity page. Never opens a modal
+# — multiple `capture_activity` instances can coexist on a page (header
+# + tile + row action) and a shared trigger has no way to pick which
+# modal to open. Single-purpose: `capture_activity` = modal,
+# `open_capture` = navigate. See decisions.md §8.
+#
+# Vars (all optional):
+#   prefill — { type, title, contact_ids, company_ids }
+#             Forwarded as URL query params. `description` is NOT
+#             URL-prefillable (Tiptap rich-text HTML doesn't round-trip
+#             through URL params cleanly — see design.md "Capture
+#             entry points → pageId: new query params").
+#
+# Example consumer usage:
+#   events:
+#     onClick:
+#       _ref:
+#         module: activities
+#         component: open_capture
+#         vars:
+#           prefill:
+#             type: call
+#             contact_ids:
+#               - _url_query: _id
+- id: open_capture
+  type: Link
+  params:
+    pageId:
+      _module.pageId: new
+    urlQuery:
+      type:
+        _var: prefill.type
+      title:
+        _var: prefill.title
+      contact_ids:
+        _var: prefill.contact_ids
+      company_ids:
+        _var: prefill.company_ids
