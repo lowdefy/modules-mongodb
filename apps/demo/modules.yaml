@@ -1,3 +1,7 @@
+- id: activities
+  source: "file:../../modules/activities"
+  vars: {}
+
 - id: companies
   source: "file:../../modules/companies"
   vars:
