@@ -1,0 +1,143 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: edit
+    title:
+      _string.concat:
+        - "Edit "
+        - _module.var: label
+        - ": "
+        - _if_none:
+            - _request: get_activity.0.title
+            - ""
+    content_width: 700
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+        pageId:
+          _module.pageId: all
+      - label:
+          _string.concat:
+            - "Edit "
+            - _module.var: label
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params: get_activity
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_activity.0
+              - null
+          params:
+            pageId:
+              _module.pageId: all
+        - id: set_state
+          type: SetState
+          params:
+            _id:
+              _request: get_activity.0._id
+            type:
+              _request: get_activity.0.type
+            title:
+              _request: get_activity.0.title
+            description:
+              _request: get_activity.0.description
+            contact_ids:
+              _if_none:
+                - _request: get_activity.0.contact_ids
+                - []
+            company_ids:
+              _if_none:
+                - _request: get_activity.0.company_ids
+                - []
+            attributes:
+              _if_none:
+                - _request: get_activity.0.attributes
+                - {}
+            updated:
+              _request: get_activity.0.updated
+    requests:
+      - _ref: requests/get_activity.yaml
+    blocks:
+      - id: card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          - _ref: components/form_activity.yaml
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            actions:
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                  type: primary
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                    - id: update_activity
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: update-activity
+                        payload:
+                          _id:
+                            _state: _id
+                          type:
+                            _state: type
+                          title:
+                            _state: title
+                          description:
+                            _state: description
+                          contact_ids:
+                            _if_none:
+                              - _state: contact_ids
+                              - []
+                          company_ids:
+                            _if_none:
+                              - _state: company_ids
+                              - []
+                          attributes:
+                            _if_none:
+                              - _state: attributes
+                              - {}
+                          updated:
+                            _state: updated
+                      messages:
+                        success:
+                          _string.concat:
+                            - _module.var: label
+                            - " updated."
+                    - id: reset
+                      type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
+              - id: cancel_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        back: true

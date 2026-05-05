@@ -137,7 +137,10 @@ api:
   - _ref: api/change-activity-status.yaml
   - _ref: api/delete-activity.yaml
 
-# pages: list will be filled in by Tasks 13-14
+pages:
+  - _ref: pages/new.yaml
+  - _ref: pages/edit.yaml
+
 # components: list will be filled in by later tasks
 
 components:
