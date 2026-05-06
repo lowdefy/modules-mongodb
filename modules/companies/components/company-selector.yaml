@@ -22,11 +22,7 @@ properties:
           - _module.var: label
   options:
     _request: get_companies_for_selector
-  label:
+  title:
     _if_none:
       - _var: label
       - _module.var: label
-  optionConfig:
-    titleField: label
-    valueField: value
-    disabledField: disabled

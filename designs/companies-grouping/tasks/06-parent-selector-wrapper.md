@@ -34,16 +34,12 @@ properties:
               - _module.var: label_plural
   options:
     _request: get_companies_for_selector
-  label:
+  title:
     _if_none:
       - _module.var: hierarchy.parent_label
       - _string.concat:
           - "Parent "
           - _module.var: label_plural
-  optionConfig:
-    titleField: label
-    valueField: value
-    disabledField: disabled
 ```
 
 Notes on each field:
@@ -51,14 +47,13 @@ Notes on each field:
 - `id: parent_ids` — the input block id matches the data path. Per the project rule "Input block IDs match data paths", this auto-binds the selected value array to `state.parent_ids`, which is what the form payload reads on submit.
 - `type: MultipleSelector` — multi-select mode.
 - No `events.onMount`. Options are fetched by the **page**, not the component.
-- `placeholder` and `label` use the `hierarchy.parent_label` override with the `_string.concat` fallback per the design.
-- `optionConfig.disabledField: disabled` is essential — without it the selector won't read the projection's `disabled` field. (Same field added to `company-selector.yaml` in task 5; repeated here for clarity since this component is self-contained.)
+- `placeholder` and `title` use the `hierarchy.parent_label` override with the `_string.concat` fallback per the design. (Note: `title` is the string-typed label property on antd input blocks per `Selector/schema.json:226-229`. The `label:` property on the same schema is an object — `{ align, colon, extra, title, span, disabled, ... }` — used to configure label-area styling, not the displayed text.)
+- **No `optionConfig` block.** The antd `Selector/schema.json` doesn't define `optionConfig` (it's an undocumented made-up Lowdefy property). The schema's option shape is `{ label, value, disabled, filterString, style }` natively — exactly what `get_companies_for_selector`'s projection produces — so the Selector reads each row's `disabled` field directly without any mapping config.
 
 ## Acceptance Criteria
 
 - `modules/companies/components/parent_selector.yaml` exists with the structure above.
 - The component has **no** `events.onMount` block.
-- `optionConfig.disabledField: disabled` is set.
 - `id` is exactly `parent_ids` (matches the form payload field).
 - `pnpm ldf:b:i` builds without errors. The component is referenced by task 7's `form_company.yaml` change; it's not used yet on its own.
 

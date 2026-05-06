@@ -9,7 +9,7 @@ The cycle-prevention UI on the parent selector splits the work two ways:
 
 The reusable `company-selector` component is extended to support both: a self-id payload drives a `$match` exclusion, and a descendants array drives a `$cond`-based `disabled` projection.
 
-The component currently lives at `modules/companies/components/company-selector.yaml`. It accepts vars `field_id`, `mode`, and `label`, fires its options request `get_companies_for_selector` on its own `onMount`, and binds projected options through `optionConfig: { titleField: label, valueField: value }`.
+The component currently lives at `modules/companies/components/company-selector.yaml`. It accepts vars `field_id`, `mode`, and `label`, and fires its options request `get_companies_for_selector` on its own `onMount`. (The file historically carried an `optionConfig: { titleField: label, valueField: value }` block, but this is a no-op — it's not in the antd `Selector/schema.json`, no plugin in this repo consumes it, and the projection's field names already match the schema's expected `label` / `value`. Drop it as a vestigial cleanup while we're in this file.)
 
 The request at `modules/companies/requests/get_companies_for_selector.yaml` projects each company as `{ label, value }` and sorts by label.
 
@@ -104,30 +104,23 @@ When `cycle_check_self_id` is `null` (every consumer that doesn't set it), the `
 
 ### B. Update `modules/companies/components/company-selector.yaml`
 
-Add `disabledField: disabled` to `optionConfig` so the underlying `Selector` / `MultipleSelector` block reads the projection's `disabled` field and renders those rows greyed-out / unselectable:
+Drop the existing `optionConfig` block entirely. It's a no-op (not in the antd `Selector/schema.json`, not consumed by any plugin in `plugins/`, and the projection's `label` / `value` field names already match what the schema expects). The Selector block's schema natively reads each option's `disabled` field — no mapping config needed.
 
-```yaml
-optionConfig:
-  titleField: label
-  valueField: value
-  disabledField: disabled
-```
-
-Leave `events.onMount` unchanged — the existing self-fetch on mount stays for backward compatibility with consumers that don't read the cycle-check state. The `parent_selector` wrapper (task 6) is a separate component that overrides `onMount` for the edit-form parent-picker use only.
+Leave `events.onMount` unchanged — the existing self-fetch on mount stays for backward compatibility with consumers that don't set the cycle-check state. The `parent_selector` wrapper (task 6) is a separate component that overrides `onMount` for the edit-form parent-picker use only.
 
 State-path convention is fixed: the request reads `_state: cycle_check_self_id` and `_state: cycle_check_ids`. The wrapping page (task 7) sets both. There can only be one parent-selector per page; the design doesn't need multiple at once.
 
 ## Acceptance Criteria
 
 - `get_companies_for_selector.yaml` reads `_state: cycle_check_self_id` (default `null`) and `_state: cycle_check_ids` (default `[]`), filters out self via `$match: { _id: { $ne: cycle_check_self_id } }`, and projects a per-row `disabled` boolean + a conditionally-suffixed `label`.
-- `company-selector.yaml` passes `disabledField: disabled` in `optionConfig`. `events.onMount` is unchanged.
-- The change is **behaviourally backward-compatible** for all existing consumers: when neither state value is set, the `$match` passes every doc (`$ne: null` is always true) and every `disabled` resolves to `false`. The new `disabled` field is added to every option result regardless of the flag — no existing consumer reads `disabledField` so the extra field is inert. Verify by building the demo app and opening any page that uses `company-selector` — options should render and behave as before.
+- `company-selector.yaml` no longer carries the vestigial `optionConfig` block. `events.onMount` is unchanged.
+- The change is **behaviourally backward-compatible** for all existing consumers: when neither state value is set, the `$match` passes every doc (`$ne: null` is always true) and every `disabled` resolves to `false`. The new `disabled` field is added to every option result regardless of the flag — the antd Selector schema natively reads `options[].disabled`, so for options where the value is `false` the rendering is unchanged. Verify by building the demo app and opening any page that uses `company-selector` — options should render and behave as before.
 - Manual verification (after task 7 lands): on the edit form, after the descendants resolve, self is absent from the dropdown and descendants render with the "(child of this company)" suffix and disabled.
 
 ## Files
 
 - `modules/companies/requests/get_companies_for_selector.yaml` — modify — add `payload.cycle_check_self_id` and `payload.cycle_check_ids` (both from state), extend `$match` to exclude self, change `$project` to compute `disabled` and modify `label` per row.
-- `modules/companies/components/company-selector.yaml` — modify — add `disabledField: disabled` to `optionConfig`. (No other changes — `onMount` stays for backward compatibility.)
+- `modules/companies/components/company-selector.yaml` — modify — drop the vestigial `optionConfig` block. (No other changes — `onMount` stays for backward compatibility.)
 
 ## Notes
 
@@ -135,4 +128,5 @@ State-path convention is fixed: the request reads `_state: cycle_check_self_id` 
 - **Why two state values, not one.** Self gets `$match`-excluded; descendants get `$cond`-disabled. They have different MongoDB roles. The descendants request returns `[self, ...descendants]` as one array; the page's `set_state` step splits this into the two state fields — `cycle_check_self_id` from the page's own `_state._id` (already known on the edit page), `cycle_check_ids` from the request's `ids` array (self being in there is fine since self is filtered out before the projection).
 - **Why "(child of this company)" not "(would create cycle)".** Plain English describes the relationship; "cycle" is jargon. A user picking a parent and seeing one of their existing subsidiaries greyed-out wants to understand "this company is below me, so I can't make it my parent" — "(child of this company)" says exactly that.
 - **`$cond` performance.** Per-row constant-time projection; `$in` against a small array (typically < 50 ids) is also constant-time. Negligible overhead.
-- **`get_companies_for_selector` is shared.** Other consumers (e.g. the contacts module's parent-picker for `global_attributes.company_ids`) will pick up the new `disabled` field in their option results. Their selectors don't read `disabledField` (the change is only on `company-selector.yaml`), so the extra field is inert. A grep across the repo confirms no in-repo file `_ref`s `module: companies, component: company-selector` today — apps consume it externally via their `lowdefy.yaml`. So the projection change has no in-repo blast radius today; the new `parent_selector.yaml` (task 6) becomes the second consumer.
+- **`get_companies_for_selector` is shared.** Other consumers (e.g. the contacts module's parent-picker for `global_attributes.company_ids`) will pick up the new `disabled` field in their option results. Per the antd `Selector/schema.json`, each option natively accepts `{ label, value, disabled, ... }` — when the projection's `disabled` resolves to `false` (every consumer that doesn't set cycle-check state), the option renders enabled exactly as before. A grep across the repo confirms no in-repo file `_ref`s `module: companies, component: company-selector` today — apps consume it externally via their `lowdefy.yaml`. So the projection change has no in-repo blast radius today; the new `parent_selector.yaml` (task 6) becomes the second consumer.
+- **`optionConfig` was a no-op.** `optionConfig` is not in the antd `Selector/schema.json` (which has `additionalProperties: false`) and no plugin in `plugins/` consumes it. The build was silently passing it through. The schema's option shape (`{ label, value, disabled, filterString, style }`) is exactly what the projection produces, so no mapping/translation config is necessary.
