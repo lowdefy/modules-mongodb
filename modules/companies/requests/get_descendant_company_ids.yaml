@@ -1,0 +1,34 @@
+id: get_descendant_company_ids
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: companies-collection
+payload:
+  # Fallback chain so one request file serves both consumers without
+  # per-invocation payload overrides (Lowdefy resolves payload from the
+  # request file, not from the Request action invocation site):
+  #   - List page: state.filter.parent_scope is set, state._id is undefined → uses parent_scope
+  #   - Edit page: state._id is set, state.filter.parent_scope is undefined → falls back to _id
+  root_id:
+    _if_none:
+      - _state: filter.parent_scope
+      - _state: _id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: root_id
+        removed:
+          $ne: true
+    - $graphLookup:
+        from: companies
+        startWith: "$_id"
+        connectFromField: _id
+        connectToField: parent_ids
+        maxDepth:
+          _module.var: hierarchy.max_depth
+        as: __descendants
+    - $project:
+        ids:
+          $concatArrays:
+            - ["$_id"]
+            - "$__descendants._id"

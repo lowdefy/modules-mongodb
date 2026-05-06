@@ -44,6 +44,8 @@ properties:
         startWith: "$_id"
         connectFromField: _id
         connectToField: parent_ids
+        maxDepth:
+          _module.var: hierarchy.max_depth
         as: __descendants
     - $project:
         ids:

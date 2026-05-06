@@ -76,6 +76,8 @@ When `hierarchy.enabled: true`, prepend two new steps before the existing `updat
           startWith: "$_id"
           connectFromField: parent_ids
           connectToField: _id
+          maxDepth:
+            _module.var: hierarchy.max_depth
           as: __ancestors
       - $project:
           has_cycle:

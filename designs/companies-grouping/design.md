@@ -77,7 +77,7 @@ When `hierarchy.enabled: false` (the default), every hierarchy-related block, re
 
 User chose both. Why each is needed:
 
-- **API (server-side)** is the authoritative guard. Without it, a direct `update-company` call from a tool, a bad migration, or any path that bypasses the form can corrupt the graph into a cycle, after which `$graphLookup` either returns spurious results or, with `maxDepth`, silently truncates.
+- **API (server-side)** is the authoritative guard. Without it, a direct `update-company` call from a tool, a bad migration, or any path that bypasses the form can corrupt the graph into a cycle. `$graphLookup` then truncates silently at `maxDepth` (default 20), which surfaces as data the operator can investigate rather than runaway requests — but the API guard is what stops the corruption from being written in the first place.
 - **UI (client-side)** is the user-experience layer. Rendering self + descendants as **disabled options with a "(would create cycle)" suffix** tells the user *up front* which companies aren't valid parents and *why*. Hiding them entirely was the alternative considered, but it would leave users searching for a company that genuinely exists and getting nothing back — a worse experience than seeing it greyed out with an explanation.
 
 The two checks read the same source of truth (`$graphLookup` from `_state._id` down through `parent_ids` to enumerate descendants on the edit page; `$graphLookup` from each candidate parent down through `parent_ids` to check whether self appears in the descendants on the API). Both rely on the same multikey index on `parent_ids`.
@@ -131,11 +131,15 @@ The field lives on a `companies` collection document; "company" is implied by th
 
 Order is not preserved or interpreted. There is no "primary parent". The selector on the form may render in selection order, but the saved array carries no semantic ordering, and the view page is free to sort by parent name. If a future use case requires "primary parent" semantics (e.g., for a single breadcrumb on the header), it would justify either a separate `primary_parent_id` field or promoting `parent_ids` to a structured `parents: [{ id, role }]` shape — out of v1.
 
-### `$graphLookup` runs uncapped (no `maxDepth`)
+### `$graphLookup` capped at `hierarchy.max_depth` (default 20)
 
-The cycle check is the safety boundary, not `maxDepth`. Picking an arbitrary cap (10? 50?) either rejects legitimate deep structures or hides genuine cycles behind silent truncation; a real cycle that slipped past the API check would still render finite results, masking the corruption. Better to traverse fully and rely on the cycle check holding.
+Every `$graphLookup` in this design — descendants, ancestors, cycle check — passes `maxDepth: { _module.var: hierarchy.max_depth }`. The default is 20, which comfortably exceeds typical org-structure depths (<10) while preventing any cycle that slipped past the API guard from running unbounded.
 
-If a perf issue surfaces in production with very deep graphs, add `maxDepth` then with a value justified by the observed depth. Until then, uncapped.
+This is a defensive backstop, not the primary safety. The cycle check (see "Cycle prevention") is what *prevents* cycles from being written. `maxDepth` only matters if a cycle somehow exists in the data — at which point an uncapped `$graphLookup` could run unboundedly, while a capped one truncates silently. Truncation is preferable to runaway in that scenario; the cycle would still surface as a data corruption that operators can investigate, but it wouldn't hang requests.
+
+Apps with unusually deep hierarchies can override via `hierarchy.max_depth: 50` in their entry vars. The var is exposed alongside `enabled`, `parent_label`, and `children_label`.
+
+(Earlier draft of this design left `$graphLookup` uncapped on the principle that the cycle check should be the only safety boundary. Revised to belt-and-braces — the runtime cost of `maxDepth` is negligible, and the operational cost of a cycle leaking past the guard is high.)
 
 ### Removed parents leave dangling references in `parent_ids`
 
@@ -207,6 +211,16 @@ vars:
           When unset, the label falls back at the usage site to
           `_string.concat: ["Child ", _module.var: label_plural]`, giving
           "Child Companies" by default.
+      max_depth:
+        type: number
+        default: 20
+        description: >-
+          Defensive cap on every $graphLookup in this module's hierarchy
+          pipelines (descendants resolution + cycle check). 20 comfortably
+          exceeds typical org depths (<10). The cycle check is the primary
+          guard against runaway traversals; max_depth backstops the rare
+          case where a cycle leaks past the API check, by truncating
+          silently rather than running unboundedly.
 ```
 
 Apps enable hierarchy in their entry config:
@@ -305,6 +319,8 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
            startWith: "$_id"
            connectFromField: _id
            connectToField: parent_ids
+           maxDepth:
+             _module.var: hierarchy.max_depth
            as: __descendants
        - $project:
            ids:
@@ -389,6 +405,8 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
           startWith: "$_id"
           connectFromField: parent_ids
           connectToField: _id
+          maxDepth:
+            _module.var: hierarchy.max_depth
           as: __ancestors
       - $project:
           has_cycle:
