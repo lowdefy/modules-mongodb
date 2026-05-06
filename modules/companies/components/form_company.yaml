@@ -82,3 +82,20 @@ blocks:
             keyword: contact
             label:
               title: Linked Contacts
+
+    # Hierarchy: parent companies (build-gated on hierarchy.enabled)
+    - _build.if:
+        test:
+          _module.var: hierarchy.enabled
+        then:
+          - id: divider_parents
+            type: Divider
+            properties:
+              title:
+                _if_none:
+                  - _module.var: hierarchy.parent_label
+                  - _string.concat:
+                      - "Parent "
+                      - _module.var: label_plural
+          - _ref: components/parent_selector.yaml
+        else: []
