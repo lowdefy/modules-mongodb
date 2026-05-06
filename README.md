@@ -80,9 +80,8 @@ modules:
 
   - id: layout
     source: "github:lowdefy/modules-mongodb/modules/layout@v0.2.1"
-    vars:
-      logo:
-        primary_light: /logo.png
+    # Drop logo-{light,dark}-theme.png and logo-square-{light,dark}-theme.png
+    # into the app's public/ folder — the layout reads them by convention.
 
   - id: user-account
     source: "github:lowdefy/modules-mongodb/modules/user-account@v0.2.1"
