@@ -6,7 +6,9 @@ Layout module fixes — let the page block own logo and chrome styling instead o
 
 **Logo: read from `public/` folder by convention.** Stop forcing `properties.logo.src` from `_module.var: logo.primary_light` in `page.yaml`; with no `logo.src` set, the page block falls back to `${basePath}/logo-{light,dark}-theme.png` (and `logo-square-{light,dark}-theme.png` for mobile) and auto-swaps with dark mode at runtime via `getDarkMode()`. The previous wiring silently bypassed that swap whenever a consumer set the var.
 
-**Header / sider style overrides removed (no behavior change).** The page block (`PageHeaderMenu` / `PageSiderMenu` / `PageSidebarLayout`) now ships the same `.header` and `.sider` border styling we previously layered on top — `.header` via [lowdefy/lowdefy#2158](https://github.com/lowdefy/lowdefy/pull/2158), `.sider` already shipped as a default. Both overrides were redundant and have been removed; consumers see the same divider rendered by the upstream block.
+**Header / sider style overrides removed.** The `.header` divider is now owned by the page block via [lowdefy/lowdefy#2158](https://github.com/lowdefy/lowdefy/pull/2158); `.sider` was already shipped as a default by `PageSiderMenu` and `PageSidebarLayout`. Consumers must be on a Lowdefy version that includes the upstream `.header` styling fix to get a header divider — older Lowdefy versions will render no header divider after this module bump (the previous override was visually broken on those versions anyway, drawing a partial line under the menu only).
+
+**Bug fix as a side effect: `logo.style` now actually applies.** The previous wiring went through `properties.logo.style`, which the v5 page-block schema rejects (`logo` has `additionalProperties: false` and no `style` property). Routing the override through the `.logo` cssKey makes the var functional on v5 for the first time.
 
 **Removed vars (breaking for apps that set them):**
 
