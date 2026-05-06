@@ -5,7 +5,7 @@
 The edit form needs a parent-companies multi-select that:
 
 1. Uses `MultipleSelector` mode (multi-pick).
-2. Reads `state.cycle_check_ids` so descendants of the current company render as disabled options with a "(would create cycle)" suffix.
+2. Reads `state.cycle_check_self_id` (the company being edited — filtered out of the options entirely so self never appears) and `state.cycle_check_ids` (descendants — rendered as disabled options with a "(child of this company)" suffix).
 3. **Does not self-fetch on `onMount`** — instead, the edit page (task 7) sequences the options fetch as a second step after the descendants request completes, avoiding a first-render flash where self appears as a valid parent.
 
 The existing `company-selector.yaml` (`modules/companies/components/company-selector.yaml`) keeps its self-fetch `onMount` for backward compatibility with other consumers. This new `parent_selector.yaml` is a separate component that defines the same selector shape but **without** the `onMount` block.
