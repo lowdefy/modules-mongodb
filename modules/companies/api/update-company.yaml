@@ -1,146 +1,213 @@
 id: update-company
 type: Api
 routine:
-  - id: update
-    type: MongoDBUpdateOne
-    connectionId:
-      _module.connectionId: companies-collection
-    properties:
-      filter:
-        _id:
-          _payload: _id
-        updated.timestamp:
-          _payload: updated.timestamp
-      update:
-        _build.array.concat:
-          # Stage 1: Overwrite scalars, merge sub-objects
-          - - $set:
-                name:
-                  _payload: name
-                description:
-                  _payload: description
-                contact:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.contact"
-                        - {}
-                    - _payload: contact
-                address:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.address"
-                        - {}
-                    - _payload: address
-                registration:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.registration"
-                        - {}
-                    - _payload: registration
-                attributes:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.attributes"
-                        - {}
-                    - $ifNull:
-                        - _payload: attributes
-                        - {}
-                updated:
-                  _ref:
-                    module: events
-                    component: change_stamp
-          # Stage 2: Derived fields (sees merged contact from stage 1)
-          - - $set:
-                lowercase_email:
-                  $toLower:
-                    $trim:
-                      input:
-                        $ifNull:
-                          - "$contact.primary_email"
-                          - ""
-          # Consumer pipeline stages
-          - _module.var: request_stages.write
+  _build.array.concat:
+    # Cycle-check infrastructure: only emitted when hierarchy.enabled is true.
+    # `:reject:` halts the routine on cycle detection — no need to decorate
+    # subsequent steps with `skip:`.
+    - _build.if:
+        test:
+          _module.var: hierarchy.enabled
+        then:
+          - id: cycle_check
+            type: MongoDBAggregation
+            connectionId:
+              _module.connectionId: companies-collection
+            properties:
+              pipeline:
+                - $match:
+                    _id:
+                      $in:
+                        _payload: parent_ids
+                - $graphLookup:
+                    from:
+                      _ref:
+                        path: connections/companies-collection.yaml
+                        key: properties.collection
+                    startWith: "$_id"
+                    connectFromField: parent_ids
+                    connectToField: _id
+                    maxDepth:
+                      _module.var: hierarchy.max_depth
+                    as: __ancestors
+                - $project:
+                    has_cycle:
+                      $in:
+                        - _payload: _id
+                        - $concatArrays:
+                            - ["$_id"]
+                            - "$__ancestors._id"
+                # OR-reduce across all matched candidate parents into a single
+                # output doc. Without this, the projection produces one doc per
+                # candidate, and downstream `_step.cycle_check.0.has_cycle`
+                # would only inspect the first — missing cycles via candidate
+                # parent #2 or later.
+                - $group:
+                    _id: null
+                    has_cycle:
+                      $max: "$has_cycle"
 
-  - id: unlink-old-contacts
-    type: MongoDBUpdateMany
-    connectionId:
-      _module.connectionId:
-        id: contacts-collection
-        module: contacts
-    properties:
-      filter:
-        global_attributes.company_ids:
-          _payload: _id
-      update:
-        $pull:
-          global_attributes.company_ids:
-            _payload: _id
+          - :if:
+              _eq:
+                - _step: cycle_check.0.has_cycle
+                - true
+            :then:
+              :reject: Selected parents would create a cycle in the company hierarchy.
+        else: []
 
-  - id: link-new-contacts
-    type: MongoDBUpdateMany
-    connectionId:
-      _module.connectionId:
-        id: contacts-collection
-        module: contacts
-    properties:
-      filter:
-        _id:
-          $in:
-            _if_none:
-              - _payload: contacts
-              - []
-      update:
-        $addToSet:
-          global_attributes.company_ids:
-            _payload: _id
+    # Existing routine steps (unchanged structure aside from parent_ids in the
+    # first $set). Run only if the cycle check passed (or wasn't injected).
+    - - id: update
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: companies-collection
+        properties:
+          filter:
+            _id:
+              _payload: _id
+            updated.timestamp:
+              _payload: updated.timestamp
+          update:
+            _build.array.concat:
+              # Stage 1: Overwrite scalars, merge sub-objects
+              - - $set:
+                    _build.object.assign:
+                      - name:
+                          _payload: name
+                        description:
+                          _payload: description
+                        contact:
+                          $mergeObjects:
+                            - $ifNull:
+                                - "$$ROOT.contact"
+                                - {}
+                            - _payload: contact
+                        address:
+                          $mergeObjects:
+                            - $ifNull:
+                                - "$$ROOT.address"
+                                - {}
+                            - _payload: address
+                        registration:
+                          $mergeObjects:
+                            - $ifNull:
+                                - "$$ROOT.registration"
+                                - {}
+                            - _payload: registration
+                        attributes:
+                          $mergeObjects:
+                            - $ifNull:
+                                - "$$ROOT.attributes"
+                                - {}
+                            - $ifNull:
+                                - _payload: attributes
+                                - {}
+                        updated:
+                          _ref:
+                            module: events
+                            component: change_stamp
+                      # parent_ids: full replacement, only when hierarchy.enabled.
+                      # When disabled, the second arg resolves to {} and merges
+                      # with no effect, leaving the $set byte-identical to today.
+                      - _build.if:
+                          test:
+                            _module.var: hierarchy.enabled
+                          then:
+                            parent_ids:
+                              _payload: parent_ids
+                          else: {}
+              # Stage 2: Derived fields (sees merged contact from stage 1)
+              - - $set:
+                    lowercase_email:
+                      $toLower:
+                        $trim:
+                          input:
+                            $ifNull:
+                              - "$contact.primary_email"
+                              - ""
+              # Consumer pipeline stages
+              - _module.var: request_stages.write
 
-  - id: new-event
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId:
-          id: new-event
-          module: events
-      payload:
-        type: update-company
-        display:
-          _build.object.fromEntries:
-            _build.array.map:
-              on:
-                _build.array.filter:
+      - id: unlink-old-contacts
+        type: MongoDBUpdateMany
+        connectionId:
+          _module.connectionId:
+            id: contacts-collection
+            module: contacts
+        properties:
+          filter:
+            global_attributes.company_ids:
+              _payload: _id
+          update:
+            $pull:
+              global_attributes.company_ids:
+                _payload: _id
+
+      - id: link-new-contacts
+        type: MongoDBUpdateMany
+        connectionId:
+          _module.connectionId:
+            id: contacts-collection
+            module: contacts
+        properties:
+          filter:
+            _id:
+              $in:
+                _if_none:
+                  - _payload: contacts
+                  - []
+          update:
+            $addToSet:
+              global_attributes.company_ids:
+                _payload: _id
+
+      - id: new-event
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId:
+              id: new-event
+              module: events
+          payload:
+            type: update-company
+            display:
+              _build.object.fromEntries:
+                _build.array.map:
                   on:
-                    _build.object.entries:
-                      _build.object.assign:
-                        - _ref: defaults/event_display.yaml
-                        - _module.var: event_display
+                    _build.array.filter:
+                      on:
+                        _build.object.entries:
+                          _build.object.assign:
+                            - _ref: defaults/event_display.yaml
+                            - _module.var: event_display
+                      callback:
+                        _build.function:
+                          __build.ne:
+                            - __build.if_none:
+                                - __build.args: 0.1.update-company
+                                - null
+                            - null
                   callback:
                     _build.function:
-                      __build.ne:
-                        - __build.if_none:
-                            - __build.args: 0.1.update-company
-                            - null
-                        - null
-              callback:
-                _build.function:
-                  - __build.args: "0.0"
-                  - title:
-                      _nunjucks:
-                        template:
-                          __build.args: 0.1.update-company
-                        on:
-                          user:
-                            _user: true
-                          target:
-                            name:
-                              _payload:
-                                _module.var: name_field
-                    description: null
-        references:
-          company_ids:
-            - _payload: _id
-        metadata:
-          company_id:
-            _payload: _id
+                      - __build.args: "0.0"
+                      - title:
+                          _nunjucks:
+                            template:
+                              __build.args: 0.1.update-company
+                            on:
+                              user:
+                                _user: true
+                              target:
+                                name:
+                                  _payload:
+                                    _module.var: name_field
+                        description: null
+            references:
+              company_ids:
+                - _payload: _id
+            metadata:
+              company_id:
+                _payload: _id
 
-  - :return:
-      success: true
+      - :return:
+          success: true

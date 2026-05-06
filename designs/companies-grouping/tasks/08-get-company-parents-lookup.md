@@ -46,7 +46,10 @@ properties:
             _module.var: hierarchy.enabled
           then:
             - $lookup:
-                from: companies
+                from:
+                  _ref:
+                    path: connections/companies-collection.yaml
+                    key: properties.collection
                 let:
                   parent_id_array:
                     $ifNull:
@@ -91,7 +94,7 @@ The `let` + `$expr` + `$in` form expands the multikey `parent_ids` correctly ins
 
 ## Notes
 
-- **`$lookup.from: companies` (literal).** Hardcode the literal collection name. Same rationale as tasks 2 and 4 — no `_module.collection` resolver in Lowdefy, and the connection always points at the `companies` collection.
+- **`$lookup.from` via `_ref` to the connection file.** Same as tasks 2 and 4 — read the collection name via `_ref: { path: connections/companies-collection.yaml, key: properties.collection }` rather than hardcoding `from: companies`. Verified working at build with the `$graphLookup` cases.
 - **Projecting by configurable field name.** The `$project` stage inside the sub-pipeline needs to project both `_id` and the field named by `_module.var: name_field`. Since the field name is build-time configurable but the YAML key is static, the cleanest expression is `_build.object.fromEntries`:
 
   ```yaml

@@ -40,7 +40,10 @@ properties:
         removed:
           $ne: true
     - $graphLookup:
-        from: companies
+        from:
+          _ref:
+            path: connections/companies-collection.yaml
+            key: properties.collection
         startWith: "$_id"
         connectFromField: _id
         connectToField: parent_ids
@@ -70,6 +73,6 @@ The `payload.root_id` uses `_if_none` to fall back from `state.filter.parent_sco
 
 ## Notes
 
-- **`$graphLookup.from: companies` (literal).** `$graphLookup.from` is a MongoDB pipeline argument and needs the literal collection name, not a Lowdefy connection ID. The literal collection name is `companies` per `modules/companies/connections/companies-collection.yaml:6` (`collection: companies`). Hardcoding is safe across consumer remappings: a consumer can remap the *connection* via the entry's `connections:` mapping, but that points the connection at a different collection — the new collection's documents would not have `parent_ids` populated (it'd be a different data store), so the request would never have been meaningful there anyway. No `_module.collection` resolver exists in Lowdefy.
+- **`$graphLookup.from` via `_ref` to the connection file.** `$graphLookup.from` is a MongoDB pipeline argument that needs the literal collection name — Lowdefy's `_module.connectionId` returns the connection's *ID*, not its target collection name. Rather than hardcoding `from: companies`, the lookup uses `_ref: { path: connections/companies-collection.yaml, key: properties.collection }` to read the collection name from the connection file at build time. Verified working at build. If the module ever targets a renamed collection, every lookup updates automatically. Module-internal `_ref` paths resolve from the module root, so the path is the same regardless of which file refers to it.
 - **Direction of walk.** `connectFromField: _id` + `connectToField: parent_ids` walks **downward** (root → children → grandchildren). The cycle-check request in task 4 walks **upward** (`connectFromField: parent_ids`, `connectToField: _id`). Don't confuse the two.
 - **No `_build.if` gating.** This request file is added unconditionally — it doesn't read `hierarchy.enabled`. The request is harmless when no consumer invokes it. If desired, page-level `_build.if` gating happens in the consuming pages (tasks 7 and 10), not here.

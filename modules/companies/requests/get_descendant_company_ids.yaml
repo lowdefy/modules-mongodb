@@ -20,7 +20,10 @@ properties:
         removed:
           $ne: true
     - $graphLookup:
-        from: companies
+        from:
+          _ref:
+            path: connections/companies-collection.yaml
+            key: properties.collection
         startWith: "$_id"
         connectFromField: _id
         connectToField: parent_ids

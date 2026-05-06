@@ -131,6 +131,23 @@ The field lives on a `companies` collection document; "company" is implied by th
 
 Order is not preserved or interpreted. There is no "primary parent". The selector on the form may render in selection order, but the saved array carries no semantic ordering, and the view page is free to sort by parent name. If a future use case requires "primary parent" semantics (e.g., for a single breadcrumb on the header), it would justify either a separate `primary_parent_id` field or promoting `parent_ids` to a structured `parents: [{ id, role }]` shape — out of v1.
 
+### `$graphLookup.from` resolved via `_ref` to the connection file
+
+`$graphLookup.from` is a MongoDB pipeline argument that needs the literal collection name — Lowdefy's `_module.connectionId` returns the connection's *ID*, not its target collection name, and there's no `_module.collection` resolver. Rather than hardcoding `from: companies`, every `$graphLookup` (and `$lookup`) in this design reads the collection name from the connection file at build time:
+
+```yaml
+from:
+  _ref:
+    path: connections/companies-collection.yaml
+    key: properties.collection
+```
+
+The `_ref` resolves to whatever `properties.collection` is set to in `modules/companies/connections/companies-collection.yaml` (currently `companies`). If the module is ever updated to target a different collection name, every cross-collection lookup updates automatically — no source-of-truth drift between the connection definition and the lookup pipelines.
+
+Module-internal `_ref` paths resolve from the module root, so `path: connections/companies-collection.yaml` works regardless of which file is doing the reference.
+
+This **does not** insulate against consumer connection remappings via the entry's `connections:` mapping. If a consumer remaps `companies-collection` to a different connection that targets a renamed underlying collection, the `_ref` still resolves to whatever the *module's* connection file says (`companies`). Consumers who rename the underlying collection would need to fork or supply their own version of the request — but that's out of scope: the realistic remap scenario is "different connection details, same collection name".
+
 ### `$graphLookup` capped at `hierarchy.max_depth` (default 20)
 
 Every `$graphLookup` in this design — descendants, ancestors, cycle check — passes `maxDepth: { _module.var: hierarchy.max_depth }`. The default is 20, which comfortably exceeds typical org-structure depths (<10) while preventing any cycle that slipped past the API guard from running unbounded.
@@ -315,7 +332,10 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
            removed:
              $ne: true
        - $graphLookup:
-           from: companies
+           from:
+             _ref:
+               path: connections/companies-collection.yaml
+               key: properties.collection
            startWith: "$_id"
            connectFromField: _id
            connectToField: parent_ids
@@ -380,7 +400,7 @@ Notes:
 Both `create-company` and `update-company` accept `parent_ids` in the payload (an array, defaulting to `[]`) and write it through. `update-company` runs a cycle pre-check stage:
 
 1. `$match` the candidate parent docs (`_id: { $in: <payload.parent_ids> }`) into the pipeline, then `$graphLookup` upward through `parent_ids` from each (`connectFromField: "parent_ids"`, `connectToField: "_id"`).
-2. If `<payload._id>` (self) appears in either the candidate parent set or the resulting ancestor closure, the API returns an error and the update is aborted before the `$set` stage.
+2. If `<payload._id>` (self) appears in either the candidate parent set or the resulting ancestor closure, a `:reject:` aborts the routine with an error message — the calling form's `CallApi` action's `onError` handler fires, the form stays open, and the user gets a clear error to act on.
 
 For `create-company`, the cycle check is unnecessary — a brand-new doc has no descendants, so no parent set can form a cycle.
 
@@ -388,10 +408,10 @@ When `hierarchy.enabled: false`, the cycle-check step, the `parent_ids` payload 
 
 #### Cycle-check step layout (`update-company`)
 
-Lowdefy API routines have no `throw` step. The established primitives are `:return:` (sets the API response and ends the routine) and `skip:` (conditionally bypasses a step), seen at `modules/companies/api/create-company.yaml:135-137` and `modules/files/api/delete-file.yaml:22-24`. The cycle check uses both:
+Lowdefy API routines provide a `:reject:` routine control that aborts the routine with an error message — the calling action's `onError` handler fires, no further steps run, and the API caller distinguishes failure from success at the protocol level. Existing precedent in this repo: `modules/user-account/api/update-profile.yaml:4-13` rejects on missing required input. The cycle check follows the same pattern:
 
 ```yaml
-# All four steps below are _build.if-injected when hierarchy.enabled is true.
+# Both steps below are _build.if-injected when hierarchy.enabled is true.
 - id: cycle_check
   type: MongoDBAggregation
   connectionId:
@@ -401,7 +421,10 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
       - $match:
           _id: { $in: { _payload: parent_ids } }
       - $graphLookup:
-          from: companies
+          from:
+            _ref:
+              path: connections/companies-collection.yaml
+              key: properties.collection
           startWith: "$_id"
           connectFromField: parent_ids
           connectToField: _id
@@ -425,31 +448,21 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
           has_cycle:
             $max: "$has_cycle"
 
-- :return:
-    error: would_create_cycle
-  skip:
-    _ne:
-      - _step: cycle_check.0.has_cycle
-      - true
-
-# Existing steps below — `update`, `unlink-old-contacts`, `link-new-contacts`,
-# `new-event`, `:return: success` — each gain a defensive skip so they don't run
-# if the cycle was detected. (Belt-and-braces: the early :return: above should
-# already short-circuit, but explicit skips make the routine robust against any
-# difference in :return: semantics.)
-  skip:
+- :if:
     _eq:
       - _step: cycle_check.0.has_cycle
       - true
+  :then:
+    :reject: Selected parents would create a cycle in the company hierarchy.
 ```
 
 Three notes on this layout:
 
 - **`cycle_check` projects a single boolean per matched candidate parent, then OR-reduces to a single doc.** The `$project` stage runs once per matched candidate parent doc (one per `_id` in `payload.parent_ids`), each producing its own `has_cycle` flag. The `$group` stage then OR-reduces (`$max` on booleans gives `true || false → true`) into a single output doc. Without the `$group`, downstream `_step.cycle_check.0.has_cycle` would only inspect the first matched candidate's flag and miss cycles formed via the second-or-later candidate. With `$group`, the result is always a one-element array whose `has_cycle` is the OR across all candidates.
 - **Why a `$match` before `$graphLookup`.** `$graphLookup` needs a starting document set; the simplest is to start at *the candidate parents themselves*, treat each as the root of an upward walk, and check whether self appears at any node visited (the candidate parents themselves count, hence the `$concatArrays` with `["$_id"]`).
-- **The defensive `skip` on every existing step is build-injected at the same time as the cycle-check step.** When `hierarchy.enabled: false`, none of the cycle-check infrastructure is emitted and the existing steps run unconditionally as today. When `hierarchy.enabled: true`, every existing step's YAML gains the `skip:` block via the same `_build.if` that injects the new steps.
+- **`:reject:` cleanly aborts.** No need to decorate every subsequent step with `skip:` — `:reject:` halts the routine entirely. The existing `update`, `unlink-old-contacts`, `link-new-contacts`, `new-event`, and `:return: success` steps stay unchanged when `hierarchy.enabled: true`; only the two cycle-check steps are added via `_build.if`. When `hierarchy.enabled: false`, neither step is emitted and the routine is identical to today's.
 
-For `create-company`, no `cycle_check` / early `:return:` are needed — a fresh doc has no descendants, so the cycle invariant cannot be broken on insert. The only build-gated change there is accepting `parent_ids` in the `MongoDBInsertConsecutiveId.doc` block.
+For `create-company`, no `cycle_check` is needed — a fresh doc has no descendants, so the cycle invariant cannot be broken on insert. The only build-gated change there is accepting `parent_ids` in the `MongoDBInsertConsecutiveId.doc` block.
 
 ## Files changed
 
