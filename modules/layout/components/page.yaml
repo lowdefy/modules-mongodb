@@ -82,14 +82,6 @@ properties:
             _module.var: sider_storage_key
         else: {}
 style:
-  # Render the header divider as a 1px box-shadow below the header rather than
-  # border-bottom — the antd horizontal Menu sits inside the header and its own
-  # border-block-end overlaps a border-bottom in the menu span; a drop shadow
-  # falls outside the header's box where the menu can't reach.
-  .header:
-    boxShadow: 0 1px 0 0 var(--ant-color-border)
-  .sider:
-    borderInlineEnd: 1px solid var(--ant-color-border)
   .logo:
     _module.var: logo.style
 requests:
