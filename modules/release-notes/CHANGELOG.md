@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-release-notes
 
+## 0.3.0
+
 ## 0.2.1
 
 ### Patch Changes
