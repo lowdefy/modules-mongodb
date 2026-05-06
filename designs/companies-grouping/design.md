@@ -259,7 +259,7 @@ Step-by-step:
 4. The parent_selector reuses `company-selector` in `MultipleSelector` mode and reads `_state: cycle_check_ids` via the underlying request's payload. The selector's request projects an extra `disabled` field per row using `$cond: { if: { $in: ["$_id", cycle_check_ids] }, then: true, else: false }` and rewrites `label` for matching rows to suffix `" (would create cycle)"`. The selector block's `optionConfig` gains `disabledField: disabled`. Self + descendants therefore appear in the dropdown as greyed-out options the user can see but cannot pick.
 5. On submit, `parent_ids` (an array, possibly empty) is included in the form payload.
 
-(On the `new` page there are no descendants and no self. The descendants request can be skipped — payload `root_id: undefined` returns no rows, `cycle_check_ids` resolves to `[]`, every option is enabled, no `$cond` branches fire, the selector behaves as a plain company picker. The two-step `onMount` still applies but the descendants request returns immediately.)
+(On the `new` page there are no descendants and no self. The descendants request can be skipped — payload `root_id: undefined` returns no rows, `cycle_check_ids` resolves to `[]`, every option is enabled, no `$cond` branches fire, the selector behaves as a plain company picker. The three-step `onMount` still applies but the descendants request returns immediately.)
 
 ### View page (when `hierarchy.enabled`)
 

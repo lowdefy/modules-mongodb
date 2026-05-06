@@ -14,7 +14,7 @@ Implements the companies-grouping design: a DAG model (`parent_ids: string[]`) o
 | 4   | `04-update-company-cycle-check.md`            | Cycle check + `parent_ids` write in `update-company`                                     | 1          |
 | 5   | `05-company-selector-cycle-check-ids.md`      | Extend `company-selector` + `get_companies_for_selector` to support `cycle_check_ids`    | 1          |
 | 6   | `06-parent-selector-wrapper.md`               | Create `parent_selector` wrapper component (no own `onMount`)                            | 5          |
-| 7   | `07-edit-form-wiring.md`                      | Append parent selector to `form_company`; two-step `onMount` on `edit.yaml`              | 1, 2, 6    |
+| 7   | `07-edit-form-wiring.md`                      | Append parent selector to `form_company`; three-step `onMount` on `edit.yaml`            | 1, 2, 6    |
 | 8   | `08-get-company-parents-lookup.md`            | Extend `get_company` with parents `$lookup` (filtered to non-removed)                    | 1          |
 | 9   | `09-view-page-hierarchy-tile.md`              | Add `get_company_children`, create `tile_hierarchy`, wire into `pages/view.yaml`         | 1, 8       |
 | 10  | `10-list-filter.md`                           | Parent-scope filter on `filter_companies`; Atlas Search `must` clause on `get_all_companies` (lowest priority) | 1, 2       |
@@ -26,7 +26,7 @@ Implements the companies-grouping design: a DAG model (`parent_ids: string[]`) o
 
 **Read/write infrastructure (2–4) before UI.** The descendants request (2) is shared by edit form and list filter; it's the most-reused piece. The write-side changes (3, 4) come next so writing parent_ids is possible before the form even exists. The cycle check (4) is the load-bearing invariant — if it lands wrong, every other write surface is suspect.
 
-**Edit form chain (5 → 6 → 7).** The selector primitives (5) get extended first (backward compatible — `cycle_check_ids: []` default means existing consumers see no behavioural change). The wrapper (6) is then a thin `parent_selector` that overrides `onMount`. The form/page wiring (7) ties it all together with the two-step `onMount` sequence, producing the first end-to-end testable surface.
+**Edit form chain (5 → 6 → 7).** The selector primitives (5) get extended first (backward compatible — `cycle_check_ids: []` default means existing consumers see no behavioural change). The wrapper (6) is then a thin `parent_selector` that overrides `onMount`. The form/page wiring (7) ties it all together with the three-step `onMount` sequence (`fetch_doc_data → set_state → fetch_selector_options`), producing the first end-to-end testable surface.
 
 **View page chain (8 → 9).** `get_company` parents `$lookup` (8) is independent of the edit form work and can start in parallel with tasks 2–7. The combined `tile_hierarchy` + children request + page wiring (9) follows.
 

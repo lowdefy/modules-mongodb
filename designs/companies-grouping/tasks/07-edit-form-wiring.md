@@ -1,16 +1,16 @@
-# Task 7: Wire parent selector into form, two-step `onMount` on edit page
+# Task 7: Wire parent selector into form, three-step `onMount` on edit page
 
 ## Context
 
 This task connects the pieces from tasks 1, 2, 5, and 6 into the edit-page flow:
 
 1. The edit form (`form_company.yaml`) appends a "Parents" section with the new `parent_selector.yaml` block, build-gated on `hierarchy.enabled`.
-2. The edit page (`pages/edit.yaml`) `onMount` becomes a **two-step sequence** so the parent-selector's options request fires *after* the descendants are known. This avoids a first-render flash where self briefly appears as a valid parent.
+2. The edit page (`pages/edit.yaml`) `onMount` becomes a **three-step sequence** so the parent-selector's options request fires *after* the descendants are resolved *and* the resulting id list is written to state. This avoids a first-render flash where self briefly appears as a valid parent.
 3. The page's `onMount.set_state` action is extended to populate `state.cycle_check_ids` from the descendants result (so `get_companies_for_selector` reads the right value when it fires) and `state.parent_ids` from the loaded doc (so the form pre-populates).
 4. The `update_company` button's payload is extended to include `parent_ids: _state.parent_ids` (build-gated).
 5. The `new.yaml` page mirrors the same form additions but without the descendants fetch (no self, no descendants).
 
-The two-step `onMount` shape:
+The three-step `onMount` shape:
 
 ```yaml
 onMount:
@@ -35,7 +35,7 @@ The selector's underlying request reads `_state: cycle_check_ids` (per task 5), 
 2. Run `set_state` to copy descendants into `state.cycle_check_ids` and `state.parent_ids` from the doc.
 3. Run `fetch_selector_options` so the request payload sees the new state.
 
-So the two-step framing in the design becomes effectively three steps. (The design's "two-step" refers to the conceptual sequence — the implementation just needs `fetch_selector_options` to run after the state is set.)
+This three-step ordering matches the design's Architecture / Edit form section.
 
 ## Task
 
