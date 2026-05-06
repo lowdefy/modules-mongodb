@@ -48,25 +48,26 @@ vars:
     description: localStorage key suffix for sider collapsed-state persistence. Produces key 'lf-{sider_storage_key}-open'. Ignored for page_type 'header-menu' (no sider to persist).
   logo:
     type: object
-    description: "Logo config: { primary_light, primary_dark, primary, icon, style }"
+    description: >-
+      Logo config for the auth page and header logo style override. The page
+      header logo follows the Lowdefy public-folder convention — drop
+      `logo-light-theme.png` / `logo-dark-theme.png` (and the
+      `logo-square-*-theme.png` variants for mobile) into the app's `public/`
+      folder and the page block auto-swaps between light/dark variants based
+      on dark mode.
     properties:
-      primary_light:
-        description: >-
-          Logo rendered in the page header on light backgrounds. Consumers
-          must set this — there is no default.
       primary_dark:
         default: /logo-dark-theme.png
         description: >-
-          Logo rendered on dark backgrounds (auth-page cover, dark-theme
-          header).
+          Logo rendered on the auth-page cover (always-dark background).
       primary:
         default: /logo-light-theme.png
         description: >-
           Logo rendered in the auth-page brand panel and mobile auth view.
-      icon:
-        description: Square icon logo used in the mobile header.
       style:
-        description: Inline style object applied to the header logo.
+        description: >-
+          Inline style object applied to the header logo (mapped to the
+          `.logo` cssKey on the page block).
   menu:
     type: object
     default:
