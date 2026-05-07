@@ -1,29 +1,31 @@
-_ref:
-  module: layout
-  component: card
-  vars:
-    title:
-      _string.concat:
-        - _module.var: label
-        - " Hierarchy"
-    blocks:
-      - id: hierarchy_content
-        type: Box
-        # Hide the entire tile when both parents and children are empty.
-        visible:
-          _or:
-            - _gt:
-                - _array.length:
-                    _if_none:
-                      - _request: get_company.0.parents
-                      - []
-                - 0
-            - _gt:
-                - _array.length:
-                    _if_none:
-                      - _request: get_company_children
-                      - []
-                - 0
+# Outer Box wraps the card so the entire tile (frame + title) hides when
+# both parents and children are empty. visible: on the inner card's blocks
+# would only hide the contents, leaving an empty "Company Hierarchy" frame.
+id: tile_hierarchy_wrapper
+type: Box
+visible:
+  _or:
+    - _gt:
+        - _array.length:
+            _if_none:
+              - _request: get_company.0.parents
+              - []
+        - 0
+    - _gt:
+        - _array.length:
+            _if_none:
+              - _request: get_company_children
+              - []
+        - 0
+blocks:
+  - _ref:
+      module: layout
+      component: card
+      vars:
+        title:
+          _string.concat:
+            - _module.var: label
+            - " Hierarchy"
         blocks:
           - id: hierarchy_html
             type: Html

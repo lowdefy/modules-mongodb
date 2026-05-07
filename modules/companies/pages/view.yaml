@@ -117,14 +117,15 @@ _ref:
             blocks:
               _build.array.concat:
                 - - _ref: components/tile_contacts.yaml
-                  - _ref: components/tile_events.yaml
-                # Hierarchy tile (build-gated). Renders parents + children
-                # when hierarchy is enabled. Self-hides when both arrays
-                # are empty.
+                # Hierarchy tile (build-gated). Sits between contacts and
+                # events so hierarchy navigation comes before activity.
+                # Self-hides at runtime when both parents and children are
+                # empty (visibility on the wrapper Box).
                 - _build.if:
                     test:
                       _module.var: hierarchy.enabled
                     then:
                       - _ref: components/tile_hierarchy.yaml
                     else: []
+                - - _ref: components/tile_events.yaml
                 - _module.var: components.sidebar_slots
