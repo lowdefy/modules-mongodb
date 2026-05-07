@@ -18,7 +18,7 @@ properties:
             - compound:
                 mustNot:
                   - exists:
-                      path: removed.timestamp
+                      path: deleted.timestamp
                 must:
                   _array.concat:
                     - _if:

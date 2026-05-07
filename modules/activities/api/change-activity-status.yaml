@@ -10,7 +10,7 @@ routine:
         - $match:
             _id:
               _payload: activity_id
-            removed.timestamp:
+            deleted.timestamp:
               $exists: false
         - $project:
             _id: 1

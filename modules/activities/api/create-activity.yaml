@@ -67,7 +67,7 @@ routine:
               _ref:
                 module: events
                 component: change_stamp
-            removed: null
+            deleted: null
     # Optional consumer-provided pipeline stages (only emitted when provided)
     - _build.if:
         test:

@@ -5,7 +5,7 @@ connectionId:
 properties:
   pipeline:
     - $match:
-        removed:
+        deleted:
           $ne: true
     - $project:
         label:

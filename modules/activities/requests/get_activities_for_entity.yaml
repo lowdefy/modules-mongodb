@@ -11,7 +11,7 @@ properties:
   pipeline:
     - $match:
         _object.assign:
-          - removed.timestamp:
+          - deleted.timestamp:
               $exists: false
           - _object.defineProperty:
               on: {}

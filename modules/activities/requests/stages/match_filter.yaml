@@ -1,7 +1,7 @@
 $match:
   $and:
     _array.concat:
-      - - removed.timestamp:
+      - - deleted.timestamp:
             $exists: false
       - _if:
           test:
@@ -48,7 +48,9 @@ $match:
             - updated.timestamp:
                 $gte:
                   _date:
-                    _payload: filter.date_from
+                    _if_none:
+                      - _payload: filter.date_from
+                      - 0
           else: []
       - _if:
           test:
@@ -59,6 +61,8 @@ $match:
             - updated.timestamp:
                 $lte:
                   _date:
-                    _payload: filter.date_to
+                    _if_none:
+                      - _payload: filter.date_to
+                      - 0
           else: []
       - _module.var: request_stages.filter_match

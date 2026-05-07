@@ -14,7 +14,7 @@ routine:
         - $match:
             _id:
               _payload: activity_id
-            removed.timestamp:
+            deleted.timestamp:
               $exists: false
         - $project:
             _id: 1
@@ -36,7 +36,7 @@ routine:
           _step: load.0.updated.timestamp
       update:
         $set:
-          removed:
+          deleted:
             _ref:
               module: events
               component: change_stamp

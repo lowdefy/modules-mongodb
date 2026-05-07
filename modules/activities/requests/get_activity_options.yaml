@@ -6,7 +6,7 @@ properties:
   pipeline:
     _build.array.concat:
       - - $match:
-            removed.timestamp:
+            deleted.timestamp:
               $exists: false
         - _ref: requests/stages/add_derived_fields.yaml
         - $sort:

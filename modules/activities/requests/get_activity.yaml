@@ -10,7 +10,7 @@ properties:
     - $match:
         _id:
           _payload: _id
-        removed.timestamp:
+        deleted.timestamp:
           $exists: false
     - $limit: 1
     - _ref: requests/stages/add_derived_fields.yaml

@@ -5,7 +5,7 @@ $lookup:
   as: contacts
   pipeline:
     - $match:
-        removed.timestamp:
+        deleted.timestamp:
           $exists: false
     - $project:
         _id: 1
