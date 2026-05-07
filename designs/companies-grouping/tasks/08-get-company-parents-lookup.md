@@ -50,17 +50,10 @@ properties:
                   _ref:
                     path: connections/companies-collection.yaml
                     key: properties.collection
-                let:
-                  parent_id_array:
-                    $ifNull:
-                      - "$parent_ids"
-                      - []
+                localField: parent_ids
+                foreignField: _id
                 pipeline:
                   - $match:
-                      $expr:
-                        $in:
-                          - "$_id"
-                          - "$$parent_id_array"
                       removed:
                         $ne: true
                   - $project:
@@ -77,7 +70,7 @@ properties:
                 input: "$$ROOT"
 ```
 
-The `let` + `$expr` + `$in` form expands the multikey `parent_ids` correctly inside the sub-pipeline. Filtering on `removed: { $ne: true }` ensures soft-deleted parents are absent from the result.
+`localField: parent_ids` + `foreignField: _id` natively handles multikey expansion — each element of the local doc's `parent_ids` array is matched against `_id` in the foreign collection. The sub-pipeline (MongoDB 5.0+) runs after that match and filters out soft-deleted parents via `removed: { $ne: true }` before the projection.
 
 ## Acceptance Criteria
 
@@ -107,6 +100,6 @@ The `let` + `$expr` + `$in` form expands the multikey `parent_ids` correctly ins
   ```
 
   Or, if the existing pipelines use a different idiom for "project a configurable-name field", match that pattern. The view block in task 9 reads the resolved key via `_module.var: name_field`, so whatever the projection key is here must match.
-- **Why `let` + `$expr` and not `localField`/`foreignField`.** The shorthand form supports a sub-pipeline only via `let:` + `$expr:`. Using shorthand `localField: parent_ids` + `foreignField: _id` works for the join itself, but doesn't easily attach a `removed: { $ne: true }` filter to the matched docs. The `let` form scales better and keeps the soft-delete filter co-located.
+- **`localField` + `foreignField` + `pipeline` (MongoDB 5.0+).** All three can be combined: the local/foreign match runs first (with native multikey expansion when `localField` is an array), then the sub-pipeline filters and projects the joined docs. An earlier version of this task used `let` + `$expr` + `$in` thinking the shorthand and sub-pipeline were mutually exclusive — they're not. The current form is simpler.
 - **Cycle interaction.** `$lookup` doesn't recurse — it returns *direct parents only*. That's correct for the view-page tile, which shows direct parents and direct children separately. Ancestors aren't displayed.
-- **Empty `parent_ids`.** `$ifNull` on the `let` value handles both the empty-array case and the field-missing case (when `hierarchy.enabled: false` and a doc was created pre-hierarchy). Result: `parents: []`.
+- **Empty `parent_ids`.** When the field is `[]` or missing, `localField: parent_ids` produces no matches and `parents:` resolves to `[]` automatically. No `$ifNull` needed.

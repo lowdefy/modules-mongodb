@@ -24,6 +24,17 @@ _ref:
             - "Edit "
             - _module.var: label
     events:
+      # Initialize state keys read by hierarchy-related requests so
+      # Lowdefy's static `_state` validation passes. Values are placeholders
+      # — set_state on onMount writes the real values from get_company /
+      # get_descendant_company_ids when hierarchy.enabled.
+      onInit:
+        - id: init_hierarchy_state
+          type: SetState
+          params:
+            filter: {}
+            cycle_check_self_id: null
+            cycle_check_ids: []
       onMount:
         _build.array.concat:
           - - id: fetch

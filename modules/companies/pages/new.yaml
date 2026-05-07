@@ -29,6 +29,12 @@ _ref:
             registration: {}
             attributes: {}
             contacts: []
+            # Initialized for Lowdefy's static `_state` validation —
+            # hierarchy-related requests (get_descendant_company_ids,
+            # get_companies_for_selector) read these paths.
+            filter: {}
+            cycle_check_self_id: null
+            cycle_check_ids: []
       # When hierarchy is enabled, fetch the parent_selector's options on
       # mount. The selector itself has no onMount (it's the parent_selector
       # wrapper, intentionally without self-fetch — see modules/companies/
