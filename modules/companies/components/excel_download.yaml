@@ -31,6 +31,10 @@ events:
                 value: display_name
                 type: String
                 width: 25
+              - column: short_name
+                value: short_name
+                type: String
+                width: 15
               - column: description
                 value: description
                 type: String

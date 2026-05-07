@@ -20,7 +20,7 @@ Cross-module cycle: `companies ↔ contacts`. Both must be added as separate ent
 ```yaml
 modules:
   - id: companies
-    source: "github:lowdefy/modules-mongodb/modules/companies@v0.3.0"
+    source: "github:lowdefy/modules-mongodb/modules/companies@v0.4.0"
     vars:
       label: Company
       label_plural: Companies
@@ -174,3 +174,5 @@ fields:
 Linked contacts are stored on the contact side as `global_attributes.company_ids: [company_id, ...]`. The detail page resolves linked contacts via `$lookup`, and the edit page reconciles the link set on save.
 
 Section sub-objects (`contact`, `address`, `registration`, `attributes`) are merged on save (`$mergeObjects`), not replaced. Removing a field from `fields.X` leaves any existing key on the document — `$set` does not unset. Run a one-off cleanup migration if you need to remove legacy keys from saved docs.
+
+Each company has an optional top-level `short_name` field surfaced on the form, view, list table, and Excel export — for narrow contexts where the full name doesn't fit (reports, chart axes, dense tables). Set `name_field: short_name` to promote it to the display field used by selectors and event titles.

@@ -11,6 +11,15 @@
         - "Enter "
         - _module.var: label
         - " name"
+- id: short_name
+  type: TextInput
+  properties:
+    title:
+      _string.concat:
+        - "Short "
+        - _module.var: label
+        - " Name"
+    placeholder: Used in reports and narrow displays
 - id: description
   type: TextArea
   properties:

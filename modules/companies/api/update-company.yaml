@@ -17,6 +17,8 @@ routine:
           - - $set:
                 name:
                   _payload: name
+                short_name:
+                  _payload: short_name
                 description:
                   _payload: description
                 contact:

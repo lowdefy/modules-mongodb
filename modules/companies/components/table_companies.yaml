@@ -30,6 +30,9 @@ properties:
           field: display_name
           flex: 1
           minWidth: 240
+        - headerName: Short Name
+          field: short_name
+          width: 140
         - headerName: Description
           field: description
           flex: 1
