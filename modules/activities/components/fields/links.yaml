@@ -21,4 +21,4 @@
     vars:
       field_id: company_ids
       mode: MultipleSelector
-      label: Linked Companies
+      title: Linked Companies

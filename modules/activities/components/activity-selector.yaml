@@ -12,8 +12,12 @@
 # Vars:
 #   field_id (string, default "activity") — block id / state key.
 #   mode     (string, default "Selector") — "Selector" or "MultipleSelector".
-#   label    (string) — selector label / placeholder fragment. Defaults
-#                       to the module `label` var ("Activity").
+#   title    (string) — visible field title. Defaults to the module
+#                       `label` var ("Activity"). Placeholder follows
+#                       the same source ("Select <title>").
+#   label    (object) — Form.Item Label config (extra, tooltip, etc.)
+#                       — passed to the Selector's Label wrapper via
+#                       the spread; not the visible field title.
 id:
   _var:
     key: field_id
@@ -30,16 +34,20 @@ events:
       type: Request
       params: get_activity_options
 properties:
+  title:
+    _if_none:
+      - _var: title
+      - _module.var: label
   placeholder:
     _string.concat:
       - "Select "
       - _if_none:
-          - _var: label
+          - _var: title
           - _module.var: label
   label:
-    _if_none:
-      - _var: label
-      - _module.var: label
+    _var:
+      key: label
+      default: {}
   options:
     _array.map:
       on:
@@ -67,6 +75,3 @@ properties:
               - __if_none:
                   - __args: 0.title
                   - Untitled
-  optionConfig:
-    titleField: label
-    valueField: value
