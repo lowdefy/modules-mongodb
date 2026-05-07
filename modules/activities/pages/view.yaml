@@ -222,7 +222,7 @@ _ref:
           params:
             contacts: []
             companies: []
-      onMountAsync:
+      onMount:
         - id: fetch
           type: Request
           params: get_activity

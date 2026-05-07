@@ -23,7 +23,7 @@
         callback:
           _build.function:
             value:
-              __build.args: 0.0
+              __build.args: "0.0"
             label:
               __build.args: 0.1.title
 - id: title

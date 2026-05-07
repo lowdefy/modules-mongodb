@@ -154,75 +154,85 @@ blocks:
             slots:
               content:
                 blocks:
-                  - _ref: components/form_activity.yaml
                   - id:
                       _build.string.concat:
                         - _var:
                             key: id
                             default: capture_activity
-                        - _save
-                    type: Button
+                        - _body
+                    type: Box
                     layout:
-                      flex: 0 0 auto
-                    properties:
-                      title:
-                        _string.concat:
-                          - "Create "
-                          - _module.var: label
-                      icon: AiOutlineSave
-                      type: primary
-                      block: true
-                    events:
-                      onClick:
-                        _build.array.concat:
-                          - - id: validate
-                              type: Validate
-                            - id: create
-                              type: CallAPI
-                              params:
-                                endpointId:
-                                  _module.endpointId: create-activity
-                                payload:
-                                  _id:
-                                    _uuid: true
-                                  type:
-                                    _state: type
-                                  title:
-                                    _state: title
-                                  description:
-                                    _state: description
-                                  contact_ids:
-                                    _if_none:
-                                      - _state: contact_ids
-                                      - []
-                                  company_ids:
-                                    _if_none:
-                                      - _state: company_ids
-                                      - []
-                                  attributes:
-                                    _if_none:
-                                      - _state: attributes
-                                      - {}
-                              messages:
-                                success:
-                                  _string.concat:
-                                    - _module.var: label
-                                    - " created."
-                            - id: close_modal
-                              type: CallMethod
-                              params:
-                                blockId:
-                                  _build.string.concat:
-                                    - _var:
-                                        key: id
-                                        default: capture_activity
-                                    - _modal
-                                method: setOpen
-                                args:
-                                  - open: false
-                            - id: reset_form
-                              type: Reset
-                          - _var:
-                              key: on_created
-                              default: []
+                      gap: 24
+                    blocks:
+                      - _ref: components/form_activity.yaml
+                      - id:
+                          _build.string.concat:
+                            - _var:
+                                key: id
+                                default: capture_activity
+                            - _save
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        properties:
+                          title:
+                            _string.concat:
+                              - "Create "
+                              - _module.var: label
+                          icon: AiOutlineSave
+                          type: primary
+                          block: true
+                        events:
+                          onClick:
+                            _build.array.concat:
+                              - - id: validate
+                                  type: Validate
+                                - id: create
+                                  type: CallAPI
+                                  params:
+                                    endpointId:
+                                      _module.endpointId: create-activity
+                                    payload:
+                                      _id:
+                                        _uuid: true
+                                      type:
+                                        _state: type
+                                      title:
+                                        _state: title
+                                      description:
+                                        _state: description
+                                      contact_ids:
+                                        _if_none:
+                                          - _state: contact_ids
+                                          - []
+                                      company_ids:
+                                        _if_none:
+                                          - _state: company_ids
+                                          - []
+                                      attributes:
+                                        _if_none:
+                                          - _state: attributes
+                                          - {}
+                                  messages:
+                                    success:
+                                      _string.concat:
+                                        - _module.var: label
+                                        - " created."
+                                - id: close_modal
+                                  type: CallMethod
+                                  params:
+                                    blockId:
+                                      _build.string.concat:
+                                        - _var:
+                                            key: id
+                                            default: capture_activity
+                                        - _modal
+                                    method: setOpen
+                                    args:
+                                      - open: false
+                                - id: reset_form
+                                  type: Reset
+                              - _var:
+                                  key: on_created
+                                  default: []
         else: []

@@ -92,7 +92,7 @@ blocks:
                     <div style="display:flex; gap:8px; align-items:center; margin-top:2px">
                       <span style="display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; font-size:10px; font-weight:600; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 32%, transparent); text-transform:capitalize">{{ a.current_stage }}</span>
                       {% if a.updated and a.updated.timestamp %}
-                      <span style="color:var(--ant-color-text-secondary); font-size:11px">{{ a.updated.timestamp | dateFormat('YYYY-MM-DD') }}</span>
+                      <span style="color:var(--ant-color-text-secondary); font-size:11px">{{ a.updated.timestamp | date('YYYY-MM-DD') }}</span>
                       {% endif %}
                     </div>
                   </div>
