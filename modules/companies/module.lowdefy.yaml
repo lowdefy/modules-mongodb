@@ -41,12 +41,11 @@ vars:
         default: false
         description: >-
           When true, adds a parent-companies multi-select to the edit form,
-          shows parents + children in a sidebar tile on the view page, adds
-          a "Under {label}" filter to the list page, and enforces cycle
-          prevention in the create/update APIs. Companies form a DAG (each
-          company can have multiple parents). When false, no hierarchy UI
-          or logic is emitted and the parent_ids field is omitted from new
-          documents.
+          shows parents + children in a sidebar tile on the view page, and
+          enforces cycle prevention in the create/update APIs. Companies
+          form a DAG (each company can have multiple parents). When false,
+          no hierarchy UI or logic is emitted and the parent_ids field is
+          omitted from new documents.
       parent_label:
         type: string
         default: null
