@@ -184,3 +184,7 @@ Linked contacts are stored on the contact side as `global_attributes.company_ids
 Section sub-objects (`contact`, `address`, `registration`, `attributes`) are merged on save (`$mergeObjects`), not replaced. Removing a field from `fields.X` leaves any existing key on the document — `$set` does not unset. Run a one-off cleanup migration if you need to remove legacy keys from saved docs.
 
 The `short_name` var is opt-out (default `enabled: true`). When enabled, the field is required on the create/edit form and surfaced on the view, list table, and Excel export. When disabled, the field and all of its surfaces are omitted at build time — existing documents retain any saved `short_name` on disk but won't render or be written until re-enabled.
+
+The list page (`get_all_companies`) and Excel export (`get_company_excel_data`) use Atlas Search with `returnStoredSource: true`. For `short_name` to populate the table column and Excel column, add `short_name` to the Atlas Search index's `storedSource.fields` mapping on the `companies` collection. Without it, the column will render blank even when documents have the field on disk.
+
+Enabling `short_name.enabled` on a collection that already has companies forces a backfill: existing documents without `short_name` will fail edit-form validation (the field is required) until each is updated with a value. Run a one-off backfill via `request_stages.write` or a manual script if you need to unblock saves before users get to each record.
