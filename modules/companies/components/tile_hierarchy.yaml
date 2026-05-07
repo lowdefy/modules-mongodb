@@ -31,12 +31,23 @@ _ref:
               html:
                 _nunjucks:
                   template: |
+                    <style>
+                      .companies-hierarchy-link {
+                        color: var(--ant-color-link);
+                        text-decoration: none;
+                      }
+                      .companies-hierarchy-link:hover {
+                        color: var(--ant-color-link-hover);
+                        text-decoration: underline;
+                      }
+                    </style>
+
                     {% if parents.length %}
                     <div style="padding-bottom:12px">
                       <div style="font-weight:600; padding-bottom:6px">{{ parent_heading }}</div>
                       {% for parent in parents %}
                       <div style="padding:4px 0">
-                        <a href="/{{ view_page }}?_id={{ parent._id }}" style="color:inherit">
+                        <a href="/{{ view_page }}?_id={{ parent._id }}" class="companies-hierarchy-link">
                           {{ parent[name_field] }}
                         </a>
                       </div>
@@ -49,7 +60,7 @@ _ref:
                       <div style="font-weight:600; padding-bottom:6px">{{ children_heading }}</div>
                       {% for child in children %}
                       <div style="padding:4px 0">
-                        <a href="/{{ view_page }}?_id={{ child._id }}" style="color:inherit">
+                        <a href="/{{ view_page }}?_id={{ child._id }}" class="companies-hierarchy-link">
                           {{ child.display_name }}
                         </a>
                       </div>
