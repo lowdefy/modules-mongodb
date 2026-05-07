@@ -12,25 +12,21 @@ routine:
           length:
             _module.var: id_length
           doc:
-            trading_name:
-              _payload: trading_name
+            name:
+              _payload: name
             description:
               _payload: description
-            registered_name:
-              _payload: registered_name
-            registration_number:
-              _payload: registration_number
-            vat_number:
-              _payload: vat_number
-            website:
-              _payload: website
+            contact:
+              _if_none:
+                - _payload: contact
+                - {}
             address:
               _if_none:
                 - _payload: address
                 - {}
-            contact:
+            registration:
               _if_none:
-                - _payload: contact
+                - _payload: registration
                 - {}
             attributes:
               _if_none:

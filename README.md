@@ -74,23 +74,22 @@ Modules are added to the `modules` array in `lowdefy.yaml`:
 ```yaml
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v0.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/events@v0.3.0"
     vars:
       display_key: my-app
 
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.2.0"
-    vars:
-      logo:
-        primary_light: /logo.png
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.3.0"
+    # Drop logo-{light,dark}-theme.png and logo-square-{light,dark}-theme.png
+    # into the app's public/ folder — the layout reads them by convention.
 
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.3.0"
     vars:
       app_name: my-app
 
   - id: notifications
-    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/notifications@v0.3.0"
     vars:
       app_name: my-app
 ```

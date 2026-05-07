@@ -20,16 +20,15 @@ Cross-module cycle: `companies ↔ contacts`. Both must be added as separate ent
 ```yaml
 modules:
   - id: companies
-    source: "github:lowdefy/modules-mongodb/modules/companies@v0.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/companies@v0.3.0"
     vars:
       label: Company
       label_plural: Companies
-      name_field: trading_name
       id_prefix: "C-"
       id_length: 4
 ```
 
-Defaults work out of the box. To add custom fields, table columns, sidebar tiles, or pipeline stages, see [Slots](../../docs/idioms.md#slots). To point the module at a different MongoDB collection, remap `companies-collection` via the entry's `connections` mapping. See `apps/demo/modules/companies/index.yaml` for a worked example.
+Defaults work out of the box. To add custom fields, table columns, sidebar tiles, or pipeline stages, see [Slots](../../docs/idioms.md#slots). To point the module at a different MongoDB collection, remap `companies-collection` via the entry's `connections` mapping.
 
 ## Exports
 
@@ -89,7 +88,7 @@ links:
 
 ### `name_field`
 
-`string` — Default `trading_name`. Top-level field on company documents used as the display name in selectors, table titles, and event templates.
+`string` — Default `name`. Top-level field on company documents used as the display name in selectors, table titles, and event templates. Override (e.g. `trading_name`) only if your collection genuinely uses a different display field.
 
 ### `id_prefix` / `id_length`
 
@@ -101,9 +100,12 @@ links:
 
 ### `fields`
 
-`object` — Field-block slots. See [Slots](../../docs/idioms.md#slots).
+`object` — Field-block slots rendered in both the edit form and the SmartDescriptions view. See [Slots](../../docs/idioms.md#slots).
 
-- **`attributes`** — Custom field blocks appended after the built-in sections in the edit form and detail view. Block ids must be prefixed with `attributes.`.
+- **`contact`** — Block array for the contact section (`contact.*`). Default `[]`. Apps typically `_ref` `field-presets/contact-default.yaml` (website / email / phone) or supply their own array. Block ids must be prefixed with `contact.`.
+- **`address`** — Block array for the address section (`address.*`). Default `[]`. Use `field-presets/address-text.yaml` for a zero-dependency text input, or `field-presets/address-places.yaml` (depends on a custom `PlacesAutocomplete` plugin — not yet shipped). Block ids must be prefixed with `address.`.
+- **`registration`** — Block array for the registration section (`registration.*`). Default `[]`. Region-specific; ship your own array or use `field-presets/registration-sa.yaml` (registered_name / registration_number / vat_number) for a South African setup. Block ids must be prefixed with `registration.`.
+- **`attributes`** — Custom field blocks appended after the built-in sections in the edit form and view page. Default `[]`. Block ids must be prefixed with `attributes.`.
 
 ### `components`
 
@@ -129,6 +131,32 @@ links:
 
 `array` — Default `[]`. Additional requests fetched alongside the custom `filters` blocks (e.g. dropdown option sources).
 
+## Field presets
+
+The module ships block-array presets under `field-presets/`. Apps `_ref` whichever sections they want; the module itself ships nothing wired up (all `fields.X` default to `[]`).
+
+| File | Section | What it provides |
+|---|---|---|
+| `field-presets/contact-default.yaml` | `fields.contact` | Website (text), email (text + email validator), phone (`PhoneNumberInput`). |
+| `field-presets/address-text.yaml` | `fields.address` | Plain `TextInput` for `address.formatted_address` and `address.extra`. Zero dependencies. |
+| `field-presets/address-places.yaml` | `fields.address` | `PlacesAutocomplete` block writing `address.formatted_address`, plus a `TextInput` for `address.extra`. **Depends on a custom `PlacesAutocomplete` plugin that is not yet shipped** — apps that want autocomplete today supply their own block in the slot. |
+| `field-presets/registration-sa.yaml` | `fields.registration` | South African registration trio: registered name / registration number / VAT number. |
+
+Wire from your app's module-entry vars:
+
+```yaml
+# apps/your-app/modules/companies/vars.yaml
+fields:
+  contact:
+    _ref: ../../modules/companies/field-presets/contact-default.yaml
+  address:
+    _ref: ../../modules/companies/field-presets/address-text.yaml
+  registration:
+    _ref: ../../modules/companies/field-presets/registration-sa.yaml
+```
+
+`_ref` paths resolve from the consuming app's config root, so adjust the `../`-prefix to match your app's depth relative to the module.
+
 ## Secrets
 
 | Name | Used for |
@@ -144,3 +172,5 @@ links:
 ## Notes
 
 Linked contacts are stored on the contact side as `global_attributes.company_ids: [company_id, ...]`. The detail page resolves linked contacts via `$lookup`, and the edit page reconciles the link set on save.
+
+Section sub-objects (`contact`, `address`, `registration`, `attributes`) are merged on save (`$mergeObjects`), not replaced. Removing a field from `fields.X` leaves any existing key on the document — `$set` does not unset. Run a one-off cleanup migration if you need to remove legacy keys from saved docs.

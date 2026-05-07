@@ -20,12 +20,15 @@
  * Sync Module Versions
  *
  * Copies each module's package.json version to its module.lowdefy.yaml so the
- * manifest exposes the same version that Changesets just wrote, and rewrites
- * the `github:lowdefy/modules-mongodb/modules/{name}@v{version}` references
- * in repo Markdown docs (root README, docs/, per-module READMEs) to match.
- * Runs after `changeset version` as part of `release:version`, so the version
- * bumps land in the "Publish new release" PR and ship with the rest of the
- * release.
+ * manifest exposes the same version that Changesets just wrote, rewrites the
+ * `@lowdefy/modules-mongodb-plugins` peer-version reference inside every
+ * module manifest to match the plugin's package.json (modules and plugin live
+ * in the same Changesets `fixed` group, so they're always lockstep), and
+ * rewrites the `github:lowdefy/modules-mongodb/modules/{name}@v{version}`
+ * references in repo Markdown docs (root README, docs/, per-module READMEs)
+ * to match. Runs after `changeset version` as part of `release:version`, so
+ * the version bumps land in the "Publish new release" PR and ship with the
+ * rest of the release.
  *
  * Zero external dependencies.
  */
@@ -39,6 +42,8 @@ const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, '..');
 const MODULES_DIR = join(ROOT, 'modules');
 const DOCS_DIR = join(ROOT, 'docs');
+const PLUGIN_PKG = join(ROOT, 'plugins', 'modules-mongodb-plugins', 'package.json');
+const PLUGIN_NAME = '@lowdefy/modules-mongodb-plugins';
 
 function syncOne(moduleDir) {
   const pkgPath = join(moduleDir, 'package.json');
@@ -66,6 +71,47 @@ function syncOne(moduleDir) {
   }
   writeFileSync(manifestPath, updated, 'utf-8');
   return { name: pkgJson.name, version, changed: true, inserted: true };
+}
+
+function readPluginVersion() {
+  if (!existsSync(PLUGIN_PKG)) {
+    console.error(`Plugin package.json not found at ${PLUGIN_PKG}`);
+    process.exit(1);
+  }
+  return JSON.parse(readFileSync(PLUGIN_PKG, 'utf-8')).version;
+}
+
+function syncPluginRefs(pluginVersion) {
+  const target = `^${pluginVersion}`;
+  // Match a YAML list entry that names the plugin and the next "version: ..." line.
+  // Captures: ($1) the entry up to and including "version: ", then the quoted version literal.
+  const pattern = new RegExp(
+    `(- name:\\s*["']${PLUGIN_NAME.replace(/[/-]/g, '\\$&')}["']\\s*\\n\\s*version:\\s*)["'][^"']+["']`,
+    'g'
+  );
+  const updates = [];
+
+  for (const entry of readdirSync(MODULES_DIR)) {
+    if (entry.startsWith('.') || entry === 'node_modules' || entry === 'shared') continue;
+    const moduleDir = join(MODULES_DIR, entry);
+    if (!statSync(moduleDir).isDirectory()) continue;
+    const manifestPath = join(moduleDir, 'module.lowdefy.yaml');
+    if (!existsSync(manifestPath)) continue;
+
+    const original = readFileSync(manifestPath, 'utf-8');
+    let changes = 0;
+    const updated = original.replace(pattern, (_match, prefix) => {
+      changes += 1;
+      return `${prefix}"${target}"`;
+    });
+
+    if (changes > 0 && updated !== original) {
+      writeFileSync(manifestPath, updated, 'utf-8');
+      updates.push({ entry, changes });
+    }
+  }
+
+  return updates;
 }
 
 function collectMarkdownFiles() {
@@ -138,6 +184,17 @@ function main() {
   }
 
   console.log(`\n${updatedCount} manifest(s) updated.`);
+
+  const pluginVersion = readPluginVersion();
+  console.log(`\nSyncing ${PLUGIN_NAME} refs in module manifests to ^${pluginVersion}...`);
+  const pluginUpdates = syncPluginRefs(pluginVersion);
+  if (pluginUpdates.length === 0) {
+    console.log('  no plugin refs needed updating');
+  } else {
+    for (const { entry, changes } of pluginUpdates) {
+      console.log(`  ${entry}: ${changes} ref(s) updated`);
+    }
+  }
 
   console.log('\nSyncing module version refs in Markdown docs...');
   const docUpdates = syncDocVersions(versions);

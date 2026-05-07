@@ -1,0 +1,23 @@
+# Depends on a custom PlacesAutocomplete block plugin that does not yet exist
+# in this monorepo. Until that plugin ships, this preset is a placeholder —
+# apps that need autocomplete today should supply their own block in fields.address.
+- id: address.places
+  type: PlacesAutocomplete
+  properties:
+    apiKey:
+      _secret: GOOGLE_PLACES_API_KEY
+    fetchFields: [formattedAddress, addressComponents]
+    resultMapping:
+      formattedAddress: formatted_address
+    labelField: formatted_address
+  events:
+    onChange:
+      - id: copy_formatted
+        type: SetState
+        params:
+          address.formatted_address:
+            _state: address.places.formatted_address
+- id: address.extra
+  type: TextInput
+  properties:
+    title: Building / Unit / Floor

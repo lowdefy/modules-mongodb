@@ -24,13 +24,6 @@ properties:
   _build.object.assign:
     - title:
         _var: title
-      logo:
-        src:
-          _module.var: logo.primary_light
-        srcMobile:
-          _module.var: logo.icon
-        style:
-          _module.var: logo.style
       breadcrumb:
         list:
           _var:
@@ -89,10 +82,8 @@ properties:
             _module.var: sider_storage_key
         else: {}
 style:
-  .header:
-    borderBottom: 1px solid var(--ant-color-border)
-  .sider:
-    borderInlineEnd: 1px solid var(--ant-color-border)
+  .logo:
+    _module.var: logo.style
 requests:
   _build.array.concat:
     - _build.if:

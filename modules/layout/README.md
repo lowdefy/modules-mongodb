@@ -24,18 +24,17 @@ The dependency cycle (`user-account → layout → user-account`) is intentional
 ```yaml
 modules:
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.2.0"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.3.0"
     vars:
       page_type: header-menu
-      logo:
-        primary_light: /logo-light.png
-        primary_dark: /logo-dark.png
       footer:
         - id: footer-text
           type: Html
           properties:
             html: <p>© 2026 My Company</p>
 ```
+
+Place `logo-light-theme.png`, `logo-dark-theme.png`, `logo-square-light-theme.png`, and `logo-square-dark-theme.png` in the app's `public/` folder — the page block reads them by convention and auto-swaps with dark mode.
 
 Wrap pages with the `page` component:
 
@@ -86,13 +85,20 @@ See `apps/demo/modules/layout/vars.yaml` for a worked example.
 
 ### `logo`
 
-`object` — Logo config used by both the page header and auth page.
+`object` — Logo config for the auth page and an optional header-logo style override.
 
-- **`primary_light`** — Logo for light backgrounds (page header on light theme). Consumers must set this — there is no default.
-- **`primary_dark`** — Default `/logo-dark-theme.png`. Logo for dark backgrounds (auth-page cover, dark-theme header).
-- **`primary`** — Default `/logo-light-theme.png`. Logo rendered in the auth-page brand panel and mobile auth view.
-- **`icon`** — Square icon logo for the mobile header.
-- **`style`** — Inline style object applied to the header logo.
+The **page header logo** follows the Lowdefy public-folder convention — drop the following into the app's `public/` folder and the page block auto-swaps based on dark mode (no var configuration needed):
+
+- `logo-light-theme.png` — desktop logo on light theme.
+- `logo-dark-theme.png` — desktop logo on dark theme.
+- `logo-square-light-theme.png` — mobile (square) logo on light theme.
+- `logo-square-dark-theme.png` — mobile (square) logo on dark theme.
+
+The `logo` var only configures the auth page and lets you tweak the header logo's CSS:
+
+- **`primary_dark`** — Default `/logo-dark-theme.png`. Logo on the auth-page card cover (always-dark background).
+- **`primary`** — Default `/logo-light-theme.png`. Logo in the auth-page brand panel and mobile auth view.
+- **`style`** — Inline style object applied to the header logo (mapped to the `.logo` cssKey on the page block).
 
 ### `menu`
 

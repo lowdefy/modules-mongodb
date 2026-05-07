@@ -1,5 +1,5 @@
 name: Companies
-version: 0.2.0
+version: 0.3.0
 description: Company management — list, detail, edit, create, selector
 
 dependencies:
@@ -20,7 +20,7 @@ vars:
     default: Companies
     description: Plural display label
   name_field:
-    default: trading_name
+    default: name
     description: Field used as the display name in selectors and titles
   id_prefix:
     default: "C-"
@@ -36,6 +36,26 @@ vars:
     type: object
     description: "Field block arrays rendered in both the edit form and SmartDescriptions view."
     properties:
+      contact:
+        default: []
+        description: >-
+          Field blocks for the contact section. Block ids must be prefixed with
+          `contact.` so they bind to `state.contact.*`. Apps typically `_ref`
+          `field-presets/contact-default.yaml` or supply their own array.
+      address:
+        default: []
+        description: >-
+          Field blocks for the address section. Block ids must be prefixed with
+          `address.` so they bind to `state.address.*`. Apps typically `_ref`
+          `field-presets/address-text.yaml` (zero-dep) or `field-presets/address-places.yaml`
+          (depends on a custom PlacesAutocomplete plugin).
+      registration:
+        default: []
+        description: >-
+          Field blocks for the registration section. Block ids must be prefixed
+          with `registration.` so they bind to `state.registration.*`. Apps
+          typically `_ref` a region-specific preset such as
+          `field-presets/registration-sa.yaml`.
       attributes:
         default: []
         description: >-
@@ -154,4 +174,4 @@ plugins:
   - name: "@lowdefy/community-plugin-xlsx"
     version: "^1"
   - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.1.0"
+    version: "^0.3.0"

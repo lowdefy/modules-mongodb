@@ -167,7 +167,8 @@ export const fieldTypeRegistry = {
 
   company: {
     priority: 40,
-    detect: (value) => type.isObject(value) && "trading_name" in value,
+    detect: (value) =>
+      type.isObject(value) && "name" in value && "company_id" in value,
     render: ({ value, Icon, properties }) => {
       const companyId = value.company_id ?? value._id;
       const companyDetailPageId =
@@ -181,7 +182,7 @@ export const fieldTypeRegistry = {
               href={`/${companyDetailPageId}?_id=${companyId}`}
             >
               <Icon blockId="company-icon" properties="AiOutlineCluster" />{" "}
-              {value.trading_name}
+              {value.name}
             </a>
           </span>
         );
@@ -189,7 +190,7 @@ export const fieldTypeRegistry = {
       return (
         <span className="dataview-value">
           <Icon blockId="company-icon" properties="AiOutlineCluster" />{" "}
-          {value.trading_name}
+          {value.name}
         </span>
       );
     },

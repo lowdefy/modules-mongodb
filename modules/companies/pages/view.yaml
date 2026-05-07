@@ -51,6 +51,7 @@ _ref:
           params:
             contact: {}
             address: {}
+            registration: {}
             attributes: {}
       onMount:
         - id: fetch

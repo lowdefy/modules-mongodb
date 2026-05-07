@@ -15,18 +15,10 @@ routine:
         _build.array.concat:
           # Stage 1: Overwrite scalars, merge sub-objects
           - - $set:
-                trading_name:
-                  _payload: trading_name
+                name:
+                  _payload: name
                 description:
                   _payload: description
-                registered_name:
-                  _payload: registered_name
-                registration_number:
-                  _payload: registration_number
-                vat_number:
-                  _payload: vat_number
-                website:
-                  _payload: website
                 contact:
                   $mergeObjects:
                     - $ifNull:
@@ -39,6 +31,12 @@ routine:
                         - "$$ROOT.address"
                         - {}
                     - _payload: address
+                registration:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.registration"
+                        - {}
+                    - _payload: registration
                 attributes:
                   $mergeObjects:
                     - $ifNull:

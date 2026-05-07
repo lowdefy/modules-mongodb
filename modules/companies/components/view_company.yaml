@@ -2,7 +2,7 @@ id: view_company
 type: Box
 blocks:
   _build.array.concat:
-    - - id: company_details
+    - - id: view_core
         type: SmartDescriptions
         properties:
           column: 1
@@ -10,12 +10,57 @@ blocks:
           data:
             _request: get_company.0
           fields:
-            _build.array.concat:
-              - _ref: components/fields/core.yaml
-              - _ref: components/fields/registration.yaml
-              - _ref: components/fields/contact.yaml
-              - _ref: components/fields/address.yaml
-    - - id: attributes_view
+            _ref: components/fields/core.yaml
+
+    - - id: view_registration
+        type: SmartDescriptions
+        visible:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.registration
+            - 0
+        properties:
+          title: Registration
+          column: 1
+          size: small
+          data:
+            _request: get_company.0
+          fields:
+            _module.var: fields.registration
+
+    - - id: view_contact
+        type: SmartDescriptions
+        visible:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.contact
+            - 0
+        properties:
+          title: Contact Details
+          column: 1
+          size: small
+          data:
+            _request: get_company.0
+          fields:
+            _module.var: fields.contact
+
+    - - id: view_address
+        type: SmartDescriptions
+        visible:
+          _build.gt:
+            - _build.array.length:
+                _module.var: fields.address
+            - 0
+        properties:
+          title: Address
+          column: 1
+          size: small
+          data:
+            _request: get_company.0
+          fields:
+            _module.var: fields.address
+
+    - - id: view_attributes
         type: SmartDescriptions
         visible:
           _build.gt:
@@ -27,7 +72,6 @@ blocks:
           column: 1
           size: small
           data:
-            attributes:
-              _request: get_company.0.attributes
+            _request: get_company.0
           fields:
             _module.var: fields.attributes
