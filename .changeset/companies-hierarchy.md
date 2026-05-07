@@ -31,7 +31,7 @@ Add opt-in parent/child hierarchy to the `companies` module. Companies form a di
 - Dropped the vestigial `optionConfig` block from `company-selector.yaml` — not in `Selector/schema.json`, not consumed by any plugin in `plugins/`. The schema's option shape (`{ label, value, disabled, ... }`) already matches the projection's output natively.
 - Switched `label: <string>` to `title: <string>` on `company-selector.yaml` — `label:` is an object on the antd schema (label-area styling), `title:` is the string-typed displayed label.
 
-**Apps that recommend bumping `@lowdefy/blocks-antd` to >= 5.0** — the new `$lookup` on `get_company.yaml` uses the `localField + foreignField + pipeline` combination (MongoDB 5.0+).
+**MongoDB version requirement.** The new `$lookup` in `get_company.yaml` uses the `localField + foreignField + pipeline` combination, which requires **MongoDB 5.0+**. Apps on older MongoDB versions need to upgrade before deploying this version.
 
 **Out of scope for this release:** hierarchy filter on the list page (`tasks/10-list-filter.md` spec retained for a future implementation when needed); cross-module hierarchy roll-ups (e.g. "all contacts under any descendant of X"); hierarchical permissions; bulk re-parent / drag-and-drop graph editor.
 

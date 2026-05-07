@@ -15,10 +15,19 @@ routine:
               _module.connectionId: companies-collection
             properties:
               pipeline:
+                # Defensive _if_none: if a non-form caller invokes update-company
+                # without a parent_ids field, $in: undefined would fail at the
+                # MongoDB driver level. Falling back to [] makes $in: [] match
+                # nothing — pipeline produces no docs, has_cycle is undefined,
+                # the :reject: doesn't fire, the routine continues to $set
+                # (which itself omits parent_ids when missing per the existing
+                # _build.if + _build.object.assign).
                 - $match:
                     _id:
                       $in:
-                        _payload: parent_ids
+                        _if_none:
+                          - _payload: parent_ids
+                          - []
                 - $graphLookup:
                     from:
                       _ref:
