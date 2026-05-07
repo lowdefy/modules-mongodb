@@ -46,6 +46,8 @@ _ref:
               _request: get_company.0._id
             name:
               _request: get_company.0.name
+            short_name:
+              _request: get_company.0.short_name
             description:
               _request: get_company.0.description
             contact:
@@ -104,6 +106,8 @@ _ref:
                             _state: _id
                           name:
                             _state: name
+                          short_name:
+                            _state: short_name
                           description:
                             _state: description
                           contact:

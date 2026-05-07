@@ -64,6 +64,8 @@ _ref:
                         payload:
                           name:
                             _state: name
+                          short_name:
+                            _state: short_name
                           description:
                             _state: description
                           contact:
