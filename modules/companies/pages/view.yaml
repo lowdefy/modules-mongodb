@@ -57,7 +57,14 @@ _ref:
         - id: fetch
           type: Request
           params:
-            - get_company
+            _build.array.concat:
+              - - get_company
+              - _build.if:
+                  test:
+                    _module.var: hierarchy.enabled
+                  then:
+                    - get_company_children
+                  else: []
         - id: redirect_if_not_found
           type: Link
           skip:
@@ -68,7 +75,14 @@ _ref:
             pageId:
               _module.pageId: all
     requests:
-      - _ref: requests/get_company.yaml
+      _build.array.concat:
+        - - _ref: requests/get_company.yaml
+        - _build.if:
+            test:
+              _module.var: hierarchy.enabled
+            then:
+              - _ref: requests/get_company_children.yaml
+            else: []
     blocks:
       - id: detail_layout
         type: Box
@@ -104,4 +118,13 @@ _ref:
               _build.array.concat:
                 - - _ref: components/tile_contacts.yaml
                   - _ref: components/tile_events.yaml
+                # Hierarchy tile (build-gated). Renders parents + children
+                # when hierarchy is enabled. Self-hides when both arrays
+                # are empty.
+                - _build.if:
+                    test:
+                      _module.var: hierarchy.enabled
+                    then:
+                      - _ref: components/tile_hierarchy.yaml
+                    else: []
                 - _module.var: components.sidebar_slots

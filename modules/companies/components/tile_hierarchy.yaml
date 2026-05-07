@@ -1,0 +1,83 @@
+_ref:
+  module: layout
+  component: card
+  vars:
+    title:
+      _string.concat:
+        - _module.var: label
+        - " Hierarchy"
+    blocks:
+      - id: hierarchy_content
+        type: Box
+        # Hide the entire tile when both parents and children are empty.
+        visible:
+          _or:
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _request: get_company.0.parents
+                      - []
+                - 0
+            - _gt:
+                - _array.length:
+                    _if_none:
+                      - _request: get_company_children
+                      - []
+                - 0
+        blocks:
+          - id: hierarchy_html
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    {% if parents.length %}
+                    <div style="padding-bottom:12px">
+                      <div style="font-weight:600; padding-bottom:6px">{{ parent_heading }}</div>
+                      {% for parent in parents %}
+                      <div style="padding:4px 0">
+                        <a href="/{{ view_page }}?_id={{ parent._id }}" style="color:inherit">
+                          {{ parent[name_field] }}
+                        </a>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if children.length %}
+                    <div>
+                      <div style="font-weight:600; padding-bottom:6px">{{ children_heading }}</div>
+                      {% for child in children %}
+                      <div style="padding:4px 0">
+                        <a href="/{{ view_page }}?_id={{ child._id }}" style="color:inherit">
+                          {{ child.display_name }}
+                        </a>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                  on:
+                    parents:
+                      _if_none:
+                        - _request: get_company.0.parents
+                        - []
+                    children:
+                      _if_none:
+                        - _request: get_company_children
+                        - []
+                    parent_heading:
+                      _if_none:
+                        - _module.var: hierarchy.parent_label
+                        - _string.concat:
+                            - "Parent "
+                            - _module.var: label_plural
+                    children_heading:
+                      _if_none:
+                        - _module.var: hierarchy.children_label
+                        - _string.concat:
+                            - "Child "
+                            - _module.var: label_plural
+                    name_field:
+                      _module.var: name_field
+                    view_page:
+                      _module.pageId: view
