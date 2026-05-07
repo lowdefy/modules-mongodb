@@ -1,5 +1,7 @@
 label: Company
 label_plural: Companies
+hierarchy:
+  enabled: true
 fields:
   registration:
     _ref: ../../modules/companies/field-presets/registration-sa.yaml

@@ -26,6 +26,8 @@ modules:
       label_plural: Companies
       id_prefix: "C-"
       id_length: 4
+      hierarchy:
+        enabled: true   # opt-in: parent-companies multi-select on edit form, parents/children sidebar tile on view page, cycle prevention on writes
 ```
 
 Defaults work out of the box. To add custom fields, table columns, sidebar tiles, or pipeline stages, see [Slots](../../docs/idioms.md#slots). To point the module at a different MongoDB collection, remap `companies-collection` via the entry's `connections` mapping.
@@ -93,6 +95,17 @@ links:
 ### `id_prefix` / `id_length`
 
 `string` / `number` — Defaults `"C-"` / `4`. Auto-generated consecutive IDs are formatted as `{id_prefix}{n.padStart(id_length)}`, producing `C-0001`, `C-0002`, …
+
+### `hierarchy`
+
+`object` — Default `{ enabled: false }`. Configures parent-child relationships between companies as a directed acyclic graph (`parent_ids: string[]` on each doc).
+
+- **`enabled`** (`boolean`, default `false`) — When true, adds a parent-companies multi-select to the edit form, shows parents + children in a sidebar tile on the view page, and enforces cycle prevention in the create/update APIs. When false, no hierarchy UI or logic is emitted and the `parent_ids` field is omitted from new documents.
+- **`parent_label`** (`string`, optional) — Override for the parent multi-select label and the parents heading in the view-page sidebar tile. Defaults to `"Parent {label_plural}"` (composed at the usage site).
+- **`children_label`** (`string`, optional) — Override for the children heading in the view-page sidebar tile. Defaults to `"Child {label_plural}"` (composed at the usage site).
+- **`max_depth`** (`number`, default `20`) — Defensive cap on every `$graphLookup` in the module's hierarchy pipelines (descendants resolution + cycle check). Backstops runaway traversal in the unlikely case a cycle leaks past the API check; truncates silently rather than running unboundedly. Override only if your hierarchy genuinely exceeds 20 levels.
+
+Cycles are prevented on both the API (a `$graphLookup` ancestor check on `update-company` rejects self-as-ancestor via `:reject:` — the calling form's `onError` handler fires with the rejection message) and the UI (the parent selector filters self out entirely and renders descendants as disabled options with a "(child of this company)" suffix). Soft-deleted parents are filtered out of the view-page tile but remain in `parent_ids` arrays as audit history. A list-page filter scoping by hierarchy is part of the design but isn't shipped in v0.3.0 — see `designs/companies-grouping/tasks/10-list-filter.md` for the spec when it becomes a real need.
 
 ### `event_display`
 
@@ -174,3 +187,5 @@ fields:
 Linked contacts are stored on the contact side as `global_attributes.company_ids: [company_id, ...]`. The detail page resolves linked contacts via `$lookup`, and the edit page reconciles the link set on save.
 
 Section sub-objects (`contact`, `address`, `registration`, `attributes`) are merged on save (`$mergeObjects`), not replaced. Removing a field from `fields.X` leaves any existing key on the document — `$set` does not unset. Run a one-off cleanup migration if you need to remove legacy keys from saved docs.
+
+The `hierarchy` var is opt-in. When disabled (the default), the module behaves as if hierarchy didn't exist and the `parent_ids` field is omitted from inserts. Apps can flip the flag later without a data migration: existing companies simply have no `parent_ids` field, which behaves identically to an empty array under MongoDB multikey index semantics.
