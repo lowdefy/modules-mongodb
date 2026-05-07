@@ -12,43 +12,53 @@ routine:
           length:
             _module.var: id_length
           doc:
-            name:
-              _payload: name
-            short_name:
-              _payload: short_name
-            description:
-              _payload: description
-            contact:
-              _if_none:
-                - _payload: contact
-                - {}
-            address:
-              _if_none:
-                - _payload: address
-                - {}
-            registration:
-              _if_none:
-                - _payload: registration
-                - {}
-            attributes:
-              _if_none:
-                - _payload: attributes
-                - {}
-            lowercase_email:
-              _string.toLowerCase:
-                _string.trim:
+            _build.object.assign:
+              - name:
+                  _payload: name
+                description:
+                  _payload: description
+                contact:
                   _if_none:
-                    - _payload: contact.primary_email
-                    - ""
-            removed: null
-            created:
-              _ref:
-                module: events
-                component: change_stamp
-            updated:
-              _ref:
-                module: events
-                component: change_stamp
+                    - _payload: contact
+                    - {}
+                address:
+                  _if_none:
+                    - _payload: address
+                    - {}
+                registration:
+                  _if_none:
+                    - _payload: registration
+                    - {}
+                attributes:
+                  _if_none:
+                    - _payload: attributes
+                    - {}
+                lowercase_email:
+                  _string.toLowerCase:
+                    _string.trim:
+                      _if_none:
+                        - _payload: contact.primary_email
+                        - ""
+                removed: null
+                created:
+                  _ref:
+                    module: events
+                    component: change_stamp
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+              # short_name: only emitted when short_name.enabled is true.
+              # When false, the second arg resolves to {} and merges with no
+              # effect, so the inserted doc is byte-identical to a build
+              # without the field.
+              - _build.if:
+                  test:
+                    _module.var: short_name.enabled
+                  then:
+                    short_name:
+                      _payload: short_name
+                  else: {}
     # Optional consumer-provided pipeline stages (only emitted when provided)
     - _build.if:
         test:

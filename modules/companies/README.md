@@ -90,6 +90,14 @@ links:
 
 `string` — Default `name`. Top-level field on company documents used as the display name in selectors, table titles, and event templates. Override (e.g. `trading_name`) only if your collection genuinely uses a different display field.
 
+### `short_name`
+
+`object` — Default `{ enabled: true }`. Toggles a top-level `short_name` field for narrow display contexts (reports, chart axes, dense tables).
+
+- **`enabled`** (`boolean`, default `true`) — When true, the field is **required** on the create/edit form, rendered on the view-page core descriptions, included as a column on the list table (between Name and Description) and the Excel export, and read/written by the create/update APIs. When false, every surface referencing `short_name` is omitted at build time and the field is absent from new documents. Existing documents that already carry a `short_name` keep it on disk but won't be rendered or written until the var is re-enabled.
+
+Apps that want `short_name` to drive selectors, table titles, and event templates can additionally set `name_field: short_name` — the existing escape hatch already supports it.
+
 ### `id_prefix` / `id_length`
 
 `string` / `number` — Defaults `"C-"` / `4`. Auto-generated consecutive IDs are formatted as `{id_prefix}{n.padStart(id_length)}`, producing `C-0001`, `C-0002`, …
@@ -175,4 +183,4 @@ Linked contacts are stored on the contact side as `global_attributes.company_ids
 
 Section sub-objects (`contact`, `address`, `registration`, `attributes`) are merged on save (`$mergeObjects`), not replaced. Removing a field from `fields.X` leaves any existing key on the document — `$set` does not unset. Run a one-off cleanup migration if you need to remove legacy keys from saved docs.
 
-Each company has an optional top-level `short_name` field surfaced on the form, view, list table, and Excel export — for narrow contexts where the full name doesn't fit (reports, chart axes, dense tables). Set `name_field: short_name` to promote it to the display field used by selectors and event titles.
+The `short_name` var is opt-out (default `enabled: true`). When enabled, the field is required on the create/edit form and surfaced on the view, list table, and Excel export. When disabled, the field and all of its surfaces are omitted at build time — existing documents retain any saved `short_name` on disk but won't render or be written until re-enabled.

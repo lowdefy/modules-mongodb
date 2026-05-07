@@ -15,42 +15,52 @@ routine:
         _build.array.concat:
           # Stage 1: Overwrite scalars, merge sub-objects
           - - $set:
-                name:
-                  _payload: name
-                short_name:
-                  _payload: short_name
-                description:
-                  _payload: description
-                contact:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.contact"
-                        - {}
-                    - _payload: contact
-                address:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.address"
-                        - {}
-                    - _payload: address
-                registration:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.registration"
-                        - {}
-                    - _payload: registration
-                attributes:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.attributes"
-                        - {}
-                    - $ifNull:
-                        - _payload: attributes
-                        - {}
-                updated:
-                  _ref:
-                    module: events
-                    component: change_stamp
+                _build.object.assign:
+                  - name:
+                      _payload: name
+                    description:
+                      _payload: description
+                    contact:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.contact"
+                            - {}
+                        - _payload: contact
+                    address:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.address"
+                            - {}
+                        - _payload: address
+                    registration:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.registration"
+                            - {}
+                        - _payload: registration
+                    attributes:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.attributes"
+                            - {}
+                        - $ifNull:
+                            - _payload: attributes
+                            - {}
+                    updated:
+                      _ref:
+                        module: events
+                        component: change_stamp
+                  # short_name: full overwrite, only when short_name.enabled.
+                  # When disabled, the second arg resolves to {} and merges
+                  # with no effect, leaving the $set byte-identical to a
+                  # build without the field.
+                  - _build.if:
+                      test:
+                        _module.var: short_name.enabled
+                      then:
+                        short_name:
+                          _payload: short_name
+                      else: {}
           # Stage 2: Derived fields (sees merged contact from stage 1)
           - - $set:
                 lowercase_email:

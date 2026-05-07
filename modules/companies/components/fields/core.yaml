@@ -1,27 +1,34 @@
-- id: name
-  type: TextInput
-  required: true
-  properties:
-    title:
-      _string.concat:
-        - _module.var: label
-        - " Name"
-    placeholder:
-      _string.concat:
-        - "Enter "
-        - _module.var: label
-        - " name"
-- id: short_name
-  type: TextInput
-  properties:
-    title:
-      _string.concat:
-        - "Short "
-        - _module.var: label
-        - " Name"
-    placeholder: Used in reports and narrow displays
-- id: description
-  type: TextArea
-  properties:
-    title: Description
-    rows: 3
+_build.array.concat:
+  - - id: name
+      type: TextInput
+      required: true
+      properties:
+        title:
+          _string.concat:
+            - _module.var: label
+            - " Name"
+        placeholder:
+          _string.concat:
+            - "Enter "
+            - _module.var: label
+            - " name"
+  - _build.if:
+      test:
+        _module.var: short_name.enabled
+      then:
+        - id: short_name
+          type: TextInput
+          required: true
+          properties:
+            title:
+              _string.concat:
+                - "Short "
+                - _module.var: label
+                - " Name"
+            placeholder: Used in reports and narrow displays
+      else: []
+  - - id: description
+      type: TextArea
+      properties:
+        title: Description
+        rows: 3

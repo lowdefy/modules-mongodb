@@ -30,10 +30,15 @@ properties:
           field: display_name
           flex: 1
           minWidth: 240
-        - headerName: Short Name
-          field: short_name
-          width: 140
-        - headerName: Description
+      - _build.if:
+          test:
+            _module.var: short_name.enabled
+          then:
+            - headerName: Short Name
+              field: short_name
+              width: 140
+          else: []
+      - - headerName: Description
           field: description
           flex: 1
           minWidth: 200
