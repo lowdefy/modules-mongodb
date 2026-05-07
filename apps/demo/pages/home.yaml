@@ -13,21 +13,27 @@ _ref:
         properties:
           content: |
             This app tests all modules in the monorepo.
-      - _ref:
-          module: activities
-          component: capture_activity
-          vars:
-            id: home_capture
-            label: New activity
-            icon: AiOutlinePlus
-            button_type: primary
-            size: middle
-            mode: modal
       - id: links
         type: Box
         layout:
           gap: 16
         blocks:
+          - id: activities_link
+            type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Activities
+              icon: AiOutlineFlag
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: activities/all
           - id: user_admin_link
             type: Button
             layout:

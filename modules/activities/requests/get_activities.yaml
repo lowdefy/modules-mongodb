@@ -12,13 +12,12 @@ payload:
 properties:
   pipeline:
     - $search:
-        returnStoredSource: true
         compound:
           filter:
             - compound:
                 mustNot:
                   - exists:
-                      path: removed.timestamp
+                      path: deleted.timestamp
                 must:
                   _array.concat:
                     - _if:
@@ -102,7 +101,9 @@ properties:
                               path: updated.timestamp
                               gte:
                                 _date:
-                                  _payload: filter.date_from
+                                  _if_none:
+                                    - _payload: filter.date_from
+                                    - 0
                         else: []
                     - _if:
                         test:
@@ -114,7 +115,9 @@ properties:
                               path: updated.timestamp
                               lte:
                                 _date:
-                                  _payload: filter.date_to
+                                  _if_none:
+                                    - _payload: filter.date_to
+                                    - 0
                         else: []
                     - _array.filter:
                         - _module.var: request_stages.filter_match
@@ -158,6 +161,8 @@ properties:
               - $limit:
                   _payload: pagination.pageSize
               - _ref: requests/stages/add_derived_fields.yaml
+              - _ref: requests/stages/lookup_contacts.yaml
+              - _ref: requests/stages/lookup_companies.yaml
               - $addFields:
                   updated_at:
                     $dateToString:

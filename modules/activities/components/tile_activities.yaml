@@ -57,9 +57,13 @@ _ref:
                     key: prefill
                     default: {}
                 on_created:
-                  - id: refetch_activities
-                    type: Request
-                    params: get_activities_for_entity
+                  _build.array.concat:
+                    - - id: refetch_activities
+                        type: Request
+                        params: get_activities_for_entity
+                    - _var:
+                        key: on_created
+                        default: []
         else: []
     blocks:
       - _ref:

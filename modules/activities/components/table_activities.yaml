@@ -82,23 +82,20 @@ properties:
         - headerName: Stage
           field: current_stage
           width: 120
-          cellRenderer:
-            _function:
-              __nunjucks:
-                template: |
-                  {% if stage %}<span style="display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600; color:{{ color }}; background:color-mix(in srgb, {{ color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ color }} 32%, transparent); text-transform:capitalize">{{ stage }}</span>{% else %}&mdash;{% endif %}
-                on:
-                  stage:
-                    __args: 0.data.current_stage
-                  color:
-                    __get:
-                      from:
-                        open: "#1890ff"
-                        done: "#52c41a"
-                        cancelled: "#8c8c8c"
-                      key:
-                        __args: 0.data.current_stage
-                      default: "#8c8c8c"
+          cellStyle:
+            cursor: pointer
+            wordBreak: break-word
+            lineHeight: 1.25
+            paddingBottom: 8px
+            paddingTop: 8px
+            textTransform: capitalize
+          cell:
+            type: tag
+            colorMap:
+              open: "#1890ff"
+              done: "#52c41a"
+              cancelled: "#8c8c8c"
+            default: "#8c8c8c"
         - headerName: Contacts
           field: contacts
           flex: 1
@@ -139,7 +136,7 @@ properties:
           field: created_at
           width: 120
         # Primary stage action: "Mark done" when open, "Reopen" when done/cancelled.
-        - headerName: ""
+        - headerName: Action
           colId: status_action
           field: current_stage
           width: 110
@@ -158,7 +155,7 @@ properties:
                   stage:
                     __args: 0.data.current_stage
         # Secondary action: Cancel — only shown when current stage is open.
-        - headerName: ""
+        - headerName: Cancel
           colId: cancel_action
           field: current_stage
           width: 90
@@ -168,9 +165,7 @@ properties:
             _function:
               __nunjucks:
                 template: |
-                  {% if stage == 'open' %}
-                  <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#8c8c8c; background:color-mix(in srgb,#8c8c8c 12%,transparent); border:1px solid color-mix(in srgb,#8c8c8c 30%,transparent); cursor:pointer">Cancel</span>
-                  {% endif %}
+                  {% if stage == 'open' %}<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#8c8c8c; background:color-mix(in srgb,#8c8c8c 12%,transparent); border:1px solid color-mix(in srgb,#8c8c8c 30%,transparent); cursor:pointer">Cancel</span>{% else %}&mdash;{% endif %}
                 on:
                   stage:
                     __args: 0.data.current_stage
@@ -178,6 +173,11 @@ events:
   onCellClick:
     - id: stage_complete
       type: CallAPI
+      messages:
+        success:
+          _string.concat:
+            - _module.var: label
+            - " marked done."
       skip:
         _or:
           - _ne:
@@ -187,13 +187,19 @@ events:
               - _event: row.current_stage
               - open
       params:
-        endpointId: change-activity-status
+        endpointId:
+          _module.endpointId: change-activity-status
         payload:
           activity_id:
             _event: row._id
           stage: done
     - id: stage_reopen
       type: CallAPI
+      messages:
+        success:
+          _string.concat:
+            - _module.var: label
+            - " reopened."
       skip:
         _or:
           - _ne:
@@ -207,13 +213,19 @@ events:
                   - _event: row.current_stage
                   - cancelled
       params:
-        endpointId: change-activity-status
+        endpointId:
+          _module.endpointId: change-activity-status
         payload:
           activity_id:
             _event: row._id
           stage: open
     - id: stage_cancel
       type: CallAPI
+      messages:
+        success:
+          _string.concat:
+            - _module.var: label
+            - " cancelled."
       skip:
         _or:
           - _ne:
@@ -223,7 +235,8 @@ events:
               - _event: row.current_stage
               - open
       params:
-        endpointId: change-activity-status
+        endpointId:
+          _module.endpointId: change-activity-status
         payload:
           activity_id:
             _event: row._id

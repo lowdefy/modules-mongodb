@@ -1,6 +1,7 @@
 - id: activities
   source: "file:../../modules/activities"
-  vars: {}
+  vars:
+    _ref: modules/activities/vars.yaml
 
 - id: companies
   source: "file:../../modules/companies"
