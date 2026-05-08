@@ -17,9 +17,11 @@ routine:
                 _build.array.filter:
                   on:
                     _build.object.entries:
-                      _build.object.assign:
-                        - _ref: defaults/event_display.yaml
+                      _build.if_none:
                         - _module.var: event_display
+                        - _build.object.fromEntries:
+                            - - _module.var: app_name
+                              - _ref: defaults/event_display.yaml
                   callback:
                     _build.function:
                       __build.ne:

@@ -13,6 +13,9 @@ dependencies:
     description: File attachments (optional sidebar tile)
 
 vars:
+  app_name:
+    required: true
+    description: App identifier used to key event_display titles when no override is supplied.
   label:
     default: Company
     description: Singular display label
@@ -29,9 +32,7 @@ vars:
     default: 4
     description: Numeric length for consecutive IDs (e.g., 4 → C-0001)
   event_display:
-    default:
-      _ref: defaults/event_display.yaml
-    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates."
+    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
   hierarchy:
     type: object
     description: Configuration for parent-child relationships between companies.
