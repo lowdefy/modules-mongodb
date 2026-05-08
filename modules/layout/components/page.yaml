@@ -124,12 +124,20 @@ slots:
         blocks:
           _module.var: header_extra.blocks
       footer:
-        style:
-          textAlign: center
-          fontSize: 12
-          color: "var(--ant-color-text-secondary)"
-        blocks:
-          _module.var: footer
+        _build.if:
+          test:
+            _build.not:
+              _var:
+                key: hide_footer
+                default: false
+          then:
+            style:
+              textAlign: center
+              fontSize: 12
+              color: "var(--ant-color-text-secondary)"
+            blocks:
+              _module.var: footer
+          else: []
     - _build.if:
         test:
           _build.eq:
