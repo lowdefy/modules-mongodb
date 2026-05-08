@@ -1,3 +1,7 @@
+app_name:
+  _ref:
+    path: app_config.yaml
+    key: app_name
 label: Company
 label_plural: Companies
 hierarchy:
@@ -18,7 +22,3 @@ fields:
           - Manufacturing
           - Services
           - Retail
-event_display:
-  demo:
-    create-company: "{{ user.profile.name }} created {{ target.name }}"
-    update-company: "{{ user.profile.name }} updated {{ target.name }}"

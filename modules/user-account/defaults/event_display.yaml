@@ -1,3 +1,2 @@
-default:
-  create-profile: "{{ user.profile.name }} created their profile"
-  update-profile: "{{ user.profile.name }} updated their profile"
+create-profile: "{{ user.profile.name }} created their profile"
+update-profile: "{{ user.profile.name }} updated their profile"
