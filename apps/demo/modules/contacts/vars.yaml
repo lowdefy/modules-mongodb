@@ -14,12 +14,12 @@ event_display:
   demo:
     create-contact: "{{ user.profile.name }} created {{ target.name }}"
     update-contact: "{{ user.profile.name }} updated {{ target.name }}"
-# TODO: Slot wiring for activities tile (per design decisions.md §7) is
-# blocked by a Lowdefy framework limitation — `_ref { module, component }`
-# inside an entry's vars cannot resolve, because parseLowdefyYaml walks
-# vars content before modules are registered (resolveDepTarget throws
-# "no module with that entry id was registered"). Re-enable once the
-# framework supports deferring cross-module refs in app-level vars:
+# Slot wiring for activities tile (per design decisions.md §7) is the
+# intended pattern but is blocked by a Lowdefy framework limitation —
+# `_ref { module, component }` inside an entry's vars cannot resolve
+# (parseLowdefyYaml walks vars before modules are registered). Until the
+# framework defers cross-module refs in app vars, the tile is inlined
+# directly in modules/contacts/pages/view.yaml. Re-enable once fixed:
 #   components:
 #     sidebar_slots:
 #       - _ref:

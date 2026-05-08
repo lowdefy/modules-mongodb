@@ -1,0 +1,41 @@
+id: get_descendant_company_ids
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: companies-collection
+payload:
+  # Fallback chain so one request file serves both consumers without
+  # per-invocation payload overrides (Lowdefy resolves payload from the
+  # request file, not from the Request action invocation site):
+  #   - List page: state.filter.parent_scope is set → uses parent_scope.
+  #   - Edit page: state.filter.parent_scope is undefined → falls back to
+  #     _url_query._id (which the URL always has, even before set_state
+  #     runs). Using _state._id here would NOT work — the request fires
+  #     in onMount.fetch BEFORE set_state writes _state._id, so the value
+  #     would be undefined and descendants would resolve to empty.
+  root_id:
+    _if_none:
+      - _state: filter.parent_scope
+      - _url_query: _id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: root_id
+        deleted:
+          $ne: true
+    - $graphLookup:
+        from:
+          _ref:
+            path: connections/companies-collection.yaml
+            key: properties.collection
+        startWith: "$_id"
+        connectFromField: _id
+        connectToField: parent_ids
+        maxDepth:
+          _module.var: hierarchy.max_depth
+        as: __descendants
+    - $project:
+        ids:
+          $concatArrays:
+            - ["$_id"]
+            - "$__descendants._id"

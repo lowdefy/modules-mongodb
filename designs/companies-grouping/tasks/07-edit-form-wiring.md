@@ -6,7 +6,7 @@ This task connects the pieces from tasks 1, 2, 5, and 6 into the edit-page flow:
 
 1. The edit form (`form_company.yaml`) appends a "Parents" section with the new `parent_selector.yaml` block, build-gated on `hierarchy.enabled`.
 2. The edit page (`pages/edit.yaml`) `onMount` becomes a **three-step sequence** so the parent-selector's options request fires *after* the descendants are resolved *and* the resulting id list is written to state. This avoids a first-render flash where self briefly appears as a valid parent.
-3. The page's `onMount.set_state` action is extended to populate `state.cycle_check_ids` from the descendants result (so `get_companies_for_selector` reads the right value when it fires) and `state.parent_ids` from the loaded doc (so the form pre-populates).
+3. The page's `onMount.set_state` action is extended to populate `state.cycle_check_self_id` (self — filtered out of the options) and `state.cycle_check_ids` (descendants — disabled with the "(child of this company)" suffix) from the descendants result, plus `state.parent_ids` from the loaded doc (so the form pre-populates).
 4. The `update_company` button's payload is extended to include `parent_ids: _state.parent_ids` (build-gated).
 5. The `new.yaml` page mirrors the same form additions but without the descendants fetch (no self, no descendants).
 
@@ -25,14 +25,14 @@ onMount:
     params: get_companies_for_selector
   - id: redirect_if_not_found        # existing — moves to be after step 2 or stays at top
     ...
-  - id: set_state                    # existing — extended to set parent_ids and cycle_check_ids
+  - id: set_state                    # existing — extended to set parent_ids, cycle_check_self_id, and cycle_check_ids
     ...
 ```
 
-The selector's underlying request reads `_state: cycle_check_ids` (per task 5), so `set_state` must write that path *before* `fetch_selector_options` reads it. This means the order is:
+The selector's underlying request reads `_state: cycle_check_self_id` and `_state: cycle_check_ids` (per task 5), so `set_state` must write both paths *before* `fetch_selector_options` reads them. This means the order is:
 
 1. Run `fetch_doc_data` (parallel: doc + contacts + descendants).
-2. Run `set_state` to copy descendants into `state.cycle_check_ids` and `state.parent_ids` from the doc.
+2. Run `set_state` to copy `state._id → state.cycle_check_self_id` (so the request `$match`-excludes self), the descendants result → `state.cycle_check_ids` (so descendants are disabled with the suffix), and the doc fields → `state.parent_ids` etc.
 3. Run `fetch_selector_options` so the request payload sees the new state.
 
 This three-step ordering matches the design's Architecture / Edit form section.
@@ -84,7 +84,7 @@ Append a new `_build.if`-gated section to the existing `_build.array.concat` blo
 
    `get_descendant_company_ids.yaml` (from task 2) already uses the `_if_none: [_state.filter.parent_scope, _state._id]` fallback pattern, so the edit-page invocation works without modification — `state._id` is the doc id (set by the existing edit page on `onMount.set_state`), `state.filter.parent_scope` is undefined here, the fallback picks `_id`. No request-file changes needed in this task.
 
-2. **Add a new build-gated `set_state` block that copies descendants → `cycle_check_ids` and parent_ids → `state.parent_ids`.** The existing `set_state` action already writes scalar fields from the doc — extend it:
+2. **Add a new build-gated `set_state` block that copies self → `cycle_check_self_id`, descendants → `cycle_check_ids`, and parent_ids → `state.parent_ids`.** The existing `set_state` action already writes scalar fields from the doc — extend it:
 
    ```yaml
    - id: set_state
@@ -117,6 +117,8 @@ Append a new `_build.if`-gated section to the existing `_build.array.concat` blo
                  _if_none:
                    - _request: get_company.0.parent_ids
                    - []
+               cycle_check_self_id:
+                 _request: get_company.0._id
                cycle_check_ids:
                  _if_none:
                    - _request: get_descendant_company_ids.0.ids
@@ -169,11 +171,11 @@ Append a new `_build.if`-gated section to the existing `_build.array.concat` blo
 ### C. `modules/companies/pages/new.yaml` — mirror form additions, no descendants fetch
 
 1. Form section additions: same as edit (`form_company.yaml` is shared between both pages, so this happens automatically when (A) lands).
-2. **No descendants fetch** — on the new page, no doc exists yet, so `cycle_check_ids` is always `[]`. Either:
-   - Skip the descendants fetch entirely on `new.yaml`. The selector's `_if_none [_state: cycle_check_ids, []]` handles the missing state.
-   - Or set `state.cycle_check_ids: []` on `onInit` to be explicit.
+2. **No descendants fetch** — on the new page, no doc exists yet, so `cycle_check_self_id` is `null` and `cycle_check_ids` is `[]`. Either:
+   - Skip the descendants fetch entirely on `new.yaml`. The selector's `_if_none` defaults handle both missing states.
+   - Or set them explicitly on `onInit` for clarity.
 
-   The simpler path: **skip the fetch**. Verify that `get_companies_for_selector` runs correctly with an empty `cycle_check_ids`.
+   The simpler path: **skip the fetch**. Verify that `get_companies_for_selector` runs correctly: `$match: { _id: { $ne: null } }` passes every doc, every `disabled` resolves to `false`, every label is plain.
 3. **Extend the create payload** to include `parent_ids: _state.parent_ids` build-gated, mirroring (B.5).
 
 ## Acceptance Criteria
@@ -184,8 +186,8 @@ Append a new `_build.if`-gated section to the existing `_build.array.concat` blo
   - `pages/new.yaml` payload is identical to today.
 - When `hierarchy.enabled: true`:
   - The edit form has a "Parent Companies" divider + the multi-select block as the last section before the linked-contacts section.
-  - The edit page's `onMount` runs in this effective order: `fetch` (doc + contacts + descendants in parallel) → `redirect_if_not_found` (existing) → `set_state` (with `parent_ids` and `cycle_check_ids`) → `fetch_selector_options`.
-  - The selector renders self + descendants disabled with `(would create cycle)` suffix on first render (no flash).
+  - The edit page's `onMount` runs in this effective order: `fetch` (doc + contacts + descendants in parallel) → `redirect_if_not_found` (existing) → `set_state` (with `parent_ids`, `cycle_check_self_id`, `cycle_check_ids`) → `fetch_selector_options`.
+  - The selector excludes self entirely and renders descendants disabled with `(child of this company)` suffix on first render (no flash).
   - Submitting the form sends `parent_ids` in the API payload.
   - The new-company page renders the parent multi-select, no descendants fetch, all options enabled.
 - Manual verification: edit a company with one descendant. Confirm self and the descendant are greyed out in the parent picker; other companies are enabled. Save with a new parent — verify update succeeds and `parent_ids` updates. Try to set the descendant as parent — UI prevents selection; if forced via direct API call, the cycle check from task 4 rejects.
@@ -193,7 +195,7 @@ Append a new `_build.if`-gated section to the existing `_build.array.concat` blo
 ## Files
 
 - `modules/companies/components/form_company.yaml` — modify — append build-gated parent section.
-- `modules/companies/pages/edit.yaml` — modify — extended `onMount` (descendants in fetch batch, parent_ids/cycle_check_ids in set_state, fetch_selector_options after set_state); extended `requests:` list; extended `update_company` payload.
+- `modules/companies/pages/edit.yaml` — modify — extended `onMount` (descendants in fetch batch, parent_ids/cycle_check_self_id/cycle_check_ids in set_state, fetch_selector_options after set_state); extended `requests:` list; extended `update_company` payload.
 - `modules/companies/pages/new.yaml` — modify — extended `update_company`/`create_company` action payload (parent_ids build-gated). Form section appears automatically via the shared `form_company.yaml`.
 
 ## Notes

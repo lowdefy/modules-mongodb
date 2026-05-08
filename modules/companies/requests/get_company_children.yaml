@@ -1,0 +1,25 @@
+id: get_company_children
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: companies-collection
+payload:
+  parent_id:
+    _url_query: _id
+properties:
+  pipeline:
+    - $match:
+        parent_ids:
+          _payload: parent_id
+        deleted:
+          $ne: true
+    - $addFields:
+        display_name:
+          $getField:
+            field:
+              _module.var: name_field
+            input: "$$ROOT"
+    - $project:
+        _id: 1
+        display_name: 1
+    - $sort:
+        display_name: 1

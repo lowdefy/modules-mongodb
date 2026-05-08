@@ -16,6 +16,6 @@ request_stages:
   write: []
 event_display:
   demo:
-    invite-user: "{{ user.profile.name }} invited {{ target.name }}"
-    update-user: "{{ user.profile.name }} updated {{ target.name }}"
-    resend-user-invite: "{{ user.profile.name }} resent invite to {{ target.name }}"
+    invite-user: "{{ user.profile.name }} invited {{ target.name }} to the demo app"
+    update-user: "{{ user.profile.name }} edited {{ target.name }}'s profile"
+    resend-user-invite: "{{ user.profile.name }} resent the invite for {{ target.name }}"

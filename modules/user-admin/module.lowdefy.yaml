@@ -21,9 +21,7 @@ vars:
     required: true
     description: List of available user roles [{label, value}]
   event_display:
-    default:
-      _ref: defaults/event_display.yaml
-    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). Merges with default templates."
+    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. Templates receive user (current) and target (edited/invited user). When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
   app_domain:
     description: App domain URL for invite links (falls back to current origin)
   fields:

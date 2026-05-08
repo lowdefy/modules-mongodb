@@ -36,7 +36,7 @@ Modify `modules/companies/README.md`. In the Vars section (currently starts at l
 - **`parent_label`** (`string`, optional) — Override for the parent multi-select label and the parents heading in the view-page sidebar tile. Defaults to `"Parent {label_plural}"` (composed at the usage site).
 - **`children_label`** (`string`, optional) — Override for the children heading in the view-page sidebar tile. Defaults to `"Child {label_plural}"` (composed at the usage site).
 
-Cycles are prevented on both the API (a `$graphLookup` ancestor check on `update-company` rejects self-as-ancestor) and the UI (the parent selector renders self + descendants as disabled options with a "(would create cycle)" suffix). Soft-deleted parents are filtered out of the view-page tile but remain in `parent_ids` arrays as audit history.
+Cycles are prevented on both the API (a `$graphLookup` ancestor check on `update-company` rejects self-as-ancestor) and the UI (the parent selector filters self out entirely and renders descendants as disabled options with a "(child of this company)" suffix). Soft-deleted parents are filtered out of the view-page tile but remain in `parent_ids` arrays as audit history.
 ```
 
 In the "How to Use" snippet (currently lines 20–30), add an example showing how to enable hierarchy:

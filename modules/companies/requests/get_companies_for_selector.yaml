@@ -2,20 +2,63 @@ id: get_companies_for_selector
 type: MongoDBAggregation
 connectionId:
   _module.connectionId: companies-collection
+payload:
+  # Selectors used in cycle-check contexts (e.g. parent_selector on the edit
+  # form) populate state.cycle_check_self_id (the company being edited — to
+  # filter out entirely) and state.cycle_check_ids (its descendants — to mark
+  # disabled with a "(child of this company)" suffix). Other consumers leave
+  # both unset; the _if_none defaults make the request behave as a plain
+  # company picker.
+  cycle_check_self_id:
+    _if_none:
+      - _state: cycle_check_self_id
+      - null
+  cycle_check_ids:
+    _if_none:
+      - _state: cycle_check_ids
+      - []
 properties:
   pipeline:
     - $match:
         deleted:
           $ne: true
+        # Exclude self entirely. When cycle_check_self_id is null (every
+        # consumer that doesn't set it), $ne: null is true for all docs and
+        # the filter passes everything — backward compatible.
+        _id:
+          $ne:
+            _payload: cycle_check_self_id
     - $project:
         label:
-          $concat:
-            - _build.string.concat:
-                - '$'
-                - _module.var: name_field
-            - ' ('
-            - '$_id'
-            - ')'
+          $cond:
+            if:
+              $in:
+                - "$_id"
+                - _payload: cycle_check_ids
+            then:
+              $concat:
+                - _build.string.concat:
+                    - '$'
+                    - _module.var: name_field
+                - ' ('
+                - '$_id'
+                - ') (child of this company)'
+            else:
+              $concat:
+                - _build.string.concat:
+                    - '$'
+                    - _module.var: name_field
+                - ' ('
+                - '$_id'
+                - ')'
         value: '$_id'
+        disabled:
+          $cond:
+            if:
+              $in:
+                - "$_id"
+                - _payload: cycle_check_ids
+            then: true
+            else: false
     - $sort:
         label: 1
