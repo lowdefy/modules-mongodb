@@ -1,0 +1,96 @@
+# Outer Box wraps the card so the entire tile (frame + title) hides when
+# both parents and children are empty. visible: on the inner card's blocks
+# would only hide the contents, leaving an empty "Company Hierarchy" frame.
+id: tile_hierarchy_wrapper
+type: Box
+visible:
+  _or:
+    - _gt:
+        - _array.length:
+            _if_none:
+              - _request: get_company.0.parents
+              - []
+        - 0
+    - _gt:
+        - _array.length:
+            _if_none:
+              - _request: get_company_children
+              - []
+        - 0
+blocks:
+  - _ref:
+      module: layout
+      component: card
+      vars:
+        title:
+          _string.concat:
+            - _module.var: label
+            - " Hierarchy"
+        blocks:
+          - id: hierarchy_html
+            type: Html
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    <style>
+                      .companies-hierarchy-link {
+                        color: var(--ant-color-link);
+                        text-decoration: none;
+                      }
+                      .companies-hierarchy-link:hover {
+                        color: var(--ant-color-link-hover);
+                        text-decoration: underline;
+                      }
+                    </style>
+
+                    {% if parents.length %}
+                    <div style="padding-bottom:12px">
+                      <div style="font-weight:600; padding-bottom:6px">{{ parent_heading }}</div>
+                      {% for parent in parents %}
+                      <div style="padding:4px 0">
+                        <a href="/{{ view_page }}?_id={{ parent._id }}" class="companies-hierarchy-link">
+                          {{ parent[name_field] }}
+                        </a>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    {% if children.length %}
+                    <div>
+                      <div style="font-weight:600; padding-bottom:6px">{{ children_heading }}</div>
+                      {% for child in children %}
+                      <div style="padding:4px 0">
+                        <a href="/{{ view_page }}?_id={{ child._id }}" class="companies-hierarchy-link">
+                          {{ child.display_name }}
+                        </a>
+                      </div>
+                      {% endfor %}
+                    </div>
+                    {% endif %}
+                  on:
+                    parents:
+                      _if_none:
+                        - _request: get_company.0.parents
+                        - []
+                    children:
+                      _if_none:
+                        - _request: get_company_children
+                        - []
+                    parent_heading:
+                      _if_none:
+                        - _module.var: hierarchy.parent_label
+                        - _string.concat:
+                            - "Parent "
+                            - _module.var: label_plural
+                    children_heading:
+                      _if_none:
+                        - _module.var: hierarchy.children_label
+                        - _string.concat:
+                            - "Child "
+                            - _module.var: label_plural
+                    name_field:
+                      _module.var: name_field
+                    view_page:
+                      _module.pageId: view

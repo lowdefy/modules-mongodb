@@ -1,5 +1,5 @@
 name: Companies
-version: 0.3.0
+version: 0.4.0
 description: Company management — list, detail, edit, create, selector
 
 dependencies:
@@ -32,6 +32,47 @@ vars:
     default:
       _ref: defaults/event_display.yaml
     description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates."
+  hierarchy:
+    type: object
+    description: Configuration for parent-child relationships between companies.
+    properties:
+      enabled:
+        type: boolean
+        default: false
+        description: >-
+          When true, adds a parent-companies multi-select to the edit form,
+          shows parents + children in a sidebar tile on the view page, and
+          enforces cycle prevention in the create/update APIs. Companies
+          form a DAG (each company can have multiple parents). When false,
+          no hierarchy UI or logic is emitted and the parent_ids field is
+          omitted from new documents.
+      parent_label:
+        type: string
+        default: null
+        description: >-
+          Optional override for the parent multi-select label on the edit form
+          and the parents heading in the view-page sidebar tile. When null
+          (the default), the label falls back at the usage site to
+          `_string.concat: ["Parent ", _module.var: label_plural]`, giving
+          "Parent Companies" by default.
+      children_label:
+        type: string
+        default: null
+        description: >-
+          Optional override for the children heading in the view-page sidebar
+          tile. When null (the default), the label falls back at the usage
+          site to `_string.concat: ["Child ", _module.var: label_plural]`,
+          giving "Child Companies" by default.
+      max_depth:
+        type: number
+        default: 20
+        description: >-
+          Defensive cap on every $graphLookup in this module's hierarchy
+          pipelines (descendants resolution + cycle check). 20 comfortably
+          exceeds typical org depths (<10). The cycle check is the primary
+          guard against runaway traversals; max_depth backstops the rare
+          case where a cycle leaks past the API check, by truncating
+          silently rather than running unboundedly.
   fields:
     type: object
     description: "Field block arrays rendered in both the edit form and SmartDescriptions view."

@@ -29,6 +29,27 @@ _ref:
             registration: {}
             attributes: {}
             contacts: []
+            # Initialized for Lowdefy's static `_state` validation —
+            # hierarchy-related requests (get_descendant_company_ids,
+            # get_companies_for_selector) read these paths.
+            filter: {}
+            cycle_check_self_id: null
+            cycle_check_ids: []
+      # When hierarchy is enabled, fetch the parent_selector's options on
+      # mount. The selector itself has no onMount (it's the parent_selector
+      # wrapper, intentionally without self-fetch — see modules/companies/
+      # components/parent_selector.yaml). On the new page there's no doc, so
+      # cycle_check_self_id and cycle_check_ids resolve to their defaults
+      # (null and []) and the selector behaves as a plain company picker.
+      onMount:
+        _build.if:
+          test:
+            _module.var: hierarchy.enabled
+          then:
+            - id: fetch_selector_options
+              type: Request
+              params: get_companies_for_selector
+          else: []
     blocks:
       - id: card
         type: Card
@@ -62,27 +83,39 @@ _ref:
                         endpointId:
                           _module.endpointId: create-company
                         payload:
-                          name:
-                            _state: name
-                          description:
-                            _state: description
-                          contact:
-                            _state: contact
-                          address:
-                            _state: address
-                          registration:
-                            _state: registration
-                          attributes:
-                            _state: attributes
-                          contacts:
-                            _array.map:
-                              on:
-                                _if_none:
-                                  - _state: contacts
-                                  - []
-                              callback:
-                                _function:
-                                  __args: 0.contact_id
+                          _build.object.assign:
+                            - name:
+                                _state: name
+                              description:
+                                _state: description
+                              contact:
+                                _state: contact
+                              address:
+                                _state: address
+                              registration:
+                                _state: registration
+                              attributes:
+                                _state: attributes
+                              contacts:
+                                _array.map:
+                                  on:
+                                    _if_none:
+                                      - _state: contacts
+                                      - []
+                                  callback:
+                                    _function:
+                                      __args: 0.contact_id
+                            # parent_ids (build-gated): inserted on the
+                            # company doc when hierarchy.enabled is true.
+                            - _build.if:
+                                test:
+                                  _module.var: hierarchy.enabled
+                                then:
+                                  parent_ids:
+                                    _if_none:
+                                      - _state: parent_ids
+                                      - []
+                                else: {}
                       messages:
                         success:
                           _string.concat:

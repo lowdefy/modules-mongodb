@@ -1,0 +1,25 @@
+id: parent_ids
+type: MultipleSelector
+requests:
+  - _ref: requests/get_companies_for_selector.yaml
+# No events.onMount: the wrapping page (pages/edit.yaml) sequences the options
+# fetch as a separate step after the descendants request resolves and
+# state.cycle_check_self_id / state.cycle_check_ids are populated. This avoids
+# a first-render flash where self briefly appears in the dropdown.
+properties:
+  placeholder:
+    _string.concat:
+      - "Select "
+      - _if_none:
+          - _module.var: hierarchy.parent_label
+          - _string.concat:
+              - "Parent "
+              - _module.var: label_plural
+  options:
+    _request: get_companies_for_selector
+  title:
+    _if_none:
+      - _module.var: hierarchy.parent_label
+      - _string.concat:
+          - "Parent "
+          - _module.var: label_plural

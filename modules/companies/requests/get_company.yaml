@@ -7,14 +7,44 @@ payload:
     _url_query: _id
 properties:
   pipeline:
-    - $match:
-        _id:
-          _payload: _id
-        removed:
-          $ne: true
-    - $addFields:
-        display_name:
-          $getField:
-            field:
-              _module.var: name_field
-            input: "$$ROOT"
+    _build.array.concat:
+      - - $match:
+            _id:
+              _payload: _id
+            removed:
+              $ne: true
+      # Resolve parent docs by name when hierarchy is enabled. localField
+      # parent_ids + foreignField _id natively handles multikey expansion
+      # (each element of the array matches a foreign _id). The sub-pipeline
+      # then filters out soft-deleted parents and projects only the _id and
+      # the configurable name_field. Result lands as
+      # `parents: [{ _id, <name_field>: <name> }, ...]` on each company doc.
+      - _build.if:
+          test:
+            _module.var: hierarchy.enabled
+          then:
+            - $lookup:
+                from:
+                  _ref:
+                    path: connections/companies-collection.yaml
+                    key: properties.collection
+                localField: parent_ids
+                foreignField: _id
+                pipeline:
+                  - $match:
+                      removed:
+                        $ne: true
+                  - $project:
+                      _build.object.fromEntries:
+                        - - _id
+                          - 1
+                        - - _module.var: name_field
+                          - 1
+                as: parents
+          else: []
+      - - $addFields:
+            display_name:
+              $getField:
+                field:
+                  _module.var: name_field
+                input: "$$ROOT"

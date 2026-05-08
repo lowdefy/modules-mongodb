@@ -17,7 +17,7 @@ Implements the companies-grouping design: a DAG model (`parent_ids: string[]`) o
 | 7   | `07-edit-form-wiring.md`                      | Append parent selector to `form_company`; three-step `onMount` on `edit.yaml`            | 1, 2, 6    |
 | 8   | `08-get-company-parents-lookup.md`            | Extend `get_company` with parents `$lookup` (filtered to non-removed)                    | 1          |
 | 9   | `09-view-page-hierarchy-tile.md`              | Add `get_company_children`, create `tile_hierarchy`, wire into `pages/view.yaml`         | 1, 8       |
-| 10  | `10-list-filter.md`                           | Parent-scope filter on `filter_companies`; Atlas Search `must` clause on `get_all_companies` (lowest priority) | 1, 2       |
+| 10  | `10-list-filter.md`                           | Parent-scope filter on `filter_companies`; Atlas Search `must` clause on `get_all_companies` (**deferred** — lowest priority, implement later if/when needed) | 1, 2       |
 | 11  | `11-demo-and-readme.md`                       | Enable hierarchy in `apps/demo/modules/companies/vars.yaml`; update `modules/companies/README.md` | 1          |
 
 ## Ordering Rationale
@@ -30,13 +30,13 @@ Implements the companies-grouping design: a DAG model (`parent_ids: string[]`) o
 
 **View page chain (8 → 9).** `get_company` parents `$lookup` (8) is independent of the edit form work and can start in parallel with tasks 2–7. The combined `tile_hierarchy` + children request + page wiring (9) follows.
 
-**List filter last (10).** Per the design, this is the lowest-priority piece — apps without it still get hierarchy editing and display. It depends on the descendants request (2) and the var (1) but nothing else, so it could in principle slot in earlier — keeping it last reflects the design's stated priority and lets the rest land first.
+**List filter (10) deferred.** Per the design, this is the lowest-priority piece — apps without it still get hierarchy editing and display. The first implementation pass (v0.3.0) skipped task 10 entirely; the spec stays in place for a future pass when filtering by hierarchy on the list page becomes a real need. Pre-condition reminder: before enabling task 10 on a deployment with any soft-deleted companies, fix the pre-existing Atlas Search no-op `mustNot exists path: removed.timestamp` clause in `get_all_companies.yaml` and `get_company_excel_data.yaml` (see the design's "Related cleanup" section).
 
 **Demo + docs (11) last.** Enables the feature in the demo app and documents the var in `README.md`. No code changes, just configuration and prose.
 
 **Parallelism.** After task 1, tasks 2, 3, 4, 5, 8 can all proceed independently. Task 6 waits on 5; 7 waits on 2 + 6; 9 waits on 8; 10 waits on 2; 11 ideally lands after the surfaces it documents (so after at least 7 + 9).
 
-**Testable milestones.** End-of-task-7 = working edit form with cycle prevention. End-of-task-9 = working view page with hierarchy tile. End-of-task-10 = working list filter. Each is independently demoable.
+**Testable milestones.** End-of-task-7 = working edit form with cycle prevention. End-of-task-9 = working view page with hierarchy tile. End-of-task-10 (deferred) = working list filter. Each is independently demoable.
 
 ## Scope
 
