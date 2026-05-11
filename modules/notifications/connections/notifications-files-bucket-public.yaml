@@ -6,6 +6,6 @@ properties:
   secretAccessKey:
     _secret: FILES_S3_SECRET_ACCESS_KEY
   region:
-    _module.var: s3_region
+    _secret: FILES_S3_REGION
   bucket:
     _secret: FILES_S3_BUCKET_PUB
