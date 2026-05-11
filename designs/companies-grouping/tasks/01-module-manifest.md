@@ -25,12 +25,11 @@ hierarchy:
       default: false
       description: >-
         When true, adds a parent-companies multi-select to the edit form,
-        shows parents + children in a sidebar tile on the view page, adds
-        a "Under {label}" filter to the list page, and enforces cycle
-        prevention in the create/update APIs. Companies form a DAG (each
-        company can have multiple parents). When false, no hierarchy UI
-        or logic is emitted and the parent_ids field is omitted from new
-        documents.
+        shows parents + children in a sidebar tile on the view page, and
+        enforces cycle prevention in the create/update APIs. Companies
+        form a DAG (each company can have multiple parents). When false,
+        no hierarchy UI or logic is emitted and the parent_ids field is
+        omitted from new documents.
     parent_label:
       type: string
       default: null
@@ -48,6 +47,16 @@ hierarchy:
         tile. When null (the default), the label falls back at the usage
         site to `_string.concat: ["Child ", _module.var: label_plural]`,
         giving "Child Companies" by default.
+    max_depth:
+      type: number
+      default: 20
+      description: >-
+        Defensive cap on every $graphLookup in this module's hierarchy
+        pipelines (descendants resolution + cycle check). 20 comfortably
+        exceeds typical org depths (<10). The cycle check is the primary
+        guard against runaway traversals; max_depth backstops the rare
+        case where a cycle leaks past the API check, by truncating
+        silently rather than running unboundedly.
 ```
 
 ## Acceptance Criteria

@@ -1,5 +1,11 @@
+app_name:
+  _ref:
+    path: app_config.yaml
+    key: app_name
 label: Company
 label_plural: Companies
+hierarchy:
+  enabled: true
 fields:
   registration:
     _ref: ../../modules/companies/field-presets/registration-sa.yaml
@@ -16,7 +22,3 @@ fields:
           - Manufacturing
           - Services
           - Retail
-event_display:
-  demo:
-    create-company: "{{ user.profile.name }} created {{ target.name }}"
-    update-company: "{{ user.profile.name }} updated {{ target.name }}"

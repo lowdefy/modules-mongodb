@@ -89,14 +89,14 @@ Multi-tenant deployments share a single `log-events` collection but render event
 Each module ships a default at `modules/{name}/defaults/event_display.yaml`:
 
 ```yaml
-default:
-  create-company: "{{ user.profile.name }} created {{ target.name }}"
-  update-company: "{{ user.profile.name }} updated {{ target.name }}"
+create-company: "{{ user.profile.name }} created {{ target.name }}"
+update-company: "{{ user.profile.name }} updated {{ target.name }}"
 ```
 
-- Top-level keys are app names (the `default` key is the fallback).
-- Inner keys are event types (matching the `type` field on event documents).
+- Keys are event types (matching the `type` field on event documents).
 - Values are Nunjucks templates rendered against the event payload.
+
+When the consumer doesn't override `event_display`, the build wraps these templates under the module's `app_name` var. So an event document written by a module with `app_name: my-app` ends up with `display.my-app.title` set to the rendered template — and `display_key: my-app` on the events module reads it back.
 
 ### Variables available to templates
 
@@ -117,7 +117,7 @@ default:
         update-company: "Updated {{ target.name }}"
 ```
 
-The build merges `defaults/event_display.yaml` with the var, so you only need to specify the apps and event types you want to override or add. Apps not listed fall back to the `default` key in the defaults file.
+**Override fully replaces the defaults — no merge.** Whatever you write under `event_display` is exactly what's stored on the event document. List every app and event type you want rendered. If you want only the override-the-wording case (single app), the file shape is just `{ [app_name]: { event-type: template } }`. To render titles for multiple apps, list them all explicitly.
 
 ### Display metadata vs templates
 

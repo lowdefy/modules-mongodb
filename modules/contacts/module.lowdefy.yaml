@@ -23,9 +23,7 @@ vars:
     required: true
     description: App identifier for is_user guard and per-app access flags
   event_display:
-    default:
-      _ref: defaults/event_display.yaml
-    description: "Per-app event display templates"
+    description: "Per-app event display templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
   fields:
     type: object
     description: "Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."

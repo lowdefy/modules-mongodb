@@ -19,10 +19,10 @@ None of this exists in the module today. There is no parent linkage on the docum
 
 1. **Schema**: add a single top-level `parent_ids` field (`string[]`, default `[]`) on the company document. A directed acyclic graph (DAG) over companies — any company can have zero or more parents, and any company can have zero or more children. No denormalised `child_ids` or ancestor cache; children and descendants are resolved by reverse query / `$graphLookup`.
 2. **Opt-in**: a single new module var `hierarchy.enabled` (default `false`) gates the parent-picker block, the parents/children display on the view page, the hierarchy filter on the list, and the API-side cycle check. When `false`, the module behaves exactly as today and the `parent_ids` field is omitted from new documents entirely.
-3. **Edit form**: a new "Parent {label_plural}" multi-select block is appended (conditionally) to the form — the label is composed at the usage site as `_string.concat: ["Parent ", _module.var: label_plural]` (or the consumer's `hierarchy.parent_label` override), giving "Parent Companies" by default. Reuses the existing `company-selector` component in `MultipleSelector` mode, extended with a `cycle_check_ids` var so self + descendants render as **disabled options with a "(would create cycle)" suffix** rather than being hidden — users see the company exists and understand why it's unavailable.
+3. **Edit form**: a new "Parent {label_plural}" multi-select block is appended (conditionally) to the form — the label is composed at the usage site as `_string.concat: ["Parent ", _module.var: label_plural]` (or the consumer's `hierarchy.parent_label` override), giving "Parent Companies" by default. Reuses the existing `company-selector` component in `MultipleSelector` mode. Self is filtered out of the options entirely (no point offering it as a parent of itself); descendants render as **disabled options with a "(child of this company)" suffix** so users see the company exists and understand why it's unavailable.
 4. **View page**: a single new `tile_hierarchy` sidebar tile with two sections — **Parents** (the resolved names from `parent_ids`, each linked to its view page) and **Children** (direct descendants from a reverse query, each linked). Empty sections collapse. Combining both into one tile keeps hierarchy navigation as a single coherent panel; if deeply nested portfolios start to feel cramped in a flat list, a future iteration can replace the inner block with a TreeSelector-style nested display without changing the surrounding contract.
 5. **List page**: a new "Under {label}" filter (single-select company picker). When set, the list aggregation walks the graph via `$graphLookup` from the picked company down through `parent_ids` and matches the picked id + its descendants.
-6. **Cycle prevention**: a `$graphLookup`-based pre-check on the API rejects updates whose new parent set would form a cycle; the UI selector additionally renders self + descendants as disabled options with a "(would create cycle)" suffix so the user can see why each one is unavailable rather than wondering why a company is missing.
+6. **Cycle prevention**: a `$graphLookup`-based pre-check on the API rejects updates whose new parent set would form a cycle; the UI selector filters self out and renders descendants as disabled options with a "(child of this company)" suffix, so the user understands why those options aren't pickable instead of wondering where a company went.
 
 ## Key decisions and rationale
 
@@ -77,8 +77,8 @@ When `hierarchy.enabled: false` (the default), every hierarchy-related block, re
 
 User chose both. Why each is needed:
 
-- **API (server-side)** is the authoritative guard. Without it, a direct `update-company` call from a tool, a bad migration, or any path that bypasses the form can corrupt the graph into a cycle, after which `$graphLookup` either returns spurious results or, with `maxDepth`, silently truncates.
-- **UI (client-side)** is the user-experience layer. Rendering self + descendants as **disabled options with a "(would create cycle)" suffix** tells the user *up front* which companies aren't valid parents and *why*. Hiding them entirely was the alternative considered, but it would leave users searching for a company that genuinely exists and getting nothing back — a worse experience than seeing it greyed out with an explanation.
+- **API (server-side)** is the authoritative guard. Without it, a direct `update-company` call from a tool, a bad migration, or any path that bypasses the form can corrupt the graph into a cycle. `$graphLookup` then truncates silently at `maxDepth` (default 20), which surfaces as data the operator can investigate rather than runaway requests — but the API guard is what stops the corruption from being written in the first place.
+- **UI (client-side)** is the user-experience layer. Self is filtered out of the options entirely (a company can't be its own parent — there's nothing useful to communicate by showing it greyed-out). Descendants stay in the list as **disabled options with a "(child of this company)" suffix**, telling the user *up front* which companies aren't valid parents and *why*. Hiding descendants entirely was the alternative considered, but it would leave users searching for a company that genuinely exists and getting nothing back — a worse experience than seeing it greyed out with an explanation.
 
 The two checks read the same source of truth (`$graphLookup` from `_state._id` down through `parent_ids` to enumerate descendants on the edit page; `$graphLookup` from each candidate parent down through `parent_ids` to check whether self appears in the descendants on the API). Both rely on the same multikey index on `parent_ids`.
 
@@ -131,11 +131,32 @@ The field lives on a `companies` collection document; "company" is implied by th
 
 Order is not preserved or interpreted. There is no "primary parent". The selector on the form may render in selection order, but the saved array carries no semantic ordering, and the view page is free to sort by parent name. If a future use case requires "primary parent" semantics (e.g., for a single breadcrumb on the header), it would justify either a separate `primary_parent_id` field or promoting `parent_ids` to a structured `parents: [{ id, role }]` shape — out of v1.
 
-### `$graphLookup` runs uncapped (no `maxDepth`)
+### `$graphLookup.from` resolved via `_ref` to the connection file
 
-The cycle check is the safety boundary, not `maxDepth`. Picking an arbitrary cap (10? 50?) either rejects legitimate deep structures or hides genuine cycles behind silent truncation; a real cycle that slipped past the API check would still render finite results, masking the corruption. Better to traverse fully and rely on the cycle check holding.
+`$graphLookup.from` is a MongoDB pipeline argument that needs the literal collection name — Lowdefy's `_module.connectionId` returns the connection's *ID*, not its target collection name, and there's no `_module.collection` resolver. Rather than hardcoding `from: companies`, every `$graphLookup` (and `$lookup`) in this design reads the collection name from the connection file at build time:
 
-If a perf issue surfaces in production with very deep graphs, add `maxDepth` then with a value justified by the observed depth. Until then, uncapped.
+```yaml
+from:
+  _ref:
+    path: connections/companies-collection.yaml
+    key: properties.collection
+```
+
+The `_ref` resolves to whatever `properties.collection` is set to in `modules/companies/connections/companies-collection.yaml` (currently `companies`). If the module is ever updated to target a different collection name, every cross-collection lookup updates automatically — no source-of-truth drift between the connection definition and the lookup pipelines.
+
+Module-internal `_ref` paths resolve from the module root, so `path: connections/companies-collection.yaml` works regardless of which file is doing the reference.
+
+This **does not** insulate against consumer connection remappings via the entry's `connections:` mapping. If a consumer remaps `companies-collection` to a different connection that targets a renamed underlying collection, the `_ref` still resolves to whatever the *module's* connection file says (`companies`). Consumers who rename the underlying collection would need to fork or supply their own version of the request — but that's out of scope: the realistic remap scenario is "different connection details, same collection name".
+
+### `$graphLookup` capped at `hierarchy.max_depth` (default 20)
+
+Every `$graphLookup` in this design — descendants, ancestors, cycle check — passes `maxDepth: { _module.var: hierarchy.max_depth }`. The default is 20, which comfortably exceeds typical org-structure depths (<10) while preventing any cycle that slipped past the API guard from running unbounded.
+
+This is a defensive backstop, not the primary safety. The cycle check (see "Cycle prevention") is what *prevents* cycles from being written. `maxDepth` only matters if a cycle somehow exists in the data — at which point an uncapped `$graphLookup` could run unboundedly, while a capped one truncates silently. Truncation is preferable to runaway in that scenario; the cycle would still surface as a data corruption that operators can investigate, but it wouldn't hang requests.
+
+Apps with unusually deep hierarchies can override via `hierarchy.max_depth: 50` in their entry vars. The var is exposed alongside `enabled`, `parent_label`, and `children_label`.
+
+(Earlier draft of this design left `$graphLookup` uncapped on the principle that the cycle check should be the only safety boundary. Revised to belt-and-braces — the runtime cost of `maxDepth` is negligible, and the operational cost of a cycle leaking past the guard is high.)
 
 ### Removed parents leave dangling references in `parent_ids`
 
@@ -207,6 +228,16 @@ vars:
           When unset, the label falls back at the usage site to
           `_string.concat: ["Child ", _module.var: label_plural]`, giving
           "Child Companies" by default.
+      max_depth:
+        type: number
+        default: 20
+        description: >-
+          Defensive cap on every $graphLookup in this module's hierarchy
+          pipelines (descendants resolution + cycle check). 20 comfortably
+          exceeds typical org depths (<10). The cycle check is the primary
+          guard against runaway traversals; max_depth backstops the rare
+          case where a cycle leaks past the API check, by truncating
+          silently rather than running unboundedly.
 ```
 
 Apps enable hierarchy in their entry config:
@@ -254,12 +285,12 @@ The `parent_selector` wrapper component does **not** define its own `onMount` �
 Step-by-step:
 
 1. **Step 1** runs three requests in parallel: `get_company` (the doc itself, existing), `get_company_contact_ids` (existing), and `get_descendant_company_ids` (new shared request — returns `{ ids: [self, ...descendants] }`).
-2. **Step 2** copies the loaded values into state — including `cycle_check_ids: [self, ...descendants]` from the descendants request, and the form's input fields from the doc.
-3. **Step 3** fires `get_companies_for_selector`. By the time it runs, `state.cycle_check_ids` is populated, so the selector's projection's `$cond: { $in: ["$_id", cycle_check_ids] }` evaluates correctly on the first render.
-4. The parent_selector reuses `company-selector` in `MultipleSelector` mode and reads `_state: cycle_check_ids` via the underlying request's payload. The selector's request projects an extra `disabled` field per row using `$cond: { if: { $in: ["$_id", cycle_check_ids] }, then: true, else: false }` and rewrites `label` for matching rows to suffix `" (would create cycle)"`. The selector block's `optionConfig` gains `disabledField: disabled`. Self + descendants therefore appear in the dropdown as greyed-out options the user can see but cannot pick.
+2. **Step 2** copies the loaded values into state — `cycle_check_self_id: <self._id>` (the company being edited; the selector's request `$match`-filters this out so self never appears in the options), `cycle_check_ids: <descendants from the request>` (marked disabled in the dropdown with a "(child of this company)" suffix), and the form's input fields from the doc.
+3. **Step 3** fires `get_companies_for_selector`. By the time it runs, `state.cycle_check_self_id` and `state.cycle_check_ids` are populated, so the selector's `$match` excludes self and the projection's `$cond: { $in: ["$_id", cycle_check_ids] }` evaluates correctly on the first render.
+4. The parent_selector reuses `company-selector` in `MultipleSelector` mode. The selector's request `$match`-filters out the doc whose `_id` equals `state.cycle_check_self_id` (self never appears), and projects an extra `disabled` field per remaining row using `$cond: { if: { $in: ["$_id", cycle_check_ids] }, then: true, else: false }` plus a label suffixed with `" (child of this company)"` for descendants. The Selector block's schema natively reads each option's `disabled` field (per `@lowdefy/blocks-antd`'s `Selector/schema.json`, options accept `{ label, value, disabled, ... }`), so no extra mapping config is needed. Descendants render as greyed-out options the user can see but cannot pick; self is absent from the list.
 5. On submit, `parent_ids` (an array, possibly empty) is included in the form payload.
 
-(On the `new` page there are no descendants and no self. The descendants request can be skipped — payload `root_id: undefined` returns no rows, `cycle_check_ids` resolves to `[]`, every option is enabled, no `$cond` branches fire, the selector behaves as a plain company picker. The three-step `onMount` still applies but the descendants request returns immediately.)
+(On the `new` page there are no descendants and no self yet. Both `cycle_check_self_id` and `cycle_check_ids` resolve to their defaults (`null` and `[]`) — the request's `$match: { _id: { $ne: null } }` passes every doc, the disabled `$cond` evaluates false everywhere, and the selector behaves as a plain company picker. The three-step `onMount` still applies but the descendants request returns immediately.)
 
 ### View page (when `hierarchy.enabled`)
 
@@ -301,10 +332,15 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
            removed:
              $ne: true
        - $graphLookup:
-           from: companies
+           from:
+             _ref:
+               path: connections/companies-collection.yaml
+               key: properties.collection
            startWith: "$_id"
            connectFromField: _id
            connectToField: parent_ids
+           maxDepth:
+             _module.var: hierarchy.max_depth
            as: __descendants
        - $project:
            ids:
@@ -364,7 +400,7 @@ Notes:
 Both `create-company` and `update-company` accept `parent_ids` in the payload (an array, defaulting to `[]`) and write it through. `update-company` runs a cycle pre-check stage:
 
 1. `$match` the candidate parent docs (`_id: { $in: <payload.parent_ids> }`) into the pipeline, then `$graphLookup` upward through `parent_ids` from each (`connectFromField: "parent_ids"`, `connectToField: "_id"`).
-2. If `<payload._id>` (self) appears in either the candidate parent set or the resulting ancestor closure, the API returns an error and the update is aborted before the `$set` stage.
+2. If `<payload._id>` (self) appears in either the candidate parent set or the resulting ancestor closure, a `:reject:` aborts the routine with an error message — the calling form's `CallApi` action's `onError` handler fires, the form stays open, and the user gets a clear error to act on.
 
 For `create-company`, the cycle check is unnecessary — a brand-new doc has no descendants, so no parent set can form a cycle.
 
@@ -372,10 +408,10 @@ When `hierarchy.enabled: false`, the cycle-check step, the `parent_ids` payload 
 
 #### Cycle-check step layout (`update-company`)
 
-Lowdefy API routines have no `throw` step. The established primitives are `:return:` (sets the API response and ends the routine) and `skip:` (conditionally bypasses a step), seen at `modules/companies/api/create-company.yaml:135-137` and `modules/files/api/delete-file.yaml:22-24`. The cycle check uses both:
+Lowdefy API routines provide a `:reject:` routine control that aborts the routine with an error message — the calling action's `onError` handler fires, no further steps run, and the API caller distinguishes failure from success at the protocol level. Existing precedent in this repo: `modules/user-account/api/update-profile.yaml:4-13` rejects on missing required input. The cycle check follows the same pattern:
 
 ```yaml
-# All four steps below are _build.if-injected when hierarchy.enabled is true.
+# Both steps below are _build.if-injected when hierarchy.enabled is true.
 - id: cycle_check
   type: MongoDBAggregation
   connectionId:
@@ -385,10 +421,15 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
       - $match:
           _id: { $in: { _payload: parent_ids } }
       - $graphLookup:
-          from: companies
+          from:
+            _ref:
+              path: connections/companies-collection.yaml
+              key: properties.collection
           startWith: "$_id"
           connectFromField: parent_ids
           connectToField: _id
+          maxDepth:
+            _module.var: hierarchy.max_depth
           as: __ancestors
       - $project:
           has_cycle:
@@ -407,31 +448,21 @@ Lowdefy API routines have no `throw` step. The established primitives are `:retu
           has_cycle:
             $max: "$has_cycle"
 
-- :return:
-    error: would_create_cycle
-  skip:
-    _ne:
-      - _step: cycle_check.0.has_cycle
-      - true
-
-# Existing steps below — `update`, `unlink-old-contacts`, `link-new-contacts`,
-# `new-event`, `:return: success` — each gain a defensive skip so they don't run
-# if the cycle was detected. (Belt-and-braces: the early :return: above should
-# already short-circuit, but explicit skips make the routine robust against any
-# difference in :return: semantics.)
-  skip:
+- :if:
     _eq:
       - _step: cycle_check.0.has_cycle
       - true
+  :then:
+    :reject: Selected parents would create a cycle in the company hierarchy.
 ```
 
 Three notes on this layout:
 
 - **`cycle_check` projects a single boolean per matched candidate parent, then OR-reduces to a single doc.** The `$project` stage runs once per matched candidate parent doc (one per `_id` in `payload.parent_ids`), each producing its own `has_cycle` flag. The `$group` stage then OR-reduces (`$max` on booleans gives `true || false → true`) into a single output doc. Without the `$group`, downstream `_step.cycle_check.0.has_cycle` would only inspect the first matched candidate's flag and miss cycles formed via the second-or-later candidate. With `$group`, the result is always a one-element array whose `has_cycle` is the OR across all candidates.
 - **Why a `$match` before `$graphLookup`.** `$graphLookup` needs a starting document set; the simplest is to start at *the candidate parents themselves*, treat each as the root of an upward walk, and check whether self appears at any node visited (the candidate parents themselves count, hence the `$concatArrays` with `["$_id"]`).
-- **The defensive `skip` on every existing step is build-injected at the same time as the cycle-check step.** When `hierarchy.enabled: false`, none of the cycle-check infrastructure is emitted and the existing steps run unconditionally as today. When `hierarchy.enabled: true`, every existing step's YAML gains the `skip:` block via the same `_build.if` that injects the new steps.
+- **`:reject:` cleanly aborts.** No need to decorate every subsequent step with `skip:` — `:reject:` halts the routine entirely. The existing `update`, `unlink-old-contacts`, `link-new-contacts`, `new-event`, and `:return: success` steps stay unchanged when `hierarchy.enabled: true`; only the two cycle-check steps are added via `_build.if`. When `hierarchy.enabled: false`, neither step is emitted and the routine is identical to today's.
 
-For `create-company`, no `cycle_check` / early `:return:` are needed — a fresh doc has no descendants, so the cycle invariant cannot be broken on insert. The only build-gated change there is accepting `parent_ids` in the `MongoDBInsertConsecutiveId.doc` block.
+For `create-company`, no `cycle_check` is needed — a fresh doc has no descendants, so the cycle invariant cannot be broken on insert. The only build-gated change there is accepting `parent_ids` in the `MongoDBInsertConsecutiveId.doc` block.
 
 ## Files changed
 
@@ -453,7 +484,7 @@ For `create-company`, no `cycle_check` / early `:return:` are needed — a fresh
 - `modules/companies/components/filter_companies.yaml` — add parent-scope filter (build-gated).
 - `modules/companies/requests/get_all_companies.yaml` — accept `parent_scope_ids` payload (sourced from `_request: get_descendant_company_ids.0.ids`) and append a conditional Atlas Search `in: { path: "_id", value: parent_scope_ids }` clause to the existing `compound.must` array. No `$graphLookup` inside this pipeline — descendants are pre-resolved by `get_descendant_company_ids` and fed in via payload.
 - `modules/companies/requests/get_company.yaml` — `$lookup` parent names (multikey).
-- `modules/companies/components/company-selector.yaml` — add `cycle_check_ids` var (passed through to the underlying request as payload), and pass `disabledField: disabled` in `optionConfig` so disabled rows render greyed out.
+- `modules/companies/components/company-selector.yaml` — no behavioural change in this design; the existing pre-3.0 `optionConfig` block is dropped as a vestigial cleanup (it was a no-op — Selector schema field names already match the projection). The cycle-check `disabled` field is read natively by the Selector block per the antd Selector schema.
 - `modules/companies/README.md` — Vars section, How to Use snippet for enabling hierarchy.
 - `apps/demo/modules/companies/vars.yaml` — set `hierarchy.enabled: true` to demo the feature. No seed data; users exercise the feature manually against existing demo records.
 

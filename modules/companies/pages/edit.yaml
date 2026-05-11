@@ -24,61 +24,121 @@ _ref:
             - "Edit "
             - _module.var: label
     events:
-      onMount:
-        - id: fetch
-          type: Request
-          params:
-            - get_company
-            - get_company_contact_ids
-        - id: redirect_if_not_found
-          type: Link
-          skip:
-            _ne:
-              - _request: get_company.0
-              - null
-          params:
-            pageId:
-              _module.pageId: all
-        - id: set_state
+      # Initialize state keys read by hierarchy-related requests so
+      # Lowdefy's static `_state` validation passes. Values are placeholders
+      # — set_state on onMount writes the real values from get_company /
+      # get_descendant_company_ids when hierarchy.enabled.
+      onInit:
+        - id: init_hierarchy_state
           type: SetState
           params:
-            _build.object.assign:
-              - _id:
-                  _request: get_company.0._id
-                name:
-                  _request: get_company.0.name
-                description:
-                  _request: get_company.0.description
-                contact:
-                  _request: get_company.0.contact
-                address:
-                  _request: get_company.0.address
-                registration:
-                  _request: get_company.0.registration
-                attributes:
-                  _request: get_company.0.attributes
-                contacts:
-                  _array.map:
-                    on:
-                      _if_none:
-                        - _request: get_company_contact_ids.0.ids
-                        - []
-                    callback:
-                      _function:
-                        contact_id:
-                          __args: 0
-                updated:
-                  _request: get_company.0.updated
-              - _build.if:
-                  test:
-                    _module.var: short_name.enabled
-                  then:
-                    short_name:
-                      _request: get_company.0.short_name
-                  else: {}
+            filter: {}
+            cycle_check_self_id: null
+            cycle_check_ids: []
+      onMount:
+        _build.array.concat:
+          - - id: fetch
+              type: Request
+              params:
+                _build.array.concat:
+                  - - get_company
+                    - get_company_contact_ids
+                  - _build.if:
+                      test:
+                        _module.var: hierarchy.enabled
+                      then:
+                        - get_descendant_company_ids
+                      else: []
+            - id: redirect_if_not_found
+              type: Link
+              skip:
+                _ne:
+                  - _request: get_company.0
+                  - null
+              params:
+                pageId:
+                  _module.pageId: all
+            - id: set_state
+              type: SetState
+              params:
+                _build.object.assign:
+                  - _id:
+                      _request: get_company.0._id
+                    name:
+                      _request: get_company.0.name
+                    description:
+                      _request: get_company.0.description
+                    contact:
+                      _request: get_company.0.contact
+                    address:
+                      _request: get_company.0.address
+                    registration:
+                      _request: get_company.0.registration
+                    attributes:
+                      _request: get_company.0.attributes
+                    contacts:
+                      _array.map:
+                        on:
+                          _if_none:
+                            - _request: get_company_contact_ids.0.ids
+                            - []
+                        callback:
+                          _function:
+                            contact_id:
+                              __args: 0
+                    updated:
+                      _request: get_company.0.updated
+                  # short_name hydration (build-gated): only emitted when
+                  # short_name.enabled, otherwise Lowdefy's static `_state`
+                  # validator would flag a write to a state path no form
+                  # input binds to.
+                  - _build.if:
+                      test:
+                        _module.var: short_name.enabled
+                      then:
+                        short_name:
+                          _request: get_company.0.short_name
+                      else: {}
+                  # Hierarchy state (build-gated): parent_ids prefills the
+                  # form, cycle_check_self_id is read by the parent_selector's
+                  # request to $match-exclude self, cycle_check_ids is read
+                  # to $cond-disable descendants in the dropdown.
+                  - _build.if:
+                      test:
+                        _module.var: hierarchy.enabled
+                      then:
+                        parent_ids:
+                          _if_none:
+                            - _request: get_company.0.parent_ids
+                            - []
+                        cycle_check_self_id:
+                          _request: get_company.0._id
+                        cycle_check_ids:
+                          _if_none:
+                            - _request: get_descendant_company_ids.0.ids
+                            - []
+                      else: {}
+          # Fetch the parent_selector's options AFTER set_state so the
+          # request payload sees the new state on its first invocation
+          # (no first-render flash where self appears as a valid parent).
+          - _build.if:
+              test:
+                _module.var: hierarchy.enabled
+              then:
+                - id: fetch_selector_options
+                  type: Request
+                  params: get_companies_for_selector
+              else: []
     requests:
-      - _ref: requests/get_company.yaml
-      - _ref: requests/get_company_contact_ids.yaml
+      _build.array.concat:
+        - - _ref: requests/get_company.yaml
+          - _ref: requests/get_company_contact_ids.yaml
+        - _build.if:
+            test:
+              _module.var: hierarchy.enabled
+            then:
+              - _ref: requests/get_descendant_company_ids.yaml
+            else: []
     blocks:
       - id: card
         type: Card
@@ -134,12 +194,30 @@ _ref:
                                       __args: 0.contact_id
                               updated:
                                 _state: updated
+                            # short_name (build-gated): payload only carries
+                            # the value when short_name.enabled, otherwise the
+                            # static `_state` validator would flag a state path
+                            # no form input binds to.
                             - _build.if:
                                 test:
                                   _module.var: short_name.enabled
                                 then:
                                   short_name:
                                     _state: short_name
+                                else: {}
+                            # parent_ids (build-gated): the form's auto-bound
+                            # multi-select writes to state.parent_ids; payload
+                            # forwards the array authoritative-ly. The
+                            # update-company API's cycle check rejects sets
+                            # that would form a cycle.
+                            - _build.if:
+                                test:
+                                  _module.var: hierarchy.enabled
+                                then:
+                                  parent_ids:
+                                    _if_none:
+                                      - _state: parent_ids
+                                      - []
                                 else: {}
                       messages:
                         success:
