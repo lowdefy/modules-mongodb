@@ -159,7 +159,7 @@ The link is established when the child workflow is started. App code that create
       key: { _step: start_child.workflow_id }
 ```
 
-After this, the engine's tracker subscription (engine sub-design) finds this action whenever the child workflow transitions: `actions.find({ key: <child workflow_id>, "tracker.workflow_type": "device-installation" })`.
+After this, the engine's tracker subscription (engine sub-design) finds this action whenever the child workflow transitions: `actions.find({ key: <child workflow_id> })`. Workflow `_id`s are globally unique across workflow types, so the `key` value alone pinpoints matching parent actions — no `tracker.workflow_type` filter needed. The engine ships a partial index on `{ key: 1 }` filtered by `{ "tracker.workflow_type": { $exists: true } }` to keep the lookup a single indexed scan; see engine sub-design "Reverse-lookup index."
 
 ### Hard-coded child-stage map
 
@@ -349,7 +349,7 @@ form:
     form:
       - component: label_value
         key: form.devices.$._id
-        title: Honeycomb Number
+        title: Device Number
       - component: date_range_selector
         key: form.devices.$.warranty
         title: Warranty

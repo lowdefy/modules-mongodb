@@ -245,6 +245,8 @@ The `fields:` block is the channel by which the universal action fields flow thr
 
 **Form-action submit shape.** The app's submit hook reads the form data, builds `unblocks`/`entity_update`/`event` per the action's domain logic, and calls `submit-action`. The `fields:` block is optional — apps that want the form's submitter to also (re)assign or set a due date can include it; otherwise it's omitted and the action's universal fields stay unchanged.
 
+**No `force` field on `submit-action`.** The engine's `UpdateWorkflowActions` request type accepts a top-level `force: true` (engine sub-design Decision 4) that bypasses the priority rule, but `submit-action` deliberately doesn't expose it. `submit-action` is the user-submit path; migrations and admin tools that need to rewrite history bypass `submit-action` and call `UpdateWorkflowActions` directly via a privileged route (a separate app-side API endpoint, or a one-off Lowdefy request) so the escape hatch is gated by app-level access control instead of riding in the user-facing payload.
+
 ### Action entries always use `keys: [...]` — no singular `key`
 
 Each entry in `unblocks` has a uniform shape: `{ type, status, keys?, upsert? }`. The `keys` field is the only key-related field; there is no singular `key`. The plugin handles three cases based on the `keys` value:
@@ -255,6 +257,8 @@ Each entry in `unblocks` has a uniform shape: `{ type, status, keys?, upsert? }`
 | `[]` (empty array)         | Zero operations — typical for fan-out where the form has no items                     |
 | `[k]` (single value)       | One operation, `key: k` — singleton-keyed action (e.g. tracker referencing one child) |
 | `[k1, k2, ...]` (N values) | N operations, one per key — fan-out                                                   |
+
+**Footgun: `keys: []` is silent.** When authors compute `keys` from a possibly-empty payload field (e.g. `keys: { _array.map: { on: { _payload: form.devices } } }`) and the user submits an empty form, the unblock silently no-ops with no error. Either the call site is fine with that (legitimate "no fan-out targets" case) or the author needs to gate the unblock with `skip` / `_if` on `keys.length` to surface the empty case as a form-validation error rather than a silent miss. v1 mitigation is documentation only; an `allowEmpty: true` opt-in flag is a purely-additive future change if the footgun bites real apps (engine sub-design Risks).
 
 The on-disk action doc still has a singular `key` field (or `key: null`); only the plugin payload shape unifies. The `(workflow_id, type, key)` unique index is unchanged.
 
