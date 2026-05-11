@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-notifications
 
+## 0.4.2
+
+### Patch Changes
+
+- [#50](https://github.com/lowdefy/modules-mongodb/pull/50) [`d008df4`](https://github.com/lowdefy/modules-mongodb/commit/d008df4967f0d42b02fd6ec3fac7f478042f8303) Thanks [@Gervwyk](https://github.com/Gervwyk)! - Add scaffold for a public file-download flow on notification attachments — new `file-download` Box page, `notifications-files-bucket-public` AwsS3Bucket connection (backed by `FILES_S3_ACCESS_KEY_ID` / `FILES_S3_SECRET_ACCESS_KEY` / `FILES_S3_BUCKET_PUB` secrets and the `s3_region` var), and `get_notification_file` / `download_notification_file` requests. The page resolves the indexed file from `$files` on a notification, generates a presigned S3 GET, and redirects the browser. Not yet exported via `module.lowdefy.yaml` — scaffolding only, not consumable until the manifest wires up the page and connection.
+
+- [#50](https://github.com/lowdefy/modules-mongodb/pull/50) [`df408dc`](https://github.com/lowdefy/modules-mongodb/commit/df408dcbd9e09f71d75d6eb517f28c9e583c01c9) Thanks [@Gervwyk](https://github.com/Gervwyk)! - Allow `resend-user-invite` notifications to be resolved by the link page. The `get_notification_for_link` aggregation now matches `event_type: resend-user-invite` in its `$or` filter alongside the existing `invite-user` branch, so resent invite emails can deep-link the recipient straight to the invite-acceptance page without requiring the contact to already be logged in as themselves.
+
 ## 0.4.1
 
 ## 0.4.0
