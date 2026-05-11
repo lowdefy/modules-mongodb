@@ -1,5 +1,65 @@
 # @lowdefy/modules-mongodb-companies
 
+## 0.4.0
+
+### Minor Changes
+
+- [#42](https://github.com/lowdefy/modules-mongodb/pull/42) [`cb7b574`](https://github.com/lowdefy/modules-mongodb/commit/cb7b57469249d46fdd6c7b8a1b5c94636e3a3f68) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Add opt-in parent/child hierarchy to the `companies` module. Companies form a directed acyclic graph (DAG) over a new top-level `parent_ids: string[]` field — each company can have multiple parents and multiple children. Gated by a single `hierarchy.enabled` var (default `false`); when disabled, the module behaves exactly as today and the `parent_ids` field is omitted from new documents.
+
+  **What enabling `hierarchy.enabled: true` adds:**
+
+  - **Edit form** — a new "Parent {label_plural}" multi-select section appended to the form. Self is filtered out of the options entirely; descendants render as disabled options with a "(child of this company)" suffix so users see why they can't be picked. The selector reads `state.cycle_check_self_id` and `state.cycle_check_ids`, populated by the page's `set_state` action after `get_descendant_company_ids` resolves on mount.
+  - **View page** — a new "Company Hierarchy" sidebar tile with two stacked sections (Parents above, Children below) rendered as inline anchor links. Empty sections collapse; the whole tile self-hides when there's nothing to show. Soft-deleted parents are filtered out via the `$lookup` sub-pipeline; soft-deleted children are filtered out via the children request.
+  - **Cycle prevention** — `update-company` runs a `$graphLookup`-based pre-check (walks upward from each candidate parent through `parent_ids`). If self appears anywhere in the ancestor closure, `:reject:` aborts the routine with the message "Selected parents would create a cycle in the company hierarchy." — surfaces to the calling form's `onError` handler.
+
+  **New module vars (under `hierarchy`):**
+
+  - `enabled` (bool, default `false`) — master flag.
+  - `parent_label` (string, optional) — override for the parent multi-select label and parents heading.
+  - `children_label` (string, optional) — override for the children heading.
+  - `max_depth` (number, default `20`) — defensive cap on every `$graphLookup` in the module's pipelines (descendants resolution + cycle check). Backstops runaway traversal in the unlikely case a cycle leaks past the API check.
+
+  **New collection field:** `parent_ids: string[]` (top-level, only emitted when `hierarchy.enabled: true`). No data migration needed — existing companies without the field behave as roots (no parents) under MongoDB multikey index semantics.
+
+  **New module exports:**
+
+  - `parent_selector` component — `MultipleSelector` wrapper used on the edit form (no own `onMount`; the consuming page sequences the options fetch).
+  - `tile_hierarchy` component — referenced internally by the view page's sidebar.
+  - `get_descendant_company_ids` request — shared by edit form (cycle-check exclusion list) and the deferred list filter; reads `_state.filter.parent_scope` with fallback to `_state._id` so one request file serves both consumers.
+  - `get_company_children` request — direct-children-only multikey `$match` for the view-page tile.
+
+  **Cleanup bundled in this release** (verified against `@lowdefy/blocks-antd@4.7.1` schemas):
+
+  - Dropped the vestigial `optionConfig` block from `company-selector.yaml` — not in `Selector/schema.json`, not consumed by any plugin in `plugins/`. The schema's option shape (`{ label, value, disabled, ... }`) already matches the projection's output natively.
+  - Switched `label: <string>` to `title: <string>` on `company-selector.yaml` — `label:` is an object on the antd schema (label-area styling), `title:` is the string-typed displayed label.
+
+  **MongoDB version requirement.** The new `$lookup` in `get_company.yaml` uses the `localField + foreignField + pipeline` combination, which requires **MongoDB 5.0+**. Apps on older MongoDB versions need to upgrade before deploying this version.
+
+  **Out of scope for this release:** hierarchy filter on the list page (`tasks/10-list-filter.md` spec retained for a future implementation when needed); cross-module hierarchy roll-ups (e.g. "all contacts under any descendant of X"); hierarchical permissions; bulk re-parent / drag-and-drop graph editor.
+
+  The list filter and the related no-op Atlas Search soft-delete cleanup (`mustNot exists path: removed.timestamp` in `get_all_companies.yaml` and `get_company_excel_data.yaml`) are documented in the design's "Related cleanup" section and remain pending.
+
+- [#43](https://github.com/lowdefy/modules-mongodb/pull/43) [`6167087`](https://github.com/lowdefy/modules-mongodb/commit/61670879121524df84b202f512c6c5bfcbf9804a) Thanks [@JohannMoller](https://github.com/JohannMoller)! - Add a `short_name` top-level field to the companies module for narrow display contexts (reports, chart axes, dense tables). The field is **required** on the create/edit form and is surfaced on the view-page core descriptions, the list table (between Name and Description), the Excel export, and the create/update API payloads.
+
+  Toggled by a new `short_name.enabled` var (default `true`, opt-out). When set to `false`, every surface referencing `short_name` — form input, view row, table column, Excel column, API payload — is omitted at build time and the field is absent from new documents. Existing documents that already carry `short_name` keep the value on disk but won't render or be written until re-enabled.
+
+  Apps that want `short_name` to drive selectors, table titles, and event templates can additionally set `name_field: short_name` on the module entry — the existing escape hatch already supports it.
+
+- [#45](https://github.com/lowdefy/modules-mongodb/pull/45) [`d64b5d2`](https://github.com/lowdefy/modules-mongodb/commit/d64b5d25183f77c0f9eae925765cfa858c742eaa) Thanks [@Yianni99](https://github.com/Yianni99)! - Change `event_display` defaulting and override semantics across all event-emitting modules. The default (no override) now renders titles under the consumer's `app_name` instead of a literal `default` key, and an override fully replaces the defaults instead of merging with them.
+
+  **Behavior changes (potentially breaking for consumers):**
+
+  - **Override fully replaces, no merge.** Whatever you write under `event_display` is exactly what's stored on the event document. Consumers that previously relied on partial overrides being merged with the module's defaults must now list every app and event type they want rendered.
+  - **Defaults file shape changed.** `modules/{name}/defaults/event_display.yaml` is now a flat `{ event-type: template }` map. The previous top-level `default:` wrapper is gone — the build wraps the flat map under the consumer's `app_name` var. Consumers that `_ref` the defaults file directly will see the new shape.
+  - **`companies` now requires `app_name`.** Every event-emitting module declares its app context the same way contacts/user-admin/user-account already did. Companies consumers must add `app_name` to their module vars (typically wired from `app_config.yaml`).
+
+  **Migration:**
+
+  - If you didn't override `event_display`, no action needed beyond setting `app_name` on companies.
+  - If you overrode `event_display`, list every app and event type you want stored — defaults no longer fill the gaps. The override shape stays `{ [app_name]: { [event-type]: template } }`.
+
+  See `docs/idioms.md#event-display` for the updated reference.
+
 ## 0.3.0
 
 ### Minor Changes
