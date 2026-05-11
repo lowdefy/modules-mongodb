@@ -1,0 +1,28 @@
+id: get_activities_for_entity
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: activities-collection
+payload:
+  reference_field:
+    _state: reference_field
+  reference_value:
+    _state: reference_value
+properties:
+  pipeline:
+    - $match:
+        _object.assign:
+          - deleted.timestamp:
+              $exists: false
+          - _object.defineProperty:
+              on: {}
+              key:
+                _payload: reference_field
+              descriptor:
+                value:
+                  _payload: reference_value
+    - _ref: requests/stages/add_derived_fields.yaml
+    - _ref: requests/stages/lookup_contacts.yaml
+    - _ref: requests/stages/lookup_companies.yaml
+    - $sort:
+        updated.timestamp: -1
+    - $limit: 20

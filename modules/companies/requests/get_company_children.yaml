@@ -10,7 +10,7 @@ properties:
     - $match:
         parent_ids:
           _payload: parent_id
-        removed:
+        deleted:
           $ne: true
     - $addFields:
         display_name:

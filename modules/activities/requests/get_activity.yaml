@@ -1,0 +1,18 @@
+id: get_activity
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: activities-collection
+payload:
+  _id:
+    _url_query: _id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: _id
+        deleted.timestamp:
+          $exists: false
+    - $limit: 1
+    - _ref: requests/stages/add_derived_fields.yaml
+    - _ref: requests/stages/lookup_contacts.yaml
+    - _ref: requests/stages/lookup_companies.yaml

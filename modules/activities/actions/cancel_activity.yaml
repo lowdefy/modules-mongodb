@@ -1,0 +1,14 @@
+- id: cancel
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: change-activity-status
+    payload:
+      activity_id:
+        _payload: activity_id
+      stage: cancelled
+  messages:
+    success:
+      _string.concat:
+        - _module.var: label
+        - " cancelled."

@@ -1,0 +1,15 @@
+call:
+  title: Call
+  color: "#1890ff"
+  icon: AiOutlinePhone
+  default_stage: done
+meeting:
+  title: Meeting
+  color: "#722ed1"
+  icon: AiOutlineCalendar
+  default_stage: done # flip to 'open' once scheduled_at lands
+email:
+  title: Email
+  color: "#13c2c2"
+  icon: AiOutlineMail
+  default_stage: done

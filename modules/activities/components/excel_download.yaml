@@ -1,0 +1,82 @@
+# Excel export trigger for the activities list page.
+#
+# Fetches `get_activities_excel_data` (Task 7) — the same filter state
+# the table reads, with linked-entity lookups joined and timestamps
+# pre-formatted — then downloads it as an .xlsx file via Lowdefy's
+# `DownloadXlsx` action.
+#
+# Linked contacts and companies arrays are NOT included in the default
+# schema — `DownloadXlsx`'s `schema[].value` is a row-data path string,
+# not a JS callback, so flattening nested arrays per row would have to
+# happen upstream in `requests/get_activities_excel_data.yaml` (e.g.,
+# an `$addFields` stage that joins names into strings) before they can
+# be exported as scalar cells. Consumers that want them in the export
+# add the projection in `request_stages.get_all_activities` and the
+# matching column in `components.download_columns`.
+#
+# Consumer-extension hook:
+#   - `_module.var: components.download_columns` — extra column defs
+#     injected between the built-in core columns and the trailing
+#     timestamp columns.
+id: export_button
+type: Button
+layout:
+  flex: 0 0 auto
+properties:
+  title: Download Excel File
+  variant: outlined
+events:
+  onClick:
+    - id: fetch_excel_data
+      type: FetchRequest
+      params:
+        requestName: get_activities_excel_data
+    - id: xlsx_download
+      type: DownloadXlsx
+      params:
+        fileName:
+          _string.concat:
+            - _module.var: label_plural
+            - _Export
+        dateFormat: "YYYY/MM/DD"
+        data:
+          _actions: fetch_excel_data.response
+        schema:
+          _build.array.concat:
+            - - column: id
+                value: _id
+                type: String
+                width: 14
+              - column: type
+                value: type
+                type: String
+                width: 12
+              - column: title
+                value: title
+                type: String
+                width: 30
+              - column: stage
+                value: current_stage
+                type: String
+                width: 12
+              - column: description
+                value: description
+                type: String
+                width: 40
+              - column: completed_at
+                value: completed_at
+                type: String
+                width: 18
+              - column: cancelled_at
+                value: cancelled_at
+                type: String
+                width: 18
+            - _module.var: components.download_columns
+            - - column: updated_at
+                value: updated_at
+                type: String
+                width: 12
+              - column: created_at
+                value: created_at
+                type: String
+                width: 12

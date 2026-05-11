@@ -67,7 +67,7 @@ updated: change_stamp # Set on every write, unconditionally
 # Soft lifecycle (pick what fits)
 hidden: Boolean # Excluded from list queries (contacts)
 disabled: Boolean # Globally or per-app disabled
-removed: null | change_stamp # Soft delete with timestamp (files, companies)
+deleted: null | change_stamp # Soft delete with timestamp (files, companies)
 archive: Boolean # Archived/soft-deleted (manufacturers, raw materials)
 ```
 
@@ -245,7 +245,7 @@ schema:
       created: change_stamp
 
   # --- Soft lifecycle ---
-  removed: change_stamp                              # for soft deleting data
+  deleted: change_stamp                              # for soft deleting data
 
   # --- Audit ---
   created: change_stamp

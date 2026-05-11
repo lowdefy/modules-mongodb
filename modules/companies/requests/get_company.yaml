@@ -11,7 +11,7 @@ properties:
       - - $match:
             _id:
               _payload: _id
-            removed:
+            deleted:
               $ne: true
       # Resolve parent docs by name when hierarchy is enabled. localField
       # parent_ids + foreignField _id natively handles multikey expansion
@@ -32,7 +32,7 @@ properties:
                 foreignField: _id
                 pipeline:
                   - $match:
-                      removed:
+                      deleted:
                         $ne: true
                   - $project:
                       _build.object.fromEntries:

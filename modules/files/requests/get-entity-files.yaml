@@ -9,7 +9,7 @@ properties:
           _var: entity_type
         doc_id:
           _var: entity_id
-        removed:
+        deleted:
           $ne: true
     - _build.if:
         test:

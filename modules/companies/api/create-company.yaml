@@ -39,7 +39,7 @@ routine:
                       _if_none:
                         - _payload: contact.primary_email
                         - ""
-                removed: null
+                deleted: null
                 created:
                   _ref:
                     module: events

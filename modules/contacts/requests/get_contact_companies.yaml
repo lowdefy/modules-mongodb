@@ -15,7 +15,7 @@ properties:
             _if_none:
               - _payload: company_ids
               - []
-        removed:
+        deleted:
           $ne: true
     - $addFields:
         display_name:

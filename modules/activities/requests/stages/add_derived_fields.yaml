@@ -1,0 +1,44 @@
+$addFields:
+  current_stage:
+    $arrayElemAt:
+      - "$status.stage"
+      - 0
+  completed_at:
+    $let:
+      vars:
+        done:
+          $arrayElemAt:
+            - $filter:
+                input: "$status"
+                cond:
+                  $eq:
+                    - "$$this.stage"
+                    - done
+            - 0
+      in: "$$done.created.timestamp"
+  cancelled_at:
+    $let:
+      vars:
+        cancelled:
+          $arrayElemAt:
+            - $filter:
+                input: "$status"
+                cond:
+                  $eq:
+                    - "$$this.stage"
+                    - cancelled
+            - 0
+      in: "$$cancelled.created.timestamp"
+  opened_at:
+    $let:
+      vars:
+        open:
+          $arrayElemAt:
+            - $filter:
+                input: "$status"
+                cond:
+                  $eq:
+                    - "$$this.stage"
+                    - open
+            - 0
+      in: "$$open.created.timestamp"

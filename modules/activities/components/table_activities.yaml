@@ -1,0 +1,270 @@
+# AgGridBalham table for the activities list page.
+#
+# Reads from `requests/get_activities.yaml` — rows already include the
+# derived `current_stage`, `updated_at`, `created_at` and the joined
+# linked-entity arrays (via the list pipeline). Click any non-action
+# cell to navigate to `pageId: view` with `?_id=<uuid>`. The two
+# trailing "action" columns flip the activity's stage in place via
+# `change-activity-status` (Mark done / Reopen / Cancel) and refetch
+# the list.
+#
+# Row-action wiring. AgGrid has no built-in "actions" cell type that
+# binds click handlers per-button, and Nunjucks cellRenderer HTML can't
+# bind handlers either. So this table funnels every interaction through
+# `onCellClick`, which fires once with `_event.colId` set to the column
+# the user clicked. Action columns dispatch a `change-activity-status`
+# CallApi keyed on `colId` + the row's `current_stage`; non-action
+# columns fall through to the navigation step. `onRowClick` is not
+# wired — using `onCellClick` end-to-end keeps stage-flip clicks from
+# also navigating to the detail page.
+#
+# Consumer-extension hooks:
+#   - `_module.var: components.table_columns` — extra column defs
+#     injected between the built-in core columns and the trailing
+#     timestamp / action columns.
+id: activities_table
+type: AgGridBalham
+properties:
+  height: 70vh
+  overlayNoRowsTemplate:
+    _if:
+      test:
+        _not:
+          _request: get_activities
+      then: Loading...
+      else: No rows
+  rowStyle:
+    cursor: pointer
+  rowData:
+    _request: get_activities
+  defaultColDef:
+    sortable: true
+    resizable: true
+    cellStyle:
+      cursor: pointer
+      wordBreak: break-word
+      lineHeight: 1.25
+      paddingBottom: 8px
+      paddingTop: 8px
+  columnDefs:
+    _build.array.concat:
+      - - headerName: Type
+          field: type
+          width: 130
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% if entry %}<span style="display:inline-flex; align-items:center; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:600; color:{{ entry.color }}; background:color-mix(in srgb, {{ entry.color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ entry.color }} 30%, transparent)">{{ entry.title }}</span>{% elif type %}<span style="font-size:11px; color:var(--ant-color-text-secondary)">{{ type }}</span>{% else %}&mdash;{% endif %}
+                on:
+                  type:
+                    __args: 0.data.type
+                  entry:
+                    __get:
+                      from:
+                        _build.object.assign:
+                          - _ref: enums/activity_types.yaml
+                          - _module.var: activity_types
+                      key:
+                        __args: 0.data.type
+        - headerName: Title
+          field: title
+          flex: 2
+          minWidth: 220
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% if title %}<span>{{ title }}</span>{% else %}<span style="color:var(--ant-color-text-secondary); font-style:italic">Untitled</span>{% endif %}
+                on:
+                  title:
+                    __args: 0.data.title
+        - headerName: Stage
+          field: current_stage
+          width: 120
+          cellStyle:
+            cursor: pointer
+            wordBreak: break-word
+            lineHeight: 1.25
+            paddingBottom: 8px
+            paddingTop: 8px
+            textTransform: capitalize
+          cell:
+            type: tag
+            colorMap:
+              open: "#1890ff"
+              done: "#52c41a"
+              cancelled: "#8c8c8c"
+            default: "#8c8c8c"
+        - headerName: Contacts
+          field: contacts
+          flex: 1
+          minWidth: 160
+          wrapText: true
+          autoHeight: true
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% if contacts and contacts.length %}
+                    {% for contact in contacts %}<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; background:var(--ant-color-fill-secondary); margin:2px 4px 2px 0">{{ contact.profile.name or contact._id }}</span>{% endfor %}
+                  {% else %}&mdash;{% endif %}
+                on:
+                  contacts:
+                    __args: 0.data.contacts
+        - headerName: Companies
+          field: companies
+          flex: 1
+          minWidth: 160
+          wrapText: true
+          autoHeight: true
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% if companies and companies.length %}
+                    {% for company in companies %}<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; background:var(--ant-color-fill-secondary); margin:2px 4px 2px 0">{{ company.trading_name or company._id }}</span>{% endfor %}
+                  {% else %}&mdash;{% endif %}
+                on:
+                  companies:
+                    __args: 0.data.companies
+      - _module.var: components.table_columns
+      - - headerName: Updated
+          field: updated_at
+          width: 120
+        - headerName: Created
+          field: created_at
+          width: 120
+        # Primary stage action: "Mark done" when open, "Reopen" when done/cancelled.
+        - headerName: Action
+          colId: status_action
+          field: current_stage
+          width: 110
+          sortable: false
+          resizable: false
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% if stage == 'open' %}
+                  <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#52c41a; background:color-mix(in srgb,#52c41a 12%,transparent); border:1px solid color-mix(in srgb,#52c41a 30%,transparent); cursor:pointer">Mark done</span>
+                  {% elif stage == 'done' or stage == 'cancelled' %}
+                  <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#1890ff; background:color-mix(in srgb,#1890ff 12%,transparent); border:1px solid color-mix(in srgb,#1890ff 30%,transparent); cursor:pointer">Reopen</span>
+                  {% endif %}
+                on:
+                  stage:
+                    __args: 0.data.current_stage
+        # Secondary action: Cancel — only shown when current stage is open.
+        - headerName: Cancel
+          colId: cancel_action
+          field: current_stage
+          width: 90
+          sortable: false
+          resizable: false
+          cellRenderer:
+            _function:
+              __nunjucks:
+                template: |
+                  {% if stage == 'open' %}<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#8c8c8c; background:color-mix(in srgb,#8c8c8c 12%,transparent); border:1px solid color-mix(in srgb,#8c8c8c 30%,transparent); cursor:pointer">Cancel</span>{% else %}&mdash;{% endif %}
+                on:
+                  stage:
+                    __args: 0.data.current_stage
+events:
+  onCellClick:
+    - id: stage_complete
+      type: CallAPI
+      messages:
+        success:
+          _string.concat:
+            - _module.var: label
+            - " marked done."
+      skip:
+        _or:
+          - _ne:
+              - _event: colId
+              - status_action
+          - _ne:
+              - _event: row.current_stage
+              - open
+      params:
+        endpointId:
+          _module.endpointId: change-activity-status
+        payload:
+          activity_id:
+            _event: row._id
+          stage: done
+    - id: stage_reopen
+      type: CallAPI
+      messages:
+        success:
+          _string.concat:
+            - _module.var: label
+            - " reopened."
+      skip:
+        _or:
+          - _ne:
+              - _event: colId
+              - status_action
+          - _and:
+              - _ne:
+                  - _event: row.current_stage
+                  - done
+              - _ne:
+                  - _event: row.current_stage
+                  - cancelled
+      params:
+        endpointId:
+          _module.endpointId: change-activity-status
+        payload:
+          activity_id:
+            _event: row._id
+          stage: open
+    - id: stage_cancel
+      type: CallAPI
+      messages:
+        success:
+          _string.concat:
+            - _module.var: label
+            - " cancelled."
+      skip:
+        _or:
+          - _ne:
+              - _event: colId
+              - cancel_action
+          - _ne:
+              - _event: row.current_stage
+              - open
+      params:
+        endpointId:
+          _module.endpointId: change-activity-status
+        payload:
+          activity_id:
+            _event: row._id
+          stage: cancelled
+    - id: refetch_after_status
+      type: Request
+      skip:
+        _and:
+          - _ne:
+              - _event: colId
+              - status_action
+          - _ne:
+              - _event: colId
+              - cancel_action
+      params: get_activities
+    - id: link_to_detail
+      type: Link
+      skip:
+        _or:
+          - _eq:
+              - _event: colId
+              - status_action
+          - _eq:
+              - _event: colId
+              - cancel_action
+      params:
+        pageId:
+          _module.pageId: view
+        urlQuery:
+          _id:
+            _event: row._id

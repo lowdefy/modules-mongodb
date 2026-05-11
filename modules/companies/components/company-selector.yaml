@@ -14,15 +14,19 @@ events:
       type: Request
       params: get_companies_for_selector
 properties:
+  title:
+    _if_none:
+      - _var: title
+      - _module.var: label
   placeholder:
     _string.concat:
       - "Select "
       - _if_none:
-          - _var: label
+          - _var: title
           - _module.var: label
   options:
     _request: get_companies_for_selector
-  title:
-    _if_none:
-      - _var: label
-      - _module.var: label
+  label:
+    _var:
+      key: label
+      default: {}

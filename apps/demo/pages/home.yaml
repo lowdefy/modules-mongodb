@@ -18,6 +18,22 @@ _ref:
         layout:
           gap: 16
         blocks:
+          - id: activities_link
+            type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Activities
+              icon: AiOutlineFlag
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: activities/all
           - id: user_admin_link
             type: Button
             layout:

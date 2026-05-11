@@ -1,0 +1,135 @@
+# Filter panel for the activities list page.
+#
+# Drives `state.filter.{search,type,stage,date_from,date_to}` — the
+# same paths consumed by `requests/get_activities.yaml`. Every change
+# resets pagination and refetches `get_activities` so the table
+# reflects the new filter set immediately.
+#
+# Linked-contact / linked-company filtering. The list request also
+# honours `state.filter.contact_id` and `state.filter.company_id`, but
+# this panel does NOT render entity selectors for them. The contacts
+# `basic-contact-selector` and companies `company-selector` exports
+# don't forward an `events.onChange` var, so embedding them here would
+# write filter state silently without refetching the list. Those two
+# filters are surfaced two other ways:
+#   1. URL-param hydration on `pages/all.yaml` (Task 14) seeds them
+#      from `_url_query.contact_id` / `_url_query.company_id` — the
+#      contract used by `tile_activities`'s "View all" link and any
+#      external deep-link.
+#   2. Consumers wanting an in-page picker add it via
+#      `components.filters` (and pair it with their own
+#      `Reset + Request get_activities` onChange wiring).
+#
+# Consumer-extension hook:
+#   - `_module.var: components.filters` — extra filter blocks rendered
+#     on a separate row of the wrapping page (see `pages/all.yaml`).
+#     This component intentionally does not embed that var so
+#     consumers can place their custom filters wherever they want
+#     (typically directly under the built-in filter panel).
+id: activities_filter
+type: Box
+layout:
+  gap: 8
+style:
+  maxWidth: 1200
+  margin: auto
+blocks:
+  - id: filter.search
+    type: TextInput
+    layout:
+      flex: 1 1 240px
+    properties:
+      placeholder:
+        _string.concat:
+          - "Search "
+          - _module.var: label_plural
+          - " by title or description"
+      label:
+        disabled: true
+    events:
+      onPressEnter:
+        _ref: components/actions/filter_changed.yaml
+      onChange:
+        try:
+          _ref: components/actions/filter_changed.yaml
+        debounce:
+          ms: 500
+  - id: filter.type
+    type: Selector
+    layout:
+      flex: 0 1 180px
+    properties:
+      placeholder: Type
+      label:
+        disabled: true
+      allowClear: true
+      options:
+        _build.array.map:
+          on:
+            _build.object.entries:
+              _build.object.assign:
+                - _ref: enums/activity_types.yaml
+                - _module.var: activity_types
+          callback:
+            _build.function:
+              value:
+                __build.args: "0.0"
+              label:
+                __build.args: 0.1.title
+    events:
+      onChange:
+        _ref: components/actions/filter_changed.yaml
+  - id: filter.stage
+    type: Selector
+    layout:
+      flex: 0 1 160px
+    properties:
+      placeholder: Stage
+      label:
+        disabled: true
+      allowClear: true
+      options:
+        - value: open
+          label: Open
+        - value: done
+          label: Done
+        - value: cancelled
+          label: Cancelled
+    events:
+      onChange:
+        _ref: components/actions/filter_changed.yaml
+  - id: filter.date_from
+    type: DateSelector
+    layout:
+      flex: 0 1 180px
+    properties:
+      placeholder: From
+      label:
+        disabled: true
+    events:
+      onChange:
+        _ref: components/actions/filter_changed.yaml
+  - id: filter.date_to
+    type: DateSelector
+    layout:
+      flex: 0 1 180px
+    properties:
+      placeholder: To
+      label:
+        disabled: true
+    events:
+      onChange:
+        _ref: components/actions/filter_changed.yaml
+  - id: filter.clear
+    type: Button
+    layout:
+      flex: 0 0 auto
+    properties:
+      title: Clear
+      icon: AiOutlineClear
+    events:
+      onClick:
+        _build.array.concat:
+          - - id: reset
+              type: Reset
+          - _ref: components/actions/filter_changed.yaml

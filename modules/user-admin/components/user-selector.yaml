@@ -8,13 +8,11 @@ events:
       type: Request
       params: get_users_for_selector
 properties:
+  title: User
   placeholder: Select a user
   options:
     _request: get_users_for_selector
   label:
     _var:
       key: label
-      default: User
-  optionConfig:
-    titleField: label
-    valueField: value
+      default: {}

@@ -298,7 +298,7 @@ questions but shape the design materially:
   state to figure out what happened.
 - **Dedicated `delete-activity` API for soft-delete, not a flag on
   `update-activity`.** Mirrors `change-activity-status` (single-purpose
-  endpoint) and the files module's `delete-file`. Sets `removed:
+  endpoint) and the files module's `delete-file`. Sets `deleted:
   change_stamp` + bumps `updated`, emits `delete-activity` with full
   references. Keeps `update-activity`'s editable-fields list clean and
   the event-emission contract obvious from the call site.

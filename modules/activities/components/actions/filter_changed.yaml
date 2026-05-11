@@ -1,0 +1,22 @@
+# Action sequence triggered by filter input changes.
+#
+# Resets pagination back to the first page (a filter change invalidates
+# the current page index — page 5 of the previous filter set has no
+# meaning under the new one) and refetches `get_activities`. Used by
+# every onChange/onPressEnter in `filter_activities.yaml`.
+#
+# Mirrors `modules/companies/actions/search.yaml` and
+# `modules/contacts/actions/search.yaml`. Lives under
+# `components/actions/` rather than `actions/` so it's not mistaken for
+# a cross-module export (the module manifest doesn't declare this).
+- id: update_pagination
+  type: SetState
+  params:
+    pagination:
+      current: 1
+      skip: 0
+      pageSize:
+        _state: pagination.pageSize
+- id: get_data
+  type: Request
+  params: get_activities

@@ -94,7 +94,7 @@ properties:
                                   - null
 
         - $match:
-            removed: null
+            deleted: null
         - $match:
             _object.assign:
               - _if:

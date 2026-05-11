@@ -21,7 +21,7 @@ properties:
     - $match:
         _id:
           _payload: root_id
-        removed:
+        deleted:
           $ne: true
     - $graphLookup:
         from:

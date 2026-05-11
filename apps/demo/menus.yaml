@@ -13,6 +13,9 @@
           - _ref:
               module: contacts
               menu: default
+          - _ref:
+              module: activities
+              menu: default
     - id: admin-group
       type: MenuGroup
       properties:

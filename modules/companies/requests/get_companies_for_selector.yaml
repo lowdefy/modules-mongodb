@@ -20,7 +20,7 @@ payload:
 properties:
   pipeline:
     - $match:
-        removed:
+        deleted:
           $ne: true
         # Exclude self entirely. When cycle_check_self_id is null (every
         # consumer that doesn't set it), $ne: null is true for all docs and

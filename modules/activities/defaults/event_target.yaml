@@ -1,0 +1,20 @@
+_id:
+  _payload: _id
+title:
+  _payload: title
+type:
+  _payload: type
+type_label:
+  _get:
+    from:
+      _build.object.assign:
+        - _ref: enums/activity_types.yaml
+        - _module.var: activity_types
+    key:
+      _string.concat:
+        - _payload: type
+        - .title
+    default:
+      _payload: type
+description:
+  _payload: description

@@ -1,0 +1,100 @@
+id: update-activity
+type: Api
+routine:
+  - id: update
+    type: MongoDBUpdateOne
+    connectionId:
+      _module.connectionId: activities-collection
+    properties:
+      filter:
+        _id:
+          _payload: _id
+        updated.timestamp:
+          _payload: updated.timestamp
+      update:
+        _build.array.concat:
+          # Stage 1: Overwrite scalars + arrays, merge attributes
+          - - $set:
+                title:
+                  _payload: title
+                description:
+                  _payload: description
+                contact_ids:
+                  _if_none:
+                    - _payload: contact_ids
+                    - []
+                company_ids:
+                  _if_none:
+                    - _payload: company_ids
+                    - []
+                attributes:
+                  $mergeObjects:
+                    - $ifNull:
+                        - "$$ROOT.attributes"
+                        - {}
+                    - $ifNull:
+                        - _payload: attributes
+                        - {}
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+          # Consumer pipeline stages
+          - _module.var: request_stages.write
+
+  - id: new-event
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: update-activity
+        display:
+          _build.object.fromEntries:
+            _build.array.map:
+              on:
+                _build.array.filter:
+                  on:
+                    _build.object.entries:
+                      _build.object.assign:
+                        - _ref: defaults/event_display.yaml
+                        - _module.var: event_display
+                  callback:
+                    _build.function:
+                      __build.ne:
+                        - __build.if_none:
+                            - __build.args: 0.1.update-activity
+                            - null
+                        - null
+              callback:
+                _build.function:
+                  - __build.args: "0.0"
+                  - title:
+                      _nunjucks:
+                        template:
+                          __build.args: 0.1.update-activity
+                        on:
+                          user:
+                            _user: true
+                          target:
+                            _ref: defaults/event_target.yaml
+                    description: null
+        references:
+          contact_ids:
+            _if_none:
+              - _payload: contact_ids
+              - []
+          company_ids:
+            _if_none:
+              - _payload: company_ids
+              - []
+          activity_ids:
+            - _payload: _id
+        metadata:
+          activity_id:
+            _payload: _id
+
+  - :return:
+      success: true

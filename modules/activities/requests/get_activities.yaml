@@ -1,0 +1,183 @@
+id: get_activities
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: activities-collection
+payload:
+  pagination:
+    _state: pagination
+  filter:
+    _state: filter
+  sort:
+    _state: sort
+properties:
+  pipeline:
+    - $search:
+        compound:
+          filter:
+            - compound:
+                mustNot:
+                  - exists:
+                      path: deleted.timestamp
+                must:
+                  _array.concat:
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.search
+                            - null
+                        then:
+                          - compound:
+                              should:
+                                - text:
+                                    query:
+                                      _string.toLowerCase:
+                                        _payload: filter.search
+                                    path:
+                                      - title
+                                      - description
+                                - wildcard:
+                                    query:
+                                      _string.concat:
+                                        - "*"
+                                        - _string.toLowerCase:
+                                            _payload: filter.search
+                                        - "*"
+                                    path:
+                                      - title
+                                      - description
+                                    allowAnalyzedField: true
+                        else: []
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.type
+                            - null
+                        then:
+                          - equals:
+                              path: type
+                              value:
+                                _payload: filter.type
+                        else: []
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.stage
+                            - null
+                        then:
+                          - equals:
+                              path: status.0.stage
+                              value:
+                                _payload: filter.stage
+                        else: []
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.contact_id
+                            - null
+                        then:
+                          - equals:
+                              path: contact_ids
+                              value:
+                                _payload: filter.contact_id
+                        else: []
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.company_id
+                            - null
+                        then:
+                          - equals:
+                              path: company_ids
+                              value:
+                                _payload: filter.company_id
+                        else: []
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.date_from
+                            - null
+                        then:
+                          - range:
+                              path: updated.timestamp
+                              gte:
+                                _date:
+                                  _if_none:
+                                    - _payload: filter.date_from
+                                    - 0
+                        else: []
+                    - _if:
+                        test:
+                          _ne:
+                            - _payload: filter.date_to
+                            - null
+                        then:
+                          - range:
+                              path: updated.timestamp
+                              lte:
+                                _date:
+                                  _if_none:
+                                    - _payload: filter.date_to
+                                    - 0
+                        else: []
+                    - _array.filter:
+                        - _module.var: request_stages.filter_match
+                        - _function:
+                            __ne:
+                              - __args: 0
+                              - null
+
+    - $addFields:
+        score:
+          $meta: searchScore
+    - $facet:
+        count:
+          - $count: total
+        results:
+          _build.array.concat:
+            - - _if:
+                  test:
+                    _eq:
+                      - _if_none:
+                          - _payload: filter.search
+                          - null
+                      - null
+                  then:
+                    $sort:
+                      _object.assign:
+                        - _object.defineProperty:
+                            on: {}
+                            key:
+                              _payload: sort.by
+                            descriptor:
+                              value:
+                                _payload: sort.order
+                        - _id: 1
+                  else:
+                    $sort:
+                      score: -1
+                      updated.timestamp: -1
+              - $skip:
+                  _payload: pagination.skip
+              - $limit:
+                  _payload: pagination.pageSize
+              - _ref: requests/stages/add_derived_fields.yaml
+              - _ref: requests/stages/lookup_contacts.yaml
+              - _ref: requests/stages/lookup_companies.yaml
+              - $addFields:
+                  updated_at:
+                    $dateToString:
+                      date: $updated.timestamp
+                      format: "%Y-%m-%d"
+                  created_at:
+                    $dateToString:
+                      date: $created.timestamp
+                      format: "%Y-%m-%d"
+            - _module.var: request_stages.get_all_activities
+    - $unwind:
+        path: $count
+    - $unwind:
+        path: $results
+    - $addFields:
+        results.total_results: $count.total
+    - $replaceRoot:
+        newRoot: $results

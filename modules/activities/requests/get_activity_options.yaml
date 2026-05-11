@@ -1,0 +1,20 @@
+id: get_activity_options
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: activities-collection
+properties:
+  pipeline:
+    _build.array.concat:
+      - - $match:
+            deleted.timestamp:
+              $exists: false
+        - _ref: requests/stages/add_derived_fields.yaml
+        - $sort:
+            updated.timestamp: -1
+        - $limit: 50
+        - $project:
+            _id: 1
+            title: 1
+            type: 1
+            current_stage: 1
+      - _module.var: request_stages.selector

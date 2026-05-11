@@ -1,0 +1,77 @@
+# Selector / MultipleSelector for picking activities — backed by
+# `get_activity_options` (recent-first, current-stage projected).
+#
+# Mirrors `companies/company-selector.yaml` and
+# `contacts/basic-contact-selector.yaml`. The request returns
+# `_id, title, type, current_stage`; this block builds an option label
+# at runtime by mapping the response and looking up the human type
+# label from the merged `activity_types` enum (built-in + consumer
+# additions). No request changes — the option-shape transform lives
+# entirely in the selector.
+#
+# Vars:
+#   field_id (string, default "activity") — block id / state key.
+#   mode     (string, default "Selector") — "Selector" or "MultipleSelector".
+#   title    (string) — visible field title. Defaults to the module
+#                       `label` var ("Activity"). Placeholder follows
+#                       the same source ("Select <title>").
+#   label    (object) — Form.Item Label config (extra, tooltip, etc.)
+#                       — passed to the Selector's Label wrapper via
+#                       the spread; not the visible field title.
+id:
+  _var:
+    key: field_id
+    default: activity
+type:
+  _var:
+    key: mode
+    default: Selector
+requests:
+  - _ref: requests/get_activity_options.yaml
+events:
+  onMount:
+    - id: fetch_activities
+      type: Request
+      params: get_activity_options
+properties:
+  title:
+    _if_none:
+      - _var: title
+      - _module.var: label
+  placeholder:
+    _string.concat:
+      - "Select "
+      - _if_none:
+          - _var: title
+          - _module.var: label
+  label:
+    _var:
+      key: label
+      default: {}
+  options:
+    _array.map:
+      on:
+        _if_none:
+          - _request: get_activity_options
+          - []
+      callback:
+        _function:
+          value:
+            __args: 0._id
+          label:
+            __string.concat:
+              - __get:
+                  from:
+                    _build.object.assign:
+                      - _ref: enums/activity_types.yaml
+                      - _module.var: activity_types
+                  key:
+                    __string.concat:
+                      - __args: 0.type
+                      - .title
+                  default:
+                    __args: 0.type
+              - ": "
+              - __if_none:
+                  - __args: 0.title
+                  - Untitled

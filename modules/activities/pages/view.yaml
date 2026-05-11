@@ -1,0 +1,410 @@
+# Activity detail page (`pageId: view`).
+#
+# Resolves the activity by `_url_query: _id`, renders `view_activity` in
+# the main column with an events timeline below, and sidebar tiles for
+# files, linked contacts, and linked companies. Header actions: Edit,
+# stage transitions (Mark done / Reopen / Cancel), Delete.
+#
+# State plumbing (the contract `view_activity.yaml` declares in its
+# header comment):
+#   1. `get_activity` fires onMountAsync.
+#   2. `state.contacts` and `state.companies` mirror the looked-up
+#      arrays from `get_activity.0` so `contact_list_items` and
+#      `company_list_items` (which read from `_state`) render the chips
+#      without their own requests.
+#
+# Files sidebar embeds `files.file-card` inline (per `decisions.md` §4
+# — no local `tile_files.yaml` wrapper).
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: view
+    title:
+      _nunjucks:
+        template: |
+          {{ label }}{% if title %}: {{ title | safe }}{% endif %}
+        on:
+          label:
+            _module.var: label
+          title:
+            _if_none:
+              - _request: get_activity.0.title
+              - ""
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label:
+          _module.var: label_plural
+        pageId:
+          _module.pageId: all
+      - label:
+          _if_none:
+            - _request: get_activity.0.title
+            - ""
+    page_actions:
+      - id: edit_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title: Edit
+          icon: AiOutlineEdit
+          type: default
+        events:
+          onClick:
+            - id: go_edit
+              type: Link
+              params:
+                pageId:
+                  _module.pageId: edit
+                urlQuery:
+                  _id:
+                    _url_query: _id
+      - id: mark_done_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _eq:
+            - _request: get_activity.0.current_stage
+            - open
+        properties:
+          title: Mark done
+          icon: AiOutlineCheckCircle
+          type: default
+        events:
+          onClick:
+            - id: complete
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: change-activity-status
+                payload:
+                  activity_id:
+                    _url_query: _id
+                  stage: done
+              messages:
+                success:
+                  _string.concat:
+                    - _module.var: label
+                    - " marked done."
+            - id: refetch_after_complete
+              type: Request
+              params: get_activity
+            - id: rehydrate_after_complete
+              type: SetState
+              params:
+                contacts:
+                  _if_none:
+                    - _request: get_activity.0.contacts
+                    - []
+                companies:
+                  _if_none:
+                    - _request: get_activity.0.companies
+                    - []
+      - id: reopen_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _or:
+            - _eq:
+                - _request: get_activity.0.current_stage
+                - done
+            - _eq:
+                - _request: get_activity.0.current_stage
+                - cancelled
+        properties:
+          title: Reopen
+          icon: AiOutlineReload
+          type: default
+        events:
+          onClick:
+            - id: reopen
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: change-activity-status
+                payload:
+                  activity_id:
+                    _url_query: _id
+                  stage: open
+              messages:
+                success:
+                  _string.concat:
+                    - _module.var: label
+                    - " reopened."
+            - id: refetch_after_reopen
+              type: Request
+              params: get_activity
+            - id: rehydrate_after_reopen
+              type: SetState
+              params:
+                contacts:
+                  _if_none:
+                    - _request: get_activity.0.contacts
+                    - []
+                companies:
+                  _if_none:
+                    - _request: get_activity.0.companies
+                    - []
+      - id: cancel_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _or:
+            - _eq:
+                - _request: get_activity.0.current_stage
+                - open
+            - _eq:
+                - _request: get_activity.0.current_stage
+                - done
+        properties:
+          title: Cancel
+          icon: AiOutlineStop
+          type: default
+        events:
+          onClick:
+            - id: cancel
+              type: CallAPI
+              params:
+                endpointId:
+                  _module.endpointId: change-activity-status
+                payload:
+                  activity_id:
+                    _url_query: _id
+                  stage: cancelled
+              messages:
+                success:
+                  _string.concat:
+                    - _module.var: label
+                    - " cancelled."
+            - id: refetch_after_cancel
+              type: Request
+              params: get_activity
+            - id: rehydrate_after_cancel
+              type: SetState
+              params:
+                contacts:
+                  _if_none:
+                    - _request: get_activity.0.contacts
+                    - []
+                companies:
+                  _if_none:
+                    - _request: get_activity.0.companies
+                    - []
+      - id: delete_button
+        type: Button
+        layout:
+          flex: 0 1 auto
+        properties:
+          title: Delete
+          icon: AiOutlineDelete
+          danger: true
+          type: default
+        events:
+          onClick:
+            - id: open_delete_modal
+              type: CallMethod
+              params:
+                blockId: delete_modal
+                method: setOpen
+                args:
+                  - open: true
+    doc:
+      _request: get_activity.0
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            contacts: []
+            companies: []
+      onMount:
+        - id: fetch
+          type: Request
+          params: get_activity
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_activity.0
+              - null
+          params:
+            pageId:
+              _module.pageId: all
+        - id: hydrate
+          type: SetState
+          params:
+            contacts:
+              _if_none:
+                - _request: get_activity.0.contacts
+                - []
+            companies:
+              _if_none:
+                - _request: get_activity.0.companies
+                - []
+    requests:
+      - _ref: requests/get_activity.yaml
+    blocks:
+      - id: detail_layout
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: main_column
+            type: Box
+            layout:
+              span: 14
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - - _ref:
+                      module: layout
+                      component: card
+                      vars:
+                        title:
+                          _string.concat:
+                            - _module.var: label
+                            - " Information"
+                        blocks:
+                          - _ref: components/view_activity.yaml
+                  - _ref:
+                      module: layout
+                      component: card
+                      vars:
+                        title: History
+                        blocks:
+                          - _ref:
+                              module: events
+                              component: events-timeline
+                              vars:
+                                reference_field: activity_ids
+                                reference_value:
+                                  _url_query: _id
+                - _module.var: components.main_slots
+          - id: sidebar_column
+            type: Box
+            layout:
+              span: 10
+              sm:
+                span: 24
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - - id: files_wrapper
+                    type: Box
+                    ~ignoreBuildChecks:
+                      - state-refs
+                    blocks:
+                      - _ref:
+                          module: files
+                          component: file-card
+                          vars:
+                            entity_type: activity
+                            entity_id:
+                              _url_query: _id
+                  - _ref:
+                      module: layout
+                      component: card
+                      vars:
+                        title: Linked Contacts
+                        blocks:
+                          - _ref: components/contact_list_items.yaml
+                  - _ref:
+                      module: layout
+                      component: card
+                      vars:
+                        title: Linked Companies
+                        blocks:
+                          - _ref: components/company_list_items.yaml
+                - _module.var: components.sidebar_slots
+      # Delete confirmation modal (single instance per page).
+      - id: delete_modal
+        type: Modal
+        properties:
+          title:
+            _string.concat:
+              - "Delete "
+              - _module.var: label
+              - "?"
+          footer: false
+          width: 480
+        slots:
+          content:
+            blocks:
+              - id: delete_warning
+                type: Paragraph
+                properties:
+                  content:
+                    _string.concat:
+                      - "This will soft-delete the "
+                      - _module.var: label
+                      - ". This cannot be undone from the UI."
+              - id: delete_actions
+                type: Box
+                layout:
+                  gap: 8
+                  justify: end
+                style:
+                  marginTop: 12
+                blocks:
+                  - id: delete_cancel
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title: Cancel
+                      type: default
+                    events:
+                      onClick:
+                        - id: close_modal_cancel
+                          type: CallMethod
+                          params:
+                            blockId: delete_modal
+                            method: setOpen
+                            args:
+                              - open: false
+                  - id: delete_confirm
+                    type: Button
+                    layout:
+                      flex: 0 0 auto
+                    properties:
+                      title:
+                        _string.concat:
+                          - "Delete "
+                          - _module.var: label
+                      icon: AiOutlineDelete
+                      danger: true
+                      type: primary
+                    events:
+                      onClick:
+                        - id: delete
+                          type: CallAPI
+                          params:
+                            endpointId:
+                              _module.endpointId: delete-activity
+                            payload:
+                              activity_id:
+                                _url_query: _id
+                          messages:
+                            success:
+                              _string.concat:
+                                - _module.var: label
+                                - " deleted."
+                        - id: close_modal_after_delete
+                          type: CallMethod
+                          params:
+                            blockId: delete_modal
+                            method: setOpen
+                            args:
+                              - open: false
+                        - id: go_list
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: all
