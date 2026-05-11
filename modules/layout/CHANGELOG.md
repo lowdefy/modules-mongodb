@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-layout
 
+## 0.4.1
+
+### Patch Changes
+
+- [#47](https://github.com/lowdefy/modules-mongodb/pull/47) [`ee6f903`](https://github.com/lowdefy/modules-mongodb/commit/ee6f903e0c70cef71db1d6502343ad613f8133d0) Thanks [@Saiby100](https://github.com/Saiby100)! - Add `hide_footer` var to the layout `page` component. When set to `true`, the footer slot is omitted entirely (no styled wrapper rendered). Defaults to `false`, preserving existing behavior.
+
 ## 0.4.0
 
 ## 0.3.0

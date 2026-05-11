@@ -14,7 +14,7 @@ Self-service account pages — passwordless login, email-verification confirmati
 ```yaml
 modules:
   - id: user-account
-    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.4.0"
+    source: "github:lowdefy/modules-mongodb/modules/user-account@v0.4.1"
     vars:
       app_name: my-app
       fields:
