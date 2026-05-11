@@ -1,0 +1,23 @@
+id: file-download
+type: Box
+requests:
+  - _ref: requests/get-notification-file.yaml
+  - _ref: requests/download-notification-file.yaml
+events:
+  onMount:
+    - id: get_file
+      type: Request
+      params: get_notification_file
+    - id: set_file
+      type: SetState
+      params:
+        file:
+          _request: get_notification_file.0.file
+    - id: download_file
+      type: Request
+      params: download_notification_file
+    - id: link_to_file
+      type: Link
+      params:
+        url:
+          _request: download_notification_file

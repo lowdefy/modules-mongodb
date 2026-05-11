@@ -1,0 +1,11 @@
+id: notifications-files-bucket-public
+type: AwsS3Bucket
+properties:
+  accessKeyId:
+    _secret: FILES_S3_ACCESS_KEY_ID
+  secretAccessKey:
+    _secret: FILES_S3_SECRET_ACCESS_KEY
+  region:
+    _module.var: s3_region
+  bucket:
+    _secret: FILES_S3_BUCKET_PUB

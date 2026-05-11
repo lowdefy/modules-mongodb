@@ -1,0 +1,14 @@
+id: download_notification_file
+type: AwsS3PresignedGetObject
+connectionId:
+  _module.connectionId: notifications-files-bucket-public
+payload:
+  key:
+    _state: file.key
+  type:
+    _state: file.type
+properties:
+  key:
+    _payload: key
+  responseContentType:
+    _payload: type
