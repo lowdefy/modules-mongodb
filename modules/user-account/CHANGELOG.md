@@ -1,5 +1,7 @@
 # @lowdefy/modules-mongodb-user-account
 
+## 0.4.1
+
 ## 0.4.0
 
 ### Minor Changes
