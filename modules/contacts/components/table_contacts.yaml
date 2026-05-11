@@ -1,14 +1,11 @@
 id: contacts_table
 type: AgGridBalham
+loading:
+  _not:
+    _request: get_all_contacts
 properties:
   height: 70vh
-  overlayNoRowsTemplate:
-    _if:
-      test:
-        _not:
-          _request: get_all_contacts
-      then: Loading...
-      else: No rows
+  overlayNoRowsTemplate: No rows
   rowStyle:
     cursor: pointer
   rowData:

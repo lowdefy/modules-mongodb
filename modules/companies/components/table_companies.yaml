@@ -1,14 +1,11 @@
 id: companies_table
 type: AgGridBalham
+loading:
+  _not:
+    _request: get_all_companies
 properties:
   height: 70vh
-  overlayNoRowsTemplate:
-    _if:
-      test:
-        _not:
-          _request: get_all_companies
-      then: Loading...
-      else: No rows
+  overlayNoRowsTemplate: No rows
   rowStyle:
     cursor: pointer
   rowData:
