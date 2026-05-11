@@ -88,6 +88,17 @@ _ref:
                               __args: 0
                     updated:
                       _request: get_company.0.updated
+                  # short_name hydration (build-gated): only emitted when
+                  # short_name.enabled, otherwise Lowdefy's static `_state`
+                  # validator would flag a write to a state path no form
+                  # input binds to.
+                  - _build.if:
+                      test:
+                        _module.var: short_name.enabled
+                      then:
+                        short_name:
+                          _request: get_company.0.short_name
+                      else: {}
                   # Hierarchy state (build-gated): parent_ids prefills the
                   # form, cycle_check_self_id is read by the parent_selector's
                   # request to $match-exclude self, cycle_check_ids is read
@@ -183,6 +194,17 @@ _ref:
                                       __args: 0.contact_id
                               updated:
                                 _state: updated
+                            # short_name (build-gated): payload only carries
+                            # the value when short_name.enabled, otherwise the
+                            # static `_state` validator would flag a state path
+                            # no form input binds to.
+                            - _build.if:
+                                test:
+                                  _module.var: short_name.enabled
+                                then:
+                                  short_name:
+                                    _state: short_name
+                                else: {}
                             # parent_ids (build-gated): the form's auto-bound
                             # multi-select writes to state.parent_ids; payload
                             # forwards the array authoritative-ly. The

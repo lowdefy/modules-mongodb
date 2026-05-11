@@ -25,6 +25,21 @@ vars:
   name_field:
     default: name
     description: Field used as the display name in selectors and titles
+  short_name:
+    type: object
+    description: Configuration for the togglable required `short_name` top-level field on companies.
+    properties:
+      enabled:
+        type: boolean
+        default: true
+        description: >-
+          When true, adds a required `short_name` text input to the create/edit
+          form, the view-page core descriptions, the list table (between Name
+          and Description), the Excel export, and the create/update API
+          payloads. When false, every surface referencing `short_name` is
+          omitted at build time and the field is absent from new documents.
+          Existing documents that already carry `short_name` retain it on disk
+          but won't be rendered or written until re-enabled.
   id_prefix:
     default: "C-"
     description: Prefix for auto-generated consecutive IDs
