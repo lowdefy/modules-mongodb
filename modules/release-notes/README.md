@@ -15,7 +15,7 @@ This is the smallest module in the repo — a page, a menu, and one var.
 ```yaml
 modules:
   - id: release-notes
-    source: "github:lowdefy/modules-mongodb/modules/release-notes@v0.4.1"
+    source: "github:lowdefy/modules-mongodb/modules/release-notes@v0.4.2"
     vars:
       content:
         _ref: ../../CHANGELOG.md
