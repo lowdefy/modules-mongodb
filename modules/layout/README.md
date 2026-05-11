@@ -123,6 +123,8 @@ The `logo` var only configures the auth page and lets you tweak the header logo'
 
 `array`, default `[]`. Footer blocks shown on all page variants and the auth page. On the auth page, the footer is auto-styled with small font size and secondary text color.
 
+Individual pages can suppress the footer by passing `hide_footer: true` in the `page` component `_ref` vars — the footer slot is omitted entirely (no styled wrapper rendered) for that page only.
+
 ### `card`
 
 `object`, default `null`. Custom card component override (replaces the default Card layout).
