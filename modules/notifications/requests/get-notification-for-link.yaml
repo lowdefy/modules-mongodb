@@ -18,5 +18,6 @@ properties:
           _payload: app_name
         $or:
           - event_type: invite-user
+          - event_type: resend-user-invite
           - contact_id:
               _payload: contact_id

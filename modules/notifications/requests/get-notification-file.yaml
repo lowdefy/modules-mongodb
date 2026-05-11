@@ -1,0 +1,19 @@
+id: get_notification_file
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: notifications-collection
+payload:
+  notification_id:
+    _url_query: _id
+  file_index:
+    _url_query: index
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: notification_id
+    - $project:
+        file:
+          $arrayElemAt:
+            - $files
+            - _payload: file_index
