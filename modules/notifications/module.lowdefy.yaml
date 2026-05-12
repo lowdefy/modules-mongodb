@@ -1,5 +1,5 @@
 name: Notifications
-version: 0.4.1
+version: 0.4.2
 description: Notification bell, inbox, and deep-link routing
 
 dependencies:
@@ -22,11 +22,13 @@ vars:
 
 connections:
   - _ref: connections/notifications-collection.yaml
+  - _ref: connections/notifications-files-bucket-public.yaml
 
 pages:
   - _ref: pages/all.yaml
   - _ref: pages/link.yaml
   - _ref: pages/invalid.yaml
+  - _ref: pages/file-download.yaml
 
 exports:
   pages:
@@ -36,9 +38,13 @@ exports:
       description: Deep-link handler — routes notification links to target pages
     - id: invalid
       description: Error page for invalid notification links
+    - id: file-download
+      description: Public attachment redirect — resolves a notification file index to a presigned S3 URL and forwards the browser
   connections:
     - id: notifications-collection
       description: MongoDB connection for notifications collection
+    - id: notifications-files-bucket-public
+      description: Public S3 bucket for notification attachment downloads
   api:
     - id: send-notification
   components:
@@ -61,6 +67,14 @@ components:
 secrets:
   - name: MONGODB_URI
     description: MongoDB connection URI
+  - name: FILES_S3_ACCESS_KEY_ID
+    description: AWS access key for the file-download bucket
+  - name: FILES_S3_SECRET_ACCESS_KEY
+    description: AWS secret access key for the file-download bucket
+  - name: FILES_S3_REGION
+    description: AWS region for the file-download bucket
+  - name: FILES_S3_BUCKET_PUB
+    description: Public S3 bucket name for notification attachments
 
 plugins:
   - name: "@lowdefy/community-plugin-mongodb"

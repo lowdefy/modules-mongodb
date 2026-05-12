@@ -24,15 +24,12 @@
 #     timestamp / action columns.
 id: activities_table
 type: AgGridBalham
+loading:
+  _not:
+    _request: get_activities
 properties:
   height: 70vh
-  overlayNoRowsTemplate:
-    _if:
-      test:
-        _not:
-          _request: get_activities
-      then: Loading...
-      else: No rows
+  overlayNoRowsTemplate: No rows
   rowStyle:
     cursor: pointer
   rowData:
