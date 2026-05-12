@@ -54,7 +54,7 @@ The resolver branches on action kind (see [action-authoring](../action-authoring
 
 - **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-error`). One page doc per (action, verb).
 - **Task actions** — emits **no per-action pages**. The module ships two shared pages (`task-edit` and `task-view` exposed in `exports.pages`) that handle every task action across the build, addressed by `?action_id=<id>` in the URL.
-- **Sub-workflow actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
+- **Tracker actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
 
 For form actions, the per-action page YAML the resolver outputs looks like:
 
@@ -93,8 +93,8 @@ Notable shape choices the resolver commits to:
 
 1. **`app_name` is read, not iterated.** The resolver takes `app_name` and uses it to filter `access.{app_name}` per action — one app per build, no inner loop. Workflow YAML shared across host apps maps to multiple module compositions in `modules.yaml`, one per host app.
 2. **Module-relative template paths.** Templates live at `templates/{verb}.yaml.njk` in the module's own tree. Apps that need to override a per-action page supply a custom template via the action's YAML; the resolver checks for that override before falling back to the module default (see Decision 2 below).
-3. **`entity_type` / `entity_id` (entity-agnostic).** The resolver passes scalar `entity_type` (e.g. `lead`, `ticket`, `contact`) and `entity_id` (the doc `_id`) to templates. Per-action templates read these to build the right query and the back-link to the entity page.
-4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` shared pages, and sub-workflow actions don't have pages at all. An app with 6 form actions and 4 task actions ships 18 form-action pages (6 × 3 verbs) plus 2 shared task pages.
+3. **`entity_type` / `entity_id` / `entity_collection` (entity-agnostic).** The resolver passes scalar `entity_type` (e.g. `lead`, `ticket`, `contact`), `entity_id` (the doc `_id`), and `entity_collection` (the MongoDB collection connection id, e.g. `leads-collection`) to templates. Per-action templates read these to build the right query (using `entity_collection` as the `connectionId`) and the back-link to the entity page.
+4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` shared pages, and tracker actions don't have pages at all. An app with 6 form actions and 4 task actions ships 18 form-action pages (6 × 3 verbs) plus 2 shared task pages.
 
 ## Decision 2 — Page templates (sketch)
 
@@ -109,10 +109,11 @@ The module ships two sets of templates:
 
 Both task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
-The form-action templates have two notable properties:
+The form-action templates have one notable property:
 
-1. **App-theme-agnostic.** Templates render against whatever **layout module** the host app uses. Apps that need different styling per app deployment supply a layout module per deployment; the workflows module just uses `_module.pageId: { id: page-layout, module: layout }` to compose the surrounding chrome.
-2. **Per-action override path.** Each generated page checks the action's YAML for a `pages.{verb}.template` field; if set, the resolver `_ref`s that template instead of the module default. This is how apps with bespoke action pages opt out.
+1. **App-theme-agnostic.** Templates render against whatever **layout module** the host app uses. Apps that need different styling per app deployment supply a layout module per deployment; the workflows module just uses `_ref: { module: layout, component: page }` to compose the surrounding chrome. (Layout exports components — `page`, `card`, `floating-actions`, `auth-page` — not pages; see [modules/layout/module.lowdefy.yaml](../../../../modules/layout/module.lowdefy.yaml).)
+
+Apps with bespoke action pages compose against the form components library ([action-authoring](../action-authoring/design.md) Decision 7) — authors build custom fields and reference them by name in `form:` blocks, or drop in app-side custom blocks via `component: <plugin-name>:foo`. v1 does not support per-action template overrides (a `pages.{verb}.template` field on the action YAML was considered but dropped — path resolution, vars contract, and layering semantics are unspecified, and the components library covers realistic v1 needs). The feature is purely additive in v1.x if real apps surface it as a need.
 
 Detailed template content is implementation-time material — the exact block tree, request-stage overrides, validate-on-submit wiring lands during implementation. Sketching the full block trees here would be paste-from-existing-app; that work belongs in the implementation phase.
 
@@ -122,7 +123,7 @@ Universal action fields (`assignees`, `due_date`, `description` — see [action-
 
 - On a **form action's** edit page they render in the page header alongside the form (a small assignees / due-date / description band above the form schema).
 - On a **task action's** edit page they're the primary content, with a status selector and a comment field below.
-- On a **sub-workflow action's** inline display in `actions-on-entity` they show as small badges next to the link.
+- On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
 Updates flow through `submit-action` like any other action change. The page composes the `fields:` block of the submit payload from form-state, plus an optional comment in `event.metadata.comment`.
 
@@ -136,9 +137,9 @@ Entity-page block — renders all workflows for an entity, grouped, with collaps
 
 **Behaviour at runtime:**
 
-1. Calls the `get-entity-workflows` API (module-surface sub-design "Decision 2") with the entity's `(entity_type, entity_id)`.
-2. Iterates returned workflows in `display_order`.
-3. Per workflow, renders a `workflow-header` (see below) plus a grouped action list — grouped by `(workflow_id, action_group)`. **Never group by `action_group` alone** — that would silently merge actions across parallel workflows.
+1. Calls the `get-entity-workflows` API (module-surface sub-design "Decision 2") with the entity's `(entity_type, entity_id)`. The query uses `entity_type` + `entity_id`; the returned docs carry `entity_collection` so the consuming page can build entity-link URLs or query the entity collection directly without external mapping. Uses `type: CallApi` (not `type: Request`) because the workflows module's data-access path goes through its Api layer — the `WorkflowAPI` plugin's request types aren't directly callable from blocks; `CallApi` invokes the module's `get-entity-workflows` Api, which routes through the engine.
+2. Iterates returned workflows by `display_order` ASC, with `created.timestamp` DESC as tie-breaker (newest first). The tie-breaker matters when an entity carries multiple instances of the same workflow type — e.g. a `lead` with both a historical `onboarding` workflow and a current one. Matches the "current state at the top" convention also used by status arrays (`status[0]` is the current stage).
+3. Per workflow, renders a `workflow-header` (see below) plus a grouped action list. Groups are read from the workflow doc's persisted `groups[]` array (engine-written; see action-groups Decision 4) — each group rendered in declaration order with its persisted three-value status (`blocked` / `in-progress` / `done`) and per-group summary count. Within each group, actions are sub-sorted by `sort_order`. **Never group by `action_group` alone across workflows** — `(workflow_id, group.id)` is the correct grouping key (the persisted `groups[]` array already keys by workflow_id implicitly since it lives on the workflow doc).
 4. Each action's status-map link / message rendered from `status_map[currentStage].{app_name}`.
 
 **Block-level sketch:**
@@ -147,7 +148,7 @@ Entity-page block — renders all workflows for an entity, grouped, with collaps
 id: actions-on-entity
 type: Box
 events:
-  onInit:
+  onMount:
     - id: load
       type: CallApi
       properties:
@@ -160,34 +161,38 @@ blocks:
   # Iterate workflows, render workflow-header + grouped actions
 ```
 
+Uses `onMount` (not `onInit`) because the component is dropped onto an entity page that already has its own `onInit` for entity-loading. Fetching via `onMount` avoids blocking the entity page's render — matches the convention from [modules/events/components/events-timeline.yaml](../../../../modules/events/components/events-timeline.yaml).
+
 States to handle explicitly:
 
 - **Just-started workflow** (only `starting_actions` are `action-required`, the rest `blocked`): show the workflow with all its actions, blocked ones at the bottom.
 - **Completed workflow** (all actions `done` or `not-required`): show as a collapsed tile with a check mark, expandable to view history. Don't hide.
-- **Fully access-restricted workflow** (current user has no access to any of its actions): hide entirely or show "Restricted" tile. v1 default: hide.
+- **Fully access-restricted workflow** (current user has no access to any of its actions): hide entirely. v1 commits to "hide"; a future "Restricted" tile UX is a v1.x decision.
 
 ### `workflow-header`
 
-Per-workflow header strip — title, current lifecycle stage badge (read from `workflow_lifecycle_stages` enum), summary counts (e.g. "3 of 7 done"), optional milestone label (the highest-priority `status_title` of any non-blocked action), collapse/expand toggle.
+Per-workflow header strip — title, current lifecycle stage badge (read from `workflow_lifecycle_stages` enum), summary counts (e.g. "3 of 7 done"), milestone label = the `title` of the current group (lowest-ordered group whose `status !== done` in the workflow doc's `groups[]` array; falls back to the workflow title if all groups are `done`), collapse/expand toggle.
 
 ### `action_role_check`
 
-Reusable access-check primitive — verb-map + role-gate. Reads the current user's roles via `_user: profile.roles` (or wherever the user-admin module exposes them — match the convention) and the action's `access.{app_name}` block. Returns boolean — used by templates to conditionally render verbs.
+Reusable access-check primitive — verb-map + role-gate. Reads the current user's effective roles via `_user: roles` (sourced from `apps.{app_name}.roles` on the `user_contacts` doc — the same source the user-admin module manages) and the action's `access.{app_name}` verb map + `access.roles` list. Returns boolean — used by templates to conditionally render verbs. Implements the same query-time check the engine runs in `get-entity-workflows` and `submit-action` (see [action-authoring](../action-authoring/design.md) Decision 3 "Action access semantics").
 
 ## Decision 4 — Status-selector behaviour on `task-edit`
 
 The `task-edit` page surfaces a status selector populated from the module-shipped `global.action_statuses` enum (see [action-authoring](../action-authoring/design.md) "Action status enum"). The selector should NOT show every status — it should filter to **allowed transitions** via the priority rule (see [engine](../engine/design.md) "Status enum priority rule"):
 
 - From current stage, only stages with strictly lower priority are valid transitions.
-- `force: true` overrides aren't typically exposed through the UI.
+- **Same-stage allowed for the current action** — matches the engine's `currentActionId` self-exception (lets users re-save the action without changing its stage, e.g. updating `assignees` only).
+- **If current stage is `not-required`** (priority 0, universal terminal), no valid transitions exist via the priority rule. The selector is disabled with a "no transitions available" message rather than rendered with an empty option list.
+- `force: true` overrides aren't typically exposed through the UI — migrations and admin tools bypass `submit-action`.
 
 The selector hides invalid options at render time. Save attempts that violate the rule (e.g. concurrent stage push from another user that the local UI didn't see) get rejected server-side by `submit-action`; the page surfaces a generic error.
 
 ## Open Questions
 
 1. **`makeActionsForm` recursion across module boundaries** — flagged in [action-authoring](../action-authoring/design.md). The form-action templates `_ref` the form resolver to build the form block tree; if the resolver can't recurse from inside a template the form builder falls back to a flat emitter. Templates accommodate either shape during the spike.
-2. **`completed-workflow` collapsed-tile UX detail** — exact look-and-feel of the collapsed tile, the "Restricted" tile for fully access-restricted workflows, and the workflow-header milestone label. v1 ships sensible defaults; iteration after first consumer adoption.
-3. **Comment timeline shape on `task-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `references.action_ids` includes the current `action_id` and `metadata.comment` is populated. Refinement based on real-app patterns.
+2. **`completed-workflow` collapsed-tile UX detail and the workflow-header milestone label.** v1 ships sensible defaults; iteration after first consumer adoption.
+3. **Comment timeline shape on `task-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references are spread to event-doc root by the events module's `new-event` routine, so the query path is `action_ids`, not `references.action_ids`). Refinement based on real-app patterns.
 
 ## Next Step
 
