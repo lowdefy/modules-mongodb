@@ -2,14 +2,15 @@
 
 The module-level design for the `workflows` module — a modules-mongodb module that supports multiple parallel workflows on one entity, with a two-collection schema (`workflows` + `actions`), a status-array history shape, an opinionated access model anchored on the user-admin module's user schema, and a two-layer transition model (`blocked_by` + `submit_hook`) sitting on `UpdateWorkflowActions` / `StartWorkflow` / `CancelWorkflow` primitives.
 
-The design splits into four sub-designs by concern. This parent doc carries the framing, an end-to-end worked example that exercises all four, and the cross-cutting open questions / non-goals / risks. Each sub-design is self-contained at its own layer.
+The design splits into five sub-designs by concern. This parent doc carries the framing, an end-to-end worked example that exercises the core four, and the cross-cutting open questions / non-goals / risks. Each sub-design is self-contained at its own layer.
 
-| Sub-design                                     | What it owns                                                                                                                                                                                                                                                                    |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [engine](engine/design.md)                     | Server-side workflow engine — `WorkflowAPI` plugin, references write contract, sub-workflow tracker subscription, status enum priority rule.                                                                                                                                    |
-| [module-surface](module-surface/design.md)     | `module.lowdefy.yaml` manifest (exports, vars, dependencies) and the four module APIs (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `submit-action`) that apps call.                                                                                            |
-| [action-authoring](action-authoring/design.md) | YAML surface for workflows and actions — three action kinds (form / task / sub-workflow) inferred from shape, universal fields (`assignees`, `due_date`, `description`), sub-workflow `tracker:` block, resolver pipeline, form components library, module-shipped status enum. |
-| [ui](ui/design.md)                             | Per-action page generation strategy, form-action templates (`edit` / `view` / `error`), static `task-edit` / `task-view` pages, and the three entity-page UI components (`actions-on-entity`, `workflow-header`, `action_role_check`).                                          |
+| Sub-design                                     | What it owns                                                                                                                                                                                                                                                                                      |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [engine](engine/design.md)                     | Server-side workflow engine — `WorkflowAPI` plugin, references write contract, sub-workflow tracker subscription, status enum priority rule.                                                                                                                                                      |
+| [module-surface](module-surface/design.md)     | `module.lowdefy.yaml` manifest (exports, vars, dependencies) and the four module APIs (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `submit-action`) that apps call.                                                                                                              |
+| [action-authoring](action-authoring/design.md) | YAML surface for workflows and actions — three action kinds (form / task / sub-workflow) inferred from shape, universal fields (`assignees`, `due_date`, `description`), sub-workflow `tracker:` block, resolver pipeline, form components library, module-shipped status enum.                   |
+| [ui](ui/design.md)                             | Per-action page generation strategy, form-action templates (`edit` / `view` / `error`), static `task-edit` / `task-view` pages, and the three entity-page UI components (`actions-on-entity`, `workflow-header`, `action_role_check`).                                                            |
+| [action-groups](action-groups/design.md)       | Elevates `action_group` from UI label to engine concept — workflow-level `action_groups:` declaration, persisted three-value group status on the workflow doc, `blocked_by` accepting group IDs, engine-driven `blocked_by` re-evaluation, optional per-group `on_complete` hook (mechanism TBD). |
 
 ## Problem
 
@@ -21,7 +22,7 @@ The module exists to give apps a uniform way to run multi-step business processe
 - An entity-page block (`actions-on-entity`) that renders an entity's workflows + grouped action lists end-to-end.
 - A small form components library that lets authors compose action `form:` blocks from reusable building blocks.
 
-The four sub-designs commit:
+The five sub-designs commit:
 
 - The shape of the module's `module.lowdefy.yaml` and the API consuming apps see — [module-surface](module-surface/design.md).
 - **Where per-action pages live**, and what page kinds exist for form / task / sub-workflow actions — [ui](ui/design.md).
@@ -29,6 +30,7 @@ The four sub-designs commit:
 - The plugin mechanics for the server-side `WorkflowAPI` connection in `@lowdefy/modules-mongodb-plugins`, the references write contract, and the synchronous in-process tracker subscription — [engine](engine/design.md).
 - The shape of the default Nunjucks page templates the module ships, plus the form components library — [ui](ui/design.md) for templates, [action-authoring](action-authoring/design.md) for the components library.
 - The YAML grammar for sub-workflow actions (`tracker:` block on the action), the universal action fields, the action-kind taxonomy, the status enum, and the resolver pipeline — [action-authoring](action-authoring/design.md).
+- Action groups as a first-class engine concept — workflow-level `action_groups:` declaration, persisted group status on the workflow doc, group references in `blocked_by`, engine-driven unblock evaluation, optional `on_complete` hook per group (invocation mechanism deferred to a follow-up sub-design) — [action-groups](action-groups/design.md).
 
 ## Reference Material
 
