@@ -17,7 +17,7 @@ The end-user counterpart is [`user-account`](../user-account/README.md).
 ```yaml
 modules:
   - id: user-admin
-    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.4.2"
+    source: "github:lowdefy/modules-mongodb/modules/user-admin@v0.5.0"
     vars:
       app_name: my-app
       app_title: Team
