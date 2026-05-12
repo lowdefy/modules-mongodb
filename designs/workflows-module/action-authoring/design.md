@@ -349,7 +349,7 @@ form:
     form:
       - component: label_value
         key: form.devices.$._id
-        title: Honeycomb Number
+        title: Device Number
       - component: date_range_selector
         key: form.devices.$.warranty
         title: Warranty
