@@ -115,9 +115,21 @@ events:
       key: events.onMount
       default: []
   onMountAsync:
-    _var:
-      key: events.onMountAsync
-      default: []
+    _build.array.concat:
+      - _build.if:
+          test:
+            _build.not:
+              _var:
+                key: hide_notifications
+                default: false
+          then:
+            - id: __fetch_notifications_unread_count
+              type: Request
+              params: notifications_unread_count
+          else: []
+      - _var:
+          key: events.onMountAsync
+          default: []
 slots:
   _build.object.assign:
     - header:
