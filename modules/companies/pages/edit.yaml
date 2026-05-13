@@ -62,10 +62,13 @@ _ref:
               type: SetState
               params:
                 _build.object.assign:
+                  - _build.object.fromEntries:
+                      - - _build.if_none:
+                            - _module.var: name_field
+                            - name
+                        - _request: get_company.0.display_name
                   - _id:
                       _request: get_company.0._id
-                    name:
-                      _request: get_company.0.name
                     description:
                       _request: get_company.0.description
                     contact:
@@ -169,10 +172,16 @@ _ref:
                           _module.endpointId: update-company
                         payload:
                           _build.object.assign:
+                            - _build.object.fromEntries:
+                                - - _build.if_none:
+                                      - _module.var: name_field
+                                      - name
+                                  - _state:
+                                      _build.if_none:
+                                        - _module.var: name_field
+                                        - name
                             - _id:
                                 _state: _id
-                              name:
-                                _state: name
                               description:
                                 _state: description
                               contact:

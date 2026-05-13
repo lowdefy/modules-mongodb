@@ -33,7 +33,7 @@ routine:
                       _ref:
                         path: connections/companies-collection.yaml
                         key: properties.collection
-                    startWith: "$_id"
+                    startWith: '$_id'
                     connectFromField: parent_ids
                     connectToField: _id
                     maxDepth:
@@ -44,8 +44,8 @@ routine:
                       $in:
                         - _payload: _id
                         - $concatArrays:
-                            - ["$_id"]
-                            - "$__ancestors._id"
+                            - ['$_id']
+                            - '$__ancestors._id'
                 # OR-reduce across all matched candidate parents into a single
                 # output doc. Without this, the projection produces one doc per
                 # candidate, and downstream `_step.cycle_check.0.has_cycle`
@@ -54,7 +54,7 @@ routine:
                 - $group:
                     _id: null
                     has_cycle:
-                      $max: "$has_cycle"
+                      $max: '$has_cycle'
 
           - :if:
               _eq:
@@ -81,32 +81,38 @@ routine:
               # Stage 1: Overwrite scalars, merge sub-objects
               - - $set:
                     _build.object.assign:
-                      - name:
-                          _payload: name
-                        description:
+                      - _build.object.fromEntries:
+                          - - _build.if_none:
+                                - _module.var: name_field
+                                - name
+                            - _payload:
+                                _build.if_none:
+                                  - _module.var: name_field
+                                  - name
+                      - description:
                           _payload: description
                         contact:
                           $mergeObjects:
                             - $ifNull:
-                                - "$$ROOT.contact"
+                                - '$$ROOT.contact'
                                 - {}
                             - _payload: contact
                         address:
                           $mergeObjects:
                             - $ifNull:
-                                - "$$ROOT.address"
+                                - '$$ROOT.address'
                                 - {}
                             - _payload: address
                         registration:
                           $mergeObjects:
                             - $ifNull:
-                                - "$$ROOT.registration"
+                                - '$$ROOT.registration'
                                 - {}
                             - _payload: registration
                         attributes:
                           $mergeObjects:
                             - $ifNull:
-                                - "$$ROOT.attributes"
+                                - '$$ROOT.attributes'
                                 - {}
                             - $ifNull:
                                 - _payload: attributes
@@ -143,8 +149,8 @@ routine:
                         $trim:
                           input:
                             $ifNull:
-                              - "$contact.primary_email"
-                              - ""
+                              - '$contact.primary_email'
+                              - ''
               # Consumer pipeline stages
               - _module.var: request_stages.write
 
@@ -211,7 +217,7 @@ routine:
                             - null
                   callback:
                     _build.function:
-                      - __build.args: "0.0"
+                      - __build.args: '0.0'
                       - title:
                           _nunjucks:
                             template:

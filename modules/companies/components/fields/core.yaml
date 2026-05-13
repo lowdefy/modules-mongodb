@@ -1,17 +1,20 @@
 _build.array.concat:
-  - - id: name
+  - - id:
+        _build.if_none:
+          - _module.var: name_field
+          - name
       type: TextInput
       required: true
       properties:
         title:
           _string.concat:
             - _module.var: label
-            - " Name"
+            - ' Name'
         placeholder:
           _string.concat:
-            - "Enter "
+            - 'Enter '
             - _module.var: label
-            - " name"
+            - ' name'
   - _build.if:
       test:
         _module.var: short_name.enabled
@@ -22,9 +25,9 @@ _build.array.concat:
           properties:
             title:
               _string.concat:
-                - "Short "
+                - 'Short '
                 - _module.var: label
-                - " Name"
+                - ' Name'
             placeholder: Used in reports and narrow displays
       else: []
   - - id: description

@@ -41,7 +41,7 @@ vars:
           Existing documents that already carry `short_name` retain it on disk
           but won't be rendered or written until re-enabled.
   id_prefix:
-    default: "C-"
+    default: 'C-'
     description: Prefix for auto-generated consecutive IDs
   id_length:
     default: 4
@@ -91,7 +91,7 @@ vars:
           silently rather than running unboundedly.
   fields:
     type: object
-    description: "Field block arrays rendered in both the edit form and SmartDescriptions view."
+    description: 'Field block arrays rendered in both the edit form and SmartDescriptions view.'
     properties:
       contact:
         default: []
@@ -121,7 +121,7 @@ vars:
           `attributes.` so they bind to `state.attributes.*`.
   components:
     type: object
-    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, contact_card_extra_fields"
+    description: 'Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, contact_card_extra_fields'
     properties:
       table_columns:
         default: []
@@ -149,7 +149,7 @@ vars:
           contact doc projected by get_company_contacts.
   request_stages:
     type: object
-    description: "Pipeline overrides: get_all_companies, selector, filter_match, write. write stages are appended to both create-company and update-company flows."
+    description: 'Pipeline overrides: get_all_companies, selector, filter_match, write. write stages are appended to both create-company and update-company flows.'
     properties:
       filter_match:
         default: []
@@ -196,6 +196,8 @@ exports:
   components:
     - id: company-selector
       description: Selector/MultipleSelector for picking companies
+    - id: company-name-field
+      description: Company name field for create/edit forms and selector title. Binds to state[name_field] (default `name`).
   menus:
     - id: default
       description: Companies navigation link
@@ -217,6 +219,9 @@ components:
   - id: company-selector
     component:
       _ref: components/company-selector.yaml
+  - id: company-name-field
+    component:
+      _module.var: name_field
 
 menus:
   - _ref: menus.yaml
@@ -226,9 +231,9 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^2"
-  - name: "@lowdefy/community-plugin-xlsx"
-    version: "^1"
-  - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.5.0"
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: '^2'
+  - name: '@lowdefy/community-plugin-xlsx'
+    version: '^1'
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: '^0.5.0'

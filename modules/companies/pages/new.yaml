@@ -84,9 +84,15 @@ _ref:
                           _module.endpointId: create-company
                         payload:
                           _build.object.assign:
-                            - name:
-                                _state: name
-                              description:
+                            - _build.object.fromEntries:
+                                - - _build.if_none:
+                                      - _module.var: name_field
+                                      - name
+                                  - _state:
+                                      _build.if_none:
+                                        - _module.var: name_field
+                                        - name
+                            - description:
                                 _state: description
                               contact:
                                 _state: contact

@@ -20,9 +20,12 @@ properties:
     - $addFields:
         display_name:
           $getField:
-            field: name
-            input: "$$ROOT"
-        company_id: "$_id"
+            field:
+              _ref:
+                module: companies
+                component: company-name-field
+            input: '$$ROOT'
+        company_id: '$_id'
     - $project:
         _id: 1
         company_id: 1

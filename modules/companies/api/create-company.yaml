@@ -13,9 +13,15 @@ routine:
             _module.var: id_length
           doc:
             _build.object.assign:
-              - name:
-                  _payload: name
-                description:
+              - _build.object.fromEntries:
+                  - - _build.if_none:
+                        - _module.var: name_field
+                        - name
+                    - _payload:
+                        _build.if_none:
+                          - _module.var: name_field
+                          - name
+              - description:
                   _payload: description
                 contact:
                   _if_none:
