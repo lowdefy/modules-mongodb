@@ -250,10 +250,10 @@ The `tracker:` block carries one field — the child `workflow_type`. The status
 
 Bidirectional link established by `start-workflow`:
 
-- Tracker action: `child_entity_id` + `child_entity_collection`. Null until linked.
+- Tracker action: `child_workflow_id` + `child_entity_id` + `child_entity_collection`. All null until linked.
 - Child workflow doc: `parent_action_id` + `parent_entity_id` + `parent_entity_collection`. Null for top-level workflows.
 
-App code that creates the child entity calls `start-workflow` with `parent_action_id` set. The engine writes both sides in one server-side handler — child workflow doc with back-references, child's N starting action docs, parent tracker's `child_entity_id` / `child_entity_collection` + `in-progress` transition.
+App code that creates the child entity calls `start-workflow` with `parent_action_id` set. The engine writes both sides in one server-side handler — child workflow doc with back-references, child's N starting action docs, parent tracker's `child_workflow_id` (the new workflow's `_id`) / `child_entity_id` / `child_entity_collection` + `in-progress` transition.
 
 ```yaml
 # Trigger action's submit hook:
@@ -278,13 +278,17 @@ One `CallApi`; no follow-up `submit-action` to write the link.
 
 ### One-to-one constraint
 
-Each child workflow has at most one `parent_action_id`; each tracker action has at most one `child_entity_id`. Apps needing the same physical event to drive multiple parents either spawn separate child workflows per parent or read shared entity state independently.
+Each child workflow has at most one `parent_action_id`; each tracker action has at most one `child_workflow_id`. Apps needing the same physical event to drive multiple parents either spawn separate child workflows per parent or read shared entity state independently.
 
 `kind: form` / `kind: task` / `kind: tracker` are mutually exclusive.
 
 ### Recommended shape: paired trigger + tracker actions
 
 A trigger form action creates the child entity and starts the child workflow with `parent_action_id` set; a separate tracker action mirrors the child's lifecycle. The module doesn't enforce this split but the README documents it as the recommended shape.
+
+### Tracking simple entities
+
+Tracker actions only track workflows — there is no entity-only mode. For entities whose lifecycle is a single status field, declare a minimal workflow with one `kind: task` action; the user marks it `done` (or app calls `cancel-workflow`) and the existing tracker subscription flips the parent. Per-app-type cost: one (workflow, action) YAML pair, reused per entity instance. See action-authoring/design.md "Tracking simple entities (minimal workflow shim)" for the worked example.
 
 ## Resolver pipeline
 

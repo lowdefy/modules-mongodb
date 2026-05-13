@@ -271,10 +271,10 @@ No `relationship`, no registry reference, no per-action `status_map` mapping chi
 
 The link between a tracker action and its child workflow is **bidirectional**, established by `start-workflow` in a single call. Three fields on each side:
 
-- **Tracker action** (parent side): `child_entity_id` and `child_entity_collection` — the id and MongoDB-collection-connection-id of the child workflow's entity. Both null until the child is started.
+- **Tracker action** (parent side): `child_workflow_id` (the child workflow doc's `_id`), `child_entity_id`, and `child_entity_collection` — the workflow reference plus the entity reference and its MongoDB-collection-connection-id. All three null until the child is started; all three populated in the same `start-workflow` call.
 - **Child workflow doc**: `parent_action_id` (the tracker action's `_id`), `parent_entity_id` (the parent workflow's entity id), and `parent_entity_collection` (the parent's collection connection id). All null for top-level workflows.
 
-App code that creates the child entity calls `start-workflow` with `parent_action_id` set; the engine writes both sides in one server-side handler — the new child workflow doc with parent back-references, the N starting action docs for the child, and the parent tracker action's `child_entity_id` / `child_entity_collection` fields plus `in-progress` transition.
+App code that creates the child entity calls `start-workflow` with `parent_action_id` set; the engine writes both sides in one server-side handler — the new child workflow doc with parent back-references, the N starting action docs for the child, and the parent tracker action's `child_workflow_id` (the new workflow's `_id`) / `child_entity_id` / `child_entity_collection` fields plus `in-progress` transition.
 
 ```yaml
 # app's submit hook on a trigger action that spawns the child:
@@ -324,7 +324,7 @@ Apps that genuinely need different semantics (e.g. cancelled child should flag t
 
 ### Constraint: 1:1 between tracker action and child workflow
 
-A tracker action ↔ child workflow pair is **strictly one-to-one** in both directions. Each child workflow has at most one `parent_action_id` (its lifecycle mirrors at most one tracker action); each tracker action has at most one `child_entity_id` (it mirrors at most one child workflow on one entity).
+A tracker action ↔ child workflow pair is **strictly one-to-one** in both directions. Each child workflow has at most one `parent_action_id` (its lifecycle mirrors at most one tracker action); each tracker action has at most one `child_workflow_id` (it mirrors at most one child workflow). The `child_entity_id` / `child_entity_collection` fields point at the entity the child workflow runs on — the 1:1 cardinality is on the workflow, not the entity (multiple workflows can run on the same entity).
 
 What's ruled out by the constraint:
 
@@ -337,6 +337,44 @@ What's ruled out by the constraint:
 The recommended shape pairs **trigger** and **tracker** as two actions: a trigger action with a form that creates the child entity and starts the child workflow with `parent_action_id` set, plus a tracker action that mirrors the child's lifecycle. The trigger action's submit hook makes one `CallApi` to `start-workflow` (as shown above); the engine writes both sides of the link in one server-side call, and the tracker action takes it from there.
 
 The module doesn't enforce this split — apps can put `tracker:` on whatever action makes sense — but the README documents the paired-actions pattern as the recommended shape because it separates "workflow logic that creates the child" from "state mirroring."
+
+### Tracking simple entities (minimal workflow shim)
+
+Tracker actions **only ever track workflows**. There is no `kind: tracker` variant that subscribes to entity-doc fields directly. For entities whose lifecycle is a single status field (e.g. a support ticket that just goes open → closed), declare a minimal workflow on that entity type with one bookkeeping action:
+
+```yaml
+# workflow_config/site-setup/site-setup.yaml
+type: site-setup
+title: Site Setup
+entity_type: support-ticket
+display_order: 1
+starting_actions:
+  - { type: complete-site-setup, status: action-required }
+actions:
+  - _ref: ./complete-site-setup.yaml
+```
+
+```yaml
+# workflow_config/site-setup/complete-site-setup.yaml
+type: complete-site-setup
+kind: task
+description: Mark site setup complete.
+status_map:
+  action-required:
+    my-team-app:
+      message: Complete site setup
+      link:
+        pageId: { _module.pageId: { id: task-edit, module: workflows } }
+        urlQuery: { action_id: true }
+  done:
+    my-team-app: { message: Site setup completed. }
+```
+
+The parent tracker action declares `tracker: { workflow_type: site-setup }`. When the support ticket is created, app code calls `start-workflow` with `workflow_type: site-setup` and `parent_action_id: <parent_tracker_action_id>` — the engine writes the workflow, the single `complete-site-setup` action, and the bidirectional link in one call (parent tracker action goes to `in-progress`). When the user marks the bookkeeping action `done`, the shim workflow auto-completes and the engine's tracker subscription flips the parent action to `done`. If the entity is abandoned, app code calls `cancel-workflow` on the shim workflow — same path through the tracker subscription (`cancelled → not-required`).
+
+**Why this pattern and not direct entity-status mirroring.** A previous design draft considered a second tracker mode (`on: entity` with a `status_map` mapping entity-status values to tracker stages, driven by an app-callable `update-tracker` API). The team rejected it in favour of keeping the engine on one code path: the tracker subscription has one source of truth (child workflow status); audit history comes for free (the shim workflow's status array); cascading composition works uniformly (any tracker → workflow → tracker chain follows the same rules). Trade-off accepted: one minimal workflow YAML per trackable entity type — written once, reused per entity instance.
+
+**Cost characterization.** Apps with N trackable entity types ship N (workflow, action) YAML pairs. Per-instance cost is one workflow doc + one action doc — the same as any other workflow on the engine. For app teams with many trackable entity types added ad-hoc, this is the recommended escape hatch, not a one-line declaration. The cost is recognized; the engine simplification is judged to outweigh it.
 
 ## Decision 6 — Resolver pipeline
 

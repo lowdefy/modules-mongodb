@@ -57,11 +57,11 @@ src/connections/WorkflowAPI/
 
 Action docs and workflow docs use scalar `entity_type` + `entity_id` + `entity_collection` — not a per-entity-key array shape. This is a load-bearing invariant: it rules out an action belonging to multiple entities at once, which is what makes `get-entity-workflows` a single indexed lookup (`{ entity_type, entity_id }`) instead of a join. The cross-entity case — "this lead has an installation ticket whose workflow we want reflected here" — is handled by the `tracker:` block on a normal single-entity tracker action ([action-authoring](../action-authoring/design.md) Decision 5), not by attaching the action to multiple entities.
 
-**`entity_collection` is the connection id of the entity's MongoDB collection** (e.g. `leads-collection`, `tickets-collection`). Storing it on the action and workflow docs makes them self-describing: a reader can find the referenced entity directly without external knowledge of an `entity_type → collection` mapping. This matches the files module's pattern ([modules/files/api/save-file.yaml](../../../modules/files/api/save-file.yaml) stores `collection` + `doc_id` on every file doc) so cross-module reporting / list pages / custom views can pivot uniformly. Tracker actions additionally carry `child_entity_collection` next to `child_entity_id`; child workflows carry `parent_entity_collection` next to `parent_entity_id`. Reserved-keys list extends accordingly.
+**`entity_collection` is the connection id of the entity's MongoDB collection** (e.g. `leads-collection`, `tickets-collection`). Storing it on the action and workflow docs makes them self-describing: a reader can find the referenced entity directly without external knowledge of an `entity_type → collection` mapping. This matches the files module's pattern ([modules/files/api/save-file.yaml](../../../modules/files/api/save-file.yaml) stores `collection` + `doc_id` on every file doc) so cross-module reporting / list pages / custom views can pivot uniformly. Tracker actions additionally carry `child_workflow_id` (the child workflow's `_id`), `child_entity_id`, and `child_entity_collection`; child workflows carry `parent_entity_collection` next to `parent_entity_id`. Reserved-keys list extends accordingly.
 
 ### Capabilities
 
-- **`StartWorkflow` writes both a workflow doc and N action docs.** The workflow doc carries `key`, `display_order`, initial `status: [{ stage: 'active', created }]`, empty `form_data`, empty `summary`. When the caller passes `parent_action_id`, the workflow doc also records `parent_action_id` and `parent_entity_id` (read from the parent tracker action) — and the same handler invocation writes the parent tracker action's `child_entity_id` and transitions it to `in-progress`. See "Parent ↔ child link shape" under Decision 3.
+- **`StartWorkflow` writes both a workflow doc and N action docs.** The workflow doc carries `key`, `display_order`, initial `status: [{ stage: 'active', created }]`, empty `form_data`, empty `summary`. When the caller passes `parent_action_id`, the workflow doc also records `parent_action_id` and `parent_entity_id` (read from the parent tracker action) — and the same handler invocation writes the parent tracker action's `child_workflow_id` (the new workflow's `_id`), `child_entity_id`, `child_entity_collection`, and transitions it to `in-progress`. See "Parent ↔ child link shape" under Decision 3.
 - **`summary` writeback in `UpdateWorkflowActions`** — eager strategy: recompute the parent workflow's `summary: { done, not_required, total }` after each transition.
 - **Auto-complete check** — when all actions on a workflow reach a terminal stage (`done` or `not-required`), push `{ stage: 'completed' }` to the workflow's `status` history.
 - **`references` field handling** — see "References write contract" below.
@@ -164,7 +164,7 @@ const doc = {
 };
 ```
 
-If `references.{key}` collides with a core field name, the core field wins silently. The stored doc is always correct. The README documents the **reserved-keys list** (`_id`, `workflow_id`, `type`, `entity_type`, `entity_id`, `entity_collection`, `key`, `status`, `summary`, `created`, `updated`, `assignees`, `due_date`, `description`, `tracker`, `child_entity_id`, `child_entity_collection`, `parent_action_id`, `parent_entity_id`, `parent_entity_collection`, plus any other engine-managed keys) so authors know which keys to avoid; collisions from genuine app bugs surface as "the reference value I set didn't appear when I queried." The three universal fields (`assignees`, `due_date`, `description`) are reserved because they are user-editable engine-managed fields — apps that try to put `assignees` on `references` would have it silently overridden.
+If `references.{key}` collides with a core field name, the core field wins silently. The stored doc is always correct. The README documents the **reserved-keys list** (`_id`, `workflow_id`, `type`, `entity_type`, `entity_id`, `entity_collection`, `key`, `status`, `summary`, `created`, `updated`, `assignees`, `due_date`, `description`, `tracker`, `child_workflow_id`, `child_entity_id`, `child_entity_collection`, `parent_action_id`, `parent_entity_id`, `parent_entity_collection`, plus any other engine-managed keys) so authors know which keys to avoid; collisions from genuine app bugs surface as "the reference value I set didn't appear when I queried." The three universal fields (`assignees`, `due_date`, `description`) are reserved because they are user-editable engine-managed fields — apps that try to put `assignees` on `references` would have it silently overridden.
 
 **Validation throws are deliberately not implemented in v1.** Merge-order silencing keeps the handler simple, the stored doc is always correct, and the reserved-keys list is small enough (~20 names) that the realistic failure mode is a developer surfacing "the reference value I set didn't appear when I queried" — debuggable without runtime errors. Build-time validation in `makeWorkflowsConfig` (catching collisions in static workflow YAML) and write-time validation in the plugin handlers (catching collisions in dynamic payloads) are purely-additive nice-to-haves if real apps surface confusion from silent overrides; they can land in any v1.x without breaking changes.
 
@@ -180,20 +180,26 @@ A **tracker action** is an action with `kind: tracker` and a `tracker:` block. I
 
 The relationship between a tracker action and its child workflow is **bidirectional, established by `start-workflow` at child-workflow-creation time**:
 
-- **Tracker action** (parent side) carries `child_entity_id` and `child_entity_collection` — the entity id and collection-connection-id of the child workflow's entity. Both empty until the child workflow is started.
+- **Tracker action** (parent side) carries `child_workflow_id` (the child workflow doc's `_id`), `child_entity_id`, and `child_entity_collection`. All three are empty until the child workflow is started.
 - **Child workflow doc** carries `parent_action_id`, `parent_entity_id`, and `parent_entity_collection` — back-references to the tracker action that's mirroring it. All empty for top-level (non-child) workflows.
 
 Both sides are written in **one `start-workflow` call**, not two. The trigger action's submit hook calls `start-workflow` with `parent_action_id` set; the engine writes:
 
 1. The new child workflow doc with `parent_action_id`, `parent_entity_id`, and `parent_entity_collection` populated (the latter two read off the parent tracker action's `entity_id` / `entity_collection`).
 2. The N starting action docs for the child.
-3. The parent tracker action's `child_entity_id` and `child_entity_collection` fields (read from the `start-workflow` payload), transitioned to `in-progress`.
+3. The parent tracker action's `child_workflow_id` (the new child workflow's `_id`), `child_entity_id`, and `child_entity_collection` fields, transitioned to `in-progress`.
 
 All three writes happen inside one `WorkflowAPI` handler invocation on the shared client (see "Client and transaction model"). Authors no longer chain `start-workflow` + `submit-action(fields: { key })` — the engine owns the link setup.
 
-**Why `child_entity_id` and not `child_workflow_id`.** The tracker's `tracker:` block declares the `workflow_type` it follows. Combined with the entity id, `(child_entity_id, tracker.workflow_type)` uniquely identifies the child workflow. Storing the entity id (not the workflow id) on the parent side is more useful for UI: links from tracker action displays target the child entity's view page, not the workflow doc. The engine's subscription doesn't need `child_workflow_id` because the child workflow's `parent_action_id` provides the direct primary-key lookup back to the parent (next section).
+**Why all three fields (`child_workflow_id`, `child_entity_id`, `child_entity_collection`).** Each does different work:
 
-**Why this isn't `key`.** Earlier drafts overloaded the action doc's `key` field — for fan-out actions, `key` is a domain id (e.g. a device serial number); for tracker actions, it was the child workflow's `_id`. The overloading was load-bearing only on the engine side and confusing for authors. With this design, `key` keeps its fan-out role (domain ids for per-row actions) and trackers get the dedicated `child_entity_id` field. The `(workflow_id, type, key)` unique index still applies to trackers (with `key: null`).
+- `child_workflow_id` is the strong identifier for the linked child workflow doc. The engine's tracker subscription uses the bidirectional back-reference (child workflow's `parent_action_id` → tracker action's `_id`) for its own lookups, so the engine doesn't strictly require `child_workflow_id` to be stored on the parent. But apps need it for queries like "find tracker actions referencing this workflow id" and for direct UI navigation to the child workflow surface (e.g. an admin tool that wants to drill into the workflow doc itself, not the entity around it).
+- `child_entity_id` + `child_entity_collection` are the entity-side reference. UI navigation from a tracker action's `status_map` link typically routes to the child entity's view page (entities have human-facing names; workflow docs don't), so the entity reference is what apps render against.
+- Together they let apps choose the navigation target — entity page or workflow doc — without joining through the child workflow doc.
+
+All three are populated in the single `start-workflow` call when `parent_action_id` is set. Empty for tracker actions that haven't yet been linked (e.g. an action newly in `action-required` whose corresponding child entity / workflow hasn't been created yet).
+
+**Why this isn't `key`.** Earlier drafts overloaded the action doc's `key` field — for fan-out actions, `key` is a domain id (e.g. a device serial number); for tracker actions, it was the child workflow's `_id`. The overloading was load-bearing only on the engine side and confusing for authors. With this design, `key` keeps its fan-out role (domain ids for per-row actions) and trackers get the dedicated `child_workflow_id` / `child_entity_id` / `child_entity_collection` fields. The `(workflow_id, type, key)` unique index still applies to trackers (with `key: null`).
 
 ### Mechanism — synchronous in-process within `UpdateWorkflowActions`
 
@@ -331,7 +337,7 @@ Concrete scenario exercising the ordering with two levels of nesting. The exampl
 
 **Setup.** Two workflows on two entities, linked via the parent/child fields:
 
-- **Workflow A** on a `lead` entity (`entity_collection: leads-collection`). Two actions: `qualify` (form, currently `in-review`) and `track-installation` (tracker, currently `in-progress`, `child_entity_id = ticket._id`, `child_entity_collection = tickets-collection`, `tracker.workflow_type = device-installation`). `parent_action_id` / `parent_entity_id` / `parent_entity_collection` are null — A is top-level.
+- **Workflow A** on a `lead` entity (`entity_collection: leads-collection`). Two actions: `qualify` (form, currently `in-review`) and `track-installation` (tracker, currently `in-progress`, `child_workflow_id = Workflow B._id`, `child_entity_id = ticket._id`, `child_entity_collection = tickets-collection`, `tracker.workflow_type = device-installation`). `parent_action_id` / `parent_entity_id` / `parent_entity_collection` are null — A is top-level.
 - **Workflow B** on a `ticket` entity (`entity_collection: tickets-collection`), `workflow_type: device-installation`. One action: `install-device` (form, currently `in-review`). Workflow B's `status = [{ stage: 'active' }]`, `parent_action_id = track-installation._id`, `parent_entity_id = lead._id`, `parent_entity_collection = leads-collection` — populated when `start-workflow` was called with `parent_action_id` set.
 
 A reviewer submits the approval on `install-device` via `submit-action({ action_id: install-device._id, current_type: install-device, current_status: done })`. The `submit-action` routine aliases `payload.action_id` to `currentActionId` and calls `UpdateWorkflowActions({ currentActionId: install-device._id, actions: [{ type: install-device, status: done }], eventId: <new-uuid> })`.
@@ -408,7 +414,8 @@ The plugin reads `actionsEnum` from `_module.var` or directly from `global.actio
 
 1. **Relationship-registry cycle protection.** Hard graph-cycle prevention is deferred. If real apps surface pathological linking patterns, add a runtime depth-limit guard (default 10) that fails with a clear error citing the recursion chain.
 2. **Change-stream subscription variant.** Re-open if multi-process writers, direct DB writes, or migration tooling become real triggers.
-3. **Entity-status mirroring on `tracker:` (revisit if real apps surface the need).** Decision 3 commits tracker actions to mirror workflow status only. Adding entity-status mirroring (an `on: workflow | entity` selector) is purely additive — no migration if it lands later.
+
+(Entity-status mirroring on `tracker:` was previously an open question here — Steph's parent-level review surfaced it as a real-app need; resolution is **rejected**, tracker actions only ever track workflows. Apps tracking simple entities use the minimal-workflow shim pattern described in action-authoring "Tracking simple entities (minimal workflow shim)." See `review/review-steph-1.md` finding #1.)
 
 ## Next Step
 

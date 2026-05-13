@@ -137,10 +137,11 @@ start-workflow payload:
   entity_collection: string   # required; MongoDB collection connection id (e.g. "leads-collection")
   parent_action_id: string    # optional; when set, links this workflow as a child of an existing
                               #   tracker action. Engine validates the action is `kind: tracker`
-                              #   and has null `child_entity_id`; writes parent_entity_id /
+                              #   and has null `child_workflow_id`; writes parent_entity_id /
                               #   parent_entity_collection from the parent action; writes the
-                              #   tracker's child_entity_id / child_entity_collection + in-progress
-                              #   transition. All atomic on the shared client.
+                              #   tracker's child_workflow_id / child_entity_id /
+                              #   child_entity_collection + in-progress transition.
+                              #   All atomic on the shared client.
   references: object          # optional; spread onto workflow doc and every starting action doc
 ```
 

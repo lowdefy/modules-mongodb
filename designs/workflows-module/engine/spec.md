@@ -96,22 +96,23 @@ No Mongo transactions in v1. Ordering is preserved (sequential writes); atomicit
 
 ### Action doc
 
-| Field                                           | Type           | Notes                                                             |
-| ----------------------------------------------- | -------------- | ----------------------------------------------------------------- |
-| `_id`                                           | string         | server-generated                                                  |
-| `workflow_id`                                   | string         | parent workflow's `_id`                                           |
-| `type`                                          | string         | from YAML                                                         |
-| `kind`                                          | string         | `form` \| `task` \| `tracker`                                     |
-| `key`                                           | string \| null | for fan-out actions (non-tracker); domain id like a device serial |
-| `status`                                        | array          | history, newest at index 0                                        |
-| `entity_type`, `entity_id`, `entity_collection` | various        | matches parent workflow                                           |
-| `assignees`                                     | string[]       | universal field                                                   |
-| `due_date`                                      | Date \| null   | universal field                                                   |
-| `description`                                   | string \| null | universal field                                                   |
-| `tracker`                                       | object \| null | `{ workflow_type }` on tracker actions only                       |
-| `child_entity_id`                               | string \| null | tracker actions; set when child workflow is started               |
-| `child_entity_collection`                       | string \| null | tracker actions; collection connection id                         |
-| `<reference keys>`                              | various        | spread from `references` payload                                  |
+| Field                                           | Type           | Notes                                                                                |
+| ----------------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| `_id`                                           | string         | server-generated                                                                     |
+| `workflow_id`                                   | string         | parent workflow's `_id`                                                              |
+| `type`                                          | string         | from YAML                                                                            |
+| `kind`                                          | string         | `form` \| `task` \| `tracker`                                                        |
+| `key`                                           | string \| null | for fan-out actions (non-tracker); domain id like a device serial                    |
+| `status`                                        | array          | history, newest at index 0                                                           |
+| `entity_type`, `entity_id`, `entity_collection` | various        | matches parent workflow                                                              |
+| `assignees`                                     | string[]       | universal field                                                                      |
+| `due_date`                                      | Date \| null   | universal field                                                                      |
+| `description`                                   | string \| null | universal field                                                                      |
+| `tracker`                                       | object \| null | `{ workflow_type }` on tracker actions only                                          |
+| `child_workflow_id`                             | string \| null | tracker actions; set when child workflow is started (the child workflow doc's `_id`) |
+| `child_entity_id`                               | string \| null | tracker actions; set when child workflow is started                                  |
+| `child_entity_collection`                       | string \| null | tracker actions; collection connection id                                            |
+| `<reference keys>`                              | various        | spread from `references` payload                                                     |
 
 ### Indexes
 
@@ -122,7 +123,7 @@ No Mongo transactions in v1. Ordering is preserved (sequential writes); atomicit
 
 ## Capabilities
 
-- **`StartWorkflow`** writes a workflow doc + N action docs. When `parent_action_id` is in the payload, the engine validates the action exists, is `kind: tracker`, and isn't already linked (`child_entity_id` is null), then writes the new workflow's `parent_action_id` / `parent_entity_id` / `parent_entity_collection` (latter two read from the parent action's `entity_id` / `entity_collection`) and the parent tracker action's `child_entity_id` / `child_entity_collection` + `in-progress` transition. All writes share the same handler invocation.
+- **`StartWorkflow`** writes a workflow doc + N action docs. When `parent_action_id` is in the payload, the engine validates the action exists, is `kind: tracker`, and isn't already linked (`child_workflow_id` is null), then writes the new workflow's `parent_action_id` / `parent_entity_id` / `parent_entity_collection` (latter two read from the parent action's `entity_id` / `entity_collection`) and the parent tracker action's `child_workflow_id` (the new workflow's `_id`) / `child_entity_id` / `child_entity_collection` + `in-progress` transition. All writes share the same handler invocation.
 - **`UpdateWorkflowActions`** writes one or more action transitions per call. Payload uses `keys: [...]` plural; the plugin flat-maps over `keys` (omitted → one op `key: null`; `[]` → zero ops; `[k]` → one op `key: k`; `[k1,k2,...]` → N ops). On-disk action docs keep singular `key`. After action writes, recomputes affected `groups[]` statuses and writes them to the workflow doc; re-evaluates every blocked action's `blocked_by` against the new state and pushes `action-required` on those whose dependencies are now terminal; runs auto-complete check (all actions terminal → push `completed` to workflow status); fires tracker subscription if workflow status changed; recomputes workflow-level `summary` (eager writeback). Returns `{ action_ids, completed_groups, event_id }` — `completed_groups` lists groups that transitioned to `done` in this call (consumed by outer Layer-1 orchestration that fans out `on_complete` hooks; see action-groups Decision 6).
 - **`CancelWorkflow`** pushes `cancelled` to workflow status; flips remaining open actions on the workflow to `not-required`. References at the call level spread onto the workflow doc on the cancelled push.
 - **Universal action fields** (`assignees`, `due_date`, `description`) flow through `UpdateWorkflowActions` payload's `actions[].fields`. Merged into per-action `$set` atomically with the status transition. `null` clears; omitted leaves unchanged.
@@ -165,7 +166,7 @@ const doc = {
 };
 ```
 
-Reserved keys: `_id`, `workflow_id`, `type`, `entity_type`, `entity_id`, `entity_collection`, `key`, `status`, `summary`, `created`, `updated`, `assignees`, `due_date`, `description`, `tracker`, `child_entity_id`, `child_entity_collection`, `parent_action_id`, `parent_entity_id`, `parent_entity_collection`. Collisions are silently overridden by core fields; no validation throws in v1.
+Reserved keys: `_id`, `workflow_id`, `type`, `entity_type`, `entity_id`, `entity_collection`, `key`, `status`, `summary`, `created`, `updated`, `assignees`, `due_date`, `description`, `tracker`, `child_workflow_id`, `child_entity_id`, `child_entity_collection`, `parent_action_id`, `parent_entity_id`, `parent_entity_collection`. Collisions are silently overridden by core fields; no validation throws in v1.
 
 ## Tracker subscription
 
@@ -211,7 +212,7 @@ async function pushWorkflowStatus(ctx, workflowId, newStage, eventId) {
 }
 ```
 
-**One-to-one constraint**: each child workflow has at most one `parent_action_id`; each tracker action has at most one `child_entity_id`. Apps needing the same physical event to drive multiple parents spawn separate child workflows per parent.
+**One-to-one constraint**: each child workflow has at most one `parent_action_id`; each tracker action has at most one `child_workflow_id`. Apps needing the same physical event to drive multiple parents spawn separate child workflows per parent.
 
 ## Idempotency
 
@@ -247,7 +248,7 @@ Summary recompute is idempotent — nested recursion may recompute the same work
 
 **Setup.** Two workflows on two entities, bidirectionally linked:
 
-- **Workflow A** on a `lead` (`entity_collection: leads-collection`). Two actions: `qualify` (form, `in-review`) and `track-installation` (tracker, `in-progress`, `child_entity_id: ticket._id`, `child_entity_collection: tickets-collection`, `tracker.workflow_type: device-installation`). `parent_*` fields null.
+- **Workflow A** on a `lead` (`entity_collection: leads-collection`). Two actions: `qualify` (form, `in-review`) and `track-installation` (tracker, `in-progress`, `child_workflow_id: Workflow B._id`, `child_entity_id: ticket._id`, `child_entity_collection: tickets-collection`, `tracker.workflow_type: device-installation`). `parent_*` fields null.
 - **Workflow B** on a `ticket` (`entity_collection: tickets-collection`), `workflow_type: device-installation`. One action: `install-device` (form, `in-review`). `status = [{active}]`, `parent_action_id: track-installation._id`, `parent_entity_id: lead._id`, `parent_entity_collection: leads-collection`.
 
 **User submits `install-device` → `done`** via `submit-action`. Engine routine maps `action_id → currentActionId`, generates `eventId E1`, calls `UpdateWorkflowActions`.
@@ -276,7 +277,6 @@ updateAction(currentActionId=install-device._id, actions=[{type: install-device,
 
 1. **Cycle protection.** Engine doesn't statically prove acyclicity. If real apps surface pathological linking, add a runtime depth-limit guard (default 10) failing with a clear error.
 2. **Change-stream subscription variant.** Reopen if multi-process writers, direct DB writes, or migration tooling become real triggers.
-3. **Entity-status mirroring on `tracker:`.** Decision 3 commits trackers to mirror workflow status only. Adding an `on: workflow | entity` selector is purely additive.
 
 ## Risks
 

@@ -223,7 +223,8 @@ start-workflow payload:
                               #   the files module convention.
   parent_action_id: string    # optional; when set, this workflow is a child of an
                               #   existing tracker action. The engine writes the
-                              #   tracker action's `child_entity_id` /
+                              #   tracker action's `child_workflow_id` (the new
+                              #   workflow's _id), `child_entity_id`, and
                               #   `child_entity_collection` and transitions it to
                               #   `in-progress` in the same call. parent_entity_id
                               #   and parent_entity_collection are derived server-side
@@ -234,7 +235,7 @@ start-workflow payload:
 
 Returns `{ workflow_id, action_ids }`.
 
-**Parent-link semantics.** When `parent_action_id` is set, the engine validates that the action exists, is `kind: tracker`, and isn't already linked (i.e. its `child_entity_id` is null). Mismatches reject with structured errors. The engine writes both sides of the link in one handler invocation — see [engine](../engine/design.md) Decision 3 "Parent ↔ child link shape." Callers don't need a follow-up `submit-action` to attach the new workflow to the parent.
+**Parent-link semantics.** When `parent_action_id` is set, the engine validates that the action exists, is `kind: tracker`, and isn't already linked (i.e. its `child_workflow_id` is null). Mismatches reject with structured errors. The engine writes both sides of the link in one handler invocation: the new child workflow gets `parent_action_id` / `parent_entity_id` / `parent_entity_collection`, and the parent tracker action gets `child_workflow_id` / `child_entity_id` / `child_entity_collection` plus an `in-progress` transition. See [engine](../engine/design.md) Decision 3 "Parent ↔ child link shape." Callers don't need a follow-up `submit-action` to attach the new workflow to the parent.
 
 ## Decision 4 — `cancel-workflow` payload contract
 
