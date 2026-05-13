@@ -105,7 +105,7 @@ Errors fail the app build with a path to the offending workflow / action.
 
 The kind drives:
 
-1. **Page generation**: form → per-action `edit` / `view` / `error` pages; task → shared `task-edit` / `task-view`; tracker → no pages (inline display).
+1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by `access.{app_name}` verb list; `-error` always emitted); task → shared `task-edit` / `task-view` / `task-review`; tracker → no pages (inline display).
 2. **Submit API surface**: form → `submit-action` with form payload; task → `submit-action` with user-selected `current_status`; tracker → no caller submission (engine writes via subscription).
 3. **Resolver invocation**: `makeActionsForm` and `makeActionFormConfigs` run only for form actions; `makeWorkflowApis` emits endpoints only for form actions.
 
@@ -124,11 +124,11 @@ access:
 
 Keys are app deployment names (matching `vars.app_name` per module composition). Values are verb lists controlling UI affordances in that app:
 
-| Verb     | Effect                                                                                                |
-| -------- | ----------------------------------------------------------------------------------------------------- |
-| `view`   | Shows action in `actions-on-entity`; renders read-only detail pages (form `-view`, task `task-view`). |
-| `edit`   | Renders submit form (form `-edit`, task `task-edit`). Implies `view`.                                 |
-| `review` | Renders approve / request-changes affordances on the edit page. Implies `view`.                       |
+| Verb     | Effect                                                                                                                                                                                                                 |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`   | Shows action in `actions-on-entity`; renders read-only detail pages (form `-view`, task `task-view`).                                                                                                                  |
+| `edit`   | Renders submit form (form `-edit`, task `task-edit`). Implies `view`.                                                                                                                                                  |
+| `review` | Renders a dedicated review page (form: per-action `-review`; task: shared `task-review`). Approve → `submit-action` with `current_status: done`; Request Changes → `current_status: changes-required`. Implies `view`. |
 
 Apps without a key for a given app deployment hide the action entirely there. `makeActionPages` reads the host app's `app_name` and filters page emission accordingly (form actions only emit `-edit` when `edit` is listed, etc.). Vocabulary is module-defined and extensible in v1.x; unknown verbs are silently ignored.
 

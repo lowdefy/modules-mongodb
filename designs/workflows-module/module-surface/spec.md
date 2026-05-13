@@ -16,12 +16,14 @@ description: >
 exports:
   pages:
     # Form-action pages — generated per (workflow_type, action_type, verb)
-    - id: action-edit
-    - id: action-view
-    - id: action-error
+    - id: action-edit # generated when `edit` in app verb list
+    - id: action-view # generated when `view` in app verb list
+    - id: action-review # generated when `review` in app verb list
+    - id: action-error # always generated alongside other verb pages
     # Shared task-action pages
     - id: task-edit
     - id: task-view
+    - id: task-review
   connections:
     - id: workflows-collection
     - id: actions-collection

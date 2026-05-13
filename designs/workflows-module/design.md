@@ -9,7 +9,7 @@ The design splits into five sub-designs by concern. This parent doc carries the 
 | [engine](engine/design.md)                     | Server-side workflow engine — `WorkflowAPI` plugin, references write contract, tracker subscription, status enum priority rule.                                                                                                                                                                   |
 | [module-surface](module-surface/design.md)     | `module.lowdefy.yaml` manifest (exports, vars, dependencies) and the four module APIs (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `submit-action`) that apps call.                                                                                                              |
 | [action-authoring](action-authoring/design.md) | YAML surface for workflows and actions — three action kinds (form / task / tracker) declared via required `kind:` field, universal fields (`assignees`, `due_date`, `description`), tracker `tracker:` block, resolver pipeline, form components library, module-shipped status enum.             |
-| [ui](ui/design.md)                             | Per-action page generation strategy, form-action templates (`edit` / `view` / `error`), static `task-edit` / `task-view` pages, and the three entity-page UI components (`actions-on-entity`, `workflow-header`, `action_role_check`).                                                            |
+| [ui](ui/design.md)                             | Per-action page generation strategy, form-action templates (`edit` / `view` / `review` / `error`), static `task-edit` / `task-view` / `task-review` pages, and the three entity-page UI components (`actions-on-entity`, `workflow-header`, `action_role_check`).                                 |
 | [action-groups](action-groups/design.md)       | Elevates `action_group` from UI label to engine concept — workflow-level `action_groups:` declaration, persisted three-value group status on the workflow doc, `blocked_by` accepting group IDs, engine-driven `blocked_by` re-evaluation, optional per-group `on_complete` hook (mechanism TBD). |
 
 ## Problem
@@ -155,7 +155,7 @@ No helper composition; one API call. The [module-surface](module-surface/design.
 
 ### `workflow_config/onboarding/schedule-followup.yaml` — task action
 
-Task actions declare `kind: task` and carry neither `form:` nor `tracker:`. The [ui](ui/design.md) sub-design's resolver emits no per-action pages; the user-facing edit/view experience is the module-shipped `task-edit` / `task-view` pages addressed by `?action_id=<id>`.
+Task actions declare `kind: task` and carry neither `form:` nor `tracker:`. The [ui](ui/design.md) sub-design's resolver emits no per-action pages; the user-facing edit/view/review experience is the module-shipped `task-edit` / `task-view` / `task-review` pages addressed by `?action_id=<id>`.
 
 ```yaml
 type: schedule-followup
@@ -231,7 +231,7 @@ No `entity_relationships` — the engine doesn't need to know how leads and tick
 
 The build composes the workflows module into the app, runs the resolvers, and the action-kind inference branches per action:
 
-- **Per-action pages generated** (`makeActionPages`): only for form actions. `qualify` and `send-quote` each get up to three pages (edit / view / error) scoped under `workflows/` — e.g. `workflows/onboarding-qualify-edit`. `schedule-followup` (task) and `track-installation` (tracker) get **no per-action pages**; task actions use the module's shared `workflows/task-edit` page, tracker actions render inline.
+- **Per-action pages generated** (`makeActionPages`): only for form actions. Each form action gets up to four pages (`-edit` / `-view` / `-review` / `-error`) scoped under `workflows/` — e.g. `workflows/onboarding-qualify-edit`. The verb pages (`-edit` / `-view` / `-review`) are emitted only when the verb is present in the action's `access.{app_name}` list; the `-error` page is always emitted. `schedule-followup` (task) and `track-installation` (tracker) get **no per-action pages**; task actions use the module's shared `workflows/task-edit` / `task-view` / `task-review` pages, tracker actions render inline.
 - **Requests generated** (`makeWorkflowApis`): one submit endpoint per **form action** only — `workflows/onboarding-qualify-submit`, `workflows/onboarding-send-quote-submit`. The endpoints `_ref` the action's `submit_hook` if declared, or fall back to a thin default that calls `submit-action` with `current_status: done`. `schedule-followup` (task action) doesn't get a per-action endpoint — the shared `task-edit` page calls `submit-action` directly. `track-installation` (tracker action) doesn't get an endpoint either — the engine writes its status via the tracker subscription.
 - **Runtime config generated** (`makeWorkflowsConfig`): one global object the `workflow-api` connection reads. Wired via `connections/workflow-api.yaml`.
 - **Status enums** (`global.action_statuses`, `global.workflow_lifecycle_stages`): static module-shipped files, available to templates and the WorkflowAPI plugin without any per-app generation.

@@ -12,11 +12,11 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 ### Resolver output per action kind
 
-| Kind      | Pages generated                                                      |
-| --------- | -------------------------------------------------------------------- |
-| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-error` |
-| `task`    | None (uses shared `task-edit` / `task-view`)                         |
-| `tracker` | None (renders inline in `actions-on-entity`)                         |
+| Kind      | Pages generated                                                                                                                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list; `-error` is always emitted. |
+| `task`    | None (uses shared `task-edit` / `task-view` / `task-review`)                                                                                                                                           |
+| `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                           |
 
 ### Form-action page YAML shape
 
@@ -43,6 +43,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
           page_ids:
             view: "{workflow_type}-{action_type}-view"
             edit: "{workflow_type}-{action_type}-edit"
+            review: "{workflow_type}-{action_type}-review"
             error: "{workflow_type}-{action_type}-error"
           entity_type: "{workflow.entity_type}"
           entity_collection: "{workflow.entity_collection}"
@@ -60,14 +61,16 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 - `templates/edit.yaml.njk` — edit form, posts to the generated `{workflow_type}-{action_type}-submit` endpoint.
 - `templates/view.yaml.njk` — read-only view.
+- `templates/review.yaml.njk` — read-only form display + approve / request-changes affordances. Approve → `submit-action` with `current_status: done`; Request Changes → `current_status: changes-required`.
 - `templates/error.yaml.njk` — error display.
 
 **Static task-action pages** at `pages/`:
 
 - `pages/task-edit.yaml` — status selector populated from `global.action_statuses` (filtered to allowed transitions via priority rule), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. Save constructs the `submit-action` payload (`fields:` block + `event.metadata.comment`) and `CallApi`s the endpoint directly.
 - `pages/task-view.yaml` — action header (title from action YAML, current status badge), universal-fields display, status timeline (from action's `status` history), comments timeline (events with `metadata.comment` populated for this `action_id`).
+- `pages/task-review.yaml` — action header + universal-fields display (same shape as `task-view`) plus approve / request-changes affordances and an optional comment field. Approve / Request Changes call `submit-action` with `current_status: done` / `changes-required`; the comment flows through `event.metadata.comment`.
 
-Both task pages take `?action_id=<id>` as a URL query. Apps don't override task pages — task actions intentionally share one experience. Apps that need different task UX use form actions instead.
+All three task pages take `?action_id=<id>` as a URL query. Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead.
 
 ### App-theme-agnostic chrome
 

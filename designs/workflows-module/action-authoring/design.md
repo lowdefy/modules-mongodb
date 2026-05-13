@@ -157,7 +157,7 @@ The validations run inside `makeWorkflowsConfig` (resolver pipeline, Decision 6)
 
 The kind drives three things downstream:
 
-1. **Page generation.** Form actions emit per-action `edit` / `view` / `error` pages. Task actions don't get per-action pages — they use one shared module-level `task-edit` / `task-view` page, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
+1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; `-error` is always emitted). Task actions don't get per-action pages — they use shared module-level `task-edit` / `task-view` / `task-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
 2. **Submit API surface.** Form actions submit via `submit-action` with form payload; task actions submit via `submit-action` with a `current_status` selected by the user (and an optional comment in `event.metadata.comment`); tracker actions don't submit at all — the engine writes their status via the tracker subscription (engine sub-design).
 3. **Resolver invocation.** `makeActionsForm` and `makeActionFormConfigs` run only for form actions; task and tracker actions skip both. `makeActionPages` skips per-action emission for task and tracker kinds.
 
@@ -178,11 +178,11 @@ access:
 
 Keys are app deployment names (matching `vars.app_name` on each module composition). Each value is a verb list controlling which UI affordances the generated action surfaces render in that app:
 
-| Verb     | Effect                                                                                                                                                      |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows the action in `actions-on-entity` on the entity page and renders read-only detail pages (form-action `-view`, task-action `task-view`).               |
-| `edit`   | Renders the submit form — form-action `-edit` pages, task-action `task-edit`. Implies `view`.                                                               |
-| `review` | Renders approve / request-changes UI affordances on the edit page (an in-review state that can transition to `done` or `changes-required`). Implies `view`. |
+| Verb     | Effect                                                                                                                                                                                                                                                                                                                                                   |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`   | Shows the action in `actions-on-entity` on the entity page and renders read-only detail pages (form-action `-view`, task-action `task-view`).                                                                                                                                                                                                            |
+| `edit`   | Renders the submit form — form-action `-edit` pages, task-action `task-edit`. Implies `view`.                                                                                                                                                                                                                                                            |
+| `review` | Renders a dedicated review page — form actions get `{workflow_type}-{action_type}-review` (generated alongside `-edit` / `-view` / `-error` when present in the verb list); task actions use the shared `task-review` page. Approve → `submit-action` with `current_status: done`; Request Changes → `current_status: changes-required`. Implies `view`. |
 
 Apps without a key for a given app deployment **hide the action entirely** in that app — no `actions-on-entity` row, no edit page generated, no link reachable. The resolver's `makeActionPages` reads the host app's `app_name` and filters per-action page emission based on that app's verb list (form actions only emit `-edit` when `edit` is in the list, etc.). The runtime UI affordances on entity pages read the same map to decide what to render.
 
@@ -472,7 +472,7 @@ submit_hook: ../api/lead-onboarding-qualify-submit-hook.yaml # optional
 
 For each form action the resolver emits exactly one `Api` entry, `id: '{workflow_type}-{action_type}-submit'`. When `submit_hook` is null the routine is a thin `CallApi` to `submit-action` with `current_status: done` and the action's type pre-filled. When `submit_hook` is set the routine `_ref`s the hook directly, and the hook itself calls `submit-action` with whatever richer payload it builds (unblocks, entity write, event log, etc.). See the module-surface sub-design for the full `submit-action` contract.
 
-A single endpoint name per form action — no `endpoints: [...]` field, no per-verb iteration. Apps that want approve/request-changes UX surface them as separate review-stage form actions (e.g. a `qualify-review` action with `access.{app}: [view]` whose submit hook calls `submit-action` with `current_status: done`), or build the right payload from a single page button. The module doesn't enforce a multi-verb authoring pattern at the endpoint level.
+A single endpoint name per form action — no `endpoints: [...]` field, no per-verb iteration. The same `{workflow_type}-{action_type}-submit` endpoint handles every verb on the page: `-edit` posts with `current_status: done` (or whatever the submit hook chooses); `-review` posts with `current_status: done` (approve) or `current_status: changes-required` (request-changes). The page picks the status at click time; the engine's priority rule + access semantics enforce validity. Apps that want a multi-step review flow (e.g. distinct submit flow per review verb) wrap the `submit-action` `CallApi` step in their own per-button routine — purely additive on the app side; no module change.
 
 ### Resolver invocation in `module.lowdefy.yaml`
 

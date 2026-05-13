@@ -52,7 +52,7 @@ Option B's appeal was that page IDs would be unprefixed (e.g. `lead-onboarding-q
 
 The resolver branches on action kind (see [action-authoring](../action-authoring/design.md) "Action kinds"):
 
-- **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-error`). One page doc per (action, verb).
+- **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`). Per-verb pages are emitted only when the action's `access.{app_name}` verb list contains that verb (per [action-authoring](../action-authoring/design.md) Decision 3); the `-error` page is always emitted alongside any other generated verb page. One page doc per emitted (action, verb).
 - **Task actions** — emits **no per-action pages**. The module ships two shared pages (`task-edit` and `task-view` exposed in `exports.pages`) that handle every task action across the build, addressed by `?action_id=<id>` in the URL.
 - **Tracker actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
 
@@ -82,32 +82,34 @@ For form actions, the per-action page YAML the resolver outputs looks like:
           page_ids:
             view: "{workflow_type}-{action_type}-view"
             edit: "{workflow_type}-{action_type}-edit"
+            review: "{workflow_type}-{action_type}-review"
             error: "{workflow_type}-{action_type}-error"
           entity_type: {workflow.entity_type}
           ...
 ```
 
-Task actions don't go through this loop at all — the `task-edit` and `task-view` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the status selector and a comment field. No per-action customisation; identical experience for every task action across every workflow.
+Task actions don't go through this loop at all — the `task-edit`, `task-view`, and `task-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (status selector + comment for edit; read-only display for view; approve/request-changes for review). No per-action customisation; identical experience for every task action across every workflow.
 
 Notable shape choices the resolver commits to:
 
 1. **`app_name` is read, not iterated.** The resolver takes `app_name` and uses it to filter `access.{app_name}` per action — one app per build, no inner loop. Workflow YAML shared across host apps maps to multiple module compositions in `modules.yaml`, one per host app.
 2. **Module-relative template paths.** Templates live at `templates/{verb}.yaml.njk` in the module's own tree. Apps that need to override a per-action page supply a custom template via the action's YAML; the resolver checks for that override before falling back to the module default (see Decision 2 below).
 3. **`entity_type` / `entity_id` / `entity_collection` (entity-agnostic).** The resolver passes scalar `entity_type` (e.g. `lead`, `ticket`, `contact`), `entity_id` (the doc `_id`), and `entity_collection` (the MongoDB collection connection id, e.g. `leads-collection`) to templates. Per-action templates read these to build the right query (using `entity_collection` as the `connectionId`) and the back-link to the entity page.
-4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` shared pages, and tracker actions don't have pages at all. An app with 6 form actions and 4 task actions ships 18 form-action pages (6 × 3 verbs) plus 2 shared task pages.
+4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` / `task-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on the action's `access.{app_name}` verb list: minimum two pages (`-error` is always emitted; one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all three verbs + error).
 
 ## Decision 2 — Page templates (sketch)
 
 The module ships two sets of templates:
 
-**Form-action templates** — used by `makeActionPages` to build per-action pages. Three generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/error.yaml.njk`.
+**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with an added approve / request-changes affordance band — Approve calls `submit-action` with `current_status: done`; Request Changes calls it with `current_status: changes-required` (matching action-authoring's `review` verb semantics).
 
-**Task-action pages** — `pages/task-edit.yaml` and `pages/task-view.yaml` in the module's own tree (statically defined, not generated). Both pages take `?action_id=<id>` as a URL query, fetch the action doc, and render a generic surface:
+**Task-action pages** — `pages/task-edit.yaml`, `pages/task-view.yaml`, and `pages/task-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
 
 - **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. Save constructs the `submit-action` payload (`fields:` block + `event.metadata.comment`) and calls the endpoint via `CallApi`.
 - **`task-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
+- **`task-review`**: action header + universal-fields display (same shape as `task-view`) plus an approve / request-changes affordance band and an optional comment field. Approve / Request Changes call `submit-action` with `current_status: done` / `changes-required` respectively; the comment, if entered, flows through `event.metadata.comment`.
 
-Both task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
+All three task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
 The form-action templates have one notable property:
 
