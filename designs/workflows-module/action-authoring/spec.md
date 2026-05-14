@@ -152,7 +152,7 @@ Composition is AND: per-app verb filter, then role gate. A user with `account-ma
 
 ## Universal action fields
 
-Every action doc carries three optional fields, settable per-instance via the edit page:
+Every action doc carries three optional content fields, settable per-instance via the edit page:
 
 | Field         | Type       | Default |
 | ------------- | ---------- | ------- |
@@ -163,6 +163,191 @@ Every action doc carries three optional fields, settable per-instance via the ed
 Updates flow through `submit-action`'s `fields:` payload block. `null` clears, omitted leaves unchanged. Atomic with the status transition (same Mongo `$set`).
 
 Reserved on `references` payloads — apps can't claim these field names.
+
+### Display-positioning fields
+
+| Field          | Type     | Default | Effect                                                                                                            |
+| -------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
+| `action_group` | `string` | `null`  | Group ID; must reference a declared `action_groups[].id`. Drives entity-page grouping and group-status rollup.    |
+| `sort_order`   | `number` | `null`  | Display order within an `action_group` (or workflow when no group). Lower comes first; ties broken by decl order. |
+
+Engine treats these as opaque display metadata; UI consumes them.
+
+### Terminal-behaviour field
+
+| Field                  | Type      | Default | Effect                                                                                                                        |
+| ---------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `required_after_close` | `boolean` | `false` | When `true`, the action remains submittable after the workflow lifecycle reaches `completed` or `cancelled`. Default rejects. |
+
+`submit-action` enforces this at submit time.
+
+### Fields explicitly dropped from v1
+
+- **`responsibility`** — display-only label, left to app-side UI.
+- **`access.notification_roles`** — moved to notifications config.
+- **action-level `roles`** — only `access.roles` remains as the role gate.
+- **`workflow.ticket_category`** — categorization lives on the entity if needed.
+
+## `status_map` — per-status display copy + links
+
+Every action declares a `status_map:` block keyed first by status, then by `app_name`. Each `{ status, app_name }` cell carries `message:` and optional `link:`:
+
+```yaml
+status_map:
+  action-required:
+    my-team-app:
+      message: Provide initial details.
+      link:
+        pageId: my-team-app-initial-details-edit
+        title: Initial Details
+        urlQuery: { action_id: true }
+    my-customer-app:
+      message: Awaiting initial details.
+  done:
+    my-team-app:
+      message: Initial details completed.
+      link:
+        pageId: my-team-app-initial-details-view
+        title: View Initial Details
+        urlQuery: { action_id: true }
+```
+
+**Templating.** `message` supports `{{ var }}` Nunjucks-style interpolation, rendered at read time against the action-instance context (action fields + the `key` value when the action is instanced). Status-map cells without `link:` render as static text in `actions-on-entity`; cells with `link:` render as clickable cards.
+
+**Shape mirrors `event_display`.** Same nesting/merge family as the events module ([docs/idioms.md "Event display"](../../../../docs/idioms.md#event-display)); workflows nest as `status_map.{stage}.{app_name}`.
+
+Tracker actions use `status_map` for display copy only; the engine hard-codes child-stage → parent-status mapping.
+
+## Page event vocabulary
+
+Per-page `events` use four fixed handler names. The module-emitted page template wires each to a matching button/lifecycle hook:
+
+| Handler            | Pages that use it                 | Fires on              |
+| ------------------ | --------------------------------- | --------------------- |
+| `onMount`          | `edit`, `view`, `review`, `error` | Page load             |
+| `onSubmit`         | `edit`, `error`                   | Submit click          |
+| `onApprove`        | `review`                          | Approve click         |
+| `onRequestChanges` | `review`                          | Request-changes click |
+
+Per-page YAML:
+
+```yaml
+pages:
+  edit:
+    title: Capture Initial Details
+    requests: [...]
+    events:
+      onMount: [...]
+      onSubmit: [...]
+    formHeader: [...]
+    formFooter: [...]
+  view:
+    title: Initial Details
+    events:
+      onMount: [...]
+  review:
+    title: Review Initial Details
+    events:
+      onMount: [...]
+      onApprove: [...]
+      onRequestChanges: [...]
+    modals:
+      request_changes:
+        client_change: false
+  error:
+    title: Recover Initial Details
+    requests: [...]
+    events:
+      onMount: [...] # built-in redirect-to-view guard appended by template
+      onSubmit: [...] # recovery submit routine
+    formHeader: [...] # typically a failure-context banner
+    formFooter: [...]
+    buttons: # optional override of the default Submit button
+      submit:
+        title: Retry Submit
+        modal:
+          title: Confirm Resubmission
+          content: This will re-attempt the submission. Continue?
+```
+
+- `requests:` — Lowdefy request refs the page loads.
+- `formHeader:` / `formFooter:` — block lists slotted above/below the rendered form.
+- `modals.{name}.{field}:` — config knobs on built-in module modals (review-page `request_changes` modal).
+- `pages.error.buttons.submit:` — optional override of the default error-page primary button (title + optional confirm-modal config).
+
+These fields ride into the generated page YAML via the page-emission resolver (ui sub-design).
+
+### `error` page emission rules
+
+- The `-error` page is **always emitted** for every form action, regardless of the action's `access.{app_name}` verb list. An action in `error` status is a stuck state; restricting per-app would strand users.
+- The error template ships with a stale-URL guard appended to `onMount`: if `status[0].stage !== 'error'` when the page loads, the template emits a `Link` back to `-view`.
+- The error form schema defaults to the action's `form:` block. Apps that need a different recovery schema declare a `form_error:` block parallel to `form:` / `form_review:`; otherwise the submitter's form schema is reused.
+
+### How an action enters `error`
+
+- Engine writes `{ stage: error, created, ... }` to the action's status array when a submit hook or built-in side-effect step raises an unrecoverable failure mid-submit. Failure context lands at `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}` for keyed actions) — engine-managed reserved sub-key.
+- A submit-hook routine explicitly calls `submit-action` with `current_status: error` for app-validated business-rule failures.
+
+Either path makes the action's `status_map.error.{app_name}.link` (typically pointing at `{workflow_type}-{action_type}-error?action_id=<id>`) the reachable recovery surface.
+
+## `form_review` — separate schema for review pages
+
+Actions whose access includes `review` may declare a second form block under `form_review:`:
+
+```yaml
+form:
+  - { component: file_upload, key: form.installation_files, required: true }
+form_review:
+  - key: form.device_online
+    component: yes_no_selector
+    title: Is the device online?
+    required: true
+    validate:
+      - {
+          message: Device must be online.,
+          status: error,
+          pass: { _eq: [{ _state: form.device_online }, true] },
+        }
+```
+
+Review page renders `form:` values read-only above and `form_review:` writable below. Storage: `form_data.{action_type}.review.{field}` on the workflow doc. The `.review` sub-key is reserved (engine sub-design "Form data layout").
+
+## Instanced actions (`key:`)
+
+Actions with `key:` exist as N instances per workflow, one action doc per `(workflow_id, type, key)` triple:
+
+```yaml
+type: proof-of-installation
+kind: form
+key: $device_id # symbolic — concrete values supplied at spawn time
+sort_order: 140
+form:
+  - { component: file_upload, key: form.installation_files, required: true }
+status_map:
+  action-required:
+    my-team-app:
+      message: Awaiting installation of device {{ physical_id }}.
+```
+
+**Identity.** With `key:`, action identity is `(workflow_id, type, key)`. Without, it's `(workflow_id, type)` (single instance).
+
+**Form data path.** `form_data.{action_type}.{key}.{field}`.
+
+**Spawning.** Two paths:
+
+- **At workflow start.** `start-workflow` `actions:` may include `{ type, key, status }` entries; engine writes one action doc per entry.
+- **Mid-workflow.** `submit-action`'s `unblocks:` or a submit hook can append `{ type, key, status }` to spawn new instances. Existing instances unaffected.
+
+**`blocked_by` semantics.**
+
+- Non-instanced action `blocked_by: [proof-of-installation]` unblocks when **all** instances reach a terminal status (`done` / `not-required`).
+- Instanced ↔ instanced same-key references allowed.
+- Instanced ↔ instanced cross-key references rejected at build (fan-in requires an explicit fan-in action).
+
+**Constraints.**
+
+- `key:` and `tracker:` mutually exclusive (tracker requires 1:1 cardinality).
+- Author chooses `key:` for "another row of the same form per child" / tracker for "child has its own lifecycle."
 
 ## Form action
 
@@ -340,16 +525,37 @@ Task actions don't get a generated endpoint; the shared `task-edit` page calls `
 
 Internal library at `components/fields/` in the module package. Apps reference components by `component:` name in `form:` blocks; the resolver substitutes the component's config (with author-supplied vars merged) into the page block tree at build time. Apps never `_ref` library entries directly.
 
-### v1 components
+### v1 components (27 total — full v0 parity)
 
-| Component             | Purpose                                                                |
-| --------------------- | ---------------------------------------------------------------------- |
-| `text_input`          | Single-line text — wrapper over `TextInput`                            |
-| `text_area`           | Multi-line text — wrapper over `TextArea`                              |
-| `label`               | Read-only single-line label (with `viewOnly: true` for derived values) |
-| `label_value`         | Read-only key-value pair display                                       |
-| `date_range_selector` | Two-date picker for start + end                                        |
-| `controlled_list`     | Dynamic list of sub-forms (fan-out scenarios)                          |
+| Category  | Component             | Purpose                       |
+| --------- | --------------------- | ----------------------------- |
+| Text      | `text_input`          | Single-line text              |
+|           | `text_area`           | Multi-line text               |
+|           | `tiptap_input`        | Rich-text editor              |
+| Numeric   | `number`              | Numeric input                 |
+| Date      | `date_selector`       | Single date picker            |
+|           | `date_range_selector` | Start + end date picker       |
+| Choice    | `selector`            | Single-select dropdown        |
+|           | `multiple_selector`   | Multi-select dropdown         |
+|           | `radio_selector`      | Radio group                   |
+|           | `checkbox_selector`   | Multi-select checkbox group   |
+|           | `button_selector`     | Button-group selector         |
+|           | `checkbox_switch`     | Toggle switch                 |
+|           | `yes_no_selector`     | Yes/no toggle                 |
+|           | `enum_selector`       | Selector sourced from an enum |
+| Files     | `file_upload`         | S3 put via policy             |
+|           | `file_download`       | File-list S3 get via policy   |
+| Location  | `location`            | Address + coordinates         |
+| Display   | `label`               | Read-only label               |
+|           | `label_value`         | Key-value pair                |
+|           | `title`               | Section header                |
+|           | `section_title`       | Sub-section header            |
+|           | `alert`               | Alert banner                  |
+|           | `html`                | Raw HTML                      |
+| Structure | `box`                 | Conditional/grouped container |
+|           | `section`             | Grouped section with title    |
+|           | `controlled_list`     | Dynamic list of sub-forms     |
+| Actions   | `button`              | Inline button                 |
 
 ### Component file shape
 

@@ -6,6 +6,13 @@ This sub-design is an alternative architecture to the submit-action shape commit
 
 Action-groups `on_complete` is out of scope here, but the same `context.callApi` plumbing falls out cleanly — Decision 6 in [action-groups](../action-groups/design.md) stops being a "deferred mechanism" question because the engine can fire each group's `on_complete` endpoint directly from the handler. Section "Extension preview — action-groups" sketches the shape without committing it.
 
+> **Open items routed here from the UI / example_workflow review (unresolved — to be decided as part of submit-pipeline):**
+>
+> - **Decision D — where conditional unblock logic lives.** During the UI / example_workflow review the options surfaced were: (1) per-action API files (v0 shape), (2) inline routine in action YAML under `pages.{verb}.events.{onSubmit|onApprove|onRequestChanges}`, (3) declarative outcomes (`outcomes.on_submit:` rules the engine resolves), (4) hybrid declarative outcomes + optional hook. The user noted preference for "inline routine in action YAML" but explicitly tagged this as a submit-pipeline decision rather than a UI one. **Status: not yet committed.** This sub-design's existing Decision 3 ("`submit_hook:` becomes an endpoint id") is one shape that addresses the same friction; the open call is whether to merge / supersede / co-exist.
+> - **Decision F — module-emitted API surface.** Options surfaced: (1) generic engine endpoints (the page event calls `workflows-submit-action` directly), (2) per-action API files generated at build time (v0 shape, currently committed in action-authoring Decision 6 / `makeWorkflowApis`), (3) hybrid — generic by default with opt-in named aliases via an action-level `api_id:`. The user noted preference for "generic" but explicitly tagged this as a submit-pipeline decision. **Status: not yet committed.** This sub-design's existing Decision 5 ("submit-action Api becomes thin") is one shape that addresses the same friction; the open call is whether to merge / supersede / co-exist.
+>
+> Both items are listed in this sub-design's open queue (see "Open Questions") and resolve together when submit-pipeline is reviewed.
+
 ## Problem
 
 The submit flow today has three orchestration layers:
@@ -319,10 +326,25 @@ Cost: hook semantics are "must return the transition spec" — much less flexibl
 
 ## Open Questions
 
-1. **Declarative templates on action YAML.** With the page now building the full submit-action payload, action YAML could grow `event_template:` / `entity_update_template:` blocks that the page evaluates against form_data. The page becomes a thin client that submits raw form data; the engine reads the templates from the action config and applies. Pushes the submit-action payload contract toward "tiny" — `{ action_id, current_type, form_data }` — and the engine assembles everything else. Out of scope here but enabled by the inversion.
-2. **Per-action authorization moves to the engine.** Today's submit-action Api has app-level `auth:` config; per-action role checks live in the routine via `action_role_check`. With the engine owning the submit lifecycle, per-action role checks should move into step 1 of `SubmitWorkflowAction` (Decision 1) — engine reads the action's `access` block and rejects with a structured error if the caller's roles don't match. Worth specifying explicitly; not done in this draft.
-3. **`hook_response` shape.** Decision 1 returns the hook's response. The hook is a free-form Api so the response shape is whatever the hook routine returns. Should the engine require any specific keys (e.g. `success: true`)? Probably not — keep it transparent; page handles whatever the hook returns. Document in README.
-4. **Should action-groups `on_complete` happen in this same sub-design?** User chose "submit hook only; defer groups." Once submit hooks are implemented, the action-groups extension is mechanical — `context.callApi` per completed group. Re-open if the design lands cleanly and folding groups in is small.
+1. **Decision D — where conditional unblock logic lives.** Surfaced during the UI / example_workflow review. Options:
+   - **(a) Per-action API files (v0 shape).** Each action ships its own submit/approve/request-changes API YAML; hooks freely compose `UpdateWorkflowActions` + DB writes + events + notifications.
+   - **(b) Inline routine in action YAML.** Action file declares the routine under `pages.{verb}.events.{onSubmit|onApprove|onRequestChanges}`; engine endpoint dispatches to the routine.
+   - **(c) Declarative outcomes in action YAML.** Author writes rules ("if form.X then unblock Y, mark Z not-required"); engine resolves to an actions array internally.
+   - **(d) Hybrid declarative outcomes + optional hook.** Default is declarative outcomes; action can optionally declare an `api_hook` reference for cases needing DB writes / events / notifications.
+
+   The user preference noted during UI review leans toward (b) but explicitly tagged the decision as belonging to submit-pipeline rather than UI. This sub-design's Decision 3 ("`submit_hook:` becomes an endpoint id") is one shape addressing the same friction; the open call is whether to merge / supersede / co-exist with the inline-routine shape. **Resolves when this sub-design is reviewed and committed.**
+
+2. **Decision F — module-emitted API surface.** Surfaced during the UI / example_workflow review. Options:
+   - **(a) Generic engine endpoints.** Module ships `workflows-submit-action` / `-approve-action` / `-request-changes-action`. Pages call them with a payload that includes `action_id` and form data; engine dispatches to the action's routine.
+   - **(b) Per-action API files (v0 shape, currently committed).** `makeWorkflowApis` generates one submit/approve/request-changes API file per action at build time.
+   - **(c) Hybrid: generic dispatch + optional named endpoint.** Default is generic; action can opt into a named endpoint via `api_id:`.
+
+   The user preference noted during UI review leans toward (a) but explicitly tagged the decision as belonging to submit-pipeline. This sub-design's Decision 5 ("submit-action Api becomes thin") is the (a)-shaped resolution; the open call is whether to keep `makeWorkflowApis` (action-authoring Decision 6) as a deprecated path or remove outright. **Resolves when this sub-design is reviewed and committed.**
+
+3. **Declarative templates on action YAML.** With the page now building the full submit-action payload, action YAML could grow `event_template:` / `entity_update_template:` blocks that the page evaluates against form_data. The page becomes a thin client that submits raw form data; the engine reads the templates from the action config and applies. Pushes the submit-action payload contract toward "tiny" — `{ action_id, current_type, form_data }` — and the engine assembles everything else. Out of scope here but enabled by the inversion.
+4. **Per-action authorization moves to the engine.** Today's submit-action Api has app-level `auth:` config; per-action role checks live in the routine via `action_role_check`. With the engine owning the submit lifecycle, per-action role checks should move into step 1 of `SubmitWorkflowAction` (Decision 1) — engine reads the action's `access` block and rejects with a structured error if the caller's roles don't match. Worth specifying explicitly; not done in this draft.
+5. **`hook_response` shape.** Decision 1 returns the hook's response. The hook is a free-form Api so the response shape is whatever the hook routine returns. Should the engine require any specific keys (e.g. `success: true`)? Probably not — keep it transparent; page handles whatever the hook returns. Document in README.
+6. **Should action-groups `on_complete` happen in this same sub-design?** User chose "submit hook only; defer groups." Once submit hooks are implemented, the action-groups extension is mechanical — `context.callApi` per completed group. Re-open if the design lands cleanly and folding groups in is small.
 
 ## Interaction with the other sub-designs
 

@@ -59,10 +59,16 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 **Form-action templates** at `templates/`:
 
-- `templates/edit.yaml.njk` — edit form, posts to the generated `{workflow_type}-{action_type}-submit` endpoint.
+- `templates/edit.yaml.njk` — edit form; wires `onSubmit` to the generated `{workflow_type}-{action_type}-submit` endpoint.
 - `templates/view.yaml.njk` — read-only view.
 - `templates/review.yaml.njk` — read-only form display + approve / request-changes affordances. Approve → `submit-action` with `current_status: done`; Request Changes → `current_status: changes-required`.
-- `templates/error.yaml.njk` — error display.
+- `templates/error.yaml.njk` — recovery surface for actions in `error` status. Template ships:
+  - **Stale-URL guard appended to `onMount`** — redirects to `-view` when `status[0].stage !== 'error'` at load.
+  - **Failure-context banner** above the form, surfacing `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}` for keyed actions).
+  - **Recovery form** defaulting to the action's `form:` schema (or `form_error:` if declared).
+  - **Single primary Submit button** wired to `pages.error.events.onSubmit`. Title and optional confirm modal overridable via `pages.error.buttons.submit.{title, modal}`. Extra buttons go in `formFooter:`.
+
+The `-error` page is **always emitted** per form action (regardless of `access.{app_name}` verb list). Per-app visibility is controlled at the status-map level — omit `status_map.error.{app_name}` to suppress the recovery link for that app.
 
 **Static task-action pages** at `pages/`:
 
@@ -72,9 +78,123 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 All three task pages take `?action_id=<id>` as a URL query. Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead.
 
-### App-theme-agnostic chrome
+**Workflow overview page** at `pages/workflow-overview.yaml`:
 
-Templates render against whatever **layout module** the host app uses, via `_ref: { module: layout, component: page }` (layout exports components, not pages — `page`, `card`, `floating-actions`, `auth-page`). The hard `layout` dependency in `module.lowdefy.yaml` ensures the host app pulls it in.
+- Top-level `_ref` to `layout.page` with `id: workflow-overview`, Nunjucks-templated `title`, breadcrumbs back to the entity, and a `page_actions` slot for the back button.
+- Takes `?workflow_id=<id>` URL query. Missing/null triggers a `Link` back to the previous page.
+- Module-shipped requests fired on mount:
+  - `get_workflow_overview_data` — joins workflow doc + action docs filtered by `access.{app_name}.[view]`, ordered by `display_order` / `sort_order`. Returns one row per action with status, status_map, universal fields, and (for keyed actions) the key value.
+  - `get_workflow_entity` — resolves the entity from the workflow doc's `entity_type` + `entity_id` + `entity_collection`.
+- Renders inside `layout.page.blocks`:
+  - One `List` of action cards, each wrapped in `layout.card`. Card title carries status badge (from `global.action_statuses.{status}`), status-map message (`status_map.{current_stage}.{app_name}.message`, Nunjucks-templated), and an optional link button.
+  - Card body is either an empty-state Html block (when no form_data) or a `DataView` over the action's `form_data` using `global.action_form_configs.{action_type}.form` + `.form_review`.
+  - Keyed actions render N cards, one per instance, reading `form_data.{action_type}.{key}.{field}`.
+  - Tracker actions render with a link target that points at the child workflow's `workflow-overview` page when configured by the action's `status_map`.
+- Apps don't override this page; it's the canonical default. Apps with bespoke overview needs build their own page.
+
+### Layout-module composition (all module-shipped pages)
+
+Every page the module ships — generated per-action pages, shared task pages, and the shared workflow-overview page — wraps content in the layout module's components. Hard `layout` dependency in `module.lowdefy.yaml` ensures the host app pulls it in.
+
+**Canonical page shape:**
+
+```yaml
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: <page-id>
+    title: <page-title> # Nunjucks against page state if needed
+    breadcrumbs: [...] # optional
+    page_actions: [...] # optional; right-aligned page-header buttons
+    requests: [...]
+    events: { onInit: [...], onMount: [...] }
+    blocks:
+      - _ref:
+          module: layout
+          component: card # cards wrap content sections
+          vars: { title, blocks, footer? }
+```
+
+**Components used:**
+
+| Layout component          | Where                                                                                                                                         |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `layout.page`             | Top-level wrapper of every module-shipped page (form-action `edit`/`view`/`review`/`error`, task `edit`/`view`/`review`, `workflow-overview`) |
+| `layout.card`             | Each content section — form card, info card, action card on the overview page                                                                 |
+| `layout.floating-actions` | Sticky submit / approve / request-changes bar on `-edit` and `-review` pages                                                                  |
+
+`floating-actions` ships the button block tree; templates wire button events to the four page-event handlers (`onSubmit`, `onApprove`, `onRequestChanges`). The buttons themselves are template-shipped, not author-authored.
+
+**Why hard-wire `layout.page`:** matches the convention every other modules-mongodb module that ships pages follows (`companies/pages/view.yaml`, `contacts/pages/view.yaml`, etc.). Host-app chrome (header bar, sider, breadcrumbs, profile menu) comes from whichever layout-module variant the host app picked via `page_type` — module-shipped pages adopt that chrome automatically. Layout exports components, not pages — `page`, `card`, `floating-actions`, `auth-page`.
+
+## Page events and chrome
+
+Action page YAML carries a fixed event-handler vocabulary plus optional chrome blocks. The form-action templates wire each handler/chrome slot at build time.
+
+### Event handlers
+
+| Handler            | Pages                  | Wired to               |
+| ------------------ | ---------------------- | ---------------------- |
+| `onMount`          | `edit`/`view`/`review` | Page-mount lifecycle   |
+| `onSubmit`         | `edit`                 | Submit button          |
+| `onApprove`        | `review`               | Approve button         |
+| `onRequestChanges` | `review`               | Request-changes button |
+
+### Chrome blocks per page
+
+| Block           | Effect                                                          |
+| --------------- | --------------------------------------------------------------- |
+| `title`         | Page title                                                      |
+| `requests`      | Lowdefy request refs the page loads                             |
+| `formHeader`    | Block list rendered above the form                              |
+| `formFooter`    | Block list rendered below the form                              |
+| `modals.{name}` | Config knobs on built-in modals (review-page `request_changes`) |
+
+Authoring example:
+
+```yaml
+pages:
+  edit:
+    title: Capture Initial Details
+    requests: [...]
+    events:
+      onMount: [...]
+      onSubmit: [...]
+    formHeader: [...]
+    formFooter: [...]
+  review:
+    title: Review
+    events:
+      onMount: [...]
+      onApprove: [...]
+      onRequestChanges: [...]
+    modals:
+      request_changes:
+        client_change: false
+```
+
+Apps that need additional buttons add them via `formFooter:` with their own `events.onClick` routines.
+
+## Status-map binding
+
+`actions-on-entity` and `workflow-history` both consume `status_map.{current_stage}.{app_name}` per action:
+
+- **No entry** → action invisible to this app (also enforced server-side by access query).
+- **Entry with `message` only** → static text cell.
+- **Entry with `link`** → clickable card; `link.pageId` is the route, `link.title` is the label, `link.urlQuery` builds the query string (`action_id: true` substitutes the current action's `_id`).
+
+`message` is rendered through Nunjucks at read time with the action-instance context (action-doc fields; for instanced actions, any joined-entity fields cached on the action — see action-authoring `reference_fields:` open work).
+
+## Instanced action pages
+
+Actions declaring `key:` generate the same set of per-verb pages as single-instance actions — one `-edit` / `-view` / `-review` / `-error` per action type, not per instance.
+
+- **Page ID:** `{workflow_type}-{action_type}-{verb}`. No key segment.
+- **Instance selection:** via `?action_id=<id>` URL query (same as task pages).
+- **Form-state path:** `form_data.{action_type}.{key}.{field}` on the workflow doc; `key` sourced from `_request: get_action.key`.
+- **URL contract:** status-map link cells use `urlQuery: { action_id: true }` only.
+- **In `actions-on-entity`:** instanced actions render as N rows within their `action_group`, one per instance. Each row uses its own `status_map` cell with per-instance message templating.
 
 ## Page-level rendering of universal fields
 

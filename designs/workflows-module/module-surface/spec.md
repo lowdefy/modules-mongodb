@@ -24,6 +24,8 @@ exports:
     - id: task-edit
     - id: task-view
     - id: task-review
+    # Shared read-only workflow overview page (?workflow_id=<id>)
+    - id: workflow-overview
   connections:
     - id: workflows-collection
     - id: actions-collection
@@ -75,6 +77,7 @@ api:
   - _ref: api/start-workflow.yaml
   - _ref: api/cancel-workflow.yaml
   - _ref: api/get-entity-workflows.yaml
+  - _ref: api/get-workflow-overview.yaml
   - _ref: api/submit-action.yaml
 
 components:
@@ -91,6 +94,10 @@ pages:
       vars:
         workflows: { _module.var: workflows_config }
         app_name: { _module.var: app_name }
+  - _ref: pages/task-edit.yaml
+  - _ref: pages/task-view.yaml
+  - _ref: pages/task-review.yaml
+  - _ref: pages/workflow-overview.yaml
 
 global:
   action_statuses:
@@ -120,12 +127,13 @@ Three separate connections are exported by design:
 
 ## APIs
 
-| API                    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `start-workflow`       | Instantiate a workflow on an entity. Optional `parent_action_id` writes parent/child link atomically.                                                                                                                                                                                                                                                                                                                                                 |
-| `cancel-workflow`      | Push `cancelled` to workflow status; flip remaining open actions to `not-required`.                                                                                                                                                                                                                                                                                                                                                                   |
-| `get-entity-workflows` | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Filters by access (per-app verb map + role gate, action-authoring spec "Access"). Returned workflow docs carry persisted `groups[]` array (engine-written).                                                                                                                                                                                                       |
-| `submit-action`        | Advance an action to a caller-supplied `current_status`; apply unblocks; optional entity write, event log, notifications. Covers submit, approve, and request-changes via the `current_status` field. Re-checks role gate server-side before any writes; rejects on mismatch. `UpdateWorkflowActions` returns `completed_groups`; outer Layer-1 step fans out one `CallApi` per declared `on_complete` (mechanism deferred — see action-groups spec). |
+| API                     | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start-workflow`        | Instantiate a workflow on an entity. Optional `parent_action_id` writes parent/child link atomically.                                                                                                                                                                                                                                                                                                                                                 |
+| `cancel-workflow`       | Push `cancelled` to workflow status; flip remaining open actions to `not-required`.                                                                                                                                                                                                                                                                                                                                                                   |
+| `get-entity-workflows`  | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Filters by access (per-app verb map + role gate, action-authoring spec "Access"). Returned workflow docs carry persisted `groups[]` array (engine-written).                                                                                                                                                                                                       |
+| `get-workflow-overview` | Return one workflow doc + its actions ordered for display. Consumed by the shipped `workflow-overview` page. Filters actions by access (same rules as `get-entity-workflows`). Returns one row per action (one per instance for keyed actions), ordered by `display_order` then `sort_order`.                                                                                                                                                         |
+| `submit-action`         | Advance an action to a caller-supplied `current_status`; apply unblocks; optional entity write, event log, notifications. Covers submit, approve, and request-changes via the `current_status` field. Re-checks role gate server-side before any writes; rejects on mismatch. `UpdateWorkflowActions` returns `completed_groups`; outer Layer-1 step fans out one `CallApi` per declared `on_complete` (mechanism deferred — see action-groups spec). |
 
 `submit-action` is the user-submit path. Migrations and admin tools that need `force: true` bypass `submit-action` and call `UpdateWorkflowActions` directly via a privileged route gated by app-level access control.
 
@@ -145,9 +153,19 @@ start-workflow payload:
                               #   child_entity_collection + in-progress transition.
                               #   All atomic on the shared client.
   references: object          # optional; spread onto workflow doc and every starting action doc
+  actions: array              # optional; override / fan-out the workflow's declared starting_actions.
+                              #   When provided, replaces the YAML starting_actions for this call.
+                              #   Used for keyed-action fan-out at start time (action-authoring D9).
+    - type: string            #   action type
+      key: string             #   instance key for keyed actions; omit for non-keyed
+      status: string          #   initial status
+      fields: object          #   optional; universal fields per instance
+      references: object      #   optional; per-instance references
 ```
 
 Returns `{ workflow_id, action_ids }`.
+
+**Starting-action resolution.** When `actions:` is provided, the engine uses it verbatim and ignores the workflow YAML's `starting_actions:`. When omitted, the engine instantiates `starting_actions:` from the YAML. Keyed actions in the YAML's `starting_actions:` without concrete keys raise a build/runtime error — keyed instances must come from the API payload.
 
 ## `cancel-workflow` payload
 
@@ -160,17 +178,63 @@ cancel-workflow payload:
 
 Pushes `{ stage: cancelled, created, reason? }` onto workflow status; flips remaining open actions on the workflow to `not-required`. Tracker actions watching this workflow fire normally via the engine's subscription (cancelled → not-required mapping).
 
+## `get-workflow-overview` payload
+
+```
+get-workflow-overview payload:
+  workflow_id: string         # required
+```
+
+Returns:
+
+```
+{
+  workflow: {
+    _id, workflow_type, entity_type, entity_id, entity_collection,
+    status, summary, groups, form_data,
+    ...reference fields
+  },
+  actions: [
+    {
+      _id, type, kind, key, status, sort_order, action_group,
+      assignees, due_date, description,
+      status_map,                    # the authored map; UI selects {current_stage}.{app_name}
+      tracker,                        # tracker-action fields when kind: tracker
+      child_workflow_id, child_entity_id, child_entity_collection,
+      ...reference fields
+    },
+    ...
+  ]
+}
+```
+
+**Access filter.** Actions whose `access.{app_name}` doesn't include `view` (or whose role gate fails for the caller) are excluded from the `actions` array. If the workflow itself has zero visible actions for this caller, the API returns `{ workflow: null, actions: [] }` and the page redirects back.
+
+**Ordering.** Actions are returned in display order: primary sort `action_group` declaration order (workflow's `action_groups[]` index), secondary sort `sort_order` ASC, tertiary tie-break on `actions[]` declaration order. Keyed actions surface as N rows, one per instance, kept together within their parent action's sort slot.
+
 ## `submit-action` payload
 
 ```
 submit-action payload:
   action_id: string                    # the current action being submitted
   current_type: string                 # the YAML type of the current action
-  current_status: string               # optional; defaults to 'done' (form) or user-selected (task)
+  current_key: string                  # optional; the instance key for keyed actions (action-authoring D9).
+                                       #   Required when the action declares `key:`; omit otherwise.
+  current_status: string               # optional; defaults to 'done' (form) or user-selected (task).
+                                       #   Accepts 'error' for author-driven error transitions
+                                       #   (recovery flow from a submit hook that detects a
+                                       #   business-rule failure). Engine bypasses priority rule
+                                       #   for error pushes. See engine spec "Action error transition".
   fields: object                       # optional; universal action fields
     assignees: array<string>           #   null/omitted leaves unchanged
     due_date: Date                     #   null clears, omitted leaves unchanged
     description: string                #   null clears, omitted leaves unchanged
+  form: object                         # optional; submitter-side form values (form: blocks).
+                                       #   Engine writes per-field $set at form_data.{current_type}.{field}
+                                       #   (non-keyed) or form_data.{current_type}.{current_key}.{field} (keyed).
+  form_review: object                  # optional; reviewer-side form values (form_review: blocks).
+                                       #   Engine writes per-field $set at form_data.{current_type}.review.{field}
+                                       #   (or .{current_key}.review.{field} for keyed actions).
   unblocks: array                      # optional, default []
     - type: string
       status: string
@@ -190,6 +254,8 @@ submit-action payload:
                                        #   workflows sends { event_ids: [...] }; silent no-op if no
                                        #   send_routine is wired
 ```
+
+**Form data persistence.** `form` / `form_review` fields are flat maps; the engine constructs dot-notation `$set` paths per field. Field-level granularity means concurrent edits on different fields don't clobber, and reviewer / submitter / error sub-keys stay independent.
 
 **Footgun**: `keys: []` silently no-ops the unblock. Gate with `skip` / `_if` on `keys.length` to surface empty form data as validation.
 

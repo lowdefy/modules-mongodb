@@ -90,7 +90,7 @@ No Mongo transactions in v1. Ordering is preserved (sequential writes); atomicit
 | `status`                   | array          | history, newest at index 0; `[{ stage, created, ... }]`                                                                                                                                                                                                                                                            |
 | `summary`                  | object         | `{ done, not_required, total }`                                                                                                                                                                                                                                                                                    |
 | `groups`                   | array          | persisted group state — `[{ id, status, summary }]`, one entry per declared `action_groups[]`. `status` is the three-value derived enum (`blocked` / `in-progress` / `done`); `summary` is per-group `{ done, not_required, total }`. Written back eagerly inside `UpdateWorkflowActions`. See action-groups spec. |
-| `form_data`                | object         | per-action form data (initially `{}`)                                                                                                                                                                                                                                                                              |
+| `form_data`                | object         | per-action form data (see "Form data layout" below). Initially `{}`.                                                                                                                                                                                                                                               |
 | `created`, `updated`       | change_stamp   | per events module convention                                                                                                                                                                                                                                                                                       |
 | `<reference keys>`         | various        | spread from `references` payload, e.g. `company_ids`, `region_ids`                                                                                                                                                                                                                                                 |
 
@@ -113,6 +113,49 @@ No Mongo transactions in v1. Ordering is preserved (sequential writes); atomicit
 | `child_entity_id`                               | string \| null | tracker actions; set when child workflow is started                                  |
 | `child_entity_collection`                       | string \| null | tracker actions; collection connection id                                            |
 | `<reference keys>`                              | various        | spread from `references` payload                                                     |
+
+### Form data layout
+
+Per-workflow `form_data` keyed by action type, with optional key segment for instanced actions and reserved `.review` / `.error` sub-keys:
+
+```
+form_data: {
+  {action_type}: {                         // non-keyed action
+    {field}: <value>,                      // submitter values (form: blocks)
+    review: { {field}: <value> },          // reviewer values (form_review: blocks)
+    error:  { message, step },             // engine-written on failed submit
+  },
+  {action_type_with_key}: {                // keyed action (action-authoring Decision 9)
+    {key}: {
+      {field}: <value>,
+      review: { {field}: <value> },
+      error:  { ... },
+    },
+  },
+}
+```
+
+**Path rules:**
+
+- Non-keyed: `form_data.{action_type}.{field}`.
+- Keyed: `form_data.{action_type}.{key}.{field}`.
+- Reviewer values: `form_data.{action_type}.review.{field}` (or `.{key}.review.{field}`).
+- Engine error context: `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}`).
+
+**Reserved sub-keys** within `form_data.{action_type}` / `form_data.{action_type}.{key}`: `review`, `error`. Build-time validation flags `form:` / `form_review:` blocks with these names.
+
+**Write semantics:** per-field `$set` on dot-notation paths. Field-level granularity so concurrent edits on different fields don't clobber, reviewer/submitter writes don't collide, and engine error writes don't disturb either side.
+
+### Action `error` transition
+
+Two entry paths put an action into `error` status:
+
+- **Engine-driven mid-submit failure.** The submit pipeline catches a thrown failure from a sub-step (submit hook, entity_update, event, notification dispatch) and converts it to an `error` transition: writes `{ stage: error, created, reason: <step-name>, error_message }` to the action's `status` array with **`force: true` semantics** (bypasses priority rule); writes captured failure context to `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}`) — conventional fields `message`, `step`, `timestamp`; skips remaining auto-complete / tracker-subscription / group-rollup work (an `error` action is non-terminal); returns partial `{ action_ids, event_id }`.
+- **Author-driven.** Submit-hook routine calls `submit-action` with `current_status: error` for app-validated business-rule failures. Engine treats this identically to the engine-driven path; author supplies the error fields via the `form` payload using `error.*` field names (engine routes to the reserved `.error` sub-key).
+
+**Force-write rationale.** Priority rule would otherwise reject `error` pushes from terminal statuses. Operationally an error must always surface — a `done` transition that fails mid-side-effects needs to roll back to `error` so the user sees recovery, not a falsely-completed action.
+
+**Recovery.** A normal `submit-action` call from the `-error` page; on success, engine clears `form_data.{action_type}.error` fields via per-field `$set` (or overwrites individually for partial recovery) and transitions the action out of `error`.
 
 ### Indexes
 

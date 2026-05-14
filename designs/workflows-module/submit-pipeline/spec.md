@@ -161,6 +161,8 @@ Page (form-action edit / review page; task-edit / task-review page) calls `workf
 
 No per-action `workflows/<wf>-<action>-submit` endpoint. `makeWorkflowApis` drops per-form-action submit endpoint emission.
 
+> **Naming reconciliation with module-surface spec.** Module-surface (the status-quo path that v1 ships first) splits the form payload into two fields — `form` (submitter-side, action's `form:` blocks) and `form_review` (reviewer-side, action's `form_review:` blocks). Submit-pipeline used `form_data` historically as a single field. When submit-pipeline supersedes module-surface Decision 5, the wrapper's payload field renames `form_data` → `form` and adds `form_review` to match. The engine's `SubmitWorkflowAction` request types `form` and `form_review` accordingly; the hook payload (see below) likewise renames. Treat all `form_data` references in this spec as pending the rename if submit-pipeline is adopted.
+
 ## Submit hook payload contract
 
 When the engine invokes the hook via `context.callApi(submit_hook_id, hook_payload)`:
@@ -266,10 +268,25 @@ Out of scope here; same plumbing applies. Sketch:
 
 ## Open questions
 
-1. **Declarative templates on action YAML.** With the page now building the full `submit-action` payload, action YAML could grow `event_template:` / `entity_update_template:` blocks evaluated against `form_data`. Pushes the payload contract toward `{ action_id, current_type, form_data }`. Out of scope; enabled by the inversion.
-2. **Per-action authorization moves to the engine.** Today's `submit-action` Api has app-level `auth:`; per-action role checks live via `action_role_check`. With engine owning the lifecycle, per-action role checks should move into step 1. Worth specifying explicitly; not committed in this draft.
-3. **`hook_response` shape.** Free-form. Should the engine require any specific keys (e.g. `success: true`)? Probably not — keep transparent; page handles whatever the hook returns. Document in README.
-4. **Should action-groups `on_complete` fold in here?** Mechanism is the same. Re-open if the design lands cleanly and folding groups in is small.
+1. **Decision D — where conditional unblock logic lives.** Surfaced during the UI / example_workflow review. Options:
+   - (a) Per-action API files (v0 shape — currently committed in action-authoring Decision 6 via `makeWorkflowApis`).
+   - (b) Inline routine in action YAML under `pages.{verb}.events.{onSubmit|onApprove|onRequestChanges}`.
+   - (c) Declarative outcomes in action YAML (`outcomes.on_submit:` rules the engine resolves).
+   - (d) Hybrid declarative outcomes + optional hook.
+
+   User preference noted as (b) during review but explicitly tagged as a submit-pipeline decision. This sub-design's "Action YAML — `submit_hook:` field" section is one shape addressing the same friction; open call is whether to merge / supersede / co-exist. **Status: not yet committed.**
+
+2. **Decision F — module-emitted API surface.** Surfaced during the UI / example_workflow review. Options:
+   - (a) Generic engine endpoints (page event calls `workflows-submit-action` directly).
+   - (b) Per-action API files (v0 shape, currently committed via `makeWorkflowApis`).
+   - (c) Hybrid: generic by default + opt-in named alias via action-level `api_id:`.
+
+   User preference noted as (a) but explicitly tagged as a submit-pipeline decision. This sub-design's "Module surface → `submit-action` Api — thin wrapper" section is the (a)-shaped resolution; open call is whether to keep `makeWorkflowApis` as a deprecated path or remove outright. **Status: not yet committed.**
+
+3. **Declarative templates on action YAML.** With the page now building the full `submit-action` payload, action YAML could grow `event_template:` / `entity_update_template:` blocks evaluated against `form_data`. Pushes the payload contract toward `{ action_id, current_type, form_data }`. Out of scope; enabled by the inversion.
+4. **Per-action authorization moves to the engine.** Today's `submit-action` Api has app-level `auth:`; per-action role checks live via `action_role_check`. With engine owning the lifecycle, per-action role checks should move into step 1. Worth specifying explicitly; not committed in this draft.
+5. **`hook_response` shape.** Free-form. Should the engine require any specific keys (e.g. `success: true`)? Probably not — keep transparent; page handles whatever the hook returns. Document in README.
+6. **Should action-groups `on_complete` fold in here?** Mechanism is the same. Re-open if the design lands cleanly and folding groups in is small.
 
 ## Next step
 

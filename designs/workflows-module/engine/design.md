@@ -401,6 +401,90 @@ The plugin's `shouldUpdate.js` implements the priority transition rule, reading 
 
 The plugin reads `actionsEnum` from `_module.var` or directly from `global.action_statuses`; either way the same eight-name vocabulary is in effect across every consuming app. No per-app override at runtime.
 
+## Decision 5 — Form data layout on the workflow doc
+
+Form actions persist submitted form values on the **workflow doc**, not on the entity doc. (v0 stored form data on the entity doc; v1 reverses this so an entity carrying multiple workflows of different types doesn't collide field names, and so the workflows collection is the single source of truth for workflow state.)
+
+### Storage paths
+
+Per workflow doc:
+
+```
+form_data: {
+  {action_type}: {
+    {field}: <value>,           // submitter-side fields (form: blocks)
+    review: {                    // reviewer-side fields (form_review: blocks)
+      {field}: <value>,
+    },
+    error: {                     // optional engine-written error context
+      message: <string>,
+      step: <string>,
+    },
+  },
+  {action_type_with_key}: {
+    {key}: {                     // instance discriminator for keyed actions
+      {field}: <value>,
+      review: { {field}: <value> },
+      error: { ... },
+    },
+  },
+}
+```
+
+### Path rules
+
+- **Non-keyed action:** `form_data.{action_type}.{field}` — submitter values live directly under the action type.
+- **Keyed action** (action-authoring Decision 9): `form_data.{action_type}.{key}.{field}` — one sub-object per instance key.
+- **Reviewer values:** `form_data.{action_type}.review.{field}` (non-keyed) / `form_data.{action_type}.{key}.review.{field}` (keyed). The `.review` sub-key is **reserved** — apps may not name a submitter field `review` on an action that has a `form_review:` block.
+- **Error context:** `form_data.{action_type}.error.{field}` / `form_data.{action_type}.{key}.error.{field}`. Engine-written when a submit hook fails and the action transitions to `error`. The `.error` sub-key is **reserved**.
+
+### Write semantics
+
+`submit-action` writes form fields via per-field Mongo `$set` on dot-notation paths. Field-level granularity (not a wholesale `form_data.{action} = { ... }` overwrite) so:
+
+- Concurrent edits on different fields of the same action don't clobber each other.
+- Reviewer writes to `.review` don't touch submitter fields.
+- Engine writes to `.error` don't disturb either side.
+
+The payload contract for `submit-action` carries form data as a flat map; the API routine builds the dot-notation `$set` paths.
+
+### Reserved sub-keys
+
+Within `form_data.{action_type}` (or `form_data.{action_type}.{key}` for keyed actions), the following names are reserved by the engine and **may not be used as form field names**:
+
+- `review` — reviewer-side form values
+- `error` — engine-written error context
+
+Build-time validation in `makeWorkflowsConfig` flags `form:` or `form_review:` blocks that declare a top-level `key:` matching one of these names. (Engine still merge-order-silences at runtime — same family as the references reserved-keys list.)
+
+### Engine effects
+
+- `start-workflow` initialises `form_data: {}` on the workflow doc.
+- `submit-action` writes form fields atomically with the status transition (same Mongo update).
+- `get-entity-workflows` returns `form_data` alongside the workflow doc — pages reading per-action data fetch from the workflow doc, not from a separate request.
+- `cancel-workflow` leaves `form_data` intact (audit trail preserved).
+
+### Transitioning an action to `error`
+
+The `error` status is the engine's escape hatch for "this action's submit pipeline failed and the user needs a recovery surface." Two entry paths:
+
+**1. Mid-submit failure (engine-driven).** The submit pipeline catches a thrown failure from a sub-step (submit hook, entity_update, event, notification dispatch) and converts it into an `error` transition rather than propagating the throw. Concretely the `UpdateWorkflowActions` handler (or the future `SubmitWorkflowAction` per the submit-pipeline sub-design):
+
+1. Wraps each side-effect step in a try/catch.
+2. On catch, rolls forward (not back) — the action transition already written may stay durable, but the handler:
+   - Writes `{ stage: error, created, reason: <step-name>, error_message: <caught message> }` to the action's `status` array (`force: true` semantics — bypasses the priority rule because errors must reach the user regardless of what state the action was in).
+   - Writes the captured failure context to `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}` for keyed actions). Fields conventionally include `message`, `step`, `timestamp`, plus any context the sub-step's thrown error carries.
+   - Skips any remaining auto-complete / tracker-subscription / group-rollup work — an action in `error` is non-terminal and doesn't satisfy `blocked_by` clauses.
+3. Returns the partial `{ action_ids, event_id }` result so the caller knows which writes landed.
+
+**2. Author-driven (caller-driven via `submit-action`).** A submit-hook routine can explicitly call `submit-action` with `current_status: error` for app-validated business-rule failures the author wants to surface as a recovery flow. Engine treats this the same as path (1): writes the status transition + author-supplied error context (typically passed via the submit-action `form` payload using fields named `error.*` — the engine routes them to the reserved `.error` sub-key).
+
+Either path produces the same on-disk shape: `status[0] = { stage: error, ... }` plus populated `form_data.{action_type}.error`. The UI's `-error` page renders against that shape (ui sub-design Decision 2's error template).
+
+**Recovery (action leaves `error`).** Recovery is a normal `submit-action` call from the `-error` page. The submit hook completes successfully → engine writes the recovery transition (typically `current_status: done`) + clears `form_data.{action_type}.error` via the same per-field `$set` semantics (or, for a partial recovery, overwrites individual error fields). The action returns to the normal flow.
+
+**Why force-write on error transition.** The priority rule (Decision 4) would otherwise reject an `error` push from any status with priority < 1 (most terminals). But operationally an error must always surface — if an action's `done` transition fails mid-side-effects, the engine needs to roll back the `done` to `error` so the user sees the recovery surface rather than a falsely-completed action. The engine bypasses the priority rule for engine-driven error transitions; author-driven `current_status: error` on `submit-action` follows the same path.
+
 ## Risks
 
 - **Plugin dual-runtime build complexity.** First-time server-side code in a package that currently ships React blocks. Treated as a v1 milestone (see [Decision 1 "Dual-runtime build"](#dual-runtime-build--a-v1-milestone-not-a-config-tweak)) with its own verification step: hard split between `src/blocks/` and `src/connections/`, dist/-output grep for React leakage, plugin-loader smoke test before declaring done.
