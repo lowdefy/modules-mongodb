@@ -1,5 +1,14 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 0.5.1
+
+### Patch Changes
+
+- [#57](https://github.com/lowdefy/modules-mongodb/pull/57) [`5685820`](https://github.com/lowdefy/modules-mongodb/commit/56858200668240719335ff4b32f254f69af4ee96) Thanks [@Saiby100](https://github.com/Saiby100)! - Fix user-admin roles projection and events-timeline display_key filter.
+
+  - `user-admin`: `get_user` now defaults the projected `roles` to `[]` when the user has no roles array for the app. Previously this returned `null`, which broke the multiple selector on the user edit page for users with undefined roles.
+  - `events`: `events-timeline` now filters out events where the resolved `display_key` field is missing, preventing fetched rows that would render with unresolved `$<key>.title` placeholders for title/description/info.
+
 ## 0.5.0
 
 ## 0.4.2
