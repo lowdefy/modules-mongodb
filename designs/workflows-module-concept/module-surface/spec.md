@@ -20,7 +20,7 @@ exports:
     - id: action-edit # generated when `edit` in app verb list
     - id: action-view # generated when `view` in app verb list
     - id: action-review # generated when `review` in app verb list
-    - id: action-error # always generated alongside other verb pages
+    - id: action-error # generated when `error` in app verb list AND action declares `pages.error`
     # Shared task-action pages
     - id: task-edit
     - id: task-view
