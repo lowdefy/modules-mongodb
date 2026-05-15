@@ -1,117 +1,43 @@
 # Workflows Submit Pipeline — Spec
 
-Plugin-orchestrated submit flow. Full rationale in [design.md](design.md); this file carries only the committed decisions. **Status: alternative architecture to the status-quo design in module-surface Decision 5 / engine Decision 1 / action-authoring `submit_hook:` semantics. Not v1.**
+Engine-orchestrated submit lifecycle. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+
+**Status:** Supersedes [module-surface](../module-surface/design.md) Decisions 4 & 5 (`submit-action` Api), [engine](../engine/design.md) Decision 1's `UpdateWorkflowActions` (renamed to `SubmitWorkflowAction`), and [action-authoring](../action-authoring/design.md) Decision 6's `makeWorkflowApis` (now emits `update-action-{action_type}`).
+
+**Depends on:** [../call-api/design.md](../call-api/design.md) — gates implementation.
 
 ## Flow
 
 ```
-Page → workflows/submit-action (module Api, thin wrapper)
-       └─ SubmitWorkflowAction (plugin connection — owns the full submit lifecycle)
-              1. Validate payload + permissions
-              2. Engine writes core
-                 (action transition, unblocks, summary, auto-complete, trackers)
-              3. Engine writes built-in side effects
-                 (entity_update, event, notifications — if in payload)
-              4. context.callApi(submit_hook_endpoint_id, hook_payload)   ← user hook, optional
-                 └─ user's app-side Api routine — free-form
-              5. Finalize and return
+Page button (template-shipped)
+  → workflows/update-action-{action_type}        (resolver-generated Lowdefy Api per action)
+      └─ SubmitWorkflowAction (plugin handler — single in-process invocation)
+            1. Validate payload + permissions
+            2. Pre-hook for interaction (if declared) — returns optional actions[] + event_overrides + form_overrides + hook_error
+            3. Compute auto-unblocks from blocked_by graph; merge with pre-hook actions[]
+            4. Write action transitions (priority rule applies)
+            5. Recompute workflow summary + groups[]
+            6. Write form_data ($set per field) + workflow doc updates
+            7. Generate log event (defaults overridable from action YAML + pre-hook)
+            8. Dispatch notifications (via notifications module InternalApi)
+            9. Fire group on_complete pipelines for completed groups  [open]
+           10. Fire tracker subscription if workflow status changed (sync in-process per engine D3)
+           11. Post-hook for interaction (if declared)
+           12. Return { action_ids, completed_groups, event_id, tracker_fired?, pre_hook_response?, post_hook_response? }
 ```
 
-Single hook, fires after engine writes. Pre-write transform hooks (Alternative C in design.md) are explicitly rejected.
+## `SubmitWorkflowAction` plugin request
 
-## Plugin shape
+Replaces `UpdateWorkflowActions` (engine Decision 1). Same `WorkflowAPI` connection, broader handler. Single invocation owns: validate → pre-hook → write → side effects → post-hook → return.
 
-### Request type
+Connection structure: see [engine spec](../engine/spec.md) for the canonical `src/connections/WorkflowAPI/` layout. Submit-pipeline adds the files under `SubmitWorkflowAction/` (handler, pre/post hook invokers, auto-unblock computation, log-event dispatch, notification dispatch, group `on_complete` fan-out).
 
-`SubmitWorkflowAction` replaces `UpdateWorkflowActions` on the `WorkflowAPI` connection. Same connection; broader handler. Tracker subscription, references contract, status priority rule unchanged.
+## Per-action `update-action-{action_type}` Api (resolver-emitted)
 
-### Connection structure
-
-```
-src/connections/WorkflowAPI/
-  WorkflowAPI.js
-  SubmitWorkflowAction/
-    SubmitWorkflowAction.js          # plugin handler entry point
-    writeEntityUpdate.js             # step 3 — entity write
-    dispatchEvent.js                 # step 3 — events.new-event via context.callApi
-    dispatchNotification.js          # step 3 — notifications.send-notification via context.callApi
-    invokeSubmitHook.js              # step 4 — user hook via context.callApi
-  StartWorkflow/    # unchanged
-  CancelWorkflow/   # unchanged
-  shared/           # unchanged (createMongoDBConnection, getActionFields, getActions, populateIds)
-```
-
-### Handler signature
-
-Same Lowdefy connection-handler contract as today, plus `context.callApi` exposed:
-
-```js
-async function SubmitWorkflowAction({ request, connection, context }) {
-  // context.callApi(endpointId, payload) — invokes a Lowdefy Api endpoint internally
-  // Inherits caller's user/roles; depth-counter guarded; throws propagate.
-}
-```
-
-## `context.callApi` capability
-
-New Lowdefy capability in `@lowdefy/api`. Required for v1 of this design — submit-pipeline cannot ship without it.
-
-**Shape.** `@lowdefy/api` exports `callApi(context, { endpointId, payload, blockId? })` that re-enters the API runtime as if a routine `CallApi` step had run. Plugin's connection context gets a bound version: `context.callApi(endpointId, payload)`.
-
-**Implementation sketch:**
-
-```js
-// packages/api/src/routes/request/callApi.js (new)
-import callRequest from "./callRequest.js";
-
-async function callApi(context, { endpointId, payload }) {
-  return callRequest(context, {
-    requestId: endpointId,
-    payload,
-    pageId: null,
-    blockId: null,
-  });
-}
-```
-
-Plugin binds it on the context:
-
-```js
-const context = {
-  ...incoming,
-  callApi: (endpointId, payload) => callApi(incoming, { endpointId, payload }),
-};
-```
-
-**Auth inheritance.** Internal call inherits the originating user/roles. No per-call principal override in v1. Apps that want a hook to run as a different principal handle that inside the hook routine.
-
-**Depth bound.** Extends engine's tracker-recursion depth guard. Default limit 10. Exceeded → throws with chain in error message.
-
-**Error semantics.** Throw in `context.callApi` propagates to the plugin handler. Plugin propagates to the page. Engine writes from steps 2–3 already durable; same partial-state-plus-retry model as today's `submit-action`.
-
-## Action YAML — `submit_hook:` field
-
-Form actions and task actions can declare an optional submit hook by endpoint id:
+`makeWorkflowApis` (action-authoring Decision 6) emits one Lowdefy Api per form / task action. Shape:
 
 ```yaml
-type: qualify
-kind: form
-form: [...]
-submit_hook: lead-onboarding-qualify-on-submit # optional; endpoint id
-```
-
-**Resolution.** Endpoint id resolves against the build-time API registry. Convention fallback: if the id matches `<workflow_type>-<action_type>-on-submit` and no app-registered Api matches, build checks for an app-shipped Api at `workflow_config/<workflow_type>/api/<action_type>-on-submit.yaml`. Apps that want their hook to live elsewhere register the Api with any id and reference it directly.
-
-**Replaces** the status-quo `submit_hook:` field (string path to routine YAML). Field type changes from path → endpoint id; the field stays optional.
-
-**Optional hook.** Actions without a `submit_hook:` skip step 4. Engine + built-in side effects still run. Most actions don't need a hook (today's design requires one per form action even when it's a one-liner).
-
-## Module surface
-
-### `submit-action` Api — thin wrapper
-
-```yaml
-id: submit-action
+id: update-action-{action_type}
 type: Api
 routine:
   - id: submit
@@ -120,179 +46,287 @@ routine:
       _module.connectionId: workflow-api
     properties:
       action_id: { _payload: action_id }
-      current_type: { _payload: current_type }
-      current_status: { _payload: current_status }
+      action_type: <action_type>                 # build-time literal
+      workflow_type: <workflow_type>             # build-time literal
+      interaction: { _payload: interaction }     # which button fired
+      current_key: { _payload: current_key }     # for keyed actions; omit for non-keyed
+      form: { _payload: form }
+      form_review: { _payload: form_review }
       fields: { _payload: fields }
-      form_data: { _payload: form_data }
-      unblocks: { _payload: unblocks }
-      entity_update: { _payload: entity_update }
-      event: { _payload: event }
-
+      hooks:                                     # build-time literal map from action.hooks
+        submit_edit: { pre: <api-id-or-null>, post: <api-id-or-null> }
+        not_required: { pre, post }
+        resolve_error: { pre, post }
+        approve: { pre, post }
+        request_changes: { pre, post }
+      event_overrides:                           # build-time from action.event[interaction]
+        submit_edit: { type, display, metadata }
+        ...
   - :return:
-      success: true
       action_ids: { _step: submit.action_ids }
+      completed_groups: { _step: submit.completed_groups }
       event_id: { _step: submit.event_id }
-      hook_response: { _step: submit.hook_response }
+      tracker_fired: { _step: submit.tracker_fired }
+      pre_hook_response: { _step: submit.pre_hook_response }
+      post_hook_response: { _step: submit.post_hook_response }
 ```
 
-One step, one return. All orchestration moves inside the plugin handler. Replaces the status-quo four-step routine (`update_actions` → `write_entity` → `new_event` → `notify`).
+**Scope:** Emitted for `kind: form` and `kind: task` actions. Tracker actions get no endpoint (engine writes their status via the tracker subscription).
 
-### Why keep it as an Api
+**Per-app emission:** Endpoints are emitted regardless of `access.{app_name}` verb list — the engine enforces access at submit time via the role gate. (Per-page emission still verb-filtered per ui spec.)
 
-- **Auth surface.** Lowdefy Apis have an `auth` block; plugin connections don't. Keeping `submit-action` as the public surface preserves the existing Api auth model gating submissions.
-- **Operator evaluation on payload.** Page payloads carry operators (`_state`, `_user`, etc.); Api layer evaluates them before the plugin handler sees resolved values.
+**`hooks` and `event_overrides` keying:** Both are emitted as per-interaction maps because the resolver can't know which interaction the runtime payload carries. The handler resolves `hooks[interaction]` and `event_overrides[interaction]` once on entry and treats them as scalar bags for the rest of the lifecycle. The pre-hook return's `event_overrides` is the unkeyed runtime bag that merges on top.
 
-### Page → `submit-action` call
+## Button vocabulary (template-shipped, open: validate)
 
-Page (form-action edit / review page; task-edit / task-review page) calls `workflows/submit-action` directly:
+Templates ship a fixed set of submit-flavoured buttons. Each button is a template-shipped block that, on click:
+
+1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event (if declared).
+2. Calls `update-action-{action_type}` with `interaction: <button-name>` + payload.
+
+| Button            | Renders on                 | `interaction` value |
+| ----------------- | -------------------------- | ------------------- |
+| `submit_edit`     | `edit`                     | `submit_edit`       |
+| `not_required`    | `view` (optionally `edit`) | `not_required`      |
+| `resolve_error`   | `error`                    | `resolve_error`     |
+| `approve`         | `review`                   | `approve`           |
+| `request_changes` | `review`                   | `request_changes`   |
+
+**Status: open** — Steph's review asks to validate the button list. Locked during sub-design review.
+
+### Interaction → target status
+
+Resolved last-wins across three layers (full rationale in design Decision 3):
+
+1. **Engine default per interaction** (table below).
+2. **Action YAML `interactions:` block** — optional, build-time-baked into the generated endpoint.
+3. **Pre-hook return `status` field** — runtime, overrides both above.
+
+#### Engine default per interaction
+
+| Interaction       | Form action default                                                    | Task action default                     |
+| ----------------- | ---------------------------------------------------------------------- | --------------------------------------- |
+| `submit_edit`     | `in-review` if any `access.{app}` includes `review`, else `done`       | caller-supplied via status selector     |
+| `not_required`    | `not-required`                                                         | `not-required`                          |
+| `resolve_error`   | same as `submit_edit` (`in-review` if review verb exists, else `done`) | same as `submit_edit` (caller-supplied) |
+| `approve`         | `done`                                                                 | `done`                                  |
+| `request_changes` | `changes-required`                                                     | `changes-required`                      |
+
+#### Action YAML `interactions:` block
 
 ```yaml
-- id: submit
-  type: CallApi
-  endpointId:
-    _module.endpointId: { id: submit-action, module: workflows }
-  payload:
-    action_id: { _state: action_id }
-    current_type: <action-type>
-    current_status: <verb-dependent> # done / changes-required / etc.
-    form_data: { _state: form }
-    # plus optional unblocks / entity_update / event as needed by the action
+type: qualify
+kind: form
+interactions:
+  submit_edit: { status: done }
+  approve: { status: done }
 ```
 
-No per-action `workflows/<wf>-<action>-submit` endpoint. `makeWorkflowApis` drops per-form-action submit endpoint emission.
+Priority rule (engine D4) still applies to the resolved status — unreachable transitions are rejected unless an entry on the pre-hook `actions[]` opts into `force: true`.
 
-> **Naming reconciliation with module-surface spec.** Module-surface (the status-quo path that v1 ships first) splits the form payload into two fields — `form` (submitter-side, action's `form:` blocks) and `form_review` (reviewer-side, action's `form_review:` blocks). Submit-pipeline used `form_data` historically as a single field. When submit-pipeline supersedes module-surface Decision 5, the wrapper's payload field renames `form_data` → `form` and adds `form_review` to match. The engine's `SubmitWorkflowAction` request types `form` and `form_review` accordingly; the hook payload (see below) likewise renames. Treat all `form_data` references in this spec as pending the rename if submit-pipeline is adopted.
+### Button vs event-verb separation
 
-## Submit hook payload contract
+Buttons and the page-event vocabulary (`onMount`, `onSubmit`, `onApprove`, `onRequestChanges` — action-authoring Decision 8) coexist and cover different concerns:
 
-When the engine invokes the hook via `context.callApi(submit_hook_id, hook_payload)`:
+- **Event verbs** are author-supplied page lifecycle hooks. Set state, fire requests, build payloads, validate. No engine call. Unchanged.
+- **Buttons** are the engine-call surface. Template-shipped; wire to the per-action API.
 
-```
-hook_payload:
-  action_id: string             # the action that submitted
-  action_type: string           # the action's YAML type
-  current_status: string        # the status the engine just wrote
-  workflow_id: string           # the parent workflow
-  workflow_type: string         # the workflow's YAML type
-  entity_type: string
-  entity_id: string
+A `submit_edit` button click fires `pages.edit.events.onSubmit` (page logic) and posts to the engine (with `interaction: submit_edit`). Authors who need pre-write logic register a pre-hook (next section); authors who just need page-state work register an `onSubmit` event handler.
 
-  form_data: object             # the form payload from the page submission (form actions)
-                                # null for task-action submits
+## Action hooks contract
 
-  event_id: string              # the event id the engine generated; reuse for downstream events
-  action_ids: array<string>     # ids of all actions written by the engine in this submission
-                                # (current action + unblocked siblings)
-  summary: object               # the workflow's recomputed summary { done, not_required, total }
-  workflow_status: string       # workflow's current stage after auto-complete check
-```
-
-The hook is a regular `Api` — full Lowdefy capabilities (`MongoDBUpdateOne`, cross-module `CallApi`, `_payload` access, etc.). It can read additional data, do conditional writes, fire downstream APIs.
-
-### Hook usage pattern
-
-Engine has already written the action transition, applied unblocks, written `entity_update` / `event` / `notify` if those were in the page's payload. The hook is where app-specific extras go — writing to another collection, calling an external API, triggering a downstream workflow.
-
-Example:
+Authors declare hooks at the action root, per interaction:
 
 ```yaml
-id: lead-onboarding-qualify-on-submit
-type: Api
-routine:
-  - id: sync_crm
-    type: CallApi
-    properties:
-      endpointId:
-        _module.endpointId: { id: push-lead, module: crm-sync }
-      payload:
-        lead_id: { _payload: entity_id }
-        notes: { _payload: form_data.notes }
-        qualified_at: { _date: now }
-
-  - :return:
-      success: true
-      crm_id: { _step: sync_crm.crm_id }
+type: qualify
+kind: form
+hooks:
+  submit_edit:
+    pre: lead-onboarding-qualify-pre-submit
+    post: lead-onboarding-qualify-post-submit
+  approve:
+    pre: lead-onboarding-qualify-pre-approve
+  request_changes:
+    post: lead-onboarding-qualify-post-request-changes
 ```
 
-### Hook response
+Each interaction may declare `pre:`, `post:`, both, or neither. Values are Lowdefy Api endpoint ids; engine invokes them via the [call-api](../call-api/design.md) primitive.
 
-Hook's `:return:` block is forwarded to the page as `hook_response`. Shape is free-form; engine doesn't require any specific keys. README documents the contract.
+### Hook auth gate
 
-## Ordering inside `SubmitWorkflowAction`
+Hook APIs go through their own `auth:` block on every invocation (including engine-fired). Authoring rule: **`hook.auth.roles` ⊇ `action.access.roles`** — `makeWorkflowApis` validates at build and fails on a mismatch. `auth.public: true` on a hook API is rejected at build (would bypass the action's role gate via direct endpoint access). Hooks that want finer-grained branching add per-routine `_user.roles` checks inside the routine, orthogonal to the auth block.
 
-1. **Validate.** Payload schema (action_id present, current_type matches action doc, current_status in `action_statuses` enum). Permission check against the action's `access` block via `action_role_check` semantics. Optionally pre-flight the `unblocks` list to verify referenced action types / group ids resolve.
-2. **Engine writes core.** Write requesting action's status. Apply `unblocks` (fan-out + upserts per keys). Recompute affected `groups[]` (action-groups Decision 5 steps 2-3). Re-evaluate `blocked_by` for blocked actions; push `action-required` on dependency-clear. Recompute workflow `summary`. Run auto-complete check. If workflow status changed, fire tracker subscription.
-3. **Engine writes built-in side effects.** If `entity_update` in payload → Mongo update against the entity connection (`writeEntityUpdate.js`). If `event` in payload → `context.callApi(events.new-event, ...)` with engine-generated `event_id`. If `event.notifications: true` → `context.callApi(notifications.send-notification, ...)`.
-4. **Invoke user submit hook.** If action has `submit_hook` → `context.callApi(submit_hook_id, hook_payload)`. Hook runs as a regular Api routine; return is captured.
-5. **Finalize and return.** Plugin returns `{ success, action_ids, event_id, hook_response? }`.
+### Pre-hook payload
 
-Steps 2–4 are all in the same plugin handler invocation; same shared Mongo client; same `event_id`. Hook timing locks side effects after engine writes — a hook that wants to "veto" the submission has to compensate by reverting writes (acceptable for v1; matches the status-quo pattern).
+```
+pre_hook_payload:
+  workflow_id: string
+  workflow_type: string
+  action_id: string
+  action_type: string
+  current_key: string | null
+  interaction: string
+  form: object
+  form_review: object
+  fields: object
+  current_status: string
+  user: { id, profile, roles }
+  context:                                  # pre-call state — before any engine writes
+    workflow: <full workflow doc as it stands before this submit's writes>
+    action:   <full action doc as it stands before this submit's writes>
+```
 
-## Idempotency
+### Pre-hook return (all fields optional)
 
-- **Step 2 (engine writes).** Same idempotency story as the status-quo engine — priority rule no-ops repeated stage pushes; same-stage workflow guard prevents duplicate status entries.
-- **Step 3 (side effects).** Same as status-quo: `entity_update` idempotent with `$set` / `$ifNull` operators, not with `$push` / `$inc`. `events.new-event` and `notifications.send-notification` not retry-safe — duplicate events / notifications on retry, accepted as v1 cost. Stable-`event_id` flow remains the additive upgrade path.
-- **Step 4 (hook).** Hook author responsibility; documented in README.
+```
+{
+  status: string            # overrides current action's target status (precedence:
+                            #   pre-hook > action.interactions[interaction].status > engine default)
+  actions: array            # merged with auto-unblocks; entries take precedence
+    - { type, key, status, fields, upsert, force }
+                            #   force: optional bool; bypasses priority rule for this entry only.
+                            #   Use for replay / rollback (e.g. done → action-required).
+  event_overrides: object   # merged over action.event[interaction] over engine defaults
+  form_overrides: object    # extra fields to $set on form_data.{action_type}[.{key}]
+  hook_error: string        # abort signal — engine writes status: error with this context
+}
+```
 
-## Cancellation semantics
+`hook_error` aborts the submit. Engine treats abort as a normal `error` transition (engine Decision 5) — `status[0]` carries `{ stage: error, reason: 'pre-hook', error_message: hook_error }`, no `form_data` writes.
 
-`CancelWorkflow` unchanged from status-quo. Cancellation doesn't fire submit hooks — the hook is tied to action submissions, not workflow cancellation. Apps that need cancellation-time side effects use the engine's tracker subscription on the parent (cancelled → not-required propagation) plus their own app-level cancellation routine.
+**`form_overrides` merge rules:** pre-hook wins over user-submitted `form` / `form_review` on field collision; writes to the same flat `form_data.{action_type}.{field}` tree (engine D5 — no `.review` / `.error` sub-keys); skipped entirely when `hook_error` is set.
 
-## Supersedes (status-quo → submit-pipeline)
+### Post-hook payload
 
-| Sub-design                                                                 | What changes                                                                                                                                                                                 |
-| -------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [engine](../engine/design.md) Decision 1                                   | `UpdateWorkflowActions` → `SubmitWorkflowAction`. Same connection; broader handler. Side effects (`entity_update` / `event` / `notifications`) and hook dispatch live inside the handler.    |
-| [module-surface](../module-surface/design.md) Decision 5                   | `submit-action` Api routine collapses from four steps to one. Composition-error-semantics table simplifies (one step's idempotency analysis covers the whole submit).                        |
-| [action-authoring](../action-authoring/design.md) `submit_hook:` semantics | Field type changes from "string path to routine YAML" to "string endpoint id." Field stays optional (today's design requires one per form action).                                           |
-| [action-authoring](../action-authoring/design.md) `makeWorkflowApis`       | Per-form-action submit endpoint emission (`workflows/<wf>-<action>-submit`) dropped. Resolver still emits other action-level Apis if any.                                                    |
-| [ui](../ui/design.md)                                                      | Generated form-action edit / review pages and task-edit / task-review pages call `workflows/submit-action` directly. Page templates simplify.                                                |
-| [action-groups](../action-groups/design.md) Decision 6                     | `on_complete` invocation mechanism uses the same `context.callApi` primitive (extension preview; not committed in this sub-design). The deferred "api-hooks follow-up sub-design" dissolves. |
+```
+post_hook_payload:
+  workflow_id, workflow_type, action_id, action_type, current_key, interaction
+  form, form_review, fields                # as submitted
+  result:
+    action_ids: array<string>
+    completed_groups: array<string>
+    event_id: string
+    tracker_fired:                         # present when tracker subscription propagated to a parent;
+                                           #   null otherwise. Hooks that need the parent's post-write
+                                           #   doc fetch by parent_workflow_id.
+      parent_action_id: string
+      parent_workflow_id: string
+      new_status: string
+  user, context                            # context.workflow + context.action are the SUBMIT workflow's
+                                           #   docs post-write. Parent workflow is not included on
+                                           #   tracker fire — read it via tracker_fired.parent_workflow_id.
+```
 
-## Extension preview — action-groups `on_complete`
+### Post-hook return
 
-Out of scope here; same plumbing applies. Sketch:
+Free-form. Surfaced as `post_hook_response` on the API return. Post-hook **cannot abort** — engine writes already landed. Failures logged but not propagated to caller.
 
-- Action-groups Decision 1 `on_complete:` field changes from "path to routine YAML" to "endpoint id."
-- Action-groups Decision 5 step 2 (recompute affected groups' statuses) also dispatches: for each group transitioning to `done`, plugin calls `context.callApi(group.on_complete_id, group_hook_payload)` before continuing.
-- The deferred Decision 6 "fanout mechanism" question dissolves — dispatch happens in the plugin handler via the same `context.callApi` primitive.
-- `completed_groups` return shape stays the same (downstream consumers may still want it).
+## Default log event
 
-## Risks
+Every interaction generates a log event by default. Engine writes one event via [events module's `new-event` Api](../../../../modules/events/api/new-event.yaml).
 
-- **`context.callApi` is a new Lowdefy capability** with auth and re-entrancy implications. Auth model (hook inherits caller's user/roles) binds the engine to one principal model; multi-tenant apps that want hooks to run as service principals need per-call auth context override — listed as v2 extension. Re-entrancy bounded by the depth guard but needs operational testing in deep workflow trees.
-- **Refactor cost is real.** Supersedes parts of three other sub-designs (engine, module-surface, action-authoring). Time-box the decision: pick this or status-quo before any of the affected sub-designs start implementation, otherwise the migration cost compounds.
-- **Hook timing locks side effects after engine writes.** A hook that needs to veto the submission has to compensate by reverting. Apps with strict server-side validation patterns push validation to the page or to a pre-step they call before `submit-action`. Acceptable for v1.
-- **Plugin handler complexity.** Folding `entity_update` + `event` + `notify` into the plugin grows it from "transition logic only" to "transition + cross-module dispatch + user-hook invocation." Mitigated by per-step helper files (`writeEntityUpdate.js`, `dispatchEvent.js`, `dispatchNotification.js`, `invokeSubmitHook.js`).
-- **Plugin → Api → Plugin recursion.** A submit hook calling another module's API that calls `submit-action` again. Same risk class as tracker-update recursion; same mitigation (depth-limit guard with clear error citing the chain).
+**Default shape:**
+
+```yaml
+type: action-{interaction} # e.g. action-submit_edit, action-approve
+display:
+  default:
+    title:
+      _nunjucks:
+        template: "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}"
+        on: { user, action_type, status_after }
+references:
+  workflow_ids: [<workflow_id>]
+  action_ids: [<action_id>]
+metadata: action_type, workflow_type, interaction, current_key
+  status_before, status_after
+```
+
+**Override paths** (merged in order, last wins):
+
+1. Engine defaults (above).
+2. Action YAML `event.{interaction}.{type|display|metadata}` — resolver bakes the whole `event:` block into the endpoint payload's keyed `event_overrides` map; handler resolves `event_overrides[interaction]` once on entry.
+3. Pre-hook return `event_overrides` — unkeyed runtime bag, merges on top of (2).
+
+Action YAML shape:
+
+```yaml
+event:
+  submit_edit:
+    type: lead-qualified
+    display: { ... }
+    metadata: { ... }
+  approve:
+    type: lead-approved
+```
+
+## Side effects owned by the engine
+
+| Effect               | When                                              | How                                                                                                                                                                                                                                 |
+| -------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Log event            | Always, after action writes                       | Engine `context.callApi('new-event', module: 'events')` with merged event payload                                                                                                                                                   |
+| Notifications        | Always, after the log event                       | Engine `context.callApi('send-notification', module: 'notifications')` with `{ event_ids: [<event_id>] }`. The app's `send_routine` (on the notifications module entry) decides recipients — silent no-op when no routine is wired. |
+| Group `on_complete`  | When groups transition to `done` this call (open) | Engine `context.callApi(<on_complete-api-id>)` per completed group                                                                                                                                                                  |
+| Tracker subscription | When workflow status changed                      | Synchronous in-process per engine D3. Engine writes parent tracker action via internal `updateAction` recursion; `SubmitWorkflowAction` invocations don't recurse on themselves.                                                    |
+
+`entity_update` (the status-quo `submit-action` payload's optional Mongo write to the entity doc) is **dropped**. Apps that need to update the entity do so from a pre/post hook.
+
+## Page → API call
+
+The button block (template-shipped) calls the per-action API with a fixed payload shape:
+
+```yaml
+- id: button_submit_edit # template-shipped block id
+  type: Button
+  events:
+    onClick:
+      - id: call_event_handler # fire author's page event first
+        type: <whichever event verb maps> # e.g. CallMethod or inline action array
+      - id: submit
+        type: CallApi
+        params:
+          endpointId:
+            _module.endpointId:
+              id: update-action-{action_type}
+              module: workflows
+          payload:
+            action_id: { _request: get_action._id }
+            interaction: submit_edit
+            current_key: { _request: get_action.key }
+            form: { _state: form }
+            form_review: { _state: form_review }
+            fields: { _state: fields }
+```
+
+The page never builds this manually — the template ships the button and the wiring.
+
+## Dropped from module-surface
+
+- **`submit-action` Api** — removed. Replaced by per-action `update-action-{action_type}`.
+- **`submit-action` payload's `entity_update` field** — apps use pre/post hooks for entity writes.
+- **`submit-action` routine** — engine owns the lifecycle.
+
+## Renamed
+
+- `UpdateWorkflowActions` → `SubmitWorkflowAction` (engine Decision 1).
+- `makeWorkflowApis` resolver output: `{workflow_type}-{action_type}-submit` → `update-action-{action_type}`.
+- Action YAML field: `submit_hook:` → `hooks:` (per-interaction map).
 
 ## Open questions
 
-1. **Decision D — where conditional unblock logic lives.** Surfaced during the UI / example_workflow review. Options:
-   - (a) Per-action API files (v0 shape — currently committed in action-authoring Decision 6 via `makeWorkflowApis`).
-   - (b) Inline routine in action YAML under `pages.{verb}.events.{onSubmit|onApprove|onRequestChanges}`.
-   - (c) Declarative outcomes in action YAML (`outcomes.on_submit:` rules the engine resolves).
-   - (d) Hybrid declarative outcomes + optional hook.
+1. **Validate the five-button vocabulary.** `submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes` — is this the full set? Edge cases:
+   - `not_required` visibility default (always on view? opt-in per action?)
+   - `resolve_error` vs `submit_edit` on the error page
+   - `cancel` button for workflow-level cancellation
+2. **Group `on_complete` mechanism.** Engine fans out one `context.callApi` per completed group's declared `on_complete` endpoint. Confirm during review.
+3. **Event-types config var.** Should the module expose `event_types` as a manifest var (like events module's `event_display`) so apps can register canonical types per app? Steph flagged.
+4. **Pre-hook actions[] merge precedence on collisions.** Pre-hook entries take precedence over auto-unblocks on `(type, key)` collisions. Confirm during review.
+5. **Hook payload size.** Pre-hook receives full workflow + action docs. Add a `context.shallow` flag if real-world sizes exceed payload limits.
 
-   User preference noted as (b) during review but explicitly tagged as a submit-pipeline decision. This sub-design's "Action YAML — `submit_hook:` field" section is one shape addressing the same friction; open call is whether to merge / supersede / co-exist. **Status: not yet committed.**
+## Implementation order
 
-2. **Decision F — module-emitted API surface.** Surfaced during the UI / example_workflow review. Options:
-   - (a) Generic engine endpoints (page event calls `workflows-submit-action` directly).
-   - (b) Per-action API files (v0 shape, currently committed via `makeWorkflowApis`).
-   - (c) Hybrid: generic by default + opt-in named alias via action-level `api_id:`.
-
-   User preference noted as (a) but explicitly tagged as a submit-pipeline decision. This sub-design's "Module surface → `submit-action` Api — thin wrapper" section is the (a)-shaped resolution; open call is whether to keep `makeWorkflowApis` as a deprecated path or remove outright. **Status: not yet committed.**
-
-3. **Declarative templates on action YAML.** With the page now building the full `submit-action` payload, action YAML could grow `event_template:` / `entity_update_template:` blocks evaluated against `form_data`. Pushes the payload contract toward `{ action_id, current_type, form_data }`. Out of scope; enabled by the inversion.
-4. **Per-action authorization moves to the engine.** Today's `submit-action` Api has app-level `auth:`; per-action role checks live via `action_role_check`. With engine owning the lifecycle, per-action role checks should move into step 1. Worth specifying explicitly; not committed in this draft.
-5. **`hook_response` shape.** Free-form. Should the engine require any specific keys (e.g. `success: true`)? Probably not — keep transparent; page handles whatever the hook returns. Document in README.
-6. **Should action-groups `on_complete` fold in here?** Mechanism is the same. Re-open if the design lands cleanly and folding groups in is small.
-
-## Next step
-
-1. Add `context.callApi` to `@lowdefy/api`. Verify auth context inheritance, depth-limit guard, error propagation in an isolated spike — this is the new-capability work and should land first.
-2. Restructure `WorkflowAPI` plugin per "Plugin shape" above. Move `UpdateWorkflowActions` → `SubmitWorkflowAction`; add side-effects helpers.
-3. Update `submit-action.yaml` per "Module surface" above.
-4. Update action-authoring resolver: treat `submit_hook:` as endpoint id; drop `makeWorkflowApis` submit endpoint emission.
-5. Update form-action page templates to call `workflows/submit-action` directly.
-6. Once stable, fold in action-groups `on_complete` using the same primitive.
+1. Land [call-api](../call-api/design.md) — gates this sub-design.
+2. Lock the button vocabulary (Open Question 1) during review.
+3. Implement `SubmitWorkflowAction` plugin handler.
+4. Rewrite `makeWorkflowApis` to emit `update-action-{action_type}`.
+5. Update form-action templates with the five-button vocabulary, wired to per-action APIs.

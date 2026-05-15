@@ -101,21 +101,68 @@ Notable shape choices the resolver commits to:
 
 The module ships two sets of templates:
 
-**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with an added approve / request-changes affordance band — Approve calls `submit-action` with `current_status: done`; Request Changes calls it with `current_status: changes-required` (matching action-authoring's `review` verb semantics).
+**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. Each template ships the matching button(s) from the submit-pipeline five-button vocabulary (see "Template-shipped button vocabulary" below); buttons call the action's resolver-generated `update-action-{action_type}` endpoint with the appropriate `interaction` value. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with the approve / request-changes button band added.
 
 **Error template (`error.yaml.njk`).** Renders the recovery surface for an action whose `status[0].stage` is `error`. Three template-shipped behaviours:
 
 1. **Stale-URL guard.** Template appends a redirect step to the page's `onMount`: if the loaded action's `status[0].stage !== 'error'`, the template emits `Link` to the action's `-view` page so users hitting a stale error URL are bounced out automatically.
-2. **Failure-context banner.** Template surfaces `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}` for keyed actions) as a read-only banner above the form. The `.error` sub-key is engine-managed and reserved (engine sub-design Decision 5).
-3. **Recovery form + Submit button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button wired to the action's `pages.error.events.onSubmit` routine. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
+2. **Failure-context banner.** Template surfaces the action doc's `status[0].error_message` and `status[0].error_metadata` as a read-only banner above the form. Error context lives on the action doc's status entry, not in `form_data` (engine sub-design Decision 5).
+3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` interaction (submit-pipeline Decision 3) — wired to call `update-action-{action_type}` with `interaction: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
 
 The `-error` page is **always emitted** for every form action (regardless of the action's `access.{app_name}` verb list) — an action in `error` is a stuck state, and restricting per-app would strand users. Per-app visibility is controlled at the status-map level instead: omitting `status_map.error.{app_name}` suppresses the recovery link for that app. See [action-authoring](../action-authoring/design.md) "Error pages and the `error` status" for the authoring shape.
 
+### Template-shipped button vocabulary
+
+Each form-action template ships the matching button(s) from the submit-pipeline five-button vocabulary (submit-pipeline Decision 3). Each button is a template-shipped block that, on click:
+
+1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event handler (if declared), for page-state work — set state, fire requests, validate.
+2. Calls the action's `update-action-{action_type}` endpoint with `interaction: <button-name>` + the standard payload (`form`, `form_review`, `fields`, `current_key`).
+
+| Button            | Rendered on template                    | `interaction` value | Author event handler fired         | Engine target-status default                                               |
+| ----------------- | --------------------------------------- | ------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| `submit_edit`     | `edit.yaml.njk`                         | `submit_edit`       | `onSubmit`                         | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
+| `not_required`    | `view.yaml.njk` (and optionally `edit`) | `not_required`      | `onSubmit` (if rendered on `edit`) | `not-required`                                                             |
+| `resolve_error`   | `error.yaml.njk`                        | `resolve_error`     | `onSubmit`                         | Same as `submit_edit` (recovery returns the action to its normal flow)     |
+| `approve`         | `review.yaml.njk`                       | `approve`           | `onApprove`                        | `done`                                                                     |
+| `request_changes` | `review.yaml.njk`                       | `request_changes`   | `onRequestChanges`                 | `changes-required`                                                         |
+
+The author event handlers (`onSubmit`, `onApprove`, `onRequestChanges`) are unchanged from action-authoring Decision 8 and stay separate from the engine call (Decision 4 above lists the four-verb event vocabulary). Authors who need pre-write logic register a pre-hook on the action YAML (`hooks.{interaction}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
+
+The block-tree shape for each button looks roughly like:
+
+```yaml
+# Inside templates/edit.yaml.njk
+- id: submit_edit_button
+  type: Button
+  properties:
+    title: Submit
+    type: primary
+  events:
+    onClick:
+      - id: fire_author_event
+        type: CallMethod # invoke pages.edit.events.onSubmit if declared
+        params: { ... }
+      - id: submit
+        type: CallApi
+        params:
+          endpointId:
+            _module.endpointId: { id: update-action-{action_type}, module: workflows }
+          payload:
+            action_id: { _request: get_action._id }
+            interaction: submit_edit
+            current_key: { _request: get_action.key }
+            form: { _state: form }
+            form_review: { _state: form_review }
+            fields: { _state: fields }
+```
+
+Templates compose this via a small Nunjucks macro per button to keep the block trees terse and consistent. Authors don't write the CallApi step themselves; the template owns the wiring.
+
 **Task-action pages** — `pages/task-edit.yaml`, `pages/task-view.yaml`, and `pages/task-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
 
-- **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. Save constructs the `submit-action` payload (`fields:` block + `event.metadata.comment`) and calls the endpoint via `CallApi`.
+- **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — it calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, `form:` (empty for tasks), and `event.metadata.comment`.
 - **`task-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
-- **`task-review`**: action header + universal-fields display (same shape as `task-view`) plus an approve / request-changes affordance band and an optional comment field. Approve / Request Changes call `submit-action` with `current_status: done` / `changes-required` respectively; the comment, if entered, flows through `event.metadata.comment`.
+- **`task-review`**: action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively (submit-pipeline Decision 3). The comment, if entered, flows through `event.metadata.comment`.
 
 All three task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
@@ -178,7 +225,7 @@ Universal action fields (`assignees`, `due_date`, `description` — see [action-
 - On a **task action's** edit page they're the primary content, with a status selector and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
-Updates flow through `submit-action` like any other action change. The page composes the `fields:` block of the submit payload from form-state, plus an optional comment in `event.metadata.comment`.
+Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional comment in `event.metadata.comment`.
 
 ## Decision 3 — Module-level UI components
 
@@ -228,7 +275,7 @@ Per-workflow header strip — title, current lifecycle stage badge (read from `w
 
 ### `action_role_check`
 
-Reusable access-check primitive — verb-map + role-gate. Reads the current user's effective roles via `_user: roles` (sourced from `apps.{app_name}.roles` on the `user_contacts` doc — the same source the user-admin module manages) and the action's `access.{app_name}` verb map + `access.roles` list. Returns boolean — used by templates to conditionally render verbs. Implements the same query-time check the engine runs in `get-entity-workflows` and `submit-action` (see [action-authoring](../action-authoring/design.md) Decision 3 "Action access semantics").
+Reusable access-check primitive — verb-map + role-gate. Reads the current user's effective roles via `_user: roles` (sourced from `apps.{app_name}.roles` on the `user_contacts` doc — the same source the user-admin module manages) and the action's `access.{app_name}` verb map + `access.roles` list. Returns boolean — used by templates to conditionally render verbs. Implements the same check the engine runs at query-time in `get-entity-workflows` and at submit-time inside the `SubmitWorkflowAction` handler (see [action-authoring](../action-authoring/design.md) Decision 3 "Action access semantics").
 
 ## Decision 4 — Page-event vocabulary and per-page chrome
 
@@ -236,12 +283,12 @@ Action page YAML carries four event handlers plus four chrome blocks. The module
 
 ### Event handlers (fixed vocabulary)
 
-| Handler            | Pages that use it        | Wired button / lifecycle               |
-| ------------------ | ------------------------ | -------------------------------------- |
-| `onMount`          | `edit`, `view`, `review` | Page lifecycle (fires after page init) |
-| `onSubmit`         | `edit`                   | Submit button                          |
-| `onApprove`        | `review`                 | Approve button                         |
-| `onRequestChanges` | `review`                 | Request-changes button                 |
+| Handler            | Pages that use it                 | Wired button / lifecycle               |
+| ------------------ | --------------------------------- | -------------------------------------- |
+| `onMount`          | `edit`, `view`, `review`, `error` | Page lifecycle (fires after page init) |
+| `onSubmit`         | `edit`                            | Submit button                          |
+| `onApprove`        | `review`                          | Approve button                         |
+| `onRequestChanges` | `review`                          | Request-changes button                 |
 
 Authors declare these as standard Lowdefy action arrays under `pages.{verb}.events.{handler}`:
 
@@ -344,7 +391,7 @@ Actions declaring `key:` (action-authoring Decision 9) generate one page per ver
 
 ### Form-state path
 
-The page reads form state from `form_data.{action_type}.{key}.{field}` on the workflow doc, where `key` is sourced from `_request: get_action.key`. Save events write back to the same path via the `submit-action` payload.
+The page reads form state from `form_data.{action_type}.{key}.{field}` on the workflow doc, where `key` is sourced from `_request: get_action.key`. Save events write back to the same path via the per-action endpoint's `form` / `form_review` payload.
 
 ### URL contract
 
@@ -361,9 +408,9 @@ The `task-edit` page surfaces a status selector populated from the module-shippe
 - From current stage, only stages with strictly lower priority are valid transitions.
 - **Same-stage allowed for the current action** — matches the engine's `currentActionId` self-exception (lets users re-save the action without changing its stage, e.g. updating `assignees` only).
 - **If current stage is `not-required`** (priority 0, universal terminal), no valid transitions exist via the priority rule. The selector is disabled with a "no transitions available" message rather than rendered with an empty option list.
-- `force: true` overrides aren't typically exposed through the UI — migrations and admin tools bypass `submit-action`.
+- `force: true` overrides aren't typically exposed through the UI — migrations and admin tools bypass the per-action endpoint and call `SubmitWorkflowAction` directly via a privileged route.
 
-The selector hides invalid options at render time. Save attempts that violate the rule (e.g. concurrent stage push from another user that the local UI didn't see) get rejected server-side by `submit-action`; the page surfaces a generic error.
+The selector hides invalid options at render time. Save attempts that violate the rule (e.g. concurrent stage push from another user that the local UI didn't see) get rejected server-side by the `SubmitWorkflowAction` handler; the page surfaces a generic error.
 
 ## Decision 8 — `workflow-overview` page (module-shipped, read-only)
 

@@ -11,9 +11,15 @@ Server-side runtime for the workflows module. Full rationale in [design.md](desi
 ```
 src/connections/WorkflowAPI/
   WorkflowAPI.js                    # registers handlers via { schema, requests: { ... } }
-  UpdateWorkflowActions/
-    UpdateWorkflowActions.js
-    handleUpdateActions.js
+  SubmitWorkflowAction/
+    SubmitWorkflowAction.js          # handler entry point
+    handleSubmit.js                  # lifecycle orchestration (validate → pre-hook → writes → side effects → post-hook)
+    invokePreHook.js                 # context.callApi to action.hooks[interaction].pre
+    invokePostHook.js                # context.callApi to action.hooks[interaction].post
+    computeAutoUnblocks.js           # walks blocked_by, identifies actions to unblock
+    dispatchLogEvent.js              # context.callApi to events.new-event with merged event payload
+    dispatchNotifications.js         # context.callApi to notifications.send-notification
+    fireGroupOnComplete.js           # context.callApi per completed_groups entry (action-groups D6)
     createAction.js
     updateAction.js
     utils/{shouldUpdate,shouldCreate,getCurrentAction}.js
@@ -59,10 +65,10 @@ Hard split: client code in `src/blocks/`, `src/actions/`, `src/metas.js`; server
 `WorkflowAPI` handlers open **one `MongoClient` per invocation** at handler entry, thread a shared `ctx = { client, workflowsCollection, actionsCollection }` through every sub-step, close on exit.
 
 ```js
-async function UpdateWorkflowActions({ request, connection }) {
+async function SubmitWorkflowAction({ request, connection }) {
   const ctx = await createMongoDBConnection(connection);
   try {
-    return await handleUpdateActions(ctx, request);
+    return await handleSubmit(ctx, request);
   } finally {
     await ctx.client.close();
   }
@@ -75,24 +81,24 @@ No Mongo transactions in v1. Ordering is preserved (sequential writes); atomicit
 
 ### Workflow doc
 
-| Field                      | Type           | Notes                                                                                                                                                                                                                                                                                                              |
-| -------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `_id`                      | string         | server-generated                                                                                                                                                                                                                                                                                                   |
-| `workflow_type`            | string         | from YAML                                                                                                                                                                                                                                                                                                          |
-| `key`                      | string \| null | optional partition key                                                                                                                                                                                                                                                                                             |
-| `display_order`            | number         | from YAML                                                                                                                                                                                                                                                                                                          |
-| `entity_type`              | string         | scalar, e.g. `lead`                                                                                                                                                                                                                                                                                                |
-| `entity_id`                | string         | the entity's `_id`                                                                                                                                                                                                                                                                                                 |
-| `entity_collection`        | string         | MongoDB collection connection id, e.g. `leads-collection`                                                                                                                                                                                                                                                          |
-| `parent_action_id`         | string \| null | tracker-action `_id` if this workflow is a child                                                                                                                                                                                                                                                                   |
-| `parent_entity_id`         | string \| null | parent entity's `_id` if child                                                                                                                                                                                                                                                                                     |
-| `parent_entity_collection` | string \| null | parent's collection connection id if child                                                                                                                                                                                                                                                                         |
-| `status`                   | array          | history, newest at index 0; `[{ stage, created, ... }]`                                                                                                                                                                                                                                                            |
-| `summary`                  | object         | `{ done, not_required, total }`                                                                                                                                                                                                                                                                                    |
-| `groups`                   | array          | persisted group state — `[{ id, status, summary }]`, one entry per declared `action_groups[]`. `status` is the three-value derived enum (`blocked` / `in-progress` / `done`); `summary` is per-group `{ done, not_required, total }`. Written back eagerly inside `UpdateWorkflowActions`. See action-groups spec. |
-| `form_data`                | object         | per-action form data (see "Form data layout" below). Initially `{}`.                                                                                                                                                                                                                                               |
-| `created`, `updated`       | change_stamp   | per events module convention                                                                                                                                                                                                                                                                                       |
-| `<reference keys>`         | various        | spread from `references` payload, e.g. `company_ids`, `region_ids`                                                                                                                                                                                                                                                 |
+| Field                      | Type           | Notes                                                                                                                                                                                                                                                                                                             |
+| -------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                      | string         | server-generated                                                                                                                                                                                                                                                                                                  |
+| `workflow_type`            | string         | from YAML                                                                                                                                                                                                                                                                                                         |
+| `key`                      | string \| null | optional partition key                                                                                                                                                                                                                                                                                            |
+| `display_order`            | number         | from YAML                                                                                                                                                                                                                                                                                                         |
+| `entity_type`              | string         | scalar, e.g. `lead`                                                                                                                                                                                                                                                                                               |
+| `entity_id`                | string         | the entity's `_id`                                                                                                                                                                                                                                                                                                |
+| `entity_collection`        | string         | MongoDB collection connection id, e.g. `leads-collection`                                                                                                                                                                                                                                                         |
+| `parent_action_id`         | string \| null | tracker-action `_id` if this workflow is a child                                                                                                                                                                                                                                                                  |
+| `parent_entity_id`         | string \| null | parent entity's `_id` if child                                                                                                                                                                                                                                                                                    |
+| `parent_entity_collection` | string \| null | parent's collection connection id if child                                                                                                                                                                                                                                                                        |
+| `status`                   | array          | history, newest at index 0; `[{ stage, created, ... }]`                                                                                                                                                                                                                                                           |
+| `summary`                  | object         | `{ done, not_required, total }`                                                                                                                                                                                                                                                                                   |
+| `groups`                   | array          | persisted group state — `[{ id, status, summary }]`, one entry per declared `action_groups[]`. `status` is the three-value derived enum (`blocked` / `in-progress` / `done`); `summary` is per-group `{ done, not_required, total }`. Written back eagerly inside `SubmitWorkflowAction`. See action-groups spec. |
+| `form_data`                | object         | per-action form data (see "Form data layout" below). Initially `{}`.                                                                                                                                                                                                                                              |
+| `created`, `updated`       | change_stamp   | per events module convention                                                                                                                                                                                                                                                                                      |
+| `<reference keys>`         | various        | spread from `references` payload, e.g. `company_ids`, `region_ids`                                                                                                                                                                                                                                                |
 
 ### Action doc
 
@@ -116,20 +122,17 @@ No Mongo transactions in v1. Ordering is preserved (sequential writes); atomicit
 
 ### Form data layout
 
-Per-workflow `form_data` keyed by action type, with optional key segment for instanced actions and reserved `.review` / `.error` sub-keys:
+Per-workflow `form_data` keyed by action type, with optional key segment for instanced actions. **One flat tree per action — no reserved sub-keys.**
 
 ```
 form_data: {
   {action_type}: {                         // non-keyed action
-    {field}: <value>,                      // submitter values (form: blocks)
-    review: { {field}: <value> },          // reviewer values (form_review: blocks)
-    error:  { message, step },             // engine-written on failed submit
+    {field}: <value>,                      // submitter (form:) + reviewer (form_review:)
+                                           //   share the same flat namespace
   },
   {action_type_with_key}: {                // keyed action (action-authoring Decision 9)
     {key}: {
       {field}: <value>,
-      review: { {field}: <value> },
-      error:  { ... },
     },
   },
 }
@@ -139,23 +142,21 @@ form_data: {
 
 - Non-keyed: `form_data.{action_type}.{field}`.
 - Keyed: `form_data.{action_type}.{key}.{field}`.
-- Reviewer values: `form_data.{action_type}.review.{field}` (or `.{key}.review.{field}`).
-- Engine error context: `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}`).
+- No `.review` namespace — reviewer values share the action-type tree with submitter values; authors pick non-colliding names.
+- No `.error` namespace — error context lives on the action doc's status entry (see "Action `error` transition" below).
 
-**Reserved sub-keys** within `form_data.{action_type}` / `form_data.{action_type}.{key}`: `review`, `error`. Build-time validation flags `form:` / `form_review:` blocks with these names.
-
-**Write semantics:** per-field `$set` on dot-notation paths. Field-level granularity so concurrent edits on different fields don't clobber, reviewer/submitter writes don't collide, and engine error writes don't disturb either side.
+**Write semantics:** per-field `$set` on dot-notation paths. Field-level granularity so concurrent edits on different fields don't clobber. Submitter (`form:`) and reviewer (`form_review:`) payloads are merged into one bag before write; the engine doesn't disambiguate.
 
 ### Action `error` transition
 
 Two entry paths put an action into `error` status:
 
-- **Engine-driven mid-submit failure.** The submit pipeline catches a thrown failure from a sub-step (submit hook, entity_update, event, notification dispatch) and converts it to an `error` transition: writes `{ stage: error, created, reason: <step-name>, error_message }` to the action's `status` array with **`force: true` semantics** (bypasses priority rule); writes captured failure context to `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}`) — conventional fields `message`, `step`, `timestamp`; skips remaining auto-complete / tracker-subscription / group-rollup work (an `error` action is non-terminal); returns partial `{ action_ids, event_id }`.
-- **Author-driven.** Submit-hook routine calls `submit-action` with `current_status: error` for app-validated business-rule failures. Engine treats this identically to the engine-driven path; author supplies the error fields via the `form` payload using `error.*` field names (engine routes to the reserved `.error` sub-key).
+- **Engine-driven mid-submit failure.** The submit pipeline catches a thrown failure from a sub-step (submit hook, entity_update, event, notification dispatch) and converts it to an `error` transition: writes `{ stage: error, created, reason: <step-name>, error_message, error_metadata }` to the action's `status` array with **`force: true` semantics** (bypasses priority rule); skips remaining auto-complete / tracker-subscription / group-rollup work (an `error` action is non-terminal); returns partial `{ action_ids, event_id }`. `form_data` is not touched on error transitions — all error context lives on the status entry.
+- **Author-driven.** A pre-hook returns `hook_error: <message>` to abort the submit (submit-pipeline Decision 4) — engine treats abort as a normal `error` transition, writing `{ stage: error, reason: 'pre-hook', error_message: <message>, error_metadata? }` to the action's status array. No `form_data` write on the abort path.
 
 **Force-write rationale.** Priority rule would otherwise reject `error` pushes from terminal statuses. Operationally an error must always surface — a `done` transition that fails mid-side-effects needs to roll back to `error` so the user sees recovery, not a falsely-completed action.
 
-**Recovery.** A normal `submit-action` call from the `-error` page; on success, engine clears `form_data.{action_type}.error` fields via per-field `$set` (or overwrites individually for partial recovery) and transitions the action out of `error`.
+**Recovery.** A normal submission from the `-error` page — the user clicks the template-shipped `resolve_error` button, which calls the per-action endpoint with `interaction: resolve_error`. On success, engine writes the recovery transition (target status defaults to the same as `submit_edit` — see submit-pipeline Decision 3); the previous `{ stage: error, ... }` entry stays in the status array as audit history. No `form_data` cleanup needed.
 
 ### Indexes
 
@@ -167,21 +168,25 @@ Two entry paths put an action into `error` status:
 ## Capabilities
 
 - **`StartWorkflow`** writes a workflow doc + N action docs. When `parent_action_id` is in the payload, the engine validates the action exists, is `kind: tracker`, and isn't already linked (`child_workflow_id` is null), then writes the new workflow's `parent_action_id` / `parent_entity_id` / `parent_entity_collection` (latter two read from the parent action's `entity_id` / `entity_collection`) and the parent tracker action's `child_workflow_id` (the new workflow's `_id`) / `child_entity_id` / `child_entity_collection` + `in-progress` transition. All writes share the same handler invocation.
-- **`UpdateWorkflowActions`** writes one or more action transitions per call. Payload uses `keys: [...]` plural; the plugin flat-maps over `keys` (omitted → one op `key: null`; `[]` → zero ops; `[k]` → one op `key: k`; `[k1,k2,...]` → N ops). On-disk action docs keep singular `key`. After action writes, recomputes affected `groups[]` statuses and writes them to the workflow doc; re-evaluates every blocked action's `blocked_by` against the new state and pushes `action-required` on those whose dependencies are now terminal; runs auto-complete check (all actions terminal → push `completed` to workflow status); fires tracker subscription if workflow status changed; recomputes workflow-level `summary` (eager writeback). Returns `{ action_ids, completed_groups, event_id }` — `completed_groups` lists groups that transitioned to `done` in this call (consumed by outer Layer-1 orchestration that fans out `on_complete` hooks; see action-groups Decision 6).
+- **`SubmitWorkflowAction`** writes one or more action transitions per call. Payload uses `keys: [...]` plural; the plugin flat-maps over `keys` (omitted → one op `key: null`; `[]` → zero ops; `[k]` → one op `key: k`; `[k1,k2,...]` → N ops). On-disk action docs keep singular `key`. After action writes, recomputes affected `groups[]` statuses and writes them to the workflow doc; re-evaluates every blocked action's `blocked_by` against the new state and pushes `action-required` on those whose dependencies are now terminal; runs auto-complete check (all actions terminal → push `completed` to workflow status); fires tracker subscription if workflow status changed; recomputes workflow-level `summary` (eager writeback). Returns `{ action_ids, completed_groups, event_id, tracker_fired? }` — `completed_groups` lists groups that transitioned to `done` in this call; the engine fans out one `context.callApi` per `on_complete` engine-internally as step 11 of the submit-pipeline lifecycle (see action-groups Decision 6, submit-pipeline Decision 1).
 - **`CancelWorkflow`** pushes `cancelled` to workflow status; flips remaining open actions on the workflow to `not-required`. References at the call level spread onto the workflow doc on the cancelled push.
-- **Universal action fields** (`assignees`, `due_date`, `description`) flow through `UpdateWorkflowActions` payload's `actions[].fields`. Merged into per-action `$set` atomically with the status transition. `null` clears; omitted leaves unchanged.
-- **Access enforcement** — runs the per-app verb filter + role gate from action-authoring Decision 3 ("Action access semantics") at two server-side points: (1) **`get-entity-workflows`** filters returned actions by host app's verb map and intersects caller's `_user: roles` with `access.roles`. (2) **`submit-action`** re-checks role gate before writes; rejects with structured error on mismatch (role revoked between render and submit). Verb-filter check at submit-time is implicit (page wouldn't have been generated if verb wasn't allowed in current app).
+- **Universal action fields** (`assignees`, `due_date`, `description`) flow through `SubmitWorkflowAction` payload's `actions[].fields`. Merged into per-action `$set` atomically with the status transition. `null` clears; omitted leaves unchanged.
+- **Access enforcement** — runs the per-app verb filter + role gate from action-authoring Decision 3 ("Action access semantics") at two server-side points: (1) **`get-entity-workflows`** filters returned actions by host app's verb map and intersects caller's `_user: roles` with `access.roles`. (2) **`SubmitWorkflowAction` handler** re-checks role gate before writes; rejects with structured error on mismatch (role revoked between render and submit). Verb-filter check at submit-time is implicit (page wouldn't have been generated if verb wasn't allowed in current app).
 
-### `UpdateWorkflowActions` payload
+### `SubmitWorkflowAction` payload
 
 ```
 {
-  currentActionId: string | null,    // the action the user submitted on; aliased from submit-action's action_id
+  currentActionId: string | null,    // the action the user submitted on; same as the per-action endpoint's action_id (submit-pipeline)
   actions: [
-    { type, status, keys?, fields?, references? }
+    { type, status, keys?, fields?, references?, force? }
+                                     //   force: optional per-entry bypass of the priority rule
+                                     //   for that entry only (used by submit-pipeline pre-hook
+                                     //   actions[]; see submit-pipeline Decision 4)
   ],
-  eventId: string,                   // generated upstream by submit-action's :set_state:
+  eventId: string,                   // generated by SubmitWorkflowAction on entry; threaded through every write in this invocation
   force: true | false                // per-call; bypasses priority rule + universal-terminal exception
+                                     //   for every entry. Composes OR with per-entry force.
 }
 ```
 
@@ -223,7 +228,7 @@ Reserved keys: `_id`, `workflow_id`, `type`, `entity_type`, `entity_id`, `entity
 | `completed`          | `done`                      |
 | `cancelled`          | `not-required`              |
 
-**Mechanism**: synchronous in-process within `UpdateWorkflowActions`. When the handler writes a workflow's `status[0].stage` (via auto-complete or `CancelWorkflow`), it reads the workflow's `parent_action_id` and fetches the tracker action by primary key. If the new stage maps to a target, the tracker action is updated via an inner `updateAction` call with `force: true` (tracker writes bypass the priority rule).
+**Mechanism**: synchronous in-process within `SubmitWorkflowAction`. When the handler writes a workflow's `status[0].stage` (via auto-complete or `CancelWorkflow`), it reads the workflow's `parent_action_id` and fetches the tracker action by primary key. If the new stage maps to a target, the tracker action is updated via an inner `updateAction` call with `force: true` (tracker writes bypass the priority rule).
 
 **Pseudo-code:**
 
@@ -261,7 +266,7 @@ async function pushWorkflowStatus(ctx, workflowId, newStage, eventId) {
 
 - **Action status pushes** are guarded by the priority rule. Retrying a `done` push on an already-`done` action is rejected automatically (strict-less-than).
 - **Workflow status pushes** have no priority ordering. Guarded by a same-stage no-op check at the top of `pushWorkflowStatus` — reads `status[0].stage`, returns early if it equals the new stage. Prevents duplicate `$push` and double-firing tracker subscription on retry.
-- **Submit-action retry** is safe end-to-end: the engine's idempotency guards converge to the same state; the four `submit-action` routine steps tolerate re-runs (the leaky steps are `new_event` and `notify` — known cost, duplicate events / notifications on retry).
+- **Submit retry is safe end-to-end:** the engine's idempotency guards converge to the same state; the side-effect steps inside `SubmitWorkflowAction` (log event, notifications dispatch) are the leaky cases — known cost, duplicate events / notifications on retry.
 
 ## Priority rule
 
@@ -269,23 +274,32 @@ A status transition is allowed when the new status's priority is strictly less t
 
 - `currentActionId` self-exception: same-stage allowed for the one action the user submitted on.
 - `force: true` per-call: bypasses the priority rule and the universal-terminal exception for every entry in the call.
-- `not-required` (priority 0) is the universal terminal — only `force: true` moves it.
+- `force: true` per-entry: bypasses both for that entry only. Used by submit-pipeline pre-hook `actions[]` for replay / rollback scenarios.
+- `not-required` (priority 0) is the universal terminal — only `force: true` (per-call or per-entry) moves it.
 
-`currentActionId` is aliased from `submit-action`'s `payload.action_id` by the API routine.
+`currentActionId` carries the user-submitted action's id — the per-action endpoint's `action_id` payload field maps directly to `currentActionId` inside the handler.
 
-`force: true` lives at the top of the `UpdateWorkflowActions` payload, not per entry. Tracker subscription uses `force: true` internally (engine-driven writes can move parent actions in any direction the child workflow takes).
+`force: true` lives both at the top of the `SubmitWorkflowAction` payload (per-call) and per `actions[]` entry; the two compose with OR. Tracker subscription uses per-call `force: true` internally (engine-driven writes can move parent actions in any direction the child workflow takes).
 
-## Ordering inside one `UpdateWorkflowActions` invocation
+## Ordering inside one `SubmitWorkflowAction` invocation
 
-1. Write the action's status (the original transition the caller asked for).
-2. Recompute affected groups' statuses; write `groups[]` back to the workflow doc (action-groups Decision 4).
-3. Re-evaluate `blocked_by` for every blocked action against the new group/action state; push `action-required` on those whose dependencies are now terminal (action-groups Decision 2).
-4. Auto-complete check on the workflow if all actions are terminal — push `completed` to workflow status. Re-run after step 3.
-5. If step 4 pushed a workflow status, run tracker subscription (recurse if the parent's parent exists).
-6. Recompute the workflow's `summary` (eager writeback).
-7. Return `{ action_ids, completed_groups, event_id }` — `completed_groups` lists groups that transitioned to `done` in step 2.
+The full 11-step lifecycle (validate → pre-hook → writes → side effects → post-hook → return) is owned by [submit-pipeline Decision 1](../submit-pipeline/design.md#decision-1--submitworkflowaction-replaces-updateworkflowactions). Engine ownership inside that lifecycle covers steps 1, 3–8, 12 (validation, auto-unblock computation, action transitions, summary + groups recompute, form_data writes, workflow-doc updates, tracker subscription). The internal write-ordering for the engine's contribution:
 
-Summary recompute is idempotent — nested recursion may recompute the same workflow's summary twice. Idempotent writes; bounded cost. `completed_groups` is computed from step 2's transitions, so a retry that no-ops step 2 returns an empty `completed_groups` (the hook doesn't fire twice).
+1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, role gate passes for the interaction. (Submit-pipeline lifecycle step 1.)
+2. **Compute auto-unblocks.** Walk the workflow's `blocked_by` graph; identify actions whose dependencies are now terminal. Merge pre-hook `actions[]` (precedence) with auto-unblocks. (Lifecycle steps 3–4.)
+3. **Write action transitions** (priority rule applies; per-call or per-entry `force` bypasses). (Lifecycle step 5.)
+4. **Recompute affected groups' statuses**; write `groups[]` back to the workflow doc (action-groups Decision 4). (Lifecycle step 6.)
+5. **Re-evaluate `blocked_by`** for every blocked action against the new group/action state; push `action-required` on those whose dependencies are now terminal (action-groups Decision 2).
+6. **Auto-complete check** on the workflow if all actions are terminal — push `completed` to workflow status. Re-run after step 5.
+7. **Write `form_data`** per-field `$set` (engine Decision 5 layout); write workflow-doc updates (summary, groups, form_data) in one Mongo update where possible. (Lifecycle steps 7–8.)
+8. **Generate log event** + **dispatch notifications** + **fire group `on_complete` pipelines** for any groups that transitioned to `done` in step 4 — all via `context.callApi` (submit-pipeline Decision 6). (Lifecycle steps 9–11.)
+9. **Tracker subscription**: if step 6 pushed a workflow status, run the synchronous in-process subscription via internal `updateAction` recursion (Decision 3). (Lifecycle step 12.)
+10. **Recompute the workflow's `summary`** (eager writeback).
+11. **Return** `{ action_ids, completed_groups, event_id, tracker_fired?, pre_hook_response?, post_hook_response? }` — `completed_groups` lists groups that transitioned to `done` in step 4; `tracker_fired` is populated when step 9 propagated to a parent.
+
+Pre-hook (lifecycle step 2) and post-hook (lifecycle step 13) are bracketed around this engine-internal sequence by submit-pipeline; they aren't part of the engine's own ordering concerns beyond hosting the calls via `context.callApi`.
+
+Summary recompute is idempotent — nested recursion may recompute the same workflow's summary twice. Idempotent writes; bounded cost. `completed_groups` is computed from step 4's transitions, so a retry that no-ops step 4 returns an empty `completed_groups` (the hook doesn't fire twice).
 
 ## Worked example: 2-level nested auto-complete
 
@@ -294,27 +308,27 @@ Summary recompute is idempotent — nested recursion may recompute the same work
 - **Workflow A** on a `lead` (`entity_collection: leads-collection`). Two actions: `qualify` (form, `in-review`) and `track-installation` (tracker, `in-progress`, `child_workflow_id: Workflow B._id`, `child_entity_id: ticket._id`, `child_entity_collection: tickets-collection`, `tracker.workflow_type: device-installation`). `parent_*` fields null.
 - **Workflow B** on a `ticket` (`entity_collection: tickets-collection`), `workflow_type: device-installation`. One action: `install-device` (form, `in-review`). `status = [{active}]`, `parent_action_id: track-installation._id`, `parent_entity_id: lead._id`, `parent_entity_collection: leads-collection`.
 
-**User submits `install-device` → `done`** via `submit-action`. Engine routine maps `action_id → currentActionId`, generates `eventId E1`, calls `UpdateWorkflowActions`.
+**User submits `install-device` → `done`** via `update-action-install-device` (per-action endpoint, submit-pipeline). The endpoint passes `action_id` straight through to `SubmitWorkflowAction`, which generates `eventId E1` on entry.
 
 **Trace:**
 
 ```
 updateAction(currentActionId=install-device._id, actions=[{type: install-device, status: done}], eventId=E1)
-├─ step 1: install-device.status = done
-├─ step 2: B fully terminal → pushWorkflowStatus(B, 'completed', E1)
-│   ├─ step 0 guard: B.status[0]='active' ≠ 'completed' → proceed
+├─ step 3 (write transitions): install-device.status = done
+├─ step 6 (auto-complete check): B fully terminal → pushWorkflowStatus(B, 'completed', E1)
+│   ├─ same-stage guard: B.status[0]='active' ≠ 'completed' → proceed
 │   ├─ writeWorkflowStatus(B, 'completed')
-│   ├─ load tracker by B.parent_action_id (primary-key)
+│   ├─ step 9 (tracker subscription): load tracker by B.parent_action_id (primary-key)
 │   └─ updateAction(actions=[{type: track-installation, status: done}], eventId=E1, force=true)
-│       ├─ track-installation.status = done
-│       ├─ step 2: A not terminal (qualify still in-review) → no pushWorkflowStatus
-│       └─ step 4: recomputeSummary(A) → { done: 1, not_required: 0, total: 2 }
-└─ step 4: recomputeSummary(B) → { done: 1, not_required: 0, total: 1 }
+│       ├─ step 3 (write transitions): track-installation.status = done
+│       ├─ step 6 (auto-complete check): A not terminal (qualify still in-review) → no pushWorkflowStatus
+│       └─ step 10 (summary recompute): recomputeSummary(A) → { done: 1, not_required: 0, total: 2 }
+└─ step 10 (summary recompute): recomputeSummary(B) → { done: 1, not_required: 0, total: 1 }
 ```
 
 **End state.** B auto-completed; A unchanged status array (qualify still in-review); A's summary reflects track-installation now done. One `eventId` across all writes.
 
-**Retry.** A retried `submit-action` produces no duplicate writes: priority rule no-ops the action push; same-stage guard no-ops the workflow push; tracker doesn't refire; summary recompute is idempotent.
+**Retry.** A retried submit produces no duplicate writes: priority rule no-ops the action push; same-stage guard no-ops the workflow push; tracker doesn't refire; summary recompute is idempotent.
 
 ## Open questions (in scope; deferred)
 
@@ -326,6 +340,6 @@ updateAction(currentActionId=install-device._id, actions=[{type: install-device,
 - **Plugin dual-runtime build complexity.** First-time server-side code in this package; verified by hard `src/` split + dist-output React-leak grep + plugin-loader smoke test before declaring done.
 - **No transactional atomicity in v1.** Mid-sequence handler failure leaves partial writes. Mitigation: caller retry (idempotent), periodic reconciliation, `session.withTransaction` as purely-additive opt-in.
 - **Workflow-doc write contention** under highly-parallel workflows. Mitigation: opt-in `summary_dirty: true` lazy-writeback per workflow YAML.
-- **Cross-module endpoint resolution** inside `submit-action` (calls events `new-event` and optional notifications). Verified pattern from contacts module's `update-contact`; fallback is caller-supplied endpoint ids if the cross-module reference breaks.
+- **Cross-module API invocation from the engine handler** — `SubmitWorkflowAction` calls events `new-event`, notifications `send-notification`, and pre/post hook APIs via `context.callApi` (see [call-api](../call-api/spec.md)). Cross-module reference is a verified pattern (contacts module's `update-contact` does it from YAML); first-time JS-side use is via the call-api primitive.
 - **Tracker subscription drift.** Same risk class as summary writeback; periodic reconciliation as catch-all.
 - **`keys: []` silent no-op.** Documentation-only mitigation in v1; `allowEmpty: true` opt-in flag is a future change.

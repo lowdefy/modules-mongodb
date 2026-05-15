@@ -1,6 +1,6 @@
 # Workflows Engine
 
-The server-side workflow engine — the WorkflowAPI Lowdefy connection, the three request handlers (`StartWorkflow`, `UpdateWorkflowActions`, `CancelWorkflow`), the references-spread write contract, the tracker subscription mechanism, and the status enum priority rule.
+The server-side workflow engine — the WorkflowAPI Lowdefy connection, the three request handlers (`StartWorkflow`, `SubmitWorkflowAction`, `CancelWorkflow`), the references-spread write contract, the tracker subscription mechanism, and the status enum priority rule.
 
 This sub-design owns the runtime that makes workflows work. The YAML surface that drives the engine comes from [action-authoring](../action-authoring/design.md); the module APIs that call into the engine come from [module-surface](../module-surface/design.md); the page templates that read engine output come from [ui](../ui/design.md).
 
@@ -13,7 +13,7 @@ The module commits the data model (workflows + actions collections, status-array
 - How the priority rule reads the status enum at runtime.
 - The subscription mechanism for child-workflow → tracker-action updates (synchronous in-process vs change-stream vs other).
 - Universal action fields handling — `assignees`, `due_date`, `description` merged into per-action writes atomically with status transitions.
-- The `keys: [...]` payload shape on `UpdateWorkflowActions`.
+- The `keys: [...]` payload shape on `SubmitWorkflowAction`.
 
 This sub-design covers all of the above.
 
@@ -28,9 +28,15 @@ The package is client-side only today (`types.js` declares `connections: []`, `r
 ```
 src/connections/WorkflowAPI/
   WorkflowAPI.js                    # 4-line shell that registers handlers
-  UpdateWorkflowActions/
-    UpdateWorkflowActions.js        (~25 lines)
-    handleUpdateActions.js          (~60 lines)
+  SubmitWorkflowAction/
+    SubmitWorkflowAction.js        (~25 lines — handler entry point)
+    handleSubmit.js                 # lifecycle orchestration (validate → pre-hook → writes → side effects → post-hook)
+    invokePreHook.js                # context.callApi to action.hooks[interaction].pre
+    invokePostHook.js               # context.callApi to action.hooks[interaction].post
+    computeAutoUnblocks.js          # walks blocked_by, identifies actions to unblock
+    dispatchLogEvent.js             # context.callApi to events.new-event with merged event payload
+    dispatchNotifications.js        # context.callApi to notifications.send-notification
+    fireGroupOnComplete.js          # context.callApi per completed_groups entry (action-groups D6)
     createAction.js                 (~30 lines)
     updateAction.js                 (~40 lines)
     utils/{shouldUpdate,shouldCreate,getCurrentAction}.js
@@ -62,16 +68,16 @@ Action docs and workflow docs use scalar `entity_type` + `entity_id` + `entity_c
 ### Capabilities
 
 - **`StartWorkflow` writes both a workflow doc and N action docs.** The workflow doc carries `key`, `display_order`, initial `status: [{ stage: 'active', created }]`, empty `form_data`, empty `summary`. When the caller passes `parent_action_id`, the workflow doc also records `parent_action_id` and `parent_entity_id` (read from the parent tracker action) — and the same handler invocation writes the parent tracker action's `child_workflow_id` (the new workflow's `_id`), `child_entity_id`, `child_entity_collection`, and transitions it to `in-progress`. See "Parent ↔ child link shape" under Decision 3.
-- **`summary` writeback in `UpdateWorkflowActions`** — eager strategy: recompute the parent workflow's `summary: { done, not_required, total }` after each transition.
+- **`summary` writeback in `SubmitWorkflowAction`** — eager strategy: recompute the parent workflow's `summary: { done, not_required, total }` after each transition.
 - **Auto-complete check** — when all actions on a workflow reach a terminal stage (`done` or `not-required`), push `{ stage: 'completed' }` to the workflow's `status` history.
 - **`references` field handling** — see "References write contract" below.
 - **Tracker subscription handler** — see "Tracker subscription mechanism" below; runs synchronously after each workflow status write.
 - **Priority-based transition rule** — see "Status enum priority rule" below.
-- **`UpdateWorkflowActions` payload uses `keys: [...]` only** — no singular `key` field on action entries. The plugin flat-maps over `keys` before per-action processing: omitted → one op with `key: null`; `[]` → zero ops; `[k]` → one op with `key: k`; `[k1, k2, ...]` → N ops one per key. The on-disk action doc keeps singular `key`; only the plugin's input shape unifies. The `(workflow_id, type, key)` unique index is unchanged. **Footgun:** `keys: []` is silent — when authors compute `keys` from a possibly-empty payload field (e.g. `_array.map: { on: _payload: form.devices }`) and the user submits an empty form, the unblock silently no-ops with no error. Either the call site is fine with that (legitimate "no fan-out targets" case) or the author needs to gate the unblock with `skip` / `_if` on `keys.length` to surface the empty case as a form-validation error rather than a silent miss. The README's `unblocks` reference documents both shapes side-by-side.
-- **Universal action fields handling.** The plugin reads `actions[].fields` from the `UpdateWorkflowActions` payload (see action-authoring sub-design) and merges it into the per-action `$set`. `fields.assignees` / `fields.due_date` / `fields.description` are written to the action doc's root alongside core fields. A null value clears the field; an omitted key leaves the existing value unchanged. Field writes are atomic with the status transition — the engine emits one update event covering both.
+- **`SubmitWorkflowAction` payload uses `keys: [...]` only** — no singular `key` field on action entries. The plugin flat-maps over `keys` before per-action processing: omitted → one op with `key: null`; `[]` → zero ops; `[k]` → one op with `key: k`; `[k1, k2, ...]` → N ops one per key. The on-disk action doc keeps singular `key`; only the plugin's input shape unifies. The `(workflow_id, type, key)` unique index is unchanged. **Footgun:** `keys: []` is silent — when authors compute `keys` from a possibly-empty payload field (e.g. `_array.map: { on: _payload: form.devices }`) and the user submits an empty form, the unblock silently no-ops with no error. Either the call site is fine with that (legitimate "no fan-out targets" case) or the author needs to gate the unblock with `skip` / `_if` on `keys.length` to surface the empty case as a form-validation error rather than a silent miss. The README's `unblocks` reference documents both shapes side-by-side.
+- **Universal action fields handling.** The plugin reads `actions[].fields` from the `SubmitWorkflowAction` payload (see action-authoring sub-design) and merges it into the per-action `$set`. `fields.assignees` / `fields.due_date` / `fields.description` are written to the action doc's root alongside core fields. A null value clears the field; an omitted key leaves the existing value unchanged. Field writes are atomic with the status transition — the engine emits one update event covering both.
 - **`CancelWorkflow` primitive** — pushes `cancelled` to workflow status; flips remaining open actions to `not-required`.
-- **Access enforcement** — the engine runs the per-app verb filter and role gate from action-authoring's Decision 3 ("Action access semantics") at two server-side points: (1) **query-time in `get-entity-workflows`**, filtering returned actions by the host app's `app_name` verb map and intersecting the caller's roles (sourced via `_user: roles`) with `access.roles`. Actions where the filter doesn't pass are excluded from the response — invisible to that user. (2) **submit-time in `submit-action`**, re-checking the role gate against the action's `access.roles` before performing any writes; rejects with a structured error if the user's roles no longer match (e.g. role revoked between page render and submit). The verb-filter check at submit-time is implicit — the form-action page wouldn't have been generated by `makeActionPages` if the verb wasn't allowed in the current app — but the role gate is re-checked because role state can change between render and submit. See action-authoring Decision 3 for the canonical access-semantics definition.
-- **Action groups as a persisted engine concept** — workflows declare a top-level `action_groups:` array (see [action-authoring](../action-authoring/design.md) and [action-groups](../action-groups/design.md) Decision 1). The workflow doc carries a `groups: [{ id, status, summary }]` array with derived three-value status (`blocked` / `in-progress` / `done`); written back eagerly inside `UpdateWorkflowActions` as part of the handler's ordered steps (see "Ordering relative to other engine work"). `blocked_by` entries accept both action types and group IDs; the engine resolves group references against `groups[].status`. The `UpdateWorkflowActions` return value carries `completed_groups: [...]` listing groups that transitioned to `done` in the call; an outer Layer-1 orchestration layer fans out one `CallApi` per declared `on_complete` (mechanism deferred — see action-groups Decision 6). Group state lives alongside `summary` on the workflow doc; the same drift / reconciliation risk class applies.
+- **Access enforcement** — the engine runs the per-app verb filter and role gate from action-authoring's Decision 3 ("Action access semantics") at two server-side points: (1) **query-time in `get-entity-workflows`**, filtering returned actions by the host app's `app_name` verb map and intersecting the caller's roles (sourced via `_user: roles`) with `access.roles`. Actions where the filter doesn't pass are excluded from the response — invisible to that user. (2) **submit-time inside the `SubmitWorkflowAction` handler**, re-checking the role gate against the action's `access.roles` before performing any writes; rejects with a structured error if the user's roles no longer match (e.g. role revoked between page render and submit). The verb-filter check at submit-time is implicit — the form-action page wouldn't have been generated by `makeActionPages` if the verb wasn't allowed in the current app — but the role gate is re-checked because role state can change between render and submit. See action-authoring Decision 3 for the canonical access-semantics definition.
+- **Action groups as a persisted engine concept** — workflows declare a top-level `action_groups:` array (see [action-authoring](../action-authoring/design.md) and [action-groups](../action-groups/design.md) Decision 1). The workflow doc carries a `groups: [{ id, status, summary }]` array with derived three-value status (`blocked` / `in-progress` / `done`); written back eagerly inside `SubmitWorkflowAction` as part of the handler's ordered steps (see "Ordering relative to other engine work"). `blocked_by` entries accept both action types and group IDs; the engine resolves group references against `groups[].status`. The `SubmitWorkflowAction` return value carries `completed_groups: [...]` listing groups that transitioned to `done` in the call; the engine fans out one `context.callApi` per declared `on_complete` engine-internally as step 11 of the submit-pipeline lifecycle (see action-groups Decision 6, submit-pipeline Decision 1). Group state lives alongside `summary` on the workflow doc; the same drift / reconciliation risk class applies.
 
 ### Package shape changes (`@lowdefy/modules-mongodb-plugins/package.json`)
 
@@ -99,22 +105,22 @@ The `WorkflowAPI` handler opens **one `MongoClient` per invocation** and threads
 Concrete handler shape, matching Lowdefy's connection-handler signature (`async ({ request, connection, ... }) => result`):
 
 ```js
-// src/connections/WorkflowAPI/UpdateWorkflowActions/UpdateWorkflowActions.js
-async function UpdateWorkflowActions({ request, connection }) {
+// src/connections/WorkflowAPI/SubmitWorkflowAction/SubmitWorkflowAction.js
+async function SubmitWorkflowAction({ request, connection }) {
   const ctx = await createMongoDBConnection(connection); // opens one client
   try {
-    return await handleUpdateActions(ctx, request); // all sub-steps share `ctx`
+    return await handleSubmit(ctx, request); // all sub-steps share `ctx`
   } finally {
     await ctx.client.close();
   }
 }
 ```
 
-`ctx` carries `{ client, workflowsCollection, actionsCollection }`; every helper called from `handleUpdateActions` takes `ctx` as its first argument and uses the shared collection handles. The `pushWorkflowStatus` pseudo-code in [Decision 3](#decision-3--tracker-subscription-mechanism) uses this same `ctx`.
+`ctx` carries `{ client, workflowsCollection, actionsCollection }`; every helper called from `handleSubmit` takes `ctx` as its first argument and uses the shared collection handles. The `pushWorkflowStatus` pseudo-code in [Decision 3](#decision-3--tracker-subscription-mechanism) uses this same `ctx`.
 
 **No Mongo transactions in v1.** The implementation is sequential writes through the shared client — ordering is preserved (step N completes before step N+1 begins), but atomicity is not (if step N fails, steps 1..N-1 are durable). This is the same risk class as the existing `summary` writeback drift; the "Failure-mode story" mitigations apply and periodic reconciliation is the catch-all. The earlier framing of "same transactional semantics as the underlying write" was imprecise — it conflated ordering with atomicity. What the design actually guarantees is **shared connection lifetime + sequential writes + idempotent retry** (per the Idempotency sub-section), not all-or-nothing rollback.
 
-**Transactions are a purely-additive upgrade later.** If real apps need ACID across an `UpdateWorkflowActions` call, the handler body can be wrapped in `session.withTransaction(async (session) => { ... })`. No payload-shape changes, no caller-side coordination — just an internal opt-in. Constraint: transactions require a replica set or Atlas, not standalone Mongo, so we'd ship it as an opt-in mode rather than the default.
+**Transactions are a purely-additive upgrade later.** If real apps need ACID across a `SubmitWorkflowAction` call, the handler body can be wrapped in `session.withTransaction(async (session) => { ... })`. No payload-shape changes, no caller-side coordination — just an internal opt-in. Constraint: transactions require a replica set or Atlas, not standalone Mongo, so we'd ship it as an opt-in mode rather than the default.
 
 **The two `MongoDBCollection` exports (`workflows-collection`, `actions-collection`) are separate connections with their own client lifecycles** — they don't share state with `WorkflowAPI`. The split is intentional: `WorkflowAPI` owns the engine-managed write paths (with the priority rule, tracker subscription, summary writeback all running inside one client invocation), while the `MongoDBCollection` exports give apps direct read access for custom views, ad-hoc aggregations, list pages, or dedicated reporting that doesn't need to go through the engine. Apps that want app-specific indexes on `*_ids` reference fields layer them via the collection connections without touching engine internals. See [module-surface](../module-surface/design.md) Decision 1 for the full exported-connections list.
 
@@ -125,12 +131,12 @@ The `references` map is spread onto the doc root at write time. Queries against 
 **Shape of `references` in the call payload.** One map per call, applied to all docs that call writes:
 
 - `StartWorkflow` — `references` in the call payload is spread onto the workflow doc and onto every starting action doc.
-- `UpdateWorkflowActions` — `references` at the call level is spread onto every action being written; per-action overrides on individual `actions[].references` are supported but rare.
+- `SubmitWorkflowAction` — `references` at the call level is spread onto every action being written; per-action overrides on individual `actions[].references` are supported but rare.
 - `CancelWorkflow` — `references` is rarely used; if supplied, spread onto the workflow doc on the `cancelled` status push.
 
 **Storage shape.** No `references` key on the stored doc — the map is unwrapped and spread to root. Queries are flat (`{ company_ids: 'C1' }`); indexes live at root. Apps add Mongo indexes on whichever `*_ids` keys they query; the module ships indexes only for core fields.
 
-**Update semantics.** `UpdateWorkflowActions` uses **replace per-key**: a call passing `references: { company_ids: [C2] }` replaces the doc's `company_ids` field but leaves other root-level reference fields (`deal_ids`, `region_ids`, etc.) untouched. Same as Mongo's `$set` semantics.
+**Update semantics.** `SubmitWorkflowAction` uses **replace per-key**: a call passing `references: { company_ids: [C2] }` replaces the doc's `company_ids` field but leaves other root-level reference fields (`deal_ids`, `region_ids`, etc.) untouched. Same as Mongo's `$set` semantics.
 
 **Reserved-keys enforcement — merge order, not validation.** The plugin builds the doc by spreading `references` first, then layering core fields on top via `_object.assign`-equivalent semantics:
 
@@ -189,7 +195,7 @@ Both sides are written in **one `start-workflow` call**, not two. The trigger ac
 2. The N starting action docs for the child.
 3. The parent tracker action's `child_workflow_id` (the new child workflow's `_id`), `child_entity_id`, and `child_entity_collection` fields, transitioned to `in-progress`.
 
-All three writes happen inside one `WorkflowAPI` handler invocation on the shared client (see "Client and transaction model"). Authors no longer chain `start-workflow` + `submit-action(fields: { key })` — the engine owns the link setup.
+All three writes happen inside one `WorkflowAPI` handler invocation on the shared client (see "Client and transaction model"). Authors no longer chain `start-workflow` + a follow-up submit — the engine owns the link setup.
 
 **Why all three fields (`child_workflow_id`, `child_entity_id`, `child_entity_collection`).** Each does different work:
 
@@ -201,9 +207,9 @@ All three are populated in the single `start-workflow` call when `parent_action_
 
 **Why this isn't `key`.** Earlier drafts overloaded the action doc's `key` field — for fan-out actions, `key` is a domain id (e.g. a device serial number); for tracker actions, it was the child workflow's `_id`. The overloading was load-bearing only on the engine side and confusing for authors. With this design, `key` keeps its fan-out role (domain ids for per-row actions) and trackers get the dedicated `child_workflow_id` / `child_entity_id` / `child_entity_collection` fields. The `(workflow_id, type, key)` unique index still applies to trackers (with `key: null`).
 
-### Mechanism — synchronous in-process within `UpdateWorkflowActions`
+### Mechanism — synchronous in-process within `SubmitWorkflowAction`
 
-When `UpdateWorkflowActions` writes a workflow's `status[0].stage`, the same handler — before returning — looks up the parent tracker action via the workflow's `parent_action_id` back-reference and applies the hard-coded child-stage map (defined in [action-authoring](../action-authoring/design.md)). No event bus, no async machinery, no separate consumer process. It's part of the handler's normal flow.
+When `SubmitWorkflowAction` writes a workflow's `status[0].stage`, the same handler — before returning — looks up the parent tracker action via the workflow's `parent_action_id` back-reference and applies the hard-coded child-stage map (defined in [action-authoring](../action-authoring/design.md)). No event bus, no async machinery, no separate consumer process. It's part of the handler's normal flow.
 
 Pseudo-code:
 
@@ -214,11 +220,10 @@ const CHILD_STAGE_MAP = {
   cancelled: "not-required",
 };
 
-// `eventId` is part of the UpdateWorkflowActions payload — generated by the
-// `submit-action` API routine via `_uuid: true` in :set_state: (see
-// module-surface Decision 5) and threaded through every write in this
-// invocation so they all share one event id for audit. The plugin handler
-// signature is (per Lowdefy's connection-handler contract):
+// `eventId` is generated by the SubmitWorkflowAction handler on entry
+// and threaded through every write in this invocation so they all share
+// one event id for audit. The plugin handler signature is (per Lowdefy's
+// connection-handler contract):
 //   ({ blockId, connection, connectionId, pageId, request, requestId, payload }) => result
 // `request.eventId` and `request.actions[]` are the per-call inputs; `ctx`
 // below is shorthand for the handler-local Mongo handle (see "Client and
@@ -255,7 +260,7 @@ async function pushWorkflowStatus(ctx, workflowId, newStage, eventId) {
   });
   if (!tracker) return; // tracker may have been removed; tolerate
 
-  // 3. Apply the hard-coded map and update via UpdateWorkflowActions
+  // 3. Apply the hard-coded map and update via SubmitWorkflowAction
   const targetStage = CHILD_STAGE_MAP[newStage];
   if (!targetStage) return; // unmapped child stage → no parent update
   await updateAction(ctx, {
@@ -292,17 +297,17 @@ The bidirectional link replaces the reverse-lookup partial index used in earlier
 
 ### Auto-complete recursion
 
-When a tracker action transitions to `done` via this mechanism, the parent workflow's auto-complete check runs as part of the same `UpdateWorkflowActions` invocation. If all parent's actions are now terminal, the parent workflow auto-completes, which fires this same tracker-update logic for any tracker actions tracking _it_. Recursion depth is bounded in practice because typical workflow nestings are 1–2 levels deep.
+When a tracker action transitions to `done` via this mechanism, the parent workflow's auto-complete check runs as part of the same `SubmitWorkflowAction` invocation. If all parent's actions are now terminal, the parent workflow auto-completes, which fires this same tracker-update logic for any tracker actions tracking _it_. Recursion depth is bounded in practice because typical workflow nestings are 1–2 levels deep.
 
 **The engine doesn't statically prove acyclicity.** Without a relationship registry, there's no metadata for the engine to walk in advance to confirm the parent/child workflow graph is acyclic. Pathological app code — e.g. parent A's tracker action tracks workflow B, whose tracker action tracks workflow A — could in principle recurse. Cycles are rare in real apps because they require app code to deliberately link parents to grandchildren; the design accepts the risk for v1. If it surfaces operationally, the engine adds a runtime depth-limit guard that fails with a clear error citing the recursion chain at, say, 10 levels.
 
 ### Idempotency
 
-Tracker updates are just additional `UpdateWorkflowActions` calls — same priority/force rules, same `eventId`, same audit chain. The `eventId` is reused so all writes triggered by one user submission share one event id.
+Tracker updates are just additional `SubmitWorkflowAction` calls — same priority/force rules, same `eventId`, same audit chain. The `eventId` is reused so all writes triggered by one user submission share one event id.
 
 Two distinct idempotency stories matter:
 
-- **Action status pushes** are guarded by the priority-based transition rule ([Decision 4](#decision-4--status-enum-priority-rule)). Repeating an `UpdateWorkflowActions` call that takes an action `in-review → done` is harmless on retry — the second push compares `done` (priority 3) against the already-stored `done` and rejects as a redundant write. The rule operates on action priority, so this protection is automatic.
+- **Action status pushes** are guarded by the priority-based transition rule ([Decision 4](#decision-4--status-enum-priority-rule)). Repeating a `SubmitWorkflowAction` call that takes an action `in-review → done` is harmless on retry — the second push compares `done` (priority 3) against the already-stored `done` and rejects as a redundant write. The rule operates on action priority, so this protection is automatic.
 - **Workflow status pushes** are not covered by the priority rule. The workflow lifecycle enum (`active`, `completed`, `cancelled`) doesn't have a natural priority ordering — its legal transitions are `active → completed` and `active → cancelled`, not a strict-less-than relationship. Instead, `pushWorkflowStatus` reads the workflow's current `status[0].stage` first and no-ops when it equals the new stage (see the guard at step 0 of the pseudo-code above). Without this, a retried auto-complete would `$push` a second `{ stage: 'completed' }` onto the workflow's status history, breaking the "current stage = `status[0]`" invariant, polluting the audit history, and double-firing tracker subscription on the no-op transition. The same-stage no-op is the narrow, retry-safe behaviour the engine needs. Legal-transition enforcement on workflow status (rejecting `completed → active`, etc.) is a separate concern, deferred to v1.x.
 
 ### Failure-mode story
@@ -317,19 +322,25 @@ Documented as the same risk-class as the summary writeback. Acceptable. Real ACI
 
 ### Ordering relative to other engine work
 
-Within one `UpdateWorkflowActions` call, the order is:
+The full 11-step submit lifecycle (validate → pre-hook → writes → side effects → post-hook → return) is owned by [submit-pipeline Decision 1](../submit-pipeline/design.md#decision-1--submitworkflowaction-replaces-updateworkflowactions). Engine ownership inside that lifecycle covers steps 1, 3–8, 9–12 (validation, auto-unblock computation, action transitions, summary + groups recompute, form_data writes, workflow-doc updates, side-effect dispatch, tracker subscription). The internal write-ordering within one `SubmitWorkflowAction` call:
 
-1. Write the action's status (the original transition the caller asked for).
-2. Recompute affected groups' statuses; write `groups[]` back to the workflow doc (see [action-groups](../action-groups/design.md) Decision 4).
-3. Re-evaluate `blocked_by` for every blocked action in the workflow against the new group/action state; push `action-required` on those whose dependencies are now terminal ([action-groups](../action-groups/design.md) Decision 2 unblock).
-4. Apply auto-complete check on the workflow if all actions are terminal — push `completed` to workflow status. Re-run after step 3 since step 3 may have transitioned more actions.
-5. If step 4 wrote a workflow status, run tracker-update for any tracker actions referencing this workflow.
-6. Recompute the workflow's `summary` (eager writeback).
-7. Return `{ action_ids, completed_groups, event_id }` — `completed_groups` lists groups that transitioned to `done` in step 2 (see [action-groups](../action-groups/design.md) Decision 5).
+1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, role gate passes for the interaction. (Submit-pipeline lifecycle step 1.)
+2. **Compute auto-unblocks.** Walk the workflow's `blocked_by` graph; identify actions whose dependencies are now terminal. Merge pre-hook `actions[]` (precedence) with auto-unblocks. (Lifecycle steps 3–4.)
+3. **Write action transitions** (priority rule applies; per-call or per-entry `force` bypasses). (Lifecycle step 5.)
+4. **Recompute affected groups' statuses**; write `groups[]` back to the workflow doc ([action-groups](../action-groups/design.md) Decision 4). (Lifecycle step 6.)
+5. **Re-evaluate `blocked_by`** for every blocked action in the workflow against the new group/action state; push `action-required` on those whose dependencies are now terminal ([action-groups](../action-groups/design.md) Decision 2 unblock).
+6. **Auto-complete check** on the workflow if all actions are terminal — push `completed` to workflow status. Re-run after step 5 since step 5 may have transitioned more actions.
+7. **Write `form_data`** per-field `$set` (Decision 5 layout); write workflow-doc updates (summary, groups, form_data) in one Mongo update where possible. (Lifecycle steps 7–8.)
+8. **Generate log event + dispatch notifications + fire group `on_complete`** via `context.callApi` (submit-pipeline Decision 6; the engine fans out one call per completed group's `on_complete` Api id). (Lifecycle steps 9–11.)
+9. **Tracker subscription**: if step 6 pushed a workflow status, run the synchronous in-process subscription via internal `updateAction` recursion. (Lifecycle step 12.)
+10. **Recompute the workflow's `summary`** (eager writeback).
+11. **Return** `{ action_ids, completed_groups, event_id, tracker_fired?, pre_hook_response?, post_hook_response? }` — `completed_groups` lists groups that transitioned to `done` in step 4 (see [action-groups](../action-groups/design.md) Decision 5); `tracker_fired` is populated when step 9 propagated to a parent.
 
-Step 5 happens between step 4 and step 6 because tracker writes themselves trigger their own auto-complete chain — a tracker action going `done` can complete its parent workflow. Doing summary writeback after lets it reflect the final state. Implementation verifies this ordering.
+Pre-hook (lifecycle step 2) and post-hook (lifecycle step 13) are bracketed around this engine-internal sequence by submit-pipeline; they aren't part of the engine's own ordering concerns beyond hosting the calls via `context.callApi`.
 
-**Summary recompute is idempotent — redundant in nested cases, by design.** When tracker subscription recurses, the inner `updateAction` invocations each run their own step 4 against their own workflow. The outer call's step 4 then runs against the original workflow, which the recursion has already touched. The duplicate recompute is correct (reads N actions, writes one summary doc) and idempotent — the second write produces the same `{ done, not_required, total }` as the first. The cost is bounded by recursion depth (≤ 10 in practice; see "Auto-complete recursion") and the alternative (tracking visited workflow IDs to dedupe) adds complexity for negligible gain at this scale.
+Step 9 happens after step 6 and before step 10 because tracker writes themselves trigger their own auto-complete chain — a tracker action going `done` can complete its parent workflow. Doing summary writeback after lets it reflect the final state. Implementation verifies this ordering.
+
+**Summary recompute is idempotent — redundant in nested cases, by design.** When tracker subscription recurses, the inner `updateAction` invocations each run their own auto-complete check + summary recompute against their own workflow. The outer call's step 10 then runs against the original workflow, which the recursion has already touched. The duplicate recompute is correct (reads N actions, writes one summary doc) and idempotent — the second write produces the same `{ done, not_required, total }` as the first. The cost is bounded by recursion depth (≤ 10 in practice; see "Auto-complete recursion") and the alternative (tracking visited workflow IDs to dedupe) adds complexity for negligible gain at this scale.
 
 ### Worked example: 2-level nested auto-complete
 
@@ -340,30 +351,30 @@ Concrete scenario exercising the ordering with two levels of nesting. The exampl
 - **Workflow A** on a `lead` entity (`entity_collection: leads-collection`). Two actions: `qualify` (form, currently `in-review`) and `track-installation` (tracker, currently `in-progress`, `child_workflow_id = Workflow B._id`, `child_entity_id = ticket._id`, `child_entity_collection = tickets-collection`, `tracker.workflow_type = device-installation`). `parent_action_id` / `parent_entity_id` / `parent_entity_collection` are null — A is top-level.
 - **Workflow B** on a `ticket` entity (`entity_collection: tickets-collection`), `workflow_type: device-installation`. One action: `install-device` (form, currently `in-review`). Workflow B's `status = [{ stage: 'active' }]`, `parent_action_id = track-installation._id`, `parent_entity_id = lead._id`, `parent_entity_collection = leads-collection` — populated when `start-workflow` was called with `parent_action_id` set.
 
-A reviewer submits the approval on `install-device` via `submit-action({ action_id: install-device._id, current_type: install-device, current_status: done })`. The `submit-action` routine aliases `payload.action_id` to `currentActionId` and calls `UpdateWorkflowActions({ currentActionId: install-device._id, actions: [{ type: install-device, status: done }], eventId: <new-uuid> })`.
+A reviewer submits the approval on `install-device` via the per-action endpoint `update-action-install-device` with `interaction: approve`. The endpoint passes the payload straight through to `SubmitWorkflowAction`, which generates a fresh `eventId` on entry; the resolved target status for `approve` is `done` (submit-pipeline Decision 3 default).
 
 **Execution trace.**
 
 ```
 updateAction(currentActionId=install-device._id, actions=[{type: install-device, status: done}], eventId=E1)
 │
-├─ step 1: write install-device.status = done            (priority rule allows in-review → done)
-├─ step 2: all actions on Workflow B terminal? YES (only one action, done)
+├─ step 3 (write transitions): install-device.status = done            (priority rule allows in-review → done)
+├─ step 6 (auto-complete check): all actions on Workflow B terminal? YES (only one action, done)
 │   └─ pushWorkflowStatus(Workflow B, 'completed', E1)
-│       ├─ step 0 guard: B.status[0] = 'active' !== 'completed' → proceed
-│       ├─ step 1: writeWorkflowStatus(B, 'completed')   ($push completed onto B.status)
-│       ├─ step 2: B.parent_action_id = track-installation._id → load tracker by primary key
+│       ├─ same-stage guard: B.status[0] = 'active' !== 'completed' → proceed
+│       ├─ writeWorkflowStatus(B, 'completed')   ($push completed onto B.status)
+│       ├─ step 9 (tracker subscription): B.parent_action_id = track-installation._id → load tracker by primary key
 │       │           tracker = actionsCollection.findOne({ _id: track-installation._id })
-│       └─ step 3: CHILD_STAGE_MAP['completed'] = 'done'
+│       └─ CHILD_STAGE_MAP['completed'] = 'done'
 │           └─ updateAction(currentActionId=null, actions=[{type: track-installation, status: done}], eventId=E1, force=true)
 │               │
-│               ├─ step 1: write track-installation.status = done   (force=true bypasses in-progress → done check, though strict priority would also allow it)
-│               ├─ step 2: all actions on Workflow A terminal? qualify is still in-review → NO
+│               ├─ step 3 (write transitions): track-installation.status = done   (force=true bypasses in-progress → done check, though strict priority would also allow it)
+│               ├─ step 6 (auto-complete check): all actions on Workflow A terminal? qualify is still in-review → NO
 │               │           (no pushWorkflowStatus for A; recursion ends here)
-│               ├─ step 3: skipped (no workflow status push in this branch)
-│               └─ step 4: recomputeSummary(Workflow A) → { done: 1, not_required: 0, total: 2 }   (track-installation now done)
-├─ step 3: (covered by the inner recursion above)
-└─ step 4: recomputeSummary(Workflow B) → { done: 1, not_required: 0, total: 1 }
+│               ├─ step 9 (tracker subscription): skipped (no workflow status push in this branch)
+│               └─ step 10 (summary recompute): recomputeSummary(Workflow A) → { done: 1, not_required: 0, total: 2 }   (track-installation now done)
+├─ step 9 (tracker subscription): (covered by the inner recursion above)
+└─ step 10 (summary recompute): recomputeSummary(Workflow B) → { done: 1, not_required: 0, total: 1 }
 ```
 
 **End state.**
@@ -372,16 +383,16 @@ updateAction(currentActionId=install-device._id, actions=[{type: install-device,
 - Workflow A: unchanged status array (`[{active}]` — `qualify` is still in-review, so A didn't auto-complete), `summary = { done: 1, not_required: 0, total: 2 }`. The `track-installation` tracker action reflects B's completion automatically.
 - One `eventId` (E1) on every write — the user's single submission is one audit-chain event despite touching three docs across two workflows.
 
-**Retry case.** If the caller retries the same `submit-action` payload (e.g. network blip after the response):
+**Retry case.** If the caller retries the same per-action endpoint call (e.g. network blip after the response):
 
 - `install-device.status` is already `done` (priority 3); pushing `done` again is rejected by the action's strict-less-than rule. No write.
-- All of Workflow B's actions are still terminal, so step 2 runs `pushWorkflowStatus(B, 'completed', E1)` again.
-- The step 0 guard catches `B.status[0].stage === 'completed'` and returns immediately. **No duplicate `$push` onto B.status**, no second tracker fire, no second recompute.
-- Outer step 4 still recomputes A's summary — same result, idempotent write.
+- All of Workflow B's actions are still terminal, so step 6's auto-complete check runs `pushWorkflowStatus(B, 'completed', E1)` again.
+- The same-stage guard catches `B.status[0].stage === 'completed'` and returns immediately. **No duplicate `$push` onto B.status**, no second tracker fire, no second recompute.
+- Outer step 10 still recomputes A's summary — same result, idempotent write.
 
 This is exactly the retry behaviour the idempotency guards are designed to provide.
 
-**Variation: A auto-completes on the same call.** If `qualify` were already `done` before this submission, the inner `updateAction` would find _all_ Workflow A actions terminal in its step 2, push `completed` to A, and fire `pushWorkflowStatus(A, ...)` — which would read A's `parent_action_id` (null in this scenario, since A is top-level) and return early. The summary recompute in step 4 of both the inner and outer calls fires against A; both produce the same result. Bounded cost; correct end state.
+**Variation: A auto-completes on the same call.** If `qualify` were already `done` before this submission, the inner `updateAction` would find _all_ Workflow A actions terminal in its step 6 auto-complete check, push `completed` to A, and fire `pushWorkflowStatus(A, ...)` — which would read A's `parent_action_id` (null in this scenario, since A is top-level) and return early. The summary recompute in step 10 of both the inner and outer calls fires against A; both produce the same result. Bounded cost; correct end state.
 
 ## Decision 4 — Status enum priority rule
 
@@ -390,12 +401,17 @@ The plugin's `shouldUpdate.js` implements the priority transition rule, reading 
 **Priority semantics.** A status transition is allowed when the new status's priority is **strictly less than** the current status's priority — lower number wins. Exceptions:
 
 - The engine permits same-stage transitions for the action being submitted (`currentActionId` self-exception).
-- A `force: true` override on `UpdateWorkflowActions` allows any transition (used for migrations and admin tools).
+- A `force: true` override on `SubmitWorkflowAction` allows any transition (used for migrations and admin tools).
 - `not-required` (priority 0) is the universal terminal — once an action is `not-required`, only `force: true` can move it.
 
-**Where `currentActionId` comes from.** The `submit-action` API's routine aliases its `payload.action_id` to `currentActionId` when constructing the `UpdateWorkflowActions` request. The plugin treats `currentActionId` as "the one action in this call that the user clicked submit on"; every other entry in `actions[]` (unblocks, fan-outs, tracker writes) is auxiliary and gets the strict priority check. The alias makes the API payload caller-friendly (`action_id` matches "this action") while keeping the plugin's internal name precise.
+**Where `currentActionId` comes from.** The per-action endpoint (`update-action-{action_type}`, submit-pipeline) carries `action_id` in its payload; the `SubmitWorkflowAction` handler uses that value as `currentActionId` internally. The plugin treats `currentActionId` as "the one action in this call that the user clicked submit on"; every other entry in `actions[]` (unblocks, fan-outs, tracker writes) is auxiliary and gets the strict priority check.
 
-**Where `force: true` lives.** Per-call only — `force` is a top-level field on the `UpdateWorkflowActions` payload (`{ currentActionId, actions, eventId, force?: true }`), not a per-entry field. When set, the priority rule is bypassed for every entry in the call, including the universal-terminal exception on `not-required`. Per-call matches the realistic use case (migrations and admin tools want to rewrite a whole batch consistently); per-entry forcing is a purely-additive future change if a real case wants surgical overrides.
+**Where `force: true` lives.** Two surfaces:
+
+- **Per-call top-level field** on the `SubmitWorkflowAction` payload (`{ currentActionId, actions, eventId, force?: true }`). When set, the priority rule is bypassed for every entry in the call, including the universal-terminal exception on `not-required`. Matches the realistic use case for migrations and admin tools rewriting a whole batch consistently.
+- **Per-entry field** on each `actions[]` entry (`{ type, key, status, fields, upsert, force?: true }`). When set, the priority rule is bypassed for that single entry only. Used by the submit-pipeline pre-hook return shape — a pre-hook returning `actions: [{ type: replay-action, status: action-required, force: true }]` can push one action backward in priority without affecting other entries in the same call. Submit-pipeline sub-design Decision 4 carries the contract for pre-hook authors.
+
+Per-call and per-entry compose: if either is set for an entry, the rule is bypassed for that write. The universal-terminal exception on `not-required` also requires `force` (per-call or per-entry).
 
 **Tracker subscription uses `force: true` internally.** Tracker writes are engine-driven and can move parent actions in any direction the child workflow takes — most transitions are forward (`in-progress → done` when the child completes), but the child-stage map permits backward moves too (e.g. a child workflow uncancelled would push the parent from `not-required` back to `in-progress`, which violates strict-lower-priority and the universal-terminal rule). Tracker writes are non-user-driven and need the escape hatch by definition. The pseudo-code in Decision 3's `pushWorkflowStatus` therefore calls `updateAction(ctx, { ..., force: true })` — make this explicit when implementing.
 
@@ -407,25 +423,18 @@ Form actions persist submitted form values on the **workflow doc**, not on the e
 
 ### Storage paths
 
-Per workflow doc:
+Per workflow doc — **one flat tree per action**, no reserved sub-keys for reviewer or error data:
 
 ```
 form_data: {
   {action_type}: {
-    {field}: <value>,           // submitter-side fields (form: blocks)
-    review: {                    // reviewer-side fields (form_review: blocks)
-      {field}: <value>,
-    },
-    error: {                     // optional engine-written error context
-      message: <string>,
-      step: <string>,
-    },
+    {field}: <value>,           // all fields — submitter (form: blocks) and
+                                //   reviewer (form_review: blocks) live in the
+                                //   same flat namespace
   },
   {action_type_with_key}: {
     {key}: {                     // instance discriminator for keyed actions
       {field}: <value>,
-      review: { {field}: <value> },
-      error: { ... },
     },
   },
 }
@@ -433,34 +442,30 @@ form_data: {
 
 ### Path rules
 
-- **Non-keyed action:** `form_data.{action_type}.{field}` — submitter values live directly under the action type.
+- **Non-keyed action:** `form_data.{action_type}.{field}` — all values, submitter and reviewer alike, live directly under the action type.
 - **Keyed action** (action-authoring Decision 9): `form_data.{action_type}.{key}.{field}` — one sub-object per instance key.
-- **Reviewer values:** `form_data.{action_type}.review.{field}` (non-keyed) / `form_data.{action_type}.{key}.review.{field}` (keyed). The `.review` sub-key is **reserved** — apps may not name a submitter field `review` on an action that has a `form_review:` block.
-- **Error context:** `form_data.{action_type}.error.{field}` / `form_data.{action_type}.{key}.error.{field}`. Engine-written when a submit hook fails and the action transitions to `error`. The `.error` sub-key is **reserved**.
+- **No `.review` namespace.** `form_review:` is a render-time concern (the review page renders these blocks alongside the read-only `form:` data), but submitted values write to the same flat tree as `form:`. Authors who declare both `form:` and `form_review:` must use non-colliding field names — the same constraint that already applies to fields within a single `form:` block.
+- **No `.error` namespace.** Error context lives on the action doc's status array (`status[0] = { stage: error, reason, error_message, ... }`), not in `form_data`. The action doc is already where status-history lives; consolidating error context there avoids a second source of truth.
 
 ### Write semantics
 
-`submit-action` writes form fields via per-field Mongo `$set` on dot-notation paths. Field-level granularity (not a wholesale `form_data.{action} = { ... }` overwrite) so:
+`SubmitWorkflowAction` writes form fields via per-field Mongo `$set` on dot-notation paths. Field-level granularity (not a wholesale `form_data.{action} = { ... }` overwrite) so concurrent edits on different fields of the same action don't clobber each other.
 
-- Concurrent edits on different fields of the same action don't clobber each other.
-- Reviewer writes to `.review` don't touch submitter fields.
-- Engine writes to `.error` don't disturb either side.
+The per-action endpoint payload (submit-pipeline) carries form data as a flat map under `form` / `form_review`; the handler merges them into one payload bag and builds the dot-notation `$set` paths. Submitter (`form:`) and reviewer (`form_review:`) blocks share the flat `form_data.{action_type}.{field}` tree — the engine doesn't disambiguate between them.
 
-The payload contract for `submit-action` carries form data as a flat map; the API routine builds the dot-notation `$set` paths.
+### No reserved sub-keys
 
-### Reserved sub-keys
+Earlier drafts reserved `review` and `error` as sub-keys under `form_data.{action_type}`. v1 drops both:
 
-Within `form_data.{action_type}` (or `form_data.{action_type}.{key}` for keyed actions), the following names are reserved by the engine and **may not be used as form field names**:
+- **Reviewer fields** share the action-type namespace with submitter fields. Authors pick non-colliding names the same way they already do inside a single `form:` block. The v0 corpus did this without trouble (reviewer fields under `form.validation.*`, submitter fields elsewhere in the same tree).
+- **Error context** moves to the action doc's status entry. The recovery surface (`-error` page) reads `status[0].reason` and `status[0].error_message`, not a `form_data` sub-key.
 
-- `review` — reviewer-side form values
-- `error` — engine-written error context
-
-Build-time validation in `makeWorkflowsConfig` flags `form:` or `form_review:` blocks that declare a top-level `key:` matching one of these names. (Engine still merge-order-silences at runtime — same family as the references reserved-keys list.)
+This collapses two reserved keys to zero. `makeWorkflowsConfig` no longer needs to validate against the list.
 
 ### Engine effects
 
 - `start-workflow` initialises `form_data: {}` on the workflow doc.
-- `submit-action` writes form fields atomically with the status transition (same Mongo update).
+- `SubmitWorkflowAction` writes form fields atomically with the status transition (same Mongo update).
 - `get-entity-workflows` returns `form_data` alongside the workflow doc — pages reading per-action data fetch from the workflow doc, not from a separate request.
 - `cancel-workflow` leaves `form_data` intact (audit trail preserved).
 
@@ -468,29 +473,28 @@ Build-time validation in `makeWorkflowsConfig` flags `form:` or `form_review:` b
 
 The `error` status is the engine's escape hatch for "this action's submit pipeline failed and the user needs a recovery surface." Two entry paths:
 
-**1. Mid-submit failure (engine-driven).** The submit pipeline catches a thrown failure from a sub-step (submit hook, entity_update, event, notification dispatch) and converts it into an `error` transition rather than propagating the throw. Concretely the `UpdateWorkflowActions` handler (or the future `SubmitWorkflowAction` per the submit-pipeline sub-design):
+**1. Mid-submit failure (engine-driven).** The submit pipeline catches a thrown failure from a sub-step (submit hook, entity_update, event, notification dispatch) and converts it into an `error` transition rather than propagating the throw. Concretely the `SubmitWorkflowAction` handler (or the future `SubmitWorkflowAction` per the submit-pipeline sub-design):
 
 1. Wraps each side-effect step in a try/catch.
 2. On catch, rolls forward (not back) — the action transition already written may stay durable, but the handler:
-   - Writes `{ stage: error, created, reason: <step-name>, error_message: <caught message> }` to the action's `status` array (`force: true` semantics — bypasses the priority rule because errors must reach the user regardless of what state the action was in).
-   - Writes the captured failure context to `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}` for keyed actions). Fields conventionally include `message`, `step`, `timestamp`, plus any context the sub-step's thrown error carries.
+   - Writes `{ stage: error, created, reason: <step-name>, error_message: <caught message>, error_metadata: <object> }` to the action's `status` array (`force: true` semantics — bypasses the priority rule because errors must reach the user regardless of what state the action was in). All error context lives on this status entry; `form_data` is not touched on the error transition.
    - Skips any remaining auto-complete / tracker-subscription / group-rollup work — an action in `error` is non-terminal and doesn't satisfy `blocked_by` clauses.
 3. Returns the partial `{ action_ids, event_id }` result so the caller knows which writes landed.
 
-**2. Author-driven (caller-driven via `submit-action`).** A submit-hook routine can explicitly call `submit-action` with `current_status: error` for app-validated business-rule failures the author wants to surface as a recovery flow. Engine treats this the same as path (1): writes the status transition + author-supplied error context (typically passed via the submit-action `form` payload using fields named `error.*` — the engine routes them to the reserved `.error` sub-key).
+**2. Author-driven (pre-hook abort).** A pre-hook (submit-pipeline Decision 4) returns `hook_error: <message>` to abort the submit for app-validated business-rule failures. Engine treats this the same as path (1): writes `{ stage: error, reason: 'pre-hook', error_message: <message>, error_metadata? }` to the action's status array. No `form_data` write on the abort path; no further engine writes (notifications, group `on_complete`, post-hook all skipped).
 
-Either path produces the same on-disk shape: `status[0] = { stage: error, ... }` plus populated `form_data.{action_type}.error`. The UI's `-error` page renders against that shape (ui sub-design Decision 2's error template).
+Either path produces the same on-disk shape: `status[0] = { stage: error, reason, error_message, error_metadata? }`. The UI's `-error` page renders against that shape (ui sub-design Decision 2's error template), reading `status[0]` rather than a `form_data` sub-key.
 
-**Recovery (action leaves `error`).** Recovery is a normal `submit-action` call from the `-error` page. The submit hook completes successfully → engine writes the recovery transition (typically `current_status: done`) + clears `form_data.{action_type}.error` via the same per-field `$set` semantics (or, for a partial recovery, overwrites individual error fields). The action returns to the normal flow.
+**Recovery (action leaves `error`).** Recovery is a normal submission from the `-error` page — the user clicks the template-shipped `resolve_error` button, which calls the per-action endpoint with `interaction: resolve_error`. Engine writes the recovery transition (target status defaults to the same as `submit_edit` per submit-pipeline Decision 3); the previous `status` entry stays in the array as audit history. No `form_data` cleanup needed since error context was never written there.
 
-**Why force-write on error transition.** The priority rule (Decision 4) would otherwise reject an `error` push from any status with priority < 1 (most terminals). But operationally an error must always surface — if an action's `done` transition fails mid-side-effects, the engine needs to roll back the `done` to `error` so the user sees the recovery surface rather than a falsely-completed action. The engine bypasses the priority rule for engine-driven error transitions; author-driven `current_status: error` on `submit-action` follows the same path.
+**Why force-write on error transition.** The priority rule (Decision 4) would otherwise reject an `error` push from any status with priority < 1 (most terminals). But operationally an error must always surface — if an action's `done` transition fails mid-side-effects, the engine needs to roll back the `done` to `error` so the user sees the recovery surface rather than a falsely-completed action. The engine bypasses the priority rule for engine-driven error transitions; pre-hook abort (`hook_error`, submit-pipeline Decision 4) follows the same path.
 
 ## Risks
 
 - **Plugin dual-runtime build complexity.** First-time server-side code in a package that currently ships React blocks. Treated as a v1 milestone (see [Decision 1 "Dual-runtime build"](#dual-runtime-build--a-v1-milestone-not-a-config-tweak)) with its own verification step: hard split between `src/blocks/` and `src/connections/`, dist/-output grep for React leakage, plugin-loader smoke test before declaring done.
 - **No transactional atomicity in v1.** The `WorkflowAPI` handler runs sub-steps sequentially on one shared Mongo client but doesn't wrap them in a transaction. A mid-sequence failure leaves earlier writes durable and later steps unrun — same risk class as the existing `summary` writeback drift. Mitigation: caller retry is safe (the idempotency guards converge to the same end state), plus periodic reconciliation as the catch-all. `session.withTransaction(...)` is a purely-additive opt-in if a consumer surfaces a need for ACID.
 - **Workflow-doc write contention** under highly-parallel workflows. Mitigation: provide a `summary_dirty: true` lazy-writeback fallback as an opt-in mode (set per workflow YAML), so apps with high parallelism can defer the recompute. Default stays eager.
-- **Cross-module endpoint resolution at the module-level (`_module.endpointId: { id, module }`)** inside `submit-action`. The API calls into events (`new-event`) and notifications (`send-notification`); cross-module reference works from inside another module's API routine (verified — the contacts module already does this pattern in `update-contact`). If a future change to the module-loader breaks the cross-module reference, fallback is having the app pass endpoint IDs as caller-supplied vars.
+- **Cross-module API invocation from the engine handler.** `SubmitWorkflowAction` calls events `new-event`, notifications `send-notification`, and pre/post hook APIs via `context.callApi` (see [call-api](../call-api/design.md)). Cross-module reference is a verified pattern (contacts module's `update-contact` does it from YAML); first-time JS-side use is via the call-api primitive. If the primitive's resolution behavior surfaces issues, fallback is having the app pass endpoint ids as caller-supplied vars.
 - **Tracker subscription drift.** Mitigated by the failure-mode mitigations above; periodic reconciliation as the catch-all.
 - **`keys: []` silent no-op footgun.** Authors who compute `unblocks[].keys` from `_array.map` over a possibly-empty payload field will silently skip the unblock when the source is empty. v1 mitigation is documentation only (README shows the `skip` / `_if` gating pattern). If real apps surface confusion, the engine can grow an `allowEmpty: true` flag on `unblocks[]` entries so the default flips to "error on empty `keys`" — purely additive, no migration.
 
@@ -503,4 +507,4 @@ Either path produces the same on-disk shape: `status[0] = { stage: error, ... }`
 
 ## Next Step
 
-Implementation of the plugin, the references write contract, and the tracker subscription mechanism. Builds against the action-authoring sub-design's payload contracts and is called by the module-surface sub-design's `submit-action` / `start-workflow` / `cancel-workflow` APIs.
+Implementation of the plugin, the references write contract, and the tracker subscription mechanism. Builds against the action-authoring sub-design's payload contracts; called by the module-surface sub-design's operational APIs (`start-workflow` / `cancel-workflow`) and by the submit-pipeline per-action endpoints (`update-action-{action_type}`).

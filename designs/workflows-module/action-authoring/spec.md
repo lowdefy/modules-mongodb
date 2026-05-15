@@ -100,13 +100,14 @@ Per action:
 - `blocked_by` entries (if present) must resolve to either another `actions[].type` OR an `action_groups[].id` in the same workflow. Mixed lists valid; engine resolves by group-id-first precedence (action-groups spec).
 - `access.<app_name>` entries (if present) must be arrays of valid verbs (`view`, `edit`, `review`; unknown verbs flagged at build time, silently ignored at runtime).
 - Static `references:` blocks (if present) are checked for reserved-key collisions; runtime references go through the engine's merge-order silencing.
+- `hooks.{interaction}.{pre,post}` (if present) — each referenced hook API must declare `auth.roles ⊇ action.access.roles` and must not declare `auth.public: true`. See submit-pipeline "Hook auth gate." Fails the build with a path to the offending hook + action when the relationship doesn't hold.
 
 Errors fail the app build with a path to the offending workflow / action.
 
 The kind drives:
 
 1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by `access.{app_name}` verb list; `-error` always emitted); task → shared `task-edit` / `task-view` / `task-review`; tracker → no pages (inline display).
-2. **Submit API surface**: form → `submit-action` with form payload; task → `submit-action` with user-selected `current_status`; tracker → no caller submission (engine writes via subscription).
+2. **Submit API surface**: form → resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline) called with an `interaction` value; task → same endpoint with `interaction: submit_edit` and caller-supplied `current_status` (status selector on `task-edit`); tracker → no caller submission (engine writes via subscription).
 3. **Resolver invocation**: `makeActionsForm` and `makeActionFormConfigs` run only for form actions; `makeWorkflowApis` emits endpoints only for form actions.
 
 ## Access
@@ -124,11 +125,11 @@ access:
 
 Keys are app deployment names (matching `vars.app_name` per module composition). Values are verb lists controlling UI affordances in that app:
 
-| Verb     | Effect                                                                                                                                                                                                                 |
-| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows action in `actions-on-entity`; renders read-only detail pages (form `-view`, task `task-view`).                                                                                                                  |
-| `edit`   | Renders submit form (form `-edit`, task `task-edit`). Implies `view`.                                                                                                                                                  |
-| `review` | Renders a dedicated review page (form: per-action `-review`; task: shared `task-review`). Approve → `submit-action` with `current_status: done`; Request Changes → `current_status: changes-required`. Implies `view`. |
+| Verb     | Effect                                                                                                                                                                                                                                                                                                                                |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`   | Shows action in `actions-on-entity`; renders read-only detail pages (form `-view`, task `task-view`).                                                                                                                                                                                                                                 |
+| `edit`   | Renders submit form (form `-edit`, task `task-edit`). Implies `view`.                                                                                                                                                                                                                                                                 |
+| `review` | Renders a dedicated review page (form: per-action `-review`; task: shared `task-review`). Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `interaction: approve` and `interaction: request_changes`; engine resolves target status (`done` / `changes-required`). Implies `view`. |
 
 Apps without a key for a given app deployment hide the action entirely there. `makeActionPages` reads the host app's `app_name` and filters page emission accordingly (form actions only emit `-edit` when `edit` is listed, etc.). Vocabulary is module-defined and extensible in v1.x; unknown verbs are silently ignored.
 
@@ -144,7 +145,7 @@ Check: `(access.roles is empty) OR (size(setIntersection(user.roles, access.role
 
 - **Build-time** (`makeActionPages`): per-app verb filter on page emission.
 - **Query-time** (`get-entity-workflows`): per-app verb filter + role gate. Both must pass for the action to appear.
-- **Submit-time** (`submit-action`): role-gate re-check before any writes. Rejects with structured error on mismatch (e.g. role revoked between page render and submit).
+- **Submit-time** (the `SubmitWorkflowAction` handler): role-gate re-check before any writes. Rejects with structured error on mismatch (e.g. role revoked between page render and submit).
 
 `action_role_check` (ui sub-design) is a thin client-side wrapper over the same query-time check, used by entity pages to conditionally render verb buttons.
 
@@ -160,7 +161,7 @@ Every action doc carries three optional content fields, settable per-instance vi
 | `due_date`    | `Date?`    | `null`  |
 | `description` | `string?`  | `null`  |
 
-Updates flow through `submit-action`'s `fields:` payload block. `null` clears, omitted leaves unchanged. Atomic with the status transition (same Mongo `$set`).
+Updates flow through the per-action endpoint's `fields:` payload block. `null` clears, omitted leaves unchanged. Atomic with the status transition (same Mongo `$set`).
 
 Reserved on `references` payloads — apps can't claim these field names.
 
@@ -179,7 +180,7 @@ Engine treats these as opaque display metadata; UI consumes them.
 | ---------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `required_after_close` | `boolean` | `false` | When `true`, the action remains submittable after the workflow lifecycle reaches `completed` or `cancelled`. Default rejects. |
 
-`submit-action` enforces this at submit time.
+The `SubmitWorkflowAction` handler enforces this at submit time.
 
 ### Fields explicitly dropped from v1
 
@@ -285,8 +286,8 @@ These fields ride into the generated page YAML via the page-emission resolver (u
 
 ### How an action enters `error`
 
-- Engine writes `{ stage: error, created, ... }` to the action's status array when a submit hook or built-in side-effect step raises an unrecoverable failure mid-submit. Failure context lands at `form_data.{action_type}.error.{field}` (or `.{key}.error.{field}` for keyed actions) — engine-managed reserved sub-key.
-- A submit-hook routine explicitly calls `submit-action` with `current_status: error` for app-validated business-rule failures.
+- Engine writes `{ stage: error, created, reason, error_message, error_metadata? }` to the action's status array when a submit hook or built-in side-effect step raises an unrecoverable failure mid-submit. All error context lives on this status entry — `form_data` is not touched on the error transition.
+- A pre-hook (submit-pipeline Decision 4) returns `hook_error: <message>` to abort the submit for app-validated business-rule failures. Engine writes `{ stage: error, reason: 'pre-hook', error_message: <message>, error_metadata? }` to the action's status array.
 
 Either path makes the action's `status_map.error.{app_name}.link` (typically pointing at `{workflow_type}-{action_type}-error?action_id=<id>`) the reachable recovery surface.
 
@@ -310,7 +311,7 @@ form_review:
         }
 ```
 
-Review page renders `form:` values read-only above and `form_review:` writable below. Storage: `form_data.{action_type}.review.{field}` on the workflow doc. The `.review` sub-key is reserved (engine sub-design "Form data layout").
+Review page renders `form:` values read-only above and `form_review:` writable below. Storage: `form_data.{action_type}.{field}` on the workflow doc — the same flat tree as `form:` values, no `.review` sub-key (engine sub-design "Form data layout"). Authors pick non-colliding field names between `form:` and `form_review:`.
 
 ## Instanced actions (`key:`)
 
@@ -336,7 +337,7 @@ status_map:
 **Spawning.** Two paths:
 
 - **At workflow start.** `start-workflow` `actions:` may include `{ type, key, status }` entries; engine writes one action doc per entry.
-- **Mid-workflow.** `submit-action`'s `unblocks:` or a submit hook can append `{ type, key, status }` to spawn new instances. Existing instances unaffected.
+- **Mid-workflow.** A pre-hook return's `actions[]` array (submit-pipeline Decision 4) can append `{ type, key, status, upsert: true }` to spawn new instances. Existing instances unaffected.
 
 **`blocked_by` semantics.**
 
@@ -357,7 +358,9 @@ kind: form
 action_group: discovery
 sort_order: 10
 description: Confirm the lead's contact details and capture qualification notes.
-submit_hook: workflow_config/onboarding/api/qualify-submit-hook.yaml # optional
+hooks: # optional; per-interaction pre/post hook APIs (submit-pipeline Decision 4)
+  submit_edit:
+    pre: lead-onboarding-qualify-pre-submit
 access:
   my-team-app: [view, edit]
   roles: [account-manager]
@@ -376,7 +379,7 @@ status_map:
     my-team-app: { message: Lead qualified }
 ```
 
-If `submit_hook:` is set, the generated endpoint `_ref`s the hook. If absent, the generated endpoint is a thin default that calls `submit-action` with `current_status: done`.
+`makeWorkflowApis` always emits a `update-action-{action_type}` endpoint for form / task actions; the action's `hooks:`, `event:`, and `interactions:` blocks are baked in as build-time literals. If the action declares no `hooks:`, the engine runs the default lifecycle (no pre/post extension points). See submit-pipeline Decisions 2 + 4 for the canonical endpoint shape and hook contract.
 
 ## Task action
 
@@ -404,7 +407,7 @@ status_map:
     my-team-app: { message: Follow-up scheduled. }
 ```
 
-No `submit_hook`. The shared `task-edit` page builds the `submit-action` payload directly: `{ action_id, current_type, current_status, fields, event: { type, metadata: { comment } } }`.
+No `hooks:` declared — engine runs the default lifecycle. The shared `task-edit` page calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the page surfaces a status selector), `fields:`, and `event.metadata.comment`.
 
 ## Tracker action
 
@@ -459,7 +462,7 @@ App code that creates the child entity calls `start-workflow` with `parent_actio
     parent_action_id: { _state: parent_action_id }
 ```
 
-One `CallApi`; no follow-up `submit-action` to write the link.
+One `CallApi`; no follow-up submit to write the link.
 
 ### One-to-one constraint
 
@@ -479,47 +482,57 @@ Tracker actions only track workflows — there is no entity-only mode. For entit
 
 Five JS resolvers consume authored YAML at build time:
 
-| Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                    | Used in                                  |
-| ----------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
-| `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML, one per (workflow_type, action_type, verb) for form actions only                                                                                                                                     | `module.lowdefy.yaml` `pages:`           |
-| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML, one per form action; skipped for task and tracker actions                                                                                                                                           | `module.lowdefy.yaml` `api:`             |
-| `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection. Also the single place all build-time validation of `workflows_config` lives (workflow + action invariants — see "Action kinds" section for the full list). | `module.lowdefy.yaml` connection config  |
-| `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name                                                                                                                                                     | Called inside form-action page templates |
-| `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, defaults, types)                                                                                                                                                               | `global.action_form_configs`             |
+| Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                         | Used in                                  |
+| ----------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML, one per (workflow_type, action_type, verb) for form actions only                                                                                                                                                          | `module.lowdefy.yaml` `pages:`           |
+| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` per form / task action (bakes in `hooks:` / `event:` / `interactions:` blocks as build-time literals; validates `hook.auth.roles ⊇ action.access.roles`); skipped for tracker actions | `module.lowdefy.yaml` `api:`             |
+| `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection. Also the single place all build-time validation of `workflows_config` lives (workflow + action invariants — see "Action kinds" section for the full list).                      | `module.lowdefy.yaml` connection config  |
+| `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name                                                                                                                                                                          | Called inside form-action page templates |
+| `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, defaults, types)                                                                                                                                                                                    | `global.action_form_configs`             |
 
 Resolvers live at `resolvers/{name}.js` in the module package and are invoked via `_ref: { resolver: ..., vars: { ... } }` from the appropriate location in `module.lowdefy.yaml`. Apps don't invoke any of them directly.
 
 ### `makeWorkflowApis` generated endpoint
 
-One per form action. With `submit_hook` declared:
+One `update-action-{action_type}` endpoint per form / task action. The routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals. Full shape in [submit-pipeline spec](../submit-pipeline/spec.md) "Per-action `update-action-{action_type}` Api"; summarized here:
 
 ```yaml
-- id: "{workflow_type}-{action_type}-submit"
-  type: Api
-  routine:
-    _ref:
-      path: "{action.submit_hook}"
-```
-
-Without `submit_hook`:
-
-```yaml
-- id: "{workflow_type}-{action_type}-submit"
+- id: update-action-{action_type}
   type: Api
   routine:
     - id: submit
-      type: CallApi
+      type: SubmitWorkflowAction
+      connectionId:
+        _module.connectionId: workflow-api
       properties:
-        endpointId:
-          _module.endpointId: { id: submit-action, module: workflows }
-        payload:
-          action_id: { _payload: action_id }
-          current_type: { _var: action_type }
+        action_id: { _payload: action_id }
+        action_type: <action_type>
+        workflow_type: <workflow_type>
+        interaction: { _payload: interaction }
+        current_key: { _payload: current_key }
+        form: { _payload: form }
+        form_review: { _payload: form_review }
+        fields: { _payload: fields }
+        hooks:
+          {
+            submit_edit: { pre, post },
+            not_required: { pre, post },
+            resolve_error: { pre, post },
+            approve: { pre, post },
+            request_changes: { pre, post },
+          }
+        event_overrides: { submit_edit: { type, display, metadata }, ... }
+        interactions: { submit_edit: { status: <override-or-null> }, ... }
     - :return:
         action_ids: { _step: submit.action_ids }
+        completed_groups: { _step: submit.completed_groups }
+        event_id: { _step: submit.event_id }
+        tracker_fired: { _step: submit.tracker_fired }
+        pre_hook_response: { _step: submit.pre_hook_response }
+        post_hook_response: { _step: submit.post_hook_response }
 ```
 
-Task actions don't get a generated endpoint; the shared `task-edit` page calls `submit-action` directly. Tracker actions don't get an endpoint; the engine writes their status via the subscription.
+Tracker actions don't get a generated endpoint; the engine writes their status via the subscription. Build-time validation: `hook.auth.roles ⊇ action.access.roles` (and `hook.auth.public !== true`) for every hook API referenced from `hooks.{interaction}.{pre,post}` — see submit-pipeline Decision 4.
 
 ## Form components library
 

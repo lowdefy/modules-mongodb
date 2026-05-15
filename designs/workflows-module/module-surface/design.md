@@ -1,6 +1,6 @@
 # Workflows Module Surface
 
-The module's outward-facing surface — `module.lowdefy.yaml` manifest (exports, vars, dependencies, plugins), the four module APIs that apps call (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `submit-action`), and how consuming apps wire the module into their `modules.yaml`.
+The module's outward-facing surface — `module.lowdefy.yaml` manifest (exports, vars, dependencies, plugins), the four operational module APIs that apps call (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`), and how consuming apps wire the module into their `modules.yaml`. The submit-time API surface is per-action and resolver-emitted (`update-action-{action_type}`) — owned by [submit-pipeline](../submit-pipeline/design.md).
 
 This sub-design owns what apps see when they compose the module. The runtime that makes the APIs work comes from [engine](../engine/design.md); the YAML authors write comes from [action-authoring](../action-authoring/design.md); the pages the manifest exports come from [ui](../ui/design.md).
 
@@ -9,7 +9,7 @@ This sub-design owns what apps see when they compose the module. The runtime tha
 What this sub-design commits:
 
 - The shape of `module.lowdefy.yaml` — exports, vars, dependencies, plugins.
-- The submit-time API surface — a single `submit-action` API that callers use from their `submit_hook` routines.
+- The submit-time API surface — resolver-emitted per-action `update-action-{action_type}` endpoints owned by [submit-pipeline](../submit-pipeline/design.md). Apps don't compose routines; the engine drives the lifecycle.
 - The connection wiring — how the module declares its MongoDB collections and the WorkflowAPI server connection.
 - The `cancel-workflow` payload contract.
 
@@ -22,9 +22,10 @@ name: Workflows
 version: 0.1.0
 description: >
   Multi-workflow engine: parallel workflow instances on one entity, declarative
-  blocked_by dependencies, submit-action API for advancing actions and chaining
-  entity / event / notification writes, per-action pages generated at build
-  time from app-supplied workflow YAML.
+  blocked_by dependencies, engine-orchestrated submit lifecycle
+  (SubmitWorkflowAction handler with per-interaction pre/post hooks) reached
+  via resolver-generated per-action endpoints, per-action pages generated at
+  build time from app-supplied workflow YAML.
 
 exports:
   pages:
@@ -53,7 +54,7 @@ exports:
     - id: actions-collection
       description: MongoDB collection for action instances
     - id: workflow-api
-      description: Server-side WorkflowAPI connection (UpdateWorkflowActions, StartWorkflow, CancelWorkflow)
+      description: Server-side WorkflowAPI connection (SubmitWorkflowAction, StartWorkflow, CancelWorkflow)
   api:
     - id: start-workflow
       description: Wraps StartWorkflow primitive; called by app code after entity creation
@@ -63,14 +64,9 @@ exports:
       description: Returns workflows + grouped actions for one entity (for entity-page render)
     - id: get-workflow-overview
       description: Returns one workflow doc + its actions ordered for display (for the workflow-overview page). Filters actions by access just like get-entity-workflows.
-    - id: submit-action
-      description: >
-        Main submit endpoint (Decision 2). Advances the current action to a
-        caller-supplied status, applies any unblocks, optionally writes to
-        the entity, optionally logs an event with notifications dispatch.
-        Apps' submit_hook routines call this via CallApi. Same endpoint is
-        used for normal submit, approve, and request-changes flows — the
-        caller picks current_status (done / changes-required / etc.).
+    # NOTE: Per-action submit endpoints (`update-action-{action_type}`) are
+    # emitted by the makeWorkflowApis resolver per submit-pipeline Decision 2;
+    # not statically exported here.
   components:
     - id: actions-on-entity
       description: Entity-page block — renders all workflows for an entity, grouped, with collapsible action lists
@@ -140,7 +136,13 @@ api:
   - _ref: api/cancel-workflow.yaml
   - _ref: api/get-entity-workflows.yaml
   - _ref: api/get-workflow-overview.yaml
-  - _ref: api/submit-action.yaml
+  # Per-action submit endpoints (update-action-{action_type}) are emitted by the
+  # makeWorkflowApis resolver per submit-pipeline Decision 2.
+  - _ref:
+      resolver: resolvers/makeWorkflowApis.js
+      vars:
+        workflows: { _module.var: workflows_config }
+        app_name: { _module.var: app_name }
 
 components:
   - id: actions-on-entity
@@ -175,16 +177,16 @@ global:
     _ref: enums/workflow_lifecycle_stages.yaml
 
 plugins:
-  - name: '@lowdefy/modules-mongodb-plugins'
-    version: '^0.3.0' # bumped from prior version — adds WorkflowAPI server connection
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.4.0" # bumped from prior version — adds WorkflowAPI server connection
 
 dependencies:
   - id: layout
     description: Page layout wrapper for generated action pages
   - id: events
-    description: Audit event logging consumed by submit-action's event step
+    description: Audit event logging — the SubmitWorkflowAction handler calls events.new-event via the call-api primitive
   - id: notifications
-    description: Optional notifications dispatch (only fires when callers set event.notifications: true)
+    description: Notifications dispatch — the SubmitWorkflowAction handler always calls notifications.send-notification on a successful submit (silent no-op when no send_routine is wired; see submit-pipeline Decision 6)
 
 secrets:
   - name: MONGODB_URI
@@ -193,7 +195,7 @@ secrets:
 
 ### Notes on the surface
 
-**Submit-side composition lives in `submit-action`** — a Lowdefy `Api` the module exposes via `exports.api`. Apps' `submit_hook` routines call it via `CallApi` with a structured payload (current action transition, optional unblocks, optional entity write, optional event with notifications). One API call rather than a multi-helper composition; matches the contacts / user-admin / user-account pattern across modules-mongodb.
+**Submit-side composition lives in the `SubmitWorkflowAction` plugin handler** (submit-pipeline). The module exposes one resolver-generated `update-action-{action_type}` endpoint per form / task action; template-shipped buttons on each per-action page call those endpoints with an `interaction` value. Authors don't write submit routines — they declare per-interaction pre/post hooks on the action YAML and let the engine drive the lifecycle.
 
 **No `menus:` export.** Unlike `contacts` and `companies`, the workflows module doesn't ship a default navigation menu. Workflow pages are accessed via deep-links from the `actions-on-entity` component on each entity's view page, not via top-level navigation. Apps that want a "workflows inbox" or "my actions" view build it themselves as an app page that queries the actions collection directly.
 
@@ -205,24 +207,24 @@ secrets:
 
 **`exports.pages`** lists three generic page kinds for form actions (`action-edit`, `action-view`, `action-error`), three shared task-action pages (`task-edit`, `task-view`, `task-review`), and one shared read-only workflow overview page (`workflow-overview`, addressed by `?workflow_id=<id>`). The actual per-action page IDs at runtime are scoped by the resolver: `{module-entry}/{workflow_type}-{action_type}-{verb}` (e.g. `workflows/lead-onboarding-qualify-edit`). The ui sub-design owns the page templates, the static task pages, and the workflow-overview page.
 
-**Dependencies on `events` and `notifications`** are explicit. The module declares them as hard dependencies because `submit-action`'s routine references their endpoint ids (`new-event`, `send-notification`); the module loader needs both modules present in the host app's `modules.yaml` to wire the cross-module references at build time. The `notifications` dispatch is opt-in per call — apps include `event.notifications: true` in their `submit-action` payload when they want a notification fired; otherwise the step is skipped. Apps that never dispatch notifications still pull in the dependency — same convention as `events` (every consuming module declares it whether or not every code path logs events).
+**Dependencies on `events` and `notifications`** are explicit. The module declares them as hard dependencies because the `SubmitWorkflowAction` handler calls into their endpoints (`new-event`, `send-notification`) via the call-api primitive on every successful submit. The notifications module is required even if a consuming app never wires a `send_routine` — `send-notification` is a silent no-op in that case (submit-pipeline Decision 6). Same convention as `events`: every consuming module declares the dependency whether or not every code path logs events.
 
 ## Decision 2 — The four module APIs
 
-The module ships full Lowdefy `Api` endpoints rather than a routine helper library, matching the contacts / user-admin / user-account pattern in modules-mongodb. The module exposes one submit-shaped API; the app's `submit_hook` becomes a single `CallApi` to that endpoint with a structured payload. Everything that helpers would have composed internally — fan-out building, entity writes, event emission, notifications dispatch — runs server-side inside the API's routine.
+The module ships four operational Lowdefy `Api` endpoints, plus a resolver-generated submit endpoint per form / task action (`update-action-{action_type}`, owned by [submit-pipeline](../submit-pipeline/design.md)). Per modules-mongodb convention, the module exposes APIs rather than a routine helper library — consuming apps either call the operational APIs directly or hit the per-action endpoint via the template-shipped button on each per-action page.
 
-### The APIs
+### The operational APIs
 
-| API                    | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `start-workflow`       | Wraps `StartWorkflow` primitive. App calls it after entity creation to instantiate a workflow with starting actions. Optionally accepts `parent_action_id` to link this workflow as a child of an existing tracker action — the engine writes the parent-child link atomically (see Decision 3).                                                                                                                                                                                                                                                                                                                                                                                                      |
-| `cancel-workflow`      | Wraps `CancelWorkflow` primitive. Pushes `cancelled` to workflow status; flips remaining open actions to `not-required`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `get-entity-workflows` | Returns workflows + grouped actions for one entity. The `actions-on-entity` component reads from this. Filters by access: per-app verb map + role gate (see action-authoring Decision 3 "Action access semantics"); actions where the filter doesn't pass are excluded from the response. Returned workflow docs carry the persisted `groups[]` array (engine-written; see action-groups Decision 4) so the UI can render per-group headers and statuses without recomputing.                                                                                                                                                                                                                         |
-| `submit-action`        | Main submit endpoint. Advances the current action to a caller-supplied `current_status` (e.g. `done` for normal submit, `changes-required` for a review reject), applies any unblocks, optionally writes to the entity, optionally logs an event. Same endpoint covers submit, approve, and request-changes flows — the caller picks the status. Re-checks the action's role gate server-side before any writes (rejects with structured error if user's roles no longer match). Calls `UpdateWorkflowActions`, which returns `completed_groups` alongside `action_ids`; an outer Layer-1 step (mechanism deferred — see action-groups Decision 6) fans out one `CallApi` per declared `on_complete`. |
+| API                     | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start-workflow`        | Wraps `StartWorkflow` primitive. App calls it after entity creation to instantiate a workflow with starting actions. Optionally accepts `parent_action_id` to link this workflow as a child of an existing tracker action — the engine writes the parent-child link atomically (see Decision 3).                                                                                                                                                                              |
+| `cancel-workflow`       | Wraps `CancelWorkflow` primitive. Pushes `cancelled` to workflow status; flips remaining open actions to `not-required`.                                                                                                                                                                                                                                                                                                                                                      |
+| `get-entity-workflows`  | Returns workflows + grouped actions for one entity. The `actions-on-entity` component reads from this. Filters by access: per-app verb map + role gate (see action-authoring Decision 3 "Action access semantics"); actions where the filter doesn't pass are excluded from the response. Returned workflow docs carry the persisted `groups[]` array (engine-written; see action-groups Decision 4) so the UI can render per-group headers and statuses without recomputing. |
+| `get-workflow-overview` | Returns one workflow doc + its actions ordered for display (for the shared `workflow-overview` page). Filters actions by access just like `get-entity-workflows`.                                                                                                                                                                                                                                                                                                             |
 
-The first three are operational and don't need much specification beyond what's in Decision 1. The fourth carries the "what happens when an action transitions" contract.
+### Submit endpoints (owned by submit-pipeline)
 
-**Why one submit endpoint, not three.** Callers pass `current_status` in the payload — named variants (`approve-action`, `request-changes-action`) would be ceremony, not new behaviour. Apps that want approve/request-changes verbs build the right payload (`current_status: done` for approve, `current_status: changes-required` for reject) and call `submit-action`. The status enum + the priority transition rule enforce which transitions are valid; the API doesn't need to.
+The `update-action-{action_type}` per-action endpoint, the `SubmitWorkflowAction` plugin handler that runs the engine-orchestrated lifecycle, the interaction → status resolution, pre/post hook contracts, log-event override paths, notifications dispatch, and tracker-fired signal all live in submit-pipeline. The first three operational APIs above are specified in Decision 3 / Decision 4 below; submit-related decisions belong in submit-pipeline.
 
 ## Decision 3 — `start-workflow` payload contract
 
@@ -261,9 +263,9 @@ start-workflow payload:
 
 Returns `{ workflow_id, action_ids }`.
 
-**Parent-link semantics.** When `parent_action_id` is set, the engine validates that the action exists, is `kind: tracker`, and isn't already linked (i.e. its `child_workflow_id` is null). Mismatches reject with structured errors. The engine writes both sides of the link in one handler invocation: the new child workflow gets `parent_action_id` / `parent_entity_id` / `parent_entity_collection`, and the parent tracker action gets `child_workflow_id` / `child_entity_id` / `child_entity_collection` plus an `in-progress` transition. See [engine](../engine/design.md) Decision 3 "Parent ↔ child link shape." Callers don't need a follow-up `submit-action` to attach the new workflow to the parent.
+**Parent-link semantics.** When `parent_action_id` is set, the engine validates that the action exists, is `kind: tracker`, and isn't already linked (i.e. its `child_workflow_id` is null). Mismatches reject with structured errors. The engine writes both sides of the link in one handler invocation: the new child workflow gets `parent_action_id` / `parent_entity_id` / `parent_entity_collection`, and the parent tracker action gets `child_workflow_id` / `child_entity_id` / `child_entity_collection` plus an `in-progress` transition. See [engine](../engine/design.md) Decision 3 "Parent ↔ child link shape." Callers don't need a follow-up submit to attach the new workflow to the parent.
 
-**Starting-action resolution.** When `actions:` is provided, the engine uses it verbatim and ignores the workflow YAML's `starting_actions:`. When omitted, the engine instantiates `starting_actions:` from the YAML directly. Keyed actions in the YAML's `starting_actions:` without concrete keys raise a runtime error — keyed instances must come from the API payload because the engine can't manufacture instance discriminators. The two paths are otherwise equivalent: both flow through the same `UpdateWorkflowActions` write path (engine Decision 1), one row per `(workflow_id, type, key)` triple.
+**Starting-action resolution.** When `actions:` is provided, the engine uses it verbatim and ignores the workflow YAML's `starting_actions:`. When omitted, the engine instantiates `starting_actions:` from the YAML directly. Keyed actions in the YAML's `starting_actions:` without concrete keys raise a runtime error — keyed instances must come from the API payload because the engine can't manufacture instance discriminators. The two paths are otherwise equivalent: both flow through the same `SubmitWorkflowAction` write path (engine Decision 1), one row per `(workflow_id, type, key)` triple.
 
 ## Decision 4 — `cancel-workflow` payload contract
 
@@ -278,280 +280,36 @@ The handler pushes `{ stage: cancelled, created, reason? }` onto the workflow's 
 
 **Tracker behaviour on cancel.** Tracker actions on the cancelled workflow are flipped to `not-required` along with all other open actions on the workflow (matching the documented "flips remaining open actions to `not-required`" behaviour). Tracker actions watching this workflow from a parent fire normally via the engine's synchronous in-process subscription — the workflow's `cancelled` status push triggers the engine to look up tracker actions whose `key` equals this `workflow_id` and applies the hard-coded `cancelled → not-required` mapping (see engine sub-design "Tracker subscription mechanism").
 
-## Decision 5 — `submit-action` payload contract
+## Decision 5 — Submit endpoints come from submit-pipeline
 
-```
-submit-action payload:
-  action_id: string                    # the current action being submitted
-  current_type: string                 # the YAML type of the current action
-  current_key: string                  # optional; instance key for keyed actions
-                                       #   (action-authoring Decision 9). Required when
-                                       #   the action declares `key:`; omit otherwise.
-                                       #   Engine errors if the action is keyed and current_key
-                                       #   is missing, or non-keyed and current_key is present.
-  current_status: string               # optional, defaults to 'done' (form actions)
-                                       #   or to the user-selected enum value (task actions)
-  fields: object                       # optional; universal action fields (action-authoring sub-design)
-    assignees: array<string>           #   user IDs; null/omitted leaves unchanged
-    due_date: Date                     #   ISO date; null clears, omitted leaves unchanged
-    description: string                #   free text; null clears, omitted leaves unchanged
-  form: object                         # optional; submitter-side form values (action's `form:` blocks).
-                                       #   Engine writes per-field $set at
-                                       #   form_data.{current_type}.{field} (non-keyed) or
-                                       #   form_data.{current_type}.{current_key}.{field} (keyed).
-                                       #   See engine Decision 5 "Form data layout."
-  form_review: object                  # optional; reviewer-side form values (action's `form_review:` blocks).
-                                       #   Engine writes per-field $set at
-                                       #   form_data.{current_type}.review.{field} (non-keyed) or
-                                       #   form_data.{current_type}.{current_key}.review.{field} (keyed).
-                                       #   `.review` is a reserved sub-key.
-  unblocks: array                      # optional, default []
-    - type: string
-      status: string
-      keys: array                      # optional; see below
-      upsert: boolean                  # optional, default false
-  entity_update: object                # optional; if absent, no entity write
-    connection: string                 # connectionId for the entity collection
-    _id: string                        # entity id
-    update: object                     # MongoDB update object
-  event: object                        # optional; if absent, no event log
-    type: string
-    display: object                    # per-app event display map
-    references: object                 # per-key id arrays
-    metadata: object                   # arbitrary; conventionally includes
-                                       #   `comment` when the page surfaces a comment field
-    notifications: boolean             # optional; when true, dispatch via notifications module's
-                                       #   send-notification InternalApi (workflows module sends
-                                       #   { event_ids: [<new event id>] }; the app's send_routine
-                                       #   on the notifications module entry consumes that payload
-                                       #   and resolves recipients, typically by reading the event
-                                       #   doc's references — see "Notifications dispatch contract"
-                                       #   below). No-op when no send_routine is wired.
-```
+The single `submit-action` API that earlier drafts of this sub-design exposed has been **superseded**. The submit-time API surface is now resolver-generated per action (`update-action-{action_type}`) and the engine-orchestrated lifecycle lives inside the `SubmitWorkflowAction` plugin handler. Submit-pipeline owns the contracts; this sub-design lists the four operational APIs (Decision 2) and points at submit-pipeline for everything submit-related.
 
-The `fields:` block is the channel by which the universal action fields flow through `submit-action` regardless of action kind. Form actions can update `assignees`/`due_date` alongside the form submission; task actions use it as their primary write surface; tracker actions don't call `submit-action` at all so the field is unused there.
+**Per-action endpoint shape:** see [submit-pipeline Decision 2](../submit-pipeline/design.md#decision-2--per-action-update-action-action_type-resolver) for the canonical YAML the resolver emits.
 
-**Form data persistence.** The `form` and `form_review` blocks are flat field maps; the engine constructs dot-notation Mongo `$set` paths per field. Field-level granularity means concurrent edits on different fields of the same action don't clobber each other, and submitter / reviewer / engine-error writes stay independent. Paths:
+**Author-supplied hooks per interaction:** declared on the action YAML under `hooks:` — see [submit-pipeline Decision 4](../submit-pipeline/design.md#decision-4--pre-and-post-hooks-at-action-root) and the `hook.auth.roles ⊇ action.access.roles` build-time validation.
 
-- Non-keyed action submitter: `form_data.{current_type}.{field}`.
-- Keyed action submitter: `form_data.{current_type}.{current_key}.{field}`.
-- Non-keyed action reviewer: `form_data.{current_type}.review.{field}`.
-- Keyed action reviewer: `form_data.{current_type}.{current_key}.review.{field}`.
+**Pre/post hook payload + return contracts, log-event shape, notifications dispatch, tracker-fired signal:** all owned by submit-pipeline.
 
-`.review` and `.error` are reserved sub-keys under each action's `form_data` slot — build-time validation in `makeWorkflowsConfig` flags `form:` / `form_review:` blocks that declare top-level fields named `review` or `error`. See engine sub-design Decision 5 "Form data layout."
+### Universal fields and form data via the per-action endpoint
 
-**Keyed-action submit shape.** When the action declares `key:` (action-authoring Decision 9), the payload's `current_key` must be supplied and the engine resolves the action doc via `(workflow_id, current_type, current_key)`. Engine rejects with structured error if `current_key` is missing on a keyed action or present on a non-keyed action — surfaces the action-grammar / payload mismatch immediately rather than silently writing to the wrong path.
+Universal action fields (`assignees`, `due_date`, `description`) flow through the per-action endpoint's `fields:` payload block regardless of action kind. Form actions can update universal fields alongside form data; task actions use them as their primary write surface; tracker actions don't receive submissions. `null` clears a field; omitted leaves it unchanged. Atomic with the status transition.
 
-**Task-action submit shape.** Task actions don't carry a domain form, so their typical `submit-action` payload is small: `{ action_id, current_type, current_status: <user-selected>, fields: { assignees, due_date, description }, event: { type, metadata: { comment } } }`. The shared `task-edit` page composes this payload from the form on the page (status selector + assignees/due-date inputs + comment field) and `CallApi`s `submit-action` directly. No per-action submit hook; no `makeWorkflowApis` entry for task actions — the page is the caller.
+Form data (both `form:` submitter values and `form_review:` reviewer values from the action YAML) lands on the workflow doc at `form_data.{action_type}.{field}` (non-keyed) or `form_data.{action_type}.{key}.{field}` (keyed) — engine D5 owns the layout. There are no reserved sub-keys; authors who declare both `form:` and `form_review:` pick non-colliding field names. Error context lives on the action doc's status entry, not in `form_data`.
 
-**Form-action submit shape.** The app's submit hook reads the form data, builds `unblocks`/`entity_update`/`event` per the action's domain logic, and calls `submit-action`. The `fields:` block is optional — apps that want the form's submitter to also (re)assign or set a due date can include it; otherwise it's omitted and the action's universal fields stay unchanged.
+### What this sub-design no longer specifies
 
-**No `force` field on `submit-action`.** The engine's `UpdateWorkflowActions` request type accepts a top-level `force: true` (engine sub-design Decision 4) that bypasses the priority rule, but `submit-action` deliberately doesn't expose it. `submit-action` is the user-submit path; migrations and admin tools that need to rewrite history bypass `submit-action` and call `UpdateWorkflowActions` directly via a privileged route (a separate app-side API endpoint, or a one-off Lowdefy request) so the escape hatch is gated by app-level access control instead of riding in the user-facing payload.
+The following were previously owned here and have moved to submit-pipeline:
 
-### Action entries always use `keys: [...]` — no singular `key`
+- The `submit-action` API and its payload contract.
+- The `unblocks: [...]` / `entity_update: { ... }` / `event: { ... }` / `event.notifications: true` payload fields.
+- The submit-time routine (`update_actions` → `write_entity` → `new_event` → `notify`).
+- "Why not helpers" framing — the helper-library question is moot once the engine owns the lifecycle.
 
-Each entry in `unblocks` has a uniform shape: `{ type, status, keys?, upsert? }`. The `keys` field is the only key-related field; there is no singular `key`. The plugin handles three cases based on the `keys` value:
-
-| `keys` value               | Plugin behaviour                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------- |
-| omitted                    | One operation, `key: null` on the doc — non-keyed action                              |
-| `[]` (empty array)         | Zero operations — typical for fan-out where the form has no items                     |
-| `[k]` (single value)       | One operation, `key: k` — singleton-keyed action (e.g. tracker referencing one child) |
-| `[k1, k2, ...]` (N values) | N operations, one per key — fan-out                                                   |
-
-**Footgun: `keys: []` is silent.** When authors compute `keys` from a possibly-empty payload field (e.g. `keys: { _array.map: { on: { _payload: form.devices } } }`) and the user submits an empty form, the unblock silently no-ops with no error. Either the call site is fine with that (legitimate "no fan-out targets" case) or the author needs to gate the unblock with `skip` / `_if` on `keys.length` to surface the empty case as a form-validation error rather than a silent miss. v1 mitigation is documentation only; an `allowEmpty: true` opt-in flag is a purely-additive future change if the footgun bites real apps (engine sub-design Risks).
-
-The on-disk action doc still has a singular `key` field (or `key: null`); only the plugin payload shape unifies. The `(workflow_id, type, key)` unique index is unchanged.
-
-### `submit-action` example call
-
-```yaml
-# app's workflow_config/onboarding/api/qualify-submit-hook.yaml
-- id: submit
-  type: CallApi
-  endpointId:
-    _module.endpointId: { id: submit-action, module: workflows }
-  payload:
-    action_id: { _payload: action_id }
-    current_type: qualify
-    # current_status omitted → defaults to 'done'
-    unblocks:
-      - { type: site-check, status: action-required }
-      - type: proof-of-installation
-        status: blocked
-        upsert: true
-        keys:
-          _array.map:
-            on: { _payload: form.devices }
-            callback:
-              _function:
-                __args: 0._id
-    entity_update:
-      connection: leads-collection
-      _id: { _payload: entity_id }
-      update:
-        $set:
-          stage: qualified
-          qualified_at: { _date: now }
-    event:
-      type: qualify-submitted
-      display:
-        my-team-app: { title: "Lead qualified" }
-      references:
-        lead_ids: [{ _payload: entity_id }]
-      notifications: true # opt in to dispatch; recipients resolved by app's send_routine
-```
-
-The API's routine handles every step server-side. Authors write one structured payload; no `_ref` chains, no plumbing.
-
-### How `submit-action` runs
-
-Server-side routine inside the module's `api/submit-action.yaml`. Uses Lowdefy routine directives — `:set_state:` (assigns to per-request state, read later via `_state:`) and `:return:` (the routine's return shape). For a worked example of the directive syntax in this codebase see [modules/contacts/api/update-contact.yaml](../../../../modules/contacts/api/update-contact.yaml).
-
-```yaml
-id: submit-action
-type: Api
-routine:
-  - :set_state:
-      event_id: { _uuid: true }
-
-  # 1. Advance the current action, write any universal fields, and apply unblocks
-  #    in one UpdateWorkflowActions call. The plugin merges `fields` (assignees,
-  #    due_date, description) into the current action's $set; field writes are
-  #    atomic with the status transition.
-  - id: update_actions
-    type: UpdateWorkflowActions
-    connectionId:
-      _module.connectionId: workflow-api
-    properties:
-      currentActionId: { _payload: action_id }
-      eventId: { _state: event_id }
-      actions:
-        _array.concat:
-          - - type: { _payload: current_type }
-              status: { _if_none: [{ _payload: current_status }, done] }
-              fields: { _payload: fields } # universal action fields; ignored by plugin if null
-          - { _payload: unblocks }
-
-  # 2. Optional entity write
-  - id: write_entity
-    type: MongoDBUpdateOne
-    connectionId: { _payload: entity_update.connection }
-    skip:
-      _not: { _payload: entity_update }
-    properties:
-      filter: { _id: { _payload: entity_update._id } }
-      update: { _payload: entity_update.update }
-
-  # 3. Optional event log
-  - id: new_event
-    type: CallApi
-    skip:
-      _not: { _payload: event }
-    properties:
-      endpointId:
-        _module.endpointId: { id: new-event, module: events }
-      payload:
-        type: { _payload: event.type }
-        display: { _payload: event.display }
-        references: { _payload: event.references }
-        metadata: { _payload: event.metadata }
-
-  # 4. Optional notifications dispatch — only if event was logged AND notifications opted in
-  - id: notify
-    type: CallApi
-    skip:
-      _or:
-        - _not: { _payload: event.notifications }
-        - _not: { _payload: event }
-    properties:
-      endpointId:
-        _module.endpointId: { id: send-notification, module: notifications }
-      payload:
-        event_ids: [{ _step: new_event.eventId }]
-
-  # 5. Fan out group on_complete hooks for any groups that transitioned to `done`
-  #    in step 1's UpdateWorkflowActions call. Mechanism deferred to a follow-up
-  #    sub-design (see action-groups Decision 6). Engine returns
-  #    completed_groups: [{ workflow_id, id, on_complete? }] — the routine reads
-  #    that list and CallApi's each entry's routine. v1 ships with this step
-  #    stubbed; the routine returns completed_groups in the response so callers
-  #    aware of groups can drive their own fan-out until the canonical mechanism
-  #    is locked.
-  # - id: dispatch_group_hooks
-  #   type: <TBD per api-hooks sub-design>
-  #   ... (see action-groups Decision 6)
-
-  - :return:
-      success: true
-      action_ids: { _step: update_actions.action_ids }
-      completed_groups: { _step: update_actions.completed_groups }
-      event_id: { _state: event_id }
-```
-
-The `submit-action` API is a thin orchestration layer over the existing primitives:
-
-- `UpdateWorkflowActions` (engine sub-design) does the action transitions.
-- `MongoDBUpdateOne` does the entity write (skipped if not present).
-- The events module's `new-event` does event logging.
-- The notifications module's `send-notification` does dispatch.
-
-### Notifications dispatch contract
-
-`send-notification` is a **hook**, not a payload-driven API. Per [modules/notifications/api/send-notification.yaml](../../../../modules/notifications/api/send-notification.yaml):
-
-```yaml
-id: send-notification
-type: InternalApi
-routine:
-  _module.var: send_routine
-```
-
-The notifications module ships the endpoint, but its routine is entirely app-supplied via the `send_routine` var on the notifications module entry. The workflows module sends `{ event_ids: [<new event id>] }` to that endpoint; what happens next is whatever the app's `send_routine` does — typically reads the event doc by id, resolves recipients from the event's `references`, and dispatches via SMTP / push / SMS / etc.
-
-**The `event_ids` payload shape is a workflows-module convention, not a notifications-module contract.** An app whose `send_routine` expects a different payload would need to bridge the shape internally, since the workflows module's `notify` step is hard-coded to send `{ event_ids: [...] }`. The convention matches what the notifications module's `send_routine` var description already documents ([modules/notifications/module.lowdefy.yaml](../../../../modules/notifications/module.lowdefy.yaml) — _"Receives event_ids in the payload"_).
-
-**Silent no-op when no `send_routine` is wired.** If an app composes the notifications module without supplying a `send_routine`, the dispatch step runs but the empty routine does nothing — no error, no notification. The workflows module accepts this as the v1 behaviour. Apps that want a notification-side audit of "dispatch attempted" wire that into their `send_routine` themselves; the workflows module doesn't try to enforce delivery.
-
-Cross-module calls (`new-event`, `send-notification`) use `_module.endpointId: { id, module }` — the standard cross-module reference pattern from contacts, user-admin, user-account.
-
-### Composition error semantics — partial state and retry
-
-The `submit-action` routine runs server-side as one Lowdefy API. If a step fails mid-execution, **earlier writes are durable; later steps don't run**. The routine doesn't wrap in MongoDB transactions and doesn't attempt best-effort rollback. The recovery model is **user-retry**: the user resubmits the form, the API re-runs from the top, and the API steps reach the same end state on retry.
-
-For the partial-state-plus-retry model to be safe, each step in `submit-action` must be **idempotent on retry** — running it twice produces the same end state as running it once.
-
-| Step                                       | Retry-safe?       | Why                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| ------------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `update_actions` (UpdateWorkflowActions)   | ✓                 | The engine's priority-rule transition check no-ops repeated stage pushes. Re-running pushes `done` onto an already-`done` action; the rule rejects the redundant write. Fan-out via `keys: [...]` + `upsert: true`: the plugin's fetch-then-update-or-create logic handles existing per-key actions (priority no-op) and missing ones (upsert). End state is one row per key regardless of how many times the step runs. |
-| `write_entity` (MongoDBUpdateOne)          | Depends on caller | Idempotent if the app's `update` uses `$set` / `$ifNull` / `$setOnInsert`. Not idempotent with `$push` / `$inc` / `$addToSet`. The API passes the update through unchanged; the README documents the constraint.                                                                                                                                                                                                         |
-| `new_event` (events.new-event)             | ✗                 | The events module's `new-event` API generates a fresh `_id` per call; there's no deduplication. Retry inserts a duplicate event. Accepted for v1 as a known cost.                                                                                                                                                                                                                                                        |
-| `notify` (notifications.send-notification) | ✗                 | Same as `new_event` — duplicate notifications on retry. Accepted as a known cost.                                                                                                                                                                                                                                                                                                                                        |
-
-**The leaky steps — `new_event` and `notify`.** These produce duplicate side effects on retry. Three options were considered for v1:
-
-- **Make the events / notifications modules dedupe by structured payload** — out of scope for the workflows module.
-- **Generate a stable `event_id` on the client and flow it through retries** — the action page would generate a UUID at form-load time and include it in the submit payload, so all retries reuse the same id. The events module's `new-event` would have to honour a caller-supplied id (currently it generates `_uuid: true` internally). Real coordination work across modules.
-- **Document and accept** — duplicate events are noise, not corruption; duplicate notifications are a known cost. Real failure rate is low; user retries after partial failure are rare. Reversible — the stable-id approach can be added later as the API grows an `event_id` payload field that defaults to `_uuid: true` but accepts an override.
-
-**Picked: document and accept** for v1. The README states "duplicate events and notifications on retry are a known cost" and shows the future-stable-id pattern as the upgrade path if real apps surface UX pressure.
-
-**Error responses to the client.** v1 ships standard Lowdefy API error handling — a failed routine returns a generic error response and the action page surfaces it. Apps that need richer error UX (e.g. "your form was saved but notifications didn't fire; safe to retry") wrap the `CallApi submit-action` step in their own `:try:` block at the hook level and emit structured responses. Not the module's responsibility.
-
-**Long-term safety net.** The same periodic reconciliation job that catches `summary` writeback drift and tracker drift (engine sub-design "Failure-mode story") also covers submit-hook drift — it's the catch-all for partial-write scenarios.
-
-### Why not helpers — full reasoning
-
-A helper-library approach was considered. The trade-offs landed against it:
-
-- **No matching pattern.** Every modules-mongodb module ships APIs (contacts, user-admin, user-account, files, notifications). None ships helpers. New patterns require justification; "the workflows module is special" isn't enough.
-- **Plain-path `_ref` is awkward.** Helpers would be referenced via `_ref: { path: "../../node_modules/@lowdefy/modules-mongodb-workflows/routines/<name>.yaml", vars: ... }`. Fragile to refactor; non-obvious to authors.
-- **Helper composition error semantics get harder.** With 3–5 helpers chained, retry idempotency depends on every helper being idempotent. With one API, the API's routine is the unit of retry; idempotency is one analysis, not five.
-- **Most "helpers" weren't carrying their weight.** `conditional-unblock` was a `:if:` wrapper. `write-to-entity` was a `MongoDBUpdateOne` pass-through. `emit-event-and-notify` was a cross-module bridge that arguably belongs in the events module. Removing the thin ones and absorbing the cross-module ones into a real API leaves only the genuinely-valuable plumbing (`UpdateWorkflowActions` + the priority rule + the audit chain), which `submit-action` handles natively.
+Apps wanting entity writes on submit do them from a pre/post hook (regular Lowdefy Api with full Mongo access). Apps wanting custom unblocks return them as `actions[]` from a pre-hook. Apps wanting custom log events override via the action YAML `event:` block (build-time) or the pre-hook return's `event_overrides` (runtime).
 
 ## Risks
 
-- **`submit-action` API surface stability.** v1 ships one submit endpoint that handles submit, approve, and request-changes flows via caller-supplied `current_status`, plus the three operational APIs. If real apps surface complex submit flows that don't fit the payload shape (e.g. multi-step writes that need to coordinate beyond the four built-in steps), apps wrap their own routine around the `CallApi` step with extra steps before/after. If patterns emerge across multiple apps, the module adds extension fields additively. Mitigation: keep the payload shape extensible from the start (optional fields default to no-op); document the extension pattern in README.
+- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / task action (`update-action-{action_type}`, owned by submit-pipeline) plus four operational APIs (this sub-design). If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Mitigation: keep the hook return shape extensible from the start (optional fields default to no-op); document the extension pattern in README.
 
 ## Next Step
 

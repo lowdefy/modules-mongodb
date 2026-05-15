@@ -14,9 +14,9 @@ What this sub-design commits:
 
 - A workflow declares its `action_groups:` as an ordered list with `id`, `title`, and an optional `on_complete` reference. Every `action.action_group` value must reference a declared group.
 - `blocked_by` entries accept both action types and group IDs in one field.
-- Group status is a derived three-value enum (`blocked` / `in-progress` / `done`) eagerly written to the workflow doc as part of each `UpdateWorkflowActions` call.
-- The engine's existing transition flow grows two new steps inside `UpdateWorkflowActions`: (a) recompute group statuses and write them, (b) re-evaluate `blocked_by` against the new state and push affected blocked actions to `action-required`.
-- `UpdateWorkflowActions` returns a `completed_groups: [...]` list so a higher orchestration layer can fire each group's `on_complete` hook. **The exact orchestration mechanism for invoking per-group hooks is deferred to a follow-up sub-design** — see Decision 6.
+- Group status is a derived three-value enum (`blocked` / `in-progress` / `done`) eagerly written to the workflow doc as part of each `SubmitWorkflowAction` call.
+- The engine's existing transition flow grows two new steps inside `SubmitWorkflowAction`: (a) recompute group statuses and write them, (b) re-evaluate `blocked_by` against the new state and push affected blocked actions to `action-required`.
+- `SubmitWorkflowAction` returns a `completed_groups: [...]` list so a higher orchestration layer can fire each group's `on_complete` hook. **The exact orchestration mechanism for invoking per-group hooks is deferred to a follow-up sub-design** — see Decision 6.
 
 What's intentionally not in this design:
 
@@ -135,7 +135,7 @@ The workflow doc carries the persisted group state as an array:
 
 **Shape.** Array (not map keyed by id) preserves display order. Each entry carries `id`, derived `status`, and a per-group `summary: { done, not_required, total }` parallel to the workflow-level `summary`.
 
-**Eager writeback inside `UpdateWorkflowActions`.** Same pattern as the workflow-level `summary` (engine sub-design "Decision 1"). On every action transition that affects a group, the engine recomputes the group's status and summary and writes it atomically as part of the same handler invocation. Detail in Decision 5.
+**Eager writeback inside `SubmitWorkflowAction`.** Same pattern as the workflow-level `summary` (engine sub-design "Decision 1"). On every action transition that affects a group, the engine recomputes the group's status and summary and writes it atomically as part of the same handler invocation. Detail in Decision 5.
 
 **Drift class.** Same risk family as `summary` writeback: a direct DB write to an action (a migration, admin tool, or future change-stream) leaves `groups[]` stale. Mitigated by:
 
@@ -146,11 +146,11 @@ The workflow doc carries the persisted group state as an array:
 **Why persist at all.** Two reasons:
 
 - Diverse consumers (analytics pipelines, dashboards, admin tools) can read group state directly from the workflow doc without going through the module's API. The events module's `references` writeback pattern follows the same logic — denormalize to the doc to keep consumers simple.
-- The `groups[]` write happens inside `UpdateWorkflowActions` anyway (it's what powers the `blocked_by` re-evaluation step and the `completed_groups` return value). Persisting the result alongside the computation that already runs is essentially free.
+- The `groups[]` write happens inside `SubmitWorkflowAction` anyway (it's what powers the `blocked_by` re-evaluation step and the `completed_groups` return value). Persisting the result alongside the computation that already runs is essentially free.
 
 **Index strategy.** No new module-shipped indexes. Apps that query workflows by current phase (e.g. "find all leads in phase-2") add their own Mongo index on `groups.status` or on a denormalized scalar if needed. Documented in the module README.
 
-## Decision 5 — Engine flow inside `UpdateWorkflowActions`
+## Decision 5 — Engine flow inside `SubmitWorkflowAction`
 
 The handler's existing ordered steps (engine sub-design "Ordering relative to other engine work") grow two new steps. Updated ordering:
 
@@ -179,7 +179,7 @@ The handler MAY recompute every group on every call without correctness issues �
 
 This single evaluation step covers both inter-action and inter-group dependencies. Today the engine doesn't do this — apps declare explicit `unblocks: [...]` in submit hooks. With group references becoming valid `blocked_by` entries, the engine has to do the unblock work itself (the submit hook can't enumerate "every action waiting on phase-1"). The same evaluation handles action-type entries too; in v2 we MAY deprecate the explicit `unblocks:` field if real apps prefer purely declarative `blocked_by`. v1 keeps both — `unblocks:` for backward compatibility with already-authored hooks.
 
-**Step 7 — return shape.** `UpdateWorkflowActions` returns:
+**Step 7 — return shape.** `SubmitWorkflowAction` returns:
 
 ```
 {
@@ -195,39 +195,37 @@ This single evaluation step covers both inter-action and inter-group dependencie
 
 **Idempotency / retry.** Step 2 is idempotent: writing the same `groups[]` array twice produces the same state. Step 3 is idempotent: the priority transition rule no-ops repeated stage pushes. Step 7's `completed_groups` is computed from step 2's transitions, so a retry that no-ops step 2 returns an empty `completed_groups` — the hook does not fire twice. Matches the design's existing partial-state-plus-retry model.
 
-**Recursion bound.** Step 3 may push actions to `action-required`, which doesn't trigger another `UpdateWorkflowActions` invocation — the transition is a write, not a request. Group `on_complete` hooks (invoked at Layer 1, outside `UpdateWorkflowActions`) may themselves call `submit-action`, which calls `UpdateWorkflowActions` recursively. The existing tracker-update depth-limit story (engine sub-design open question 1) extends here: same proposed guard, same default of 10 levels.
+**Recursion bound.** Step 3 may push actions to `action-required`, which doesn't trigger another `SubmitWorkflowAction` invocation — the transition is a write, not a request. Group `on_complete` hooks (invoked engine-internally as step 11 of the lifecycle per submit-pipeline Decision 1) may themselves call back into other per-action endpoints, which loop back into `SubmitWorkflowAction`. The existing tracker-update + call-api depth-limit story (engine sub-design open question 1; call-api Decision 3) extends here: same depth-limit guard, same default of 10 levels.
 
-## Decision 6 — `on_complete` invocation (defers to a follow-up sub-design)
+## Decision 6 — `on_complete` invocation (engine-internal fan-out per submit-pipeline)
 
-A group with `on_complete: <yaml-path>` declared in its workflow YAML wants its routine fired once, when the group transitions to `done`.
+A group with `on_complete: <api-id>` declared in its workflow YAML wants its Lowdefy Api fired once when the group transitions to `done`.
 
 **What this sub-design commits:**
 
-- `UpdateWorkflowActions` returns `completed_groups` from its handler (Decision 5 step 7). Each entry carries the `on_complete` path declared in YAML (or null).
-- The invocation is **at Layer 1** — a Lowdefy routine step that runs after `UpdateWorkflowActions` returns. The plugin handler does not call APIs; orchestration stays in routine YAML.
+- `SubmitWorkflowAction` returns `completed_groups` from its handler (Decision 5 step 7). Each entry carries the `on_complete` Api id declared in YAML (or null).
+- Fan-out is **engine-internal** — step 11 of the `SubmitWorkflowAction` lifecycle (submit-pipeline Decision 1) calls `context.callApi(<on_complete-api-id>)` per `completed_groups` entry. The call-api primitive (call-api sub-design) makes this possible from inside the plugin handler.
 - Invocation rules:
   - Fire **at most once per group per workflow lifetime** — the group transitions `blocked` → `in-progress` → `done`, not back. Same priority semantics as action statuses (`done` is terminal in the three-value enum).
   - Do **not** fire on `CancelWorkflow` — cancellation flips actions to `not-required` and groups to `done`, but the hook is for natural completion, not for cleanup-on-cancel. Engine distinguishes via the call site: `CancelWorkflow` doesn't populate `completed_groups`.
   - **Reuse the same `eventId`** as the triggering call (existing engine convention for tracker subscription updates).
+- Ordering inside the lifecycle: after notifications dispatch (step 10) — so phase-complete hooks see the log event already in the database and notifications already in-flight — and before the post-hook (step 13) — so post-hooks can react to group fan-out outcomes via standard return values. See submit-pipeline Decision 1 step 11.
 
-**What's deferred:** the _mechanism_ by which the routine fans out one `CallApi` per entry in `completed_groups`. Lowdefy's idioms for "do N variable-length API calls inside a routine" need vetting against real-world usage before locking the shape. Candidate mechanisms:
+**Why engine-internal (not an outer routine layer).** Earlier drafts framed the fan-out as a "Layer 1" routine step (`submit-action`'s YAML routine `CallApi`s each entry). With submit-pipeline replacing the routine layer and the call-api primitive making `context.callApi` available from inside the plugin handler, the fan-out belongs inside the handler — same place as the log-event call, the notifications dispatch, and the pre/post hook invocations. One orchestrator (the engine), one lifecycle, one error-capture surface.
 
-- **Per-group generated endpoints.** `makeWorkflowApis` (action-authoring sub-design "Decision 5") generates one endpoint per declared `on_complete` — `{workflow_type}-{group_id}-on-complete` — and `submit-action`'s routine `CallApi`s each. Requires a fanout primitive in Lowdefy routine YAML (`ForEach`-equivalent over an array).
-- **A dispatcher API.** One module-level `dispatch-group-hooks` API takes `completed_groups` as payload and resolves to each group's routine inside the dispatcher's own server-side code. Removes the fanout-primitive requirement but adds an indirection layer.
-- **Plugin-side invocation.** The connection handler itself calls back into the Lowdefy API runtime to fire hooks. Conflates layers (rejected on first principles — connections do DB-shaped work, orchestration belongs in routines) but listed for completeness.
+**Behaviour without `on_complete`.** Groups without an `on_complete` declared have no hook to fire — they appear in `completed_groups` with `on_complete: null` and the engine skips the call.
 
-Each candidate has implications for retry behaviour, error reporting, and authoring. The follow-up sub-design (working title: `api-hooks`) will pick one. Until then, the action-groups design commits to _what_ happens; _how_ it happens is the follow-up's scope.
-
-**Behaviour without `on_complete`.** Groups without an `on_complete` declared have no hook to fire — they appear in `completed_groups` with `on_complete: null` and the routine no-ops for them.
+**Refinements deferred to the `api-hooks` follow-up:** per-group hook payload shape, error-propagation policy for hook failures, any per-group retry semantics. Engine work (Decisions 1–5) ships independently — `completed_groups` lands first as a returned signal even before the in-handler fan-out is implemented.
 
 ## Interaction with the other sub-designs
 
 This sub-design is layered on top of the existing four; the affected surfaces:
 
 - **[action-authoring](../action-authoring/design.md)** — `action_groups:` becomes a top-level workflow field (Decision 1); `blocked_by` grammar expands to accept group IDs (Decision 2). The action-status enum and form components library are untouched.
-- **[engine](../engine/design.md)** — `UpdateWorkflowActions` gains two ordered steps and a new return-value key (Decision 5). The plugin handler files (`handleUpdateActions.js` + helpers) grow group-computation utilities. No new collection or connection.
+- **[engine](../engine/design.md)** — `SubmitWorkflowAction` gains two ordered steps and a new return-value key (Decision 5). The plugin handler files (`handleUpdateActions.js` + helpers) grow group-computation utilities. No new collection or connection.
 - **[ui](../ui/design.md)** — `actions-on-entity` reads persisted `groups[]` from `get-entity-workflows` instead of computing groupings from action lists. `workflow-header` MAY surface the current group as a milestone label (open question). No new components.
-- **[module-surface](../module-surface/design.md)** — `submit-action`'s routine grows the hook-invocation step (Decision 6, mechanism TBD). `get-entity-workflows` returns the persisted `groups[]` payload directly. No new APIs.
+- **[module-surface](../module-surface/design.md)** — `get-entity-workflows` and `get-workflow-overview` return the persisted `groups[]` payload directly. No new operational APIs; the submit-side fan-out lives inside `SubmitWorkflowAction` (engine-internal, owned by submit-pipeline).
+- **[submit-pipeline](../submit-pipeline/design.md)** — owns step 11 of the lifecycle (group `on_complete` fan-out) and the call-api primitive that makes engine-internal fan-out possible.
 
 The parent [workflows-module design](../design.md) gets a fifth row in its sub-design table and a brief mention in the framing.
 
@@ -280,34 +278,35 @@ actions:
 
 **Runtime sequence when the user submits `send-quote` (last open action in phase-1):**
 
-1. App page calls the generated `workflows/onboarding-send-quote-submit` endpoint.
-2. Endpoint runs `send-quote`'s submit hook → `CallApi submit-action`.
-3. `submit-action`'s routine:
-   - Step `update_actions` → `UpdateWorkflowActions`:
-     1. Writes `send-quote.status[0] = done`.
-     2. Recomputes affected groups: phase-1 now has every action terminal → `groups[0].status = done`. Writes `groups[]` to the workflow doc.
-     3. Re-evaluates `blocked_by` on every `blocked` action. `schedule-followup` had `blocked_by: [phase-1]`; phase-1 is now `done` → push `action-required`.
-     4. Auto-complete check on the workflow: `schedule-followup` and `track-installation` still open → no workflow transition.
-     5. Tracker subscription: no workflow status change in this call → skip.
-     6. Recompute workflow summary.
-     7. Return `{ action_ids: [send-quote, schedule-followup], completed_groups: [{ workflow_id, id: phase-1, on_complete: '<path>' }] }`.
-   - Step (Decision 6, TBD mechanism) → fan out one `CallApi` per `completed_groups` entry → `phase-1-complete` routine runs → emits event + writes `lead.stage = qualified`.
-   - Step `new_event` → emits the action-level event for `send-quote`'s own submit (if declared).
-   - Step `notify` → notifications dispatch if opted in.
-4. App page receives the success response; re-renders the workflow with phase-1 collapsed (`done`), phase-2's `schedule-followup` showing as `action-required`, phase-3 unchanged.
+1. App page's template-shipped `submit_edit` button on the `onboarding-send-quote-edit` page calls `workflows/update-action-send-quote` (resolver-generated per submit-pipeline Decision 2) with `interaction: submit_edit`.
+2. The endpoint's routine fires `SubmitWorkflowAction`, which runs the lifecycle:
+   1. Validate payload + role gate.
+   2. Pre-hook (if declared on `send-quote`).
+   3. Compute auto-unblocks; merge with pre-hook `actions[]`.
+   4. Resolve `interaction: submit_edit` → target status (`done` if no review verb).
+   5. Write `send-quote.status[0] = done`.
+   6. Recompute affected groups: phase-1 now has every action terminal → `groups[0].status = done`. Write `groups[]` to the workflow doc.
+   7. Re-evaluate `blocked_by` on every `blocked` action. `schedule-followup` had `blocked_by: [phase-1]`; phase-1 is now `done` → push `action-required`. (Auto-complete check on the workflow finds `schedule-followup` and `track-installation` still open → no workflow transition; tracker subscription skipped; workflow summary recomputed.)
+   8. Write `form_data`.
+   9. Generate the action-level log event.
+   10. Dispatch notifications.
+   11. Fan out group `on_complete` — engine calls `context.callApi(<phase-1-complete-api-id>)` per entry in `completed_groups`; that hook emits its own event + writes `lead.stage = qualified`.
+   12. Post-hook (if declared).
+   13. Return `{ action_ids: [send-quote, schedule-followup], completed_groups: [{ workflow_id, id: phase-1, on_complete: '<api-id>' }], event_id, tracker_fired: null }`.
+3. App page receives the success response; re-renders the workflow with phase-1 collapsed (`done`), phase-2's `schedule-followup` showing as `action-required`, phase-3 unchanged.
 
-This one submission exercises every step in Decision 5 plus the deferred Decision 6 hook fan-out.
+This one submission exercises every step in Decision 5 plus the in-handler Decision 6 fan-out.
 
 ## Open Questions
 
-1. **Fanout primitive at Layer 1.** Locked in the follow-up sub-design. Current candidates: routine-level loop (`ForEach`-equivalent), dispatcher API, or plugin-side invocation. Until decided, action-groups can ship with hook invocation stubbed — `UpdateWorkflowActions` returns `completed_groups` cleanly even if the orchestration layer doesn't fan out yet, so engine work proceeds in parallel.
+1. **`api-hooks` follow-up refinements.** Per-group hook payload shape, error-propagation policy for hook failures, retry semantics. Engine returns `completed_groups` cleanly today; the `api-hooks` follow-up locks the refinements. Engine work (Decisions 1–5) ships independently — `completed_groups` lands first as a returned signal even before the in-handler fan-out is implemented.
 2. **`workflow-header` milestone label.** The existing UI sub-design proposes a milestone label as "the highest-priority `status_title` of any non-blocked action." With persisted group state, the natural label becomes "the title of the current group" (lowest-ordered group not in `done`). v1 ships the group-based label; the action-based label is retired.
 3. **Auto-complete consistency.** When the last group completes, the workflow itself auto-completes (existing behaviour). The hook for the last group fires _before_ the workflow auto-completes (Decision 5 step 3 runs before step 4). Authors can rely on the order; the README documents it.
 
 ## Risks
 
 - **`groups[]` write contention.** Same family as `summary` write contention (engine sub-design "Workflow-doc write contention"). Same mitigation — the `summary_dirty: true` opt-in lazy mode also defers `groups[]` writeback. Default stays eager.
-- **`on_complete` retry duplication / loss.** If `submit-action` retries mid-routine after `UpdateWorkflowActions` succeeded but before the hook-invocation step ran, the next retry of `UpdateWorkflowActions` returns `completed_groups: []` (the group is already `done`; no transition happens), so the hook does not fire. **The hook is missed entirely** in that retry shape. Mitigation: idempotent hooks (apps write hooks that can be re-run safely); the periodic reconciliation job extends to "groups in `done` whose `on_complete` audit-event is missing." Same risk class as the event / notification leak documented in module-surface "Composition error semantics."
+- **`on_complete` retry duplication / loss.** If `SubmitWorkflowAction` retries after step 2 (group write) succeeded but before step 11 (fan-out) ran, the next retry returns `completed_groups: []` (the group is already `done`; no transition happens), so the hook does not fire. **The hook is missed entirely** in that retry shape. Mitigation: idempotent hooks (apps write hooks that can be re-run safely); the periodic reconciliation job extends to "groups in `done` whose `on_complete` audit-event is missing." Same risk class as the event / notification leak documented in submit-pipeline "Composition error semantics."
 - **`blocked_by` evaluation cost.** Step 3 scans every blocked action in the workflow on every transition. For typical workflows (<20 actions) this is negligible. For pathologically large workflows the scan is O(N) per transition; if real apps surface this, a "dirty group" index can prune the scan to actions whose dependencies just changed. Listed as a v2 optimisation.
 
 ## Next Step

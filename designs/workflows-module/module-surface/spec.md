@@ -9,9 +9,10 @@ name: Workflows
 version: 0.1.0
 description: >
   Multi-workflow engine: parallel workflow instances on one entity, declarative
-  blocked_by dependencies, submit-action API for advancing actions and chaining
-  entity / event / notification writes, per-action pages generated at build
-  time from app-supplied workflow YAML.
+  blocked_by dependencies, engine-orchestrated submit lifecycle
+  (SubmitWorkflowAction handler with per-interaction pre/post hooks) reached
+  via resolver-generated per-action endpoints, per-action pages generated at
+  build time from app-supplied workflow YAML.
 
 exports:
   pages:
@@ -34,7 +35,9 @@ exports:
     - id: start-workflow
     - id: cancel-workflow
     - id: get-entity-workflows
-    - id: submit-action
+    - id: get-workflow-overview
+    # Per-action update-action-{action_type} endpoints are resolver-emitted
+    # via makeWorkflowApis (submit-pipeline Decision 2); not statically listed.
   components:
     - id: actions-on-entity
     - id: workflow-header
@@ -78,7 +81,13 @@ api:
   - _ref: api/cancel-workflow.yaml
   - _ref: api/get-entity-workflows.yaml
   - _ref: api/get-workflow-overview.yaml
-  - _ref: api/submit-action.yaml
+  # Per-action submit endpoints (update-action-{action_type}) — emitted by
+  # makeWorkflowApis resolver per submit-pipeline Decision 2.
+  - _ref:
+      resolver: resolvers/makeWorkflowApis.js
+      vars:
+        workflows: { _module.var: workflows_config }
+        app_name: { _module.var: app_name }
 
 components:
   - id: actions-on-entity
@@ -127,15 +136,16 @@ Three separate connections are exported by design:
 
 ## APIs
 
-| API                     | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `start-workflow`        | Instantiate a workflow on an entity. Optional `parent_action_id` writes parent/child link atomically.                                                                                                                                                                                                                                                                                                                                                 |
-| `cancel-workflow`       | Push `cancelled` to workflow status; flip remaining open actions to `not-required`.                                                                                                                                                                                                                                                                                                                                                                   |
-| `get-entity-workflows`  | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Filters by access (per-app verb map + role gate, action-authoring spec "Access"). Returned workflow docs carry persisted `groups[]` array (engine-written).                                                                                                                                                                                                       |
-| `get-workflow-overview` | Return one workflow doc + its actions ordered for display. Consumed by the shipped `workflow-overview` page. Filters actions by access (same rules as `get-entity-workflows`). Returns one row per action (one per instance for keyed actions), ordered by `display_order` then `sort_order`.                                                                                                                                                         |
-| `submit-action`         | Advance an action to a caller-supplied `current_status`; apply unblocks; optional entity write, event log, notifications. Covers submit, approve, and request-changes via the `current_status` field. Re-checks role gate server-side before any writes; rejects on mismatch. `UpdateWorkflowActions` returns `completed_groups`; outer Layer-1 step fans out one `CallApi` per declared `on_complete` (mechanism deferred — see action-groups spec). |
+| API                     | Purpose                                                                                                                                                                                                                                                                                       |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start-workflow`        | Instantiate a workflow on an entity. Optional `parent_action_id` writes parent/child link atomically.                                                                                                                                                                                         |
+| `cancel-workflow`       | Push `cancelled` to workflow status; flip remaining open actions to `not-required`.                                                                                                                                                                                                           |
+| `get-entity-workflows`  | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Filters by access (per-app verb map + role gate, action-authoring spec "Access"). Returned workflow docs carry persisted `groups[]` array (engine-written).                                               |
+| `get-workflow-overview` | Return one workflow doc + its actions ordered for display. Consumed by the shipped `workflow-overview` page. Filters actions by access (same rules as `get-entity-workflows`). Returns one row per action (one per instance for keyed actions), ordered by `display_order` then `sort_order`. |
 
-`submit-action` is the user-submit path. Migrations and admin tools that need `force: true` bypass `submit-action` and call `UpdateWorkflowActions` directly via a privileged route gated by app-level access control.
+**Submit endpoints.** Per-action `update-action-{action_type}` endpoints are emitted by the `makeWorkflowApis` resolver — owned by [submit-pipeline](../submit-pipeline/spec.md). The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals. Template-shipped buttons on per-action pages call the endpoint with an `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves the target status per submit-pipeline Decision 3.
+
+Migrations and admin tools that need `force: true` call the `SubmitWorkflowAction` handler directly via a privileged route gated by app-level access control.
 
 ## `start-workflow` payload
 
@@ -212,137 +222,10 @@ Returns:
 
 **Ordering.** Actions are returned in display order: primary sort `action_group` declaration order (workflow's `action_groups[]` index), secondary sort `sort_order` ASC, tertiary tie-break on `actions[]` declaration order. Keyed actions surface as N rows, one per instance, kept together within their parent action's sort slot.
 
-## `submit-action` payload
+## Submit endpoints
 
-```
-submit-action payload:
-  action_id: string                    # the current action being submitted
-  current_type: string                 # the YAML type of the current action
-  current_key: string                  # optional; the instance key for keyed actions (action-authoring D9).
-                                       #   Required when the action declares `key:`; omit otherwise.
-  current_status: string               # optional; defaults to 'done' (form) or user-selected (task).
-                                       #   Accepts 'error' for author-driven error transitions
-                                       #   (recovery flow from a submit hook that detects a
-                                       #   business-rule failure). Engine bypasses priority rule
-                                       #   for error pushes. See engine spec "Action error transition".
-  fields: object                       # optional; universal action fields
-    assignees: array<string>           #   null/omitted leaves unchanged
-    due_date: Date                     #   null clears, omitted leaves unchanged
-    description: string                #   null clears, omitted leaves unchanged
-  form: object                         # optional; submitter-side form values (form: blocks).
-                                       #   Engine writes per-field $set at form_data.{current_type}.{field}
-                                       #   (non-keyed) or form_data.{current_type}.{current_key}.{field} (keyed).
-  form_review: object                  # optional; reviewer-side form values (form_review: blocks).
-                                       #   Engine writes per-field $set at form_data.{current_type}.review.{field}
-                                       #   (or .{current_key}.review.{field} for keyed actions).
-  unblocks: array                      # optional, default []
-    - type: string
-      status: string
-      keys: array                      # omitted → 1 op key=null; [] → 0 ops (silent footgun); [k] → 1; [k1,k2,...] → N
-      upsert: boolean                  # optional, default false
-  entity_update: object                # optional; if absent, no entity write
-    connection: string                 # connectionId for the entity collection
-    _id: string                        # entity id
-    update: object                     # MongoDB update object
-  event: object                        # optional; if absent, no event log
-    type: string
-    display: object                    # per-app event display map
-    references: object
-    metadata: object                   # conventionally includes `comment` when page surfaces one
-    notifications: boolean             # opt-in dispatch via notifications module's send-notification
-                                       #   (InternalApi hook; routine is app-supplied via send_routine).
-                                       #   workflows sends { event_ids: [...] }; silent no-op if no
-                                       #   send_routine is wired
-```
-
-**Form data persistence.** `form` / `form_review` fields are flat maps; the engine constructs dot-notation `$set` paths per field. Field-level granularity means concurrent edits on different fields don't clobber, and reviewer / submitter / error sub-keys stay independent.
-
-**Footgun**: `keys: []` silently no-ops the unblock. Gate with `skip` / `_if` on `keys.length` to surface empty form data as validation.
-
-**No `force` field.** `submit-action` is the user-submit path; `force: true` lives on the lower-level `UpdateWorkflowActions` payload accessible only via privileged routes.
-
-**Notifications dispatch is a hook, not a contract.** `notifications.send-notification` is `type: InternalApi` with `routine: _module.var: send_routine` — the routine is entirely supplied by the consuming app on the notifications module entry. The workflows module's `notify` step hard-codes `{ event_ids: [<new event id>] }` as the payload; the app's `send_routine` consumes it (typically reading the event doc by id to resolve recipients from the event's `references`). When no `send_routine` is wired, the dispatch is a silent no-op.
-
-## `submit-action` routine
-
-```yaml
-id: submit-action
-type: Api
-routine:
-  - :set_state:
-      event_id: { _uuid: true }
-
-  # 1. Advance current action + universal fields + unblocks in one UpdateWorkflowActions call.
-  - id: update_actions
-    type: UpdateWorkflowActions
-    connectionId:
-      _module.connectionId: workflow-api
-    properties:
-      currentActionId: { _payload: action_id } # aliased from payload.action_id
-      eventId: { _state: event_id }
-      actions:
-        _array.concat:
-          - - type: { _payload: current_type }
-              status: { _if_none: [{ _payload: current_status }, done] }
-              fields: { _payload: fields }
-          - { _payload: unblocks }
-
-  # 2. Optional entity write
-  - id: write_entity
-    type: MongoDBUpdateOne
-    connectionId: { _payload: entity_update.connection }
-    skip:
-      _not: { _payload: entity_update }
-    properties:
-      filter: { _id: { _payload: entity_update._id } }
-      update: { _payload: entity_update.update }
-
-  # 3. Optional event log
-  - id: new_event
-    type: CallApi
-    skip:
-      _not: { _payload: event }
-    properties:
-      endpointId:
-        _module.endpointId: { id: new-event, module: events }
-      payload:
-        type: { _payload: event.type }
-        display: { _payload: event.display }
-        references: { _payload: event.references }
-        metadata: { _payload: event.metadata }
-
-  # 4. Optional notifications dispatch (only if event was logged AND notifications opted in)
-  - id: notify
-    type: CallApi
-    skip:
-      _or:
-        - _not: { _payload: event.notifications }
-        - _not: { _payload: event }
-    properties:
-      endpointId:
-        _module.endpointId: { id: send-notification, module: notifications }
-      payload:
-        event_ids: [{ _step: new_event.eventId }]
-
-  - :return:
-      success: true
-      action_ids: { _step: update_actions }
-      event_id: { _state: event_id }
-```
-
-## Composition error semantics
-
-Mid-step failure leaves earlier writes durable and later steps unrun. No transaction, no rollback. Recovery is **user-retry** — caller resubmits, the routine re-runs from the top, idempotency guards converge to the same end state.
-
-| Step             | Retry-safe?       | Notes                                                                                                                                     |
-| ---------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `update_actions` | ✓                 | Engine priority rule + same-stage workflow guard no-op repeated pushes; fan-out + upsert is idempotent per key.                           |
-| `write_entity`   | depends on caller | Idempotent with `$set` / `$ifNull` / `$setOnInsert`. Not idempotent with `$push` / `$inc` / `$addToSet`. README documents the constraint. |
-| `new_event`      | ✗                 | Events module generates fresh `_id` per call; retry inserts a duplicate event. Accepted as known cost.                                    |
-| `notify`         | ✗                 | Same as `new_event` — duplicate notifications on retry. Accepted.                                                                         |
-
-Stable-`event_id` flow is a purely-additive future change: events module would grow caller-supplied id support; submit-action passes the same id on retry.
+Per-action `update-action-{action_type}` endpoints are resolver-emitted by `makeWorkflowApis`; the endpoint payload + `SubmitWorkflowAction` plugin handler lifecycle (validate → pre-hook → writes → side effects → post-hook), the pre/post hook return contracts, log-event override paths, notifications dispatch, and tracker-fired return signal all live in [submit-pipeline spec](../submit-pipeline/spec.md). Universal action fields (`assignees`, `due_date`, `description`) flow through the per-action endpoint's `fields:` payload block; form / form_review fields land at `form_data.{action_type}[.{key}].{field}` per engine D5 (no reserved sub-keys).
 
 ## Risk
 
-- **`submit-action` API surface stability.** If real apps surface complex submit flows beyond the four built-in steps, apps wrap their own routine around the `CallApi submit-action` step. Patterns across apps drive additive extensions to the payload; current shape stays extensible (optional fields default to no-op).
+- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / task action (`update-action-{action_type}`) plus four operational APIs. If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Current shape stays extensible (optional fields default to no-op).
