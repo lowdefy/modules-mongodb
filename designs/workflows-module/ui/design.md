@@ -52,9 +52,9 @@ Option B's appeal was that page IDs would be unprefixed (e.g. `lead-onboarding-q
 
 The resolver branches on action kind (see [action-authoring](../action-authoring/design.md) "Action kinds"):
 
-- **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-error`). One page doc per (action, verb).
+- **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`). Per-verb pages are emitted only when the action's `access.{app_name}` verb list contains that verb (per [action-authoring](../action-authoring/design.md) Decision 3); the `-error` page is always emitted alongside any other generated verb page. One page doc per emitted (action, verb).
 - **Task actions** — emits **no per-action pages**. The module ships two shared pages (`task-edit` and `task-view` exposed in `exports.pages`) that handle every task action across the build, addressed by `?action_id=<id>` in the URL.
-- **Sub-workflow actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
+- **Tracker actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
 
 For form actions, the per-action page YAML the resolver outputs looks like:
 
@@ -82,39 +82,140 @@ For form actions, the per-action page YAML the resolver outputs looks like:
           page_ids:
             view: "{workflow_type}-{action_type}-view"
             edit: "{workflow_type}-{action_type}-edit"
+            review: "{workflow_type}-{action_type}-review"
             error: "{workflow_type}-{action_type}-error"
           entity_type: {workflow.entity_type}
           ...
 ```
 
-Task actions don't go through this loop at all — the `task-edit` and `task-view` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the status selector and a comment field. No per-action customisation; identical experience for every task action across every workflow.
+Task actions don't go through this loop at all — the `task-edit`, `task-view`, and `task-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (status selector + comment for edit; read-only display for view; approve/request-changes for review). No per-action customisation; identical experience for every task action across every workflow.
 
 Notable shape choices the resolver commits to:
 
 1. **`app_name` is read, not iterated.** The resolver takes `app_name` and uses it to filter `access.{app_name}` per action — one app per build, no inner loop. Workflow YAML shared across host apps maps to multiple module compositions in `modules.yaml`, one per host app.
 2. **Module-relative template paths.** Templates live at `templates/{verb}.yaml.njk` in the module's own tree. Apps that need to override a per-action page supply a custom template via the action's YAML; the resolver checks for that override before falling back to the module default (see Decision 2 below).
-3. **`entity_type` / `entity_id` (entity-agnostic).** The resolver passes scalar `entity_type` (e.g. `lead`, `ticket`, `contact`) and `entity_id` (the doc `_id`) to templates. Per-action templates read these to build the right query and the back-link to the entity page.
-4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` shared pages, and sub-workflow actions don't have pages at all. An app with 6 form actions and 4 task actions ships 18 form-action pages (6 × 3 verbs) plus 2 shared task pages.
+3. **`entity_type` / `entity_id` / `entity_collection` (entity-agnostic).** The resolver passes scalar `entity_type` (e.g. `lead`, `ticket`, `contact`), `entity_id` (the doc `_id`), and `entity_collection` (the MongoDB collection connection id, e.g. `leads-collection`) to templates. Per-action templates read these to build the right query (using `entity_collection` as the `connectionId`) and the back-link to the entity page.
+4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` / `task-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on the action's `access.{app_name}` verb list: minimum two pages (`-error` is always emitted; one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all three verbs + error).
 
 ## Decision 2 — Page templates (sketch)
 
 The module ships two sets of templates:
 
-**Form-action templates** — used by `makeActionPages` to build per-action pages. Three generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/error.yaml.njk`.
+**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. Each template ships the matching button(s) from the submit-pipeline five-button vocabulary (see "Template-shipped button vocabulary" below); buttons call the action's resolver-generated `update-action-{action_type}` endpoint with the appropriate `interaction` value. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with the approve / request-changes button band added.
 
-**Task-action pages** — `pages/task-edit.yaml` and `pages/task-view.yaml` in the module's own tree (statically defined, not generated). Both pages take `?action_id=<id>` as a URL query, fetch the action doc, and render a generic surface:
+**Error template (`error.yaml.njk`).** Renders the recovery surface for an action whose `status[0].stage` is `error`. Three template-shipped behaviours:
 
-- **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. Save constructs the `submit-action` payload (`fields:` block + `event.metadata.comment`) and calls the endpoint via `CallApi`.
+1. **Stale-URL guard.** Template appends a redirect step to the page's `onMount`: if the loaded action's `status[0].stage !== 'error'`, the template emits `Link` to the action's `-view` page so users hitting a stale error URL are bounced out automatically.
+2. **Failure-context banner.** Template surfaces the action doc's `status[0].error_message` and `status[0].error_metadata` as a read-only banner above the form. Error context lives on the action doc's status entry, not in `form_data` (engine sub-design Decision 5).
+3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` interaction (submit-pipeline Decision 3) — wired to call `update-action-{action_type}` with `interaction: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
+
+The `-error` page is **always emitted** for every form action (regardless of the action's `access.{app_name}` verb list) — an action in `error` is a stuck state, and restricting per-app would strand users. Per-app visibility is controlled at the status-map level instead: omitting `status_map.error.{app_name}` suppresses the recovery link for that app. See [action-authoring](../action-authoring/design.md) "Error pages and the `error` status" for the authoring shape.
+
+### Template-shipped button vocabulary
+
+Each form-action template ships the matching button(s) from the submit-pipeline five-button vocabulary (submit-pipeline Decision 3). Each button is a template-shipped block that, on click:
+
+1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event handler (if declared), for page-state work — set state, fire requests, validate.
+2. Calls the action's `update-action-{action_type}` endpoint with `interaction: <button-name>` + the standard payload (`form`, `form_review`, `fields`, `current_key`).
+
+| Button            | Rendered on template                    | `interaction` value | Author event handler fired         | Engine target-status default                                               |
+| ----------------- | --------------------------------------- | ------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
+| `submit_edit`     | `edit.yaml.njk`                         | `submit_edit`       | `onSubmit`                         | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
+| `not_required`    | `view.yaml.njk` (and optionally `edit`) | `not_required`      | `onSubmit` (if rendered on `edit`) | `not-required`                                                             |
+| `resolve_error`   | `error.yaml.njk`                        | `resolve_error`     | `onSubmit`                         | Same as `submit_edit` (recovery returns the action to its normal flow)     |
+| `approve`         | `review.yaml.njk`                       | `approve`           | `onApprove`                        | `done`                                                                     |
+| `request_changes` | `review.yaml.njk`                       | `request_changes`   | `onRequestChanges`                 | `changes-required`                                                         |
+
+The author event handlers (`onSubmit`, `onApprove`, `onRequestChanges`) are unchanged from action-authoring Decision 8 and stay separate from the engine call (Decision 4 above lists the four-verb event vocabulary). Authors who need pre-write logic register a pre-hook on the action YAML (`hooks.{interaction}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
+
+The block-tree shape for each button looks roughly like:
+
+```yaml
+# Inside templates/edit.yaml.njk
+- id: submit_edit_button
+  type: Button
+  properties:
+    title: Submit
+    type: primary
+  events:
+    onClick:
+      - id: fire_author_event
+        type: CallMethod # invoke pages.edit.events.onSubmit if declared
+        params: { ... }
+      - id: submit
+        type: CallApi
+        params:
+          endpointId:
+            _module.endpointId: { id: update-action-{action_type}, module: workflows }
+          payload:
+            action_id: { _request: get_action._id }
+            interaction: submit_edit
+            current_key: { _request: get_action.key }
+            form: { _state: form }
+            form_review: { _state: form_review }
+            fields: { _state: fields }
+```
+
+Templates compose this via a small Nunjucks macro per button to keep the block trees terse and consistent. Authors don't write the CallApi step themselves; the template owns the wiring.
+
+**Task-action pages** — `pages/task-edit.yaml`, `pages/task-view.yaml`, and `pages/task-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
+
+- **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — it calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, `form:` (empty for tasks), and `event.metadata.comment`.
 - **`task-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
+- **`task-review`**: action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively (submit-pipeline Decision 3). The comment, if entered, flows through `event.metadata.comment`.
 
-Both task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
+All three task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
-The form-action templates have two notable properties:
-
-1. **App-theme-agnostic.** Templates render against whatever **layout module** the host app uses. Apps that need different styling per app deployment supply a layout module per deployment; the workflows module just uses `_module.pageId: { id: page-layout, module: layout }` to compose the surrounding chrome.
-2. **Per-action override path.** Each generated page checks the action's YAML for a `pages.{verb}.template` field; if set, the resolver `_ref`s that template instead of the module default. This is how apps with bespoke action pages opt out.
+Apps with bespoke action pages compose against the form components library ([action-authoring](../action-authoring/design.md) Decision 7) — authors build custom fields and reference them by name in `form:` blocks, or drop in app-side custom blocks via `component: <plugin-name>:foo`. v1 does not support per-action template overrides (a `pages.{verb}.template` field on the action YAML was considered but dropped — path resolution, vars contract, and layering semantics are unspecified, and the components library covers realistic v1 needs). The feature is purely additive in v1.x if real apps surface it as a need.
 
 Detailed template content is implementation-time material — the exact block tree, request-stage overrides, validate-on-submit wiring lands during implementation. Sketching the full block trees here would be paste-from-existing-app; that work belongs in the implementation phase.
+
+### All module-shipped pages wrap content in `layout.page`
+
+Every page the workflows module ships — generated per-action pages (`templates/edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`, `error.yaml.njk`), shared task pages (`pages/task-edit.yaml`, `task-view.yaml`, `task-review.yaml`), and the shared workflow overview (`pages/workflow-overview.yaml`) — composes its top-level block tree by `_ref`ing the layout module's `page` component. Cards inside the page (action cards, info cards) `_ref` the layout module's `card` component.
+
+```yaml
+# Canonical shape for every module-shipped page:
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: <page-id>
+    title: <page-title> # nunjucks-templated against page state if needed
+    breadcrumbs: [...] # optional; per-page navigation breadcrumbs
+    page_actions: [...] # optional; right-aligned page-header buttons
+    requests: [...] # page-level requests
+    events: # page-level event handlers
+      onInit: [...]
+      onMount: [...]
+    blocks: # the page content
+      - _ref:
+          module: layout
+          component: card # cards wrap content sections
+          vars: { title, blocks }
+```
+
+**Why hard-wire `layout.page` (not e.g. raw `Box`):**
+
+- **Host-app chrome.** Layout exports three page-block variants (`PageHeaderMenu`, `PageSiderMenu`, `PageSidebarLayout`) selected by the host app's `page_type` var (`modules/layout/module.lowdefy.yaml`). Module-shipped pages adopt whichever chrome the host app picked — header bar, sider, breadcrumbs, profile menu, notifications bell — without the module knowing or caring which variant the host configured. This is exactly how every other module-shipped page (`companies/pages/view.yaml`, `contacts/pages/view.yaml`, etc.) plugs into the consuming app.
+- **App-theme-agnostic.** Apps that want different chrome per deployment supply a different layout module composition; the workflows module is unchanged.
+- **Consistency with the convention.** Other modules-mongodb modules (`companies`, `contacts`, `user-admin`, `user-account`) all do this. The workflows module follows suit so app teams don't see two different module conventions side-by-side.
+
+**Vars passed in:**
+
+| Var            | Purpose                                                                                                                                                                       |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | Page id (auto-scoped under the module entry, e.g. `workflows/lead-onboarding-qualify-edit`)                                                                                   |
+| `title`        | Page header title — Nunjucks-templated against action / workflow state when needed                                                                                            |
+| `breadcrumbs`  | Optional. For per-action pages: `[Home, EntityList, EntityDetail, ActionTitle]`. For task pages and workflow-overview: `[Home, EntityDetail]`.                                |
+| `page_actions` | Optional right-aligned buttons in the page header (e.g. a "View History" button on `-edit` pages, an "Edit" link on `-view` pages, "Approve / Request Changes" on `-review`). |
+| `requests`     | Page-level Lowdefy request refs — `get_action.yaml`, `get_workflow.yaml`, etc.                                                                                                |
+| `events`       | Page-level `onInit` / `onMount` handlers (per Decision 4 event vocabulary)                                                                                                    |
+| `blocks`       | The page content — typically one or more `layout.card` blocks                                                                                                                 |
+
+**Cards within the page** use `_ref: { module: layout, component: card, vars: { title, blocks, footer? } }`. Card is the standard content wrapper — title bar, optional back button, body, optional footer. The form-action templates render the form inside a card; the task pages render the status selector / timeline inside cards; the workflow-overview page renders one card per action.
+
+**Floating actions** (Save / Submit / Approve buttons on edit and review pages) use `_ref: { module: layout, component: floating-actions, vars: { blocks: [...] } }` — the standard sticky-bottom action bar layout module ships. Templates that include floating-actions wire them to the four page-event handlers (`onSubmit`, `onApprove`, `onRequestChanges`); the buttons themselves are template-shipped, not author-authored.
 
 ### Page-level rendering of universal fields
 
@@ -122,9 +223,9 @@ Universal action fields (`assignees`, `due_date`, `description` — see [action-
 
 - On a **form action's** edit page they render in the page header alongside the form (a small assignees / due-date / description band above the form schema).
 - On a **task action's** edit page they're the primary content, with a status selector and a comment field below.
-- On a **sub-workflow action's** inline display in `actions-on-entity` they show as small badges next to the link.
+- On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
-Updates flow through `submit-action` like any other action change. The page composes the `fields:` block of the submit payload from form-state, plus an optional comment in `event.metadata.comment`.
+Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional comment in `event.metadata.comment`.
 
 ## Decision 3 — Module-level UI components
 
@@ -136,9 +237,9 @@ Entity-page block — renders all workflows for an entity, grouped, with collaps
 
 **Behaviour at runtime:**
 
-1. Calls the `get-entity-workflows` API (module-surface sub-design "Decision 2") with the entity's `(entity_type, entity_id)`.
-2. Iterates returned workflows in `display_order`.
-3. Per workflow, renders a `workflow-header` (see below) plus a grouped action list — grouped by `(workflow_id, action_group)`. **Never group by `action_group` alone** — that would silently merge actions across parallel workflows.
+1. Calls the `get-entity-workflows` API (module-surface sub-design "Decision 2") with the entity's `(entity_type, entity_id)`. The query uses `entity_type` + `entity_id`; the returned docs carry `entity_collection` so the consuming page can build entity-link URLs or query the entity collection directly without external mapping. Uses `type: CallApi` (not `type: Request`) because the workflows module's data-access path goes through its Api layer — the `WorkflowAPI` plugin's request types aren't directly callable from blocks; `CallApi` invokes the module's `get-entity-workflows` Api, which routes through the engine.
+2. Iterates returned workflows by `display_order` ASC, with `created.timestamp` DESC as tie-breaker (newest first). The tie-breaker matters when an entity carries multiple instances of the same workflow type — e.g. a `lead` with both a historical `onboarding` workflow and a current one. Matches the "current state at the top" convention also used by status arrays (`status[0]` is the current stage).
+3. Per workflow, renders a `workflow-header` (see below) plus a grouped action list. Groups are read from the workflow doc's persisted `groups[]` array (engine-written; see action-groups Decision 4) — each group rendered in declaration order with its persisted three-value status (`blocked` / `in-progress` / `done`) and per-group summary count. Within each group, actions are sub-sorted by `sort_order`. **Never group by `action_group` alone across workflows** — `(workflow_id, group.id)` is the correct grouping key (the persisted `groups[]` array already keys by workflow_id implicitly since it lives on the workflow doc).
 4. Each action's status-map link / message rendered from `status_map[currentStage].{app_name}`.
 
 **Block-level sketch:**
@@ -147,7 +248,7 @@ Entity-page block — renders all workflows for an entity, grouped, with collaps
 id: actions-on-entity
 type: Box
 events:
-  onInit:
+  onMount:
     - id: load
       type: CallApi
       properties:
@@ -160,35 +261,316 @@ blocks:
   # Iterate workflows, render workflow-header + grouped actions
 ```
 
+Uses `onMount` (not `onInit`) because the component is dropped onto an entity page that already has its own `onInit` for entity-loading. Fetching via `onMount` avoids blocking the entity page's render — matches the convention from [modules/events/components/events-timeline.yaml](../../../../modules/events/components/events-timeline.yaml).
+
 States to handle explicitly:
 
 - **Just-started workflow** (only `starting_actions` are `action-required`, the rest `blocked`): show the workflow with all its actions, blocked ones at the bottom.
 - **Completed workflow** (all actions `done` or `not-required`): show as a collapsed tile with a check mark, expandable to view history. Don't hide.
-- **Fully access-restricted workflow** (current user has no access to any of its actions): hide entirely or show "Restricted" tile. v1 default: hide.
+- **Fully access-restricted workflow** (current user has no access to any of its actions): hide entirely. v1 commits to "hide"; a future "Restricted" tile UX is a v1.x decision.
 
 ### `workflow-header`
 
-Per-workflow header strip — title, current lifecycle stage badge (read from `workflow_lifecycle_stages` enum), summary counts (e.g. "3 of 7 done"), optional milestone label (the highest-priority `status_title` of any non-blocked action), collapse/expand toggle.
+Per-workflow header strip — title, current lifecycle stage badge (read from `workflow_lifecycle_stages` enum), summary counts (e.g. "3 of 7 done"), milestone label = the `title` of the current group (lowest-ordered group whose `status !== done` in the workflow doc's `groups[]` array; falls back to the workflow title if all groups are `done`), collapse/expand toggle.
 
 ### `action_role_check`
 
-Reusable access-check primitive — verb-map + role-gate. Reads the current user's roles via `_user: profile.roles` (or wherever the user-admin module exposes them — match the convention) and the action's `access.{app_name}` block. Returns boolean — used by templates to conditionally render verbs.
+Reusable access-check primitive — verb-map + role-gate. Reads the current user's effective roles via `_user: roles` (sourced from `apps.{app_name}.roles` on the `user_contacts` doc — the same source the user-admin module manages) and the action's `access.{app_name}` verb map + `access.roles` list. Returns boolean — used by templates to conditionally render verbs. Implements the same check the engine runs at query-time in `get-entity-workflows` and at submit-time inside the `SubmitWorkflowAction` handler (see [action-authoring](../action-authoring/design.md) Decision 3 "Action access semantics").
 
-## Decision 4 — Status-selector behaviour on `task-edit`
+## Decision 4 — Page-event vocabulary and per-page chrome
+
+Action page YAML carries four event handlers plus four chrome blocks. The module-emitted page template wires them automatically.
+
+### Event handlers (fixed vocabulary)
+
+| Handler            | Pages that use it                 | Wired button / lifecycle               |
+| ------------------ | --------------------------------- | -------------------------------------- |
+| `onMount`          | `edit`, `view`, `review`, `error` | Page lifecycle (fires after page init) |
+| `onSubmit`         | `edit`                            | Submit button                          |
+| `onApprove`        | `review`                          | Approve button                         |
+| `onRequestChanges` | `review`                          | Request-changes button                 |
+
+Authors declare these as standard Lowdefy action arrays under `pages.{verb}.events.{handler}`:
+
+```yaml
+pages:
+  edit:
+    events:
+      onMount:
+        - id: set_device_id
+          type: SetState
+          params: { device_id: { _request: get_action.key } }
+      onSubmit:
+        - id: submit
+          type: CallAPI
+          params:
+            endpointId: my-team-app-initial-details-submit
+            payload:
+              workflow_id: { _state: workflow._id }
+              action_id: { _request: get_action._id }
+              form: { _state: form }
+  review:
+    events:
+      onMount: [...]
+      onApprove: [...]
+      onRequestChanges: [...]
+```
+
+The page template wires each handler to its trigger; authors write only the routine.
+
+### Chrome blocks
+
+Four optional blocks on each `pages.{verb}`:
+
+| Block        | Effect                                                                    |
+| ------------ | ------------------------------------------------------------------------- |
+| `title`      | Page title rendered in the page header                                    |
+| `requests`   | Lowdefy request refs the page loads (for entity hydration, file policies) |
+| `formHeader` | Block list rendered above the form (e.g. device-detail data view)         |
+| `formFooter` | Block list rendered below the form (e.g. collapsible help/info panels)    |
+| `modals`     | Config knobs on built-in module modals (review-page `request_changes`)    |
+
+```yaml
+pages:
+  edit:
+    title: Capture Initial Details
+    requests:
+      - _ref: ../shared/files/requests/file_upload_policy.yaml
+    formHeader: [...]
+    formFooter: [...]
+  review:
+    modals:
+      request_changes:
+        client_change: false # hide the client-change checkbox field
+```
+
+The form-action templates (`edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`) carry slots for each chrome block; the resolver injects the authored content at build time.
+
+### Why fixed names
+
+Three reasons to lock the four event verbs:
+
+- The template buttons are module-shipped; authors don't get to add a fifth button per-action without reaching for a different mechanism (form components library, or a custom block in `formFooter`).
+- Locked names mean apps can lint event handlers consistently — `onSubmit` always builds a submit payload, `onApprove` always means "approve in review."
+- Mirrors v0 exactly. No translation overhead for teams porting v0 actions into v1.
+
+Apps that need additional buttons add them via `formFooter:` — buttons in `formFooter:` carry their own `events.onClick`. The four locked verbs are template-wired; everything else is author-composed.
+
+## Decision 5 — Status-map binding for `actions-on-entity` and `workflow-history`
+
+The `actions-on-entity` component and the `workflow-history` timeline both consume `status_map.{current_stage}.{app_name}` to render each action's display cell.
+
+### Read path
+
+Both components receive the workflow + actions array via the same `get-entity-workflows` call. Per action:
+
+1. Read the action's `current_stage` (from `status[0].stage` on the action doc).
+2. Look up `status_map[current_stage][app_name]` on the action's authored definition. App name resolves from `_module.var: app_name`.
+3. Render the cell:
+   - **No entry** → action invisible to this app (also enforced server-side by the access query).
+   - **Entry with `message` only** → static text cell.
+   - **Entry with `link`** → clickable card; `link.pageId` resolves a route, `link.title` provides the link label, `link.urlQuery` builds the query string (`action_id: true` substitutes the current action's `_id`).
+4. Render the `message` string through Nunjucks with the action-instance context (action fields + key/joined-entity data, see Decision 6).
+
+### Instance context for templating
+
+`message` strings may contain `{{ var }}` placeholders. The components inject a context bag built from:
+
+- Action doc fields (`_id`, `key`, `assignees`, `due_date`, `description`, plus any reference fields the action carries).
+- For instanced actions (`key:` declared), any joined-entity fields the action has cached (e.g. `physical_id` for a per-device proof-of-installation action).
+
+Joining is opt-in via the action authoring `reference_fields:` block (action-authoring open work), not unconditional. v1 ships the templating with the action-doc fields available immediately; joined-entity context is the iterative extension.
+
+## Decision 6 — Instanced action pages
+
+Actions declaring `key:` (action-authoring Decision 9) generate one page per verb, **not** N pages. The page reads `?action_id=<id>` from the URL (same as task pages) and resolves the specific instance from that id.
+
+### Page emission
+
+`makeActionPages` emits the same set of pages for an instanced action as for a single-instance action: per-verb `-edit` / `-view` / `-review` / `-error`. There is no key segment in the page ID — `device-installation-proof-of-installation-edit` is the page; the instance is selected via `?action_id`.
+
+### Form-state path
+
+The page reads form state from `form_data.{action_type}.{key}.{field}` on the workflow doc, where `key` is sourced from `_request: get_action.key`. Save events write back to the same path via the per-action endpoint's `form` / `form_review` payload.
+
+### URL contract
+
+Entity-page link cells (rendered from `status_map`) build URLs with `urlQuery: { action_id: true }` — the action's `_id` is the only identifier in the URL. The page resolves the workflow + instance via the action doc; no `key` query parameter needed.
+
+### Display in `actions-on-entity`
+
+Instanced actions render as N rows (one per instance) within their `action_group`. Each row uses its own `status_map` entry — message templating injects per-instance context, so authors can write `Awaiting installation of device {{ physical_id }}.` and get one row per device with the right device id.
+
+## Decision 7 — Status-selector behaviour on `task-edit`
 
 The `task-edit` page surfaces a status selector populated from the module-shipped `global.action_statuses` enum (see [action-authoring](../action-authoring/design.md) "Action status enum"). The selector should NOT show every status — it should filter to **allowed transitions** via the priority rule (see [engine](../engine/design.md) "Status enum priority rule"):
 
 - From current stage, only stages with strictly lower priority are valid transitions.
-- `force: true` overrides aren't typically exposed through the UI.
+- **Same-stage allowed for the current action** — matches the engine's `currentActionId` self-exception (lets users re-save the action without changing its stage, e.g. updating `assignees` only).
+- **If current stage is `not-required`** (priority 0, universal terminal), no valid transitions exist via the priority rule. The selector is disabled with a "no transitions available" message rather than rendered with an empty option list.
+- `force: true` overrides aren't typically exposed through the UI — migrations and admin tools bypass the per-action endpoint and call `SubmitWorkflowAction` directly via a privileged route.
 
-The selector hides invalid options at render time. Save attempts that violate the rule (e.g. concurrent stage push from another user that the local UI didn't see) get rejected server-side by `submit-action`; the page surfaces a generic error.
+The selector hides invalid options at render time. Save attempts that violate the rule (e.g. concurrent stage push from another user that the local UI didn't see) get rejected server-side by the `SubmitWorkflowAction` handler; the page surfaces a generic error.
+
+## Decision 8 — `workflow-overview` page (module-shipped, read-only)
+
+The module ships one statically defined page at `pages/workflow-overview.yaml`, exported as `workflow-overview` from `module.lowdefy.yaml` (see [module-surface](../module-surface/design.md) "Decision 1"). The page is reached via `?workflow_id=<id>` and renders a single workflow as a read-only stack of action cards — status badge, status-map message, optional link button to the action's verb pages, and a DataView of any stored form data.
+
+This is the workflows-module counterpart of the user-admin module's `view` page: the canonical read-only display of one workflow doc. Apps that want a custom overview can build their own page; this one is the default, and consuming apps drop it onto their navigation or link to it from entity pages.
+
+### Why module-shipped (not generated per workflow)
+
+The overview is generic. Every workflow has the same structural shape — a header, a list of actions ordered by `display_order` / `sort_order`, per-action status + message + form data. The differences between workflows are data (which actions, what form schemas), not chrome. One page handles them all.
+
+Generating per-workflow overview pages was considered and rejected:
+
+- **No per-workflow customization needed.** The action cards already know how to render themselves from `action_form_configs` (the DataView reads form schemas from `global.action_form_configs`); the page just iterates.
+- **Easier deep-linking.** A single page id (`workflows/workflow-overview?workflow_id=<id>`) is a stable URL shape across workflow types. Per-workflow page ids (`workflows/{workflow_type}-overview`) would force callers to know the workflow type to build the URL — workflow_id alone is enough today.
+- **Matches `task-view` precedent.** The same argument that put `task-view` as a single module-level page rather than per-task pages applies here, one level up.
+
+Apps with truly bespoke overview needs build a custom page; the module provides the default.
+
+### Page contract
+
+**URL:** `/{module-entry}/workflow-overview?workflow_id=<workflow_id>`. Missing or null `workflow_id` triggers a redirect to the previous page (`Link` action with `back: true`).
+
+**Requests** loaded on mount:
+
+- `get_workflow_overview_data` — module-shipped request. Resolves the workflow doc by `_id` and joins its actions in `display_order` / `sort_order` order. Returns an array of `{ _id, workflow_id, workflow_type, type, kind, key, status, status_map.<app_name>, ...universal_fields }` — one entry per action, ordered as they should render.
+- `get_workflow_entity` — module-shipped request. Resolves the parent entity from the workflow doc's `entity_type` + `entity_id` + `entity_collection` so the page can render entity-context chrome (back link, entity title, etc.). Returns the raw entity doc.
+- `file_download_policy` — optional, exposed for DataView field types that read file attachments. Apps wiring file fields supply the policy request via standard module composition.
+
+**onMount events:**
+
+1. Redirect-if-no-workflow guard.
+2. Fire both requests.
+3. Set page state — `actions_list`, `entity`, `workflow_type`.
+
+**Blocks (sketch):**
+
+```yaml
+# pages/workflow-overview.yaml
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: workflow-overview
+    title:
+      _nunjucks:
+        template: "{{ workflow_title }} Overview"
+        on: { workflow_title: { _state: workflow_title } }
+    breadcrumbs:
+      - { home: true, icon: AiOutlineHome }
+      - label: { _state: entity_label }
+        pageId: { _state: entity_page_id }
+    page_actions:
+      - id: back_button
+        type: Button
+        properties: { title: Back, type: secondary }
+        events: { onClick: [{ id: back, type: Link, params: { back: true } }] }
+    requests:
+      - _ref: requests/get_workflow_overview.yaml
+      - _ref: requests/get_workflow_entity.yaml
+    events:
+      onMount: [...] # redirect-if-missing + both requests + setState
+    blocks:
+      - id: actions_list
+        type: List
+        blocks:
+          - id: actions_list.$.action_card
+            _ref:
+              module: layout
+              component: card
+              vars:
+                title:
+                  _nunjucks:
+                    template: "{{ message }}"
+                    on: { message: { _state: actions_list.$.message } }
+                blocks:
+                  - id: actions_list.$.empty_state
+                    type: Html
+                    visible:
+                      { _eq: [{ _state: actions_list.$.form_data }, null] }
+                    properties: { html: "<p>No form data.</p>" }
+                  - id: actions_list.$.data_view
+                    type: DataView
+                    visible:
+                      { _ne: [{ _state: actions_list.$.form_data }, null] }
+                    properties:
+                      formConfig:
+                        _array.concat:
+                          - {
+                              _get:
+                                {
+                                  from: { _global: action_form_configs },
+                                  key:
+                                    {
+                                      _string.concat:
+                                        [
+                                          { _state: actions_list.$.type },
+                                          ".form",
+                                        ],
+                                    },
+                                  default: [],
+                                },
+                            }
+                          - {
+                              _get:
+                                {
+                                  from: { _global: action_form_configs },
+                                  key:
+                                    {
+                                      _string.concat:
+                                        [
+                                          { _state: actions_list.$.type },
+                                          ".form_review",
+                                        ],
+                                    },
+                                  default: [],
+                                },
+                            }
+                      data: { _state: actions_list.$.form_data }
+                      s3GetPolicyRequestId: file_download_policy
+```
+
+The page wraps in `layout.page` (top-level `_ref`), each action becomes a `layout.card`, and the back / page-action buttons sit in the `page_actions` slot the layout module provides. `floating-actions` isn't used on the overview page — it's a read-only page with no submit affordances; the back button lives in the page header.
+
+```
+
+### Data sources the page reads
+
+| Read                           | Source                                                                           |
+| ------------------------------ | -------------------------------------------------------------------------------- |
+| Action list + per-action state | `get_workflow_overview_data` (joins workflow + actions)                          |
+| Status display attributes      | `global.action_statuses` (module-shipped enum, app-display-merged at build)      |
+| Action message + link          | `action.status_map.{current_stage}.{app_name}` on the action's authored config   |
+| Form schemas                   | `global.action_form_configs.{action_type}.form` and `.form_review`               |
+| Form data values               | `workflow.form_data.{action_type}` (or `.{action_type}.{key}` for keyed actions) |
+| Entity                         | `get_workflow_entity` (uses `entity_collection` as the connection id)            |
+
+The page is intentionally bound to `global.action_form_configs` rather than fetching schemas per-render: the schemas are static (resolved at build), so reading them from global state keeps the page lightweight.
+
+### Per-app access and visibility
+
+The page itself doesn't gate access — it loads any workflow the caller can read. Per-action `status_map.{app_name}` and `access.{app_name}.[view]` filtering still apply at the row level: actions not visible to the current app render as empty rows or are skipped by the read query (the module-shipped `get_workflow_overview_data` request filters out actions whose `access.{app_name}` doesn't include `view`).
+
+Apps that want a tighter access model (e.g. "only roles X can open the overview") wrap navigation to the page with their own auth guard; the page assumes anything reachable via its URL is intended to be visible.
+
+### Keyed actions in the overview
+
+Instanced actions (action-authoring Decision 9) render as N rows — one per instance — in the actions list. The DataView for each instance reads `form_data.{action_type}.{key}.{field}`, and the action_message templating injects per-instance context (the same `{{ var }}` rendering used everywhere else).
+
+### Tracker actions in the overview
+
+Tracker actions render as a single row with status badge + message + a link button that, when clicked, navigates to the child workflow's overview page (`workflow-overview?workflow_id=<child_workflow_id>`). The link target lives in the tracker action's `status_map.{stage}.{app_name}.link` — apps that wire the tracker action's link to `workflow-overview` get one-click drill-down into the child workflow.
 
 ## Open Questions
 
 1. **`makeActionsForm` recursion across module boundaries** — flagged in [action-authoring](../action-authoring/design.md). The form-action templates `_ref` the form resolver to build the form block tree; if the resolver can't recurse from inside a template the form builder falls back to a flat emitter. Templates accommodate either shape during the spike.
-2. **`completed-workflow` collapsed-tile UX detail** — exact look-and-feel of the collapsed tile, the "Restricted" tile for fully access-restricted workflows, and the workflow-header milestone label. v1 ships sensible defaults; iteration after first consumer adoption.
-3. **Comment timeline shape on `task-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `references.action_ids` includes the current `action_id` and `metadata.comment` is populated. Refinement based on real-app patterns.
+2. **`completed-workflow` collapsed-tile UX detail and the workflow-header milestone label.** v1 ships sensible defaults; iteration after first consumer adoption.
+3. **Comment timeline shape on `task-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references are spread to event-doc root by the events module's `new-event` routine, so the query path is `action_ids`, not `references.action_ids`). Refinement based on real-app patterns.
 
 ## Next Step
 
 Implementation of the templates, task pages, and module-level components. Apps drop `actions-on-entity` onto their entity pages and the rest renders automatically from the action-authoring YAML + engine writes.
+```
