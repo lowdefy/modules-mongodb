@@ -15,8 +15,8 @@ vars:
     required: true
     description: App name for MongoDB field paths (e.g., example-app)
   app_title:
-    default: ""
-    description: "Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User."
+    default: ''
+    description: 'Optional display prefix (e.g., Team). When set: Team User Admin, Invite Team User. When not set: User Admin, Invite User.'
   roles:
     required: true
     description: List of available user roles [{label, value}]
@@ -26,7 +26,7 @@ vars:
     description: App domain URL for invite links (falls back to current origin)
   fields:
     type: object
-    description: "Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
+    description: 'Field block arrays: profile, global_attributes, app_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr).'
     properties:
       show_honorific:
         type: boolean
@@ -53,7 +53,7 @@ vars:
           on save.
   components:
     type: object
-    description: "Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots"
+    description: 'Component overrides: view_access_tile, table_columns, download_columns, filters, main_slots, sidebar_slots'
     properties:
       download_columns:
         default: []
@@ -81,7 +81,7 @@ vars:
           show app-specific access information.
   request_stages:
     type: object
-    description: "MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows."
+    description: 'MongoDB pipeline stage overrides: get_all_users, write, filter_match. write stages are appended to both update and invite write flows.'
     properties:
       filter_match:
         default: []
@@ -106,7 +106,7 @@ vars:
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
-    description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+    description: 'Gradient pairs for avatar backgrounds. Each entry: { from, to }.'
 
 exports:
   pages:
@@ -165,9 +165,9 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^2"
-  - name: "@lowdefy/community-plugin-xlsx"
-    version: "^1"
-  - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.5.2"
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: '^3'
+  - name: '@lowdefy/community-plugin-xlsx'
+    version: '^1'
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: '^0.5.2'

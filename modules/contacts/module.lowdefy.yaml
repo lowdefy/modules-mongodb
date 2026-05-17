@@ -26,7 +26,7 @@ vars:
     description: "Per-app event display templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
   fields:
     type: object
-    description: "Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr)."
+    description: 'Field block arrays: profile, global_attributes. Same blocks used for edit forms and SmartDescriptions view. show_honorific toggles the honorific/title selector (Mr/Ms/Dr).'
     properties:
       show_honorific:
         type: boolean
@@ -46,7 +46,7 @@ vars:
           bind to `state.global_attributes.*`.
   components:
     type: object
-    description: "Component slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, company_card_extra_fields"
+    description: 'Component slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns, company_card_extra_fields'
     properties:
       table_columns:
         default: []
@@ -74,7 +74,7 @@ vars:
           on the company doc projected by get_contact_companies.
   request_stages:
     type: object
-    description: "Pipeline overrides: get_all_contacts, get_contact, write, selector, filter_match. write stages are appended to both create and update flows."
+    description: 'Pipeline overrides: get_all_contacts, get_contact, write, selector, filter_match. write stages are appended to both create and update flows.'
     properties:
       get_all_contacts:
         default:
@@ -106,7 +106,7 @@ vars:
   avatar_colors:
     default:
       _ref: ../shared/profile/avatar_colors.yaml
-    description: "Gradient pairs for avatar backgrounds. Each entry: { from, to }."
+    description: 'Gradient pairs for avatar backgrounds. Each entry: { from, to }.'
   use_verified:
     type: boolean
     default: false
@@ -174,9 +174,9 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^2"
-  - name: "@lowdefy/community-plugin-xlsx"
-    version: "^1"
-  - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.5.2"
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: '^3'
+  - name: '@lowdefy/community-plugin-xlsx'
+    version: '^1'
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: '^0.5.2'

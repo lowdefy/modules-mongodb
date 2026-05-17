@@ -143,7 +143,7 @@ secrets:
 
 plugins:
   - name: "@lowdefy/community-plugin-mongodb"
-    version: "^2"
+    version: "^3"
 ```
 
 Changes from current manifest:

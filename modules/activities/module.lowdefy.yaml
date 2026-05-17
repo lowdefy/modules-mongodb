@@ -44,7 +44,7 @@ vars:
           they bind to `state.attributes.*`.
   components:
     type: object
-    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
+    description: 'Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns'
     properties:
       table_columns:
         default: []
@@ -175,9 +175,9 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: "@lowdefy/community-plugin-mongodb"
-    version: "^2"
-  - name: "@lowdefy/community-plugin-xlsx"
-    version: "^1"
-  - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.5.2"
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: '^3'
+  - name: '@lowdefy/community-plugin-xlsx'
+    version: '^1'
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: '^0.5.2'
