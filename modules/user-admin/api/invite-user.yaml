@@ -114,6 +114,19 @@ routine:
           # Consumer pipeline stages
           - _module.var: request_stages.write
 
+  - id: get-user
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: user-contacts-collection
+    properties:
+      query:
+        lowercase_email:
+          _string.toLowerCase:
+            _string.trim:
+              _if_none:
+                - _payload: email
+                - ""
+
   - id: new-event
     type: CallApi
     properties:
@@ -154,13 +167,13 @@ routine:
                             _user: true
                           target:
                             name:
-                              _step: invite.value.profile.name
+                              _step: get-user.profile.name
                             email:
-                              _step: invite.value.email
+                              _step: get-user.email
                     description: null
         references:
           contact_ids:
-            - _step: invite.value._id
+            - _step: get-user._id
         metadata:
           app_name:
             _module.var: app_name
@@ -184,4 +197,4 @@ routine:
 
   - :return:
       userId:
-        _step: invite.value._id
+        _step: get-user._id
