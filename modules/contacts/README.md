@@ -20,7 +20,7 @@ Cross-module cycle: `companies ↔ contacts`. Both must be added as separate ent
 ```yaml
 modules:
   - id: contacts
-    source: "github:lowdefy/modules-mongodb/modules/contacts@v0.5.2"
+    source: "github:lowdefy/modules-mongodb/modules/contacts@v0.6.0"
     vars:
       app_name: my-app
       fields:
