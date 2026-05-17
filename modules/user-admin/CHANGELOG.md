@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 0.5.2
+
+### Patch Changes
+
+- [#60](https://github.com/lowdefy/modules-mongodb/pull/60) [`53782fc`](https://github.com/lowdefy/modules-mongodb/commit/53782fc04ab84e9fa240f7c1de8e247f5ded0544) Thanks [@Gervwyk](https://github.com/Gervwyk)! - Fix `invite-user` API resolving `_id`, `email`, and `profile.name` from the upsert response.
+
+  `MongoDBUpdateOne` does not return the document, so `_step: invite.value.*` was always `undefined` — the resulting event was logged with an empty title/contact reference, and the API returned `userId: null`. Added a `get-user` `MongoDBFindOne` step after the upsert that reads the user back by `lowercase_email`, and repointed the event display, `contact_ids` reference, and returned `userId` to it.
+
 ## 0.5.1
 
 ### Patch Changes
