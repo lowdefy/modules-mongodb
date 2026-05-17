@@ -1,5 +1,11 @@
 # @lowdefy/modules-mongodb-user-admin
 
+## 0.6.0
+
+### Minor Changes
+
+- [`ad80095`](https://github.com/lowdefy/modules-mongodb/commit/ad800955415ff9e5858a0ce3d8fc6ddd5b241046) Thanks [@Gervwyk](https://github.com/Gervwyk)! - Bump `@lowdefy/community-plugin-mongodb` peer requirement from `^2` to `^3` across all modules that depend on it (`activities`, `companies`, `contacts`, `notifications`, `user-account`, `user-admin`). Consumer apps must update their plugin install to the v3 line; module config and exports are otherwise unchanged.
+
 ## 0.5.2
 
 ### Patch Changes

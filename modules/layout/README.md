@@ -24,7 +24,7 @@ The dependency cycle (`user-account → layout → user-account`) is intentional
 ```yaml
 modules:
   - id: layout
-    source: "github:lowdefy/modules-mongodb/modules/layout@v0.5.2"
+    source: "github:lowdefy/modules-mongodb/modules/layout@v0.6.0"
     vars:
       page_type: header-menu
       footer:
