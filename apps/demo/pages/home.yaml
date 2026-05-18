@@ -33,7 +33,10 @@ _ref:
                 - id: link
                   type: Link
                   params:
-                    pageId: activities/all
+                    pageId:
+                      _module.pageId:
+                        module: activities
+                        id: all
           - id: user_admin_link
             type: Button
             layout:
@@ -49,7 +52,10 @@ _ref:
                 - id: link
                   type: Link
                   params:
-                    pageId: user-admin/all
+                    pageId:
+                      _module.pageId:
+                        module: user-admin
+                        id: all
           - id: companies_link
             type: Button
             layout:
@@ -65,7 +71,10 @@ _ref:
                 - id: link
                   type: Link
                   params:
-                    pageId: companies/all
+                    pageId:
+                      _module.pageId:
+                        module: companies
+                        id: all
           - id: contacts_link
             type: Button
             layout:
@@ -81,7 +90,10 @@ _ref:
                 - id: link
                   type: Link
                   params:
-                    pageId: contacts/all
+                    pageId:
+                      _module.pageId:
+                        module: contacts
+                        id: all
           - id: notifications_link
             type: Button
             layout:
@@ -97,7 +109,10 @@ _ref:
                 - id: link
                   type: Link
                   params:
-                    pageId: notifications/all
+                    pageId:
+                      _module.pageId:
+                        module: notifications
+                        id: all
           - id: profile_link
             type: Button
             layout:
@@ -113,7 +128,10 @@ _ref:
                 - id: link
                   type: Link
                   params:
-                    pageId: user-account/view
+                    pageId:
+                      _module.pageId:
+                        module: user-account
+                        id: view
           - id: release_notes_link
             type: Button
             layout:
@@ -129,4 +147,7 @@ _ref:
                 - id: link
                   type: Link
                   params:
-                    pageId: release-notes/view
+                    pageId:
+                      _module.pageId:
+                        module: release-notes
+                        id: view
