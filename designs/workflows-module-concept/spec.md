@@ -78,7 +78,7 @@ my-app/
 
 ## Deferred to separate designs
 
-- **MongoDB transactions** — routine-level `StartTransaction` / `EndTransaction` with session passthrough into plugin requests. Lowdefy-core enabler needed. Not v1; engine's "Client and transaction model" already accommodates a future `session.withTransaction(...)` opt-in inside the handler.
+- **MongoDB transactions** — routine-level `StartTransaction` / `EndTransaction` with session passthrough into plugin requests. Lowdefy-core enabler needed. Not v1; the engine's "Client and transaction model" delegates every read/write to `@lowdefy/community-plugin-mongodb` handlers that don't expose sessions, so a future ACID path would require a parallel raw-driver helper alongside the dispatcher.
 - **`on_complete` invocation mechanism for action groups** — the action-groups sub-design commits _what_ happens on group completion (engine returns `completed_groups`; submit-pipeline fans out one `context.callApi` per entry once the call-api primitive lands) but defers some refinements to a follow-up `api-hooks` sub-design.
 
 ## Cross-cutting risks
