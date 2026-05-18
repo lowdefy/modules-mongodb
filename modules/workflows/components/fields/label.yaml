@@ -1,0 +1,41 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  disabled:
+    type: boolean
+    required: false
+  visible:
+    type: boolean
+    default: true
+  validate:
+    type: array
+    default: []
+  blocks:
+    type: array
+    default: []
+
+config:
+  id:
+    _var: key
+  type: Label
+  visible:
+    _var:
+      key: visible
+      default: true
+  validate:
+    _var:
+      key: validate
+      default: []
+  properties:
+    title:
+      _var: title
+    disabled:
+      _var: disabled
+  blocks:
+    _var:
+      key: blocks
+      default: []

@@ -1,0 +1,77 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  validate:
+    type: array
+    default: []
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  extra:
+    type: string
+    required: false
+  label_disabled:
+    type: boolean
+    default: false
+  description:
+    type: string
+    required: false
+
+config:
+  id:
+    _var: key
+  type: CheckboxSwitch
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _var:
+      key: required
+      default: false
+  validate:
+    _var:
+      key: validate
+      default: []
+  properties:
+    title:
+      _var: title
+    label:
+      _build.object.assign:
+        - inline:
+            _var:
+              key: label_inline
+              default: false
+          extra:
+            _var: extra
+          disabled:
+            _var:
+              key: label_disabled
+              default: false
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
+    description:
+      _var: description

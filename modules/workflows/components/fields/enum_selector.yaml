@@ -1,0 +1,54 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  enum:
+    type: object
+    default: {}
+
+config:
+  id:
+    _var: key
+  type: Selector
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _var:
+      key: required
+      default: false
+  properties:
+    label:
+      align: right
+      span: 12
+    title:
+      _var: title
+    options:
+      _mql.aggregate:
+        - - _var:
+              key: enum
+              default: {}
+        - - $project:
+              items:
+                $objectToArray: $$ROOT
+          - $unwind:
+              path: $items
+          - $project:
+              label: $items.v.title
+              value: $items.k
+              style:
+                color: $items.v.color
+              tag:
+                color: $items.v.color
+                icon: $items.v.icon
+                title: $items.v.title

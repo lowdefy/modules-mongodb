@@ -1,0 +1,24 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: true
+  visible:
+    type: boolean
+    default: true
+
+config:
+  id:
+    _var: key
+  type: Divider
+  visible:
+    _var:
+      key: visible
+      default: true
+  properties:
+    style:
+      marginBottom: 4
+    title:
+      _var: title
