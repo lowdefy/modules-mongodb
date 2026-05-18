@@ -12,10 +12,16 @@ events:
                   _eq:
                     - _user: true
                     - null
-                then: user-account/login
+                then:
+                  _module.pageId:
+                    module: user-account
+                    id: login
               - if:
                   _ne:
                     - _user: profile.profile_created
                     - true
-                then: user-account/new
+                then:
+                  _module.pageId:
+                    module: user-account
+                    id: new
             default: home
