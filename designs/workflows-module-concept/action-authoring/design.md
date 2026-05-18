@@ -157,7 +157,7 @@ The validations run inside `makeWorkflowsConfig` (resolver pipeline, Decision 6)
 
 The kind drives three things downstream:
 
-1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; `-error` is always emitted). Task actions don't get per-action pages — they use shared module-level `task-edit` / `task-view` / `task-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
+1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; `-error` additionally requires the action to declare `pages.error` — emission rule `action.access[app_name].includes('error') && !!action.pages?.error`). Task actions don't get per-action pages — they use shared module-level `task-edit` / `task-view` / `task-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
 2. **Submit API surface.** Form and task actions each get a resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline). Template-shipped buttons call it with an `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine maps interaction → target status per submit-pipeline Decision 3. Task `submit_edit` is the one interaction where the caller supplies `current_status` directly (status selector on `task-edit`). Tracker actions don't submit at all — the engine writes their status via the tracker subscription.
 3. **Resolver invocation.** `makeActionsForm` and `makeActionFormConfigs` run only for form actions; task and tracker actions skip both. `makeActionPages` skips per-action emission for task and tracker kinds.
 
@@ -771,7 +771,7 @@ These fields belong to the action's authored YAML — they ride into the generat
 
 ### Error pages and the `error` status
 
-The fourth verb the page-emission resolver handles is `error`. An `-error` page is **always emitted** for every form action (regardless of `access.{app_name}` verb lists) because the engine can put any form action into `error` status at any time and the user needs a route to recovery.
+The fourth verb the page-emission resolver handles is `error`. An `-error` page is **opt-in per action**: the resolver emits it when `action.access[app_name].includes('error') && !!action.pages?.error`. Authors opt in by adding `error` to the action's per-app access verb list and declaring a `pages.error` block. Actions that don't opt in have no `-error` page in that app deployment — the engine's `error` transition still records context on the action doc, but there is no reachable recovery surface in the UI for that action there.
 
 **When an action enters `error`:**
 

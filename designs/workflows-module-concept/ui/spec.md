@@ -12,11 +12,11 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 ### Resolver output per action kind
 
-| Kind      | Pages generated                                                                                                                                                                                        |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list; `-error` is always emitted. |
-| `task`    | None (uses shared `task-edit` / `task-view` / `task-review`)                                                                                                                                           |
-| `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                           |
+| Kind      | Pages generated                                                                                                                                                                                                                                                                                                                      |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list. `-error` additionally requires the action to declare `pages.error` — emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. |
+| `task`    | None (uses shared `task-edit` / `task-view` / `task-review`)                                                                                                                                                                                                                                                                         |
+| `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                                                                         |
 
 ### Form-action page YAML shape
 
@@ -68,7 +68,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
   - **Recovery form** defaulting to the action's `form:` schema (or `form_error:` if declared).
   - **Template-shipped `resolve_error` button** (submit-pipeline Decision 3) wired to `update-action-{action_type}` with `interaction: resolve_error`; fires the author's `pages.error.events.onSubmit` first for page-state work. Title and optional confirm modal overridable via `pages.error.buttons.submit.{title, modal}`. Extra buttons go in `formFooter:`.
 
-The `-error` page is **always emitted** per form action (regardless of `access.{app_name}` verb list). Per-app visibility is controlled at the status-map level — omit `status_map.error.{app_name}` to suppress the recovery link for that app.
+The `-error` page is **opt-in**. Emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. Authors who want a recovery surface add `error` to the action's `access.{app_name}` verb list and declare a `pages.error` block; neither condition alone produces the page. Per-app visibility of the link is additionally controlled at the status-map level — omit `status_map.error.{app_name}` to suppress the recovery link even when the page exists.
 
 ### Template-shipped button vocabulary
 
