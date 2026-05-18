@@ -51,9 +51,13 @@ Nothing. Can ship in parallel with all other parts.
 
 ## Verification
 
-- Each component file parses as valid Lowdefy YAML.
-- Each component has a minimal smoke test: render a form referencing it in a fixture page; assert the block tree includes the substituted config.
-- README accurate to the shipped components.
+Verification rolls up into downstream parts rather than living in this part:
+
+- **YAML validity** is checked by Lowdefy's loader during the demo app build (part 20). A malformed component file fails the build with a path to the offending file.
+- **Substitution correctness** is part 15's verification — the form-builder resolver is the real consumer, and its integration tests render fixture forms against the real library. A reimplementation of the resolver inside part 14 would approximate part 15 and drift from it.
+- **README accuracy** is checked by reading: every component file in the directory has a §"Component reference" entry, and every var listed in a README table matches the component's `vars:` declaration.
+
+This part does not ship its own test harness.
 
 ## Open questions
 
