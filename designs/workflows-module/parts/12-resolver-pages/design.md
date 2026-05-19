@@ -12,30 +12,40 @@ This part emits the **page shells**: the right ids, right templates referenced, 
 
 ### `makeActionPages.js`
 
-For each form action in the normalized config (from [part 4](../04-workflow-config-schema/design.md)):
+Reads two inputs from `vars.workflows_config`:
+
+- The **normalized config** from [part 4](../04-workflow-config-schema/design.md) for engine-runtime fields (`type`, `kind`, `access`, `status_map`, etc.) — the slice committed by `makeWorkflowsConfig`.
+- The **raw `workflows_config` YAML** for build-time-only fields that part 4 deliberately strips from the normalized output: `pages`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`. Part 4's `tasks/tasks.md` makes this contract explicit ("Build-time-only fields are read by parts 12/13/15 from the raw workflow YAML, not from `workflowsConfig`"). Part 12 honours that split.
+
+For each form action:
 
 - Emits up to four pages with ids `{workflow_type}-{action_type}-{verb}` for `verb ∈ [edit, view, review, error]`.
-- Verb-gating per concept ui spec:
-  - `-edit`: emitted iff `edit` in `access.{vars.app_name}`.
-  - `-view`: emitted iff `view` in `access.{vars.app_name}`.
-  - `-review`: emitted iff `review` in `access.{vars.app_name}`.
-  - `-error`: emitted iff `action.access[vars.app_name].includes('error') && !!action.pages?.error` (opt-in per the verb-and-block rule).
+- Verb-gating: for each verb in `[edit, view, review, error]`, emit `-{verb}` iff that verb is in `access.{vars.app_name}`. The `error` verb has no extra opt-in — it's grouped with the others. Templates handle missing `pages.{verb}` chrome with sensible defaults (the error template ships its own recovery surface, stale-URL guard, and failure-context banner; `pages.error` is purely a chrome-override slot like `pages.edit`).
 - Tracker actions: emit nothing.
 - Task actions: emit nothing (shared `task-*` pages from [part 17](../17-shared-pages/design.md) handle them).
 - Each emitted page is a thin shell with `_ref` pointing at the template (part 16) plus vars carrying:
-  - `action_config` (the action's normalized config).
-  - `workflow_type`, `entity_type`, `entity_collection` (from the workflow).
-  - `page_ids` map for sibling-page navigation (`{ edit, view, review, error }`).
+  - `action_config` — the action's config slice the template needs: the normalized fields from part 4 (`type`, `kind`, `access`, `status_map`, etc.) merged with the build-time-only fields read from raw YAML (`pages.{verb}`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`). The merge happens in the resolver; templates see one flat shape.
+  - `workflow_type`, `entity_collection` (from the workflow). `entity_collection` is the single entity-identity scalar — see [part 21](../21-entity-type-to-collection/design.md).
+  - `page_ids` map for sibling-page navigation. Keys are only present for verbs that were actually emitted for this action — templates must guard sibling references (e.g. `_if page_ids.review is defined`). Avoids pointing at non-existent page ids.
   - `maxWidth`, etc. — pass-through chrome knobs from `action.pages.{verb}`.
+
+  The shell carries **context only** — page-level `events.onInit`, `requests:`, and the `get_action` request `_ref` live inside the template (part 16), not the shell. Part 12 doesn't bake request ids into the emitted YAML; templates own the render contract.
+
+  `entity_id` is **not** a build-time var — it arrives at runtime via the page's `?action_id=` URL query, resolved through `get_action.workflow_id → get_workflow.entity_id`. The UI spec wording that bundles `entity_id` with `entity_collection` refers to the template's runtime context, not the resolver's build-time vars.
 
 ### Upstream dependency
 
 This resolver emits dynamic pages whose ids depend on the app's `workflows_config`. That requires [part 2 (dynamic-module-pages)](../02-dynamic-module-pages/design.md) — module-system support for resolver-emitted page exports.
 
+### Placeholder templates
+
+Part 12 lands in Wave 2; the real templates land in part 16 (Wave 6). Ship four placeholder files at `templates/{edit,view,review,error}.yaml.njk` so the `_ref` paths the resolver emits resolve from day one — Lowdefy build fails loudly on missing `_ref` targets. Each placeholder is a thin stub: an `Html` block stating the page kind, plus an `Html` "form goes here" placeholder on `edit.yaml.njk` so authored pages are visually inspectable in dev before [part 15](../15-resolver-form-builder/design.md) wires the real form body. Part 16 replaces each placeholder with the full template.
+
 ### Build-time validation
 
-- For each emitted page, ensure the referenced template file exists (template files land in part 16, but the path check ships here so emission failures surface fast).
-- Page id collisions across workflows are prevented by the `{workflow_type}-...` prefix — but assert anyway.
+- `vars.app_name` is required and non-empty. Fail with a precise message if missing, `null`, or `""` — silent zero-page emission is the wrong failure mode. Defense in depth with part 20's manifest-level `required: true`.
+
+No template-existence or page-id-collision asserts. The Lowdefy build surfaces missing `_ref` paths on its own; id collisions are prevented structurally by the `{workflow_type}-{action_type}-{verb}` shape (three segments, verb suffix), so a runtime check earns nothing.
 
 ## Out of scope / deferred
 
@@ -46,25 +56,25 @@ This resolver emits dynamic pages whose ids depend on the app's `workflows_confi
 
 ## Depends on
 
-[Part 2](../02-dynamic-module-pages/design.md), [part 4](../04-workflow-config-schema/design.md).
+[Part 2](../02-dynamic-module-pages/design.md), [part 4](../04-workflow-config-schema/design.md), [part 21](../21-entity-type-to-collection/design.md) (for the `entity_collection`-only entity-identity contract).
 
 ## Verification
 
 - Unit tests:
-  - Worked-example onboarding workflow: `qualify` (form, `access: { my-team-app: [view, edit] }`, no `pages.error`) emits `-edit` and `-view` only.
-  - Adding `error` verb without `pages.error` does not emit `-error`. Adding `pages.error` without the verb does not emit it. Both together do.
+  - Worked-example onboarding workflow: `qualify` (form, `access: { my-team-app: [view, edit] }`) emits `-edit` and `-view` only.
+  - Adding `error` to the verb list emits `-error`; removing it does not. No `pages.error` block required.
   - `send-quote` (form with `review`) emits `-edit`, `-view`, `-review` per its access matrix.
   - `schedule-followup` (task) emits nothing.
-  - `track-installation` (tracker) emits nothing.
   - Tracker actions skipped even when carrying `access.{app}: [view]`.
 - Integration: build the demo app; assert generated page ids in the Lowdefy build output.
+- End-to-end coverage lands in [part 22 — workflows-e2e-suite](../22-workflows-e2e-suite/design.md) (`resolver-pages.spec.js`). This part's verification is unit-tests + build-output assertions only.
 
 ## Open questions
 
-- **Stub form block before [part 15](../15-resolver-form-builder/design.md) lands.** Concept open question: should the resolver emit an `Html` placeholder so pages are visually inspectable in dev? Lean yes; part 15 replaces.
 - **`pages.{verb}` per-action template override** — concept v1 says no; revisit if real apps need it.
 
 ## Contract to neighbours
 
-- **Part 16** ships the Nunjucks templates this resolver references.
+- **Part 16** replaces the placeholder Nunjucks templates shipped here with the real templates. Paths stay the same (`templates/{verb}.yaml.njk`); only the bodies change.
 - **Part 15** is invoked via `_ref` from inside the templates this resolver wires up — the recursive-resolver spike from concept's open questions lives there.
+- **Part 21** owns the entity-identity simplification (`entity_collection` only); part 12 passes that single scalar as a template var.
