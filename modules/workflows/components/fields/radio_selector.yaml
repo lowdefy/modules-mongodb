@@ -1,0 +1,51 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  options:
+    type: array
+    default: []
+  extra:
+    type: string
+    required: false
+  label_disabled:
+    type: boolean
+    default: false
+
+config:
+  id:
+    _var: key
+  type: RadioSelector
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _var:
+      key: required
+      default: false
+  properties:
+    title:
+      _var: title
+    label:
+      align: right
+      colon: false
+      extra:
+        _var: extra
+      disabled:
+        _var:
+          key: label_disabled
+          default: false
+    options:
+      _var:
+        key: options
+        default: []

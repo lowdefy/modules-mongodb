@@ -1,0 +1,91 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  placeholder:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  label_inline:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    required: false
+  s3PostPolicyRequestId:
+    type: string
+    default: upload_files
+
+config:
+  id:
+    _var: key
+  type: TiptapInput
+  visible:
+    _var:
+      key: visible
+      default: true
+  required:
+    _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: required
+              default: false
+          - true
+      then: true
+      else: false
+  validate:
+    _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: required
+              default: false
+          - true
+      then:
+        - message: This field is required
+          status: error
+          pass:
+            _gt:
+              - _string.length:
+                  _state:
+                    _string.concat:
+                      - _var: key
+                      - .text
+              - 0
+      else: []
+  properties:
+    label:
+      _build.object.assign:
+        - inline:
+            _var:
+              key: label_inline
+              default: false
+        - _build.if:
+            test:
+              _build.ne:
+                - _var:
+                    key: label_span
+                    default: null
+                - null
+            then:
+              span:
+                _var: label_span
+              align: right
+            else: {}
+    title:
+      _var: title
+    placeholder:
+      _var: placeholder
+    s3PostPolicyRequestId:
+      _var:
+        key: s3PostPolicyRequestId
+        default: upload_files

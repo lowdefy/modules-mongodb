@@ -1,0 +1,73 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: true
+  visible:
+    type: boolean
+    default: true
+  align:
+    type: string
+    default: left
+  type:
+    type: string
+    default: default
+  icon:
+    type: string
+    default: null
+  disabled:
+    type: boolean
+    default: false
+  label_span:
+    type: number
+    default: 0
+  on_click:
+    type: array
+    default: []
+
+config:
+  id:
+    _var: key
+  type: Button
+  visible:
+    _var:
+      key: visible
+      default: true
+  layout:
+    span:
+      _subtract:
+        - 24
+        - _var:
+            key: label_span
+            default: 0
+    push:
+      _var:
+        key: label_span
+        default: 0
+  style:
+    textAlign:
+      _var:
+        key: align
+        default: left
+  properties:
+    title:
+      _var: title
+    type:
+      _var:
+        key: type
+        default: default
+    icon:
+      _var:
+        key: icon
+        default: null
+    disabled:
+      _var:
+        key: disabled
+        default: false
+  events:
+    onClick:
+      _var:
+        key: on_click
+        default: []

@@ -1,0 +1,16 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: true
+
+config:
+  id:
+    _var: key
+  type: Title
+  properties:
+    level: 5
+    content:
+      _var: title

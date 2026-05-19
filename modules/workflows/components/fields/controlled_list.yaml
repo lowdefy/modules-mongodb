@@ -1,0 +1,85 @@
+vars:
+  key:
+    type: string
+    required: true
+  title:
+    type: string
+    required: false
+  visible:
+    type: boolean
+    default: true
+  required:
+    type: boolean
+    default: false
+  hideAddButton:
+    type: boolean
+    default: false
+  hideRemoveButton:
+    type: boolean
+    default: false
+  minItems:
+    type: number
+    default: 0
+  blocks:
+    type: array
+    default: []
+
+config:
+  id:
+    _string.concat:
+      - _var: key
+      - _label
+  type: Label
+  visible:
+    _var:
+      key: visible
+      default: true
+  validate:
+    _build.if:
+      test:
+        _build.eq:
+          - _var:
+              key: required
+              default: false
+          - true
+      then:
+        - message: This field is required.
+          status: error
+          pass:
+            _gt:
+              - _array.length:
+                  _state:
+                    _var: key
+              - 0
+      else: []
+  properties:
+    disabled: true
+  blocks:
+    - id:
+        _var: key
+      type: ControlledList
+      layout:
+        contentGutter: 8
+      visible:
+        _var:
+          key: visible
+          default: true
+      properties:
+        title:
+          _var: title
+        hideAddButton:
+          _var:
+            key: hideAddButton
+            default: false
+        hideRemoveButton:
+          _var:
+            key: hideRemoveButton
+            default: false
+        minItems:
+          _var:
+            key: minItems
+            default: 0
+      blocks:
+        _var:
+          key: blocks
+          default: []

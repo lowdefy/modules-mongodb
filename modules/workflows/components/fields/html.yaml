@@ -1,0 +1,22 @@
+vars:
+  key:
+    type: string
+    required: true
+  html:
+    type: string
+    required: true
+  visible:
+    type: boolean
+    default: true
+
+config:
+  id:
+    _var: key
+  type: Html
+  visible:
+    _var:
+      key: visible
+      default: true
+  properties:
+    html:
+      _var: html
