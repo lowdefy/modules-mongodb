@@ -11,8 +11,8 @@ Ship the four static module-shipped Apis that consuming apps call to manage work
 ### `api/start-workflow.yaml`
 
 - Payload schema:
-  - Required: `workflow_type`, `entity_type`, `entity_id`, `entity_collection`.
-  - Optional: `parent_action_id`, `parent_entity_id`, `parent_entity_collection`, `actions: []`, `references: {}`.
+  - Required: `workflow_type`, `entity_id`, `entity_collection`. `entity_collection` is the sole entity-identity scalar — see [part 21](../21-entity-type-to-collection/design.md).
+  - Optional: `parent_action_id`, `actions: []`, `references: {}`. (Callers do not supply `parent_entity_id` / `parent_entity_collection` — the handler reads them off the parent tracker action; see [part 5 review-1 #1](../05-start-cancel-handlers/review/review-1.md#1-parent-entity_id--entity_collection-provenance-contradicts-the-engine-spec).)
 - Routine: single step invoking `StartWorkflow` plugin handler from [part 5](../05-start-cancel-handlers/design.md) via the `workflow-api` connection.
 - Returns `{ workflow_id, action_ids }`.
 
@@ -26,7 +26,7 @@ Ship the four static module-shipped Apis that consuming apps call to manage work
 
 ### `api/get-entity-workflows.yaml`
 
-- Payload: `entity_type`, `entity_id`.
+- Payload: `entity_id`, `entity_collection`. (Per [part 21](../21-entity-type-to-collection/design.md), the lookup is by collection, not by named entity type.)
 - Routine: aggregation over `workflows-collection` and `actions-collection`:
   - Find all workflows for the entity.
   - Find all actions for those workflows.
@@ -73,6 +73,7 @@ All three implementations must match.
   - `get-entity-workflows` filters by access correctly; returns persisted `groups[]`.
   - `get-workflow-overview` orders actions correctly; returns null workflow when all actions inaccessible.
 - Integration: end-to-end through the worked-example onboarding workflow.
+- End-to-end coverage lands in [part 22 — workflows-e2e-suite](../22-workflows-e2e-suite/design.md) (`operational-apis.spec.js`). This part's verification is unit-tests + handler-level smoke only.
 
 ## Open questions
 

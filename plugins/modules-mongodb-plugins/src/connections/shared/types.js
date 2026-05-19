@@ -28,7 +28,6 @@
  * @property {string} workflow_type
  * @property {string | null} key
  * @property {number} display_order
- * @property {string} entity_type
  * @property {string} entity_id
  * @property {string} entity_collection
  * @property {string | null} parent_action_id
@@ -54,7 +53,6 @@
  * @property {ActionKind} kind
  * @property {string | null} key
  * @property {StatusEntry[]} status
- * @property {string} entity_type
  * @property {string} entity_id
  * @property {string} entity_collection
  * @property {string[]} assignees

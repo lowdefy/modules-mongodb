@@ -14,7 +14,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 | Kind      | Pages generated                                                                                                                                                                                                                                                                                                                      |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list. `-error` additionally requires the action to declare `pages.error` — emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. |
+| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list. All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`.                                                       |
 | `task`    | None (uses shared `task-edit` / `task-view` / `task-review`)                                                                                                                                                                                                                                                                         |
 | `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                                                                         |
 
@@ -45,7 +45,6 @@ When workflow YAML is shared across multiple host apps, each host app composes t
             edit: "{workflow_type}-{action_type}-edit"
             review: "{workflow_type}-{action_type}-review"
             error: "{workflow_type}-{action_type}-error"
-          entity_type: "{workflow.entity_type}"
           entity_collection: "{workflow.entity_collection}"
 ```
 
@@ -53,7 +52,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 - **`app_name` is read, not iterated**: resolver uses it to filter `access.{app_name}` per action. One app per build.
 - **Module-relative template paths**: templates live at `templates/{verb}.yaml.njk` in the module's own tree. v1 does not support per-action template overrides; apps with bespoke page needs compose against the form components library (custom fields by name in `form:` blocks, or app-side custom blocks via `component: <plugin-name>:foo`). A `pages.{verb}.template` per-action override is purely additive in v1.x if real apps surface the need.
-- **Entity scalars passed through**: `entity_type`, `entity_id`, `entity_collection` flow into templates so they can build the right query (using `entity_collection` as `connectionId`) and the back-link to the entity page.
+- **Entity scalars passed through**: `entity_id` and `entity_collection` flow into templates so they can build the right query (using `entity_collection` as `connectionId`) and the back-link to the entity page.
 
 ## Templates shipped by the module
 
@@ -68,7 +67,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
   - **Recovery form** defaulting to the action's `form:` schema (or `form_error:` if declared).
   - **Template-shipped `resolve_error` button** (submit-pipeline Decision 3) wired to `update-action-{action_type}` with `interaction: resolve_error`; fires the author's `pages.error.events.onSubmit` first for page-state work. Title and optional confirm modal overridable via `pages.error.buttons.submit.{title, modal}`. Extra buttons go in `formFooter:`.
 
-The `-error` page is **opt-in**. Emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. Authors who want a recovery surface add `error` to the action's `access.{app_name}` verb list and declare a `pages.error` block; neither condition alone produces the page. Per-app visibility of the link is additionally controlled at the status-map level — omit `status_map.error.{app_name}` to suppress the recovery link even when the page exists.
+The `-error` page is gated identically to the other verbs: emitted iff `error` is in the action's `access.{app_name}` verb list. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent. Per-app visibility of the recovery link from other pages is additionally controlled at the status-map level — omit `status_map.error.{app_name}` to suppress the recovery link even when the page exists.
 
 ### Template-shipped button vocabulary
 
@@ -96,7 +95,7 @@ All three task pages take `?action_id=<id>` as a URL query. Apps don't override 
 - Takes `?workflow_id=<id>` URL query. Missing/null triggers a `Link` back to the previous page.
 - Module-shipped requests fired on mount:
   - `get_workflow_overview_data` — joins workflow doc + action docs filtered by `access.{app_name}.[view]`, ordered by `display_order` / `sort_order`. Returns one row per action with status, status_map, universal fields, and (for keyed actions) the key value.
-  - `get_workflow_entity` — resolves the entity from the workflow doc's `entity_type` + `entity_id` + `entity_collection`.
+  - `get_workflow_entity` — resolves the entity from the workflow doc's `entity_id` + `entity_collection`.
 - Renders inside `layout.page.blocks`:
   - One `List` of action cards, each wrapped in `layout.card`. Card title carries status badge (from `global.action_statuses.{status}`), status-map message (`status_map.{current_stage}.{app_name}.message`, Nunjucks-templated), and an optional link button.
   - Card body is either an empty-state Html block (when no form_data) or a `DataView` over the action's `form_data` using `global.action_form_configs.{action_type}.form` + `.form_review`.
@@ -239,7 +238,7 @@ Renders all workflows for one entity. Per workflow, reads the engine-persisted `
 
 **Runtime behaviour:**
 
-1. Calls `get-entity-workflows` with `(entity_type, entity_id)`. Returned docs carry `entity_collection` so the consuming page can build entity-link URLs or query the entity collection directly without external mapping.
+1. Calls `get-entity-workflows` with `(entity_collection, entity_id)`. Returned docs carry `entity_collection` so the consuming page can build entity-link URLs or query the entity collection directly without external mapping.
 2. Iterates returned workflows by `display_order` ASC, `created.timestamp` DESC as tie-breaker (newest first for multi-instance same-type cases).
 3. Per workflow, renders a `workflow-header` plus per-group sections using the workflow doc's persisted `groups[]`. Within each group, actions sub-sorted by `sort_order`. Groups are scoped to the workflow doc, so cross-workflow merging is structurally prevented.
 4. Each action's status-map link / message rendered from `status_map[currentStage].{app_name}`.
@@ -263,7 +262,7 @@ events:
         endpointId:
           _module.endpointId: { id: get-entity-workflows, module: workflows }
         payload:
-          entity_type: { _module.var: entity_type }
+          entity_collection: { _module.var: entity_collection }
           entity_id: { _module.var: entity_id }
 blocks:
   # Iterate workflows, render workflow-header + grouped actions

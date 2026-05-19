@@ -104,7 +104,6 @@ Connection lifecycle, change-log writes (the `changeLog` block on the connection
 | `workflow_type`            | string         | from YAML                                                                                                                                                                                                                                                                                                         |
 | `key`                      | string \| null | optional partition key                                                                                                                                                                                                                                                                                            |
 | `display_order`            | number         | from YAML                                                                                                                                                                                                                                                                                                         |
-| `entity_type`              | string         | scalar, e.g. `lead`                                                                                                                                                                                                                                                                                               |
 | `entity_id`                | string         | the entity's `_id`                                                                                                                                                                                                                                                                                                |
 | `entity_collection`        | string         | MongoDB collection connection id, e.g. `leads-collection`                                                                                                                                                                                                                                                         |
 | `parent_action_id`         | string \| null | tracker-action `_id` if this workflow is a child                                                                                                                                                                                                                                                                  |
@@ -127,7 +126,7 @@ Connection lifecycle, change-log writes (the `changeLog` block on the connection
 | `kind`                                          | string         | `form` \| `task` \| `tracker`                                                        |
 | `key`                                           | string \| null | for fan-out actions (non-tracker); domain id like a device serial                    |
 | `status`                                        | array          | history, newest at index 0                                                           |
-| `entity_type`, `entity_id`, `entity_collection` | various        | matches parent workflow                                                              |
+| `entity_id`, `entity_collection`                | various        | matches parent workflow                                                              |
 | `assignees`                                     | string[]       | universal field                                                                      |
 | `due_date`                                      | Date \| null   | universal field                                                                      |
 | `description`                                   | string \| null | universal field                                                                      |
@@ -180,8 +179,8 @@ Two entry paths put an action into `error` status:
 The engine assumes the following indexes exist on the consuming app's `workflows` and `actions` collections. The module README ships them as a "Required indexes" section — same convention as every other module in this repo (`activities`, `companies`, `notifications` all document indexes prose-style without auto-asserting). Consumers create them via the repo's `r:index-dev` migration skill or directly in Atlas/mongo shell.
 
 - `actions`: unique `(workflow_id, type, key)`.
-- `actions`: `(entity_type, entity_id)` for `get-entity-workflows`.
-- `workflows`: `(entity_type, entity_id)` for `get-entity-workflows`.
+- `actions`: `(entity_collection, entity_id)` for `get-entity-workflows`.
+- `workflows`: `(entity_collection, entity_id)` for `get-entity-workflows`.
 - No reverse-lookup index for tracker subscription — primary-key lookup on the child's `parent_action_id` serves it.
 
 The engine does not assert these at runtime; the dispatcher delegates every read/write to community-plugin handlers that don't expose a startup hook.
@@ -227,7 +226,6 @@ const doc = {
   _id: actionId,
   workflow_id,
   type,
-  entity_type,
   entity_id,
   entity_collection,
   ...(actionUpdate.fields ?? {}),
@@ -235,7 +233,7 @@ const doc = {
 };
 ```
 
-Reserved keys: `_id`, `workflow_id`, `type`, `entity_type`, `entity_id`, `entity_collection`, `key`, `status`, `summary`, `created`, `updated`, `assignees`, `due_date`, `description`, `tracker`, `child_workflow_id`, `child_entity_id`, `child_entity_collection`, `parent_action_id`, `parent_entity_id`, `parent_entity_collection`. Collisions are silently overridden by core fields; no validation throws in v1.
+Reserved keys: `_id`, `workflow_id`, `type`, `entity_id`, `entity_collection`, `key`, `status`, `summary`, `created`, `updated`, `assignees`, `due_date`, `description`, `tracker`, `child_workflow_id`, `child_entity_id`, `child_entity_collection`, `parent_action_id`, `parent_entity_id`, `parent_entity_collection`. Collisions are silently overridden by core fields; no validation throws in v1.
 
 ## Tracker subscription
 

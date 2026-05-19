@@ -91,7 +91,7 @@ A workflow YAML grows a top-level `action_groups:` field — an ordered array of
 ```yaml
 type: onboarding
 title: Onboarding
-entity_type: lead
+entity_collection: leads-collection
 display_order: 1
 
 action_groups:
@@ -157,7 +157,7 @@ The validations run inside `makeWorkflowsConfig` (resolver pipeline, Decision 6)
 
 The kind drives three things downstream:
 
-1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; `-error` additionally requires the action to declare `pages.error` — emission rule `action.access[app_name].includes('error') && !!action.pages?.error`). Task actions don't get per-action pages — they use shared module-level `task-edit` / `task-view` / `task-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
+1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; all four verbs gated identically). Task actions don't get per-action pages — they use shared module-level `task-edit` / `task-view` / `task-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
 2. **Submit API surface.** Form and task actions each get a resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline). Template-shipped buttons call it with an `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine maps interaction → target status per submit-pipeline Decision 3. Task `submit_edit` is the one interaction where the caller supplies `current_status` directly (status selector on `task-edit`). Tracker actions don't submit at all — the engine writes their status via the tracker subscription.
 3. **Resolver invocation.** `makeActionsForm` and `makeActionFormConfigs` run only for form actions; task and tracker actions skip both. `makeActionPages` skips per-action emission for task and tracker kinds.
 
@@ -316,7 +316,6 @@ App code that creates the child entity calls `start-workflow` with `parent_actio
   endpointId: { _module.endpointId: { id: start-workflow, module: workflows } }
   payload:
     workflow_type: device-installation
-    entity_type: ticket
     entity_id: { _step: create_ticket.insertedId }
     entity_collection: tickets-collection
     parent_action_id: { _state: parent_action_id } # the tracker action's _id
@@ -374,7 +373,7 @@ Tracker actions **only ever track workflows**. There is no `kind: tracker` varia
 # workflow_config/site-setup/site-setup.yaml
 type: site-setup
 title: Site Setup
-entity_type: support-ticket
+entity_collection: support-tickets-collection
 display_order: 1
 starting_actions:
   - { type: complete-site-setup, status: action-required }
@@ -427,7 +426,7 @@ Validation rules:
 **Per workflow** (each element of `workflows_config`):
 
 - `type` (string) — required, non-empty.
-- `entity_type` (string) — required, non-empty.
+- `entity_collection` (string) — required, non-empty. A MongoDB collection connection id (e.g. `leads-collection`); the sole entity-identity scalar.
 - `display_order` (number) — required.
 - `starting_actions` (array) — required; each entry must be `{ type, status }` where `type` resolves to one of the workflow's declared `actions[].type` values and `status` is a key in the module-shipped `action_statuses` enum.
 - `actions` (array) — required, non-empty.
@@ -771,7 +770,7 @@ These fields belong to the action's authored YAML — they ride into the generat
 
 ### Error pages and the `error` status
 
-The fourth verb the page-emission resolver handles is `error`. An `-error` page is **opt-in per action**: the resolver emits it when `action.access[app_name].includes('error') && !!action.pages?.error`. Authors opt in by adding `error` to the action's per-app access verb list and declaring a `pages.error` block. Actions that don't opt in have no `-error` page in that app deployment — the engine's `error` transition still records context on the action doc, but there is no reachable recovery surface in the UI for that action there.
+The fourth verb the page-emission resolver handles is `error`, gated identically to the other three: the resolver emits the `-error` page when `error` is in the action's `access.{app_name}` verb list. Actions without `error` in the list have no `-error` page in that app deployment — the engine's `error` transition still records context on the action doc, but there is no reachable recovery surface in the UI for that action there. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent.
 
 **When an action enters `error`:**
 

@@ -52,7 +52,7 @@ Option B's appeal was that page IDs would be unprefixed (e.g. `lead-onboarding-q
 
 The resolver branches on action kind (see [action-authoring](../action-authoring/design.md) "Action kinds"):
 
-- **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`). Per-verb pages are emitted only when the action's `access.{app_name}` verb list contains that verb (per [action-authoring](../action-authoring/design.md) Decision 3). `-error` is additionally gated on the action declaring `pages.error` — emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. One page doc per emitted (action, verb).
+- **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`). Per-verb pages are emitted only when the action's `access.{app_name}` verb list contains that verb (per [action-authoring](../action-authoring/design.md) Decision 3). All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. One page doc per emitted (action, verb).
 - **Task actions** — emits **no per-action pages**. The module ships two shared pages (`task-edit` and `task-view` exposed in `exports.pages`) that handle every task action across the build, addressed by `?action_id=<id>` in the URL.
 - **Tracker actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
 
@@ -84,7 +84,7 @@ For form actions, the per-action page YAML the resolver outputs looks like:
             edit: "{workflow_type}-{action_type}-edit"
             review: "{workflow_type}-{action_type}-review"
             error: "{workflow_type}-{action_type}-error"
-          entity_type: {workflow.entity_type}
+          entity_collection: {workflow.entity_collection}
           ...
 ```
 
@@ -94,8 +94,8 @@ Notable shape choices the resolver commits to:
 
 1. **`app_name` is read, not iterated.** The resolver takes `app_name` and uses it to filter `access.{app_name}` per action — one app per build, no inner loop. Workflow YAML shared across host apps maps to multiple module compositions in `modules.yaml`, one per host app.
 2. **Module-relative template paths.** Templates live at `templates/{verb}.yaml.njk` in the module's own tree. Apps that need to override a per-action page supply a custom template via the action's YAML; the resolver checks for that override before falling back to the module default (see Decision 2 below).
-3. **`entity_type` / `entity_id` / `entity_collection` (entity-agnostic).** The resolver passes scalar `entity_type` (e.g. `lead`, `ticket`, `contact`), `entity_id` (the doc `_id`), and `entity_collection` (the MongoDB collection connection id, e.g. `leads-collection`) to templates. Per-action templates read these to build the right query (using `entity_collection` as the `connectionId`) and the back-link to the entity page.
-4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` / `task-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on the action's `access.{app_name}` verb list: minimum one page (one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all three verbs plus `-error` when the action opts in via `error` in the access list and a `pages.error` block).
+3. **`entity_id` / `entity_collection` (entity-agnostic).** The resolver passes scalar `entity_id` (the doc `_id`) and `entity_collection` (the MongoDB collection connection id, e.g. `leads-collection`) to templates. `entity_collection` is the sole entity-identity scalar — no separate named-kind field rides alongside it. Per-action templates read these to build the right query (using `entity_collection` as the `connectionId`) and the back-link to the entity page.
+4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` / `task-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on the action's `access.{app_name}` verb list: minimum one page (one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all four verbs in the access list).
 
 ## Decision 2 — Page templates (sketch)
 
@@ -109,7 +109,7 @@ The module ships two sets of templates:
 2. **Failure-context banner.** Template surfaces the action doc's `status[0].error_message` and `status[0].error_metadata` as a read-only banner above the form. Error context lives on the action doc's status entry, not in `form_data` (engine sub-design Decision 5).
 3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` interaction (submit-pipeline Decision 3) — wired to call `update-action-{action_type}` with `interaction: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
 
-The `-error` page is **opt-in per action**. Emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. Authors who want a recovery surface add `error` to the action's `access.{app_name}` verb list and declare a `pages.error` block on the action; either condition alone produces no page. Per-app visibility of the recovery link from other pages is additionally controlled at the status-map level — omitting `status_map.error.{app_name}` suppresses the link even when the page exists. See [action-authoring](../action-authoring/design.md) "Error pages and the `error` status" for the authoring shape.
+The `-error` page is gated identically to the other verbs: emitted iff `error` is in the action's `access.{app_name}` verb list. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent. Per-app visibility of the recovery link from other pages is additionally controlled at the status-map level — omitting `status_map.error.{app_name}` suppresses the link even when the page exists. See [action-authoring](../action-authoring/design.md) "Error pages and the `error` status" for the authoring shape.
 
 ### Template-shipped button vocabulary
 
@@ -237,7 +237,7 @@ Entity-page block — renders all workflows for an entity, grouped, with collaps
 
 **Behaviour at runtime:**
 
-1. Calls the `get-entity-workflows` API (module-surface sub-design "Decision 2") with the entity's `(entity_type, entity_id)`. The query uses `entity_type` + `entity_id`; the returned docs carry `entity_collection` so the consuming page can build entity-link URLs or query the entity collection directly without external mapping. Uses `type: CallApi` (not `type: Request`) because the workflows module's data-access path goes through its Api layer — the `WorkflowAPI` plugin's request types aren't directly callable from blocks; `CallApi` invokes the module's `get-entity-workflows` Api, which routes through the engine.
+1. Calls the `get-entity-workflows` API (module-surface sub-design "Decision 2") with the entity's `(entity_collection, entity_id)`. The query uses `entity_collection` + `entity_id`; the returned docs carry `entity_collection` so the consuming page can build entity-link URLs or query the entity collection directly without external mapping. Uses `type: CallApi` (not `type: Request`) because the workflows module's data-access path goes through its Api layer — the `WorkflowAPI` plugin's request types aren't directly callable from blocks; `CallApi` invokes the module's `get-entity-workflows` Api, which routes through the engine.
 2. Iterates returned workflows by `display_order` ASC, with `created.timestamp` DESC as tie-breaker (newest first). The tie-breaker matters when an entity carries multiple instances of the same workflow type — e.g. a `lead` with both a historical `onboarding` workflow and a current one. Matches the "current state at the top" convention also used by status arrays (`status[0]` is the current stage).
 3. Per workflow, renders a `workflow-header` (see below) plus a grouped action list. Groups are read from the workflow doc's persisted `groups[]` array (engine-written; see action-groups Decision 4) — each group rendered in declaration order with its persisted three-value status (`blocked` / `in-progress` / `done`) and per-group summary count. Within each group, actions are sub-sorted by `sort_order`. **Never group by `action_group` alone across workflows** — `(workflow_id, group.id)` is the correct grouping key (the persisted `groups[]` array already keys by workflow_id implicitly since it lives on the workflow doc).
 4. Each action's status-map link / message rendered from `status_map[currentStage].{app_name}`.
@@ -255,7 +255,7 @@ events:
         endpointId:
           _module.endpointId: { id: get-entity-workflows, module: workflows }
         payload:
-          entity_type: { _module.var: entity_type }
+          entity_collection: { _module.var: entity_collection }
           entity_id: { _module.var: entity_id }
 blocks:
   # Iterate workflows, render workflow-header + grouped actions
@@ -437,7 +437,7 @@ Apps with truly bespoke overview needs build a custom page; the module provides 
 **Requests** loaded on mount:
 
 - `get_workflow_overview_data` — module-shipped request. Resolves the workflow doc by `_id` and joins its actions in `display_order` / `sort_order` order. Returns an array of `{ _id, workflow_id, workflow_type, type, kind, key, status, status_map.<app_name>, ...universal_fields }` — one entry per action, ordered as they should render.
-- `get_workflow_entity` — module-shipped request. Resolves the parent entity from the workflow doc's `entity_type` + `entity_id` + `entity_collection` so the page can render entity-context chrome (back link, entity title, etc.). Returns the raw entity doc.
+- `get_workflow_entity` — module-shipped request. Resolves the parent entity from the workflow doc's `entity_id` + `entity_collection` so the page can render entity-context chrome (back link, entity title, etc.). Returns the raw entity doc.
 - `file_download_policy` — optional, exposed for DataView field types that read file attachments. Apps wiring file fields supply the policy request via standard module composition.
 
 **onMount events:**

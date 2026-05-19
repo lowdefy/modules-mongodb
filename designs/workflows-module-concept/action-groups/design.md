@@ -31,7 +31,7 @@ A workflow YAML grows a top-level `action_groups:` field — an ordered array of
 ```yaml
 type: onboarding
 title: Onboarding
-entity_type: lead
+entity_collection: leads-collection
 display_order: 1
 
 action_groups:
@@ -121,7 +121,7 @@ The workflow doc carries the persisted group state as an array:
 ```js
 // workflow doc
 {
-  _id, workflow_type, entity_type, entity_id, key,
+  _id, workflow_type, entity_id, entity_collection, key,
   status: [ { stage: 'active', created } ],
   summary: { done: 3, not_required: 0, total: 6 },
   groups: [
@@ -237,7 +237,7 @@ Using the parent design's onboarding workflow with action groups elevated:
 # workflow_config/onboarding/onboarding.yaml
 type: onboarding
 title: Onboarding
-entity_type: lead
+entity_collection: leads-collection
 display_order: 1
 action_groups:
   - id: phase-1

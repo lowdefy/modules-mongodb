@@ -20,7 +20,7 @@ my-app/
 ```yaml
 type: onboarding
 title: Onboarding
-entity_type: lead
+entity_collection: leads-collection
 display_order: 1
 action_groups:
   - id: phase-1
@@ -81,7 +81,7 @@ Every action declares its kind via a required `kind:` field:
 
 Per workflow:
 
-- `type`, `entity_type`, `display_order` required.
+- `type`, `entity_collection`, `display_order` required.
 - `starting_actions` required; each entry `{ type, status }` resolves to one of the workflow's `actions[].type` values, with `status` a key in `action_statuses`.
 - `actions` required, non-empty.
 - Action `type` values within a workflow must be unique.
@@ -106,7 +106,7 @@ Errors fail the app build with a path to the offending workflow / action.
 
 The kind drives:
 
-1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by `access.{app_name}` verb list; `-error` additionally requires `pages.error` declared on the action — emission rule `action.access[app_name].includes('error') && !!action.pages?.error`); task → shared `task-edit` / `task-view` / `task-review`; tracker → no pages (inline display).
+1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by `access.{app_name}` verb list; all four verbs are gated identically); task → shared `task-edit` / `task-view` / `task-review`; tracker → no pages (inline display).
 2. **Submit API surface**: form → resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline) called with an `interaction` value; task → same endpoint with `interaction: submit_edit` and caller-supplied `current_status` (status selector on `task-edit`); tracker → no caller submission (engine writes via subscription).
 3. **Resolver invocation**: `makeActionsForm` and `makeActionFormConfigs` run only for form actions; `makeWorkflowApis` emits endpoints only for form actions.
 
@@ -280,7 +280,7 @@ These fields ride into the generated page YAML via the page-emission resolver (u
 
 ### `error` page emission rules
 
-- The `-error` page is **opt-in**. Emission rule: `action.access[app_name].includes('error') && !!action.pages?.error`. An action that doesn't opt in (missing the `error` verb in its per-app access list, missing a `pages.error` block, or both) generates no `-error` page; that action cannot enter a user-recoverable error state in that app deployment, so the engine's `error` transition has no reachable recovery surface for it. Authors who want recovery add both the verb and the `pages.error` block.
+- The `-error` page is gated identically to the other verbs: emitted iff `error` is in the action's `access.{app_name}` verb list. Actions without `error` in the list have no `-error` page in that app deployment; the engine's `error` transition still records context on the action doc, but there's no reachable recovery surface for it in the UI. `pages.error` is purely a chrome-override slot (like `pages.edit`) — the template ships sensible defaults when it's absent.
 - The error template ships with a stale-URL guard appended to `onMount`: if `status[0].stage !== 'error'` when the page loads, the template emits a `Link` back to `-view`.
 - The error form schema defaults to the action's `form:` block. Apps that need a different recovery schema declare a `form_error:` block parallel to `form:` / `form_review:`; otherwise the submitter's form schema is reused.
 
@@ -456,7 +456,6 @@ App code that creates the child entity calls `start-workflow` with `parent_actio
     _module.endpointId: { id: start-workflow, module: workflows }
   payload:
     workflow_type: device-installation
-    entity_type: ticket
     entity_id: { _step: create_ticket.insertedId }
     entity_collection: tickets-collection
     parent_action_id: { _state: parent_action_id }

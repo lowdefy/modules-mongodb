@@ -9,7 +9,7 @@
  * @returns {Promise<Pick<
  *   import('./types.js').ActionDoc,
  *   '_id' | 'workflow_id' | 'type' | 'key' | 'kind' | 'status' |
- *   'entity_type' | 'entity_id' | 'entity_collection'
+ *   'entity_id' | 'entity_collection'
  * > | null>}
  */
 async function getActionFields(mongoDBConnection, actionId) {
@@ -23,7 +23,6 @@ async function getActionFields(mongoDBConnection, actionId) {
         key: 1,
         kind: 1,
         status: 1,
-        entity_type: 1,
         entity_id: 1,
         entity_collection: 1,
       },

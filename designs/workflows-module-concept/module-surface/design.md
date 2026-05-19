@@ -83,7 +83,7 @@ vars:
       The app's workflow YAML — typically `_ref` to the app's
       `workflow_config/workflows.yaml`. Each element is a workflow definition
       (per the schema in action-authoring sub-design "Workflow YAML") containing
-      `type`, `entity_type`, `display_order`, `starting_actions`, and `actions`,
+      `type`, `entity_collection`, `display_order`, `starting_actions`, and `actions`,
       where each action declares `type`, `kind`, and kind-specific blocks
       (`form:` / `tracker:` / status_map / etc.). The module's resolvers read
       this to generate pages, request registrations, runtime configs, etc.,
@@ -231,14 +231,14 @@ The `update-action-{action_type}` per-action endpoint, the `SubmitWorkflowAction
 ```
 start-workflow payload:
   workflow_type: string       # required; the workflow's YAML type
-  entity_type: string         # required
   entity_id: string           # required; the entity this workflow lives on
   entity_collection: string   # required; MongoDB collection connection id for the
-                              #   entity (e.g. "leads-collection"). Stored on the
-                              #   new workflow doc and on every starting action doc
-                              #   so consumers can find the referenced entity without
-                              #   external entity_type → collection mapping. Matches
-                              #   the files module convention.
+                              #   entity (e.g. "leads-collection"). The sole
+                              #   entity-identity scalar — no separate named-kind
+                              #   field rides alongside it. Stored on the new
+                              #   workflow doc and on every starting action doc so
+                              #   consumers can find the referenced entity directly.
+                              #   Matches the files module convention.
   parent_action_id: string    # optional; when set, this workflow is a child of an
                               #   existing tracker action. The engine writes the
                               #   tracker action's `child_workflow_id` (the new

@@ -7,7 +7,7 @@ Elevates `action_group` from UI label to engine concept. Full rationale in [desi
 ```yaml
 type: onboarding
 title: Onboarding
-entity_type: lead
+entity_collection: leads-collection
 display_order: 1
 
 action_groups:
@@ -75,7 +75,7 @@ blocked_by: [phase-2, contact-customer] # group ID + action type
 ```js
 // workflow doc
 {
-  _id, workflow_type, entity_type, entity_id, entity_collection, ...,
+  _id, workflow_type, entity_id, entity_collection, ...,
   status: [ { stage: 'active', created } ],
   summary: { done: 3, not_required: 0, total: 6 },
   groups: [

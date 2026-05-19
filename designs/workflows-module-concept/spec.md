@@ -18,7 +18,7 @@ Seven sub-designs split by concern:
 
 ## Core invariants
 
-- **Two collections**: `workflows` (one doc per workflow instance) and `actions` (one doc per action instance). Both carry scalar `entity_type` + `entity_id` + `entity_collection`.
+- **Two collections**: `workflows` (one doc per workflow instance) and `actions` (one doc per action instance). Both carry scalar `entity_id` + `entity_collection`.
 - **Action kinds** are declared explicitly via a required `kind:` field with three values: `form`, `task`, `tracker`. Mutually exclusive.
 - **Status enum is module-shipped and fixed** (eight action statuses, three workflow-lifecycle stages). Display attributes (`title`, `color`, `borderColor`, `titleColor`, `icon`) are app-overridable; the status keys themselves are not.
 - **Workflows can be linked as parent/child via tracker actions.** A child workflow's `parent_action_id` / `parent_entity_id` / `parent_entity_collection` point back at the parent's tracker action; the parent tracker action's `child_workflow_id` / `child_entity_id` / `child_entity_collection` point at the child workflow and its entity. The link is written by `start-workflow` in a single call when `parent_action_id` is in the payload. One child has at most one parent.
@@ -62,8 +62,8 @@ my-app/
 
 ### Runtime flow
 
-1. Lead created → app calls `start-workflow` with `{ workflow_type: onboarding, entity_type: lead, entity_id: <lead_id>, entity_collection: leads-collection }`. Engine writes one workflow doc + four action docs.
-2. Lead page calls `get-entity-workflows` with `(entity_type: lead, entity_id: <lead_id>)`. Returns workflow docs + grouped actions.
+1. Lead created → app calls `start-workflow` with `{ workflow_type: onboarding, entity_id: <lead_id>, entity_collection: leads-collection }`. Engine writes one workflow doc + four action docs.
+2. Lead page calls `get-entity-workflows` with `(entity_collection: leads-collection, entity_id: <lead_id>)`. Returns workflow docs + grouped actions.
 3. User clicks `qualify` → form-action edit page `workflows/onboarding-qualify-edit`. The template-shipped `submit_edit` button calls `workflows/update-action-qualify` with `interaction: submit_edit` + form payload. The endpoint's routine fires `SubmitWorkflowAction`, which runs the lifecycle: invokes the action's `submit_edit.pre` hook (`qualify-pre-submit`); merges pre-hook `actions[]` with engine-computed auto-unblocks; writes the transition (`qualify` → `done`, `send-quote` → `action-required`); generates a log event (engine default merged with the pre-hook's `event_overrides`); dispatches notifications; returns.
 4. Later, user clicks `schedule-followup` (task action) → shared `workflows/task-edit?action_id=<id>` page. User picks `done`, sets due date, adds comment, clicks Submit. The page calls `workflows/update-action-schedule-followup` with `interaction: submit_edit` + `current_status: done` + `fields` block + `event.metadata.comment`. Task `submit_edit` is the one interaction where the caller supplies `current_status` directly (because the page surfaces a status selector). Engine writes the transition; `blocked_by` re-evaluation flips `track-installation` to `action-required`.
 5. Later, an installation ticket is created. The flow that creates it (often itself a pre-hook on a separate "create installation" form action) calls `start-workflow` with `parent_action_id: <track-installation._id>`. Engine writes the new device-installation workflow (with parent back-references), its starting action docs, and the parent tracker action's `child_workflow_id` / `child_entity_id` / `child_entity_collection` + `in-progress` transition — all in one server-side call.

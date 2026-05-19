@@ -20,7 +20,7 @@ exports:
     - id: action-edit # generated when `edit` in app verb list
     - id: action-view # generated when `view` in app verb list
     - id: action-review # generated when `review` in app verb list
-    - id: action-error # generated when `error` in app verb list AND action declares `pages.error`
+    - id: action-error # generated when `error` in app verb list
     # Shared task-action pages
     - id: task-edit
     - id: task-view
@@ -152,9 +152,8 @@ Migrations and admin tools that need `force: true` call the `SubmitWorkflowActio
 ```
 start-workflow payload:
   workflow_type: string       # required
-  entity_type: string         # required
   entity_id: string           # required
-  entity_collection: string   # required; MongoDB collection connection id (e.g. "leads-collection")
+  entity_collection: string   # required; MongoDB collection connection id (e.g. "leads-collection") — the sole entity-identity scalar
   parent_action_id: string    # optional; when set, links this workflow as a child of an existing
                               #   tracker action. Engine validates the action is `kind: tracker`
                               #   and has null `child_workflow_id`; writes parent_entity_id /
@@ -200,7 +199,7 @@ Returns:
 ```
 {
   workflow: {
-    _id, workflow_type, entity_type, entity_id, entity_collection,
+    _id, workflow_type, entity_id, entity_collection,
     status, summary, groups, form_data,
     ...reference fields
   },

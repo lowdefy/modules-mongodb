@@ -17,7 +17,7 @@ const ACTION_FIELDS = [
 
 const WORKFLOW_FIELDS = [
   'type',
-  'entity_type',
+  'entity_collection',
   'display_order',
   'starting_actions',
   'action_groups',
@@ -87,6 +87,13 @@ function validateAction(workflow, action) {
 }
 
 function validateWorkflow(workflow) {
+  if ('entity_type' in workflow) {
+    fail(
+      workflow.type,
+      'legacy "entity_type" field is no longer supported; rename to "entity_collection" (a MongoDB collection connection id like "leads-collection").'
+    );
+  }
+
   const actions = workflow.actions ?? [];
   const groups = workflow.action_groups ?? [];
   const startingActions = workflow.starting_actions ?? [];
