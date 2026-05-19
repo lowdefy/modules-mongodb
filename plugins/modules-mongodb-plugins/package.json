@@ -15,6 +15,7 @@
     "./*": "./dist/*",
     "./actions": "./dist/actions.js",
     "./blocks": "./dist/blocks.js",
+    "./connections": "./dist/connections.js",
     "./metas": "./dist/metas.js",
     "./types": "./dist/types.js"
   },
@@ -34,6 +35,7 @@
     "@lowdefy/block-utils": "0.0.0-experimental-20260429140004",
     "@lowdefy/blocks-antd": "0.0.0-experimental-20260429140004",
     "@lowdefy/blocks-basic": "0.0.0-experimental-20260429140004",
+    "@lowdefy/community-plugin-mongodb": "^3",
     "@lowdefy/helpers": "0.0.0-experimental-20260429140004",
     "@lowdefy/nunjucks": "0.0.0-experimental-20260429140004",
     "@lowdefy/plugin-aws": ">=4.0.0",

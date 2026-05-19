@@ -54,9 +54,9 @@ src/connections/WorkflowAPI/
 
 `shared/` helpers:
 
-- `createMongoDBConnection.js` — wraps `new MongoClient(...) + connect()` for the connection's `databaseUri`; returns a `{ client, workflowsCollection, actionsCollection }` handle used across the handler's sub-steps.
-- `getActions.js` — bulk fetch of action docs by `workflow_id` (used by auto-complete check and summary writeback).
-- `getActionFields.js` — given a payload `action_id`, returns the on-disk action's current core fields (`type`, `key`, `workflow_id`, current status array) so the handler can apply priority-rule checks and pick up `entity_type` / `entity_id` for write context.
+- `createMongoDBConnection.js` — wraps `@lowdefy/community-plugin-mongodb`'s `MongoDBCollection.requests`. Called with the Lowdefy request context (`{ blockId, connection, connectionId, pageId, requestId }`), returns a function that takes a MongoDB collection name and gives back the full set of community-plugin request handlers (`MongoDBFind`, `MongoDBFindOne`, `MongoDBInsertOne`, `MongoDBUpdateOne`, etc.) bound to that collection. Handlers in the engine read and write via `mongoDBConnection('workflows').MongoDBFindOne({...})`-style calls; client lifecycle, pooling, BSON serialization, and `changeLog` writes are owned by the community plugin.
+- `getActions.js` — bulk fetch of action docs by `workflow_id` via `MongoDBFind` (used by auto-complete check and summary writeback).
+- `getActionFields.js` — given a payload `action_id`, returns the on-disk action's current core fields via `MongoDBFindOne` with a projection (`_id`, `workflow_id`, `type`, `key`, `kind`, `status`, `entity_type`, `entity_id`, `entity_collection`) so the handler can apply priority-rule checks and pick up `entity_type` / `entity_id` for write context.
 - `populateIds.js` — generates server-side `_id` for newly-created action docs (`_uuid: true` equivalent). Action `_id`s are server-generated, not caller-supplied.
 
 ### Entity-agnostic field shape
@@ -81,7 +81,8 @@ Action docs and workflow docs use scalar `entity_type` + `entity_id` + `entity_c
 
 ### Package shape changes (`@lowdefy/modules-mongodb-plugins/package.json`)
 
-- Add `dependencies` for the Mongo driver (`mongodb`) and any Lowdefy server-side helpers (`@lowdefy/helpers` is already a peerDep — confirm it's available server-side).
+- Add `@lowdefy/community-plugin-mongodb` to `peerDependencies` (the engine imports `MongoDBCollection` from it; consumers already install the community plugin as part of their Lowdefy app, so peerDep is the right placement — no double-installs).
+- `@lowdefy/helpers` is already a peerDep (server-side available).
 - Add `src/connections/WorkflowAPI/` directory with the handler files.
 - Update `src/types.js` to register the connection. The existing pattern in upstream Lowdefy plugins (e.g. `@lowdefy/community-plugin-mongodb`) is `connections: Object.keys(connections)` plus `requests: Object.keys(connections).map(c => Object.keys(connections[c].requests)).flat()`, where the connection module exports a `{ schema, requests: { RequestType: handlerFn } }` object per connection. Add `src/connections.js` re-exporting `WorkflowAPI`, then point `types.js` at it. Currently `connections: []` and `requests: []` are both empty.
 
@@ -100,27 +101,45 @@ Treat this as a deliverable, not "verify the SWC config emits clean entry points
 
 ### Client and transaction model
 
-The `WorkflowAPI` handler opens **one `MongoClient` per invocation** and threads the same client through every sub-step inside that call — action writes, auto-complete checks, tracker subscription recursion, summary writeback. The client is connected at handler entry and closed at handler exit. This matches the natural shape of "one user submission = one Mongo work session" without introducing transaction infrastructure.
+The `WorkflowAPI` handler delegates every MongoDB read and write to `@lowdefy/community-plugin-mongodb`'s `MongoDBCollection` request handlers — the same plumbing every other module in this repo uses for its YAML-side reads and writes. The engine wraps that surface in a thin per-collection dispatcher (`createMongoDBConnection`) built once at handler entry and reused across every sub-step inside the call.
 
 Concrete handler shape, matching Lowdefy's connection-handler signature (`async ({ request, connection, ... }) => result`):
 
 ```js
 // src/connections/WorkflowAPI/SubmitWorkflowAction/SubmitWorkflowAction.js
-async function SubmitWorkflowAction({ request, connection }) {
-  const ctx = await createMongoDBConnection(connection); // opens one client
-  try {
-    return await handleSubmit(ctx, request); // all sub-steps share `ctx`
-  } finally {
-    await ctx.client.close();
-  }
+async function SubmitWorkflowAction(lowdefyContext) {
+  const { connection, request } = lowdefyContext;
+  const context = {
+    mongoDBConnection: createMongoDBConnection(lowdefyContext),
+    workflowsConfig: connection.workflowsConfig,
+    actionsEnum: connection.actionsEnum,
+    changeStamp: connection.changeStamp,
+    params: request,
+  };
+  return handleSubmit(context); // all sub-steps share `context`
 }
 ```
 
-`ctx` carries `{ client, workflowsCollection, actionsCollection }`; every helper called from `handleSubmit` takes `ctx` as its first argument and uses the shared collection handles. The `pushWorkflowStatus` pseudo-code in [Decision 3](#decision-3--tracker-subscription-mechanism) uses this same `ctx`.
+`context.mongoDBConnection` is a function — call it with a MongoDB collection name (`'workflows'` or `'actions'`) and you get back the full set of community-plugin request handlers (`MongoDBFind`, `MongoDBFindOne`, `MongoDBInsertOne`, `MongoDBInsertMany`, `MongoDBUpdateOne`, etc.) bound to that collection. Each call inside the dispatcher looks like:
 
-**No Mongo transactions in v1.** The implementation is sequential writes through the shared client — ordering is preserved (step N completes before step N+1 begins), but atomicity is not (if step N fails, steps 1..N-1 are durable). This is the same risk class as the existing `summary` writeback drift; the "Failure-mode story" mitigations apply and periodic reconciliation is the catch-all. The earlier framing of "same transactional semantics as the underlying write" was imprecise — it conflated ordering with atomicity. What the design actually guarantees is **shared connection lifetime + sequential writes + idempotent retry** (per the Idempotency sub-section), not all-or-nothing rollback.
+```js
+const action = await context.mongoDBConnection('actions').MongoDBFindOne({
+  query: { _id: actionId },
+  options: { projection: { /* ... */ } },
+});
 
-**Transactions are a purely-additive upgrade later.** If real apps need ACID across a `SubmitWorkflowAction` call, the handler body can be wrapped in `session.withTransaction(async (session) => { ... })`. No payload-shape changes, no caller-side coordination — just an internal opt-in. Constraint: transactions require a replica set or Atlas, not standalone Mongo, so we'd ship it as an opt-in mode rather than the default.
+await context.mongoDBConnection('actions').MongoDBInsertOne({ doc });
+```
+
+The `pushWorkflowStatus` pseudo-code in [Decision 3](#decision-3--tracker-subscription-mechanism) uses this same dispatcher.
+
+Connection lifecycle, pooling, BSON serialization, and `changeLog` writes are owned by the community plugin. Every community-plugin handler opens a fresh `MongoClient` per request and closes it in a `finally` block — the same posture every other module accepts. The engine adds no client management of its own. The `changeLog` block on the consuming app's `WorkflowAPI` connection config flows through to every dispatched request, so workflow + action mutations land in the app's `log-changes` collection automatically — no per-handler code.
+
+**Cost note.** Each helper-issued request opens and closes its own `MongoClient`. Driver-side pooling makes this cheap in steady state but it is a real per-request cost — a single `SubmitWorkflowAction` invocation issues N reads + N writes + side-effect `context.callApi` calls, each of which is a separate connect/close cycle. Acceptable for v1 (same posture every other module in this repo accepts); revisit only if a real consumer surfaces latency.
+
+**No Mongo transactions in v1.** The implementation is sequential writes through the dispatcher — ordering is preserved (step N completes before step N+1 begins), but atomicity is not (if step N fails, steps 1..N-1 are durable). This is the same risk class as the existing `summary` writeback drift; the "Failure-mode story" mitigations apply and periodic reconciliation is the catch-all. What the design guarantees is **sequential writes + idempotent retry** (per the Idempotency sub-section), not all-or-nothing rollback. Transactions are not available through the community-plugin dispatcher; if a future consumer needs ACID across a submit, the engine would need a parallel raw-driver path — out of scope for v1.
+
+> **Supersedes [engine review-1's "Client and transaction model" resolution](review/review-1.md).** Review-1 settled on a single-`MongoClient`-per-invocation raw-driver shape that threaded `ctx = { client, workflowsCollection, actionsCollection }` through every sub-step. This section walks that back to the community-plugin dispatcher — see [review-2.md](review/review-2.md) for the rationale (prior-generation engine code is dispatcher-shaped and reusable; community plugin owns `changeLog` integration; alignment with every other module in the repo; transactional opt-in was already marked as deferred so its loss costs nothing in v1).
 
 **The two `MongoDBCollection` exports (`workflows-collection`, `actions-collection`) are separate connections with their own client lifecycles** — they don't share state with `WorkflowAPI`. The split is intentional: `WorkflowAPI` owns the engine-managed write paths (with the priority rule, tracker subscription, summary writeback all running inside one client invocation), while the `MongoDBCollection` exports give apps direct read access for custom views, ad-hoc aggregations, list pages, or dedicated reporting that doesn't need to go through the engine. Apps that want app-specific indexes on `*_ids` reference fields layer them via the collection connections without touching engine internals. See [module-surface](../module-surface/design.md) Decision 1 for the full exported-connections list.
 
@@ -225,26 +244,29 @@ const CHILD_STAGE_MAP = {
 // one event id for audit. The plugin handler signature is (per Lowdefy's
 // connection-handler contract):
 //   ({ blockId, connection, connectionId, pageId, request, requestId, payload }) => result
-// `request.eventId` and `request.actions[]` are the per-call inputs; `ctx`
-// below is shorthand for the handler-local Mongo handle (see "Client and
-// transaction model").
+// `request.eventId` and `request.actions[]` are the per-call inputs;
+// `context` below is the handler-local shape (`{ mongoDBConnection, ... }`)
+// returned by createMongoDBConnection — see "Client and transaction model".
 
-async function pushWorkflowStatus(ctx, workflowId, newStage, eventId) {
+async function pushWorkflowStatus(context, workflowId, newStage, eventId) {
+  const { mongoDBConnection } = context;
   // 0. Idempotency guard — workflow status pushes are no-op when the new stage
   //    equals the current top-of-stack. Without this, retries (and any double-
   //    call from concurrent writers) would $push a second `{ stage: completed }`
   //    onto the workflow's status history, breaking the "status[0] = current
   //    stage" invariant and double-firing tracker subscription downstream. See
   //    "Workflow-status idempotency" below.
-  const current = await ctx.workflowsCollection.findOne(
-    { _id: workflowId },
-    { projection: { status: 1, workflow_type: 1, parent_action_id: 1 } },
-  );
+  const current = await mongoDBConnection('workflows').MongoDBFindOne({
+    query: { _id: workflowId },
+    options: {
+      projection: { status: 1, workflow_type: 1, parent_action_id: 1 },
+    },
+  });
   if (current?.status?.[0]?.stage === newStage) return;
 
   // 1. Write the workflow's status (existing behaviour)
   const workflow = await writeWorkflowStatus(
-    ctx,
+    context,
     workflowId,
     newStage,
     eventId,
@@ -255,15 +277,15 @@ async function pushWorkflowStatus(ctx, workflowId, newStage, eventId) {
   //    the tracker action's `_id`. No reverse-lookup index needed — `_id` is
   //    the primary key, served by the default `{ _id: 1 }` index.
   if (!current.parent_action_id) return; // top-level workflow, nothing to mirror
-  const tracker = await ctx.actionsCollection.findOne({
-    _id: current.parent_action_id,
+  const tracker = await mongoDBConnection('actions').MongoDBFindOne({
+    query: { _id: current.parent_action_id },
   });
   if (!tracker) return; // tracker may have been removed; tolerate
 
   // 3. Apply the hard-coded map and update via SubmitWorkflowAction
   const targetStage = CHILD_STAGE_MAP[newStage];
   if (!targetStage) return; // unmapped child stage → no parent update
-  await updateAction(ctx, {
+  await updateAction(context, {
     currentActionId: null,
     actions: [{ type: tracker.type, key: tracker.key, status: targetStage }],
     eventId, // reuse the same eventId — the tracker action update is part of this transition
@@ -284,7 +306,7 @@ Three alternatives were considered:
 
 Synchronous in-process wins because:
 
-- **Shared connection lifetime, sequential writes, idempotent retry.** Tracker writes run on the same `MongoClient` as the trigger write ([Decision 1 "Client and transaction model"](#client-and-transaction-model)) — ordering is preserved across the recursion (step N completes before step N+1 starts), and the idempotency guards ([Decision 3 "Idempotency"](#idempotency)) make a retried submission converge to the same end state. The atomicity story is the same risk class as the existing `summary` writeback — no new failure surface relative to what the engine already accepts. Transactions are a purely-additive upgrade if real apps need ACID.
+- **Sequential writes + idempotent retry.** Tracker writes share the same dispatcher built once at handler entry ([Decision 1 "Client and transaction model"](#client-and-transaction-model)) — ordering is preserved across the recursion (step N completes before step N+1 starts), and the idempotency guards ([Decision 3 "Idempotency"](#idempotency)) make a retried submission converge to the same end state. Each individual write opens its own `MongoClient` via the community plugin; pooling makes this cheap in steady state. The atomicity story is the same risk class as the existing `summary` writeback — no new failure surface relative to what the engine already accepts. Transactions are not available through the dispatcher; a future ACID path would require a parallel raw-driver helper.
 - **No new infrastructure.** No background process, no oplog tailing, no resume tokens.
 - **Multi-server safe by construction.** Each server's plugin instance handles whatever writes go through it; trackers update in the same process.
 - **Matches the data-flow shape.** Tracker updates _are_ part of "what happens when a workflow's status changes." Modelling them as follow-up steps in the same handler is the most direct expression.
@@ -312,13 +334,13 @@ Two distinct idempotency stories matter:
 
 ### Failure-mode story
 
-If the tracker update throws after the workflow status write succeeded, the workflow doc is in `completed` (or whatever new stage) but the tracker is still in its previous stage. The handler shares one Mongo client across the sub-steps ([Decision 1 "Client and transaction model"](#client-and-transaction-model)) but does **not** wrap them in a transaction in v1 — so a mid-sequence failure leaves earlier writes durable, later steps unrun. Same risk model as the `summary` writeback. Mitigations:
+If the tracker update throws after the workflow status write succeeded, the workflow doc is in `completed` (or whatever new stage) but the tracker is still in its previous stage. The handler's sub-steps share the dispatcher returned by `createMongoDBConnection` ([Decision 1 "Client and transaction model"](#client-and-transaction-model)) but each community-plugin request opens its own `MongoClient` — and they are **not** wrapped in a transaction in v1. A mid-sequence failure leaves earlier writes durable, later steps unrun. Same risk model as the `summary` writeback. Mitigations:
 
 - **Idempotent retry on next read of the parent workflow.** The `get-entity-workflows` API can detect "workflow's status[0] is terminal but tracker referencing it isn't" and queue a tracker reconciliation. Optional; cheap.
 - **Periodic reconciliation job.** Walk workflows in terminal stages; verify their trackers are also terminal; correct any drift. Can run on a schedule. Listed in parent Risks.
 - **Caller retry is safe by construction.** The idempotency guards ([Idempotency](#idempotency)) make a retried submission converge to the same end state, so the recommended recovery is "resubmit." Callers who got a partial-write error and retry will land on the correct end state without engine intervention.
 
-Documented as the same risk-class as the summary writeback. Acceptable. Real ACID is available as a purely-additive opt-in by wrapping the handler body in `session.withTransaction(...)` — see [Decision 1 "Client and transaction model"](#client-and-transaction-model).
+Documented as the same risk-class as the summary writeback. Acceptable. Transactions are not available through the community-plugin dispatcher; a future ACID path would require a parallel raw-driver helper — see [Decision 1 "Client and transaction model"](#client-and-transaction-model) for the trade.
 
 ### Ordering relative to other engine work
 
@@ -364,7 +386,7 @@ updateAction(currentActionId=install-device._id, actions=[{type: install-device,
 │       ├─ same-stage guard: B.status[0] = 'active' !== 'completed' → proceed
 │       ├─ writeWorkflowStatus(B, 'completed')   ($push completed onto B.status)
 │       ├─ step 9 (tracker subscription): B.parent_action_id = track-installation._id → load tracker by primary key
-│       │           tracker = actionsCollection.findOne({ _id: track-installation._id })
+│       │           tracker = mongoDBConnection('actions').MongoDBFindOne({ query: { _id: track-installation._id } })
 │       └─ CHILD_STAGE_MAP['completed'] = 'done'
 │           └─ updateAction(currentActionId=null, actions=[{type: track-installation, status: done}], eventId=E1, force=true)
 │               │
@@ -492,7 +514,9 @@ Either path produces the same on-disk shape: `status[0] = { stage: error, reason
 ## Risks
 
 - **Plugin dual-runtime build complexity.** First-time server-side code in a package that currently ships React blocks. Treated as a v1 milestone (see [Decision 1 "Dual-runtime build"](#dual-runtime-build--a-v1-milestone-not-a-config-tweak)) with its own verification step: hard split between `src/blocks/` and `src/connections/`, dist/-output grep for React leakage, plugin-loader smoke test before declaring done.
-- **No transactional atomicity in v1.** The `WorkflowAPI` handler runs sub-steps sequentially on one shared Mongo client but doesn't wrap them in a transaction. A mid-sequence failure leaves earlier writes durable and later steps unrun — same risk class as the existing `summary` writeback drift. Mitigation: caller retry is safe (the idempotency guards converge to the same end state), plus periodic reconciliation as the catch-all. `session.withTransaction(...)` is a purely-additive opt-in if a consumer surfaces a need for ACID.
+- **No transactional atomicity in v1.** The `WorkflowAPI` handler runs sub-steps sequentially through the community-plugin dispatcher; each request opens and closes its own `MongoClient`, and there is no transaction wrapping the sequence. A mid-sequence failure leaves earlier writes durable and later steps unrun — same risk class as the existing `summary` writeback drift. Mitigation: caller retry is safe (the idempotency guards converge to the same end state), plus periodic reconciliation as the catch-all. Transactions are not available through the community-plugin dispatcher; a future ACID path would require a parallel raw-driver helper.
+- **Connection-per-call cost.** Each helper-issued request opens and closes its own `MongoClient` via the community plugin. Driver-side pooling makes this cheap in steady state but a single `SubmitWorkflowAction` invocation issues many separate connect/close cycles. Acceptable for v1 (same posture every other module in this repo accepts); revisit if a real consumer surfaces latency.
+- **Consumer-owned indexes.** Engine assumes the three indexes documented in [the spec § Indexes](spec.md#indexes) exist; engine code doesn't assert them at runtime (the dispatcher delegates to community-plugin handlers that don't expose a startup hook). Drift risk if consumers skip the index creation step in their migration pipeline. Mitigation: required-indexes section in the workflows module README (same convention as every other module in this repo).
 - **Workflow-doc write contention** under highly-parallel workflows. Mitigation: provide a `summary_dirty: true` lazy-writeback fallback as an opt-in mode (set per workflow YAML), so apps with high parallelism can defer the recompute. Default stays eager.
 - **Cross-module API invocation from the engine handler.** `SubmitWorkflowAction` calls events `new-event`, notifications `send-notification`, and pre/post hook APIs via `context.callApi` (see [call-api](../call-api/design.md)). Cross-module reference is a verified pattern (contacts module's `update-contact` does it from YAML); first-time JS-side use is via the call-api primitive. If the primitive's resolution behavior surfaces issues, fallback is having the app pass endpoint ids as caller-supplied vars.
 - **Tracker subscription drift.** Mitigated by the failure-mode mitigations above; periodic reconciliation as the catch-all.
