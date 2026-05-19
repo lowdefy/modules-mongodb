@@ -1,0 +1,54 @@
+# This manifest currently declares only the part-04 enum components
+# (action_statuses, workflow_lifecycle_stages). The full module surface
+# — WorkflowAPI connection, MONGODB_URI secret, page/api/menu exports,
+# form-fields component library (part 14) — lands in part 20.
+#
+# The connection (part 20) will _ref the canonical enum file directly
+# (e.g. `actionsEnum: { _ref: enums/action_statuses.yaml }`), so the
+# engine always reads the shipped enum with its canonical priorities.
+# The merged enum components below are UI-only consumers.
+
+name: Workflows
+version: 0.6.0
+description: Workflow engine — action lifecycle, status transitions, hooks, trackers
+
+exports:
+  components:
+    - id: action_statuses
+      description: Action status enum (8 canonical statuses) merged with app display overrides — for UI consumption
+    - id: workflow_lifecycle_stages
+      description: Workflow lifecycle stage enum (active, completed, cancelled) merged with app display overrides — for UI consumption
+
+vars:
+  action_statuses_display:
+    type: object
+    default: {}
+    description: >
+      Per-status display overrides for the shipped action_statuses enum.
+      Merged via `_build.object.assign` onto the shipped enum and exposed
+      as the `action_statuses` component for UI consumption only. The
+      engine reads the shipped enum directly from the module file —
+      overrides cannot affect engine priority logic.
+  workflow_lifecycle_stages_display:
+    type: object
+    default: {}
+    description: >
+      Per-stage display overrides for the shipped workflow_lifecycle_stages
+      enum. Same merge semantics as action_statuses_display: UI-only,
+      cannot affect engine logic.
+
+components:
+  - id: action_statuses
+    component:
+      _build.object.assign:
+        - _ref: enums/action_statuses.yaml
+        - _module.var: action_statuses_display
+  - id: workflow_lifecycle_stages
+    component:
+      _build.object.assign:
+        - _ref: enums/workflow_lifecycle_stages.yaml
+        - _module.var: workflow_lifecycle_stages_display
+
+plugins:
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.6.0"

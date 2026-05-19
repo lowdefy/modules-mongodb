@@ -17,19 +17,20 @@ Commit the YAML grammar for workflows and actions, ship the fixed status enums, 
   - Per-action: required `kind: form | task | tracker`; universal fields (`assignees`, `due_date`, `description`); display fields (`action_group`, `sort_order`); `access.{app_name}: [view, edit, review, error]` + `access.roles: []`; `blocked_by: []` (mixed action types + group ids); `key:` for instanced actions; `tracker: { workflow_type }` for tracker kind; `interactions:`, `event:`, `hooks:`, `form:`, `form_review:`, `form_error:`, `status_map:`, `pages:`, `required_after_close`.
 - **`makeWorkflowsConfig` resolver.**
   - Reads `vars.workflows_config` array; expands `_ref`s.
-  - Validates (every rule has its own validator function):
-    - Per-workflow: `type`, `entity_type`, `display_order` required; `starting_actions` non-empty; action types unique within workflow.
-    - `action_groups[]`: every `id` unique; no `id` collides with any action `type` within the same workflow.
-    - Per-action: `type` and `kind` required; `kind: form` requires `form:` and rejects `tracker:`; `kind: tracker` requires `tracker:` and rejects `form:`; `kind: task` rejects both.
+  - Validates (inline checks, not a separate validator framework):
+    - Per-workflow: action types unique within workflow.
+    - `action_groups[]`: no `id` collides with any action `type` within the same workflow.
+    - Per-action: `kind` is one of `form | task | tracker`; `kind: form` requires `form:` and rejects `tracker:`; `kind: tracker` requires `tracker:` and rejects `form:`; `kind: task` rejects both.
     - `action_group` references a declared group id.
-    - `blocked_by` entries resolve to either a declared action type or a declared group id.
     - `status_map` keys exist in the `action_statuses` enum.
-    - `access.{app_name}` verb values are in `[view, edit, review, error]`.
-    - `key:` and `tracker:` mutually exclusive on the same action.
-    - Hook auth gate validation (`hook.auth.roles ⊇ action.access.roles`, reject `hook.auth.public: true`) deferred to part 13 (`makeWorkflowApis`) — that's where the hook config gets baked into endpoints.
+    - `starting_actions` entries resolve — each `{type, status}` matches a declared action and a canonical status.
+    - **v1 ships 7 inline validators above.** Deferred from v1:
+      - `blocked_by` resolution → part 7 (group state machine reads `blocked_by` for the unblock walk).
+      - `access.{app_name}` verb whitelist → not shipped; runtime is lenient per spec (unknown verbs silently ignored).
+      - Hook auth gate (`hook.auth.roles ⊇ action.access.roles`, reject `hook.auth.public: true`) → part 13 (`makeWorkflowApis`), where the hook config gets baked into endpoints.
   - Emits a normalized runtime config object the `workflow-api` connection reads. Shape committed here so parts 6, 7 can read it.
   - Build fails with a precise path-prefixed message on any violation.
-- **Display-override merge.** Apply `vars.action_statuses_display` and `vars.workflow_lifecycle_stages_display` onto the shipped enums at build time; unknown keys silently dropped.
+- **Display-override merge.** Apply `vars.action_statuses_display` and `vars.workflow_lifecycle_stages_display` onto the shipped enums at build time via `_build.object.assign` in `module.lowdefy.yaml`, exposed as the `action_statuses` and `workflow_lifecycle_stages` component exports for UI consumption. The engine reads the canonical enum file directly via connection wiring (part 20), so display overrides cannot reach the engine — the priority invariant is preserved by channel separation, not by in-merge whitelist filtering. "Unknown keys silently dropped" is therefore irrelevant for engine safety; the UI-side merge is permissive (matches the `event_types` family).
 
 ## Out of scope / deferred
 
@@ -53,7 +54,7 @@ Nothing. Runs in parallel with [part 3](../03-engine-plugin-shell/design.md).
 
 ## Open questions
 
-- **Where the normalized runtime config lives at runtime** — global state object, env-injected blob, file read by the plugin? Concept spec calls for the `workflow-api` connection to read it; confirm the exact wiring during part 5 implementation.
+- ~~**Where the normalized runtime config lives at runtime**~~ — **Resolved.** Lives on the connection as `connection.workflowsConfig`, read by the engine at handler entry (`engine/spec.md:72`, `engine/design.md:114`). Apps wire it into the connection's `properties.workflowsConfig` via `_ref: { resolver: makeWorkflowsConfig.js, vars: { workflows } }`.
 - **Status-map validation strictness** — require entries for every status, only reachable statuses, or be permissive? Ship permissive in v1.
 
 ## Contract to neighbours
