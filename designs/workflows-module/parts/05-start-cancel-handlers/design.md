@@ -64,17 +64,10 @@ Placed next to the existing `createMongoDBConnection.js`, `getActions.js`, `getA
 
 ## Verification
 
-- Unit tests on `StartWorkflow`:
-  - Writes the expected workflow + N action docs from YAML `starting_actions`.
-  - Payload `actions[]` overrides YAML `starting_actions`.
-  - Reference-key spread on both collections.
-  - Parent linking: tracker action's `child_workflow_id` + `in-progress` push; rejects when parent is not `kind: tracker`, `child_workflow_id` is already set, or `parent_action.tracker.workflow_type` doesn't match the new workflow's `workflow_type`.
-- Unit tests on `CancelWorkflow`:
-  - Pushes cancelled stage; flips every non-terminal action to `not-required`.
-  - Terminal actions left untouched.
-  - `reason` propagated.
-- Integration smoke: end-to-end through a fixture app with one trivial workflow definition.
-- End-to-end coverage lands in [part 22 — workflows-e2e-suite](../22-workflows-e2e-suite/design.md) (`start-cancel.spec.js`). This part's verification is unit-tests + handler-level integration smoke only.
+Part 05 ships **no unit tests of its own** — see [`tasks/tasks.md` § Verification posture](tasks/tasks.md) for the rationale (dispatcher-mock fixture surface drifts against the community-plugin contract; coverage overlaps part 22).
+
+- Integration smoke: end-to-end through a fixture app with one trivial workflow definition. Manual or as part of a downstream task; not a separate task here.
+- End-to-end coverage lands in [part 22 — workflows-e2e-suite](../22-workflows-e2e-suite/design.md) (`start-cancel.spec.js`). The suite covers the assertions that would otherwise be unit tests in this part: workflow + N action docs written from YAML `starting_actions`; payload `actions[]` override; reference-key spread on both collections; parent-linking happy path + the three parent-link rejections (`kind`, `child_workflow_id`, `workflow_type` mismatch); cancelled status push; non-terminal action flips; terminal actions untouched; `reason` propagation.
 
 ## Open questions
 

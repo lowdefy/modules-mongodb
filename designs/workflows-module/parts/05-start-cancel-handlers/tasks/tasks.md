@@ -29,7 +29,7 @@ Replace the two stub handlers (`StartWorkflow`, `CancelWorkflow`) shipped by par
 
 Part 05 ships **no unit tests of its own**. The verification floor is:
 
-- The integration smoke at `design.md:76` ("end-to-end through a fixture app with one trivial workflow definition") — manual or as part of a downstream task.
+- The integration smoke at `design.md` § Verification ("end-to-end through a fixture app with one trivial workflow definition") — manual or as part of a downstream task.
 - End-to-end coverage in [part 22 — workflows-e2e-suite](../22-workflows-e2e-suite/design.md) (`start-cancel.spec.js`), which exercises both handlers against the worked-example onboarding workflow once part 20's demo wiring lands.
 
 A dedicated unit-test task was considered and dropped: most assertions overlapped part 22's e2e coverage, and the dispatcher-mock fixture surface (mocking every `MongoDBInsertOne` / `MongoDBInsertMany` / `MongoDBUpdateOne` / `MongoDBUpdateMany` / `MongoDBFind` / `MongoDBFindOne` shape) carries non-trivial drift risk against the community-plugin handler contract. The validation-rejection cases that aren't well-covered by e2e (keyed-action check, parent-link `workflow_type` mismatch, etc.) are cheap enough to spec into part 22's `start-cancel.spec.js` directly. If a regression surfaces between part 05 landing and part 22 landing, revisit.

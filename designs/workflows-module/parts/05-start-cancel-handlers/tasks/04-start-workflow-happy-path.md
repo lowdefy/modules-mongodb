@@ -110,7 +110,7 @@ Keep `StartWorkflow.schema = {}` for now (handler-level payload schema TBD; the 
 
 ## Notes
 
-- **No `entity_type` on the workflow doc.** Per part 21, that field is dropped. Tests in task 7 should assert the field is absent.
+- **No `entity_type` on the workflow doc.** Per part 21, that field is dropped. The "field is absent" assertion lives in part 22's `start-cancel.spec.js`, not a unit test in this part (`tasks/tasks.md § Verification posture`).
 - **The workflow `_id` is generated server-side.** Don't accept a caller-supplied `_id`. Per the design's "Retry posture" bullet, `StartWorkflow` is intentionally not idempotent on retry; callers handle exactly-once at the entity-creation step.
 - **No event id threading on the workflow doc.** v0's action docs carry `event_id` on each status entry; the design doesn't commit to one for v1 `StartWorkflow`, but `createAction` (task 2) accepts an `eventId` parameter for forward compatibility with part 6. Pass `eventId: null` for now.
 - **`StartWorkflow.js` should stay thin.** Heavy lifting belongs in helpers (`createAction`, eventually a `createActions.js` if the action-batch logic grows). For task 4's scope, keeping the loop inline is fine.
