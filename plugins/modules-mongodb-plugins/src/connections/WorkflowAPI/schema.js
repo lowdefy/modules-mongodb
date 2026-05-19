@@ -51,6 +51,11 @@ const schema = {
         },
       },
     },
+    changeStamp: {
+      type: 'object',
+      description:
+        'Resolves to the events module change_stamp at app build time (typically via _ref: { module: events, component: change_stamp }). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`. One stamp per handler invocation; all writes in the same call share the timestamp.',
+    },
     actionsEnum: {
       type: 'object',
       description:
