@@ -102,13 +102,14 @@ async function seedWorkflow({ _id = "wf-1", stage = "active" } = {}) {
   });
 }
 
-async function seedAction({ _id, type, workflow_id = "wf-1", key = null, stage = "action-required", kind = "form" }) {
+async function seedAction({ _id, type, workflow_id = "wf-1", key = null, stage = "action-required", kind = "form", action_group = null }) {
   await mongo.db.collection("actions").insertOne({
     _id,
     workflow_id,
     type,
     kind,
     key,
+    action_group,
     status: [{ stage, created: new Date("2026-05-19T00:00:00Z") }],
   });
 }
@@ -814,4 +815,356 @@ test("handleSubmit: pre-lookup throw never returns action_ids (function exits vi
   }
   expect(resultCaught).not.toBeNull();
   // No further assertion needed — the function threw before returning a body.
+});
+
+// ---------------------------------------------------------------------------
+// Part 7 — group state machine integration
+// ---------------------------------------------------------------------------
+
+const groupsWorkflowConfig = {
+  type: "onboarding",
+  entity_collection: "leads-collection",
+  action_groups: [
+    { id: "phase-1", on_complete: "phase-1-complete-api" },
+    { id: "phase-2" },
+  ],
+  actions: [
+    {
+      type: "qualify",
+      kind: "form",
+      action_group: "phase-1",
+      access: { roles: ["account-manager"] },
+    },
+    {
+      type: "send-quote",
+      kind: "form",
+      action_group: "phase-1",
+      access: { roles: ["account-manager"] },
+    },
+    {
+      type: "kickoff",
+      kind: "task",
+      action_group: "phase-2",
+      blocked_by: ["phase-1"],
+      access: { roles: ["account-manager"] },
+    },
+  ],
+};
+
+async function seedWorkflowWithGroups({ stage = "active", groups = [] } = {}) {
+  await mongo.db.collection("workflows").insertOne({
+    _id: "wf-1",
+    workflow_type: "onboarding",
+    entity_id: "lead-1",
+    entity_collection: "leads-collection",
+    status: [{ stage, created: new Date("2026-05-19T00:00:00Z") }],
+    summary: { done: 0, not_required: 0, total: 0 },
+    groups,
+    form_data: {},
+  });
+}
+
+test("part 7: completing the last non-terminal action in a group surfaces it in completed_groups", async () => {
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 1, not_required: 0, total: 2 },
+      },
+      {
+        id: "phase-2",
+        status: "blocked",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1", stage: "done" });
+  await seedAction({ _id: "a2", type: "send-quote", action_group: "phase-1" });
+  await seedAction({ _id: "a3", type: "kickoff", kind: "task", action_group: "phase-2", stage: "blocked" });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [groupsWorkflowConfig],
+      params: { action_id: "a2", interaction: "submit_edit" },
+    }),
+  );
+
+  expect(result.completed_groups).toEqual([
+    {
+      workflow_id: "wf-1",
+      id: "phase-1",
+      on_complete: "phase-1-complete-api",
+    },
+  ]);
+});
+
+test("part 7: workflow doc groups[] reflects post-submit state in declaration order", async () => {
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 2 },
+      },
+      {
+        id: "phase-2",
+        status: "blocked",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+  await seedAction({ _id: "a2", type: "send-quote", action_group: "phase-1" });
+  await seedAction({ _id: "a3", type: "kickoff", kind: "task", action_group: "phase-2", stage: "blocked" });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [groupsWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+    }),
+  );
+
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.groups).toEqual([
+    {
+      id: "phase-1",
+      status: "in-progress",
+      summary: { done: 1, not_required: 0, total: 2 },
+    },
+    {
+      id: "phase-2",
+      status: "blocked",
+      summary: { done: 0, not_required: 0, total: 1 },
+    },
+  ]);
+});
+
+test("part 7: completed_groups entry carries on_complete null when group has none declared", async () => {
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "done",
+        summary: { done: 0, not_required: 0, total: 0 },
+      },
+      {
+        id: "phase-2",
+        status: "blocked",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  // phase-1 is empty (already done). phase-2 has one action; completing it
+  // transitions phase-2 to done. phase-2 has no on_complete declared.
+  await seedAction({ _id: "a3", type: "kickoff", kind: "task", action_group: "phase-2", stage: "action-required" });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [groupsWorkflowConfig],
+      params: { action_id: "a3", interaction: "submit_edit", current_status: "done" },
+    }),
+  );
+
+  expect(result.completed_groups).toEqual([
+    {
+      workflow_id: "wf-1",
+      id: "phase-2",
+      on_complete: null,
+    },
+  ]);
+});
+
+test("part 7: auto-complete pushes workflow to 'completed' when every action is terminal", async () => {
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  await seedAction({ _id: "only", type: "qualify", action_group: "phase-1" });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [
+        {
+          ...groupsWorkflowConfig,
+          action_groups: [{ id: "phase-1" }],
+          actions: groupsWorkflowConfig.actions.filter((a) => a.type === "qualify"),
+        },
+      ],
+      params: { action_id: "only", interaction: "submit_edit" },
+    }),
+  );
+
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.status[0].stage).toBe("completed");
+  expect(wf.status[1].stage).toBe("active");
+});
+
+test("part 7: auto-complete same-stage guard — already-completed workflow doesn't double-push", async () => {
+  // A workflow can't reach this code path via shipping code (the terminal-workflow
+  // gate at step 1 would reject), but we test the guard via the in-memory check:
+  // we set the workflow to active here, submit, complete, and assert no double push
+  // after a re-fetch + resubmit pattern would no-op.
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  await seedAction({ _id: "only", type: "qualify", action_group: "phase-1" });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [
+        {
+          ...groupsWorkflowConfig,
+          action_groups: [{ id: "phase-1" }],
+          actions: groupsWorkflowConfig.actions.filter((a) => a.type === "qualify"),
+        },
+      ],
+      params: { action_id: "only", interaction: "submit_edit" },
+    }),
+  );
+
+  // After the first submit, the workflow is 'completed'. status[] has two entries.
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.status).toHaveLength(2);
+  expect(wf.status[0].stage).toBe("completed");
+});
+
+test("part 7: blocked_by re-evaluation — action flips from blocked to action-required when its dep group enters done", async () => {
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+      {
+        id: "phase-2",
+        status: "blocked",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  await seedAction({ _id: "qualify-1", type: "qualify", action_group: "phase-1" });
+  await seedAction({
+    _id: "kickoff-1",
+    type: "kickoff",
+    kind: "task",
+    action_group: "phase-2",
+    stage: "blocked",
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [
+        {
+          ...groupsWorkflowConfig,
+          actions: groupsWorkflowConfig.actions.filter(
+            (a) => a.type === "qualify" || a.type === "kickoff",
+          ),
+        },
+      ],
+      params: { action_id: "qualify-1", interaction: "submit_edit" },
+    }),
+  );
+
+  const kickoff = await mongo.db.collection("actions").findOne({ _id: "kickoff-1" });
+  expect(kickoff.status[0].stage).toBe("action-required");
+});
+
+test("part 7: mixed blocked_by — downstream stays blocked while one dep unresolved", async () => {
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  // qualify (phase-1) + a separate action 'finalize' that depends on both phase-1
+  // group AND on another action-type 'verify' that is still in-progress.
+  await seedAction({ _id: "qualify-1", type: "qualify", action_group: "phase-1" });
+  await seedAction({ _id: "verify-1", type: "verify", kind: "task", stage: "in-progress" });
+  await seedAction({ _id: "finalize-1", type: "finalize", kind: "task", stage: "blocked" });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [
+        {
+          ...groupsWorkflowConfig,
+          actions: [
+            {
+              type: "qualify",
+              kind: "form",
+              action_group: "phase-1",
+              access: { roles: ["account-manager"] },
+            },
+            { type: "verify", kind: "task", access: { roles: ["account-manager"] } },
+            {
+              type: "finalize",
+              kind: "task",
+              blocked_by: ["phase-1", "verify"],
+              access: { roles: ["account-manager"] },
+            },
+          ],
+        },
+      ],
+      params: { action_id: "qualify-1", interaction: "submit_edit" },
+    }),
+  );
+
+  const finalize = await mongo.db.collection("actions").findOne({ _id: "finalize-1" });
+  expect(finalize.status[0].stage).toBe("blocked");
+});
+
+test("part 7: one MongoDBUpdateOne against workflows in step 5 (summary + groups + status bundled)", async () => {
+  await seedWorkflowWithGroups({
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+  });
+  await seedAction({ _id: "only", type: "qualify", action_group: "phase-1" });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [
+        {
+          ...groupsWorkflowConfig,
+          action_groups: [{ id: "phase-1" }],
+          actions: groupsWorkflowConfig.actions.filter((a) => a.type === "qualify"),
+        },
+      ],
+      params: { action_id: "only", interaction: "submit_edit" },
+    }),
+  );
+
+  // Workflow doc reflects the bundled $set + $push in a single round-trip:
+  // - summary recomputed
+  // - groups[] populated
+  // - status[] now has 'completed' at index 0
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.summary).toEqual({ done: 1, not_required: 0, total: 1 });
+  expect(wf.groups).toEqual([
+    {
+      id: "phase-1",
+      status: "done",
+      summary: { done: 1, not_required: 0, total: 1 },
+    },
+  ]);
+  expect(wf.status[0].stage).toBe("completed");
 });

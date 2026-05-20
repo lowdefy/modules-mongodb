@@ -33,6 +33,7 @@ function createAction(context, { workflow, action, eventId = null }) {
     type: action.type,
     kind: actionConfig.kind,
     key: action.key ?? null,
+    action_group: actionConfig.action_group ?? null,
     status: [
       {
         stage: action.status,

@@ -2,7 +2,7 @@
 
 Parallel delivery waves derived from the [dependency graph in design.md](design.md#dependency-graph). Each **wave** can run fully in parallel; the next wave starts once its predecessors land. The Repo column tells you where the diff goes; the Status column reflects what has shipped on `main` / been merged to the `workflows-module` branch.
 
-**Shipped so far:** parts 3, 4, 5, 6, 14, 21, plus part 12 tasks 1–2 (resolver + placeholder templates; manifest wiring blocked on part 2). Engine can create, transition, and tear down workflows; group state machine + lifecycle extensions (part 7 onward) are next.
+**Shipped so far:** parts 3, 4, 5, 6, 7, 14, 21, plus part 12 tasks 1–2 (resolver + placeholder templates; manifest wiring blocked on part 2). Engine can create, transition, and tear down workflows with full group state machine; remaining lifecycle extensions (parts 8–11) are next.
 
 Status legend: `✅ shipped` · `🚧 in progress` · empty = not started.
 
@@ -47,12 +47,12 @@ Part 6 is the only **L**. Most of Wave 4 hangs off it, so it deserves its own ba
 
 Each extends part 6's lifecycle orthogonally. Part 13 (resolver-apis) only needs parts 2/4/6, so it streams here.
 
-| #   | Part                                                            | Size | Repo                                                                                | Status |
-| --- | --------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------- | ------ |
-| 7   | [group-state-machine](parts/07-group-state-machine/design.md)   | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |        |
-| 8   | [side-effect-dispatch](parts/08-side-effect-dispatch/design.md) | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |        |
-| 10  | [tracker-subscription](parts/10-tracker-subscription/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`                      |        |
-| 13  | [resolver-apis](parts/13-resolver-apis/design.md)               | M    | `modules/workflows/resolvers/`                                                      |        |
+| #   | Part                                                            | Size | Repo                                                                                | Status    |
+| --- | --------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------- | --------- |
+| 7   | [group-state-machine](parts/07-group-state-machine/design.md)   | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` | ✅ shipped |
+| 8   | [side-effect-dispatch](parts/08-side-effect-dispatch/design.md) | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |           |
+| 10  | [tracker-subscription](parts/10-tracker-subscription/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`                      |           |
+| 13  | [resolver-apis](parts/13-resolver-apis/design.md)               | M    | `modules/workflows/resolvers/`                                                      |           |
 
 ## Wave 5 — Hooks, fan-out, operational APIs (parallel; need Wave 4)
 

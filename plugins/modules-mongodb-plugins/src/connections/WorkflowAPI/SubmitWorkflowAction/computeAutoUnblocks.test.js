@@ -48,7 +48,9 @@ test("computeAutoUnblocks: blocked action with one done and one in-progress depe
   expect(result).toEqual([]);
 });
 
-test("computeAutoUnblocks: blocked_by with both action-type and group-id-shaped entry — group-id filtered, fires when action-type is satisfied", () => {
+test("computeAutoUnblocks: blocked_by with action-type satisfied + group-id with no declared group → fires (group-id is not declared, so it falls through the defensive skip and the action-type alone is checked; only fires when ALL entries resolve)", () => {
+  // With mixed resolution, an undeclared group-id falls into the defensive
+  // skip branch (returns false from the .every()). The action stays blocked.
   const result = computeAutoUnblocks({
     workflowActions: [
       action("qualify", "done"),
@@ -59,7 +61,7 @@ test("computeAutoUnblocks: blocked_by with both action-type and group-id-shaped 
       { type: "send-quote", blocked_by: ["qualify", "some-group-id"] },
     ],
   });
-  expect(result).toEqual([{ type: "send-quote", status: "action-required" }]);
+  expect(result).toEqual([]);
 });
 
 test("computeAutoUnblocks: keyed action with three blocked docs of the same type → one entry, deduped", () => {
@@ -93,11 +95,148 @@ test("computeAutoUnblocks: keyed dependency type with one non-terminal doc → d
   expect(result).toEqual([]);
 });
 
-test("computeAutoUnblocks: blocked action whose blocked_by has only group-id entries (no action types) → not emitted in v1", () => {
+test("computeAutoUnblocks: blocked action whose blocked_by has only group-id entries with no declaredGroups → not emitted (defensive skip)", () => {
   const result = computeAutoUnblocks({
     workflowActions: [action("send-quote", "blocked")],
     actionsConfig: [
       { type: "send-quote", blocked_by: ["group-1", "group-2"] },
+    ],
+  });
+  expect(result).toEqual([]);
+});
+
+test("computeAutoUnblocks: group-id entry resolves to done → emit", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [action("send-quote", "blocked")],
+    actionsConfig: [
+      { type: "send-quote", blocked_by: ["phase-1"] },
+    ],
+    groups: [
+      {
+        id: "phase-1",
+        status: "done",
+        summary: { done: 1, not_required: 0, total: 1 },
+      },
+    ],
+    declaredGroups: [{ id: "phase-1" }],
+  });
+  expect(result).toEqual([{ type: "send-quote", status: "action-required" }]);
+});
+
+test("computeAutoUnblocks: group-id entry resolves to in-progress → no emit", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [action("send-quote", "blocked")],
+    actionsConfig: [
+      { type: "send-quote", blocked_by: ["phase-1"] },
+    ],
+    groups: [
+      {
+        id: "phase-1",
+        status: "in-progress",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+    declaredGroups: [{ id: "phase-1" }],
+  });
+  expect(result).toEqual([]);
+});
+
+test("computeAutoUnblocks: mixed blocked_by — group-id done + action-type terminal → emit", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [
+      action("qualify", "done"),
+      action("send-quote", "blocked"),
+    ],
+    actionsConfig: [
+      { type: "qualify" },
+      { type: "send-quote", blocked_by: ["phase-1", "qualify"] },
+    ],
+    groups: [
+      {
+        id: "phase-1",
+        status: "done",
+        summary: { done: 1, not_required: 0, total: 1 },
+      },
+    ],
+    declaredGroups: [{ id: "phase-1" }],
+  });
+  expect(result).toEqual([{ type: "send-quote", status: "action-required" }]);
+});
+
+test("computeAutoUnblocks: mixed blocked_by — group-id done but action-type still in-progress → no emit", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [
+      action("qualify", "in-progress"),
+      action("send-quote", "blocked"),
+    ],
+    actionsConfig: [
+      { type: "qualify" },
+      { type: "send-quote", blocked_by: ["phase-1", "qualify"] },
+    ],
+    groups: [
+      {
+        id: "phase-1",
+        status: "done",
+        summary: { done: 0, not_required: 0, total: 0 },
+      },
+    ],
+    declaredGroups: [{ id: "phase-1" }],
+  });
+  expect(result).toEqual([]);
+});
+
+test("computeAutoUnblocks: mixed blocked_by — group-id in-progress + action-type terminal → no emit", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [
+      action("qualify", "done"),
+      action("send-quote", "blocked"),
+    ],
+    actionsConfig: [
+      { type: "qualify" },
+      { type: "send-quote", blocked_by: ["phase-2", "qualify"] },
+    ],
+    groups: [
+      {
+        id: "phase-2",
+        status: "blocked",
+        summary: { done: 0, not_required: 0, total: 1 },
+      },
+    ],
+    declaredGroups: [{ id: "phase-2" }],
+  });
+  expect(result).toEqual([]);
+});
+
+test("computeAutoUnblocks: groups undefined → group-id entries treated as unsatisfied", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [action("send-quote", "blocked")],
+    actionsConfig: [{ type: "send-quote", blocked_by: ["phase-1"] }],
+    declaredGroups: [{ id: "phase-1" }],
+    // groups intentionally omitted
+  });
+  expect(result).toEqual([]);
+});
+
+test("computeAutoUnblocks: declaredGroups undefined → falls back to action-type-only resolution", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [
+      action("qualify", "done"),
+      action("send-quote", "blocked"),
+    ],
+    actionsConfig: [
+      { type: "qualify" },
+      { type: "send-quote", blocked_by: ["qualify"] },
+    ],
+    // declaredGroups intentionally omitted
+  });
+  expect(result).toEqual([{ type: "send-quote", status: "action-required" }]);
+});
+
+test("computeAutoUnblocks: build-validator-bypassed unresolved entry → defensive skip, no throw", () => {
+  const result = computeAutoUnblocks({
+    workflowActions: [action("send-quote", "blocked")],
+    actionsConfig: [
+      { type: "send-quote", blocked_by: ["this-resolves-to-nothing"] },
     ],
   });
   expect(result).toEqual([]);

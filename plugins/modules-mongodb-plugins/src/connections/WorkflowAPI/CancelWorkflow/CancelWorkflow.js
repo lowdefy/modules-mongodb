@@ -1,4 +1,5 @@
 import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
+import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
 
 const RESERVED_WORKFLOW_KEYS = [
   '_id',
@@ -28,6 +29,15 @@ async function CancelWorkflow(lowdefyContext) {
   if (!payload.workflow_id) {
     throw new Error('CancelWorkflow: workflow_id is required');
   }
+
+  const workflowDoc = await context.mongoDBConnection('workflows').MongoDBFindOne({
+    query: { _id: payload.workflow_id },
+    options: { projection: { workflow_type: 1 } },
+  });
+  const workflowConfig = (context.workflowsConfig ?? []).find(
+    (w) => w.type === workflowDoc?.workflow_type,
+  );
+  const declaredGroups = workflowConfig?.action_groups ?? [];
 
   const safeReferences = { ...(payload.references ?? {}) };
   for (const key of RESERVED_WORKFLOW_KEYS) {
@@ -87,7 +97,10 @@ async function CancelWorkflow(lowdefyContext) {
     (await context.mongoDBConnection('actions').MongoDBFind({
       query: { workflow_id: payload.workflow_id },
       options: {
-        projection: { 'status.0.stage': 1 },
+        // Project the first status entry as a 1-element slice — MongoDB can't
+        // dot-project nested-array-index fields like `status.0.stage` (server
+        // strips the field and returns `status: [{}]`).
+        projection: { status: { $slice: 1 }, action_group: 1 },
       },
     })) ?? [];
 
@@ -97,16 +110,25 @@ async function CancelWorkflow(lowdefyContext) {
     (a) => a.status?.[0]?.stage === 'not-required',
   ).length;
 
+  const groups = recomputeGroups({
+    declaredGroups,
+    actions: allActions,
+  });
+
   await context.mongoDBConnection('workflows').MongoDBUpdateOne({
     filter: { _id: payload.workflow_id },
     update: {
       $set: {
         summary: { done, not_required, total },
+        groups,
         updated: context.changeStamp,
       },
     },
   });
 
+  // NOTE: do NOT include completed_groups — per part 7 design, CancelWorkflow
+  // doesn't fire on_complete hooks. Part 11's fan-out reads completed_groups
+  // only from SubmitWorkflowAction's return.
   return { action_ids: actionIds, event_id: null, tracker_fired: null };
 }
 

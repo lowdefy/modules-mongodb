@@ -1,6 +1,8 @@
 import getActions from "../../shared/getActions.js";
 import updateAction from "../../shared/updateAction.js";
 import computeAutoUnblocks from "./computeAutoUnblocks.js";
+import recomputeGroups from "./recomputeGroups.js";
+import reevaluateBlockedActions from "./reevaluateBlockedActions.js";
 import getCurrentAction from "./utils/getCurrentAction.js";
 
 function findMatchingActionDocs({ workflowActions, type, key }) {
@@ -150,12 +152,14 @@ async function handleSubmit(context) {
 
   // Step 2 — Pre-hook. → part 9.
 
-  // Step 3 — Compute auto-unblocks (action-type entries only; group ids → part 7).
+  // Step 3 — Compute auto-unblocks (mixed action types + group ids).
   const workflowActions = await getActions(context.mongoDBConnection, context.workflow._id);
   context.workflowActions = workflowActions;
   const autoUnblockEntries = computeAutoUnblocks({
     workflowActions,
     actionsConfig: context.actionsConfig,
+    groups: context.workflow.groups ?? [],
+    declaredGroups: workflowConfig.action_groups ?? [],
   });
   // PART 9 EXTENSION: pre-hook returned actions[] entries merge here, taking
   // precedence over auto-unblock entries on (type, key) collision. v1 has no
@@ -163,6 +167,7 @@ async function handleSubmit(context) {
   internal.actions.push(...autoUnblockEntries);
 
   const actionIds = [];
+  let completedGroups = [];
 
   try {
     // Step 4 — Write action transitions (per-entry loop with priority rule).
@@ -225,7 +230,49 @@ async function handleSubmit(context) {
       actionIds.push(internal.currentActionId);
     }
 
-    // Step 5 — Recompute workflow summary (counts only; groups[] → part 7).
+    // Sub-step 4a — Recompute groups[] from post-step-4 actions.
+    const declaredGroups = workflowConfig.action_groups ?? [];
+    const groupsBefore = context.workflow.groups ?? [];
+    let groupsAfter = recomputeGroups({
+      declaredGroups,
+      actions: context.workflowActions,
+    });
+
+    // Sub-step 4b — Push action-required on newly-unblocked blocked actions.
+    const reEvaluatedIds = await reevaluateBlockedActions(context, {
+      workflowActions: context.workflowActions,
+      actionsConfig: context.actionsConfig,
+      groups: groupsAfter,
+      declaredGroups,
+      eventId: context.eventId,
+    });
+    if (reEvaluatedIds.length > 0) {
+      // Refetch so step-5 summary + the diff-driven completed_groups
+      // computation read the post-walk state.
+      context.workflowActions = await getActions(
+        context.mongoDBConnection,
+        context.workflow._id,
+      );
+      groupsAfter = recomputeGroups({
+        declaredGroups,
+        actions: context.workflowActions,
+      });
+    }
+
+    // Sub-step 4c — Auto-complete check (stage for step 5's $set).
+    const TERMINAL = ["done", "not-required"];
+    const allTerminal =
+      context.workflowActions.length > 0 &&
+      context.workflowActions.every((a) =>
+        TERMINAL.includes(a.status?.[0]?.stage),
+      );
+    const currentWorkflowStage = context.workflow.status?.[0]?.stage;
+    const shouldPushCompleted =
+      allTerminal &&
+      currentWorkflowStage !== "completed" &&
+      currentWorkflowStage !== "cancelled";
+
+    // Step 5 — Recompute workflow summary + groups + (optional) status push.
     const summary = {
       done: context.workflowActions.filter((doc) => doc.status?.[0]?.stage === "done").length,
       not_required: context.workflowActions.filter(
@@ -233,23 +280,51 @@ async function handleSubmit(context) {
       ).length,
       total: context.workflowActions.length,
     };
+    const setBlock = {
+      summary,
+      groups: groupsAfter,
+      updated: context.changeStamp,
+    };
+    const update = shouldPushCompleted
+      ? {
+          $set: setBlock,
+          $push: {
+            status: {
+              $position: 0,
+              $each: [
+                {
+                  stage: "completed",
+                  event_id: context.eventId,
+                  created: context.changeStamp,
+                },
+              ],
+            },
+          },
+        }
+      : { $set: setBlock };
     try {
       await context.mongoDBConnection("workflows").MongoDBUpdateOne({
         filter: { _id: context.workflow._id },
-        update: {
-          $set: {
-            summary,
-            updated: context.changeStamp,
-          },
-        },
+        update,
       });
     } catch (err) {
       err.step = err.step ?? "recompute-summary";
       throw err;
     }
-    // PART 7 EXTENSION: part 7 also writes `groups[]` here (per-group
-    // `{ id, status, summary }` entries). The same $set call adds `groups`
-    // to the $set block alongside `summary`.
+
+    // Compute completed_groups: groups that transitioned from non-'done' to 'done'.
+    const beforeById = new Map(groupsBefore.map((g) => [g.id, g]));
+    for (const after of groupsAfter) {
+      const before = beforeById.get(after.id);
+      if (after.status === "done" && before?.status !== "done") {
+        const cfg = declaredGroups.find((g) => g.id === after.id);
+        completedGroups.push({
+          workflow_id: context.workflow._id,
+          id: after.id,
+          on_complete: cfg?.on_complete ?? null,
+        });
+      }
+    }
 
     // Step 6 — Write form_data (merge form + form_review, $set per-field).
     const formMerged = {
@@ -325,7 +400,7 @@ async function handleSubmit(context) {
 
   return {
     action_ids: actionIds,
-    completed_groups: [], // PART 7: swap for [{ workflow_id, id, on_complete? }] entries.
+    completed_groups: completedGroups,
     event_id: null,
     tracker_fired: null,
     pre_hook_response: null,

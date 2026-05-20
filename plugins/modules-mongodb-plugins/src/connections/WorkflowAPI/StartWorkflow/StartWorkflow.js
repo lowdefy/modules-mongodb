@@ -4,6 +4,7 @@ import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
 import createAction from '../../shared/createAction.js';
 import getActionFields from '../../shared/getActionFields.js';
 import updateAction from '../../shared/updateAction.js';
+import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
 
 async function StartWorkflow(lowdefyContext) {
   const { request: payload = {}, connection } = lowdefyContext;
@@ -101,6 +102,10 @@ async function StartWorkflow(lowdefyContext) {
     not_required: notRequiredCount,
     total: actionDrafts.length,
   };
+  workflowDoc.groups = recomputeGroups({
+    declaredGroups: workflowConfig.action_groups ?? [],
+    actions: actionDrafts,
+  });
 
   await context.mongoDBConnection('workflows').MongoDBInsertOne({ doc: workflowDoc });
   if (actionDrafts.length > 0) {

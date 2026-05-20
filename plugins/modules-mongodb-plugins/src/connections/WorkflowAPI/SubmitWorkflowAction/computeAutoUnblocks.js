@@ -1,18 +1,37 @@
 /**
- * Walk the workflow's `blocked_by` graph (action-type entries only in v1);
+ * Walk the workflow's `blocked_by` graph (mixed action types + group ids);
  * emit `{ type, status: 'action-required' }` entries for every blocked action
- * whose `blocked_by` action-type dependencies are now terminal.
+ * whose `blocked_by` dependencies are now all satisfied.
  *
- * For keyed actions (multiple docs per type), a type is "fully terminal"
- * only when every doc of that type is terminal — empty action types count
- * as non-terminal.
+ * Resolution rules for each `blocked_by` entry:
+ *   1. Group id (declared in `action_groups[]`) → satisfied iff the group's
+ *      persisted status is `'done'`.
+ *   2. Action type (declared in `actions[]`) → satisfied iff every doc of
+ *      that type is terminal. (For keyed actions, a type is "fully terminal"
+ *      only when every doc of that type is terminal.)
+ *   3. Neither — defensive skip (treat as unsatisfied). The build-time
+ *      validator in `makeWorkflowsConfig` rejects unresolved entries; this
+ *      branch only fires if the validator was bypassed.
+ *
+ * Reads the workflow's **pre-submit** `groups[]` array (Part 7's sub-step 4a
+ * recomputes the post-submit array; that runs after step 4 writes, while this
+ * function runs in step 3 *before* step 4).
  *
  * @param {Object} args
- * @param {Array<Object>} args.workflowActions — all action docs on the workflow.
- * @param {Array<Object>} args.actionsConfig — `workflowsConfig[workflow_type].actions`.
+ * @param {Array<Object>} args.workflowActions
+ * @param {Array<Object>} args.actionsConfig
+ * @param {Array<{ id: string, status: 'done'|'blocked'|'in-progress', ... }>} [args.groups]
+ *   — workflow doc's current `groups[]` array.
+ * @param {Array<{ id: string, ... }>} [args.declaredGroups]
+ *   — `workflowConfig.action_groups`.
  * @returns {Array<{ type: string, status: 'action-required' }>}
  */
-function computeAutoUnblocks({ workflowActions, actionsConfig }) {
+function computeAutoUnblocks({
+  workflowActions,
+  actionsConfig,
+  groups = [],
+  declaredGroups = [],
+}) {
   const terminalByType = new Map();
   for (const action of workflowActions) {
     const isTerminal = ["done", "not-required"].includes(action.status?.[0]?.stage);
@@ -23,7 +42,9 @@ function computeAutoUnblocks({ workflowActions, actionsConfig }) {
     }
   }
 
-  const knownActionTypes = new Set(actionsConfig.map((cfg) => cfg.type));
+  const declaredGroupIds = new Set((declaredGroups ?? []).map((g) => g.id));
+  const groupById = new Map((groups ?? []).map((g) => [g.id, g]));
+  const actionTypes = new Set(actionsConfig.map((cfg) => cfg.type));
   const unblockedTypes = new Set();
 
   for (const action of workflowActions) {
@@ -33,14 +54,19 @@ function computeAutoUnblocks({ workflowActions, actionsConfig }) {
     if (!cfg) continue;
 
     const blockedBy = cfg.blocked_by ?? [];
-    // PART 7 EXTENSION: group-id entries in `blocked_by` are filtered out here
-    // (action-type only in v1). Part 7's blocked_by group-id resolution adds
-    // the group-status lookup branch before this filter, so group ids resolve
-    // via the workflow's persisted `groups[]` array.
-    const actionTypeDeps = blockedBy.filter((entry) => knownActionTypes.has(entry));
-    if (actionTypeDeps.length === 0) continue;
+    if (blockedBy.length === 0) continue;
 
-    const allSatisfied = actionTypeDeps.every((dep) => terminalByType.get(dep) === true);
+    const allSatisfied = blockedBy.every((entry) => {
+      if (declaredGroupIds.has(entry)) {
+        return groupById.get(entry)?.status === "done";
+      }
+      if (actionTypes.has(entry)) {
+        return terminalByType.get(entry) === true;
+      }
+      // Defensive: build-time validator rejects unresolved entries.
+      return false;
+    });
+
     if (allSatisfied) {
       unblockedTypes.add(action.type);
     }

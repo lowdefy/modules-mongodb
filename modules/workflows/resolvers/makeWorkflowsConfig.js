@@ -125,6 +125,15 @@ function validateWorkflow(workflow) {
         `action "${action.type}" references unknown action_group "${action.action_group}".`
       );
     }
+    const blockedBy = action.blocked_by ?? [];
+    for (const entry of blockedBy) {
+      if (!groupIds.has(entry) && !actionTypes.has(entry)) {
+        fail(
+          workflow.type,
+          `action "${action.type}" blocked_by entry "${entry}" resolves to neither a declared action_groups[].id nor a declared actions[].type.`
+        );
+      }
+    }
   }
 
   for (const entry of startingActions) {
