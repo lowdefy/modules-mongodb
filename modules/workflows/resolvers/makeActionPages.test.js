@@ -10,7 +10,11 @@ const qualifyAction = {
     "action-required": { "my-team-app": { message: "Qualify the lead." } },
   },
   form: [{ id: "contact_name", type: "TextInput" }],
-  hooks: { submit_edit: { pre: "qualify-pre-submit" } },
+  hooks: {
+    submit_edit: {
+      pre: { routine: [{ id: "qualify_pre_submit", type: "MongoDBFindOne" }] },
+    },
+  },
   pages: {
     edit: { maxWidth: 1200 },
   },

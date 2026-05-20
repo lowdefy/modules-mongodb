@@ -11,9 +11,9 @@ my-app/
     {workflow-type}/
       {workflow-type}.yaml        # workflow definition
       {action-type}.yaml          # one per action
-      api/
-        {action-type}-submit-hook.yaml   # optional, form actions only
 ```
+
+Hook routines live **inline** on the action YAML's `hooks:` block (and group `on_complete:` routines live inline on the workflow YAML's `action_groups[]`). The resolver emits the corresponding Lowdefy Apis at build time — authors do not write separate hook Api files.
 
 ## Workflow YAML
 
@@ -25,7 +25,11 @@ display_order: 1
 action_groups:
   - id: phase-1
     title: Discovery
-    on_complete: workflow_config/onboarding/api/phase-1-complete.yaml
+    on_complete:
+      routine:
+        - id: notify-ops
+          type: CallApi
+          # ...further steps...
   - id: phase-2
     title: Quote
   - id: phase-3
@@ -100,7 +104,7 @@ Per action:
 - `blocked_by` entries (if present) must resolve to either another `actions[].type` OR an `action_groups[].id` in the same workflow. Mixed lists valid; engine resolves by group-id-first precedence (action-groups spec).
 - `access.<app_name>` entries (if present) must be arrays of valid verbs (`view`, `edit`, `review`; unknown verbs flagged at build time, silently ignored at runtime).
 - Static `references:` blocks (if present) are checked for reserved-key collisions; runtime references go through the engine's merge-order silencing.
-- `hooks.{interaction}.{pre,post}` (if present) — each referenced hook API must declare `auth.roles ⊇ action.access.roles` and must not declare `auth.public: true`. See submit-pipeline "Hook auth gate." Fails the build with a path to the offending hook + action when the relationship doesn't hold.
+- `hooks.{interaction}.{pre,post}` (if present) — must be an **object** carrying an inline `routine:` array (Lowdefy Api routine shape). String values (the legacy form referencing an external Api id) are rejected with a migration message. The resolver emits the hook Api at build time with `auth.roles` synthesized from `action.access.roles` — no separate auth gate.
 
 Errors fail the app build with a path to the offending workflow / action.
 
@@ -358,9 +362,16 @@ kind: form
 action_group: discovery
 sort_order: 10
 description: Confirm the lead's contact details and capture qualification notes.
-hooks: # optional; per-interaction pre/post hook APIs (submit-pipeline Decision 4)
+hooks: # optional; per-interaction pre/post routines (inline)
   submit_edit:
-    pre: lead-onboarding-qualify-pre-submit
+    pre:
+      routine:
+        - id: validate
+          type: MongoDBFindOne
+          connectionId: leads-collection
+          properties:
+            filter: { _id: { _payload: action.references.lead_id } }
+        # ...further steps...
 access:
   my-team-app: [view, edit]
   roles: [account-manager]
@@ -484,7 +495,7 @@ Five JS resolvers consume authored YAML at build time:
 | Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                         | Used in                                  |
 | ----------------------- | ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------- |
 | `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML, one per (workflow_type, action_type, verb) for form actions only                                                                                                                                                          | `module.lowdefy.yaml` `pages:`           |
-| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` per form / task action (bakes in `hooks:` / `event:` / `interactions:` blocks as build-time literals; validates `hook.auth.roles ⊇ action.access.roles`); skipped for tracker actions | `module.lowdefy.yaml` `api:`             |
+| `makeWorkflowApis`      | `workflows_config`                                      | Array of `Api` YAML — one `update-action-{action_type}` per form / task action (bakes in `hooks:` / `event_overrides:` / `interactions:` blocks as build-time literals); also emits resolver-derived hook Apis (one per declared `hooks.{interaction}.{pre|post}` routine) and group `on_complete` Apis with `auth.roles` synthesized from `action.access.roles`; skipped for tracker actions | `module.lowdefy.yaml` `api:`             |
 | `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection. Also the single place all build-time validation of `workflows_config` lives (workflow + action invariants — see "Action kinds" section for the full list).                      | `module.lowdefy.yaml` connection config  |
 | `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name                                                                                                                                                                          | Called inside form-action page templates |
 | `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, defaults, types)                                                                                                                                                                                    | `global.action_form_configs`             |
@@ -512,15 +523,12 @@ One `update-action-{action_type}` endpoint per form / task action. The routine i
         form: { _payload: form }
         form_review: { _payload: form_review }
         fields: { _payload: fields }
+        # sparse — keys present only for interactions/phases the action declares.
+        # values are resolver-derived ids (update-action-{action_type}-{interaction}-{pre|post}),
+        # not author-supplied.
         hooks:
-          {
-            submit_edit: { pre, post },
-            not_required: { pre, post },
-            resolve_error: { pre, post },
-            approve: { pre, post },
-            request_changes: { pre, post },
-          }
-        event_overrides: { submit_edit: { type, display, metadata }, ... }
+          submit_edit: { pre: update-action-{action_type}-submit_edit-pre }
+        event_overrides: { submit_edit: { type, display, references, metadata }, ... }
         interactions: { submit_edit: { status: <override-or-null> }, ... }
     - :return:
         action_ids: { _step: submit.action_ids }
@@ -531,7 +539,7 @@ One `update-action-{action_type}` endpoint per form / task action. The routine i
         post_hook_response: { _step: submit.post_hook_response }
 ```
 
-Tracker actions don't get a generated endpoint; the engine writes their status via the subscription. Build-time validation: `hook.auth.roles ⊇ action.access.roles` (and `hook.auth.public !== true`) for every hook API referenced from `hooks.{interaction}.{pre,post}` — see submit-pipeline Decision 4.
+Tracker actions don't get a generated endpoint; the engine writes their status via the subscription. Hook Apis are resolver-emitted with `auth.roles` synthesized from `action.access.roles`; the gate holds by construction. No separate validation pass. See submit-pipeline Decision 4 for the runtime hook invocation contract.
 
 ## Form components library
 

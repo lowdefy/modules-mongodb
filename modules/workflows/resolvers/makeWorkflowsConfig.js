@@ -36,6 +36,16 @@ const ACTION_STATUSES = [
   'blocked',
 ];
 
+const HOOK_INTERACTIONS = [
+  'submit_edit',
+  'not_required',
+  'resolve_error',
+  'approve',
+  'request_changes',
+];
+
+const HOOK_PHASES = ['pre', 'post'];
+
 function pick(source, fields) {
   const picked = {};
   for (const field of fields) {
@@ -46,6 +56,73 @@ function pick(source, fields) {
 
 function fail(workflowType, message) {
   throw new Error(`makeWorkflowsConfig: workflow "${workflowType}": ${message}`);
+}
+
+function validateHooks(workflow, action) {
+  if (!action.hooks) return;
+  const where = `action "${action.type}"`;
+  for (const interaction of Object.keys(action.hooks)) {
+    if (!HOOK_INTERACTIONS.includes(interaction)) {
+      fail(
+        workflow.type,
+        `${where} hooks key "${interaction}" is not a known interaction (expected one of: ${HOOK_INTERACTIONS.join(', ')}).`
+      );
+    }
+    const phases = action.hooks[interaction];
+    if (phases === null || typeof phases !== 'object') {
+      fail(
+        workflow.type,
+        `${where} hooks.${interaction} must be an object with pre/post phase entries (got: ${JSON.stringify(phases)}).`
+      );
+    }
+    for (const phase of Object.keys(phases)) {
+      if (!HOOK_PHASES.includes(phase)) {
+        fail(
+          workflow.type,
+          `${where} hooks.${interaction} phase "${phase}" is invalid (expected "pre" or "post").`
+        );
+      }
+      const value = phases[phase];
+      if (typeof value === 'string') {
+        fail(
+          workflow.type,
+          `${where} hooks.${interaction}.${phase} is a string ("${value}") — the legacy shape pointing at an external Api id. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Action hooks contract".`
+        );
+      }
+      if (
+        value === null ||
+        typeof value !== 'object' ||
+        !Array.isArray(value.routine)
+      ) {
+        fail(
+          workflow.type,
+          `${where} hooks.${interaction}.${phase} must be an object with a routine: array (got: ${JSON.stringify(value)}).`
+        );
+      }
+    }
+  }
+}
+
+function validateGroupOnComplete(workflow, group) {
+  if (!('on_complete' in group)) return;
+  const where = `action_groups "${group.id}"`;
+  const value = group.on_complete;
+  if (typeof value === 'string') {
+    fail(
+      workflow.type,
+      `${where} on_complete is a string ("${value}") — the legacy shape pointing at a YAML path. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Workflow YAML".`
+    );
+  }
+  if (
+    value === null ||
+    typeof value !== 'object' ||
+    !Array.isArray(value.routine)
+  ) {
+    fail(
+      workflow.type,
+      `${where} on_complete must be an object with a routine: array (got: ${JSON.stringify(value)}).`
+    );
+  }
 }
 
 function validateAction(workflow, action) {
@@ -84,6 +161,8 @@ function validateAction(workflow, action) {
       }
     }
   }
+
+  validateHooks(workflow, action);
 }
 
 function validateWorkflow(workflow) {
@@ -115,6 +194,7 @@ function validateWorkflow(workflow) {
       );
     }
     groupIds.add(group.id);
+    validateGroupOnComplete(workflow, group);
   }
 
   for (const action of actions) {

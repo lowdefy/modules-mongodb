@@ -152,3 +152,129 @@ test("makeWorkflowsConfig: blocked_by walk doesn't short-circuit on the first va
     /nonexistent-entry/,
   );
 });
+
+test("makeWorkflowsConfig: inline hook routine validates cleanly", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "task",
+        hooks: {
+          submit_edit: {
+            pre: { routine: [{ id: "x", type: "MongoDBFindOne" }] },
+          },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: legacy string hook fails with migration message", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "task",
+        hooks: { submit_edit: { pre: "some-api-id" } },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /legacy shape/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /Convert to an inline routine object/,
+  );
+});
+
+test("makeWorkflowsConfig: hook value missing routine: array fails", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "task",
+        hooks: { submit_edit: { pre: { not_routine: [] } } },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /must be an object with a routine: array/,
+  );
+});
+
+test("makeWorkflowsConfig: unknown hook interaction fails", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "task",
+        hooks: { surprise: { pre: { routine: [] } } },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /is not a known interaction/,
+  );
+});
+
+test("makeWorkflowsConfig: inline on_complete routine validates cleanly", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    action_groups: [
+      {
+        id: "phase-1",
+        on_complete: {
+          routine: [{ id: "notify", type: "CallApi" }],
+        },
+      },
+    ],
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [{ type: "qualify", kind: "task", action_group: "phase-1" }],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: legacy string on_complete fails with migration message", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    action_groups: [
+      {
+        id: "phase-1",
+        on_complete: "workflow_config/onboarding/api/phase-1-complete.yaml",
+      },
+    ],
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [{ type: "qualify", kind: "task", action_group: "phase-1" }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /on_complete is a string/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /legacy shape/,
+  );
+});
