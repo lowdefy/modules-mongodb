@@ -68,6 +68,7 @@ Part 5 already cancels actions to `not-required` with `force: true`. This part a
   - Auto-complete: completing every group pushes the workflow to `completed`.
 - Regression: every part-6 unit test still passes with `groups[]` writeback enabled.
 - `CancelWorkflow` integration: cancelled workflows have consistent `groups[]`.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

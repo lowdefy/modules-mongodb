@@ -53,6 +53,7 @@ Like [part 12](../12-resolver-pages/design.md), this resolver emits dynamic expo
   - Hook auth-gate failure: a fixture with `hook.auth.roles` missing one of `action.access.roles` fails the build with a clear message.
   - `hook.auth.public: true` fails the build.
 - Integration: build the demo app; assert generated Api ids.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

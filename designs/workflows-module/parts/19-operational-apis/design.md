@@ -4,7 +4,7 @@
 
 ## Goal
 
-Ship the four static module-shipped Apis that consuming apps call to manage workflows from the outside: `start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`. The per-action `update-action-{action_type}` Apis ship from [part 13](../13-resolver-apis/design.md).
+Ship the static module-shipped Apis that consuming apps call to manage workflows from the outside: `start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`, and `close-workflow` (added by [part 23](../23-close-workflow-handler/design.md)). The per-action `update-action-{action_type}` Apis ship from [part 13](../13-resolver-apis/design.md).
 
 ## In scope
 
@@ -22,6 +22,16 @@ Ship the four static module-shipped Apis that consuming apps call to manage work
   - Required: `workflow_id`.
   - Optional: `reason`, `references: {}`.
 - Routine: single step invoking `CancelWorkflow` plugin handler from [part 5](../05-start-cancel-handlers/design.md).
+- Returns `{ action_ids, event_id, tracker_fired }`.
+
+### `api/close-workflow.yaml`
+
+Added by [part 23](../23-close-workflow-handler/design.md). Author-initiated normal termination — pushes the workflow to `completed` (not `cancelled`) and sweeps non-terminal actions while honoring `required_after_close: true`.
+
+- Payload schema:
+  - Required: `workflow_id`.
+  - Optional: `reason`, `references: {}`.
+- Routine: single step invoking `CloseWorkflow` plugin handler from [part 23](../23-close-workflow-handler/design.md).
 - Returns `{ action_ids, event_id, tracker_fired }`.
 
 ### `api/get-entity-workflows.yaml`
@@ -63,13 +73,14 @@ All three implementations must match.
 
 ## Depends on
 
-[Part 5](../05-start-cancel-handlers/design.md), [Part 7](../07-group-state-machine/design.md) (so `get-entity-workflows` returns persisted `groups[]`).
+[Part 5](../05-start-cancel-handlers/design.md), [Part 7](../07-group-state-machine/design.md) (so `get-entity-workflows` returns persisted `groups[]`), [Part 23](../23-close-workflow-handler/design.md) (for the `close-workflow` API's plugin handler).
 
 ## Verification
 
 - Unit tests:
   - `start-workflow` writes workflow + actions; returns ids.
   - `cancel-workflow` flips workflow + open actions.
+  - `close-workflow` pushes workflow `completed` and sweeps non-terminal actions per part 23's filter.
   - `get-entity-workflows` filters by access correctly; returns persisted `groups[]`.
   - `get-workflow-overview` orders actions correctly; returns null workflow when all actions inaccessible.
 - Integration: end-to-end through the worked-example onboarding workflow.
@@ -84,4 +95,5 @@ All three implementations must match.
 
 - **Part 18 (`actions-on-entity`)** consumes `get-entity-workflows`.
 - **Part 17 (`workflow-overview` page)** consumes `get-workflow-overview`.
-- **Part 20 (module-manifest)** declares all four Apis in `exports.api`.
+- **Part 20 (module-manifest)** declares all five Apis (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`) in `exports.api`.
+- **Part 23 (close-workflow-handler)** ships the `CloseWorkflow` plugin handler that backs `close-workflow.yaml`.

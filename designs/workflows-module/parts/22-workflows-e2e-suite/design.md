@@ -57,7 +57,7 @@ For each shipping part, the matrix below names the file and the load-bearing ass
 | Part | Spec file                          | Load-bearing assertions                                                                                                  |
 | ---- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 05   | `start-cancel.spec.js`             | Workflow + N action docs written; `display_order` carried; initial `summary` correct; payload `actions[]` override path; reference-key spread; parent linking (three fields + `force: true` `in-progress` push); parent-link rejections (wrong kind, already linked, mismatched `tracker.workflow_type`); keyed-action YAML rejection; change-stamp threading; cancel cancels open actions; terminal actions untouched; `reason` propagated; cancel `references` reserved-key merge order. |
-| 06   | `submit-action.spec.js`            | Each interaction's default status mapping; priority rule + `currentActionId` self-exception; per-call and per-entry `force`; `form_data` writes at the correct path (keyed + non-keyed); idempotent re-submit no-op. |
+| 06   | `submit-action.spec.js`            | Each interaction's default status mapping; priority rule + `currentActionId` self-exception (re-click writes fresh audit entry); per-entry `force: true` bypass; `form` + `form_review` merge into one flat `form_data.{action_type}` bag; `form_data` writes at the correct path (keyed + non-keyed); idempotent re-submit on non-self entries (priority rule rejects same-stage); terminal-workflow gate (`completed`/`cancelled` workflow rejects submit unless `required_after_close: true`). |
 | 07   | `submit-action.spec.js`            | Group transitions to `done`; mixed-type `blocked_by` re-evaluation; `completed_groups` returned; auto-complete pushes workflow to `completed`; `CancelWorkflow` `groups[]` recompute. |
 | 08   | `side-effects.spec.js`             | Log event written via `events.new-event`; notifications dispatched via `notifications.send-notification`; both threaded with the submit's `eventId`. |
 | 09   | `hooks.spec.js`                    | Pre-hook return overrides target status; pre-hook `hook_error` aborts as `error` transition; post-hook receives engine result; `event_overrides` / `form_overrides`; three-layer status resolution. |
@@ -69,7 +69,8 @@ For each shipping part, the matrix below names the file and the load-bearing ass
 | 16   | `page-templates.spec.js`           | Edit template submit drives status forward; review template submit emits approve / request-changes interactions; error template's `resolve_error` button recovers to `submit_edit`'s target. |
 | 17   | `shared-pages.spec.js`             | Task-edit / task-view / task-review render against an action without per-type pages; workflow-overview shows summary + groups. |
 | 18   | `entity-components.spec.js`        | `actions-on-entity` renders the right actions per app's verb map; `workflow-header` shows summary state; `action_role_check` hides actions where roles don't intersect. |
-| 19   | `operational-apis.spec.js`         | `start-workflow` end-to-end; `cancel-workflow` end-to-end; `get-entity-workflows` filtering by app verb map; `get-workflow-overview` returns aggregated shape. |
+| 19   | `operational-apis.spec.js`         | `start-workflow` end-to-end; `cancel-workflow` end-to-end; `get-entity-workflows` filtering by app verb map; `get-workflow-overview` returns aggregated shape; `close-workflow` end-to-end (from part 23). |
+| 23   | `close-workflow.spec.js`           | Workflow `active` → close → `completed` push; sweep skips `required_after_close: true` actions; blocked actions get swept even when `required_after_close: true`; already-`completed` close is a no-op; already-`cancelled` close rejects; tracker fan-up fires `done` on parent when child closes. |
 
 ### Specs as documentation
 
@@ -80,7 +81,7 @@ Spec files prefer descriptive `test()` titles matching the concept-doc language 
 - **Performance / load tests.** Out of v1 e2e scope.
 - **Cross-app verb-filter coverage.** v1 demo wires one app (`apps/demo`); cross-app coverage lands when a second app is added.
 - **Migration tooling smoke tests.** Concept-level migration tooling is out of v1.
-- **Unit-test backfill for already-implemented parts 3, 4, 14.** Those parts shipped without unit tests by design; their e2e coverage flows naturally from the engine specs that depend on them (parts 5+).
+- **Unit-test backfill for grandfathered parts 3, 4, 5, 14.** Those parts shipped before the [top-level Testing conventions](../../design.md#testing-conventions) landed; their existing posture stands. Their e2e coverage flows naturally from the engine specs that depend on them (parts 6+).
 
 ## Depends on
 
@@ -102,5 +103,5 @@ Soft dependencies on every earlier part: a spec for part N can only land once pa
 
 ## Contract to neighbours
 
-- **Every shipping part (5–20)** carries a single line in its Verification section: "End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only."
+- **Every shipping part (5–20, 23)** carries a single line in its Verification section: "End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only."
 - **Part 20** strikes the "End-to-end Playwright e2e tests — recommend `/r:dev-playwright-gen` as a follow-up" out-of-scope bullet; e2e is no longer deferred from the workflows module, it has its own part.

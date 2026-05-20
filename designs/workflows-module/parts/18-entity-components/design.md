@@ -61,6 +61,7 @@ These three components are exposed via `module.lowdefy.yaml`'s `exports.componen
   - `action_role_check` correctly hides buttons for users without the required role.
 - Responsive: widget reflows on narrow viewports.
 - a11y: keyboard nav reaches every link / button.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

@@ -46,7 +46,7 @@ Authors can override the default target status per interaction in YAML (part 4 a
 
 ### `force: true` propagation
 
-[Part 6](../06-submit-action-writes/design.md) plumbed the flag on the payload root and per-entry. This part makes pre-hook returns the v1 user of per-entry `force` (for replay/rollback). Payload-root `force` stays off-limits to user submissions per the concept.
+[Part 6](../06-submit-action-writes/design.md) plumbed per-entry `force` on `actions[]` entries (the only force surface — see [part 6 § Priority rule](../06-submit-action-writes/design.md#priority-rule)). This part makes pre-hook returns the v1 user of per-entry `force` (for replay/rollback) — each entry the pre-hook returns may set its own `force: true`.
 
 ### Build-time hook auth gate (handed off to part 13)
 
@@ -55,7 +55,6 @@ The auth gate (`hook.auth.roles ⊇ action.access.roles`, reject `auth.public: t
 ## Out of scope / deferred
 
 - **`hook.auth.roles` validation** → [part 13](../13-resolver-apis/design.md).
-- **`force: true` on the payload root via user submission** — not exposed; admin/migration tools out of v1 scope.
 - **Hook payload `context.shallow` flag** for large workflow docs — flagged as a concept open question; defer.
 
 ## Depends on
@@ -72,6 +71,7 @@ The auth gate (`hook.auth.roles ⊇ action.access.roles`, reject `auth.public: t
 - Post-hook return surfaces on the API response as `post_hook_response`.
 - Post-hook failure does not propagate.
 - Integration: the worked-example `qualify-pre-submit` and `send-quote-post-approve` fixtures exercise the full chain.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

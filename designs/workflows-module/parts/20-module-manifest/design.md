@@ -24,7 +24,7 @@ Final wiring: `module.lowdefy.yaml`, three connections, exports for pages and co
     - Static: `task-edit`, `task-view`, `task-review`, `workflow-overview` (from [part 17](../17-shared-pages/design.md)).
     - Dynamic via [part 2](../02-dynamic-module-pages/design.md) channel: per-action pages emitted by `makeActionPages` ([part 12](../12-resolver-pages/design.md)).
   - `api`:
-    - Static: `start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview` (from [part 19](../19-operational-apis/design.md)).
+    - Static: `start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview` (from [part 19](../19-operational-apis/design.md); `close-workflow` is added by [part 23](../23-close-workflow-handler/design.md)).
     - Dynamic: per-action `update-action-{action_type}` emitted by `makeWorkflowApis` ([part 13](../13-resolver-apis/design.md)).
   - `components`: `actions-on-entity`, `workflow-header`, `action_role_check` (from [part 18](../18-entity-components/design.md)).
   - `enums`: `action_statuses`, `workflow_lifecycle_stages` (from [part 4](../04-workflow-config-schema/design.md)).
@@ -61,7 +61,7 @@ Per CLAUDE.md, only add anchors to `docs/idioms.md` if a new idiom emerges from 
 
 ## Out of scope / deferred
 
-- **End-to-end Playwright e2e tests** — recommend `/r:dev-playwright-gen` as a follow-up.
+- **End-to-end Playwright e2e tests** — owned by [part 22](../22-workflows-e2e-suite/design.md). Part 22 authors specs against the worked-example demo this part wires up.
 - **Cleanup of `designs/workflows-module-concept/ui/example_workflow/`** — design-time examples superseded by the live demo. Decide during this part whether to remove or keep as reference.
 - **Migration tooling** — concept marks as out of v1.
 
@@ -77,6 +77,7 @@ Every other part. This is the closeout milestone.
   - Every var in `module.lowdefy.yaml` has a matching narrative entry.
   - Every export listed in the README exists in the manifest.
 - Plugin version in the manifest matches the version that ships `WorkflowAPI`.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is the manual demo walk-through above; the automated spec lands in part 22 once this part ships.
 
 ## Open questions
 

@@ -55,6 +55,7 @@ The module manifest's `dependencies: [events, notifications]` declaration is par
 - Integration smoke against the worked-example:
   - Submitting `qualify` writes an event in `events` with the expected display, references, and metadata.
   - Notification routine receives a payload when wired; no error when unwired.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

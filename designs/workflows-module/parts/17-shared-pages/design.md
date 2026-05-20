@@ -71,6 +71,7 @@ Same as part 16: `layout.page` → `layout.card` → `layout.floating-actions` f
   - Submitting `task-edit` transitions the action; lead page reflects the new state.
   - `workflows/workflow-overview?workflow_id=...` renders all four actions in order with current status + form_data display.
 - a11y + responsive: pages reflow on narrow viewports, keyboard nav works.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

@@ -51,6 +51,7 @@ Group status is one-way (`blocked → in-progress → done`, no transitions back
   - Hook errors are logged but the submit returns successfully.
   - `CancelWorkflow` doesn't fan out any hooks.
 - Integration test against a fixture workflow with multiple groups all completing in one submit: fan-out fires in declaration order.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

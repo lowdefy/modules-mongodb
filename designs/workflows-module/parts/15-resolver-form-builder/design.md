@@ -62,6 +62,7 @@ Concept flags `_ref: { resolver }` from inside a Nunjucks template at module sco
 - Unit tests on `makeActionFormConfigs`:
   - Worked-example actions produce the expected `global.action_form_configs` shape.
 - Spike outcome documented in `modules/workflows/components/fields/README.md`.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

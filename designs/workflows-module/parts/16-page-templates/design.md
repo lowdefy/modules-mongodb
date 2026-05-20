@@ -82,6 +82,7 @@ Authors declare handlers via `pages.{verb}.events.{handler}` on the action YAML;
   - `workflows/onboarding-send-quote-review` renders read-only form + writable review fields + approve/request-changes buttons.
   - For a fixture that opts into the `-error` page, the stale-URL guard fires correctly.
 - Manual a11y pass: keyboard nav reaches every button; form labels read.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

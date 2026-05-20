@@ -53,6 +53,7 @@ For the workflow whose status just changed:
   - Re-firing the same stage is a no-op (priority rule).
   - `tracker_fired` payload populated on the originating submit response.
 - Integration test using the worked-example: completing the child `device-installation` workflow flips the parent's `track-installation` to `done` in one server-side call.
+- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 
