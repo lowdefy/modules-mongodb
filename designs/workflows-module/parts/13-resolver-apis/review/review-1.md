@@ -20,6 +20,8 @@ These two literals matter — they're how the handler will look up `actionConfig
 
 ### 2. `hooks` map is overspecified vs. what the handler will consume
 
+> **Resolved.** Folded into the §1/§3/§4 rewrite of "In scope". The committed shape is now sparse for all three maps: "only declared interactions/fields are emitted; the handler reads `hooks?.[interaction]?.pre` etc. and treats absent slots as no-hook." Spec example's dense five-slot shape is illustrative, not normative.
+
 design.md:17 commits:
 
 ```
@@ -111,6 +113,8 @@ The list passes, but there's no positive assertion of "task endpoint emitted wit
 
 ### 9. The hook-auth validation lives where the hook configs land — but how does the resolver reach hook auth?
 
+> **Resolved.** Dissolved by inverting the model: hooks are authored **inline** on the action YAML (the routine, not a string pointing at an external Api), and the resolver emits the hook Apis itself with deterministic ids (`update-action-{action_type}-{interaction}-{pre|post}`). Auth is synthesized from `action.access.roles` at emission, so the `⊇` gate holds by construction — no cross-resource lookup, no `vars.apis` input, no separate validation pass. [design.md](../design.md) "Hook emission" section replaces the old "Build-time validation (hook auth gate)" section. Flagged a precondition: the action-authoring spec and part 4's validator need a fold-in to flip `hooks.{interaction}.{pre|post}` from string to object.
+
 design.md:25–30 commits the hook-auth gate at build time: validate `hook.auth.roles ⊇ action.access.roles`, reject `hook.auth.public: true`.
 
 But the resolver reads `hooks[interaction].pre|post` from the action YAML, which is a **string** (the hook Api id). To validate `hook.auth.roles`, the resolver needs to **resolve the referenced Api by id** and read its `auth:` block from the host app's `apis/*.yaml`. That's a cross-resource lookup the resolver doesn't have today.
@@ -131,6 +135,8 @@ Confirm `vars.apis` is a thing the framework can hand a resolver; if not, fall b
 
 ### 10. The `on_complete` validation is left open — close it
 
+> **Resolved.** Same fold as §9 — `on_complete` is authored inline on `workflow.action_groups[].on_complete`; the resolver emits an Api with id `workflow-{workflow_type}-group-{group_id}-on-complete` and `auth.roles` synthesized from the union of the group's actions' `access.roles`. Gate dissolves by construction. The "where to validate `on_complete` Api auth" open question is dropped from [design.md](../design.md).
+
 design.md:32 says:
 
 > Same validation applies to group-level `on_complete` Apis declared on `workflow.action_groups[].on_complete` (per [part 11](../11-group-on-complete-fanout/design.md)'s open question — confirm during implementation whether to gate here or skip).
@@ -144,6 +150,8 @@ The case for validating here: same shape, same risk class (a hook-without-role-g
 ## Cross-part contract
 
 ### 11. Where does the resolver-emitted Api land in the manifest?
+
+> **Accepted.** The risk is real but the existing wording already gestures at it — `Depends on` says "Part 2 (or a parallel API-resolver channel)" and the Upstream dependency section says "Decide before implementation; resolve in part 2." A hard `Depends on` row would just restate that. Leaving as-is.
 
 design.md:34 ("Upstream dependency") flags the part-2 open question about whether `exports.api` rides on the same dynamic-export channel as `exports.pages`. Part 12 ships, so the page channel will land. Part 13 needs **either** the same channel or a parallel `exports.resolvers.api`.
 

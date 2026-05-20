@@ -4,7 +4,7 @@
 
 ## Goal
 
-Emit one `update-action-{action_type}` Lowdefy Api per form / task action at build time. Bake the action's `hooks:`, `event_overrides:`, and `interactions:` maps into the endpoint config as build-time literals. Validate hook auth at build time. Tracker actions get nothing (engine writes their status via subscription).
+Emit one `update-action-{action_type}` Lowdefy Api per form / task action at build time. Bake the action's `hooks:`, `event_overrides:`, and `interactions:` maps into the endpoint config as build-time literals. Hooks and group `on_complete` routines are authored inline on the action / workflow YAML; the resolver also emits those as Apis with `auth.roles` synthesized from `action.access.roles` so the hook-auth gate holds by construction (no separate validation pass). Tracker actions get nothing (engine writes their status via subscription).
 
 ## In scope
 
@@ -25,16 +25,20 @@ For each form / task action:
 - Routine: single step that invokes the `SubmitWorkflowAction` plugin handler with the request payload. The routine targets the workflows module's `workflow-api` connection (`_module.connectionId: workflow-api`); the connection's `workflowsConfig` and `actionsEnum` properties — wired in part 20 — are what the handler reads for engine state. Part 13 emits no payload fields for those.
 - Payload shape committed: the runtime payload (`action_id`, `interaction`, `current_key`, `form`, `form_review`, `fields`, optional `current_status` for task `submit_edit`) **plus** the build-time literals (`action_type`, `workflow_type`) the resolver bakes in. No root-level `force` field — `force: true` lives only on pre-hook-returned `actions[]` entries (engine-internal); the resolver does not emit a `force:` slot in `properties:`.
 
-### Build-time validation (hook auth gate)
+### Hook emission (replaces the build-time auth gate)
 
-For every hook declared on every action:
+Hooks are authored **inline** on the action YAML — the routine lives on `hooks.{interaction}.{pre|post}` as an object, not a string pointing at an external Api. The resolver emits the hook Apis alongside the `update-action-{action_type}` endpoint, deriving the id deterministically:
 
-- Read the referenced hook Api's auth block.
-- Validate `hook.auth.roles ⊇ action.access.roles`.
-- Reject `hook.auth.public: true`.
-- Build fails with a precise message naming the offending action + interaction + hook + missing role.
+- `update-action-{action_type}-{interaction}-pre`
+- `update-action-{action_type}-{interaction}-post`
 
-Same validation applies to group-level `on_complete` Apis declared on `workflow.action_groups[].on_complete` (per [part 11](../11-group-on-complete-fanout/design.md)'s open question — confirm during implementation whether to gate here or skip).
+The `hooks:` map baked into the `update-action-{action_type}` endpoint carries these derived ids (one slot per interaction that declares `pre`/`post`). Part 9's `invokePreHook.js` reads the id from the endpoint config and calls it via `context.callApi` — same contract it already has; only the provenance of the id changes.
+
+**Auth by construction.** The resolver synthesizes each emitted hook Api's `auth:` block from `action.access.roles` directly (`hook.auth.roles ≡ action.access.roles`, never `auth.public: true`). The "`hook.auth.roles ⊇ action.access.roles`" gate holds by construction — no separate validation pass, no cross-resource lookup, no `vars.apis` input needed. There is no surface for the author to mis-author a hook's auth.
+
+Same model applies to group-level `on_complete` routines on `workflow.action_groups[].on_complete`: authored inline, resolver emits an Api with id `workflow-{workflow_type}-group-{group_id}-on-complete`, auth synthesized from the union of `access.roles` across the group's actions. The build-time validation for `on_complete` (part 11's open question) is dissolved by the same mechanism.
+
+**Schema fold-in required before implementation.** The action-authoring spec ([action-authoring/spec.md "Action hooks contract"](../../../workflows-module-concept/action-authoring/spec.md)) and the worked-example YAML currently treat `hooks.{interaction}.{pre|post}` as a string Api id. That needs to flip to an object carrying the routine inline (shape mirrors a Lowdefy Api `routine:`). Part 4's `makeWorkflowsConfig` validator should reject the old string form with a migration message. Treat this as a precondition task — not in part 13's scope to author, but blocking part 13's task list.
 
 ### Upstream dependency
 
@@ -56,14 +60,15 @@ Like [part 12](../12-resolver-pages/design.md), this resolver emits dynamic expo
   - Worked-example onboarding workflow produces `update-action-qualify`, `update-action-send-quote`, `update-action-schedule-followup` — no `update-action-track-installation`.
   - `schedule-followup` (task) emits `update-action-schedule-followup` with the same payload shape as form endpoints (including the `current_status` slot accepted via `_payload`).
   - `hooks`, `event_overrides`, `interactions` maps baked correctly per action (sparse — only declared slots present).
-  - Hook auth-gate failure: a fixture with `hook.auth.roles` missing one of `action.access.roles` fails the build with a clear message.
-  - `hook.auth.public: true` fails the build.
+  - Hook Api emission: a fixture action declaring `hooks.submit_edit.pre: { routine: [...] }` produces an emitted Api with id `update-action-{action_type}-submit_edit-pre`, the inline routine, and `auth.roles` synthesized from `action.access.roles`.
+  - `on_complete` Api emission: a fixture group declaring `on_complete: { routine: [...] }` produces an emitted Api with id `workflow-{workflow_type}-group-{group_id}-on-complete` and `auth.roles` synthesized from the union of the group's actions' `access.roles`.
+  - Author error: an action whose `hooks.{interaction}.{pre|post}` is a string (legacy shape) fails the build with a migration message (validated in `makeWorkflowsConfig`).
 - Integration: build the demo app; assert generated Api ids.
 - End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 
-- **Where to validate `on_complete` Api auth** — here vs. in [part 4](../04-workflow-config-schema/design.md). Lean here (consistent with action-level hooks).
+_(None — the hook-auth and `on_complete`-auth questions dissolved into the inline-routine emission model above.)_
 
 ## Contract to neighbours
 
