@@ -37,7 +37,7 @@ Ship the four shared, static pages that aren't generated per-action: three task-
   - List of action cards wrapped in `layout.card`:
     - Status badge + `status_map.{current_stage}.{app_name}.message` (Nunjucks-templated).
     - Optional link button to action's own page.
-    - Card body: empty-state or DataView over `form_data` using `global.action_form_configs.{action_type}.form` / `.form_review` from [part 15](../15-resolver-form-builder/design.md).
+    - Card body: empty-state or DataView over `form_data` using the metadata trees at `global.action_form_configs.{action_type}.form` / `.form_review` from [part 15](../15-resolver-form-builder/design.md). Switch on each node's `component` to pick the read-only renderer; recurse into the nested `form:` array on structural components (`controlled_list`, `section`, `box`, `label`, `file_upload`).
   - Keyed actions render as N cards within their group slot.
   - Tracker actions link to the child workflow's `workflow-overview` page when configured.
 

@@ -2,7 +2,7 @@
 
 Parallel delivery waves derived from the [dependency graph in design.md](design.md#dependency-graph). Each **wave** can run fully in parallel; the next wave starts once its predecessors land. The Repo column tells you where the diff goes; the Status column reflects what has shipped on `main` / been merged to the `workflows-module` branch.
 
-**Shipped so far:** parts 3, 4, 5, 14, 21, plus part 12 tasks 1–2 (resolver + placeholder templates; manifest wiring blocked on part 2). Engine can create + tear down workflows; transitions (part 6) are next.
+**Shipped so far:** parts 3, 4, 5, 6, 14, 21, plus part 12 tasks 1–2 (resolver + placeholder templates; manifest wiring blocked on part 2). Engine can create, transition, and tear down workflows; group state machine + lifecycle extensions (part 7 onward) are next.
 
 Status legend: `✅ shipped` · `🚧 in progress` · empty = not started.
 
@@ -27,7 +27,7 @@ Engine shell and config schema unblock everything else. The form fields library 
 
 ## Wave 2 — Engine core + early resolvers (parallel)
 
-Part 5 unlocks the rest of the engine. Resolvers 12 and 15 only depend on parts 2/4/14, so they can stream alongside.
+Part 5 unlocks the rest of the engine. Resolver 12 depends on parts 2/4; resolver 15 depends on parts 4/12/14 (per the option-B template-`_ref` contract committed in part 15's review-1). Both can still stream in this wave since part 12's contract stabilizes early (tasks 1–2 already done).
 
 | #   | Part                                                              | Size | Repo                                                           | Status     |
 | --- | ----------------------------------------------------------------- | ---- | -------------------------------------------------------------- | ---------- |
@@ -41,7 +41,7 @@ Part 6 is the only **L**. Most of Wave 4 hangs off it, so it deserves its own ba
 
 | #   | Part                                                            | Size | Repo                                                                                | Status |
 | --- | --------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------- | ------ |
-| 6   | [submit-action-writes](parts/06-submit-action-writes/design.md) | L    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |        |
+| 6   | [submit-action-writes](parts/06-submit-action-writes/design.md) | L    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` | ✅ shipped |
 
 ## Wave 4 — Lifecycle extensions + resolver-apis (parallel)
 

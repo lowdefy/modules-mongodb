@@ -12,7 +12,7 @@ Ship the four Nunjucks page templates that [part 12 (`makeActionPages`)](../12-r
 
 - **`templates/edit.yaml.njk`** — edit form.
   - Universal-fields block (`assignees`, `due_date`, `description` inputs).
-  - Form body via `_ref` to [part 15](../15-resolver-form-builder/design.md)'s `makeActionsForm` (or substituted-form fragment from `global.action_form_configs`).
+  - Form body via `_ref: { resolver: makeActionsForm.js, vars: { form: <action_config.form> } }` (per [part 15](../15-resolver-form-builder/design.md)'s "Two emission paths" decision — option B). `global.action_form_configs` is metadata-only and not used for the form body.
   - Optional comment field.
   - Template-shipped `submit_edit` button (and optionally `not_required` if `view` is also in the access list).
 
@@ -23,7 +23,7 @@ Ship the four Nunjucks page templates that [part 12 (`makeActionPages`)](../12-r
 
 - **`templates/review.yaml.njk`** — review surface.
   - Read-only main form display.
-  - Writable `form_review` block (from `global.action_form_configs.{action_type}.form_review`).
+  - Writable `form_review` block via `_ref: { resolver: makeActionsForm.js, vars: { form: <action_config.form_review> } }` — same option-B path as `edit`, just on the `form_review` slice from part 12's shell.
   - Template-shipped `approve` and `request_changes` buttons.
   - Optional comment field that flows through `event.metadata.comment`.
 

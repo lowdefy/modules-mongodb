@@ -76,7 +76,7 @@ S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-spli
 | 12  | resolver-pages           | 2, 4       |
 | 13  | resolver-apis            | 2, 4, 6    |
 | 14  | form-components-library  | —          |
-| 15  | resolver-form-builder    | 4, 14      |
+| 15  | resolver-form-builder    | 4, 12, 14  |
 | 16  | page-templates           | 12, 13, 15 |
 | 17  | shared-pages             | 13, 15, 19 |
 | 18  | entity-components        | 4, 19      |
