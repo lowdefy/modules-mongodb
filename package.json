@@ -10,11 +10,17 @@
     "build": "pnpm -r --filter '!@lowdefy/modules-demo' run build",
     "changeset": "changeset",
     "release:version": "pnpm changeset version && node scripts/sync-module-versions.mjs && pnpm install --no-frozen-lockfile",
-    "release:publish": "pnpm changeset publish"
+    "release:publish": "pnpm changeset publish",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "devDependencies": {
     "@changesets/changelog-github": "0.6.0",
-    "@changesets/cli": "2.29.4"
+    "@changesets/cli": "2.29.4",
+    "@swc/jest": "^0.2.37",
+    "jest": "^29.7.0",
+    "mongodb": "^6.10.0",
+    "mongodb-memory-server": "^10.1.2"
   },
   "pnpm": {
     "packageExtensions": {
