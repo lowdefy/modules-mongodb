@@ -1,4 +1,5 @@
 import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
+import fireTrackerSubscription from '../SubmitWorkflowAction/fireTrackerSubscription.js';
 import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
 
 const RESERVED_WORKFLOW_KEYS = [
@@ -23,6 +24,7 @@ async function CancelWorkflow(lowdefyContext) {
     workflowsConfig: connection.workflowsConfig,
     actionsEnum: connection.actionsEnum,
     changeStamp: connection.changeStamp,
+    eventId: null,
     params: payload,
   };
 
@@ -126,10 +128,19 @@ async function CancelWorkflow(lowdefyContext) {
     },
   });
 
+  // Tracker subscription — fires after the final writeback so the cancelled
+  // doc is on-disk consistent before the parent recompute reads it. Returns []
+  // when the workflow has no parent_action_id, so safe to call unconditionally.
+  const trackerFired = await fireTrackerSubscription(context, {
+    workflowId: payload.workflow_id,
+    newStage: 'cancelled',
+    depth: 0,
+  });
+
   // NOTE: do NOT include completed_groups — per part 7 design, CancelWorkflow
   // doesn't fire on_complete hooks. Part 11's fan-out reads completed_groups
   // only from SubmitWorkflowAction's return.
-  return { action_ids: actionIds, event_id: null, tracker_fired: null };
+  return { action_ids: actionIds, event_id: null, tracker_fired: trackerFired };
 }
 
 CancelWorkflow.schema = {};

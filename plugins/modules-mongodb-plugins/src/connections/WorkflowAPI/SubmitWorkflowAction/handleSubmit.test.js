@@ -132,7 +132,9 @@ test("handleSubmit: returns the v1 return shape with the user-submitted id on th
     action_ids: ["a1"],
     completed_groups: [],
     event_id: "event-1",
-    tracker_fired: null,
+    // Single action auto-completes the workflow; no parent_action_id, so
+    // fireTrackerSubscription returns [] (live default rather than null).
+    tracker_fired: [],
     pre_hook_response: null,
     post_hook_response: null,
   });
@@ -1246,4 +1248,141 @@ test("part 7: one MongoDBUpdateOne against workflows in step 5 (summary + groups
     },
   ]);
   expect(wf.status[0].stage).toBe("completed");
+});
+
+// ===========================================================================
+// Part 10 — Step 10 tracker subscription wiring
+// ===========================================================================
+
+test("part 10 step 10: submit that does NOT auto-complete → tracker_fired:[]; no writes to other workflows' actions", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+  await seedAction({ _id: "a2", type: "send-quote", stage: "action-required" });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+    }),
+  );
+
+  expect(result.tracker_fired).toEqual([]);
+  const otherWorkflowsCount = await mongo.db
+    .collection("workflows")
+    .countDocuments({ _id: { $ne: "wf-1" } });
+  expect(otherWorkflowsCount).toBe(0);
+});
+
+test("part 10 step 10: auto-complete with parent_action_id:null → tracker_fired:[]; workflow at completed", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+    }),
+  );
+
+  expect(result.tracker_fired).toEqual([]);
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.status[0].stage).toBe("completed");
+});
+
+test("part 10 step 10: auto-complete with valid parent_action_id → non-empty tracker_fired; parent action force-pushed", async () => {
+  await mongo.db.collection("workflows").insertOne({
+    _id: "wf-parent",
+    workflow_type: "onboarding",
+    entity_id: "lead-parent",
+    entity_collection: "leads-collection",
+    status: [{ stage: "active", created: new Date() }],
+    summary: { done: 0, not_required: 0, total: 0 },
+    groups: [],
+    form_data: {},
+  });
+  await mongo.db.collection("actions").insertOne({
+    _id: "p-approve",
+    workflow_id: "wf-parent",
+    type: "qualify",
+    kind: "form",
+    key: null,
+    status: [{ stage: "action-required", created: new Date() }],
+  });
+  await mongo.db.collection("actions").insertOne({
+    _id: "p-tracker",
+    workflow_id: "wf-parent",
+    type: "send-quote",
+    kind: "tracker",
+    key: null,
+    child_workflow_id: "wf-1",
+    status: [{ stage: "in-progress", created: new Date() }],
+  });
+  await mongo.db.collection("workflows").insertOne({
+    _id: "wf-1",
+    workflow_type: "onboarding",
+    entity_id: "lead-1",
+    entity_collection: "leads-collection",
+    parent_action_id: "p-tracker",
+    status: [{ stage: "active", created: new Date() }],
+    summary: { done: 0, not_required: 0, total: 0 },
+    groups: [],
+    form_data: {},
+  });
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+    }),
+  );
+
+  expect(result.tracker_fired).toHaveLength(1);
+  expect(result.tracker_fired[0]).toEqual({
+    parent_action_id: "p-tracker",
+    parent_workflow_id: "wf-parent",
+    new_status: "done",
+  });
+  const tracker = await mongo.db
+    .collection("actions")
+    .findOne({ _id: "p-tracker" });
+  expect(tracker.status[0].stage).toBe("done");
+});
+
+test("part 10 step 10: error path retains tracker_fired:null; subscription not called", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a-quote", type: "send-quote", stage: "action-required" });
+
+  let workflowsUpdateCallCount = 0;
+  const failingConn = (collection) => {
+    const inner = mongoDBConnection(collection);
+    if (collection === "workflows") {
+      return {
+        ...inner,
+        MongoDBUpdateOne: async (...args) => {
+          workflowsUpdateCallCount += 1;
+          if (workflowsUpdateCallCount === 1) {
+            throw new Error("simulated step 5 failure");
+          }
+          return inner.MongoDBUpdateOne(...args);
+        },
+      };
+    }
+    return inner;
+  };
+
+  const result = await handleSubmit({
+    mongoDBConnection: failingConn,
+    actionsEnum,
+    workflowsConfig: [onboardingWorkflowConfig],
+    changeStamp,
+    connection: { app_name: "test-app" },
+    params: { action_id: "a-quote", interaction: "submit_edit" },
+    user: { id: "u1", roles: ["account-manager"] },
+    callApi: jest.fn(async () => ({ success: true, response: {} })),
+    eventId: "event-1",
+  });
+
+  expect(result.tracker_fired).toBeNull();
+  expect(result.error_transition).toBeDefined();
 });

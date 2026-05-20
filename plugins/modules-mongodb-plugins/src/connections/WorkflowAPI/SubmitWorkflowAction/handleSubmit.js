@@ -1,10 +1,10 @@
 import getActions from "../../shared/getActions.js";
+import recomputeWorkflowAfterActionWrite from "../../shared/recomputeWorkflowAfterActionWrite.js";
 import updateAction from "../../shared/updateAction.js";
 import computeAutoUnblocks from "./computeAutoUnblocks.js";
 import dispatchLogEvent from "./dispatchLogEvent.js";
 import dispatchNotifications from "./dispatchNotifications.js";
-import recomputeGroups from "./recomputeGroups.js";
-import reevaluateBlockedActions from "./reevaluateBlockedActions.js";
+import fireTrackerSubscription from "./fireTrackerSubscription.js";
 import getCurrentAction from "./utils/getCurrentAction.js";
 
 function findMatchingActionDocs({ workflowActions, type, key }) {
@@ -180,6 +180,7 @@ async function handleSubmit(context) {
 
   const actionIds = [];
   let completedGroups = [];
+  let recomputeResult = null;
 
   try {
     // Step 4 — Write action transitions (per-entry loop with priority rule).
@@ -242,91 +243,22 @@ async function handleSubmit(context) {
       actionIds.push(internal.currentActionId);
     }
 
-    // Sub-step 4a — Recompute groups[] from post-step-4 actions.
-    const declaredGroups = workflowConfig.action_groups ?? [];
-    const groupsBefore = context.workflow.groups ?? [];
-    let groupsAfter = recomputeGroups({
-      declaredGroups,
-      actions: context.workflowActions,
+    // Sub-steps 4a/4b/4c + step 5 — extracted to shared helper so the tracker
+    // recursion path (part 10) can reuse this work on a *different* workflow
+    // without re-entering the public handler.
+    recomputeResult = await recomputeWorkflowAfterActionWrite(context, {
+      workflowId: context.workflow._id,
     });
-
-    // Sub-step 4b — Push action-required on newly-unblocked blocked actions.
-    const reEvaluatedIds = await reevaluateBlockedActions(context, {
-      workflowActions: context.workflowActions,
-      actionsConfig: context.actionsConfig,
-      groups: groupsAfter,
-      declaredGroups,
-      eventId: context.eventId,
-    });
-    if (reEvaluatedIds.length > 0) {
-      // Refetch so step-5 summary + the diff-driven completed_groups
-      // computation read the post-walk state.
-      context.workflowActions = await getActions(
-        context.mongoDBConnection,
-        context.workflow._id,
-      );
-      groupsAfter = recomputeGroups({
-        declaredGroups,
-        actions: context.workflowActions,
-      });
-    }
-
-    // Sub-step 4c — Auto-complete check (stage for step 5's $set).
-    const TERMINAL = ["done", "not-required"];
-    const allTerminal =
-      context.workflowActions.length > 0 &&
-      context.workflowActions.every((a) =>
-        TERMINAL.includes(a.status?.[0]?.stage),
-      );
-    const currentWorkflowStage = context.workflow.status?.[0]?.stage;
-    const shouldPushCompleted =
-      allTerminal &&
-      currentWorkflowStage !== "completed" &&
-      currentWorkflowStage !== "cancelled";
-
-    // Step 5 — Recompute workflow summary + groups + (optional) status push.
-    const summary = {
-      done: context.workflowActions.filter((doc) => doc.status?.[0]?.stage === "done").length,
-      not_required: context.workflowActions.filter(
-        (doc) => doc.status?.[0]?.stage === "not-required",
-      ).length,
-      total: context.workflowActions.length,
-    };
-    const setBlock = {
-      summary,
-      groups: groupsAfter,
-      updated: context.changeStamp,
-    };
-    const update = shouldPushCompleted
-      ? {
-          $set: setBlock,
-          $push: {
-            status: {
-              $position: 0,
-              $each: [
-                {
-                  stage: "completed",
-                  event_id: context.eventId,
-                  created: context.changeStamp,
-                },
-              ],
-            },
-          },
-        }
-      : { $set: setBlock };
-    try {
-      await context.mongoDBConnection("workflows").MongoDBUpdateOne({
-        filter: { _id: context.workflow._id },
-        update,
-      });
-    } catch (err) {
-      err.step = err.step ?? "recompute-summary";
-      throw err;
-    }
+    // Refresh in-memory cache so any downstream reads in this handler observe
+    // the post-walk action list (the helper reads its own fresh copy).
+    context.workflowActions = recomputeResult.workflowActions;
 
     // Compute completed_groups: groups that transitioned from non-'done' to 'done'.
-    const beforeById = new Map(groupsBefore.map((g) => [g.id, g]));
-    for (const after of groupsAfter) {
+    const declaredGroups = workflowConfig.action_groups ?? [];
+    const beforeById = new Map(
+      recomputeResult.groupsBefore.map((g) => [g.id, g]),
+    );
+    for (const after of recomputeResult.groupsAfter) {
       const before = beforeById.get(after.id);
       if (after.status === "done" && before?.status !== "done") {
         const cfg = declaredGroups.find((g) => g.id === after.id);
@@ -419,7 +351,15 @@ async function handleSubmit(context) {
 
   // Step 9 — Group on_complete fan-out. → part 11.
 
-  // Step 10 — Tracker subscription. → part 10.
+  // Step 10 — Tracker subscription.
+  let trackerFired = [];
+  if (recomputeResult?.shouldPushCompleted) {
+    trackerFired = await fireTrackerSubscription(context, {
+      workflowId: context.workflow._id,
+      newStage: "completed",
+      depth: 0,
+    });
+  }
 
   // Step 11 — Post-hook. → part 9.
 
@@ -427,7 +367,7 @@ async function handleSubmit(context) {
     action_ids: actionIds,
     completed_groups: completedGroups,
     event_id: eventId,
-    tracker_fired: null,
+    tracker_fired: trackerFired,
     pre_hook_response: null,
     post_hook_response: null,
   };
