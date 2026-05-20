@@ -230,7 +230,7 @@ Every interaction generates a log event by default. Engine writes one event via 
 ```yaml
 type: action-{interaction} # e.g. action-submit_edit, action-approve
 display:
-  default:
+  {app_name}:                              # consuming app's app_name (events module's display_key)
     title:
       _nunjucks:
         template: "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}"
@@ -238,9 +238,14 @@ display:
 references:
   workflow_ids: [<workflow_id>]
   action_ids: [<action_id>]
+  {entity-ref-key}: [<workflow.entity_id>] # entity_collection-derived key, see below
 metadata: action_type, workflow_type, interaction, current_key
   status_before, status_after
 ```
+
+`display` is keyed by the consuming app's `app_name` (= events module's `display_key` var, per [modules/events/components/events-timeline.yaml](../../../../modules/events/components/events-timeline.yaml)'s `$<display_key>.title` projection). The workflows module declares its own `app_name` manifest var; engines read it from `connection.app_name`.
+
+`{entity-ref-key}` is derived from `workflow.entity_collection`: strip a trailing `-collection` if present, replace remaining `-` with `_`, append `_ids`. So `leads-collection → leads_ids`, `tickets-collection → tickets_ids`. This is the same convention entity pages' timeline components query by (see [apps/demo/.claude/guides/events.md](../../../../apps/demo/.claude/guides/events.md)), so the engine-emitted event appears on the entity's timeline without per-action authoring.
 
 **Override paths** (merged in order, last wins):
 

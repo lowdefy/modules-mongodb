@@ -12,8 +12,8 @@ Mirror child workflow status changes into the parent tracker action synchronousl
 
 The subscription fires inside every handler that changes a workflow's status:
 
-- `SubmitWorkflowAction` — after step 10 (currently no-op). When this submit transitioned the workflow stage (e.g. auto-complete from [part 7](../07-group-state-machine/design.md) pushed `completed`), fire.
-- `CancelWorkflow` — after the cancel push. Fires with the cancelled stage.
+- `SubmitWorkflowAction` — light up the body of step 10 (currently a TODO comment in [handleSubmit.js](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) between step 9's group fan-out from [part 11](../11-group-on-complete-fanout/design.md) and step 11's post-hook). When step 5's bundled `$set` at [handleSubmit.js:288–309](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) included the `completed` `$push` (i.e. auto-complete fired), invoke the subscription with `newStage: 'completed'`. If no workflow-status push happened in this call, no-op.
+- `CancelWorkflow` — after the final summary + groups writeback at [CancelWorkflow.js:118–127](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js), before the return. Fires with `newStage: 'cancelled'`. The handler's return shape already includes `tracker_fired: null` at line 132; the subscription populates it when it wrote a parent.
 
 ### Logic
 
@@ -25,14 +25,21 @@ For the workflow whose status just changed:
    - `active` → `in-progress`
    - `completed` → `done`
    - `cancelled` → `not-required`
-4. Push the new status to the parent action (subject to the priority rule; same-stage idempotent no-op).
-5. Surface the fan-up on the originating submit response as `tracker_fired: { parent_action_id, parent_workflow_id, new_status }`.
+4. **Same-stage guard.** Compare `tracker.status?.[0]?.stage` against `targetStage` from step 3. If equal, no-op (don't write, don't surface `tracker_fired`). The tracker fetch in step 2 already returned the status, so this is one comparison with no extra DB read. Restates the same-stage guard the action priority-rule would otherwise have provided — `force: true` bypasses the priority rule, so the subscription must check directly. Same posture as `pushWorkflowStatus`'s idempotency guard for workflow-status writes.
+5. Push the new status to the parent action via `shared/updateAction.js` with `force: true`. Per-action call shape: `updateAction(context, { actionId: tracker._id, newStage: targetStage, eventId, currentActionId: null, force: true })`. The concept spec's pseudo-code at [engine/spec.md § Tracker subscription](../../../workflows-module-concept/engine/spec.md#tracker-subscription) uses the handler-level `actions: [...]` shape; that is not the helper's API — engine-internal force-pushes call the per-action helper directly.
+6. Run the parent workflow's post-write recompute pass (groups, `blocked_by` re-evaluation, auto-complete, summary writeback) via the shared helper described in "Implementation" below. If the recompute pushed the parent workflow to `completed`, recurse: fire the parent's own tracker subscription against its parent. The depth-limit guard from [engine spec § Open questions](../../../workflows-module-concept/engine/spec.md#open-questions-in-scope-deferred) caps runaway recursion at 10 levels and throws a clear error on overflow.
+7. Surface the fan-up on the originating submit response as `tracker_fired: Array<{ parent_action_id, parent_workflow_id, new_status }>` — empty when no fire, one entry per level (newest at index 0). `parent_workflow_id` is read from the fetched tracker action's `workflow_id` field (the action doc's own `workflow_id`, per [engine spec § Schema](../../../workflows-module-concept/engine/spec.md#schema)). No extra DB read — the tracker fetch in step 2 already returns it.
 
 ### Implementation
 
 - New file: `src/connections/WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js` (also called from `CancelWorkflow.js`).
-- Reuses `updateAction.js` from [part 6](../06-submit-action-writes/design.md) for the parent write.
-- The map is module-level constant; not configurable per concept design.
+- Reuses `shared/updateAction.js` (introduced as a scaffold in [part 5](../05-start-cancel-handlers/design.md#shared-internal-helpers-in-srcconnectionsshared); priority-rule branch added by [part 6](../06-submit-action-writes/design.md)) for the parent write. The subscription invokes it with `force: true` per [engine spec § Tracker subscription](../../../workflows-module-concept/engine/spec.md#tracker-subscription).
+- **Post-write recompute helper extraction.** Extract `handleSubmit`'s post-action-write portion — sub-steps 4a (`recomputeGroups`), 4b (`reevaluateBlockedActions`), 4c (auto-complete check), and 5 (bundled `summary` + `groups` + optional `completed` `$set`) — into a shared helper `src/connections/shared/recomputeWorkflowAfterActionWrite.js`. Both `handleSubmit` and `fireTrackerSubscription` invoke it. The helper takes a fresh `workflowId` and reads the workflow doc + actions inside (the originating handler's `context.workflow`/`workflowActions` caches are stale across workflows). This is the only structural change to part 6's `handleSubmit`: the body of those sub-steps moves out behind a one-line call; the file otherwise keeps its lifecycle shape.
+- **Recursion path.** When the parent recompute returns a "workflow pushed `completed`" signal, `fireTrackerSubscription` recurses with `parentWorkflowId` as the new `workflowId`. Engine-internal writes do **not** re-enter the public `SubmitWorkflowAction` handler — that path runs user-facing validation (role gate, terminal-workflow gate, `interaction` → target-status resolution) that doesn't apply to engine-internal force-pushes, and the engine spec explicitly says engine-internal force-pushes call `updateAction(...force: true)` directly rather than reconstructing a handler payload ([engine/spec.md:307](../../../workflows-module-concept/engine/spec.md)).
+- **Depth-limit guard.** Cap recursion at 10 levels (constant in `fireTrackerSubscription.js`); throw a structured error on overflow. Picks up the cycle-protection commitment from [engine spec § Open questions](../../../workflows-module-concept/engine/spec.md#open-questions-in-scope-deferred).
+- The child-stage map is a `const` at the top of `fireTrackerSubscription.js`, exported as `CHILD_STAGE_MAP` for testability (the unit-test table iterates over its entries to assert each mapping). Both `SubmitWorkflowAction` and `CancelWorkflow` import the function; only tests import the constant directly.
+- No `populateIds` call — the subscription updates an existing tracker action document via `MongoDBUpdateOne`, no new ids generated.
+- **`handleSubmit` return-shape wiring.** Replace the hard-coded `tracker_fired: null` literals at [handleSubmit.js:384, 405](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) with a `trackerFired` local populated by `fireTrackerSubscription`. The error-path partial return at lines 380–388 keeps `tracker_fired: null` — no subscription on the error path. Same wiring in `CancelWorkflow` at [CancelWorkflow.js:132](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js).
 
 ## Out of scope / deferred
 
@@ -53,13 +60,18 @@ For the workflow whose status just changed:
   - Re-firing the same stage is a no-op (priority rule).
   - `tracker_fired` payload populated on the originating submit response.
 - Integration test using the worked-example: completing the child `device-installation` workflow flips the parent's `track-installation` to `done` in one server-side call.
+- **Cache invariant — multi-level recurse.** 3-level auto-complete chain (grandchild C auto-completes → child B auto-completes → parent A auto-completes). Assert each level's persisted `summary` and `groups[]` reflect that level's own action list, not a stale cache from an outer-scope workflow. Catches the failure mode where an implementer threads the originating handler's `context.workflow`/`context.workflowActions` into the recompute helper instead of letting it fetch fresh per `workflowId`.
+- **Depth-limit overflow.** A synthetic 11-level chain throws the structured depth-limit error and writes no state past level 10.
 - End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
+
+## Notes
+
+- **Client model.** The subscription reuses the originating handler's `context.mongoDBConnection` dispatcher — same posture as every other helper inside the handler invocation. No transaction wrapping in v1 ([engine spec § Client and transaction model](../../../workflows-module-concept/engine/spec.md#client-and-transaction-model)). Settled by the engine architecture; not an open question.
 
 ## Open questions
 
-- **Tracker subscription inside the same Mongo client/session** as the originating handler. Yes — synchronous in-process per concept. No transaction wrapping in v1.
-- **Whether tracker fires recurse** (parent of parent). Concept doesn't call for it; v1 fires one level. Document explicitly.
+None.
 
 ## Contract to neighbours
 
-- **Part 11** runs after this part in the lifecycle ordering — `on_complete` fan-out reads `completed_groups`; the tracker subscription updates parent action status (potentially a separate workflow's group state). Document the ordering: tracker subscription writes the parent action; the parent workflow's groups recompute happens on the parent's next submit, not now.
+- **Part 11** runs **before** this part in the lifecycle ordering — step 9 (group `on_complete` fan-out, owned by [part 11](../11-group-on-complete-fanout/design.md)) executes before step 10 (tracker subscription, this part), per part 6's submit-pipeline numbering and [part 11 design.md:26](../11-group-on-complete-fanout/design.md). This part reads workflow status from step 5's `$set` (auto-complete push) and the just-written parent action status; it does not depend on part 11's fan-out results. The parent workflow's groups recompute happens on the parent's next submit, not now.

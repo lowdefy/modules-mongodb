@@ -92,11 +92,11 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 
 ## Repo footprint at a glance
 
-| Repo                                           | Parts                                 |
-| ---------------------------------------------- | ------------------------------------- |
-| upstream `@lowdefy/*`                          | 1, 2                                  |
-| `plugins/modules-mongodb-plugins/` (this repo) | 3, 5, 6, 7, 8, 9, 10, 11, 21, 23      |
+| Repo                                           | Parts                                         |
+| ---------------------------------------------- | --------------------------------------------- |
+| upstream `@lowdefy/*`                          | 1, 2                                          |
+| `plugins/modules-mongodb-plugins/` (this repo) | 3, 5, 6, 7, 8, 9, 10, 11, 21, 23              |
 | `modules/workflows/` (this repo)               | 4, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23 |
-| `apps/demo/` (this repo)                       | 20 (wiring only), 22 (e2e suite)      |
+| `apps/demo/` (this repo)                       | 20 (wiring only), 22 (e2e suite)              |
 
 Two clear streams once Wave 0 lands: an **engine stream** in the plugin package and a **module stream** under `modules/workflows/`. They only converge at part 20.

@@ -29,7 +29,7 @@ All optional fields:
   3. Pre-hook return `status` (last wins).
   - Priority rule still applied to the resolved value.
 - **`actions[]`** → merged with engine-computed auto-unblocks from [part 7](../07-group-state-machine/design.md). Pre-hook entries take precedence on `(type, key)` collision. Each entry may carry `force: true` to bypass the priority rule on its own write. `upsert: true` spawns instanced actions per [part 4](../04-workflow-config-schema/design.md) schema.
-- **`event_overrides`** → merged over `action.event[interaction]` (YAML), which merges over the engine default from [part 8](../08-side-effect-dispatch/design.md). Three-layer merge implemented as a single function.
+- **`event_overrides`** → merged over `action.event[interaction]` (YAML), which merges over the engine default from [part 8](../08-side-effect-dispatch/design.md)'s `buildDefaultLogEventPayload` (imported as the bottom layer; returns the unkeyed `{ type, display, references, metadata }` shape). Three-layer merge implemented as a single function.
 - **`form_overrides`** → additive `$set` paths applied alongside the form-data write in step 6. Pre-hook overrides win on collision. Skipped on `hook_error`.
 - **`hook_error`** → aborts the lifecycle. Engine writes `{ stage: error, reason: 'pre-hook', error_message: <message>, error_metadata? }` to the action's status (`force: true` so it bypasses priority). No further side effects. Returns `{ pre_hook_response: <pre-hook return>, ... rest null }`.
 
@@ -65,7 +65,7 @@ The auth gate (`hook.auth.roles ⊇ action.access.roles`, reject `auth.public: t
 
 - Unit tests on each merge function:
   - Status: engine default < YAML override < pre-hook override.
-  - Event: same three layers (consume part 8's default-payload function).
+  - Event: same three layers (import `buildDefaultLogEventPayload` from part 8 as the bottom layer).
   - Actions: pre-hook entry wins on (type, key) collision; per-entry `force` honored.
 - `hook_error` writes the error transition, skips further side effects, returns the hook return.
 - Post-hook return surfaces on the API response as `post_hook_response`.

@@ -43,8 +43,12 @@ function makeContext(overrides = {}) {
     actionsEnum,
     workflowsConfig: overrides.workflowsConfig ?? [],
     changeStamp,
+    connection: overrides.connection ?? { app_name: "test-app" },
     params: overrides.params ?? {},
     user: overrides.user ?? { id: "u1", roles: ["account-manager"] },
+    callApi:
+      overrides.callApi ??
+      jest.fn(async () => ({ success: true, response: {} })),
     eventId: overrides.eventId ?? "event-1",
   };
 }
@@ -127,11 +131,86 @@ test("handleSubmit: returns the v1 return shape with the user-submitted id on th
   expect(result).toEqual({
     action_ids: ["a1"],
     completed_groups: [],
-    event_id: null,
+    event_id: "event-1",
     tracker_fired: null,
     pre_hook_response: null,
     post_hook_response: null,
   });
+});
+
+test("handleSubmit step 7: dispatchLogEvent receives status_before captured pre-step-4 (action-required)", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const callApi = jest.fn(async () => ({ success: true, response: {} }));
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+      callApi,
+    }),
+  );
+
+  // First callApi invocation is new-event (dispatch-log-event).
+  const newEventCall = callApi.mock.calls.find(
+    ([endpoint]) => endpoint.id === "new-event",
+  );
+  expect(newEventCall).toBeDefined();
+  const [, payload] = newEventCall;
+  expect(payload._id).toBe("event-1");
+  expect(payload.metadata).toMatchObject({
+    action_type: "qualify",
+    workflow_type: "onboarding",
+    interaction: "submit_edit",
+    current_key: null,
+    status_before: "action-required",
+    status_after: "done",
+  });
+});
+
+test("handleSubmit step 8: dispatchNotifications fires with the just-emitted event_id", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = jest.fn(async () => ({ success: true, response: {} }));
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+      callApi,
+    }),
+  );
+
+  const sendCall = callApi.mock.calls.find(
+    ([endpoint]) => endpoint.id === "send-notification",
+  );
+  expect(sendCall).toBeDefined();
+  const [, payload] = sendCall;
+  expect(payload).toEqual({ event_ids: ["event-1"] });
+});
+
+test("handleSubmit step 7: throws to request layer when new-event callApi fails (not swallowed)", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = jest.fn(async ({ id }) => {
+    if (id === "new-event") {
+      return { success: false, error: { message: "boom" } };
+    }
+    return { success: true, response: {} };
+  });
+
+  await expect(
+    handleSubmit(
+      makeContext({
+        workflowsConfig: [onboardingWorkflowConfig],
+        params: { action_id: "a1", interaction: "submit_edit" },
+        callApi,
+      }),
+    ),
+  ).rejects.toMatchObject({ step: "dispatch-log-event" });
 });
 
 test("handleSubmit: missing action_id throws", async () => {

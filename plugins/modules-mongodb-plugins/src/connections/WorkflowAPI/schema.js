@@ -56,6 +56,14 @@ const schema = {
       description:
         'Resolves to the events module change_stamp at app build time (typically via _ref: { module: events, component: change_stamp }). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`. One stamp per handler invocation; all writes in the same call share the timestamp.',
     },
+    app_name: {
+      type: 'string',
+      description:
+        'Host app deployment name. Consumed by the engine at submit time to ' +
+        'key the default log event\'s display block (matching the events ' +
+        'module\'s display_key projection). Apps wire this from _module.var: app_name ' +
+        'on connections/workflow-api.yaml.',
+    },
     actionsEnum: {
       type: 'object',
       description:

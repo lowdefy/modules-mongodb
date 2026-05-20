@@ -1,6 +1,8 @@
 import getActions from "../../shared/getActions.js";
 import updateAction from "../../shared/updateAction.js";
 import computeAutoUnblocks from "./computeAutoUnblocks.js";
+import dispatchLogEvent from "./dispatchLogEvent.js";
+import dispatchNotifications from "./dispatchNotifications.js";
 import recomputeGroups from "./recomputeGroups.js";
 import reevaluateBlockedActions from "./reevaluateBlockedActions.js";
 import getCurrentAction from "./utils/getCurrentAction.js";
@@ -136,6 +138,16 @@ async function handleSubmit(context) {
     actionConfig,
     params,
   });
+
+  // Capture log-event inputs before step 4 mutates context.workflowActions
+  // in-memory. status_before reads from the pre-write stage; status_after is
+  // the engine-resolved target. → part 8 dispatchLogEvent.
+  const logEventInputBag = {
+    interaction: params.interaction,
+    current_key: params.current_key ?? null,
+    status_before: context.action.status?.[0]?.stage ?? null,
+    status_after: targetStatus,
+  };
 
   const internal = {
     currentActionId: action._id,
@@ -388,9 +400,22 @@ async function handleSubmit(context) {
     };
   }
 
-  // Step 7 — Generate log event. → part 8.
+  // Step 7 — Generate log event.
+  let eventId;
+  try {
+    eventId = await dispatchLogEvent(context, logEventInputBag);
+  } catch (err) {
+    err.step = err.step ?? "dispatch-log-event";
+    throw err;
+  }
 
-  // Step 8 — Dispatch notifications. → part 8.
+  // Step 8 — Dispatch notifications.
+  try {
+    await dispatchNotifications(context, eventId);
+  } catch (err) {
+    err.step = err.step ?? "dispatch-notifications";
+    throw err;
+  }
 
   // Step 9 — Group on_complete fan-out. → part 11.
 
@@ -401,7 +426,7 @@ async function handleSubmit(context) {
   return {
     action_ids: actionIds,
     completed_groups: completedGroups,
-    event_id: null,
+    event_id: eventId,
     tracker_fired: null,
     pre_hook_response: null,
     post_hook_response: null,
