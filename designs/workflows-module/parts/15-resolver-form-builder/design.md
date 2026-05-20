@@ -26,6 +26,7 @@ For each form action's `form:` block (and `form_review:` and `form_error:` if pr
 - Merge the entry's vars into the component's `vars:` declarations; validate required vars present.
 - Recurse into nested blocks (e.g. `controlled_list` rows that themselves declare a sub-form).
 - **Sub-form var name normalization.** Authors write the sub-form slot as `form:` (per the action-authoring spec); the shipped library declares the same slot as `blocks:` on the components that own one (`controlled_list`, `section`, `box`, `label`, `file_upload`). The resolver renames `form:` → `blocks:` on entries whose `component:` is in this allowlist before merging vars. Library YAML stays as the implementation truth; the spec's `form:` vocabulary stays as the authoring truth. Authors who write `blocks:` directly on a non-allowlisted component get the standard "unknown var" rejection (see Build-time validation).
+- **`viewOnly` per-field filter (v0 parity).** Authors can mark a field `viewOnly: true` to suppress it on the edit-page render while keeping it on `view`, `review`, and `error` renders. The resolver accepts a `mode: 'edit' | 'view' | 'review' | 'error'` var alongside `form:`; entries with `viewOnly: true` are dropped from the substituted tree when `mode === 'edit'` and emitted normally otherwise. `mode` is required at the resolver call site — part 16's templates pass it as a literal per-template. The `viewOnly` field is stripped from the entry before substitution either way (it's resolver metadata, not a library-component var). Field-level visibility for view/review/error pages is the author's job via the runtime `visible:` operator; `viewOnly` is the dedicated edit-page suppressor and nothing more.
 - **No `form_error` defaulting.** When the author doesn't declare `form_error:`, the resolver does not synthesize one from `form:`. Templates handle the absent case by defaulting to `[]` (empty form body — the error page's failure-context banner stands alone). This matches v0's behavior in [`dist/workflows-module/ui/current_workflow_utils/templates/error.yaml.njk`](../../../../dist/workflows-module/ui/current_workflow_utils/templates/error.yaml.njk): `form: { _var: { key: action_config.form_error, default: [] } }`. The concept spec's wording at [action-authoring/spec.md:285](../../../workflows-module-concept/action-authoring/spec.md) ("The error form schema defaults to the action's `form:` block") is overridden by v0's actual behavior — the empty-form default is the v1 commitment.
 - Output: a fully-substituted Lowdefy block tree the page template can render.
 
@@ -80,6 +81,7 @@ The resolver walks the authored form tree in plain JavaScript. When it hits a st
   - Bare unknown `component:` value (no `:` separator) fails the build with workflow + action path.
   - Namespaced `component:` value (`my-plugin:device_selector`) survives substitution unchanged.
   - Required-vars missing fails the build.
+  - `viewOnly: true` entries are dropped when `mode === 'edit'` and emitted (with `viewOnly` stripped) when `mode` is `view` / `review` / `error`.
 - Unit tests on `makeActionFormConfigs`:
   - Worked-example actions produce the expected `global.action_form_configs` shape — tree of `{ component, key, required, title, validate }` nodes with nested `form:` arrays on structural components.
   - Action with `form_error:` absent: the entry's `form_error` is absent from the metadata too (no resolver-side defaulting to `form:`).
@@ -90,5 +92,5 @@ The resolver walks the authored form tree in plain JavaScript. When it hits a st
 ## Contract to neighbours
 
 - **Part 12** emits page shells that `_ref` into the resolver this part ships.
-- **Part 16** templates render the block tree this resolver emits.
+- **Part 16** templates render the block tree this resolver emits. Each template passes a literal `mode: 'edit' | 'view' | 'review' | 'error'` into `makeActionsForm` so the resolver can apply the `viewOnly` filter on edit renders. Form-body chrome (the `Card` wrap that v0's `makeActionsForm` carried inline) belongs to part 16's `layout.card` composition — this resolver emits the block tree only, no outer container.
 - **Part 17 (shared-pages)** uses `global.action_form_configs` to render workflow-overview cards.

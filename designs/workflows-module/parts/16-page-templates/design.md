@@ -81,6 +81,7 @@ Authors declare handlers via `pages.{verb}.events.{handler}` on the action YAML;
   - `workflows/onboarding-qualify-edit` renders form + submit button; clicking it fires the page event, calls the endpoint, re-renders.
   - `workflows/onboarding-send-quote-review` renders read-only form + writable review fields + approve/request-changes buttons.
   - For a fixture that opts into the `-error` page, the stale-URL guard fires correctly.
+- **Form-card chrome parity with v0.** `edit.yaml.njk` and `error.yaml.njk` wrap the form body in `layout.card`. Verify visual parity against v0's inline-`Card` wrap (shadow `0px 5px 8px -3px rgba(0,0,0,0.1)`, `contentGutter: 12`, `contentJustify: start` — see [`dist/.../makeActionsForm.js:1-9`](../../../../dist/workflows-module/ui/current_workflow_utils/resolvers/makeActionsForm.js)) — either the layout-module card already matches, or document the divergence here. Also confirm the "suppress card when the first form entry owns its own outer chrome" rule (v0 condition: `!vars.form[0]?.form`) is either preserved or explicitly dropped with rationale.
 - Manual a11y pass: keyboard nav reaches every button; form labels read.
 - End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 

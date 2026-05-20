@@ -1,7 +1,8 @@
-# This manifest currently declares only the part-04 enum components
-# (action_statuses, workflow_lifecycle_stages). The full module surface
-# — WorkflowAPI connection, MONGODB_URI secret, page/api/menu exports,
-# form-fields component library (part 14) — lands in part 20.
+# This manifest declares the part-04 enum components (action_statuses,
+# workflow_lifecycle_stages) and the part-15 global register
+# (action_form_configs). The full module surface — WorkflowAPI connection,
+# MONGODB_URI secret, page/api/menu exports, form-fields component library
+# (part 14) — lands in part 20.
 #
 # The connection (part 20) will _ref the canonical enum file directly
 # (e.g. `actionsEnum: { _ref: enums/action_statuses.yaml }`), so the
@@ -20,6 +21,15 @@ exports:
       description: Workflow lifecycle stage enum (active, completed, cancelled) merged with app display overrides — for UI consumption
 
 vars:
+  workflows_config:
+    type: array
+    required: true
+    description: >
+      Array of workflow definitions consumed by every build-time resolver in this
+      module (parts 4, 12, 13, 15). Host app supplies via the entry's `vars` block,
+      e.g. `vars: { _ref: workflow_config/workflows.yaml }`. Each entry is a workflow
+      object with `type`, `entity_collection`, `starting_actions`, `action_groups`,
+      and `actions` (see workflows-module-concept/action-authoring/spec.md).
   action_statuses_display:
     type: object
     default: {}
@@ -48,6 +58,14 @@ components:
       _build.object.assign:
         - _ref: enums/workflow_lifecycle_stages.yaml
         - _module.var: workflow_lifecycle_stages_display
+
+global:
+  action_form_configs:
+    _ref:
+      resolver: resolvers/makeActionFormConfigs.js
+      vars:
+        workflows:
+          _module.var: workflows_config
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"

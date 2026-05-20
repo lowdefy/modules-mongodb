@@ -52,9 +52,9 @@ Required entries:
 #### `makeActionsForm.js` (part 15)
 
 - Source: [parts/15-resolver-form-builder/design.md](../design.md).
-- Inputs: `{ form: FormEntry[] }`.
-- Output: a substituted Lowdefy block-tree array — library components are dereferenced and merged with author-supplied vars; raw blocks and namespaced (`<plugin>:<name>`) components pass through unchanged.
-- Invocation: **template scope.** Part 16's `.yaml.njk` templates render the form body by calling `_ref: { resolver: '../resolvers/makeActionsForm.js', vars: { form: <action_config.form> } }` at render time. Not registered in the module manifest.
+- Inputs: `{ form: FormEntry[], mode?: 'edit' | 'view' | 'review' | 'error' }`. `mode` is required when any `form` entry carries `viewOnly: true` (drives the v0-parity `viewOnly` filter — see task 5); optional otherwise.
+- Output: a substituted Lowdefy block-tree array — library components are dereferenced and merged with author-supplied vars; raw blocks and namespaced (`<plugin>:<name>`) components pass through unchanged. On `mode: 'edit'`, entries with `viewOnly: true` are dropped; on the other modes they survive (with the `viewOnly` key stripped).
+- Invocation: **template scope.** Part 16's `.yaml.njk` templates render the form body by calling `_ref: { resolver: '../resolvers/makeActionsForm.js', vars: { form: <action_config.form>, mode: <verb> } }` at render time. Not registered in the module manifest.
 - Tests: `makeActionsForm.test.js`.
 
 #### `makeActionFormConfigs.js` (part 15)
