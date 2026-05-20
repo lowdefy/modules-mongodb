@@ -85,6 +85,8 @@ Lean: **after (3)**, immediately before the return. Matches `SubmitWorkflowActio
 
 ### 4. "Re-firing the same stage is a no-op (priority rule)" — wrong guard
 
+> **Resolved.** Rewrote the verification bullet to name both layered guards: (a) the upstream same-stage check inside `handleSubmit`'s auto-complete predicate; (b) the new explicit downstream guard inside `fireTrackerSubscription` (step 4 of "Logic"). Explicit note that `force: true` bypasses the priority rule, so the priority rule is **not** the guard. Test added for the downstream guard on its own.
+
 [design.md:53](../design.md):
 
 > Re-firing the same stage is a no-op (priority rule).
@@ -112,6 +114,8 @@ But part 6's shipped `handleSubmit` doesn't call `pushWorkflowStatus` — it inl
 (Also: add a verification entry that explicitly tests `handleSubmit`'s shipped same-stage guard in the auto-complete-then-retry path: a retry that no-ops the auto-complete push must not call `fireTrackerSubscription`.)
 
 ### 5. Same-stage idempotency on the parent tracker itself is unguarded
+
+> **Resolved.** Added the same-stage guard as step 4 of "Logic": compare `tracker.status?.[0]?.stage` against `targetStage`; if equal, no-op (no write, no `tracker_fired` entry). The tracker fetch in step 2 already returns the status, so the check is one comparison with no extra DB read. Verification entry covers it directly.
 
 This is the gap finding 4 surfaces. The upstream guard prevents re-fire **of the originating handler**. But within a single call there is no guard on the tracker write itself: `force: true` bypasses the priority rule, and `updateAction` has no same-stage check of its own. So a tracker action already at `done` that gets pushed `done` again (e.g. a child workflow auto-completes inside a parent submit that's also auto-completing — the child push fires, the parent's auto-complete writes the parent action's `done`, the tracker write force-pushes `done` again) writes a duplicate audit entry.
 
@@ -180,6 +184,8 @@ This is mechanically fine — the helper already does the tracker fetch — but 
 
 ### 8. `eventId` propagation through the tracker write — what `eventId` does the parent action's audit entry carry?
 
+> **Resolved.** Added an "`eventId` propagation" sub-bullet to step 5 of "Logic": parent action carries the originating submit's `eventId`; each recursion level inherits it; no separate tracker-fire event in v1. Pairs with finding 9's cancel-path note in the same paragraph.
+
 The design's pseudo-code (via engine spec [§ Tracker subscription](../../../workflows-module-concept/engine/spec.md#tracker-subscription)) threads `eventId` through:
 
 ```js
@@ -200,6 +206,8 @@ That's a reasonable default but should be called out. A reader might assume the 
 > The parent-action status entry carries the **originating submit's `eventId`** (threaded through from `handleSubmit`'s entry). No separate "tracker-fire" event is generated in v1 — the parent action's audit history points back to the child's log event. Part 8's `dispatchLogEvent` does not run for the tracker write itself.
 
 ### 9. `CancelWorkflow`'s `eventId` is `null` — the parent action would carry `event_id: null`
+
+> **Resolved.** Folded into finding 8's rewrite — the same "`eventId` propagation" paragraph pins that `CancelWorkflow` doesn't generate an event in v1 and the parent-action `event_id` stays `null`. Explicit warning not to synthesize a fresh id on the cancel path.
 
 [CancelWorkflow.js:132](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js) returns `event_id: null`. The handler doesn't generate one (per [part 5 design.md:57](../../05-start-cancel-handlers/design.md): "Log event + notifications on cancel → part 8. v1 cancel writes no event").
 
