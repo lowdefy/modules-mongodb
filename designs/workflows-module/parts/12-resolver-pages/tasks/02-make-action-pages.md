@@ -19,15 +19,13 @@ Lowdefy passes resolver vars as the second argument: `function makeActionPages(_
 
 The framework expands all nested `_ref`s in `vars.workflows` before the resolver runs (see `parts/04-workflow-config-schema/tasks/02-make-workflows-config.md` line 18 for the same pattern in part 4). The resolver sees a plain JS array of workflow objects.
 
-### Input contract — design clarification
+### Input contract
 
-Part 12's design.md describes "two inputs" (normalized config from part 4 + raw `workflows_config` YAML). In practice **the resolver only needs raw YAML.** Part 4's normalized output is for the **engine** to read at runtime via the workflow-api connection — it's not load-bearing for page emission. At build time the resolver has the full YAML available and just plucks fields directly. The merge described in design.md:27 is a description of *which fields end up on the emitted page's `action_config` var*, not a runtime composition of two resolver outputs.
-
-So: read engine-runtime fields (`type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `sort_order`, `required_after_close`, `access`, `status_map`) and build-time-only fields (`pages`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`) **from the same raw YAML object**.
+The resolver reads everything from the single raw `vars.workflows` array. Engine-runtime fields (`type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `sort_order`, `required_after_close`, `access`, `status_map`) and build-time-only fields (`pages`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`) all live on the same raw action object. Part 4's `makeWorkflowsConfig` narrows the same YAML to an engine-runtime slice for the workflow-api connection to read at runtime; **part 12 does not consume part 4's output** — both resolvers read the same raw YAML for their own purposes.
 
 ### What the resolver emits
 
-For each form action in each workflow, emit up to four pages — one per verb in `[edit, view, review, error]` — gated by the action's `access.{app_name}` verb list. The `error` verb has no extra opt-in beyond being in the access list (a recent simplification — see design.md:23). Tracker actions emit nothing. Task actions emit nothing (shared `task-*` pages handle them via part 17).
+For each form action in each workflow, emit up to four pages — one per verb in `[edit, view, review, error]` — gated by the action's `access.{app_name}` verb list. The `error` verb has no extra opt-in beyond being in the access list (a recent simplification — see design.md verb-gating paragraph). Tracker actions emit nothing. Task actions emit nothing (shared `task-*` pages handle them via part 17).
 
 Each emitted page is a thin shell that `_ref`s the matching template at `templates/{verb}.yaml.njk` with these vars:
 
@@ -86,14 +84,26 @@ Create two files:
 Plain ES-module JS following the pattern from `modules/workflows/resolvers/makeWorkflowsConfig.js`. Suggested skeleton:
 
 ```js
-const VERBS = ['edit', 'view', 'review', 'error'];
+const VERBS = ["edit", "view", "review", "error"];
 
 const ACTION_FIELDS_FOR_TEMPLATE = [
-  'type', 'kind', 'key', 'tracker', 'blocked_by',
-  'action_group', 'sort_order', 'required_after_close',
-  'access', 'status_map',
-  'pages', 'form', 'form_review', 'form_error',
-  'hooks', 'interactions', 'event',
+  "type",
+  "kind",
+  "key",
+  "tracker",
+  "blocked_by",
+  "action_group",
+  "sort_order",
+  "required_after_close",
+  "access",
+  "status_map",
+  "pages",
+  "form",
+  "form_review",
+  "form_error",
+  "hooks",
+  "interactions",
+  "event",
 ];
 
 function fail(message) {
@@ -109,14 +119,14 @@ function pickActionConfig(action) {
 }
 
 function emitForAction(workflow, action, appName) {
-  if (action.kind !== 'form') return [];
+  if (action.kind !== "form") return [];
 
   const accessVerbs = action.access?.[appName] ?? [];
   const emittedVerbs = VERBS.filter((v) => accessVerbs.includes(v));
   if (emittedVerbs.length === 0) return [];
 
   const pageIds = Object.fromEntries(
-    emittedVerbs.map((v) => [v, `${workflow.type}-${action.type}-${v}`])
+    emittedVerbs.map((v) => [v, `${workflow.type}-${action.type}-${v}`]),
   );
 
   const actionConfig = pickActionConfig(action);
@@ -142,7 +152,9 @@ function makeActionPages(_, vars) {
   const { workflows, app_name: appName } = vars;
 
   if (!appName) {
-    fail(`vars.app_name is required and must be non-empty (got: ${JSON.stringify(appName)}).`);
+    fail(
+      `vars.app_name is required and must be non-empty (got: ${JSON.stringify(appName)}).`,
+    );
   }
 
   const pages = [];
@@ -169,11 +181,11 @@ The fixture is the worked-example onboarding workflow from `designs/workflows-mo
 Required test cases (mirrors design.md:63–68):
 
 1. **`qualify` (form, `access: { my-team-app: [view, edit] }`) emits exactly `-edit` and `-view`.** Assert exactly two pages, ids `onboarding-qualify-edit` and `onboarding-qualify-view`, no others for this action.
-2. **`error` verb gating mirrors the other verbs.** Adding `error` to `access.my-team-app` emits `onboarding-qualify-error`. Removing it does not. **No `pages.error` block required** (this is the post-design-change simplification — see design.md:23).
+2. **`error` verb gating mirrors the other verbs.** Adding `error` to `access.my-team-app` emits `onboarding-qualify-error`. Removing it does not. **No `pages.error` block required** (this is the post-design-change simplification — see design.md verb-gating paragraph).
 3. **`send-quote` (form, `access: { my-team-app: [view, edit, review] }`) emits `-edit`, `-view`, `-review`.** Three pages, no `-error`.
 4. **`schedule-followup` (task) emits nothing**, even with `access: { my-team-app: [view, edit] }`.
 5. **`track-installation` (tracker) emits nothing**, even with `access: { my-team-app: [view, edit, review] }` (tracker overrides verb list).
-6. **`action_config` carries both normalized and build-time fields.** Assert that on an emitted page, `vars.action_config.access`, `vars.action_config.status_map`, *and* `vars.action_config.form` are all present.
+6. **`action_config` carries both normalized and build-time fields.** Assert that on an emitted page, `vars.action_config.access`, `vars.action_config.status_map`, _and_ `vars.action_config.form` are all present.
 7. **`page_ids` only contains emitted verbs.** For `qualify` emitting `-edit/-view` only, assert `Object.keys(vars.page_ids).sort()` deep-equals `['edit', 'view']` — no `review` or `error` key.
 8. **`vars.app_name` validation.** Calling the resolver with `app_name: undefined`, `null`, and `""` all throw with a message matching `/app_name is required/`.
 
@@ -184,7 +196,7 @@ Use `node:test`'s `describe` / `it` / `assert.deepStrictEqual` / `assert.throws`
 - `node --test modules/workflows/resolvers/makeActionPages.test.js` exits 0 with all 8 test cases passing.
 - The resolver passes lint (matching whatever ESLint config `modules/workflows/resolvers/makeWorkflowsConfig.js` passes).
 - `makeActionPages.js` is importable as ES module: `import makeActionPages from './makeActionPages.js'` works.
-- Running the resolver against the worked-example fixture from `designs/workflows-module-concept/design.md` produces exactly the expected page set (six pages: `onboarding-qualify-edit/view`, `onboarding-send-quote-edit/view/review`, `onboarding-qualify-edit` per the verb-gating math).
+- Running the resolver against the worked-example fixture from `designs/workflows-module-concept/design.md` produces exactly the expected page set (five pages: `onboarding-qualify-edit`, `onboarding-qualify-view`, `onboarding-send-quote-edit`, `onboarding-send-quote-view`, `onboarding-send-quote-review` per the verb-gating math; `schedule-followup` and `track-installation` emit nothing).
 - Each error message includes the `makeActionPages:` prefix and is precise enough to debug from build output alone.
 
 ## Files
@@ -194,8 +206,8 @@ Use `node:test`'s `describe` / `it` / `assert.deepStrictEqual` / `assert.throws`
 
 ## Notes
 
-- **No new dependencies.** `node:test`, `node:assert`, `node:fs`, `node:path`, `node:url` are all built-in. No vitest / jest / mocha install.
-- **Don't validate the workflow YAML itself.** Part 4's `makeWorkflowsConfig` does all workflow-config validation. The resolver assumes its input is well-formed and only adds its own resolver-specific checks (app_name presence, template existence, id collisions). If a malformed workflow YAML reaches this resolver, that's part 4's bug.
+- **No new dependencies.** `node:test` and `node:assert` are built-in. No vitest / jest / mocha install.
+- **Don't validate the workflow YAML itself.** Part 4's `makeWorkflowsConfig` does all workflow-config validation. The resolver assumes its input is well-formed and only adds its own `app_name` presence check. If a malformed workflow YAML reaches this resolver, that's part 4's bug.
 - **Per part 21**, the resolver passes `entity_collection` as a template var, not `entity_type`. If you find `entity_type` references anywhere, those are stale — part 21 owns the cleanup.
 - The chrome pass-through shape (top-level `chrome` var vs. nested in `action_config.pages.{verb}`) is yours to pick — whichever reads cleaner against the placeholder templates and the part-16 contract. Just document the choice in a one-line code comment.
-- **Don't add an "engine-runtime fields" vs "build-time fields" split internally.** Both come from the same raw YAML object. The split described in design.md:27 is about which fields end up *exposed to templates*, not about input plumbing.
+- **Don't add an "engine-runtime fields" vs "build-time fields" split internally.** Both come from the same raw YAML object. The grouping mentioned in the design's `action_config` bullet is about which fields end up _exposed to templates_, not about input plumbing.

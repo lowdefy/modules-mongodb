@@ -2,7 +2,7 @@
 
 Parallel delivery waves derived from the [dependency graph in design.md](design.md#dependency-graph). Each **wave** can run fully in parallel; the next wave starts once its predecessors land. The Repo column tells you where the diff goes; the Status column reflects what has shipped on `main` / been merged to the `workflows-module` branch.
 
-**Shipped so far:** parts 3, 4, 5, 14, 21. Engine can create + tear down workflows; transitions (part 6) are next.
+**Shipped so far:** parts 3, 4, 5, 14, 21, plus part 12 tasks 1–2 (resolver + placeholder templates; manifest wiring blocked on part 2). Engine can create + tear down workflows; transitions (part 6) are next.
 
 Status legend: `✅ shipped` · `🚧 in progress` · empty = not started.
 
@@ -32,7 +32,7 @@ Part 5 unlocks the rest of the engine. Resolvers 12 and 15 only depend on parts 
 | #   | Part                                                              | Size | Repo                                                           | Status     |
 | --- | ----------------------------------------------------------------- | ---- | -------------------------------------------------------------- | ---------- |
 | 5   | [start-cancel-handlers](parts/05-start-cancel-handlers/design.md) | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/` | ✅ shipped |
-| 12  | [resolver-pages](parts/12-resolver-pages/design.md)               | M    | `modules/workflows/resolvers/`                                 |            |
+| 12  | [resolver-pages](parts/12-resolver-pages/design.md)               | M    | `modules/workflows/resolvers/`                                 | 🚧 tasks 1–2 done; task 3 (manifest wiring) held until part 2 lands |
 | 15  | [resolver-form-builder](parts/15-resolver-form-builder/design.md) | M    | `modules/workflows/resolvers/`                                 |            |
 
 ## Wave 3 — The load-bearing write (solo)

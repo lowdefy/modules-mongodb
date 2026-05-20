@@ -12,10 +12,9 @@ This part emits the **page shells**: the right ids, right templates referenced, 
 
 ### `makeActionPages.js`
 
-Reads two inputs from `vars.workflows_config`:
+Reads the raw `workflows_config` YAML from `vars.workflows`. The framework expands all nested `_ref`s before the resolver runs (same pattern as [part 4](../04-workflow-config-schema/design.md)'s `makeWorkflowsConfig`); the resolver sees a plain JS array of workflow objects.
 
-- The **normalized config** from [part 4](../04-workflow-config-schema/design.md) for engine-runtime fields (`type`, `kind`, `access`, `status_map`, etc.) — the slice committed by `makeWorkflowsConfig`.
-- The **raw `workflows_config` YAML** for build-time-only fields that part 4 deliberately strips from the normalized output: `pages`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`. Part 4's `tasks/tasks.md` makes this contract explicit ("Build-time-only fields are read by parts 12/13/15 from the raw workflow YAML, not from `workflowsConfig`"). Part 12 honours that split.
+Both engine-runtime fields (`type`, `kind`, `access`, `status_map`, etc.) and build-time-only fields (`pages`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`) live on the same raw YAML object — the resolver plucks what it needs from one input. Part 4's `makeWorkflowsConfig` narrows the same YAML to an engine-runtime slice for the workflow-api connection to read at runtime; that narrowing is not load-bearing for page emission and part 12 does not consume its output. Part 4's `tasks/tasks.md` documents the contract: "Build-time-only fields are read by parts 12/13/15 from the raw workflow YAML, not from `workflowsConfig`."
 
 For each form action:
 
@@ -24,7 +23,7 @@ For each form action:
 - Tracker actions: emit nothing.
 - Task actions: emit nothing (shared `task-*` pages from [part 17](../17-shared-pages/design.md) handle them).
 - Each emitted page is a thin shell with `_ref` pointing at the template (part 16) plus vars carrying:
-  - `action_config` — the action's config slice the template needs: the normalized fields from part 4 (`type`, `kind`, `access`, `status_map`, etc.) merged with the build-time-only fields read from raw YAML (`pages.{verb}`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`). The merge happens in the resolver; templates see one flat shape.
+  - `action_config` — the action's config slice the template needs: engine-runtime fields (`type`, `kind`, `access`, `status_map`, etc.) plus build-time-only fields (`pages.{verb}`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`), all picked from the raw action YAML. Templates see one flat shape.
   - `workflow_type`, `entity_collection` (from the workflow). `entity_collection` is the single entity-identity scalar — see [part 21](../21-entity-type-to-collection/design.md).
   - `page_ids` map for sibling-page navigation. Keys are only present for verbs that were actually emitted for this action — templates must guard sibling references (e.g. `_if page_ids.review is defined`). Avoids pointing at non-existent page ids.
   - `maxWidth`, etc. — pass-through chrome knobs from `action.pages.{verb}`.
