@@ -55,6 +55,8 @@ Added after the original 20 were cut. See [Follow-on parts](#follow-on-parts) fo
 | 21  | [entity-type-to-collection](parts/21-entity-type-to-collection/design.md) | [part 12 review-1 #1](parts/12-resolver-pages/review/review-1.md)                                 | M    |
 | 22  | [workflows-e2e-suite](parts/22-workflows-e2e-suite/design.md)             | [concept § Worked example](../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) | M    |
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | [part 6 review-1 #7](parts/_completed/06-submit-action-writes/review/review-1.md)                | M    |
+| 24  | [universal-fields](parts/24-universal-fields/design.md)                   | [ui spec § Page-level rendering of universal fields](../workflows-module-concept/ui/spec.md#page-level-rendering-of-universal-fields) | M    |
+| 25  | [group-overview-page](parts/25-group-overview-page/design.md)             | [action-groups spec](../workflows-module-concept/action-groups/spec.md) + [ui spec § Workflow overview page](../workflows-module-concept/ui/spec.md) | S    |
 
 S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-split).
 
@@ -85,6 +87,8 @@ S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-spli
 | 21  | entity-type-to-collection | —         |
 | 22  | workflows-e2e-suite      | 20         |
 | 23  | close-workflow-handler   | 3, 4, 5    |
+| 24  | universal-fields         | 4, 16, 17  |
+| 25  | group-overview-page      | 7, 15, 16, 19 |
 
 Hard gates:
 
@@ -99,14 +103,17 @@ Hard gates:
 - **Part 21** is a schema simplification with no hard dependency — it slots wherever its consumers (parts 5, 12, 18, 19) are ready to absorb the `entity_collection`-only contract. Already shipped against parts 3, 4, and 14's code.
 - **Part 22** is the end-to-end verification layer. It depends on part 20 (demo wiring + worked-example YAML); each engine / resolver / UI part contributes its spec file as it lands.
 - **Part 23** introduces the `CloseWorkflow` handler + `close-workflow` operational API. Depends on parts 3, 4, 5; light dependency on shipped part 7 (reuses its `recomputeGroups.js` and `pushWorkflowStatus.js` helpers as-is, no contract change). Pairs with parts 19 and 20 (adds the fifth operational API + manifest export).
+- **Part 24** is the universal-fields component (`assignees`, `due_date`, `description`). UI delivery wave; depends on parts 4, 16, 17.
+- **Part 25** ships the group-overview page + `get-action-group-overview` operational API. UI delivery + surface; depends on parts 7 (persisted `groups[].summary`), 15 (`global.action_form_configs`), 16 (shared `requests/get_entity.yaml`), 19 (reusable `access_filter` aggregation stage).
 
 ## Follow-on parts
 
-Parts 21, 22, and 23 were not in the original cut. They were added once it became clear:
+Parts 21, 22, 23, 24, and 25 were not in the original cut. They were added once it became clear:
 
 - **Part 21** — Part 12's [review-1 finding #1](parts/12-resolver-pages/review/review-1.md) surfaced that `entity_type` was redundant once `entity_collection` was on every doc. Spun out as a dedicated schema simplification rather than absorbed into part 12, because the change spans concept docs, the plugin schema, shipped resolver code (parts 3, 4), and the unimplemented siblings' designs (parts 5, 12, 19). Implemented parts' designs and `tasks/` directories stay frozen; part 21 amends shipped code directly.
 - **Part 22** — End-to-end Playwright coverage was originally scoped under part 20's closeout. Lifted into its own part so each engine / resolver / UI part can land a `.spec.js` file in the same PR that ships the feature, with part 22 owning the spec authoring contract. Each shipping part now points its Verification section at part 22 for e2e coverage.
 - **Part 23** — Part 6's [review-1 finding #7](parts/_completed/06-submit-action-writes/review/review-1.md) surfaced that the design collapsed close-vs-cancel into a single `CancelWorkflow` + implicit auto-complete, dropping v0's `CloseWorkflowActions` distinction. Real cases need both: user-initiated `completed` push on a non-terminal workflow, sweep that honors `required_after_close: true` (with the blocked-action exception), tracker subscription firing `done` instead of `not-required`. Spun out as a new handler + operational API rather than retroactively amending shipped part 5; reuses the shipped `pushWorkflowStatus` + `recomputeGroups` helpers inline (no new shared helper, no contract change to part 7).
+- **Part 25** — Host apps want a group-scoped drill-down (one phase of a long workflow) without rendering the whole workflow-overview tree, and the natural target for entity-page link cells that point at a specific `action_group`. Spun out as a small page + Api pair rather than amending part 17 (which is also unshipped but already four pages wide) and part 19 (which is shipped — by convention shipped parts aren't reopened). The page reuses every primitive from parts 7/15/16/19; no new schemas.
 
 ## Conventions across parts
 

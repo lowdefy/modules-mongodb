@@ -66,13 +66,14 @@ Hook invocation needs parts 7 (groups) and 8 (side-effects). Fan-out needs 7 + 9
 
 ## Wave 6 — UI delivery (parallel; need resolvers + ops APIs)
 
-All three need the resolver outputs from Waves 2/4 and (for 17/18) the operational APIs from part 19.
+All four need the resolver outputs from Waves 2/4 and (for 17/18) the operational APIs from part 19. Part 24 is the universal-fields component that 16 and 17 consume (part 18 doesn't consume it in v1 — tracker rendering stays `status_map.message`-only) — land it first inside the wave so it's ready when the page templates compose it (`_ref` would otherwise fail the Lowdefy build).
 
-| #   | Part                                                      | Size | Repo                            | Status |
-| --- | --------------------------------------------------------- | ---- | ------------------------------- | ------ |
-| 16  | [page-templates](parts/_completed/16-page-templates/design.md) | M    | `modules/workflows/templates/`  | ✅ shipped |
-| 17  | [shared-pages](parts/17-shared-pages/design.md)           | M    | `modules/workflows/pages/`      |        |
-| 18  | [entity-components](parts/18-entity-components/design.md) | M    | `modules/workflows/components/` |        |
+| #   | Part                                                          | Size | Repo                                       | Status |
+| --- | ------------------------------------------------------------- | ---- | ------------------------------------------ | ------ |
+| 24  | [universal-fields](parts/24-universal-fields/design.md)       | M    | `modules/workflows/components/universal-fields/` |        |
+| 16  | [page-templates](parts/_completed/16-page-templates/design.md) | M    | `modules/workflows/templates/`             | ✅ shipped |
+| 17  | [shared-pages](parts/17-shared-pages/design.md)               | M    | `modules/workflows/pages/`                 |        |
+| 18  | [entity-components](parts/18-entity-components/design.md)     | M    | `modules/workflows/components/`            |        |
 
 ## Wave 7 — Closeout
 
@@ -89,14 +90,15 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | 21  | [entity-type-to-collection](parts/21-entity-type-to-collection/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/`      | ✅ shipped |
 | 22  | [workflows-e2e-suite](parts/22-workflows-e2e-suite/design.md)         | M    | `apps/demo/` (e2e harness)                                     |            |
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/api/` | ✅ shipped |
+| 25  | [group-overview-page](parts/25-group-overview-page/design.md)         | S    | `modules/workflows/pages/` + `modules/workflows/api/`          |            |
 
 ## Repo footprint at a glance
 
-| Repo                                           | Parts                                         |
-| ---------------------------------------------- | --------------------------------------------- |
-| upstream `@lowdefy/*`                          | 1, 2                                          |
-| `plugins/modules-mongodb-plugins/` (this repo) | 3, 5, 6, 7, 8, 9, 10, 11, 21, 23              |
-| `modules/workflows/` (this repo)               | 4, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23 |
-| `apps/demo/` (this repo)                       | 20 (wiring only), 22 (e2e suite)              |
+| Repo                                           | Parts                                             |
+| ---------------------------------------------- | ------------------------------------------------- |
+| upstream `@lowdefy/*`                          | 1, 2                                              |
+| `plugins/modules-mongodb-plugins/` (this repo) | 3, 5, 6, 7, 8, 9, 10, 11, 21, 23                  |
+| `modules/workflows/` (this repo)               | 4, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25 |
+| `apps/demo/` (this repo)                       | 20 (wiring only), 22 (e2e suite)                  |
 
 Two clear streams once Wave 0 lands: an **engine stream** in the plugin package and a **module stream** under `modules/workflows/`. They only converge at part 20.
