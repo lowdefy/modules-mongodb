@@ -121,7 +121,7 @@ Each form-action template ships the matching button(s) from the submit-pipeline 
 | Button            | Rendered on template                    | `interaction` value | Author event handler fired         | Engine target-status default                                               |
 | ----------------- | --------------------------------------- | ------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
 | `submit_edit`     | `edit.yaml.njk`                         | `submit_edit`       | `onSubmit`                         | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
-| `not_required`    | `view.yaml.njk` (and optionally `edit`) | `not_required`      | `onSubmit` (if rendered on `edit`) | `not-required`                                                             |
+| `not_required`    | `edit.yaml.njk` (opt-in)                | `not_required`      | `onSubmit`                         | `not-required`                                                             |
 | `resolve_error`   | `error.yaml.njk`                        | `resolve_error`     | `onSubmit`                         | Same as `submit_edit` (recovery returns the action to its normal flow)     |
 | `approve`         | `review.yaml.njk`                       | `approve`           | `onApprove`                        | `done`                                                                     |
 | `request_changes` | `review.yaml.njk`                       | `request_changes`   | `onRequestChanges`                 | `changes-required`                                                         |
@@ -160,9 +160,9 @@ Templates compose this via a small Nunjucks macro per button to keep the block t
 
 **Task-action pages** — `pages/task-edit.yaml`, `pages/task-view.yaml`, and `pages/task-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
 
-- **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — it calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, `form:` (empty for tasks), and `event.metadata.comment`.
+- **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — it calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, `form:` (empty for tasks), and a top-level `comment` field (resolver-emitted API maps it to `event.metadata.comment`).
 - **`task-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
-- **`task-review`**: action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively (submit-pipeline Decision 3). The comment, if entered, flows through `event.metadata.comment`.
+- **`task-review`**: action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively (submit-pipeline Decision 3). The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
 
 All three task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
@@ -225,7 +225,7 @@ Universal action fields (`assignees`, `due_date`, `description` — see [action-
 - On a **task action's** edit page they're the primary content, with a status selector and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
-Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional comment in `event.metadata.comment`.
+Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
 
 ## Decision 3 — Module-level UI components
 

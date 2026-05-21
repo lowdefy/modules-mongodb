@@ -53,6 +53,7 @@ routine:
       form: { _payload: form }
       form_review: { _payload: form_review }
       fields: { _payload: fields }
+      comment: { _payload: comment }             # user-supplied comment; handler maps to event.metadata.comment
       hooks:                                     # build-time literal map from action.hooks
         submit_edit: { pre: <api-id-or-null>, post: <api-id-or-null> }
         not_required: { pre, post }
@@ -84,13 +85,13 @@ Templates ship a fixed set of submit-flavoured buttons. Each button is a templat
 1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event (if declared).
 2. Calls `update-action-{action_type}` with `interaction: <button-name>` + payload.
 
-| Button            | Renders on                 | `interaction` value |
-| ----------------- | -------------------------- | ------------------- |
-| `submit_edit`     | `edit`                     | `submit_edit`       |
-| `not_required`    | `view` (optionally `edit`) | `not_required`      |
-| `resolve_error`   | `error`                    | `resolve_error`     |
-| `approve`         | `review`                   | `approve`           |
-| `request_changes` | `review`                   | `request_changes`   |
+| Button            | Renders on        | `interaction` value |
+| ----------------- | ----------------- | ------------------- |
+| `submit_edit`     | `edit`            | `submit_edit`       |
+| `not_required`    | `edit` (opt-in)   | `not_required`      |
+| `resolve_error`   | `error`           | `resolve_error`     |
+| `approve`         | `review`          | `approve`           |
+| `request_changes` | `review`          | `request_changes`   |
 
 **Status: open** — Steph's review asks to validate the button list. Locked during sub-design review.
 
@@ -301,6 +302,7 @@ The button block (template-shipped) calls the per-action API with a fixed payloa
             form: { _state: form }
             form_review: { _state: form_review }
             fields: { _state: fields }
+            comment: { _state: comment }      # optional; handler maps to event.metadata.comment
 ```
 
 The page never builds this manually — the template ships the button and the wiring.

@@ -418,7 +418,7 @@ status_map:
     my-team-app: { message: Follow-up scheduled. }
 ```
 
-No `hooks:` declared — engine runs the default lifecycle. The shared `task-edit` page calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the page surfaces a status selector), `fields:`, and `event.metadata.comment`.
+No `hooks:` declared — engine runs the default lifecycle. The shared `task-edit` page calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the page surfaces a status selector), `fields:`, and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment`).
 
 ## Tracker action
 

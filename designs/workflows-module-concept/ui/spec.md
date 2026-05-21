@@ -22,31 +22,21 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 ```yaml
 - id: "{workflow_type}-{action_type}-edit"
-  type: PageHeaderMenu
-  events:
-    onInit:
-      - id: get_action
-        type: Request
-        params: get_action
-  requests:
-    - _ref:
-        path: "{template-path}/get_action.yaml"
-        vars: { ... }
-  blocks:
-    - _ref:
-        path: "{template-path}/edit.yaml.njk"
-        vars:
-          action_config: { ... }
-          edit: { ... }
-          maxWidth: { ... }
-          workflow_type: "{workflow_type}"
-          page_ids:
-            view: "{workflow_type}-{action_type}-view"
-            edit: "{workflow_type}-{action_type}-edit"
-            review: "{workflow_type}-{action_type}-review"
-            error: "{workflow_type}-{action_type}-error"
-          entity_collection: "{workflow.entity_collection}"
+  _ref:
+    path: "templates/edit.yaml.njk" # ships from this module
+    vars:
+      action_config: { ... } # engine-runtime + build-time-only action fields (no `pages`)
+      page_config: { ... }   # per-verb slice of action.pages.{verb} (title/requests/events/formHeader/formFooter/modals/maxWidth/buttons)
+      workflow_type: "{workflow_type}"
+      entity_collection: "{workflow.entity_collection}"
+      page_ids:
+        view: "{workflow_type}-{action_type}-view"
+        edit: "{workflow_type}-{action_type}-edit"
+        review: "{workflow_type}-{action_type}-review"
+        error: "{workflow_type}-{action_type}-error"
 ```
+
+The emitted shell is just an `_ref` — no `type:`, no inline `events`, no inline `requests`. The template body (`templates/{verb}.yaml.njk`) owns the rendered page shape, including the top-level `_ref: { module: layout, component: page }` wrapper (per "Layout-module composition" below). Page-level `events.onInit`, `requests:`, and the `get_action` request `_ref` all live inside the template, not the shell.
 
 ### Resolver behaviour
 
@@ -58,9 +48,9 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 **Form-action templates** at `templates/`:
 
-- `templates/edit.yaml.njk` — edit form. Ships the template-shipped `submit_edit` button (and optionally `not_required` if the action opts in). Buttons call `update-action-{action_type}` with the matching `interaction` value.
-- `templates/view.yaml.njk` — read-only view. Optionally ships the `not_required` button.
-- `templates/review.yaml.njk` — read-only form display + template-shipped `approve` / `request_changes` buttons calling `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`.
+- `templates/edit.yaml.njk` — edit form. Ships the template-shipped `submit_edit` button, plus `not_required` when the action opts in via `pages.edit.buttons.not_required.visible: true`. Buttons call `update-action-{action_type}` with the matching `interaction` value.
+- `templates/view.yaml.njk` — read-only view. No write buttons. (View is the read-only surface; `not_required` is a write and lives only on `edit.yaml.njk`.)
+- `templates/review.yaml.njk` — read-only form display + template-shipped `approve` / `request_changes` interaction buttons calling `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`. Also ships an `Edit` navigation button (a `Link` back to the edit page with `input: { skip_status_redirect: true }`) when the edit verb is in this app's access list, so reviewers can fix small issues themselves rather than bouncing the action back with `request_changes`.
 - `templates/error.yaml.njk` — recovery surface for actions in `error` status. Template ships:
   - **Stale-URL guard appended to `onMount`** — redirects to `-view` when `status[0].stage !== 'error'` at load.
   - **Failure-context banner** above the form, surfacing `status[0].error_message` and `status[0].error_metadata` on the action doc.
@@ -74,7 +64,7 @@ The `-error` page is gated identically to the other verbs: emitted iff `error` i
 | Button            | Template                                         | `interaction` value | Author event handler fired         | Engine target-status default                                               |
 | ----------------- | ------------------------------------------------ | ------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
 | `submit_edit`     | `edit.yaml.njk`                                  | `submit_edit`       | `onSubmit`                         | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
-| `not_required`    | `view.yaml.njk` (and optionally `edit.yaml.njk`) | `not_required`      | `onSubmit` (if rendered on `edit`) | `not-required`                                                             |
+| `not_required`    | `edit.yaml.njk` (opt-in)                         | `not_required`      | `onSubmit`                         | `not-required`                                                             |
 | `resolve_error`   | `error.yaml.njk`                                 | `resolve_error`     | `onSubmit`                         | Same as `submit_edit` — recovery returns the action to its normal flow     |
 | `approve`         | `review.yaml.njk`                                | `approve`           | `onApprove`                        | `done`                                                                     |
 | `request_changes` | `review.yaml.njk`                                | `request_changes`   | `onRequestChanges`                 | `changes-required`                                                         |
@@ -83,9 +73,9 @@ On click, each button (1) fires the matching `pages.{verb}.events.{handler}` aut
 
 **Static task-action pages** at `pages/`:
 
-- `pages/task-edit.yaml` — status selector populated from `global.action_statuses` (filtered to allowed transitions via priority rule), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, and `event.metadata.comment`.
+- `pages/task-edit.yaml` — status selector populated from `global.action_statuses` (filtered to allowed transitions via priority rule), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` before the event hits the events module).
 - `pages/task-view.yaml` — action header (title from action YAML, current status badge), universal-fields display, status timeline (from action's `status` history), comments timeline (events with `metadata.comment` populated for this `action_id`).
-- `pages/task-review.yaml` — action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively. The comment, if entered, flows through `event.metadata.comment`.
+- `pages/task-review.yaml` — action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively. The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
 
 All three task pages take `?action_id=<id>` as a URL query. Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead.
 
@@ -215,7 +205,7 @@ Universal action fields (`assignees`, `due_date`, `description`) render differen
 - **Task action's edit page**: primary content (status selector and comment field sit below).
 - **Tracker action inline display**: small badges next to the link in `actions-on-entity`.
 
-Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` payload from form-state plus an optional comment in `event.metadata.comment`.
+Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` payload from form-state plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
 
 ## Status-selector behaviour on `task-edit`
 
