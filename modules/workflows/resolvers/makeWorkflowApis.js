@@ -76,6 +76,7 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMa
     form: { _payload: 'form' },
     form_review: { _payload: 'form_review' },
     fields: { _payload: 'fields' },
+    comment: { _payload: 'comment' },
     ...(isTask ? { current_status: { _payload: 'current_status' } } : {}),
     ...(hooksMap ? { hooks: hooksMap } : {}),
     ...(eventMap ? { event_overrides: eventMap } : {}),

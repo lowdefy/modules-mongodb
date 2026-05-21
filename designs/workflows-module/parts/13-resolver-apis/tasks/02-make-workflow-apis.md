@@ -57,6 +57,7 @@ routine:
       form: { _payload: form }
       form_review: { _payload: form_review }
       fields: { _payload: fields }
+      comment: { _payload: comment }                 # user-supplied comment; handler maps to event.metadata.comment (see part 13 design.md § Comment mapping)
       current_status: { _payload: current_status }   # only when emitting for kind: task; omit for form
       hooks:                                    # sparse — only declared interactions/phases
         submit_edit:
@@ -241,6 +242,7 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMa
     form: { _payload: "form" },
     form_review: { _payload: "form_review" },
     fields: { _payload: "fields" },
+    comment: { _payload: "comment" },
     ...(isTask ? { current_status: { _payload: "current_status" } } : {}),
     ...(hooksMap ? { hooks: hooksMap } : {}),
     ...(eventMap ? { event_overrides: eventMap } : {}),
@@ -341,31 +343,32 @@ Required test cases (mirrors design.md "Verification"):
    - `update-action-schedule-followup` (task)
    - No `update-action-track-installation` (tracker skipped).
 2. **Task endpoint includes `current_status`.** The emitted `update-action-schedule-followup` has `properties.current_status: { _payload: 'current_status' }`. The form endpoints (`update-action-qualify`, `update-action-send-quote`) do not have that property at all.
-3. **Sparse `hooks` / `event_overrides` / `interactions` maps.**
+3. **Every form/task endpoint passes `comment` through.** Each emitted endpoint has `properties.comment: { _payload: 'comment' }`. The handler maps the field into `event.metadata.comment` (see part 13 design.md § Comment mapping); the resolver's only job is to thread the runtime field through.
+4. **Sparse `hooks` / `event_overrides` / `interactions` maps.**
    - An action declaring `hooks.submit_edit.pre: { routine: [...] }` and nothing else produces `properties.hooks: { submit_edit: { pre: 'update-action-{type}-submit_edit-pre' } }` — no other interaction keys, no `post`.
    - An action with no `hooks:` block omits the `hooks` property from the emitted endpoint entirely (assert `'hooks' in properties === false`).
    - Same shape for `event_overrides` (slots emitted only for interactions present in `action.event`) and `interactions`.
-4. **Hook Api emission.** A fixture action declaring `hooks.submit_edit.pre: { routine: [{ id: 'x', type: 'MongoDBFindOne' }] }` with `access: { roles: ['account-manager'] }` produces a hook Api with:
+5. **Hook Api emission.** A fixture action declaring `hooks.submit_edit.pre: { routine: [{ id: 'x', type: 'MongoDBFindOne' }] }` with `access: { roles: ['account-manager'] }` produces a hook Api with:
    - `id: 'update-action-qualify-submit_edit-pre'`
    - `definition.type: 'Api'`
    - `definition.auth: { roles: ['account-manager'] }`
    - `definition.routine: [{ id: 'x', type: 'MongoDBFindOne' }]`
-5. **Group `on_complete` Api emission.** A fixture group `phase-1` with `on_complete: { routine: [{ id: 'notify', type: 'CallApi' }] }` and actions whose `action_group === 'phase-1'` and `access.roles: ['account-manager', 'ops-lead']` produces:
+6. **Group `on_complete` Api emission.** A fixture group `phase-1` with `on_complete: { routine: [{ id: 'notify', type: 'CallApi' }] }` and actions whose `action_group === 'phase-1'` and `access.roles: ['account-manager', 'ops-lead']` produces:
    - `id: 'workflow-onboarding-group-phase-1-on-complete'`
    - `definition.auth: { roles: ['account-manager', 'ops-lead'] }` (de-duplicated union of the group's actions' `access.roles`)
    - `definition.routine: [{ id: 'notify', type: 'CallApi' }]`
-6. **`auth.roles` synthesis dedupes.** A group whose actions all share `roles: ['account-manager']` produces `auth: { roles: ['account-manager'] }`, not `['account-manager', 'account-manager']`.
-7. **Empty roles passes through.** An action with no `access.roles` (or `access: { roles: [] }`) produces a hook Api with `auth: { roles: [] }`. A group whose actions all have empty roles produces an `on_complete` Api with `auth: { roles: [] }`.
-8. **`event_overrides` carries the four-tuple.** An action declaring `event: { submit_edit: { type: 'qualified', display: 'Lead qualified', references: { ... }, metadata: { ... } } }` produces `properties.event_overrides.submit_edit` with all four fields (`type`, `display`, `references`, `metadata`).
-9. **`interactions[interaction].status` baked in.** An action declaring `interactions: { submit_edit: { status: 'done' } }` produces `properties.interactions: { submit_edit: { status: 'done' } }`.
-10. **No `force` slot.** The emitted endpoint's `properties:` does not contain a `force` field.
-11. **Tracker actions emit nothing.** A workflow with only `kind: tracker` actions produces an empty Api array (no `update-action-*` endpoint, no hook Apis).
+7. **`auth.roles` synthesis dedupes.** A group whose actions all share `roles: ['account-manager']` produces `auth: { roles: ['account-manager'] }`, not `['account-manager', 'account-manager']`.
+8. **Empty roles passes through.** An action with no `access.roles` (or `access: { roles: [] }`) produces a hook Api with `auth: { roles: [] }`. A group whose actions all have empty roles produces an `on_complete` Api with `auth: { roles: [] }`.
+9. **`event_overrides` carries the four-tuple.** An action declaring `event: { submit_edit: { type: 'qualified', display: 'Lead qualified', references: { ... }, metadata: { ... } } }` produces `properties.event_overrides.submit_edit` with all four fields (`type`, `display`, `references`, `metadata`).
+10. **`interactions[interaction].status` baked in.** An action declaring `interactions: { submit_edit: { status: 'done' } }` produces `properties.interactions: { submit_edit: { status: 'done' } }`.
+11. **No `force` slot.** The emitted endpoint's `properties:` does not contain a `force` field.
+12. **Tracker actions emit nothing.** A workflow with only `kind: tracker` actions produces an empty Api array (no `update-action-*` endpoint, no hook Apis).
 
 Use `node:test`'s `describe` / `it` / `assert.deepStrictEqual` / `assert.throws`. Keep the fixture inline as a JS literal — copy the minimum subset of the worked example needed to make each assertion meaningful.
 
 ## Acceptance Criteria
 
-- `node --test modules/workflows/resolvers/makeWorkflowApis.test.js` exits 0 with all 11 test cases passing.
+- `node --test modules/workflows/resolvers/makeWorkflowApis.test.js` exits 0 with all 12 test cases passing.
 - The resolver passes lint (matching whatever ESLint config `modules/workflows/resolvers/makeActionPages.js` passes).
 - `makeWorkflowApis.js` is importable as ES module: `import makeWorkflowApis from './makeWorkflowApis.js'` works.
 - Running the resolver against the worked-example fixture produces exactly:

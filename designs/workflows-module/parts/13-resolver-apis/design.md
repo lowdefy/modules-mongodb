@@ -23,7 +23,33 @@ For each form / task action:
   - `event_overrides: { <interaction>: { type?, display?, references?, metadata? }, ... }` — per-interaction event overrides lifted from the action YAML's `event:` block. The resolver renames `event` → `event_overrides` on emission to disambiguate the build-time payload key from the per-action YAML key. The four-tuple matches the `buildDefaultLogEventPayload` shape part 9 imports as the bottom layer (see [part 8 design.md:15](../08-side-effect-dispatch/design.md)).
   - `interactions: { <interaction>: { status: <override> }, ... }` — per-interaction target-status overrides.
 - Routine: single step that invokes the `SubmitWorkflowAction` plugin handler with the request payload. The routine targets the workflows module's `workflow-api` connection (`_module.connectionId: workflow-api`); the connection's `workflowsConfig` and `actionsEnum` properties — wired in part 20 — are what the handler reads for engine state. Part 13 emits no payload fields for those.
-- Payload shape committed: the runtime payload (`action_id`, `interaction`, `current_key`, `form`, `form_review`, `fields`, optional `current_status` for task `submit_edit`) **plus** the build-time literals (`action_type`, `workflow_type`) the resolver bakes in. No root-level `force` field — `force: true` lives only on pre-hook-returned `actions[]` entries (engine-internal); the resolver does not emit a `force:` slot in `properties:`.
+- Payload shape committed: the runtime payload (`action_id`, `interaction`, `current_key`, `form`, `form_review`, `fields`, `comment`, optional `current_status` for task `submit_edit`) **plus** the build-time literals (`action_type`, `workflow_type`) the resolver bakes in. No root-level `force` field — `force: true` lives only on pre-hook-returned `actions[]` entries (engine-internal); the resolver does not emit a `force:` slot in `properties:`.
+
+### Comment mapping
+
+The runtime `comment` field is the user-supplied comment from the page's comment input — a top-level scalar in the payload, not nested under `event.metadata.*`. Keeping it flat at the boundary lets the template author the comment input as a single block (`id: comment`) with no knowledge of the engine's event-emission shape.
+
+The resolver-emitted routine simply passes `comment: { _payload: 'comment' }` through to the handler. The `SubmitWorkflowAction` handler reads it and writes it into the engine-emitted event's `metadata.comment` slot before the event hits the events module. This is a runtime layer that sits **above** the build-time `event_overrides[interaction]` map but **below** the pre-hook return's `event_overrides` (so a pre-hook can still override the user-supplied comment if it has reason to). The merge order becomes:
+
+1. Engine defaults (per submit-pipeline § "Log event").
+2. Action YAML `event.{interaction}.{type|display|metadata}` — baked into `event_overrides` by this resolver.
+3. **Runtime `comment` field** — handler injects into `metadata.comment` if present and non-empty.
+4. Pre-hook return `event_overrides` — unkeyed runtime bag, merges last.
+
+Empty / null `comment` is a no-op (no `metadata.comment` written).
+
+#### Pending handler work (part 6 follow-up)
+
+The resolver-emission piece of this contract is implemented in [makeWorkflowApis.js](../../../../modules/workflows/resolvers/makeWorkflowApis.js) — every emitted endpoint now passes `comment: { _payload: 'comment' }` to `SubmitWorkflowAction`. The handler side is **not yet wired**; until the steps below land, the resolver passes `comment` to the handler but nothing reads it.
+
+Add a task to part 6's task list (`designs/workflows-module/parts/_completed/06-submit-action-writes/tasks/`) — or add it here as a tracked follow-up — covering:
+
+1. **`handleSubmit.js`** — extend `logEventInputBag` with `comment: params.comment ?? null`.
+2. **`dispatchLogEvent.js` / `buildDefaultLogEventPayload`** — accept `comment` and merge into `metadata.comment` when present and non-empty (drop the key when falsy). Place the merge **above** the part-9 layer-2 (`action.event[interaction].metadata`) override so a YAML-defined metadata field can't clobber the user-supplied comment. Document the layer-3 position in the function's JSDoc so part 9's implementer keeps the ordering correct.
+3. **Tests** — add a `dispatchLogEvent.test.js` case covering: (a) `comment: "hello"` writes `metadata.comment: "hello"`; (b) `comment: null` / `""` / `undefined` writes no `metadata.comment` key; (c) the part-9 merge (when it lands) doesn't drop the comment when an action declares `event.{interaction}.metadata`.
+4. **No schema validation on comment shape.** It's a free-text scalar from the page input; the handler trusts it. (Sanitization for storage / display is the events module's concern — same as every other `metadata.*` field.)
+
+Treat this as a small fold-in to part 6 (per the "review changes touching implemented parts" rule — small additions extend the existing design rather than spawning a new part). The resolver side is shipped; the handler side blocks end-to-end comment flow but doesn't break any current behavior (comment payloads are simply ignored until the handler reads them).
 
 ### Hook emission (replaces the build-time auth gate)
 
@@ -59,6 +85,7 @@ Like [part 12](../12-resolver-pages/design.md), this resolver emits dynamic expo
 - Unit tests:
   - Worked-example onboarding workflow produces `update-action-qualify`, `update-action-send-quote`, `update-action-schedule-followup` — no `update-action-track-installation`.
   - `schedule-followup` (task) emits `update-action-schedule-followup` with the same payload shape as form endpoints (including the `current_status` slot accepted via `_payload`).
+  - Every emitted form/task endpoint passes the runtime `comment` field through to the handler via `comment: { _payload: 'comment' }` (per "Comment mapping" above).
   - `hooks`, `event_overrides`, `interactions` maps baked correctly per action (sparse — only declared slots present).
   - Hook Api emission: a fixture action declaring `hooks.submit_edit.pre: { routine: [...] }` produces an emitted Api with id `update-action-{action_type}-submit_edit-pre`, the inline routine, and `auth.roles` synthesized from `action.access.roles`.
   - `on_complete` Api emission: a fixture group declaring `on_complete: { routine: [...] }` produces an emitted Api with id `workflow-{workflow_type}-group-{group_id}-on-complete` and `auth.roles` synthesized from the union of the group's actions' `access.roles`.

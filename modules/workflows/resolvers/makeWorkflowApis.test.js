@@ -103,6 +103,17 @@ test("makeWorkflowApis: task endpoint includes current_status; form endpoints do
   expect(propsOf(sendQuote)).not.toHaveProperty("current_status");
 });
 
+test("makeWorkflowApis: every form/task endpoint passes runtime comment through to the handler", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  const task = findApi(apis, "update-action-schedule-followup");
+  const form = findApi(apis, "update-action-qualify");
+  const sendQuote = findApi(apis, "update-action-send-quote");
+
+  expect(propsOf(task).comment).toEqual({ _payload: "comment" });
+  expect(propsOf(form).comment).toEqual({ _payload: "comment" });
+  expect(propsOf(sendQuote).comment).toEqual({ _payload: "comment" });
+});
+
 test("makeWorkflowApis: sparse hooks, event_overrides, interactions maps", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const qualify = findApi(apis, "update-action-qualify");
