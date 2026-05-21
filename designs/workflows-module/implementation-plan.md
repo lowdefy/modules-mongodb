@@ -2,7 +2,7 @@
 
 Parallel delivery waves derived from the [dependency graph in design.md](design.md#dependency-graph). Each **wave** can run fully in parallel; the next wave starts once its predecessors land. The Repo column tells you where the diff goes; the Status column reflects what has shipped on `main` / been merged to the `workflows-module` branch.
 
-**Shipped so far:** parts 3, 4, 5, 6, 7, 8, 10, 14, 15, 19, 21, plus part 12 tasks 1–2 (resolver + placeholder templates) and part 13 tasks 1–2 (resolver + inline-routine hook/`on_complete` schema flip) — manifest wiring for both blocked on part 2. Engine can create, transition, and tear down workflows with full group state machine + tracker subscription; the always-on log-event + notifications side effects now fire on every submit. The five module-shipped operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`) plus the reusable `access_filter` aggregation stage are wired into the workflows-module manifest — runtime light-up still needs part 20's connection + var declarations (and part 23 for the `CloseWorkflow` request type). Remaining lifecycle extensions (parts 9, 11) are next.
+**Shipped so far:** parts 3, 4, 5, 6, 7, 8, 10, 14, 15, 19, 21, 23, plus part 12 tasks 1–2 (resolver + placeholder templates) and part 13 tasks 1–2 (resolver + inline-routine hook/`on_complete` schema flip) — manifest wiring for both blocked on part 2. Engine can create, transition, and tear down workflows with full group state machine + tracker subscription; the always-on log-event + notifications side effects now fire on every submit. Part 23 lands the `CloseWorkflow` handler (user-initiated `completed` push with conditional sweep honoring `required_after_close: true` and the blocked-action exception, plus tracker fan-up via the `completed → done` mapping), so the five module-shipped operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`) plus the reusable `access_filter` aggregation stage are wired into the workflows-module manifest end-to-end — runtime light-up still needs part 20's connection + var declarations. Remaining lifecycle extensions (parts 9, 11) are next.
 
 Status legend: `✅ shipped` · `🚧 in progress` · empty = not started.
 
@@ -51,7 +51,7 @@ Each extends part 6's lifecycle orthogonally. Part 13 (resolver-apis) only needs
 | --- | --------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------- | --------- |
 | 7   | [group-state-machine](parts/07-group-state-machine/design.md)   | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` | ✅ shipped |
 | 8   | [side-effect-dispatch](parts/_completed/08-side-effect-dispatch/design.md) | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` | ✅ shipped |
-| 10  | [tracker-subscription](parts/10-tracker-subscription/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`                      |           |
+| 10  | [tracker-subscription](parts/_completed/10-tracker-subscription/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`                      | ✅ shipped |
 | 13  | [resolver-apis](parts/13-resolver-apis/design.md)               | M    | `modules/workflows/resolvers/`                                                      | 🚧 tasks 1–2 done; task 3 (manifest wiring) held until part 2 lands |
 
 ## Wave 5 — Hooks, fan-out, operational APIs (parallel; need Wave 4)
@@ -88,7 +88,7 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | --- | --------------------------------------------------------------------- | ---- | -------------------------------------------------------------- | ---------- |
 | 21  | [entity-type-to-collection](parts/21-entity-type-to-collection/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/`      | ✅ shipped |
 | 22  | [workflows-e2e-suite](parts/22-workflows-e2e-suite/design.md)         | M    | `apps/demo/` (e2e harness)                                     |            |
-| 23  | [close-workflow-handler](parts/23-close-workflow-handler/design.md)   | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/api/` |            |
+| 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/api/` | ✅ shipped |
 
 ## Repo footprint at a glance
 

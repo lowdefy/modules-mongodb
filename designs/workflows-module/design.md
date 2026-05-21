@@ -34,7 +34,7 @@ Each part has its own folder under [parts/](parts/) with a `design.md` containin
 | 7   | [group-state-machine](parts/07-group-state-machine/design.md)           | [action-groups](../workflows-module-concept/action-groups/spec.md)                                                                                | M    |
 | 8   | [side-effect-dispatch](parts/08-side-effect-dispatch/design.md)         | [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)                                                                            | M    |
 | 9   | [hook-invocation](parts/09-hook-invocation/design.md)                   | [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)                                                                            | M    |
-| 10  | [tracker-subscription](parts/10-tracker-subscription/design.md)         | [engine](../workflows-module-concept/engine/spec.md)                                                                                              | S    |
+| 10  | [tracker-subscription](parts/_completed/10-tracker-subscription/design.md) | [engine](../workflows-module-concept/engine/spec.md)                                                                                              | S    |
 | 11  | [group-on-complete-fanout](parts/11-group-on-complete-fanout/design.md) | [action-groups](../workflows-module-concept/action-groups/spec.md) + [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)       | S    |
 | 12  | [resolver-pages](parts/12-resolver-pages/design.md)                     | [action-authoring](../workflows-module-concept/action-authoring/spec.md) + [ui](../workflows-module-concept/ui/spec.md)                           | M    |
 | 13  | [resolver-apis](parts/13-resolver-apis/design.md)                       | [action-authoring](../workflows-module-concept/action-authoring/spec.md) + [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md) | M    |
@@ -54,7 +54,7 @@ Added after the original 20 were cut. See [Follow-on parts](#follow-on-parts) fo
 | --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---- |
 | 21  | [entity-type-to-collection](parts/21-entity-type-to-collection/design.md) | [part 12 review-1 #1](parts/12-resolver-pages/review/review-1.md)                                 | M    |
 | 22  | [workflows-e2e-suite](parts/22-workflows-e2e-suite/design.md)             | [concept § Worked example](../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) | M    |
-| 23  | [close-workflow-handler](parts/23-close-workflow-handler/design.md)       | [part 6 review-1 #7](parts/06-submit-action-writes/review/review-1.md)                            | M    |
+| 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | [part 6 review-1 #7](parts/_completed/06-submit-action-writes/review/review-1.md)                | M    |
 
 S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-split).
 
