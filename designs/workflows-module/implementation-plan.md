@@ -2,7 +2,7 @@
 
 Parallel delivery waves derived from the [dependency graph in design.md](design.md#dependency-graph). Each **wave** can run fully in parallel; the next wave starts once its predecessors land. The Repo column tells you where the diff goes; the Status column reflects what has shipped on `main` / been merged to the `workflows-module` branch.
 
-**Shipped so far:** parts 3, 4, 5, 6, 7, 8, 10, 14, 15, 19, 21, 23, plus part 12 tasks 1–2 (resolver + placeholder templates) and part 13 tasks 1–2 (resolver + inline-routine hook/`on_complete` schema flip) — manifest wiring for both blocked on part 2. Engine can create, transition, and tear down workflows with full group state machine + tracker subscription; the always-on log-event + notifications side effects now fire on every submit. Part 23 lands the `CloseWorkflow` handler (user-initiated `completed` push with conditional sweep honoring `required_after_close: true` and the blocked-action exception, plus tracker fan-up via the `completed → done` mapping), so the five module-shipped operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`) plus the reusable `access_filter` aggregation stage are wired into the workflows-module manifest end-to-end — runtime light-up still needs part 20's connection + var declarations. Remaining lifecycle extensions (parts 9, 11) are next.
+**Shipped so far:** parts 3, 4, 5, 6, 7, 8, 10, 14, 15, 16, 19, 21, 23, plus part 12 tasks 1–2 (resolver + placeholder templates) and part 13 tasks 1–2 (resolver + inline-routine hook/`on_complete` schema flip) — manifest wiring for both blocked on part 2. Engine can create, transition, and tear down workflows with full group state machine + tracker subscription; the always-on log-event + notifications side effects now fire on every submit. Part 16 lands the four form-action page templates (`view` / `edit` / `review` / `error` under `modules/workflows/templates/`) plus the three module-shipped requests (`get_action`, `get_workflow`, `get_entity`) — full `onMount` sequence with per-template stale-URL allowlists, the universal-fields band + `makeActionsForm` form body composition, the immutable five-button interaction vocabulary (`submit_edit`, `not_required`, `approve`, `request_changes`, `resolve_error`) plus the `Edit` navigation button, and v0-parity outer-card suppression on `form[0].form` (edit) / `form_error[0].form` (error); runtime light-up still needs parts 18 (`action_role_check`), 20 (connection ids), and 24 (universal-fields component). Remaining lifecycle extensions (parts 9, 11) are next.
 
 Status legend: `✅ shipped` · `🚧 in progress` · empty = not started.
 
@@ -70,7 +70,7 @@ All three need the resolver outputs from Waves 2/4 and (for 17/18) the operation
 
 | #   | Part                                                      | Size | Repo                            | Status |
 | --- | --------------------------------------------------------- | ---- | ------------------------------- | ------ |
-| 16  | [page-templates](parts/16-page-templates/design.md)       | M    | `modules/workflows/templates/`  |        |
+| 16  | [page-templates](parts/_completed/16-page-templates/design.md) | M    | `modules/workflows/templates/`  | ✅ shipped |
 | 17  | [shared-pages](parts/17-shared-pages/design.md)           | M    | `modules/workflows/pages/`      |        |
 | 18  | [entity-components](parts/18-entity-components/design.md) | M    | `modules/workflows/components/` |        |
 
