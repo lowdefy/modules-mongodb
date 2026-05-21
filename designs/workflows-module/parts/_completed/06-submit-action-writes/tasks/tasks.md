@@ -60,7 +60,7 @@ Part 06 ships **unit tests per task** per the top-level § Testing conventions. 
 - **Log event + notifications dispatch** → part 8. Step 7 + 8 are no-op stubs in this part.
 - **Tracker subscription fire** → part 10. Step 10 is a no-op stub.
 - **Group `on_complete` fan-out** → part 11. Step 9 is a no-op stub.
-- **Author-initiated `CloseWorkflow` handler + `close-workflow` operational API** → part 23.
+- **User-initiated `CloseWorkflow` handler + `close-workflow` operational API** → part 23.
 - **End-to-end Playwright coverage** → part 22.
 
 ## Scope

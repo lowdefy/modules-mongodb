@@ -31,7 +31,7 @@ apps/demo/e2e/workflows/
   page-templates.spec.js            # part 16 (edit / review / error template flows)
   shared-pages.spec.js              # part 17 (task-edit / task-view / task-review / workflow-overview)
   entity-components.spec.js         # part 18 (actions-on-entity, workflow-header)
-  operational-apis.spec.js          # part 19 (start / cancel / get-entity-workflows / get-workflow-overview)
+  operational-apis.spec.js          # part 19 (start / cancel / close / get-entity-workflows / get-workflow-overview)
 ```
 
 ### Fixture surface
@@ -57,7 +57,7 @@ For each shipping part, the matrix below names the file and the load-bearing ass
 | Part | Spec file                          | Load-bearing assertions                                                                                                  |
 | ---- | ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | 05   | `start-cancel.spec.js`             | Workflow + N action docs written; `display_order` carried; initial `summary` correct; payload `actions[]` override path; reference-key spread; parent linking (three fields + `force: true` `in-progress` push); parent-link rejections (wrong kind, already linked, mismatched `tracker.workflow_type`); keyed-action YAML rejection; change-stamp threading; cancel cancels open actions; terminal actions untouched; `reason` propagated; cancel `references` reserved-key merge order. |
-| 06   | `submit-action.spec.js`            | Each interaction's default status mapping; priority rule + `currentActionId` self-exception (re-click writes fresh audit entry); per-entry `force: true` bypass; `form` + `form_review` merge into one flat `form_data.{action_type}` bag; `form_data` writes at the correct path (keyed + non-keyed); idempotent re-submit on non-self entries (priority rule rejects same-stage); terminal-workflow gate (`completed`/`cancelled` workflow rejects submit unless `required_after_close: true`). |
+| 06   | `submit-action.spec.js`            | Each interaction's default status mapping; priority rule + `currentActionId` self-exception (re-click writes fresh audit entry); per-entry `force: true` bypass; `form` + `form_review` merge into one flat `form_data.{action_type}` bag; `form_data` writes at the correct path (keyed + non-keyed); idempotent re-submit on non-self entries (priority rule rejects same-stage); terminal-workflow gate — `completed` workflow rejects submit unless `required_after_close: true`; `cancelled` workflow rejects ALL submits (the flag does not apply to cancel; see [action-authoring/spec.md § Terminal-behaviour field](../../../workflows-module-concept/action-authoring/spec.md)). |
 | 07   | `submit-action.spec.js`            | Group transitions to `done`; mixed-type `blocked_by` re-evaluation; `completed_groups` returned; auto-complete pushes workflow to `completed`; `CancelWorkflow` `groups[]` recompute. |
 | 08   | `side-effects.spec.js`             | Log event written via `events.new-event`; notifications dispatched via `notifications.send-notification`; both threaded with the submit's `eventId`. |
 | 09   | `hooks.spec.js`                    | Pre-hook return overrides target status; pre-hook `hook_error` aborts as `error` transition; post-hook receives engine result; `event_overrides` / `form_overrides`; three-layer status resolution. |

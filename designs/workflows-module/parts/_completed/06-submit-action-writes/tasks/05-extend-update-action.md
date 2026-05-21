@@ -28,14 +28,14 @@ async function updateAction(context, { actionId, newStage, fields = {}, eventId 
 
 Part 5's [Contract to neighbours](../../05-start-cancel-handlers/design.md#contract-to-neighbours) and part 6's [Sub-modules list](../design.md#sub-modules) both commit to **extending this file in place** rather than introducing a `SubmitWorkflowAction/`-nested copy. The priority-rule branch lives here so existing callers (parts 5, 10, 23) consume the same helper without import-path changes.
 
-Callers after this task lands:
+Callers after this task lands (per-doc force only — bulk sweeps go through `MongoDBUpdateMany` and don't touch this helper, per [engine spec § Priority rule](../../../../workflows-module-concept/engine/spec.md#priority-rule)):
 
 - `StartWorkflow`'s parent-link push — passes `force: true` (unchanged).
-- `CancelWorkflow`'s `not-required` sweep — passes `force: true` (unchanged).
 - Tracker subscription (part 10) — passes `force: true` (unchanged).
-- `CloseWorkflow`'s sweep (part 23) — passes `force: true` (future).
 - Pre-hook returned `actions[]` entries (part 9) — may pass `force: true` per-entry; otherwise priority-rule branch applies.
 - **The per-entry write loop in step 4 (task 10) — this is the new caller.** It passes `currentActionId` for the self-exception and lets `shouldUpdate` decide whether the write lands.
+
+`CancelWorkflow`'s `not-required` sweep and part 23's `CloseWorkflow` sweep are NOT callers of this helper — they bulk-bypass via `MongoDBUpdateMany`.
 
 V0 reference: `dist/workflows-module/old/WorkflowAPI/UpdateWorkflowActions/updateAction.js` does the write itself using `$concatArrays` in a pipeline-update form. The current scaffold uses the `$push: { $position: 0, $each: [...] }` shape — keep that shape (newest-at-index-0); the priority-rule branch only adds a pre-write gate.
 
@@ -56,9 +56,10 @@ Accept `currentActionId` (for the self-exception). Make `force` optional (defaul
  * either writes the status push or no-ops (caller sees a falsy return).
  *
  * Per-entry `force: true` bypasses the priority rule for this call only —
- * used by engine-internal force-pushes (`StartWorkflow`'s parent push,
- * `CancelWorkflow`'s sweep, tracker subscription, `CloseWorkflow`'s sweep
- * from part 23, pre-hook returns from part 9).
+ * used by engine-internal per-doc force-pushes (`StartWorkflow`'s parent
+ * push, tracker subscription, pre-hook returns from part 9). Bulk sweeps
+ * (`CancelWorkflow`, `CloseWorkflow` part 23) bypass via `MongoDBUpdateMany`
+ * directly and do NOT pass through this helper.
  *
  * Self-exception: same-stage allowed for the action whose id matches
  * `currentActionId`. A re-click writes a fresh status entry — audit history

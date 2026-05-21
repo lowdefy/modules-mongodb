@@ -34,6 +34,7 @@ exports:
   api:
     - id: start-workflow
     - id: cancel-workflow
+    - id: close-workflow
     - id: get-entity-workflows
     - id: get-workflow-overview
     # Per-action update-action-{action_type} endpoints are resolver-emitted
@@ -79,6 +80,7 @@ connections:
 api:
   - _ref: api/start-workflow.yaml
   - _ref: api/cancel-workflow.yaml
+  - _ref: api/close-workflow.yaml
   - _ref: api/get-entity-workflows.yaml
   - _ref: api/get-workflow-overview.yaml
   # Per-action submit endpoints (update-action-{action_type}) — emitted by
@@ -140,6 +142,7 @@ Three separate connections are exported by design:
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `start-workflow`        | Instantiate a workflow on an entity. Optional `parent_action_id` writes parent/child link atomically.                                                                                                                                                                                         |
 | `cancel-workflow`       | Push `cancelled` to workflow status; flip remaining open actions to `not-required`.                                                                                                                                                                                                           |
+| `close-workflow`        | Push `completed` to workflow status (user-initiated normal termination); sweep non-terminal actions to `not-required` while honoring `required_after_close: true`. Owned by [parts 19 + 23](../../workflows-module/parts/23-close-workflow-handler/design.md).                                |
 | `get-entity-workflows`  | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Filters by access (per-app verb map + role gate, action-authoring spec "Access"). Returned workflow docs carry persisted `groups[]` array (engine-written).                                               |
 | `get-workflow-overview` | Return one workflow doc + its actions ordered for display. Consumed by the shipped `workflow-overview` page. Filters actions by access (same rules as `get-entity-workflows`). Returns one row per action (one per instance for keyed actions), ordered by `display_order` then `sort_order`. |
 

@@ -180,9 +180,9 @@ Engine treats these as opaque display metadata; UI consumes them.
 
 ### Terminal-behaviour field
 
-| Field                  | Type      | Default | Effect                                                                                                                        |
-| ---------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `required_after_close` | `boolean` | `false` | When `true`, the action remains submittable after the workflow lifecycle reaches `completed` or `cancelled`. Default rejects. |
+| Field                  | Type      | Default | Effect                                                                                                                                                                                                                                                                                                                                                                              |
+| ---------------------- | --------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `required_after_close` | `boolean` | `false` | When `true`, the action remains submittable after the workflow lifecycle reaches `completed` (close path only). Default rejects. **Does not apply to `cancelled`** — cancel is the stronger termination signal (workflow aborted, not concluded) and audit/notes work is semantically meaningless on a cancelled workflow. Matches v0's `CloseWorkflowActions`-only filter posture. |
 
 The `SubmitWorkflowAction` handler enforces this at submit time.
 

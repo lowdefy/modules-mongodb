@@ -304,7 +304,12 @@ A status transition is allowed when the new status's priority is strictly less t
 
 `currentActionId` carries the user-submitted action's id — the per-action endpoint's `action_id` payload field maps directly to `currentActionId` inside the handler.
 
-**Per-entry is the only force surface.** There is no top-level `force` on the `SubmitWorkflowAction` payload. Engine-internal force-pushes (`error` transitions in the submit pipeline, tracker subscription's parent push, `StartWorkflow`'s parent-link push, `CancelWorkflow`'s sweep, `CloseWorkflow`'s sweep) call `updateAction(...force: true)` directly rather than reconstructing a handler payload — they're already inside the handler invocation and don't need to re-enter through the payload surface.
+**Per-entry is the only force surface.** There is no top-level `force` on the `SubmitWorkflowAction` payload. Engine-internal force-pushes split by mechanism:
+
+- **Per-doc force via `updateAction(...force: true)`** — `error` transitions in the submit pipeline, tracker subscription's parent push, `StartWorkflow`'s parent-link push. These are single-doc writes that need the helper's write-shape uniformity (event-stamp threading, status entry construction).
+- **Bulk bypass via `MongoDBUpdateMany`** — `CancelWorkflow`'s sweep, `CloseWorkflow`'s sweep. The bulk dispatcher is the only Mongo path that doesn't run through `updateAction`, so it bypasses the priority rule by structure rather than by flag. Sweeps prefer this for the one-round-trip vs N-round-trip win.
+
+Both mechanisms are inside the handler invocation — neither re-enters through the `SubmitWorkflowAction` payload surface.
 
 ## Ordering inside one `SubmitWorkflowAction` invocation
 
