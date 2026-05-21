@@ -57,6 +57,7 @@ Added after the original 20 were cut. See [Follow-on parts](#follow-on-parts) fo
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | [part 6 review-1 #7](parts/_completed/06-submit-action-writes/review/review-1.md)                | M    |
 | 24  | [universal-fields](parts/24-universal-fields/design.md)                   | [ui spec § Page-level rendering of universal fields](../workflows-module-concept/ui/spec.md#page-level-rendering-of-universal-fields) | M    |
 | 25  | [group-overview-page](parts/25-group-overview-page/design.md)             | [action-groups spec](../workflows-module-concept/action-groups/spec.md) + [ui spec § Workflow overview page](../workflows-module-concept/ui/spec.md) | S    |
+| 28  | [custom-action-kind](parts/28-custom-action-kind/design.md)               | [action-authoring spec § Action kinds](../workflows-module-concept/action-authoring/spec.md) + [submit-pipeline spec](../workflows-module-concept/submit-pipeline/spec.md) | S    |
 
 S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-split).
 
@@ -89,6 +90,7 @@ S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-spli
 | 23  | close-workflow-handler   | 3, 4, 5    |
 | 24  | universal-fields         | 4, 16, 17  |
 | 25  | group-overview-page      | 7, 15, 16, 19 |
+| 28  | custom-action-kind       | 4, 6, 12, 13 |
 
 Hard gates:
 
@@ -105,6 +107,7 @@ Hard gates:
 - **Part 23** introduces the `CloseWorkflow` handler + `close-workflow` operational API. Depends on parts 3, 4, 5; light dependency on shipped part 7 (reuses its `recomputeGroups.js` and `pushWorkflowStatus.js` helpers as-is, no contract change). Pairs with parts 19 and 20 (adds the fifth operational API + manifest export).
 - **Part 24** is the universal-fields component (`assignees`, `due_date`, `description`). UI delivery wave; depends on parts 4, 16, 17.
 - **Part 25** ships the group-overview page + `get-action-group-overview` operational API. UI delivery + surface; depends on parts 7 (persisted `groups[].summary`), 15 (`global.action_form_configs`), 16 (shared `requests/get_entity.yaml`), 19 (reusable `access_filter` aggregation stage).
+- **Part 28** adds the `custom` action kind — fourth kind alongside `form`/`task`/`tracker`, for actions whose UI and submit endpoint live entirely in the host app. Amends shipped resolvers (parts 4, 12, 13) and the shipped `SubmitWorkflowAction` handler (part 6); no new shared helper, no contract change to engine or surface.
 
 ## Follow-on parts
 
@@ -114,6 +117,7 @@ Parts 21, 22, 23, 24, and 25 were not in the original cut. They were added once 
 - **Part 22** — End-to-end Playwright coverage was originally scoped under part 20's closeout. Lifted into its own part so each engine / resolver / UI part can land a `.spec.js` file in the same PR that ships the feature, with part 22 owning the spec authoring contract. Each shipping part now points its Verification section at part 22 for e2e coverage.
 - **Part 23** — Part 6's [review-1 finding #7](parts/_completed/06-submit-action-writes/review/review-1.md) surfaced that the design collapsed close-vs-cancel into a single `CancelWorkflow` + implicit auto-complete, dropping v0's `CloseWorkflowActions` distinction. Real cases need both: user-initiated `completed` push on a non-terminal workflow, sweep that honors `required_after_close: true` (with the blocked-action exception), tracker subscription firing `done` instead of `not-required`. Spun out as a new handler + operational API rather than retroactively amending shipped part 5; reuses the shipped `pushWorkflowStatus` + `recomputeGroups` helpers inline (no new shared helper, no contract change to part 7).
 - **Part 25** — Host apps want a group-scoped drill-down (one phase of a long workflow) without rendering the whole workflow-overview tree, and the natural target for entity-page link cells that point at a specific `action_group`. Spun out as a small page + Api pair rather than amending part 17 (which is also unshipped but already four pages wide) and part 19 (which is shipped — by convention shipped parts aren't reopened). The page reuses every primitive from parts 7/15/16/19; no new schemas.
+- **Part 28** — A fourth action `kind: custom` for workflows whose per-action submit surface lives in app-supplied pages and APIs rather than the module. Same status-transition semantics as `task` (caller-supplied `current_status` on `submit_edit`) but with no module-emitted pages, no module-emitted submit endpoint, and no `hooks:`/`interactions:`/`event:` surfaces — the app's API routine *is* the hook. Spun out as a follow-on rather than retroactively amending the shipped resolvers and `handleSubmit.js` via a `task` extension knob, because the kind is the discriminator downstream resolvers already key on and a flag would just be `custom` spelled awkwardly. Light touches across parts 4, 6, 12, 13; no contract change for parts 7, 17, 18.
 
 ## Conventions across parts
 
