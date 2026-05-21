@@ -43,7 +43,7 @@ Each part has its own folder under [parts/](parts/) with a `design.md` containin
 | 16  | [page-templates](parts/16-page-templates/design.md)                     | [ui](../workflows-module-concept/ui/spec.md) + [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)                             | M    |
 | 17  | [shared-pages](parts/17-shared-pages/design.md)                         | [ui](../workflows-module-concept/ui/spec.md)                                                                                                      | M    |
 | 18  | [entity-components](parts/18-entity-components/design.md)               | [ui](../workflows-module-concept/ui/spec.md)                                                                                                      | M    |
-| 19  | [operational-apis](parts/19-operational-apis/design.md)                 | [module-surface](../workflows-module-concept/module-surface/spec.md)                                                                              | M    |
+| 19  | [operational-apis](parts/_completed/19-operational-apis/design.md)       | [module-surface](../workflows-module-concept/module-surface/spec.md)                                                                              | M    |
 | 20  | [module-manifest](parts/20-module-manifest/design.md)                   | [module-surface](../workflows-module-concept/module-surface/spec.md)                                                                              | S    |
 
 ### Follow-on parts
@@ -98,7 +98,7 @@ Hard gates:
 - **Part 20** is the closeout — manifest + demo wiring after everything else.
 - **Part 21** is a schema simplification with no hard dependency — it slots wherever its consumers (parts 5, 12, 18, 19) are ready to absorb the `entity_collection`-only contract. Already shipped against parts 3, 4, and 14's code.
 - **Part 22** is the end-to-end verification layer. It depends on part 20 (demo wiring + worked-example YAML); each engine / resolver / UI part contributes its spec file as it lands.
-- **Part 23** introduces the `CloseWorkflow` handler + `close-workflow` operational API. Depends on parts 3, 4, 5; light dependency on part 6 (shares a workflow-close write helper). Pairs with parts 19 and 20 (adds the fifth operational API + manifest export).
+- **Part 23** introduces the `CloseWorkflow` handler + `close-workflow` operational API. Depends on parts 3, 4, 5; light dependency on shipped part 7 (reuses its `recomputeGroups.js` and `pushWorkflowStatus.js` helpers as-is, no contract change). Pairs with parts 19 and 20 (adds the fifth operational API + manifest export).
 
 ## Follow-on parts
 
@@ -106,7 +106,7 @@ Parts 21, 22, and 23 were not in the original cut. They were added once it becam
 
 - **Part 21** — Part 12's [review-1 finding #1](parts/12-resolver-pages/review/review-1.md) surfaced that `entity_type` was redundant once `entity_collection` was on every doc. Spun out as a dedicated schema simplification rather than absorbed into part 12, because the change spans concept docs, the plugin schema, shipped resolver code (parts 3, 4), and the unimplemented siblings' designs (parts 5, 12, 19). Implemented parts' designs and `tasks/` directories stay frozen; part 21 amends shipped code directly.
 - **Part 22** — End-to-end Playwright coverage was originally scoped under part 20's closeout. Lifted into its own part so each engine / resolver / UI part can land a `.spec.js` file in the same PR that ships the feature, with part 22 owning the spec authoring contract. Each shipping part now points its Verification section at part 22 for e2e coverage.
-- **Part 23** — Part 6's [review-1 finding #7](parts/06-submit-action-writes/review/review-1.md) surfaced that the design collapsed close-vs-cancel into a single `CancelWorkflow` + implicit auto-complete, dropping v0's `CloseWorkflowActions` distinction. Real cases need both: author-initiated `completed` push on a non-terminal workflow, sweep that honors `required_after_close: true` (with the blocked-action exception), tracker subscription firing `done` instead of `not-required`. Spun out as a new handler + operational API rather than retroactively amending shipped part 5, with a shared workflow-close write helper at the seam to part 6's auto-complete.
+- **Part 23** — Part 6's [review-1 finding #7](parts/_completed/06-submit-action-writes/review/review-1.md) surfaced that the design collapsed close-vs-cancel into a single `CancelWorkflow` + implicit auto-complete, dropping v0's `CloseWorkflowActions` distinction. Real cases need both: user-initiated `completed` push on a non-terminal workflow, sweep that honors `required_after_close: true` (with the blocked-action exception), tracker subscription firing `done` instead of `not-required`. Spun out as a new handler + operational API rather than retroactively amending shipped part 5; reuses the shipped `pushWorkflowStatus` + `recomputeGroups` helpers inline (no new shared helper, no contract change to part 7).
 
 ## Conventions across parts
 

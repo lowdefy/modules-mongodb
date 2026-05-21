@@ -2,7 +2,7 @@
 
 Parallel delivery waves derived from the [dependency graph in design.md](design.md#dependency-graph). Each **wave** can run fully in parallel; the next wave starts once its predecessors land. The Repo column tells you where the diff goes; the Status column reflects what has shipped on `main` / been merged to the `workflows-module` branch.
 
-**Shipped so far:** parts 3, 4, 5, 6, 7, 8, 14, 15, 21, plus part 12 tasks 1–2 (resolver + placeholder templates) and part 13 tasks 1–2 (resolver + inline-routine hook/`on_complete` schema flip) — manifest wiring for both blocked on part 2. Engine can create, transition, and tear down workflows with full group state machine; the always-on log-event + notifications side effects now fire on every submit. Remaining lifecycle extensions (parts 9–11) are next.
+**Shipped so far:** parts 3, 4, 5, 6, 7, 8, 10, 14, 15, 19, 21, plus part 12 tasks 1–2 (resolver + placeholder templates) and part 13 tasks 1–2 (resolver + inline-routine hook/`on_complete` schema flip) — manifest wiring for both blocked on part 2. Engine can create, transition, and tear down workflows with full group state machine + tracker subscription; the always-on log-event + notifications side effects now fire on every submit. The five module-shipped operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`) plus the reusable `access_filter` aggregation stage are wired into the workflows-module manifest — runtime light-up still needs part 20's connection + var declarations (and part 23 for the `CloseWorkflow` request type). Remaining lifecycle extensions (parts 9, 11) are next.
 
 Status legend: `✅ shipped` · `🚧 in progress` · empty = not started.
 
@@ -62,7 +62,7 @@ Hook invocation needs parts 7 (groups) and 8 (side-effects). Fan-out needs 7 + 9
 | --- | ----------------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------- | ------ |
 | 9   | [hook-invocation](parts/09-hook-invocation/design.md)                   | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |        |
 | 11  | [group-on-complete-fanout](parts/11-group-on-complete-fanout/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |        |
-| 19  | [operational-apis](parts/19-operational-apis/design.md)                 | M    | `modules/workflows/api/`                                                            |        |
+| 19  | [operational-apis](parts/_completed/19-operational-apis/design.md)       | M    | `modules/workflows/api/`                                                            | ✅ shipped |
 
 ## Wave 6 — UI delivery (parallel; need resolvers + ops APIs)
 
