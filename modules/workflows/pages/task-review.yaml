@@ -1,0 +1,261 @@
+# Shared task-action review page (part 17).
+#
+# Addressed by ?action_id=<id>. Mirrors part 16's review.yaml.njk adapted for
+# static (non-Nunjucks) emission. Reviewers approve or request changes; no
+# status selector, no fields.* editing.
+#
+# Path-stub dependencies (won't build until other parts ship):
+#   - ../components/action_role_check.yaml       (part 18)
+#   - ../components/universal-fields/universal-fields.yaml  (part 24)
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: task-review
+    hide_title: true
+    content_width: 750
+    requests:
+      - _ref: ../requests/get_action.yaml
+      - _ref: ../requests/get_workflow.yaml
+    events:
+      onMount:
+        # Step 1: action_id presence guard.
+        - id: redirect_no_action
+          type: Link
+          skip:
+            _ne:
+              - _url_query: action_id
+              - null
+          params:
+            back: true
+        # Step 2: load the action.
+        - id: get_action
+          type: Request
+          params: get_action
+        # Step 3: stale-URL guard. Allowlist mirrors part 16's review template
+        # — `error` included so reviewers can see the action mid-recovery.
+        - id: redirect_stale_status
+          type: Link
+          skip:
+            _array.includes:
+              - - in-review
+                - error
+              - _request: get_action.status.0.stage
+          params:
+            pageId: task-view
+            urlQuery:
+              _url_query: true
+        # Step 4: load workflow — needed for required_after_close gate.
+        - id: get_workflow
+          type: Request
+          params: get_workflow
+        # Step 5 (get_entity) — intentionally omitted on all task pages (v1).
+        # Step 6: role check — sets _state.action_allowed.
+        - _ref:
+            path: ../components/action_role_check.yaml
+            vars:
+              action_config:
+                _request: get_action
+        # Step 7: prime comment state. Universal fields display from
+        # get_action directly — no fields.* state binding needed.
+        - id: prime_form_state
+          type: SetState
+          params:
+            comment: null
+        # Step 8 (author-supplied pages.review.events.onMount) — omitted on
+        # shared task pages; same gap as task-view / task-edit.
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            hide_title: true
+            blocks:
+              - id: workflow_closed_banner
+                type: Alert
+                visible:
+                  _and:
+                    - _or:
+                        - _eq:
+                            - _request: get_workflow.status.0.stage
+                            - completed
+                        - _eq:
+                            - _request: get_workflow.status.0.stage
+                            - cancelled
+                    - _ne:
+                        - _request: get_action.required_after_close
+                        - true
+                properties:
+                  type: warning
+                  showIcon: true
+                  message: Workflow closed
+                  description: This workflow is closed. Updates to this action are no longer accepted.
+              - id: action_header
+                type: Box
+                layout:
+                  gap: 8
+                  contentAlign: middle
+                blocks:
+                  - id: action_title
+                    type: Title
+                    properties:
+                      level: 4
+                      content:
+                        _request: get_action.title
+                  - id: action_status_badge
+                    type: Tag
+                    properties:
+                      color:
+                        _global:
+                          _string.concat:
+                            - action_statuses.
+                            - _request: get_action.status.0.stage
+                            - .color
+                      content:
+                        _global:
+                          _string.concat:
+                            - action_statuses.
+                            - _request: get_action.status.0.stage
+                            - .title
+              - _ref:
+                  path: ../components/universal-fields/universal-fields.yaml
+                  vars:
+                    mode: display
+                    kind: task
+                    action_data:
+                      assignees:
+                        _request: get_action.assignees
+                      due_date:
+                        _request: get_action.due_date
+                      description:
+                        _request: get_action.description
+              - id: comment
+                type: TiptapInput
+                properties:
+                  title: Comment
+                  placeholder: Add a comment (optional).
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            actions:
+              - id: button_request_changes
+                type: Button
+                visible:
+                  _eq:
+                    - _state: action_allowed
+                    - true
+                properties:
+                  title: Request Changes
+                  type: default
+                  danger: true
+                  ghost: true
+                  disabled:
+                    _and:
+                      - _or:
+                          - _eq:
+                              - _request: get_workflow.status.0.stage
+                              - completed
+                          - _eq:
+                              - _request: get_workflow.status.0.stage
+                              - cancelled
+                      - _ne:
+                          - _request: get_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: open_request_changes_modal
+                      type: CallMethod
+                      params:
+                        method: open
+                        blockId: request_changes_modal
+              - id: button_approve
+                type: Button
+                visible:
+                  _eq:
+                    - _state: action_allowed
+                    - true
+                properties:
+                  title: Approve
+                  type: primary
+                  disabled:
+                    _and:
+                      - _or:
+                          - _eq:
+                              - _request: get_workflow.status.0.stage
+                              - completed
+                          - _eq:
+                              - _request: get_workflow.status.0.stage
+                              - cancelled
+                      - _ne:
+                          - _request: get_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: submit_approve
+                      type: CallApi
+                      params:
+                        endpointId:
+                          _module.endpointId:
+                            id:
+                              _string.concat:
+                                - update-action-
+                                - _request: get_action.type
+                            module: workflows
+                        payload:
+                          action_id:
+                            _request: get_action._id
+                          interaction: approve
+                          fields:
+                            _state: fields
+                          comment:
+                            _state: comment
+      - id: request_changes_modal
+        type: Modal
+        properties:
+          width: 600
+          title: Request Changes
+          maskClosable: false
+          okText: Request Changes
+        events:
+          onOk:
+            - id: validate_comment
+              type: Validate
+              params: comment
+            - id: submit_request_changes
+              type: CallApi
+              params:
+                endpointId:
+                  _module.endpointId:
+                    id:
+                      _string.concat:
+                        - update-action-
+                        - _request: get_action.type
+                    module: workflows
+                payload:
+                  action_id:
+                    _request: get_action._id
+                  interaction: request_changes
+                  fields:
+                    _state: fields
+                  comment:
+                    _state: comment
+          onClose:
+            - id: reset_comment
+              type: SetState
+              params:
+                comment: null
+        blocks:
+          - id: comment
+            type: TiptapInput
+            required: true
+            validate:
+              - message: A comment is required to request changes
+                status: error
+                pass:
+                  _ne:
+                    - _state: comment
+                    - null
+            properties:
+              title: Change Description
+              placeholder: Please provide a description of the changes you would like.

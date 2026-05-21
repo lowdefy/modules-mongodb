@@ -17,9 +17,11 @@ Part 17 also introduces a new `vars.entities` module var (see [design § "`entit
 | 4   | `04-task-review-page.md`          | Ship `pages/task-review.yaml` — read-only fields + `approve` / `request_changes` buttons with role gate + `required_after_close` gate. | 3          |
 | 5   | `05-workflow-overview-page.md`    | Ship `pages/workflow-overview.yaml` — single `CallApi` to `get-workflow-overview`, header via `_ref` to part 18's `workflow-header`, action cards with v0-pattern DataView + keyed `form_data` indexing, entity back-link via `_module.var: entities`. | —          |
 | 6   | `06-manifest-page-exports.md`     | Register the four new pages in `module.lowdefy.yaml` (`pages:` block + `exports.pages` entries). | 2, 3, 4, 5 |
-| 7   | `07-demo-app-wiring.md`           | Wire `vars.entities` in the demo app for the worked-example workflows; verify the design's bullets in the demo app. | 6          |
+| ~~7~~ | ~~`07-demo-app-wiring.md`~~     | **Spun out to [part 27 — demo-workflows-wiring](../../27-demo-workflows-wiring/design.md).** Scope grew large enough to warrant its own design — demo wiring needs the full workflows module surface (workflows entry, `workflows_config`, leads collection, lead pages, navigation) plus parts 18 and 24 to be shipped for live verification. | 6          |
 
 **Note on numbering.** Task 1 (parameterizing `requests/get_entity.yaml.njk` so the overview page could source `entity_id` from the workflow doc) was dropped during consistency review when the design moved to the `entities` module var approach — the overview page builds its back-link from `_module.var: entities` and doesn't fetch the entity doc at all. The numbering gap is intentional; downstream tasks weren't renumbered to avoid churn.
+
+**Note on task 7.** Spun out to [part 27 — demo-workflows-wiring](../../27-demo-workflows-wiring/design.md) during implementation. Demo wiring + worked-example verification is a substantial integration effort blocked on parts 18 and 24 anyway; folding it into part 17 mixed two concerns. Part 27 owns the verification record that would otherwise have landed here.
 
 ## Ordering Rationale
 
@@ -33,9 +35,9 @@ Part 17 also introduces a new `vars.entities` module var (see [design § "`entit
 
 **Task 6 (manifest wiring) sequenced last** because it needs all four page files to exist before they can be `_ref`d from `module.lowdefy.yaml`. Adding entries piecemeal as each page lands would invite half-broken manifest states during implementation.
 
-**Task 7 (demo wiring + verification)** runs end-to-end against the worked-example. Requires the manifest entries from task 6 so the pages are reachable from the demo app's lowdefy.yaml.
+**Task 7 — spun out to part 27.** Demo wiring + worked-example verification became its own design once it was clear the scope demanded the full workflows module surface (workflows entry, workflows_config, leads collection, lead pages, navigation) and live verification was blocked on parts 18 and 24 anyway. Tracked at [part 27 — demo-workflows-wiring](../../27-demo-workflows-wiring/design.md).
 
-**Parallelizable:** tasks 2 and 5 can run concurrently (no dependencies between them). Tasks 3 and 4 are sequential. Task 6 needs all four pages; task 7 needs the manifest.
+**Parallelizable:** tasks 2 and 5 can run concurrently (no dependencies between them). Tasks 3 and 4 are sequential. Task 6 needs all four pages.
 
 ## Scope
 

@@ -91,6 +91,7 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | 22  | [workflows-e2e-suite](parts/22-workflows-e2e-suite/design.md)         | M    | `apps/demo/` (e2e harness)                                     |            |
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/api/` | ✅ shipped |
 | 25  | [group-overview-page](parts/25-group-overview-page/design.md)         | S    | `modules/workflows/pages/` + `modules/workflows/api/`          |            |
+| 27  | [demo-workflows-wiring](parts/27-demo-workflows-wiring/design.md)     | M    | `apps/demo/`                                                    |            |
 
 ## Repo footprint at a glance
 
@@ -99,6 +100,6 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | upstream `@lowdefy/*`                          | 1, 2                                              |
 | `plugins/modules-mongodb-plugins/` (this repo) | 3, 5, 6, 7, 8, 9, 10, 11, 21, 23                  |
 | `modules/workflows/` (this repo)               | 4, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25 |
-| `apps/demo/` (this repo)                       | 20 (wiring only), 22 (e2e suite)                  |
+| `apps/demo/` (this repo)                       | 20 (wiring only), 22 (e2e suite), 27 (demo workflows wiring) |
 
 Two clear streams once Wave 0 lands: an **engine stream** in the plugin package and a **module stream** under `modules/workflows/`. They only converge at part 20.

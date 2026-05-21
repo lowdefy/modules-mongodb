@@ -1,0 +1,213 @@
+# Shared task-action edit page (part 17).
+#
+# Addressed by ?action_id=<id>. Mirrors part 16's edit.yaml.njk adapted for
+# static (non-Nunjucks) emission. Carries the status selector with priority
+# filter, role gate, required_after_close gate, and stale-URL redirect.
+#
+# Path-stub dependencies (won't build until other parts ship):
+#   - ../components/action_role_check.yaml       (part 18)
+#   - ../components/universal-fields/universal-fields.yaml  (part 24)
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: task-edit
+    hide_title: true
+    content_width: 750
+    requests:
+      - _ref: ../requests/get_action.yaml
+      - _ref: ../requests/get_workflow.yaml
+    events:
+      onMount:
+        # Step 1: action_id presence guard.
+        - id: redirect_no_action
+          type: Link
+          skip:
+            _ne:
+              - _url_query: action_id
+              - null
+          params:
+            back: true
+        # Step 2: load the action.
+        - id: get_action
+          type: Request
+          params: get_action
+        # Step 3: stale-URL guard. Allowlist mirrors part 16's edit template.
+        - id: redirect_stale_status
+          type: Link
+          skip:
+            _or:
+              - _array.includes:
+                  - - action-required
+                    - in-progress
+                    - changes-required
+                  - _request: get_action.status.0.stage
+              - _eq:
+                  - _input: skip_status_redirect
+                  - true
+          params:
+            pageId: task-view
+            urlQuery:
+              _url_query: true
+        # Step 4: load workflow — needed for required_after_close gate.
+        - id: get_workflow
+          type: Request
+          params: get_workflow
+        # Step 5 (get_entity) — intentionally omitted on all task pages (v1).
+        # Step 6: role check — sets _state.action_allowed.
+        - _ref:
+            path: ../components/action_role_check.yaml
+            vars:
+              action_config:
+                _request: get_action
+        # Step 7: prime form state.
+        - id: prime_form_state
+          type: SetState
+          params:
+            fields:
+              assignees:
+                _request: get_action.assignees
+              due_date:
+                _request: get_action.due_date
+              description:
+                _request: get_action.description
+            status:
+              _request: get_action.status.0.stage
+            comment: null
+        # Step 8 (author-supplied pages.edit.events.onMount) — omitted on shared
+        # task pages because static pages have no per-action page_config var.
+        # Same gap as task-view; tracked in part 27 / follow-up.
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            hide_title: true
+            blocks:
+              # Workflow-closed banner — visible when the workflow is in a
+              # terminal lifecycle stage and the action doesn't opt in via
+              # required_after_close.
+              - id: workflow_closed_banner
+                type: Alert
+                visible:
+                  _and:
+                    - _or:
+                        - _eq:
+                            - _request: get_workflow.status.0.stage
+                            - completed
+                        - _eq:
+                            - _request: get_workflow.status.0.stage
+                            - cancelled
+                    - _ne:
+                        - _request: get_action.required_after_close
+                        - true
+                properties:
+                  type: warning
+                  showIcon: true
+                  message: Workflow closed
+                  description: This workflow is closed. Updates to this action are no longer accepted.
+              - _ref:
+                  path: ../components/universal-fields/universal-fields.yaml
+                  vars:
+                    mode: edit
+                    kind: task
+                    action_data:
+                      assignees:
+                        _state: fields.assignees
+                      due_date:
+                        _state: fields.due_date
+                      description:
+                        _state: fields.description
+              # Status selector — priority-filtered transitions. When the
+              # current stage is `not-required` (priority 0, terminal),
+              # render an Alert in place of the selector.
+              - id: status_no_transitions
+                type: Alert
+                visible:
+                  _eq:
+                    - _request: get_action.status.0.stage
+                    - not-required
+                properties:
+                  type: info
+                  showIcon: true
+                  message: No transitions available
+                  description: This action is marked Not Required and cannot be transitioned from the UI.
+              - id: status
+                type: Selector
+                visible:
+                  _ne:
+                    - _request: get_action.status.0.stage
+                    - not-required
+                properties:
+                  title: Status
+                  options:
+                    _js:
+                      params:
+                        - _global: action_statuses
+                        - _request: get_action.status.0.stage
+                      body: |
+                        const [statuses, currentStage] = params;
+                        const currentPriority = (statuses[currentStage] && statuses[currentStage].priority) || 0;
+                        if (currentPriority === 0) return [];
+                        return Object.entries(statuses)
+                          .filter(([slug, s]) => s.priority < currentPriority || slug === currentStage)
+                          .map(([slug, s]) => ({ label: s.title, value: slug }));
+              - id: comment
+                type: TiptapInput
+                properties:
+                  title: Comment
+                  placeholder: Add a comment (optional).
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            actions:
+              - id: button_submit_edit
+                type: Button
+                visible:
+                  _eq:
+                    - _state: action_allowed
+                    - true
+                properties:
+                  title: Save
+                  type: primary
+                  disabled:
+                    _and:
+                      - _or:
+                          - _eq:
+                              - _request: get_workflow.status.0.stage
+                              - completed
+                          - _eq:
+                              - _request: get_workflow.status.0.stage
+                              - cancelled
+                      - _ne:
+                          - _request: get_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                      params:
+                        regex:
+                          - ^fields\.
+                          - ^status$
+                    - id: submit_edit
+                      type: CallApi
+                      params:
+                        endpointId:
+                          _module.endpointId:
+                            id:
+                              _string.concat:
+                                - update-action-
+                                - _request: get_action.type
+                            module: workflows
+                        payload:
+                          action_id:
+                            _request: get_action._id
+                          interaction: submit_edit
+                          current_status:
+                            _state: status
+                          fields:
+                            _state: fields
+                          comment:
+                            _state: comment
