@@ -135,7 +135,7 @@ Documents in the `files` collection:
   metadata: { valid_date: "2027-01-15" },        // from form fields
   created: { timestamp, user: { name, id } },
   updated: { ... },
-  deleted: null | true
+  removed: null | true
 }
 ```
 

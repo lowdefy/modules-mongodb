@@ -1,12 +1,17 @@
-id: download_policy
+id:
+  _build.string.concat:
+    - 'download_policy_'
+    - _var:
+        key: block_id
+        default: file_download
 type: AwsS3PresignedGetObject
 connectionId:
   _module.connectionId: files-bucket
 payload:
   key:
-    _state: selected_file_key
+    _event: file.key
   content_type:
-    _state: selected_file_type
+    _event: file.type
 properties:
   key:
     _payload: key
