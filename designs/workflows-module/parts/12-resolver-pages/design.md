@@ -23,10 +23,10 @@ For each form action:
 - Tracker actions: emit nothing.
 - Task actions: emit nothing (shared `task-*` pages from [part 17](../17-shared-pages/design.md) handle them).
 - Each emitted page is a thin shell with `_ref` pointing at the template (part 16) plus vars carrying:
-  - `action_config` — the action's config slice the template needs: engine-runtime fields (`type`, `kind`, `access`, `status_map`, etc.) plus build-time-only fields (`pages.{verb}`, `form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`), all picked from the raw action YAML. Templates see one flat shape.
+  - `action_config` — the action's config slice the template needs: engine-runtime fields (`type`, `kind`, `access`, `status_map`, etc.) plus build-time-only fields (`form`, `form_review`, `form_error`, `hooks`, `interactions`, `event`), all picked from the raw action YAML. The per-verb `pages.{verb}` chrome is intentionally **not** included here — it's lifted to the top-level `page_config` var below. Templates see one flat shape.
   - `workflow_type`, `entity_collection` (from the workflow). `entity_collection` is the single entity-identity scalar — see [part 21](../21-entity-type-to-collection/design.md).
   - `page_ids` map for sibling-page navigation. Keys are only present for verbs that were actually emitted for this action — templates must guard sibling references (e.g. `_if page_ids.review is defined`). Avoids pointing at non-existent page ids.
-  - `maxWidth`, etc. — pass-through chrome knobs from `action.pages.{verb}`.
+  - `page_config` — the per-verb slice of `action.pages.{verb}` (`title`, `requests`, `events`, `formHeader`, `formFooter`, `modals`, `maxWidth`, and on `error`: `buttons.submit.{title, modal}`). Top-level so templates read `page_config.title`, not `action_config.pages.edit.title`. Defaults to `{}` when the action declares no `pages.{verb}` block.
 
   The shell carries **context only** — page-level `events.onInit`, `requests:`, and the `get_action` request `_ref` live inside the template (part 16), not the shell. Part 12 doesn't bake request ids into the emitted YAML; templates own the render contract.
 

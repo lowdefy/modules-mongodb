@@ -20,7 +20,7 @@ scope), or from inside Nunjucks page templates (template scope).
 
 - **Source:** [parts/12-resolver-pages/design.md](../../../../designs/workflows-module/parts/12-resolver-pages/design.md)
 - **Inputs:** `{ workflows: WorkflowYaml[], app_name: string }`
-- **Output:** Array of `{ id, definition }` page shells — one per `(workflow_type, action_type, verb)` for form actions, gated by `access.{app_name}`. Each shell `_ref`s a template at `templates/{verb}.yaml.njk` with `action_config`, `workflow_type`, `entity_collection`, `page_ids`, and `chrome` vars.
+- **Output:** Array of `{ id, definition }` page shells — one per `(workflow_type, action_type, verb)` for form actions, gated by `access.{app_name}`. Each shell `_ref`s a template at `templates/{verb}.yaml.njk` with `action_config`, `workflow_type`, `entity_collection`, `page_ids`, and `page_config` vars (the last is the per-verb slice of `action.pages.{verb}`).
 - **Invocation:** Manifest scope, under the dynamic-pages resolver channel (task 3 blocked on upstream part 2 — see [part 12 tasks.md](../../../../designs/workflows-module/parts/12-resolver-pages/tasks/tasks.md)).
 - **Tests:** [makeActionPages.test.js](makeActionPages.test.js)
 

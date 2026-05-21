@@ -3,6 +3,9 @@ const VERBS = ["edit", "view", "review", "error"];
 // Fields lifted from the raw action YAML onto each emitted page's
 // `action_config` template var. Engine-runtime fields and build-time-only
 // fields live on the same raw object — templates see one flat shape.
+// `pages` is intentionally excluded — the per-verb slice is lifted to the
+// top-level `page_config` var below, and authors shouldn't reach the other
+// verbs' chrome from inside a template.
 const ACTION_FIELDS_FOR_TEMPLATE = [
   "type",
   "kind",
@@ -14,7 +17,6 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "required_after_close",
   "access",
   "status_map",
-  "pages",
   "form",
   "form_review",
   "form_error",
@@ -58,11 +60,12 @@ function emitForAction(workflow, action, appName) {
           workflow_type: workflow.type,
           entity_collection: workflow.entity_collection,
           page_ids: pageIds,
-          // Chrome (title, requests, events, formHeader, formFooter, modals,
-          // maxWidth, buttons.submit on error) passes through verbatim as a
-          // top-level var — templates consume it directly instead of digging
-          // through action_config.pages.{verb}.
-          chrome: action.pages?.[verb] ?? {},
+          // Per-verb page customization (title, requests, events, formHeader,
+          // formFooter, modals, maxWidth, buttons.submit on error) passes
+          // through verbatim as a top-level var. Templates read off
+          // `page_config.*` — the duplicate path through `action_config.pages`
+          // is intentionally removed (see `ACTION_FIELDS_FOR_TEMPLATE`).
+          page_config: action.pages?.[verb] ?? {},
         },
       },
     },

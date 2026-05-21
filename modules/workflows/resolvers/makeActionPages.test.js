@@ -188,7 +188,7 @@ test("makeActionPages: worked-example fixture emits exactly the five expected pa
   ]);
 });
 
-test("makeActionPages: chrome var passes through action.pages.{verb} verbatim", () => {
+test("makeActionPages: page_config var passes through action.pages.{verb} verbatim", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
     app_name: APP,
@@ -197,6 +197,16 @@ test("makeActionPages: chrome var passes through action.pages.{verb} verbatim", 
   const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
   const viewPage = pages.find((p) => p.id === "onboarding-qualify-view");
 
-  expect(editPage.definition._ref.vars.chrome).toEqual({ maxWidth: 1200 });
-  expect(viewPage.definition._ref.vars.chrome).toEqual({});
+  expect(editPage.definition._ref.vars.page_config).toEqual({ maxWidth: 1200 });
+  expect(viewPage.definition._ref.vars.page_config).toEqual({});
+});
+
+test("makeActionPages: action_config does not carry the `pages` slot (duplicate path removed)", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+
+  const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
+  expect(editPage.definition._ref.vars.action_config.pages).toBeUndefined();
 });
