@@ -1,0 +1,22 @@
+id: close-workflow
+type: Api
+routine:
+  - id: close
+    type: CloseWorkflow
+    connectionId:
+      _module.connectionId: workflow-api
+    properties:
+      workflow_id:
+        _payload: workflow_id
+      reason:
+        _payload: reason
+      references:
+        _payload: references
+
+  - :return:
+      action_ids:
+        _step: close.action_ids
+      event_id:
+        _step: close.event_id
+      tracker_fired:
+        _step: close.tracker_fired

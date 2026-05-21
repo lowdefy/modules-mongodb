@@ -1,0 +1,79 @@
+id: get-workflow-overview
+type: Api
+routine:
+  - id: query
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: workflows-collection
+    properties:
+      pipeline:
+        - $match:
+            _id:
+              _payload: workflow_id
+
+        - $lookup:
+            from: actions
+            let:
+              workflowId: $_id
+              groupIds:
+                $map:
+                  input:
+                    $ifNull:
+                      - $action_groups
+                      - $groups
+                      - []
+                  as: g
+                  in: $$g.id
+            pipeline:
+              - $match:
+                  $expr:
+                    $eq:
+                      - $workflow_id
+                      - $$workflowId
+              - _ref: stages/access_filter.yaml
+              - $addFields:
+                  _group_index:
+                    $indexOfArray:
+                      - $$groupIds
+                      - $action_group
+              - $sort:
+                  _group_index: 1
+                  sort_order: 1
+                  _id: 1
+              - $project:
+                  _group_index: 0
+            as: actions
+
+  - :set_state:
+      workflow_doc:
+        _get:
+          from:
+            _step: query
+          key: "0"
+          default: null
+
+  - :return:
+      workflow:
+        _if:
+          test:
+            _and:
+              - _ne:
+                  - _state: workflow_doc
+                  - null
+              - _gt:
+                  - _array.length:
+                      _get:
+                        from:
+                          _state: workflow_doc
+                        key: actions
+                        default: []
+                  - 0
+          then:
+            _state: workflow_doc
+          else: null
+      actions:
+        _get:
+          from:
+            _state: workflow_doc
+          key: actions
+          default: []

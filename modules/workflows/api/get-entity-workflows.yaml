@@ -1,0 +1,35 @@
+id: get-entity-workflows
+type: Api
+routine:
+  - id: query
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: workflows-collection
+    properties:
+      pipeline:
+        - $match:
+            entity_collection:
+              _payload: entity_collection
+            entity_id:
+              _payload: entity_id
+
+        - $sort:
+            display_order: 1
+            created.timestamp: -1
+
+        - $lookup:
+            from: actions
+            let:
+              workflowId: $_id
+            pipeline:
+              - $match:
+                  $expr:
+                    $eq:
+                      - $workflow_id
+                      - $$workflowId
+              - _ref: stages/access_filter.yaml
+            as: actions
+
+  - :return:
+      workflows:
+        _step: query

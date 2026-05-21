@@ -1,0 +1,22 @@
+id: cancel-workflow
+type: Api
+routine:
+  - id: cancel
+    type: CancelWorkflow
+    connectionId:
+      _module.connectionId: workflow-api
+    properties:
+      workflow_id:
+        _payload: workflow_id
+      reason:
+        _payload: reason
+      references:
+        _payload: references
+
+  - :return:
+      action_ids:
+        _step: cancel.action_ids
+      event_id:
+        _step: cancel.event_id
+      tracker_fired:
+        _step: cancel.tracker_fired

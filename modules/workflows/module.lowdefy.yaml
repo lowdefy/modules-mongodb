@@ -1,8 +1,10 @@
 # This manifest declares the part-04 enum components (action_statuses,
-# workflow_lifecycle_stages) and the part-15 global register
-# (action_form_configs). The full module surface — WorkflowAPI connection,
-# MONGODB_URI secret, page/api/menu exports, form-fields component library
-# (part 14) — lands in part 20.
+# workflow_lifecycle_stages), the part-15 global register
+# (action_form_configs), and the part-19 operational APIs (start/cancel/close-
+# workflow + get-entity-workflows / get-workflow-overview). The remaining
+# module surface — WorkflowAPI connection, workflows-collection / actions-
+# collection connections, MONGODB_URI secret, page/menu exports, user_schema
+# + app_name vars, form-fields component library (part 14) — lands in part 20.
 #
 # The connection (part 20) will _ref the canonical enum file directly
 # (e.g. `actionsEnum: { _ref: enums/action_statuses.yaml }`), so the
@@ -19,6 +21,17 @@ exports:
       description: Action status enum (8 canonical statuses) merged with app display overrides — for UI consumption
     - id: workflow_lifecycle_stages
       description: Workflow lifecycle stage enum (active, completed, cancelled) merged with app display overrides — for UI consumption
+  api:
+    - id: start-workflow
+      description: Instantiate a workflow on an entity. Optional parent_action_id links as a child of an existing tracker action.
+    - id: cancel-workflow
+      description: Push cancelled to workflow status; flip remaining open actions to not-required.
+    - id: close-workflow
+      description: User-initiated normal termination — push completed to workflow status; sweep non-terminal actions honoring required_after_close.
+    - id: get-entity-workflows
+      description: Return workflows + filtered actions for one entity. Consumed by actions-on-entity.
+    - id: get-workflow-overview
+      description: Return one workflow + ordered + filtered actions for the shipped workflow-overview page.
 
 vars:
   workflows_config:
@@ -58,6 +71,13 @@ components:
       _build.object.assign:
         - _ref: enums/workflow_lifecycle_stages.yaml
         - _module.var: workflow_lifecycle_stages_display
+
+api:
+  - _ref: api/start-workflow.yaml
+  - _ref: api/cancel-workflow.yaml
+  - _ref: api/close-workflow.yaml
+  - _ref: api/get-entity-workflows.yaml
+  - _ref: api/get-workflow-overview.yaml
 
 global:
   action_form_configs:
