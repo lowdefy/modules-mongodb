@@ -1,0 +1,12 @@
+id: get_action
+type: MongoDBAggregation
+connectionId:
+  _module.connectionId: actions-collection
+payload:
+  action_id:
+    _url_query: action_id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: action_id

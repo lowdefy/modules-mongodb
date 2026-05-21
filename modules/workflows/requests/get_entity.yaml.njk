@@ -1,0 +1,11 @@
+id: get_entity
+type: MongoDBAggregation
+connectionId: {{ entity_collection }}
+payload:
+  entity_id:
+    _request: get_action.entity_id
+properties:
+  pipeline:
+    - $match:
+        _id:
+          _payload: entity_id

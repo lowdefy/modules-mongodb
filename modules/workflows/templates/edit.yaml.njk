@@ -1,11 +1,426 @@
-id: edit-placeholder
-type: Box
-blocks:
-  - id: heading
-    type: Html
-    properties:
-      html: "<h2>Edit (placeholder — replaced by part 16)</h2>"
-  - id: form_placeholder
-    type: Html
-    properties:
-      html: "<p><em>Form body will be rendered here once part 15 wires <code>makeActionsForm</code>.</em></p>"
+# Writable edit page for a form action.
+#
+# Build-time vars (from makeActionPages.js): action_config, page_config,
+# page_ids, workflow_type, entity_collection. See view.yaml.njk for the
+# full schema.
+#
+# Stale-URL allowlist: [action-required, in-progress, changes-required].
+# Escape hatch: review's Edit-link sets _input: skip_status_redirect=true.
+#
+# Outer-card suppression rule (v0 parity): if action_config.form[0].form is
+# truthy at build time, the first form entry owns its own outer chrome —
+# drop the outer layout.card wrap to avoid the double-card nesting.
+_ref:
+  module: layout
+  component: page
+  vars:
+    id:
+      _var: page_ids.edit
+    title:
+      _var:
+        key: page_config.title
+        default: null
+    hide_title: true
+    content_width:
+      _var:
+        key: page_config.maxWidth
+        default: 750
+    requests:
+      _build.array.concat:
+        - - _ref: ../requests/get_action.yaml
+          - _ref: ../requests/get_workflow.yaml
+          - _ref:
+              path: ../requests/get_entity.yaml.njk
+              vars:
+                entity_collection: {{ entity_collection }}
+        - _var:
+            key: page_config.requests
+            default: []
+    events:
+      onMount:
+        _build.array.concat:
+          - - id: redirect_no_action
+              type: Link
+              skip:
+                _ne:
+                  - _url_query: action_id
+                  - null
+              params:
+                back: true
+            - id: get_action
+              type: Request
+              params: get_action
+            # Stale-URL guard: skip when status is in the allowlist OR
+            # when the caller (review's Edit-link) opted out.
+            - id: redirect_stale_status
+              type: Link
+              skip:
+                _or:
+                  - _array.includes:
+                      - - action-required
+                        - in-progress
+                        - changes-required
+                      - _request: get_action.status.0.stage
+                  - _eq:
+                      - _input: skip_status_redirect
+                      - true
+              params:
+                pageId:
+                  _var: page_ids.view
+                urlQuery:
+                  _url_query: true
+            - id: get_workflow
+              type: Request
+              params: get_workflow
+            - id: get_entity
+              type: Request
+              params: get_entity
+            - _ref:
+                path: ../components/action_role_check.yaml
+                vars:
+                  action_config:
+                    _var: action_config
+            - id: prime_form_state
+              type: SetState
+              params:
+                form:
+                  _request:
+                    _string.concat:
+                      - get_workflow.form_data.
+                      - _var: action_config.type
+                fields:
+                  assignees:
+                    _request: get_action.assignees
+                  due_date:
+                    _request: get_action.due_date
+                  description:
+                    _request: get_action.description
+                comment: null
+          - _var:
+              key: page_config.events.onMount
+              default: []
+    blocks:
+      _build.array.concat:
+        # Card-interior content — wrapped in layout.card unless the first
+        # form entry owns its own outer chrome.
+        - _build.if:
+            test:
+              _build.ne:
+                - _build.get:
+                    key: action_config.form.0.form
+                    default: null
+                - null
+            then:
+              # First form entry owns outer chrome — render content directly.
+              _build.array.concat:
+                - _var:
+                    key: page_config.formHeader
+                    default: []
+                - - _ref:
+                      path: ../components/universal-fields/universal-fields.yaml
+                      vars:
+                        mode: edit
+                        kind: form
+                        action_data:
+                          assignees:
+                            _state: fields.assignees
+                          due_date:
+                            _state: fields.due_date
+                          description:
+                            _state: fields.description
+                - - _ref:
+                      resolver: ../resolvers/makeActionsForm.js
+                      vars:
+                        form:
+                          _var: action_config.form
+                        mode: edit
+                - - id: comment
+                    type: TiptapInput
+                    properties:
+                      title: Comment
+                      placeholder: Add a comment (optional).
+                - _var:
+                    key: page_config.formFooter
+                    default: []
+            else:
+              # Default: wrap in layout.card.
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    hide_title: true
+                    blocks:
+                      _build.array.concat:
+                        - _var:
+                            key: page_config.formHeader
+                            default: []
+                        - - _ref:
+                              path: ../components/universal-fields/universal-fields.yaml
+                              vars:
+                                mode: edit
+                                kind: form
+                                action_data:
+                                  assignees:
+                                    _state: fields.assignees
+                                  due_date:
+                                    _state: fields.due_date
+                                  description:
+                                    _state: fields.description
+                        - - _ref:
+                              resolver: ../resolvers/makeActionsForm.js
+                              vars:
+                                form:
+                                  _var: action_config.form
+                                mode: edit
+                        - - id: comment
+                            type: TiptapInput
+                            properties:
+                              title: Comment
+                              placeholder: Add a comment (optional).
+                        - _var:
+                            key: page_config.formFooter
+                            default: []
+        # Floating-actions sticky button bar.
+        - - _ref:
+              module: layout
+              component: floating-actions
+              vars:
+                actions:
+                  - id: button_submit_edit
+                    type: Button
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.submit_edit.visible
+                            default: true
+                        - _eq:
+                            - _state: action_allowed
+                            - true
+                    properties:
+                      title: Submit
+                      type: primary
+                      disabled:
+                        _var:
+                          key: page_config.buttons.submit_edit.disabled
+                          default: false
+                    events:
+                      onClick:
+                        _build.if:
+                          test:
+                            _build.ne:
+                              - _build.get:
+                                  key: page_config.buttons.submit_edit.modal
+                                  default: null
+                              - null
+                          then:
+                            - id: open_submit_edit_modal
+                              type: CallMethod
+                              params:
+                                method: open
+                                blockId: submit_edit_modal
+                          else:
+                            _build.array.concat:
+                              - - id: validate
+                                  type: Validate
+                                  params:
+                                    regex:
+                                      - ^form\.
+                                      - ^fields\.
+                              - _var:
+                                  key: page_config.events.onSubmit
+                                  default: []
+                              - - id: submit_edit
+                                  type: CallApi
+                                  params:
+                                    endpointId:
+                                      _module.endpointId:
+                                        id:
+                                          _string.concat:
+                                            - update-action-
+                                            - _var: action_config.type
+                                        module: workflows
+                                    payload:
+                                      action_id:
+                                        _request: get_action._id
+                                      interaction: submit_edit
+                                      current_key:
+                                        _request: get_action.key
+                                      form:
+                                        _state: form
+                                      form_review:
+                                        _state: form_review
+                                      fields:
+                                        _state: fields
+                                      comment:
+                                        _state: comment
+                  - id: button_not_required
+                    type: Button
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.not_required.visible
+                            default: false
+                        - _eq:
+                            - _state: action_allowed
+                            - true
+                        - _gt:
+                            - _global:
+                                _string.concat:
+                                  - action_statuses.
+                                  - _request: get_action.status.0.stage
+                                  - .priority
+                            - 0
+                    properties:
+                      title: Mark Not Required
+                      type: default
+                      disabled:
+                        _var:
+                          key: page_config.buttons.not_required.disabled
+                          default: false
+                    events:
+                      onClick:
+                        _build.if:
+                          test:
+                            _build.ne:
+                              - _build.get:
+                                  key: page_config.buttons.not_required.modal
+                                  default: null
+                              - null
+                          then:
+                            - id: open_not_required_modal
+                              type: CallMethod
+                              params:
+                                method: open
+                                blockId: not_required_modal
+                          else:
+                            _build.array.concat:
+                              - _var:
+                                  key: page_config.events.onSubmit
+                                  default: []
+                              - - id: submit_not_required
+                                  type: CallApi
+                                  params:
+                                    endpointId:
+                                      _module.endpointId:
+                                        id:
+                                          _string.concat:
+                                            - update-action-
+                                            - _var: action_config.type
+                                        module: workflows
+                                    payload:
+                                      action_id:
+                                        _request: get_action._id
+                                      interaction: not_required
+                                      current_key:
+                                        _request: get_action.key
+                                      fields:
+                                        _state: fields
+                                      comment:
+                                        _state: comment
+        # Confirm modals — render iff page_config.buttons.{name}.modal is set.
+        - _build.if:
+            test:
+              _build.ne:
+                - _build.get:
+                    key: page_config.buttons.submit_edit.modal
+                    default: null
+                - null
+            then:
+              - id: submit_edit_modal
+                type: ConfirmModal
+                properties:
+                  width: 600
+                  title:
+                    _var:
+                      key: page_config.buttons.submit_edit.modal.title
+                      default: null
+                  okText: Submit
+                  content:
+                    _var:
+                      key: page_config.buttons.submit_edit.modal.content
+                      default: You are confirming your submission. Would you like to proceed?
+                events:
+                  onOk:
+                    _build.array.concat:
+                      - - id: validate
+                          type: Validate
+                          params:
+                            regex:
+                              - ^form\.
+                              - ^fields\.
+                      - _var:
+                          key: page_config.events.onSubmit
+                          default: []
+                      - - id: submit_edit
+                          type: CallApi
+                          params:
+                            endpointId:
+                              _module.endpointId:
+                                id:
+                                  _string.concat:
+                                    - update-action-
+                                    - _var: action_config.type
+                                module: workflows
+                            payload:
+                              action_id:
+                                _request: get_action._id
+                              interaction: submit_edit
+                              current_key:
+                                _request: get_action.key
+                              form:
+                                _state: form
+                              form_review:
+                                _state: form_review
+                              fields:
+                                _state: fields
+                              comment:
+                                _state: comment
+            else: []
+        - _build.if:
+            test:
+              _build.ne:
+                - _build.get:
+                    key: page_config.buttons.not_required.modal
+                    default: null
+                - null
+            then:
+              - id: not_required_modal
+                type: ConfirmModal
+                properties:
+                  width: 600
+                  title:
+                    _var:
+                      key: page_config.buttons.not_required.modal.title
+                      default: null
+                  okText: Mark Not Required
+                  content:
+                    _var:
+                      key: page_config.buttons.not_required.modal.content
+                      default: You are marking this action as not required. Would you like to proceed?
+                events:
+                  onOk:
+                    _build.array.concat:
+                      - _var:
+                          key: page_config.events.onSubmit
+                          default: []
+                      - - id: submit_not_required
+                          type: CallApi
+                          params:
+                            endpointId:
+                              _module.endpointId:
+                                id:
+                                  _string.concat:
+                                    - update-action-
+                                    - _var: action_config.type
+                                module: workflows
+                            payload:
+                              action_id:
+                                _request: get_action._id
+                              interaction: not_required
+                              current_key:
+                                _request: get_action.key
+                              fields:
+                                _state: fields
+                              comment:
+                                _state: comment
+            else: []

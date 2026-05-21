@@ -1,7 +1,350 @@
-id: error-placeholder
-type: Box
-blocks:
-  - id: heading
-    type: Html
-    properties:
-      html: "<h2>Error (placeholder — replaced by part 16)</h2>"
+# Error recovery page for a form action.
+#
+# Build-time vars (from makeActionPages.js): action_config, page_config,
+# page_ids, workflow_type, entity_collection. See view.yaml.njk.
+#
+# Stale-URL allowlist: [error]. Only renders during recovery; any other
+# stage redirects to -view.
+#
+# Outer-card suppression checks action_config.form_error[0].form (not
+# `form` — error has its own form schema).
+#
+# The `resolve_error` button is the only interaction button whose `title`
+# is overridable per app (default "Resolve").
+_ref:
+  module: layout
+  component: page
+  vars:
+    id:
+      _var: page_ids.error
+    title:
+      _var:
+        key: page_config.title
+        default: null
+    hide_title: true
+    content_width:
+      _var:
+        key: page_config.maxWidth
+        default: 750
+    requests:
+      _build.array.concat:
+        - - _ref: ../requests/get_action.yaml
+          - _ref: ../requests/get_workflow.yaml
+          - _ref:
+              path: ../requests/get_entity.yaml.njk
+              vars:
+                entity_collection: {{ entity_collection }}
+        - _var:
+            key: page_config.requests
+            default: []
+    events:
+      onMount:
+        _build.array.concat:
+          - - id: redirect_no_action
+              type: Link
+              skip:
+                _ne:
+                  - _url_query: action_id
+                  - null
+              params:
+                back: true
+            - id: get_action
+              type: Request
+              params: get_action
+            - id: redirect_stale_status
+              type: Link
+              skip:
+                _eq:
+                  - _request: get_action.status.0.stage
+                  - error
+              params:
+                pageId:
+                  _var: page_ids.view
+                urlQuery:
+                  _url_query: true
+            - id: get_workflow
+              type: Request
+              params: get_workflow
+            - id: get_entity
+              type: Request
+              params: get_entity
+            - _ref:
+                path: ../components/action_role_check.yaml
+                vars:
+                  action_config:
+                    _var: action_config
+            - id: prime_form_state
+              type: SetState
+              params:
+                form:
+                  _request:
+                    _string.concat:
+                      - get_workflow.form_data.
+                      - _var: action_config.type
+                fields:
+                  assignees:
+                    _request: get_action.assignees
+                  due_date:
+                    _request: get_action.due_date
+                  description:
+                    _request: get_action.description
+                comment: null
+          - _var:
+              key: page_config.events.onMount
+              default: []
+    blocks:
+      _build.array.concat:
+        # Card-interior content — outer-card suppression on form_error[0].form.
+        - _build.if:
+            test:
+              _build.ne:
+                - _build.get:
+                    key: action_config.form_error.0.form
+                    default: null
+                - null
+            then:
+              _build.array.concat:
+                - - id: failure_banner
+                    type: Alert
+                    properties:
+                      type: error
+                      showIcon: true
+                      message:
+                        _request: get_action.status.0.error_message
+                      description:
+                        _nunjucks:
+                          template: |
+                            <pre>{{ metadata }}</pre>
+                          on:
+                            metadata:
+                              _js:
+                                params:
+                                  - _request: get_action.status.0.error_metadata
+                                body: |
+                                  return JSON.stringify(params[0], null, 2);
+                - _var:
+                    key: page_config.formHeader
+                    default: []
+                - - _ref:
+                      path: ../components/universal-fields/universal-fields.yaml
+                      vars:
+                        mode: display
+                        kind: form
+                        action_data:
+                          assignees:
+                            _request: get_action.assignees
+                          due_date:
+                            _request: get_action.due_date
+                          description:
+                            _request: get_action.description
+                - - _ref:
+                      resolver: ../resolvers/makeActionsForm.js
+                      vars:
+                        form:
+                          _var:
+                            key: action_config.form_error
+                            default: []
+                        mode: error
+                - - id: comment
+                    type: TiptapInput
+                    properties:
+                      title: Comment
+                      placeholder: Add a comment about the recovery (optional).
+                - _var:
+                    key: page_config.formFooter
+                    default: []
+            else:
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    hide_title: true
+                    blocks:
+                      _build.array.concat:
+                        - - id: failure_banner
+                            type: Alert
+                            properties:
+                              type: error
+                              showIcon: true
+                              message:
+                                _request: get_action.status.0.error_message
+                              description:
+                                _nunjucks:
+                                  template: |
+                                    <pre>{{ metadata }}</pre>
+                                  on:
+                                    metadata:
+                                      _js:
+                                        params:
+                                          - _request: get_action.status.0.error_metadata
+                                        body: |
+                                          return JSON.stringify(params[0], null, 2);
+                        - _var:
+                            key: page_config.formHeader
+                            default: []
+                        - - _ref:
+                              path: ../components/universal-fields/universal-fields.yaml
+                              vars:
+                                mode: display
+                                kind: form
+                                action_data:
+                                  assignees:
+                                    _request: get_action.assignees
+                                  due_date:
+                                    _request: get_action.due_date
+                                  description:
+                                    _request: get_action.description
+                        - - _ref:
+                              resolver: ../resolvers/makeActionsForm.js
+                              vars:
+                                form:
+                                  _var:
+                                    key: action_config.form_error
+                                    default: []
+                                mode: error
+                        - - id: comment
+                            type: TiptapInput
+                            properties:
+                              title: Comment
+                              placeholder: Add a comment about the recovery (optional).
+                        - _var:
+                            key: page_config.formFooter
+                            default: []
+        # Floating-actions sticky button bar — single resolve_error button.
+        - - _ref:
+              module: layout
+              component: floating-actions
+              vars:
+                actions:
+                  - id: button_resolve_error
+                    type: Button
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.resolve_error.visible
+                            default: true
+                        - _eq:
+                            - _state: action_allowed
+                            - true
+                    properties:
+                      title:
+                        _var:
+                          key: page_config.buttons.resolve_error.title
+                          default: Resolve
+                      type: primary
+                      disabled:
+                        _var:
+                          key: page_config.buttons.resolve_error.disabled
+                          default: false
+                    events:
+                      onClick:
+                        _build.if:
+                          test:
+                            _build.ne:
+                              - _build.get:
+                                  key: page_config.buttons.resolve_error.modal
+                                  default: null
+                              - null
+                          then:
+                            - id: open_resolve_error_modal
+                              type: CallMethod
+                              params:
+                                method: open
+                                blockId: resolve_error_modal
+                          else:
+                            _build.array.concat:
+                              - - id: validate
+                                  type: Validate
+                                  params:
+                                    regex:
+                                      - ^form\.
+                                      - ^fields\.
+                              - _var:
+                                  key: page_config.events.onSubmit
+                                  default: []
+                              - - id: submit_resolve_error
+                                  type: CallApi
+                                  params:
+                                    endpointId:
+                                      _module.endpointId:
+                                        id:
+                                          _string.concat:
+                                            - update-action-
+                                            - _var: action_config.type
+                                        module: workflows
+                                    payload:
+                                      action_id:
+                                        _request: get_action._id
+                                      interaction: resolve_error
+                                      current_key:
+                                        _request: get_action.key
+                                      form:
+                                        _state: form
+                                      form_review:
+                                        _state: form_review
+                                      fields:
+                                        _state: fields
+                                      comment:
+                                        _state: comment
+        # Optional ConfirmModal — renders iff page_config.buttons.resolve_error.modal is set.
+        - _build.if:
+            test:
+              _build.ne:
+                - _build.get:
+                    key: page_config.buttons.resolve_error.modal
+                    default: null
+                - null
+            then:
+              - id: resolve_error_modal
+                type: ConfirmModal
+                properties:
+                  width: 600
+                  title:
+                    _var:
+                      key: page_config.buttons.resolve_error.modal.title
+                      default: null
+                  okText:
+                    _var:
+                      key: page_config.buttons.resolve_error.title
+                      default: Resolve
+                  content:
+                    _var:
+                      key: page_config.buttons.resolve_error.modal.content
+                      default: You are resolving this error. Would you like to proceed?
+                events:
+                  onOk:
+                    _build.array.concat:
+                      - - id: validate
+                          type: Validate
+                          params:
+                            regex:
+                              - ^form\.
+                              - ^fields\.
+                      - _var:
+                          key: page_config.events.onSubmit
+                          default: []
+                      - - id: submit_resolve_error
+                          type: CallApi
+                          params:
+                            endpointId:
+                              _module.endpointId:
+                                id:
+                                  _string.concat:
+                                    - update-action-
+                                    - _var: action_config.type
+                                module: workflows
+                            payload:
+                              action_id:
+                                _request: get_action._id
+                              interaction: resolve_error
+                              current_key:
+                                _request: get_action.key
+                              form:
+                                _state: form
+                              form_review:
+                                _state: form_review
+                              fields:
+                                _state: fields
+                              comment:
+                                _state: comment
+            else: []
