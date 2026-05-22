@@ -57,6 +57,10 @@ Added by [part 23](../23-close-workflow-handler/design.md). User-initiated norma
   - Order actions: workflow's `action_groups[]` declaration order, then `sort_order` ASC, then YAML declaration order. Keyed actions surface as N rows (one per instance, identified by `key`), kept together within their parent action's sort slot.
   - Return: `{ workflow, actions: [] }`; if no visible actions, return `{ workflow: null, actions: [] }` and the page redirects back to its host entity page (`actions-on-entity`). The access-vs-existence distinction is intentionally collapsed for security — callers can't tell whether the workflow is absent or simply inaccessible.
 
+### `api/get-action-group-overview.yaml`
+
+Returns one workflow + one action group's metadata + ordered + filtered actions in that group. Shipped in [part 25](../../25-group-overview-page/design.md). Reuses this part's `access_filter` stage at `api/stages/access_filter.yaml`. Part 19 doesn't own the file; this row is a pointer so the operational-Api inventory stays coherent.
+
 ### Access enforcement
 
 User roles resolve via the module's `user_schema.roles_path` var (default `roles`, declared in [part 20's manifest](../20-module-manifest/design.md)). The routine reads `_user: { _module.var: user_schema.roles_path }` (see "Read path: Lowdefy routines" below).
@@ -105,5 +109,6 @@ _None — `get-workflow-overview` access-denial response is committed: return `{
 
 - **Part 18 (`actions-on-entity`)** consumes `get-entity-workflows`.
 - **Part 17 (`workflow-overview` page)** consumes `get-workflow-overview`.
+- **Part 25 (`group-overview` page)** ships `get-action-group-overview`, which reuses this part's `access_filter` stage.
 - **Part 20 (module-manifest)** declares all five Apis (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`) in `exports.api`.
 - **Part 23 (close-workflow-handler)** ships the `CloseWorkflow` plugin handler that backs `close-workflow.yaml`.

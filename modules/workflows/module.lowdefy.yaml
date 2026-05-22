@@ -3,8 +3,9 @@
 # (action_form_configs), the part-17 shared pages (task-edit / task-view /
 # task-review / workflow-overview), the part-19 operational APIs
 # (start/cancel/close-workflow + get-entity-workflows / get-workflow-overview),
-# and the part-18 entity-page components (actions-on-entity, workflow-header,
-# action_role_check).
+# the part-18 entity-page components (actions-on-entity, workflow-header,
+# action_role_check), and the part-25 group-overview surface (group-overview
+# page + get-action-group-overview Api).
 # The remaining module surface — WorkflowAPI connection, workflows-collection
 # / actions-collection connections, MONGODB_URI secret, menu exports,
 # user_schema + app_name + entities vars, form-fields component library
@@ -42,6 +43,8 @@ exports:
       description: Return workflows + filtered actions for one entity. Consumed by actions-on-entity.
     - id: get-workflow-overview
       description: Return one workflow + ordered + filtered actions for the shipped workflow-overview page.
+    - id: get-action-group-overview
+      description: Return one workflow + one action group's metadata + ordered + filtered actions in that group. Backs the shipped group-overview page.
   pages:
     - id: task-edit
       description: Shared task-action edit page — status selector + universal fields + Save. Addressed by ?action_id=<id>.
@@ -51,6 +54,8 @@ exports:
       description: Shared task-action review page — read-only fields + approve / request_changes buttons. Addressed by ?action_id=<id>.
     - id: workflow-overview
       description: Workflow detail page — header + action cards with form_data DataView. Addressed by ?workflow_id=<id>.
+    - id: group-overview
+      description: Group detail page — header + progress bar + group-status badge + action cards with form_data DataView. Addressed by ?workflow_id=<id>&group_id=<id>.
 
 vars:
   workflows_config:
@@ -106,12 +111,14 @@ api:
   - _ref: api/close-workflow.yaml
   - _ref: api/get-entity-workflows.yaml
   - _ref: api/get-workflow-overview.yaml
+  - _ref: api/get-action-group-overview.yaml
 
 pages:
   - _ref: pages/task-edit.yaml
   - _ref: pages/task-view.yaml
   - _ref: pages/task-review.yaml
   - _ref: pages/workflow-overview.yaml
+  - _ref: pages/group-overview.yaml
 
 global:
   action_form_configs:

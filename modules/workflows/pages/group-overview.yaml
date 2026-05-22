@@ -1,0 +1,386 @@
+# Group overview page (part 25).
+#
+# Addressed by ?workflow_id=<id>&group_id=<id>. Single CallApi to
+# get-action-group-overview (part 25), then renders a group-scoped header
+# (workflow + group title, entity back-link), a progress bar driven by
+# group.summary, a group-status badge, and the per-action card list.
+#
+# Dependencies:
+#   - api/get-action-group-overview.yaml         (this part)
+#   - _module.var: workflows_config              (part 4)
+#   - _module.var: entities                      (part 20)
+#   - _module.var: app_name                      (part 20)
+#   - global.action_form_configs                 (part 15)
+#   - global.action_statuses                     (part 4)
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: group-overview
+    hide_title: true
+    content_width: 1100
+    events:
+      onMount:
+        # workflow_id + group_id presence guard.
+        - id: redirect_no_workflow_or_group
+          type: Link
+          skip:
+            _and:
+              - _ne:
+                  - _url_query: workflow_id
+                  - null
+              - _ne:
+                  - _url_query: group_id
+                  - null
+          params:
+            back: true
+        # Single CallApi to get-action-group-overview.
+        - id: call_get_overview
+          type: CallApi
+          params:
+            endpointId:
+              _module.endpointId:
+                id: get-action-group-overview
+                module: workflows
+            payload:
+              workflow_id:
+                _url_query: workflow_id
+              group_id:
+                _url_query: group_id
+        # Stash the response in _state.overview.
+        - id: set_overview_state
+          type: SetState
+          params:
+            overview:
+              _actions: call_get_overview.response
+        # Null-redirect guard — Api returns workflow: null when no actions
+        # pass the access filter, the workflow doc is missing, or the group
+        # id is unknown.
+        - id: redirect_no_workflow_doc
+          type: Link
+          skip:
+            _ne:
+              - _state: overview.workflow
+              - null
+          params:
+            back: true
+    blocks:
+      - id: group_overview_header
+        type: Box
+        layout:
+          contentGutter: 8
+        blocks:
+          - id: group_overview_titles
+            type: Box
+            layout:
+              gap: 4
+            blocks:
+              - id: group_overview_workflow_title
+                type: Paragraph
+                properties:
+                  content:
+                    _js:
+                      params:
+                        - _state: overview.workflow
+                        - _module.var: workflows_config
+                      body: |
+                        const [workflow, workflowsConfig] = params;
+                        if (!workflow) return "";
+                        const wfConfig = (workflowsConfig || []).find(
+                          (w) => w.type === workflow.workflow_type
+                        );
+                        return (
+                          (wfConfig && wfConfig.title) ||
+                          workflow.workflow_type ||
+                          ""
+                        );
+              - id: group_overview_group_title
+                type: Title
+                properties:
+                  level: 3
+                  content:
+                    _js:
+                      params:
+                        - _state: overview.workflow
+                        - _state: overview.group
+                        - _module.var: workflows_config
+                      body: |
+                        const [workflow, group, workflowsConfig] = params;
+                        if (!group) return "";
+                        const wfConfig = (workflowsConfig || []).find(
+                          (w) => w && workflow && w.type === workflow.workflow_type
+                        ) || {};
+                        const groupsDef = wfConfig.action_groups || [];
+                        const def = groupsDef.find((d) => d.id === group.id);
+                        return (def && def.title) || group.id;
+      - id: entity_back_button
+        type: Button
+        properties:
+          title:
+            _string.concat:
+              - _get:
+                  from:
+                    _module.var: entities
+                  key:
+                    _string.concat:
+                      - _state: overview.workflow.entity_collection
+                      - .title
+                  default: Entity
+              - " "
+              - _state: overview.workflow.entity_id
+          type: link
+          icon: AiOutlineArrowLeft
+        events:
+          onClick:
+            - id: link_to_entity
+              type: Link
+              params:
+                pageId:
+                  _get:
+                    from:
+                      _module.var: entities
+                    key:
+                      _string.concat:
+                        - _state: overview.workflow.entity_collection
+                        - .page_id
+                urlQuery:
+                  _object.fromEntries:
+                    - - - _get:
+                            from:
+                              _module.var: entities
+                            key:
+                              _string.concat:
+                                - _state: overview.workflow.entity_collection
+                                - .id_query_key
+                        - _state: overview.workflow.entity_id
+      - id: group_progress
+        type: Progress
+        properties:
+          percent:
+            _js:
+              params:
+                - _state: overview.group.summary
+              body: |
+                const [summary] = params;
+                if (!summary) return 0;
+                const total = summary.total || 0;
+                if (total === 0) return 100;
+                const filled = (summary.done || 0) + (summary.not_required || 0);
+                return Math.round((filled / total) * 100);
+          format:
+            _nunjucks:
+              template: |
+                {%- if summary.total > 0 -%}
+                {{ (summary.done or 0) + (summary.not_required or 0) }} of {{ summary.total }} done
+                {%- else -%}
+                no actions
+                {%- endif -%}
+              on:
+                summary:
+                  _state: overview.group.summary
+      - id: group_status_badge
+        type: Tag
+        properties:
+          color:
+            _if:
+              test:
+                _eq:
+                  - _state: overview.group.status
+                  - done
+              then: green
+              else:
+                _if:
+                  test:
+                    _eq:
+                      - _state: overview.group.status
+                      - in-progress
+                  then: blue
+                  else: default
+          content:
+            _if:
+              test:
+                _eq:
+                  - _state: overview.group.status
+                  - done
+              then: Done
+              else:
+                _if:
+                  test:
+                    _eq:
+                      - _state: overview.group.status
+                      - in-progress
+                  then: In progress
+                  else: Blocked
+      - id: actions_list
+        type: List
+        properties:
+          data:
+            _state: overview.actions
+        blocks:
+          - _ref:
+              module: layout
+              component: card
+              vars:
+                hide_title: true
+                blocks:
+                  - id: actions_list.$.header
+                    type: Box
+                    layout:
+                      gap: 8
+                      contentAlign: middle
+                      justify: space-between
+                    blocks:
+                      - id: actions_list.$.title_row
+                        type: Box
+                        layout:
+                          gap: 8
+                          contentAlign: middle
+                        blocks:
+                          - id: actions_list.$.status_badge
+                            type: Tag
+                            properties:
+                              color:
+                                _global:
+                                  _string.concat:
+                                    - action_statuses.
+                                    - _array_indices: status.0.stage
+                                    - .color
+                              content:
+                                _global:
+                                  _string.concat:
+                                    - action_statuses.
+                                    - _array_indices: status.0.stage
+                                    - .title
+                          - id: actions_list.$.message
+                            type: Paragraph
+                            properties:
+                              content:
+                                _nunjucks:
+                                  template:
+                                    _get:
+                                      from:
+                                        _array_indices: status_map
+                                      key:
+                                        _string.concat:
+                                          - _array_indices: status.0.stage
+                                          - .
+                                          - _module.var: app_name
+                                          - .message
+                                      default: ""
+                                  on:
+                                    action:
+                                      _array_indices: true
+                                    workflow:
+                                      _state: overview.workflow
+                      - id: actions_list.$.link_button
+                        type: Button
+                        visible:
+                          _ne:
+                            - _get:
+                                from:
+                                  _array_indices: status_map
+                                key:
+                                  _string.concat:
+                                    - _array_indices: status.0.stage
+                                    - .
+                                    - _module.var: app_name
+                                    - .link
+                                default: null
+                            - null
+                        properties:
+                          title: Open
+                          type: link
+                        events:
+                          onClick:
+                            - id: actions_list.$.link
+                              type: Link
+                              params:
+                                _get:
+                                  from:
+                                    _array_indices: status_map
+                                  key:
+                                    _string.concat:
+                                      - _array_indices: status.0.stage
+                                      - .
+                                      - _module.var: app_name
+                                      - .link
+                  - id: actions_list.$.body_empty
+                    type: Html
+                    visible:
+                      _eq:
+                        - _get:
+                            from:
+                              _state: overview.workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _array_indices: key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _array_indices: type
+                                    - .
+                                    - _array_indices: key
+                                else:
+                                  _array_indices: type
+                            default: null
+                        - null
+                    properties:
+                      html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
+                  - id: actions_list.$.body_dataview
+                    type: DataView
+                    visible:
+                      _ne:
+                        - _get:
+                            from:
+                              _state: overview.workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _array_indices: key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _array_indices: type
+                                    - .
+                                    - _array_indices: key
+                                else:
+                                  _array_indices: type
+                            default: null
+                        - null
+                    properties:
+                      formConfig:
+                        _array.concat:
+                          - _global:
+                              _string.concat:
+                                - action_form_configs.
+                                - _array_indices: type
+                                - .form
+                          - _global:
+                              _string.concat:
+                                - action_form_configs.
+                                - _array_indices: type
+                                - .form_review
+                      data:
+                        form:
+                          _get:
+                            from:
+                              _state: overview.workflow.form_data
+                            key:
+                              _if:
+                                test:
+                                  _ne:
+                                    - _array_indices: key
+                                    - null
+                                then:
+                                  _string.concat:
+                                    - _array_indices: type
+                                    - .
+                                    - _array_indices: key
+                                else:
+                                  _array_indices: type
+                            default: null
+                        workflow:
+                          _state: overview.workflow

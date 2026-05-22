@@ -50,15 +50,25 @@ blocks:
                       params:
                         - _array_indices: true
                         - _module.var: workflows_config
+                        - _module.pageId:
+                            id: group-overview
+                            module: workflows
                       body: |
-                        const [workflow, workflowsConfig] = params;
+                        const [workflow, workflowsConfig, groupOverviewPageId] = params;
                         const wfConfig = (workflowsConfig || []).find(
                           (w) => w.type === workflow.workflow_type
                         ) || {};
                         const groupsDef = wfConfig.action_groups || [];
                         const config = {};
                         groupsDef.forEach((g, i) => {
-                          config[g.id] = { order: i, title: g.title };
+                          config[g.id] = {
+                            order: i,
+                            title: g.title,
+                            link: {
+                              pageId: groupOverviewPageId,
+                              urlQuery: { workflow_id: workflow._id, group_id: g.id },
+                            },
+                          };
                           if (g.icon) config[g.id].icon = g.icon;
                         });
                         return config;

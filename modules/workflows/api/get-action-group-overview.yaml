@@ -1,0 +1,103 @@
+id: get-action-group-overview
+type: Api
+routine:
+  - id: query
+    type: MongoDBAggregation
+    connectionId:
+      _module.connectionId: workflows-collection
+    properties:
+      pipeline:
+        - $match:
+            _id:
+              _payload: workflow_id
+
+        - $lookup:
+            from: actions
+            let:
+              workflowId: $_id
+            pipeline:
+              - $match:
+                  $expr:
+                    $and:
+                      - $eq:
+                          - $workflow_id
+                          - $$workflowId
+                      - $eq:
+                          - $action_group
+                          - _payload: group_id
+              - _ref: stages/access_filter.yaml
+              - $sort:
+                  sort_order: 1
+                  _id: 1
+            as: actions
+
+  - :set_state:
+      workflow_doc:
+        _get:
+          from:
+            _step: query
+          key: "0"
+          default: null
+
+  # `group` collapses to `null` alongside `workflow` (one deliberate divergence
+  # from get-workflow-overview): the group payload has no meaning without a
+  # visible workflow, and the access-vs-existence collapse stays consistent.
+  - :return:
+      workflow:
+        _if:
+          test:
+            _and:
+              - _ne:
+                  - _state: workflow_doc
+                  - null
+              - _gt:
+                  - _array.length:
+                      _get:
+                        from:
+                          _state: workflow_doc
+                        key: actions
+                        default: []
+                  - 0
+          then:
+            _state: workflow_doc
+          else: null
+      group:
+        _if:
+          test:
+            _and:
+              - _ne:
+                  - _state: workflow_doc
+                  - null
+              - _gt:
+                  - _array.length:
+                      _get:
+                        from:
+                          _state: workflow_doc
+                        key: actions
+                        default: []
+                  - 0
+          then:
+            _js:
+              params:
+                - _get:
+                    from:
+                      _state: workflow_doc
+                    key: groups
+                    default: []
+                - _payload: group_id
+              body: |
+                const [groups, groupId] = params;
+                const entry = (groups || []).find((g) => g.id === groupId);
+                if (!entry) return null;
+                return {
+                  id: entry.id,
+                  status: entry.status,
+                  summary: entry.summary,
+                };
+          else: null
+      actions:
+        _get:
+          from:
+            _state: workflow_doc
+          key: actions
+          default: []

@@ -21,10 +21,10 @@ Final wiring: `module.lowdefy.yaml`, three connections, exports for pages and co
 - **`plugins`**: `@lowdefy/modules-mongodb-plugins` at the version that ships `WorkflowAPI` (bumped to `^0.4.0` or current per concept).
 - **`exports`**:
   - `pages`:
-    - Static: `task-edit`, `task-view`, `task-review`, `workflow-overview` (from [part 17](../17-shared-pages/design.md)).
+    - Static: `task-edit`, `task-view`, `task-review`, `workflow-overview` (from [part 17](../17-shared-pages/design.md)), `group-overview` (from [part 25](../25-group-overview-page/design.md)).
     - Dynamic via [part 2](../02-dynamic-module-pages/design.md) channel: per-action pages emitted by `makeActionPages` ([part 12](../12-resolver-pages/design.md)).
   - `api`:
-    - Static: `start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview` (from [part 19](../19-operational-apis/design.md); `close-workflow` is added by [part 23](../23-close-workflow-handler/design.md)).
+    - Static: `start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview` (from [part 19](../19-operational-apis/design.md); `close-workflow` is added by [part 23](../23-close-workflow-handler/design.md)), `get-action-group-overview` (from [part 25](../25-group-overview-page/design.md)).
     - Dynamic: per-action `update-action-{action_type}` emitted by `makeWorkflowApis` ([part 13](../13-resolver-apis/design.md)).
   - `components`: `actions-on-entity`, `workflow-header`, `action_role_check` (from [part 18](../18-entity-components/design.md)).
   - `enums`: `action_statuses`, `workflow_lifecycle_stages` (from [part 4](../04-workflow-config-schema/design.md)).
