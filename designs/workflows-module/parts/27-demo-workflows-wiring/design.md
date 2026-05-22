@@ -1,6 +1,6 @@
 # Part 27 — Demo app workflows wiring + worked-example verification
 
-**Source rationale:** Spun out of [part 17](../17-shared-pages/design.md) task 7 ("Wire the worked-example onboarding workflow to the shared pages and verify"). Task 7's scope grew large enough that folding it into part 17 mixed two concerns — shipping the module-shipped pages (part 17's actual deliverable) and wiring an end-to-end demo flow that needs the full module surface (workflows entry, `workflows_config`, worked-example onboarding workflow, leads collection, lead pages, navigation). Splitting follows the established repo pattern for review findings that grow beyond their original part's scope (see `feedback_review_implemented_parts.md` in memory). **Layer:** integration + verification. **Size:** M. **Repo:** `apps/demo/`.
+**Source rationale:** Spun out of [part 17](../_completed/17-shared-pages/design.md) task 7 ("Wire the worked-example onboarding workflow to the shared pages and verify"). Task 7's scope grew large enough that folding it into part 17 mixed two concerns — shipping the module-shipped pages (part 17's actual deliverable) and wiring an end-to-end demo flow that needs the full module surface (workflows entry, `workflows_config`, worked-example onboarding workflow, leads collection, lead pages, navigation). Splitting follows the established repo pattern for review findings that grow beyond their original part's scope (see `feedback_review_implemented_parts.md` in memory). **Layer:** integration + verification. **Size:** M. **Repo:** `apps/demo/`.
 
 ## Goal
 
