@@ -1,0 +1,107 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Heading rendered above the steps as an Antd Typography.Title level 5."
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["horizontal", "vertical"],
+      "default": "vertical",
+      "description": "Antd Steps direction."
+    },
+    "progressDot": {
+      "type": "boolean",
+      "default": false,
+      "description": "Render progress dots instead of icons on each step."
+    },
+    "items": {
+      "type": "array",
+      "default": [],
+      "description": "Action groups to render as steps. Each group is one step; its actions render in the step description.",
+      "items": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "action_group": {
+            "type": "string",
+            "description": "Key into actionGroupConfig. Determines title, icon, and ordering."
+          },
+          "actions": {
+            "type": "array",
+            "description": "Actions within the group. The group's rolled-up status is derived from action.status values.",
+            "items": {
+              "type": "object",
+              "additionalProperties": true,
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "blocked",
+                    "action-required",
+                    "in-progress",
+                    "done",
+                    "error",
+                    "not-required",
+                    "in-review",
+                    "changes-required"
+                  ],
+                  "description": "Per-action status. Drives the badge color and the group's rolled-up status."
+                },
+                "message": {
+                  "type": "string",
+                  "description": "Label rendered next to the badge. Sanitized HTML is supported. Struck through when status is 'not-required'."
+                },
+                "link": {
+                  "type": "object",
+                  "description": "Optional link wrapping the action message. Omit or set disabled to render plain text.",
+                  "additionalProperties": true,
+                  "properties": {
+                    "pageId": { "type": "string" },
+                    "urlQuery": { "type": "object" },
+                    "input": { "type": "object" },
+                    "newTab": { "type": "boolean", "default": false },
+                    "disabled": { "type": "boolean", "default": false }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "actionGroupConfig": {
+      "type": "object",
+      "description": "Map of action_group key → display config. Required for items to render. Each entry: { order, title, icon, link? }. `order` controls step sequence, `title` is the step title (HTML allowed, struck through when group resolves to 'not-required'), `icon` is the Antd icon name shown on the step (overridden to AiOutlineCheckCircle when the group is 'done'), `link` (optional) wraps the title in a clickable Link.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "order": { "type": "number" },
+          "title": { "type": "string" },
+          "icon": { "type": "string" },
+          "link": {
+            "type": "object",
+            "description": "Optional link wrapping the group title. Omit or set disabled to render plain text.",
+            "additionalProperties": true,
+            "properties": {
+              "pageId": { "type": "string" },
+              "urlQuery": { "type": "object" },
+              "input": { "type": "object" },
+              "newTab": { "type": "boolean", "default": false },
+              "disabled": { "type": "boolean", "default": false }
+            }
+          }
+        }
+      }
+    },
+    "linkStyle": {
+      "description": "Style object merged into each action's Link via makeCssClass. Use `classNames.link` / `styles.link` for the same purpose if you prefer the standard Lowdefy theming surface."
+    },
+    "theme": {
+      "type": "object",
+      "description": "Antd `Steps` component theme overrides. Forwarded to ConfigProvider as `theme.components.Steps` for the duration of this block. See https://ant.design/components/steps#design-token for available tokens."
+    }
+  }
+}
