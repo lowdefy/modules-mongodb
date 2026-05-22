@@ -16,7 +16,7 @@ Extend `module.lowdefy.yaml` (shipped by [part 20a](../20a-module-manifest-stati
 2. Extend `apps/demo/workflow_config/onboarding/` from the tracker-only variant ([part 20a](../20a-module-manifest-static/design.md)) into the four-action worked example — adding `qualify` (form), `schedule-followup` (task), and `proof-of-installation` (form, keyed by device) alongside the existing `track-installation` (tracker).
 3. Author the worked-example pre/post hook APIs (`qualify-pre-submit.yaml`, `send-quote-pre-submit.yaml`, `send-quote-post-approve.yaml`) under `apps/demo/workflow_config/onboarding/api/` and wire them into the action YAML's `hooks:` blocks.
 4. Update `modules/workflows/README.md` to drop the "shipped in part 20b" pointer and list the per-action resolver-emitted exports inline.
-5. Optionally retire [part 27 (demo-workflows-wiring)](../27-demo-workflows-wiring/design.md) once 20a + 20b together carry its scope; revisit during execution.
+5. Part 27 (demo-workflows-wiring) is retired in 20a (see [20a § Open questions / Closed during review](../20a-module-manifest-static/design.md)) — no follow-up needed here.
 
 ## Manifest scope — dynamic surface only
 
@@ -125,7 +125,6 @@ After this part lands, the demo walks through every bullet from the [concept wor
 
 ## Open questions
 
-- **Retire Part 27?** [Part 27 (demo-workflows-wiring)](../27-demo-workflows-wiring/design.md)'s scope is now split between 20a (tracker-only static surface) and 20b (form/task dynamic surface). Decide during this part whether to fold Part 27's verification record into 20b or leave it as a thin shell pointing at 20a + 20b's verification sections.
 - **Exact channel shape for `exports.api`.** [Part 02](../02-dynamic-module-pages/design.md) leaves "whether `exports.api` rides on the same channel" as an open question. Confirm during 20b implementation; manifest changes here are minor either way.
 - **Whether 20b ships in one PR.** Three resolver-emitted pages + three resolver-emitted endpoints + four new YAML action files + three hook APIs is more surface than the original Part 20's S sizing. If 20a closes out cleanly, 20b may earn its own M sizing on first review.
 
