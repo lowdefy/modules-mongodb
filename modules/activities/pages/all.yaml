@@ -69,6 +69,11 @@ _ref:
               current: 1
               skip: 0
               pageSize: 500
+            # Init companies' cycle-check state keys so the company-selector
+            # filter doesn't fire ConfigWarning for unreferenced _state.
+            # Runtime behaviour unchanged — `_if_none` defaults take over.
+            cycle_check_self_id: null
+            cycle_check_ids: []
       onMountAsync:
         - id: fetch
           type: Request

@@ -62,6 +62,11 @@ _ref:
                 - {}
             updated:
               _request: get_activity.0.updated
+            # Init companies' cycle-check state keys so the company-selector
+            # request doesn't fire ConfigWarning for unreferenced _state.
+            # Runtime behaviour unchanged — `_if_none` defaults take over.
+            cycle_check_self_id: null
+            cycle_check_ids: []
     requests:
       - _ref: requests/get_activity.yaml
     blocks:

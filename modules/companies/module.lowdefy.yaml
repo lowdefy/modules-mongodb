@@ -11,6 +11,15 @@ dependencies:
     description: Contact selector and bidirectional linking
   - id: files
     description: File attachments (optional sidebar tile)
+  # TEMPORARY DEP — added solely to support the inline activities tile in the
+  # detail-page sidebar. Intended pattern is app-level slot wiring via
+  # components.sidebar_slots (decisions.md §7); blocked by a Lowdefy framework
+  # limitation (parseLowdefyYaml resolves `_ref { module, component }` inside
+  # `modules.X.vars.*` before module registration). Revert this dep + the
+  # inline ref in pages/view.yaml + the `cycle_check_*` state init in
+  # pages/view.yaml onInit once the framework lands the fix.
+  - id: activities
+    description: Activity timeline tile inlined in the detail-page sidebar (TEMPORARY — see comment above).
 
 vars:
   app_name:
