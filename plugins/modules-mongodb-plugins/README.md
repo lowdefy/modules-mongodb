@@ -8,10 +8,12 @@ Custom Lowdefy blocks and actions used by the [modules-mongodb](../../README.md)
 
 | Block | Category | Purpose |
 |---|---|---|
+| [`ActionSteps`](src/blocks/ActionSteps/README.md) | `display` | Antd `Steps` view of grouped actions — each step is an action group with badged, optionally linked sub-actions and a rolled-up status. |
 | [`ContactSelector`](src/blocks/ContactSelector/README.md) | `input-container` | Multi-select contact picker with search, add, edit, remove, and verify flows. Backs the `contacts` module's selector component. |
+| [`DataDescriptions`](src/blocks/DataDescriptions/README.md) | `display` | Rich, structured Antd `Descriptions` view driven by an explicit `formConfig` with sections, ordering, and component hints. |
 | [`EventsTimeline`](src/blocks/EventsTimeline/README.md) | `display` | Timeline of `log-events` documents — avatars, time-ago labels, action badges, optional file attachments. Backs the `events` module's timeline. |
 | [`FileManager`](src/blocks/FileManager/README.md) | `container` | Drag-drop S3 upload with thumbnails, paste-to-upload, optional metadata form, download, and delete. Backs the `files` module. |
-| [`SmartDescriptions`](src/blocks/SmartDescriptions/README.md) | `display` | Antd `Descriptions` view with auto type detection from the data — no schema required. |
+| [`SmartDescriptions`](src/blocks/SmartDescriptions/README.md) | `display` | Antd `Descriptions` view with auto type detection from the data — no schema required. Use `DataDescriptions` instead when you need explicit grouping. |
 
 ### Actions
 
@@ -44,7 +46,7 @@ The plugin assumes the following peers are already in the app:
 - `antd` (≥ 6)
 - `react` (≥ 18) and `react-dom` (≥ 18)
 
-`@lowdefy/plugin-aws` is required by `FileManager` and by the `file` / `fileList` field types in `SmartDescriptions`.
+`@lowdefy/plugin-aws` is required by `FileManager` and by the `file` / `fileList` field types in `DataDescriptions` and `SmartDescriptions`.
 
 ## `FetchRequest` action
 
