@@ -53,7 +53,7 @@ Ship the four shared, static pages that aren't generated per-action: three task-
   - Tracker actions link to the child workflow's `workflow-overview` page when configured.
   - **Entity back-link**: a back button (or breadcrumb) deep-links to the host app's entity page. URL is built from the new `entities` module var (see "`entities` module var" below) — `pageId: _module.var: entities[workflow.entity_collection].page_id`, `urlQuery: { <id_query_key>: workflow.entity_id }`. The breadcrumb label is `"<title> <entity_id>"` (e.g. `"Lead 65a1f3..."`), composed from `entities[workflow.entity_collection].title` and `workflow.entity_id` — informative without an entity-doc fetch.
 
-- **`pages/group-overview.yaml`** — shared page focused on a single action group within a workflow. Shipped in [part 25](../../25-group-overview-page/design.md). Part 17 doesn't own the file; this line is a pointer so the shared-pages inventory stays coherent.
+- **`pages/group-overview.yaml`** — shared page focused on a single action group within a workflow. Shipped in [part 25](../25-group-overview-page/design.md). Part 17 doesn't own the file; this line is a pointer so the shared-pages inventory stays coherent.
 
 ### Reused module-shipped requests
 

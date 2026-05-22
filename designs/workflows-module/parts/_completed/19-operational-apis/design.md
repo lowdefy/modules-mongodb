@@ -59,7 +59,7 @@ Added by [part 23](../23-close-workflow-handler/design.md). User-initiated norma
 
 ### `api/get-action-group-overview.yaml`
 
-Returns one workflow + one action group's metadata + ordered + filtered actions in that group. Shipped in [part 25](../../25-group-overview-page/design.md). Reuses this part's `access_filter` stage at `api/stages/access_filter.yaml`. Part 19 doesn't own the file; this row is a pointer so the operational-Api inventory stays coherent.
+Returns one workflow + one action group's metadata + ordered + filtered actions in that group. Shipped in [part 25](../25-group-overview-page/design.md). Reuses this part's `access_filter` stage at `api/stages/access_filter.yaml`. Part 19 doesn't own the file; this row is a pointer so the operational-Api inventory stays coherent.
 
 ### Access enforcement
 
