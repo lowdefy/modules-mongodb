@@ -8,66 +8,70 @@ routine:
           _module.connectionId: activities-collection
         properties:
           doc:
-            _id:
-              _payload: _id
-            type:
-              _payload: type
-            title:
-              _payload: title
-            description:
-              _payload: description
-            contact_ids:
-              _if_none:
-                - _payload: contact_ids
-                - []
-            company_ids:
-              _if_none:
-                - _payload: company_ids
-                - []
-            attributes:
-              _if_none:
-                - _payload: attributes
-                - {}
-            source:
-              channel:
-                _if_none:
-                  - _payload: source.channel
-                  - manual
-              external_ref:
-                _if_none:
-                  - _payload: source.external_ref
-                  - null
-              raw:
-                _if_none:
-                  - _payload: source.raw
-                  - null
-            status:
-              - stage:
+            _object.assign:
+              - _id:
+                  _payload: _id
+                type:
+                  _payload: type
+                title:
+                  _payload: title
+                description:
+                  _payload: description
+                contact_ids:
                   _if_none:
-                    - _payload: initial_stage
-                    - _get:
-                        from:
-                          _build.object.assign:
-                            - _ref: enums/activity_types.yaml
-                            - _module.var: activity_types
-                        key:
-                          _string.concat:
-                            - _payload: type
-                            - .default_stage
-                        default: open
+                    - _payload: contact_ids
+                    - []
+                company_ids:
+                  _if_none:
+                    - _payload: company_ids
+                    - []
+                attributes:
+                  _if_none:
+                    - _payload: attributes
+                    - {}
+                source:
+                  channel:
+                    _if_none:
+                      - _payload: source.channel
+                      - manual
+                  external_ref:
+                    _if_none:
+                      - _payload: source.external_ref
+                      - null
+                  raw:
+                    _if_none:
+                      - _payload: source.raw
+                      - null
+                status:
+                  - stage:
+                      _if_none:
+                        - _payload: initial_stage
+                        - _get:
+                            from:
+                              _build.object.assign:
+                                - _ref: enums/activity_types.yaml
+                                - _module.var: activity_types
+                            key:
+                              _string.concat:
+                                - _payload: type
+                                - .default_stage
+                            default: open
+                    created:
+                      _ref:
+                        module: events
+                        component: change_stamp
                 created:
                   _ref:
                     module: events
                     component: change_stamp
-            created:
-              _ref:
-                module: events
-                component: change_stamp
-            updated:
-              _ref:
-                module: events
-                component: change_stamp
-            deleted: null
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+                deleted: null
+              - _if_none:
+                  - _payload: references
+                  - {}
     # Optional consumer-provided pipeline stages (only emitted when provided)
     - _build.if:
         test:
@@ -127,16 +131,20 @@ routine:
                                 _ref: defaults/event_target.yaml
                         description: null
             references:
-              contact_ids:
-                _if_none:
-                  - _payload: contact_ids
-                  - []
-              company_ids:
-                _if_none:
-                  - _payload: company_ids
-                  - []
-              activity_ids:
-                - _payload: _id
+              _object.assign:
+                - contact_ids:
+                    _if_none:
+                      - _payload: contact_ids
+                      - []
+                  company_ids:
+                    _if_none:
+                      - _payload: company_ids
+                      - []
+                  activity_ids:
+                    - _payload: _id
+                - _if_none:
+                    - _payload: references
+                    - {}
             metadata:
               activity_id:
                 _payload: _id

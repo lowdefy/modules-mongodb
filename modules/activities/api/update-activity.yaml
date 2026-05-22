@@ -15,30 +15,34 @@ routine:
         _build.array.concat:
           # Stage 1: Overwrite scalars + arrays, merge attributes
           - - $set:
-                title:
-                  _payload: title
-                description:
-                  _payload: description
-                contact_ids:
-                  _if_none:
-                    - _payload: contact_ids
-                    - []
-                company_ids:
-                  _if_none:
-                    - _payload: company_ids
-                    - []
-                attributes:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.attributes"
-                        - {}
-                    - $ifNull:
-                        - _payload: attributes
-                        - {}
-                updated:
-                  _ref:
-                    module: events
-                    component: change_stamp
+                _object.assign:
+                  - title:
+                      _payload: title
+                    description:
+                      _payload: description
+                    contact_ids:
+                      _if_none:
+                        - _payload: contact_ids
+                        - []
+                    company_ids:
+                      _if_none:
+                        - _payload: company_ids
+                        - []
+                    attributes:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.attributes"
+                            - {}
+                        - $ifNull:
+                            - _payload: attributes
+                            - {}
+                    updated:
+                      _ref:
+                        module: events
+                        component: change_stamp
+                  - _if_none:
+                      - _payload: references
+                      - {}
           # Consumer pipeline stages
           - _module.var: request_stages.write
 
@@ -82,16 +86,20 @@ routine:
                             _ref: defaults/event_target.yaml
                     description: null
         references:
-          contact_ids:
-            _if_none:
-              - _payload: contact_ids
-              - []
-          company_ids:
-            _if_none:
-              - _payload: company_ids
-              - []
-          activity_ids:
-            - _payload: _id
+          _object.assign:
+            - contact_ids:
+                _if_none:
+                  - _payload: contact_ids
+                  - []
+              company_ids:
+                _if_none:
+                  - _payload: company_ids
+                  - []
+              activity_ids:
+                - _payload: _id
+            - _if_none:
+                - _payload: references
+                - {}
         metadata:
           activity_id:
             _payload: _id

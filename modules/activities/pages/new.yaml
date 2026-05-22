@@ -61,6 +61,7 @@ _ref:
             # — the selector's `_if_none` defaults already handle null/empty.
             cycle_check_self_id: null
             cycle_check_ids: []
+            references: {}
     blocks:
       - id: card
         type: Card
@@ -113,6 +114,10 @@ _ref:
                           attributes:
                             _if_none:
                               - _state: attributes
+                              - {}
+                          references:
+                            _if_none:
+                              - _state: references
                               - {}
                       messages:
                         success:

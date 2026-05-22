@@ -148,6 +148,15 @@ blocks:
                         - _var: prefill.company_ids
                         - []
                     attributes: {}
+                    references:
+                      _if_none:
+                        - _var: prefill.references
+                        - {}
+                    # Companies' company-selector cycle-check state — init
+                    # so its get_companies_for_selector request doesn't
+                    # ConfigWarning on hosts that don't otherwise declare it.
+                    cycle_check_self_id: null
+                    cycle_check_ids: []
               onCancel:
                 - id: reset_form
                   type: Reset
@@ -212,6 +221,10 @@ blocks:
                                       attributes:
                                         _if_none:
                                           - _state: attributes
+                                          - {}
+                                      references:
+                                        _if_none:
+                                          - _state: references
                                           - {}
                                   messages:
                                     success:
