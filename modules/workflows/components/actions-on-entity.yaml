@@ -1,0 +1,95 @@
+id: actions_on_entity
+type: Box
+events:
+  onMount:
+    - id: call_entity_workflows
+      type: CallApi
+      params:
+        endpointId:
+          _module.endpointId:
+            id: get-entity-workflows
+            module: workflows
+        payload:
+          entity_id:
+            _var: entity_id
+          entity_collection:
+            _var: entity_collection
+    - id: set_entity_workflows
+      type: SetState
+      params:
+        entity_workflows:
+          _actions: call_entity_workflows.response
+layout:
+  contentGutter: 16
+blocks:
+  - id: workflows_list
+    type: List
+    properties:
+      data:
+        _state:
+          key: entity_workflows.workflows
+          default: []
+    blocks:
+      - _ref:
+          path: workflow-header.yaml
+          vars:
+            workflow:
+              _array_indices: true
+            collapsed_default:
+              _eq:
+                - _array_indices: status.0.stage
+                - completed
+            is_overview_page: false
+            blocks:
+              - id: workflows_list.$.action_steps
+                type: ActionSteps
+                properties:
+                  direction: vertical
+                  actionGroupConfig:
+                    _js:
+                      params:
+                        - _array_indices: true
+                        - _module.var: workflows_config
+                      body: |
+                        const [workflow, workflowsConfig] = params;
+                        const wfConfig = (workflowsConfig || []).find(
+                          (w) => w.type === workflow.workflow_type
+                        ) || {};
+                        const groupsDef = wfConfig.action_groups || [];
+                        const config = {};
+                        groupsDef.forEach((g, i) => {
+                          config[g.id] = { order: i, title: g.title };
+                          if (g.icon) config[g.id].icon = g.icon;
+                        });
+                        return config;
+                  items:
+                    _js:
+                      params:
+                        - _array_indices: true
+                        - _module.var: app_name
+                      body: |
+                        const [workflow, appName] = params;
+                        return (workflow.groups || []).map((group) => {
+                          const groupActions = (workflow.actions || [])
+                            .filter((a) => a.action_group === group.id)
+                            .sort((a, b) => {
+                              const so =
+                                (a.sort_order ?? 0) - (b.sort_order ?? 0);
+                              if (so !== 0) return so;
+                              return (a._id || "").localeCompare(b._id || "");
+                            });
+                          const actions = groupActions.map((a) => {
+                            const stage =
+                              a.status && a.status[0] && a.status[0].stage;
+                            const cell =
+                              (a.status_map &&
+                                a.status_map[stage] &&
+                                a.status_map[stage][appName]) ||
+                              {};
+                            const out = { status: stage };
+                            if (cell.message) out.message = cell.message;
+                            if (cell.link) out.link = cell.link;
+                            return out;
+                          });
+                          return { action_group: group.id, actions };
+                        });

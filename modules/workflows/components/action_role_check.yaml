@@ -1,0 +1,29 @@
+id: set_roles_flag
+type: SetState
+params:
+  action_allowed:
+    _or:
+      - _eq:
+          - _array.length:
+              _var:
+                key: action_config.access.roles
+                default: []
+          - 0
+      - _if_none:
+          - _mql.expr:
+              on:
+                user_roles:
+                  _user:
+                    _module.var: user_schema.roles_path
+                action_roles:
+                  _var:
+                    key: action_config.access.roles
+                    default: []
+              expr:
+                $gt:
+                  - $size:
+                      $setIntersection:
+                        - $user_roles
+                        - $action_roles
+                  - 0
+          - false

@@ -1,8 +1,10 @@
 # This manifest declares the part-04 enum components (action_statuses,
 # workflow_lifecycle_stages), the part-15 global register
 # (action_form_configs), the part-17 shared pages (task-edit / task-view /
-# task-review / workflow-overview), and the part-19 operational APIs
-# (start/cancel/close-workflow + get-entity-workflows / get-workflow-overview).
+# task-review / workflow-overview), the part-19 operational APIs
+# (start/cancel/close-workflow + get-entity-workflows / get-workflow-overview),
+# and the part-18 entity-page components (actions-on-entity, workflow-header,
+# action_role_check).
 # The remaining module surface — WorkflowAPI connection, workflows-collection
 # / actions-collection connections, MONGODB_URI secret, menu exports,
 # user_schema + app_name + entities vars, form-fields component library
@@ -23,6 +25,12 @@ exports:
       description: Action status enum (8 canonical statuses) merged with app display overrides — for UI consumption
     - id: workflow_lifecycle_stages
       description: Workflow lifecycle stage enum (active, completed, cancelled) merged with app display overrides — for UI consumption
+    - id: actions-on-entity
+      description: Entity-page widget — surfaces all workflows attached to one entity. Host apps drop it onto entity pages; takes entity_id + entity_collection vars.
+    - id: workflow-header
+      description: Per-workflow strip with title, lifecycle badge, summary counts, milestone label, workflow-overview link button, and a collapsible slot for caller-passed blocks. Used internally by actions-on-entity and workflow-overview.
+    - id: action_role_check
+      description: Client-side role-gate action sequence. Composed into a page's onMount; writes the boolean to _state.action_allowed.
   api:
     - id: start-workflow
       description: Instantiate a workflow on an entity. Optional parent_action_id links as a child of an existing tracker action.
@@ -82,6 +90,15 @@ components:
       _build.object.assign:
         - _ref: enums/workflow_lifecycle_stages.yaml
         - _module.var: workflow_lifecycle_stages_display
+  - id: actions-on-entity
+    component:
+      _ref: components/actions-on-entity.yaml
+  - id: workflow-header
+    component:
+      _ref: components/workflow-header.yaml
+  - id: action_role_check
+    component:
+      _ref: components/action_role_check.yaml
 
 api:
   - _ref: api/start-workflow.yaml
