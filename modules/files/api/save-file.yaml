@@ -34,7 +34,7 @@ routine:
             _ref:
               module: events
               component: change_stamp
-          deleted: null
+          removed: null
 
   - id: log-event
     type: CallApi

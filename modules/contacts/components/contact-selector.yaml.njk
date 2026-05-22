@@ -62,12 +62,12 @@ validate:
             pass:
               _and:
                 - _ne:
-                    - _state: {{ id | replace(".", "_") }}
+                    - _state: {{ id }}
                     - null
                 - _gt:
                     - _array.length:
                         _if_none:
-                          - _state: {{ id | replace(".", "_") }}
+                          - _state: {{ id }}
                           - []
                     - 0
         else: []

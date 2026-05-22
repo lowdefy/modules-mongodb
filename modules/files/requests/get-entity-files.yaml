@@ -1,15 +1,23 @@
-id: get_entity_files
+id:
+  _build.string.concat:
+    - 'get_entity_files_'
+    - _var:
+        key: block_id
+        default: file_list
 type: MongoDBAggregation
 connectionId:
   _module.connectionId: files-collection
+payload:
+  entity_id:
+    _var: entity_id
 properties:
   pipeline:
     - $match:
         collection:
           _var: entity_type
         doc_id:
-          _var: entity_id
-        deleted:
+          _payload: entity_id
+        removed:
           $ne: true
     - _build.if:
         test:
