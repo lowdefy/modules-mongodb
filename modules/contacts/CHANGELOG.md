@@ -1,5 +1,13 @@
 # @lowdefy/modules-mongodb-contacts
 
+## 0.7.0
+
+### Patch Changes
+
+- [#67](https://github.com/lowdefy/modules-mongodb/pull/67) [`7d05a46`](https://github.com/lowdefy/modules-mongodb/commit/7d05a46109ae47e614baec5f4d5a1aef90f2efc1) Thanks [@Saiby100](https://github.com/Saiby100)! - Fix `contact-selector` validation reading from the wrong state path.
+
+  The `pass` rule was looking up state at `id | replace(".", "_")`, but state is bound at the dotted `id`. For nested IDs (e.g. `contact.user`), validation always saw `null` and failed/passed incorrectly. Uses the raw `id` for both `_state` lookups now.
+
 ## 0.6.0
 
 ### Minor Changes

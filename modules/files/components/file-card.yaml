@@ -54,3 +54,11 @@ _ref:
               _var:
                 key: block_id
                 default: file_manager
+            on_save:
+              _var:
+                key: on_save
+                default: []
+            on_delete:
+              _var:
+                key: on_delete
+                default: []

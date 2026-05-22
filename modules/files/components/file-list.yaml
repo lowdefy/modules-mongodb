@@ -4,13 +4,53 @@ id:
     default: file_list
 type: Box
 requests:
-  - _ref: requests/get-entity-files.yaml
-  - _ref: requests/download-policy.yaml
+  - _ref:
+      path: requests/get-entity-files.yaml
+      vars:
+        block_id:
+          _var:
+            key: block_id
+            default: file_list
+        entity_type:
+          _var: entity_type
+        entity_id:
+          _var: entity_id
+        file_category:
+          _var:
+            key: file_category
+            default: null
+  - _ref:
+      path: requests/download-policy.yaml
+      vars:
+        block_id:
+          _var:
+            key: block_id
+            default: file_list
 events:
   onMount:
     - id: fetch_files
       type: Request
-      params: get_entity_files
+      params:
+        _build.string.concat:
+          - "get_entity_files_"
+          - _var:
+              key: block_id
+              default: file_list
+    - id: set_files_state
+      type: SetState
+      params:
+        _build.object.fromEntries:
+          - - - _build.string.concat:
+                  - _var:
+                      key: block_id
+                      default: file_list
+                  - _items
+              - _request:
+                  _build.string.concat:
+                    - "get_entity_files_"
+                    - _var:
+                        key: block_id
+                        default: file_list
 blocks:
   - id:
       _build.string.concat:
@@ -22,7 +62,12 @@ blocks:
     visible:
       _eq:
         - _array.length:
-            _request: get_entity_files
+            _request:
+              _build.string.concat:
+                - "get_entity_files_"
+                - _var:
+                    key: block_id
+                    default: file_list
         - 0
     blocks:
       - id:
@@ -48,11 +93,21 @@ blocks:
     visible:
       _gt:
         - _array.length:
-            _request: get_entity_files
+            _request:
+              _build.string.concat:
+                - "get_entity_files_"
+                - _var:
+                    key: block_id
+                    default: file_list
         - 0
     properties:
       data:
-        _request: get_entity_files
+        _request:
+          _build.string.concat:
+            - "get_entity_files_"
+            - _var:
+                key: block_id
+                default: file_list
     blocks:
       - id:
           _build.string.concat:
@@ -74,9 +129,19 @@ blocks:
                 - _items.$.download
             type: S3Download
             properties:
-              s3GetPolicyRequestId: download_policy
+              s3GetPolicyRequestId:
+                _build.string.concat:
+                  - "download_policy_"
+                  - _var:
+                      key: block_id
+                      default: file_list
               fileList:
-                - _array_indices: file
+                - _state:
+                    _build.string.concat:
+                      - _var:
+                          key: block_id
+                          default: file_list
+                      - _items.$.file
           - id:
               _build.string.concat:
                 - _var:
@@ -91,6 +156,11 @@ blocks:
               content:
                 _dayjs.format:
                   on:
-                    _array_indices: created.timestamp
+                    _state:
+                      _build.string.concat:
+                        - _var:
+                            key: block_id
+                            default: file_list
+                        - _items.$.created.timestamp
                   params:
                     format: YYYY-MM-DD
