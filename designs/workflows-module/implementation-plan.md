@@ -79,7 +79,8 @@ All four need the resolver outputs from Waves 2/4 and (for 17/18) the operationa
 
 | #   | Part                                                  | Size | Repo                                | Status |
 | --- | ----------------------------------------------------- | ---- | ----------------------------------- | ------ |
-| 20  | [module-manifest](parts/20-module-manifest/design.md) | S    | `modules/workflows/` + `apps/demo/` |        |
+| 20a | [module-manifest-static](parts/20a-module-manifest-static/design.md) | S    | `modules/workflows/` + `apps/demo/` |        |
+| 20b | [module-manifest-dynamic](parts/20b-module-manifest-dynamic/design.md) | S    | `modules/workflows/` + `apps/demo/` |        |
 
 ## Follow-ons (added after the original waves)
 

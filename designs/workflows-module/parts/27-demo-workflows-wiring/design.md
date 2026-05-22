@@ -44,7 +44,8 @@ The verification record lands in `designs/workflows-module/parts/27-demo-workflo
 
 - **Part 18** — `action_role_check.yaml`, `workflow-header.yaml`. Until part 18 ships, the four shared pages won't build (path-stubs fail the Lowdefy build).
 - **Part 24** — `universal-fields/universal-fields.yaml`. Same posture; build fails until part 24 ships.
-- **Part 20** — declares `vars.entities`, `vars.app_name`, `vars.user_schema`, `vars.workflows_config` in the manifest with proper `required: true` flags. Until part 20 ships, the demo app can still supply these vars, but they won't be schema-validated.
+- **Part 20a** — declares `vars.entities`, `vars.app_name`, `vars.user_schema`, `vars.workflows_config` in the manifest with proper `required: true` flags, and ships the tracker-only demo wiring (leads collection + lead pages + tracker-only onboarding workflow). Until 20a ships, the demo app can still supply these vars, but they won't be schema-validated.
+- **Part 20b** — adds the resolver-channel entries (`makeActionPages`, `makeWorkflowApis`) plus the form/task action YAML and pre/post hook APIs that the form-action and task-action verification bullets need. Most of Part 27's verification list moves into Part 20b's manual walk-through; this part may retire once 20a + 20b land.
 - **Part 4** — validates `vars.entities` completeness against `workflows_config.entity_collection` values. Until shipped, the demo can wire mismatched values without a build error (runtime failure surfaces only when the workflow-overview page tries to construct a back-link).
 - **Part 17 step 8 onMount gap** — shared task pages do not currently wire author-supplied `pages.{verb}.events.onMount` (the mechanism for static pages to read per-action `page_config` isn't defined). Verification bullets that depend on author-supplied `onSubmit` / `onApprove` / `onRequestChanges` are blocked on resolving this gap. Tracked here for visibility; resolution may slot into part 4, part 13, or a follow-up design.
 
@@ -57,7 +58,7 @@ The verification record lands in `designs/workflows-module/parts/27-demo-workflo
 
 ## Depends on
 
-Part 17 (shared pages — landed), part 4 (validator), part 18 (action_role_check + workflow-header), part 20 (manifest vars), part 24 (universal-fields component). Should not start until at least parts 18, 20, 24 are landed — otherwise live verification is impossible.
+Part 17 (shared pages — landed), part 4 (validator), part 18 (action_role_check + workflow-header), parts 20a + 20b (manifest vars + static/dynamic exports + demo wiring — see split rationale in [20a](../20a-module-manifest-static/design.md) and [20b](../20b-module-manifest-dynamic/design.md)), part 24 (universal-fields component). Should not start until at least parts 18, 20a, 20b, 24 are landed — otherwise live verification is impossible. With the 20a/20b split, the demo wiring this part originally owned now lives in 20a (tracker-only) and 20b (form/task); Part 27 narrows to the verification record only.
 
 ## Verification
 

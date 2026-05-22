@@ -17,7 +17,7 @@ The original 20 parts group into 5 layers by where they live in the runtime stac
 | Engine handlers   | 5–11  | Server-side `WorkflowAPI` connection handlers and their internal pieces |
 | Resolvers         | 12–15 | Build-time emitters that turn workflow YAML into Lowdefy Apis and pages |
 | UI delivery       | 16–18 | Page templates, shared pages, and entity-page components                |
-| Surface           | 19–20 | Module manifest + four operational Apis + demo wiring (a fifth `close-workflow` Api joins from [part 23](#follow-on-parts)) |
+| Surface           | 19, 20a, 20b | Module manifest + four operational Apis + demo wiring (a fifth `close-workflow` Api joins from [part 23](#follow-on-parts)). Part 20 split into [20a (static)](parts/20a-module-manifest-static/design.md) and [20b (dynamic)](parts/20b-module-manifest-dynamic/design.md) to isolate the manifest entries that depend on upstream parts 01 + 02 |
 
 ## Parts
 
@@ -44,7 +44,8 @@ Each part has its own folder under [parts/](parts/) with a `design.md` containin
 | 17  | [shared-pages](parts/_completed/17-shared-pages/design.md)              | [ui](../workflows-module-concept/ui/spec.md)                                                                                                      | M    |
 | 18  | [entity-components](parts/18-entity-components/design.md)               | [ui](../workflows-module-concept/ui/spec.md)                                                                                                      | M    |
 | 19  | [operational-apis](parts/_completed/19-operational-apis/design.md)       | [module-surface](../workflows-module-concept/module-surface/spec.md)                                                                              | M    |
-| 20  | [module-manifest](parts/20-module-manifest/design.md)                   | [module-surface](../workflows-module-concept/module-surface/spec.md)                                                                              | S    |
+| 20a | [module-manifest-static](parts/20a-module-manifest-static/design.md)    | [module-surface](../workflows-module-concept/module-surface/spec.md)                                                                              | S    |
+| 20b | [module-manifest-dynamic](parts/20b-module-manifest-dynamic/design.md)  | [module-surface](../workflows-module-concept/module-surface/spec.md)                                                                              | S    |
 
 ### Follow-on parts
 
@@ -84,7 +85,8 @@ S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-spli
 | 17  | shared-pages             | 13, 15, 19 |
 | 18  | entity-components        | 4, 19      |
 | 19  | operational-apis         | 5, 7       |
-| 20  | module-manifest          | all        |
+| 20a | module-manifest-static   | 3, 4, 5, 7, 10, 17, 18, 19, 21, 23, 25 |
+| 20b | module-manifest-dynamic  | 20a, 1, 2, 6, 8, 9, 11, 12, 13, 14, 15, 16, 24 |
 | 21  | entity-type-to-collection | —         |
 | 22  | workflows-e2e-suite      | 20         |
 | 23  | close-workflow-handler   | 3, 4, 5    |
@@ -101,9 +103,10 @@ Hard gates:
 - **Parts 12–15** can stream alongside 6–11 (the resolvers don't depend on the runtime, only on the YAML config from part 4).
 - **Parts 16–18** (UI) can stream alongside 12–15 (templates only need the API contracts, not the resolver emission).
 - **Part 19** depends on engine handlers (5, 6, 7, 10).
-- **Part 20** is the closeout — manifest + demo wiring after everything else.
+- **Part 20a** (manifest static surface) is the closeout for everything that doesn't depend on the upstream Lowdefy primitives — connections, four shared pages, six operational APIs, three entity components, two enums, vars, dependencies, plugin pin, secrets, plus a tracker-only worked-example demo. Lands before parts 01 / 02 / 12 / 13.
+- **Part 20b** (manifest dynamic surface) adds the resolver-channel entries (`makeActionPages`, `makeWorkflowApis`) and grows the demo into the full four-action worked example. Depends on parts 01, 02, 12, 13 and the form / hook / side-effect / group-fan-out engine paths.
 - **Part 21** is a schema simplification with no hard dependency — it slots wherever its consumers (parts 5, 12, 18, 19) are ready to absorb the `entity_collection`-only contract. Already shipped against parts 3, 4, and 14's code.
-- **Part 22** is the end-to-end verification layer. It depends on part 20 (demo wiring + worked-example YAML); each engine / resolver / UI part contributes its spec file as it lands.
+- **Part 22** is the end-to-end verification layer. It depends on parts 20a + 20b (demo wiring + worked-example YAML); each engine / resolver / UI part contributes its spec file as it lands. Part 20a contributes the static-surface spec slices; part 20b contributes the form / hook / side-effect / group-fan-out slices.
 - **Part 23** introduces the `CloseWorkflow` handler + `close-workflow` operational API. Depends on parts 3, 4, 5; light dependency on shipped part 7 (reuses its `recomputeGroups.js` and `pushWorkflowStatus.js` helpers as-is, no contract change). Pairs with parts 19 and 20 (adds the fifth operational API + manifest export).
 - **Part 24** is the universal-fields component (`assignees`, `due_date`, `description`). UI delivery wave; depends on parts 4, 16, 17.
 - **Part 25** ships the group-overview page + `get-action-group-overview` operational API. UI delivery + surface; depends on parts 7 (persisted `groups[].summary`), 15 (`global.action_form_configs`), 16 (shared `requests/get_entity.yaml`), 19 (reusable `access_filter` aggregation stage).
@@ -140,4 +143,4 @@ Parts 21, 22, 23, 24, and 25 were not in the original cut. They were added once 
 
 Each part is ready for `/r:design-task workflows-module/parts/{n-name}` to produce ordered implementation task prompts. Suggested shipping order matches the dependency graph above.
 
-The worked-example onboarding workflow in [workflows-module-concept/design.md](../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) remains the v1 integration smoke target — after part 20 lands the demo app exercises every part.
+The worked-example onboarding workflow in [workflows-module-concept/design.md](../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) remains the v1 integration smoke target — after parts 20a + 20b both land the demo app exercises every part.

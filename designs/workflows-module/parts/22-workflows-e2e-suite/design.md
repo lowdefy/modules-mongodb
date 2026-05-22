@@ -85,9 +85,9 @@ Spec files prefer descriptive `test()` titles matching the concept-doc language 
 
 ## Depends on
 
-[Part 20](../20-module-manifest/design.md) — demo wiring, the worked-example workflow YAML, and the module manifest's connection / page / api exports. Every spec in this part assumes part 20's `apps/demo/modules.yaml` entry and `apps/demo/workflow_config/onboarding/` are in place.
+[Part 20a](../20a-module-manifest-static/design.md) — manifest static exports + tracker-only demo wiring. Required for the static-surface spec slices (`start-cancel.spec.js`, `tracker-subscription.spec.js`, `operational-apis.spec.js`, the `shared-pages.spec.js` read-only paths, `entity-components.spec.js`, `group-overview` spec). [Part 20b](../20b-module-manifest-dynamic/design.md) — manifest resolver-channel entries + form/task worked-example demo. Required for the form/task spec slices (`submit-action.spec.js`, `hooks.spec.js`, `side-effects.spec.js`, `group-on-complete.spec.js`, `resolver-pages.spec.js`, `resolver-apis.spec.js`, `shared-pages.spec.js` task-edit save paths).
 
-Soft dependencies on every earlier part: a spec for part N can only land once part N has shipped. Implementation order within this part follows the engine waves — `start-cancel.spec.js` first (depends only on part 5 + 19 + 20), then `submit-action.spec.js`, then the side-effect / hook / tracker / fan-out specs, then resolvers and UI.
+Soft dependencies on every earlier part: a spec for part N can only land once part N has shipped. Implementation order within this part follows the engine waves — `start-cancel.spec.js` first (depends only on parts 5 + 19 + 20a), then `submit-action.spec.js` (depends on part 20b), then the side-effect / hook / tracker / fan-out specs, then resolvers and UI.
 
 ## Verification
 
