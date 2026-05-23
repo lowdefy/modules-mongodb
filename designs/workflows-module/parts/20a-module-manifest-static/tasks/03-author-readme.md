@@ -66,7 +66,7 @@ Annotate each var:
 Five subsections per the template — list each ID with a one-line description (drawn from the manifest's `exports.*.description` fields):
 
 - **Pages** — `task-edit`, `task-view`, `task-review`, `workflow-overview`, `group-overview`. Followed by a one-line callout: "Per-action pages (`-edit` / `-view` / `-review` / `-error`) and per-action submit endpoints (`update-action-{action_type}`) ship in part 20b."
-- **Components** — `action_statuses`, `workflow_lifecycle_stages`, `actions-on-entity`, `workflow-header`, `action_role_check`.
+- **Components** — `action_statuses`, `workflow_lifecycle_stages`, `actions-on-entity`, `workflow-header`, `action_role_check`, `action_form_configs`. (After task 9 runs, `action_form_configs` is a component, not a global register entry.)
 - **API Endpoints** — the six operational APIs.
 - **Connections** — `workflows-collection`, `actions-collection`, `workflow-api`.
 - **Menus** — "None in v1. Menu exports land alongside the per-app navigation work."

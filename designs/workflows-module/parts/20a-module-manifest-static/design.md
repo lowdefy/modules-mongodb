@@ -14,7 +14,7 @@ What's missing is captured by the header comment at the top of the existing mani
 
 ## Goal
 
-Close the static-surface gap against `modules/workflows/module.lowdefy.yaml` — add the three connection refs, the three missing vars (`app_name`, `user_schema`, `entities`), `dependencies:`, `secrets:`, and a top-level `connections:` key. Ship `modules/workflows/README.md`. Wire a tracker-only onboarding workflow into `apps/demo/` so the closed surface runs end-to-end against a real entity without requiring resolver-emitted pages or per-action submit endpoints.
+Close the static-surface gap against `modules/workflows/module.lowdefy.yaml` — add the three connection refs, the three missing vars (`app_name`, `user_schema`, `entities`), `dependencies:`, `secrets:`, and a top-level `connections:` key. Convert the module's last remaining `global:` export (`action_form_configs`) and every consumer-side `_global:` read site to the `components:` / `_ref: { module, component }` idiom, and propagate that to the concept spec. Ship `modules/workflows/README.md`. Wire a tracker-only onboarding workflow into `apps/demo/` so the closed surface runs end-to-end against a real entity without requiring resolver-emitted pages or per-action submit endpoints.
 
 ## Proposed change
 
@@ -30,6 +30,8 @@ Close the static-surface gap against `modules/workflows/module.lowdefy.yaml` —
 4. **Demo module wiring.** Add the `workflows` module entry to `apps/demo/modules.yaml` with `vars.workflows_config`, `vars.entities`, `vars.app_name`, and `vars.user_schema` populated for the demo.
 5. **Demo leads entity.** Add a `leads` connection inline in `apps/demo/lowdefy.yaml`'s `connections:` block (matching the existing `demo-contacts` inline entry at line 99 of the file) and four lead pages under `apps/demo/pages/leads/` (`lead-view.yaml`, `lead-edit.yaml`, `lead-new.yaml`, `lead-list.yaml`). This is the demo's actual app-specific pattern, not the reusable-module pattern under `modules/`.
 6. **Demo workflow config.** Author a tracker-only worked-example onboarding workflow at `apps/demo/workflow_config/onboarding/` — three actions, exercising `kind: tracker` and `blocked_by` but no `kind: form` or `kind: task`.
+7. **Convert global → components in the manifest.** Move `action_form_configs` from the `global:` block to `components:`; add it to `exports.components`; delete the `global:` block. Update the concept spec ([`module-surface/spec.md`](../../../workflows-module-concept/module-surface/spec.md)) so the enums sit under `components:` there too.
+8. **Convert global → components in the consumer pages.** Rewrite every `_global: action_statuses` / `_global: workflow_lifecycle_stages` / `_global: action_form_configs` read site across the six shipped files (`pages/task-edit.yaml`, `pages/task-view.yaml`, `pages/task-review.yaml`, `pages/workflow-overview.yaml`, `pages/group-overview.yaml`, `components/workflow-header.yaml`) to use the build-time component ref `_ref: { module: workflows, component: <id> }`. Per repo convention ("[Review changes touching implemented parts](memory:feedback_review_implemented_parts.md)"), this is a small change folded into 20a rather than spun out; the touched files are owned by parts 17/18/25.
 
 ## Manifest scope — static surface only
 
@@ -66,9 +68,23 @@ Per the repo's docs convention (CLAUDE.md "Documentation"), every var descriptio
 
 - `@lowdefy/modules-mongodb-plugins` at the version that ships `WorkflowAPI` (per [part 3](../03-engine-plugin-shell/design.md)). The pin matches `plugins/modules-mongodb-plugins/package.json` — currently `^0.6.0`, and the existing `modules/workflows/module.lowdefy.yaml` already carries that pin.
 
-### Existing static exports (unchanged)
+### Existing static exports (unchanged in shape, repositioned)
 
-The pages, APIs, components, and enums already declared in `modules/workflows/module.lowdefy.yaml` stay as-is. See the existing manifest for the canonical list — the on-disk header comment lines 1–13 trace each entry back to the shipping part (17, 19, 23, 25 for pages/APIs; 18 for components; 4 for enums). The resolver-channel entries (`makeActionPages`, `makeWorkflowApis`) land in [part 20b](../20b-module-manifest-dynamic/design.md).
+The pages, APIs, and components already declared in `modules/workflows/module.lowdefy.yaml` stay as-is. The enums (`action_statuses`, `workflow_lifecycle_stages`) are already declared as components on disk and stay there. See the existing manifest for the canonical list — the on-disk header comment lines 1–13 trace each entry back to the shipping part (17, 19, 23, 25 for pages/APIs; 18 for components; 4 for enums). The resolver-channel entries (`makeActionPages`, `makeWorkflowApis`) land in [part 20b](../20b-module-manifest-dynamic/design.md).
+
+### Convert `global:` exports to `components:`
+
+**Principle.** Module exports go through `exports.components` (addressable via `_ref: { module, component }`), not through `exports.global` and the `global:` register. The global register is app-level state shared across pages — using it as a module export surface leaks module internals into a flat namespace and breaks the scoped, build-tracked addressability that `_ref: { module, component }` provides.
+
+The on-disk manifest already gets this right for the two enums (`action_statuses` / `workflow_lifecycle_stages` are declared under `components:`, lines 88–97 of `modules/workflows/module.lowdefy.yaml`). Two pieces of drift remain — both fixed in this part:
+
+1. **`action_form_configs` is currently under `global:`** (`module.lowdefy.yaml` lines 123–130). It's a resolver-emitted register (part 15's `makeActionFormConfigs.js`) consumed by `workflow-overview` and `group-overview` as `_global: action_form_configs`. Move it to `components:` and add it to `exports.components`. Delete the `global:` block entirely (it's the only entry there).
+
+2. **The shipped pages still consume the enums and `action_form_configs` via `_global:`** instead of via component refs. The enums' on-disk exports.components declaration is unreachable from consumers using `_global:` syntax. Rewrite each consumer site to use the build-time component ref `_ref: { module: workflows, component: <id> }`. Six files touched: `pages/task-edit.yaml`, `pages/task-view.yaml`, `pages/task-review.yaml`, `pages/workflow-overview.yaml`, `pages/group-overview.yaml`, `components/workflow-header.yaml`.
+
+3. **Concept-spec drift.** The concept spec at [`module-surface/spec.md`](../../../workflows-module-concept/module-surface/spec.md) lines 113–117 still describes the enums under `global:`. Move them to `components:` in the spec so the canonical exports list matches the principle.
+
+The `_global:` → `_ref: { module, component }` swap is a build-time read of the same enum data. Nothing in the existing consumer sites mutates the enums at runtime; every read is feeding static data into `_js` `params` or templated chrome (status badges, lifecycle labels, comment-banner copy). The swap is semantically equivalent for read-only data, and the build-time form has the benefit of being statically resolvable — broken refs fail the build instead of silently returning `undefined` at runtime.
 
 ### `secrets`
 
