@@ -116,7 +116,7 @@ blocks:
             _js:
               args:
                 stages:
-                  _ref: enums/workflow_lifecycle_stages
+                  _ref: components/workflow_lifecycle_stages.yaml
                 stage:
                   _get:
                     from:
@@ -129,7 +129,7 @@ blocks:
             _js:
               args:
                 stages:
-                  _ref: enums/workflow_lifecycle_stages.yaml
+                  _ref: components/workflow_lifecycle_stages.yaml
                 stage:
                   _get:
                     from:
@@ -164,7 +164,7 @@ blocks:
               - _get:
                   from:
                     _var: workflow
-                  key: summary.not_required
+                  key: summary.total
                   default: 0
               - ' done'
       - id:

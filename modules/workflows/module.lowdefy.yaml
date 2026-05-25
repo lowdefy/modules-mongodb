@@ -129,14 +129,10 @@ vars:
 components:
   - id: action_statuses
     component:
-      _build.object.assign:
-        - _ref: enums/action_statuses.yaml
-        - _module.var: action_statuses_display
+      _ref: components/action_statuses.yaml
   - id: workflow_lifecycle_stages
     component:
-      _build.object.assign:
-        - _ref: enums/workflow_lifecycle_stages.yaml
-        - _module.var: workflow_lifecycle_stages_display
+      _ref: components/workflow_lifecycle_stages.yaml
   - id: actions-on-entity
     component:
       _ref: components/actions-on-entity.yaml
@@ -168,8 +164,8 @@ pages:
   - _ref: pages/group-overview.yaml
 
 plugins:
-  - name: "@lowdefy/modules-mongodb-plugins"
-    version: "^0.6.0"
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: '^0.6.0'
 
 secrets:
   - name: MONGODB_URI

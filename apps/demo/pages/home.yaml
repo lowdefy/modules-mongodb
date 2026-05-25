@@ -82,6 +82,22 @@ _ref:
                   type: Link
                   params:
                     pageId: contacts/all
+          - id: workflows_link
+            type: Button
+            layout:
+              span: 8
+              sm:
+                span: 24
+            properties:
+              title: Workflows Demo
+              icon: LuWorkflow
+              block: true
+            events:
+              onClick:
+                - id: link
+                  type: Link
+                  params:
+                    pageId: lead-list
           - id: notifications_link
             type: Button
             layout:

@@ -1,0 +1,3 @@
+_build.object.assign:
+  - _ref: enums/workflow_lifecycle_stages.yaml
+  - _module.var: workflow_lifecycle_stages_display
