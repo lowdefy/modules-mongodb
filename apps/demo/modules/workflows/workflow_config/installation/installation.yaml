@@ -1,0 +1,13 @@
+type: installation
+entity_collection: leads-collection
+display_order: 2
+
+starting_actions:
+  - type: install-step
+    status: action-required
+
+action_groups:
+  - id: g1
+
+actions:
+  - _ref: modules/workflows/workflow_config/installation/install-step.yaml

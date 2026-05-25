@@ -27,7 +27,7 @@ routine:
                     $eq:
                       - $workflow_id
                       - $$workflowId
-              - _ref: stages/access_filter.yaml
+              - _ref: api/stages/access_filter.yaml
             as: actions
 
   - :return:

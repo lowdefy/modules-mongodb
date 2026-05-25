@@ -61,7 +61,6 @@ Useful for showing a checklist-style progression where each stage has multiple s
 | `progressDot` | boolean | `false` | Render progress dots instead of icons. |
 | `items` | array | `[]` | Action groups. Each item: `{ action_group, actions[] }`. |
 | `actionGroupConfig` | object | — | Map of `action_group` key → `{ order, title, icon, link? }`. Required — items without a matching entry won't render correctly. `link` (optional) wraps the group title in a clickable Link. |
-| `linkStyle` | object | — | Style merged into each action's `Link` via `methods.makeCssClass`. Prefer `classNames.link` / `styles.link` for theming. |
 | `theme` | object | — | Antd `Steps` design-token overrides — forwarded to `ConfigProvider` as `theme.components.Steps` for this block only. See the [Steps design tokens](https://ant.design/components/steps#design-token). |
 
 ### Item shape
@@ -126,7 +125,19 @@ The block doesn't fire its own events. Action rows use the bundled `Link` compon
 | `link` | Each action's `Link` wrapper. |
 | `groupLink` | Each group title's `Link` wrapper (when `actionGroupConfig[group].link` is set). |
 
-The block also loads `style.less` from this directory for its base `.ant-steps-item-title` override.
+## Built-in classes
+
+The block ships these global CSS classes via `style.less` and applies them automatically:
+
+| Class | Where | What it does |
+|---|---|---|
+| `.action-steps-badge` | Every action `Badge` | Row layout (`margin-left: 5px`, `width: 100%`, `padding-right: 5px`). |
+| `.action-steps-link-secondary` | Action `Link` when status is `blocked` or `not-required` | Secondary text color via `var(--ant-color-text-tertiary)`. |
+| `.action-steps-link-disabled` | Action `Link` when `action.link.disabled` or `action.link` is missing | `cursor: default`. |
+
+Override by raising specificity in your app's CSS or by passing `classNames.badge` / `classNames.link` to ensure your class wins.
+
+The block also overrides `.ant-steps-item-title { width: 100%; }` so each step's title fills the row.
 
 ## Notes
 

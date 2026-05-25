@@ -1,0 +1,22 @@
+id: workflow-api
+type: WorkflowAPI
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  workflowsCollection: workflows
+  actionsCollection: actions
+  workflowsConfig:
+    _module.var: workflows_config
+  app_name:
+    _module.var: app_name
+  actionsEnum:
+    _ref: enums/action_statuses.yaml
+  changeStamp:
+    _ref:
+      module: events
+      component: change_stamp
+  changeLog:
+    collection: log-changes
+    meta:
+      user:
+        _user: true

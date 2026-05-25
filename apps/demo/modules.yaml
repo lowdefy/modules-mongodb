@@ -48,3 +48,8 @@
   source: "file:../../modules/user-admin"
   vars:
     _ref: modules/user-admin/vars.yaml
+
+- id: workflows
+  source: "file:../../modules/workflows"
+  vars:
+    _ref: modules/workflows/vars.yaml

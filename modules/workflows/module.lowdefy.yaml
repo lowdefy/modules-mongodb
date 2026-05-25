@@ -1,24 +1,32 @@
 # This manifest declares the part-04 enum components (action_statuses,
-# workflow_lifecycle_stages), the part-15 global register
-# (action_form_configs), the part-17 shared pages (task-edit / task-view /
-# task-review / workflow-overview), the part-19 operational APIs
-# (start/cancel/close-workflow + get-entity-workflows / get-workflow-overview),
-# the part-18 entity-page components (actions-on-entity, workflow-header,
-# action_role_check), and the part-25 group-overview surface (group-overview
-# page + get-action-group-overview Api).
-# The remaining module surface — WorkflowAPI connection, workflows-collection
-# / actions-collection connections, MONGODB_URI secret, menu exports,
-# user_schema + app_name + entities vars, form-fields component library
-# (part 14) — lands in part 20.
+# workflow_lifecycle_stages), the part-15 action_form_configs component,
+# the part-17 shared pages (task-edit / task-view / task-review /
+# workflow-overview), the part-19 operational APIs (start/cancel/close-workflow
+# + get-entity-workflows / get-workflow-overview), the part-18 entity-page
+# components (actions-on-entity, workflow-header, action_role_check), the
+# part-25 group-overview surface (group-overview page + get-action-group-overview
+# Api), and the part-20a static surface (workflows-collection / actions-collection
+# / workflow-api connections, MONGODB_URI secret, dependencies on layout + events,
+# user_schema + app_name + entities vars).
 #
-# The connection (part 20) will _ref the canonical enum file directly
-# (e.g. `actionsEnum: { _ref: enums/action_statuses.yaml }`), so the
-# engine always reads the shipped enum with its canonical priorities.
-# The merged enum components below are UI-only consumers.
+# The remaining module surface — resolver-channel page + API exports
+# (makeActionPages, makeWorkflowApis), form-fields component library
+# (part 14), notifications dependency, menu exports — lands in part 20b.
+#
+# The workflow-api connection `_ref`s the canonical enum file directly
+# (`actionsEnum: { _ref: ../enums/action_statuses.yaml }`), so the engine
+# always reads the shipped enum with its canonical priorities. The merged
+# enum components below are UI-only consumers.
 
 name: Workflows
 version: 0.6.0
 description: Workflow engine — action lifecycle, status transitions, hooks, trackers
+
+dependencies:
+  - id: layout
+    description: Page layout wrapper consumed by every shared page.
+  - id: events
+    description: Provides the change_stamp component referenced by the workflow-api connection.
 
 exports:
   components:
@@ -56,6 +64,13 @@ exports:
       description: Workflow detail page — header + action cards with form_data DataView. Addressed by ?workflow_id=<id>.
     - id: group-overview
       description: Group detail page — header + progress bar + group-status badge + action cards with form_data DataView. Addressed by ?workflow_id=<id>&group_id=<id>.
+  connections:
+    - id: workflows-collection
+      description: MongoDB collection connection for direct read access to the workflows collection.
+    - id: actions-collection
+      description: MongoDB collection connection for direct read access to the actions collection.
+    - id: workflow-api
+      description: Server-side WorkflowAPI connection — owns engine-managed write paths (transitions, tracker subscription, summary writeback).
 
 vars:
   workflows_config:
@@ -67,6 +82,33 @@ vars:
       e.g. `vars: { _ref: workflow_config/workflows.yaml }`. Each entry is a workflow
       object with `type`, `entity_collection`, `starting_actions`, `action_groups`,
       and `actions` (see workflows-module-concept/action-authoring/spec.md).
+  app_name:
+    type: string
+    required: true
+    description: >
+      The host app's deployment name. Filters action access via `access.{app_name}`
+      per action, and is consumed by the engine to key the default log event's
+      display block (matching the events module's display_key projection).
+  user_schema:
+    type: object
+    default:
+      roles_path: roles
+    description: >
+      Where the engine reads the caller's roles from on the session/user object.
+      Defaults to `{ roles_path: roles }`.
+  entities:
+    type: object
+    required: true
+    description: >
+      Map keyed by workflow `entity_collection` → `{ page_id, id_query_key, title }`.
+      The module deep-links back into host-app entity pages (workflow-overview back-link,
+      workflow-header entity-kind chrome) using these entries.
+      - `page_id` — host-app page id rendering the entity.
+      - `id_query_key` — URL query string key the entity page expects for its primary id (commonly `_id`).
+      - `title` — singular human-readable entity-kind label (e.g. "Lead", "Ticket").
+      Per-key shape is not statically validated by Lowdefy; part 4's `makeWorkflowsConfig`
+      validator confirms every `entity_collection` referenced in `workflows_config`
+      has a matching key here.
   action_statuses_display:
     type: object
     default: {}
@@ -105,6 +147,11 @@ components:
     component:
       _ref: components/action_role_check.yaml
 
+connections:
+  - _ref: connections/workflows-collection.yaml
+  - _ref: connections/actions-collection.yaml
+  - _ref: connections/workflow-api.yaml
+
 api:
   - _ref: api/start-workflow.yaml
   - _ref: api/cancel-workflow.yaml
@@ -120,14 +167,10 @@ pages:
   - _ref: pages/workflow-overview.yaml
   - _ref: pages/group-overview.yaml
 
-global:
-  action_form_configs:
-    _ref:
-      resolver: resolvers/makeActionFormConfigs.js
-      vars:
-        workflows:
-          _module.var: workflows_config
-
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.6.0"
+
+secrets:
+  - name: MONGODB_URI
+    description: MongoDB connection URI

@@ -25,7 +25,7 @@ routine:
                       - $eq:
                           - $action_group
                           - _payload: group_id
-              - _ref: stages/access_filter.yaml
+              - _ref: api/stages/access_filter.yaml
               - $sort:
                   sort_order: 1
                   _id: 1
@@ -78,15 +78,17 @@ routine:
                   - 0
           then:
             _js:
-              params:
-                - _get:
+              args:
+                groups:
+                  _get:
                     from:
                       _state: workflow_doc
                     key: groups
                     default: []
-                - _payload: group_id
-              body: |
-                const [groups, groupId] = params;
+                groupId:
+                  _payload: group_id
+              fn: |
+                const { groups, groupId } = args;
                 const entry = (groups || []).find((g) => g.id === groupId);
                 if (!entry) return null;
                 return {

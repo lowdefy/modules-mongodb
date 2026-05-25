@@ -1,5 +1,28 @@
-/* antd v6 uses CSS-in-JS — no less imports needed */
+/* antd v6 uses CSS-in-JS — no less imports needed. We add a handful of
+   global selectors here so that ActionSteps' visual contract is shared
+   across instances without depending on inline styles in JS (which break
+   theming and CSS-variable overrides). */
 
 .ant-steps-item-title {
   width: 100%;
+}
+
+/* Per-action badge layout — sits inside the step description, fills the row,
+   leaves room either side for the badge dot and any trailing whitespace. */
+:global(.action-steps-badge) {
+  margin-left: 5px;
+  width: 100%;
+  padding-right: 5px;
+}
+
+/* Secondary-text variant for action links whose status is `blocked` or
+   `not-required` — picks up the secondary text token so the link recedes. */
+:global(.action-steps-link-secondary) {
+  color: var(--ant-color-text-tertiary);
+}
+
+/* Disabled-link variant — keep the cursor as default rather than pointer
+   so the row reads as non-interactive. */
+:global(.action-steps-link-disabled) {
+  cursor: default;
 }

@@ -1,7 +1,7 @@
 id: title-block
 type: Box
 layout:
-  align: middle
+  selfAlign: middle
 blocks:
   _build.array.concat:
     # Back button (optional — placed before the title)

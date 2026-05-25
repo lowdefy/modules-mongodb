@@ -28,21 +28,22 @@ _ref:
             back: true
         # Single CallApi to get-workflow-overview.
         - id: call_get_overview
-          type: CallApi
+          type: CallAPI
           params:
             endpointId:
-              _module.endpointId:
-                id: get-workflow-overview
-                module: workflows
+              _module.endpointId: get-workflow-overview
             payload:
               workflow_id:
                 _url_query: workflow_id
-        # Stash the response in _state.overview.
+        # Stash the response in _state.overview, plus put the actions array
+        # under its own top-level state key so the List block can read from it.
         - id: set_overview_state
           type: SetState
           params:
             overview:
-              _actions: call_get_overview.response
+              _actions: call_get_overview.response.response
+            actions_list:
+              _actions: call_get_overview.response.response.actions
         # Null-redirect guard — Api returns workflow: null when no actions
         # pass the access filter (or the workflow doc is missing).
         - id: redirect_no_workflow_doc
@@ -55,8 +56,10 @@ _ref:
             back: true
     blocks:
       - _ref:
-          path: ../components/workflow-header.yaml
+          path: components/workflow-header.yaml
           vars:
+            id: workflow_header
+            is_overview_page: true
             workflow:
               _state: overview.workflow
       - id: entity_back_button
@@ -101,9 +104,6 @@ _ref:
                         - _state: overview.workflow.entity_id
       - id: actions_list
         type: List
-        properties:
-          data:
-            _state: overview.actions
         blocks:
           - _ref:
               module: layout
@@ -128,17 +128,25 @@ _ref:
                             type: Tag
                             properties:
                               color:
-                                _global:
-                                  _string.concat:
-                                    - action_statuses.
-                                    - _array_indices: status.0.stage
-                                    - .color
+                                _js:
+                                  args:
+                                    statuses:
+                                      _ref: enums/action_statuses.yaml
+                                    stage:
+                                      _state: actions_list.$.status.0.stage
+                                  fn: |
+                                    const { statuses, stage } = args;
+                                    return statuses?.[stage]?.color;
                               content:
-                                _global:
-                                  _string.concat:
-                                    - action_statuses.
-                                    - _array_indices: status.0.stage
-                                    - .title
+                                _js:
+                                  args:
+                                    statuses:
+                                      _ref: enums/action_statuses.yaml
+                                    stage:
+                                      _state: actions_list.$.status.0.stage
+                                  fn: |
+                                    const { statuses, stage } = args;
+                                    return statuses?.[stage]?.title;
                           - id: actions_list.$.message
                             type: Paragraph
                             properties:
@@ -147,17 +155,17 @@ _ref:
                                   template:
                                     _get:
                                       from:
-                                        _array_indices: status_map
+                                        _state: actions_list.$.status_map
                                       key:
                                         _string.concat:
-                                          - _array_indices: status.0.stage
+                                          - _state: actions_list.$.status.0.stage
                                           - .
                                           - _module.var: app_name
                                           - .message
                                       default: ""
                                   on:
                                     action:
-                                      _array_indices: true
+                                      _state: actions_list.$
                                     workflow:
                                       _state: overview.workflow
                       - id: actions_list.$.link_button
@@ -166,10 +174,10 @@ _ref:
                           _ne:
                             - _get:
                                 from:
-                                  _array_indices: status_map
+                                  _state: actions_list.$.status_map
                                 key:
                                   _string.concat:
-                                    - _array_indices: status.0.stage
+                                    - _state: actions_list.$.status.0.stage
                                     - .
                                     - _module.var: app_name
                                     - .link
@@ -185,10 +193,10 @@ _ref:
                               params:
                                 _get:
                                   from:
-                                    _array_indices: status_map
+                                    _state: actions_list.$.status_map
                                   key:
                                     _string.concat:
-                                      - _array_indices: status.0.stage
+                                      - _state: actions_list.$.status.0.stage
                                       - .
                                       - _module.var: app_name
                                       - .link
@@ -203,21 +211,21 @@ _ref:
                               _if:
                                 test:
                                   _ne:
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                     - null
                                 then:
                                   _string.concat:
-                                    - _array_indices: type
+                                    - _state: actions_list.$.type
                                     - .
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                 else:
-                                  _array_indices: type
+                                  _state: actions_list.$.type
                             default: null
                         - null
                     properties:
                       html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
                   - id: actions_list.$.body_dataview
-                    type: DataView
+                    type: DataDescriptions
                     visible:
                       _ne:
                         - _get:
@@ -227,30 +235,25 @@ _ref:
                               _if:
                                 test:
                                   _ne:
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                     - null
                                 then:
                                   _string.concat:
-                                    - _array_indices: type
+                                    - _state: actions_list.$.type
                                     - .
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                 else:
-                                  _array_indices: type
+                                  _state: actions_list.$.type
                             default: null
                         - null
                     properties:
-                      formConfig:
-                        _array.concat:
-                          - _global:
-                              _string.concat:
-                                - action_form_configs.
-                                - _array_indices: type
-                                - .form
-                          - _global:
-                              _string.concat:
-                                - action_form_configs.
-                                - _array_indices: type
-                                - .form_review
+                      # Per-action form-data DataView. In part 20a's static
+                      # surface no form-kind action has shipped, so the form
+                      # configs are an empty array. Part 20b restores the
+                      # action_form_configs map (built by makeActionFormConfigs.js
+                      # from vars.workflows_config) and the form / form_review
+                      # field arrays index into it.
+                      formConfig: []
                       data:
                         form:
                           _get:
@@ -260,15 +263,15 @@ _ref:
                               _if:
                                 test:
                                   _ne:
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                     - null
                                 then:
                                   _string.concat:
-                                    - _array_indices: type
+                                    - _state: actions_list.$.type
                                     - .
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                 else:
-                                  _array_indices: type
+                                  _state: actions_list.$.type
                             default: null
                         workflow:
                           _state: overview.workflow

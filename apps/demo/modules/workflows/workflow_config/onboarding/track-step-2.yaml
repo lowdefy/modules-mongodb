@@ -1,0 +1,25 @@
+type: track-step-2
+kind: tracker
+action_group: g2
+sort_order: 2
+description: Track installation step 2.
+blocked_by:
+  - track-step-1
+access:
+  demo:
+    roles:
+      - admin
+    verbs:
+      - view
+status_map:
+  in-progress:
+    demo:
+      message: "Installation step 2 in progress."
+  done:
+    demo:
+      message: "Installation step 2 complete."
+  not-required:
+    demo:
+      message: "Installation step 2 skipped."
+tracker:
+  workflow_type: installation

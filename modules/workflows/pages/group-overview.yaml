@@ -10,8 +10,8 @@
 #   - _module.var: workflows_config              (part 4)
 #   - _module.var: entities                      (part 20)
 #   - _module.var: app_name                      (part 20)
-#   - global.action_form_configs                 (part 15)
-#   - global.action_statuses                     (part 4)
+#   - component action_form_configs              (part 15)
+#   - component action_statuses                  (part 4)
 _ref:
   module: layout
   component: page
@@ -36,23 +36,24 @@ _ref:
             back: true
         # Single CallApi to get-action-group-overview.
         - id: call_get_overview
-          type: CallApi
+          type: CallAPI
           params:
             endpointId:
-              _module.endpointId:
-                id: get-action-group-overview
-                module: workflows
+              _module.endpointId: get-action-group-overview
             payload:
               workflow_id:
                 _url_query: workflow_id
               group_id:
                 _url_query: group_id
-        # Stash the response in _state.overview.
+        # Stash the response in _state.overview, plus put the actions array
+        # under its own top-level state key so the List block can read from it.
         - id: set_overview_state
           type: SetState
           params:
             overview:
-              _actions: call_get_overview.response
+              _actions: call_get_overview.response.response
+            actions_list:
+              _actions: call_get_overview.response.response.actions
         # Null-redirect guard — Api returns workflow: null when no actions
         # pass the access filter, the workflow doc is missing, or the group
         # id is unknown.
@@ -68,7 +69,7 @@ _ref:
       - id: group_overview_header
         type: Box
         layout:
-          contentGutter: 8
+          gap: 8
         blocks:
           - id: group_overview_titles
             type: Box
@@ -80,11 +81,13 @@ _ref:
                 properties:
                   content:
                     _js:
-                      params:
-                        - _state: overview.workflow
-                        - _module.var: workflows_config
-                      body: |
-                        const [workflow, workflowsConfig] = params;
+                      args:
+                        workflow:
+                          _state: overview.workflow
+                        workflowsConfig:
+                          _module.var: workflows_config
+                      fn: |
+                        const { workflow, workflowsConfig } = args;
                         if (!workflow) return "";
                         const wfConfig = (workflowsConfig || []).find(
                           (w) => w.type === workflow.workflow_type
@@ -100,12 +103,15 @@ _ref:
                   level: 3
                   content:
                     _js:
-                      params:
-                        - _state: overview.workflow
-                        - _state: overview.group
-                        - _module.var: workflows_config
-                      body: |
-                        const [workflow, group, workflowsConfig] = params;
+                      args:
+                        workflow:
+                          _state: overview.workflow
+                        group:
+                          _state: overview.group
+                        workflowsConfig:
+                          _module.var: workflows_config
+                      fn: |
+                        const { workflow, group, workflowsConfig } = args;
                         if (!group) return "";
                         const wfConfig = (workflowsConfig || []).find(
                           (w) => w && workflow && w.type === workflow.workflow_type
@@ -158,10 +164,11 @@ _ref:
         properties:
           percent:
             _js:
-              params:
-                - _state: overview.group.summary
-              body: |
-                const [summary] = params;
+              args:
+                summary:
+                  _state: overview.group.summary
+              fn: |
+                const { summary } = args;
                 if (!summary) return 0;
                 const total = summary.total || 0;
                 if (total === 0) return 100;
@@ -213,9 +220,6 @@ _ref:
                   else: Blocked
       - id: actions_list
         type: List
-        properties:
-          data:
-            _state: overview.actions
         blocks:
           - _ref:
               module: layout
@@ -240,17 +244,25 @@ _ref:
                             type: Tag
                             properties:
                               color:
-                                _global:
-                                  _string.concat:
-                                    - action_statuses.
-                                    - _array_indices: status.0.stage
-                                    - .color
+                                _js:
+                                  args:
+                                    statuses:
+                                      _ref: enums/action_statuses.yaml
+                                    stage:
+                                      _state: actions_list.$.status.0.stage
+                                  fn: |
+                                    const { statuses, stage } = args;
+                                    return statuses?.[stage]?.color;
                               content:
-                                _global:
-                                  _string.concat:
-                                    - action_statuses.
-                                    - _array_indices: status.0.stage
-                                    - .title
+                                _js:
+                                  args:
+                                    statuses:
+                                      _ref: enums/action_statuses.yaml
+                                    stage:
+                                      _state: actions_list.$.status.0.stage
+                                  fn: |
+                                    const { statuses, stage } = args;
+                                    return statuses?.[stage]?.title;
                           - id: actions_list.$.message
                             type: Paragraph
                             properties:
@@ -259,17 +271,17 @@ _ref:
                                   template:
                                     _get:
                                       from:
-                                        _array_indices: status_map
+                                        _state: actions_list.$.status_map
                                       key:
                                         _string.concat:
-                                          - _array_indices: status.0.stage
+                                          - _state: actions_list.$.status.0.stage
                                           - .
                                           - _module.var: app_name
                                           - .message
                                       default: ""
                                   on:
                                     action:
-                                      _array_indices: true
+                                      _state: actions_list.$
                                     workflow:
                                       _state: overview.workflow
                       - id: actions_list.$.link_button
@@ -278,10 +290,10 @@ _ref:
                           _ne:
                             - _get:
                                 from:
-                                  _array_indices: status_map
+                                  _state: actions_list.$.status_map
                                 key:
                                   _string.concat:
-                                    - _array_indices: status.0.stage
+                                    - _state: actions_list.$.status.0.stage
                                     - .
                                     - _module.var: app_name
                                     - .link
@@ -297,10 +309,10 @@ _ref:
                               params:
                                 _get:
                                   from:
-                                    _array_indices: status_map
+                                    _state: actions_list.$.status_map
                                   key:
                                     _string.concat:
-                                      - _array_indices: status.0.stage
+                                      - _state: actions_list.$.status.0.stage
                                       - .
                                       - _module.var: app_name
                                       - .link
@@ -315,21 +327,21 @@ _ref:
                               _if:
                                 test:
                                   _ne:
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                     - null
                                 then:
                                   _string.concat:
-                                    - _array_indices: type
+                                    - _state: actions_list.$.type
                                     - .
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                 else:
-                                  _array_indices: type
+                                  _state: actions_list.$.type
                             default: null
                         - null
                     properties:
                       html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
                   - id: actions_list.$.body_dataview
-                    type: DataView
+                    type: DataDescriptions
                     visible:
                       _ne:
                         - _get:
@@ -339,30 +351,25 @@ _ref:
                               _if:
                                 test:
                                   _ne:
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                     - null
                                 then:
                                   _string.concat:
-                                    - _array_indices: type
+                                    - _state: actions_list.$.type
                                     - .
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                 else:
-                                  _array_indices: type
+                                  _state: actions_list.$.type
                             default: null
                         - null
                     properties:
-                      formConfig:
-                        _array.concat:
-                          - _global:
-                              _string.concat:
-                                - action_form_configs.
-                                - _array_indices: type
-                                - .form
-                          - _global:
-                              _string.concat:
-                                - action_form_configs.
-                                - _array_indices: type
-                                - .form_review
+                      # Per-action form-data DataView. In part 20a's static
+                      # surface no form-kind action has shipped, so the form
+                      # configs are an empty array. Part 20b restores the
+                      # action_form_configs map (built by makeActionFormConfigs.js
+                      # from vars.workflows_config) and the form / form_review
+                      # field arrays index into it.
+                      formConfig: []
                       data:
                         form:
                           _get:
@@ -372,15 +379,15 @@ _ref:
                               _if:
                                 test:
                                   _ne:
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                     - null
                                 then:
                                   _string.concat:
-                                    - _array_indices: type
+                                    - _state: actions_list.$.type
                                     - .
-                                    - _array_indices: key
+                                    - _state: actions_list.$.key
                                 else:
-                                  _array_indices: type
+                                  _state: actions_list.$.type
                             default: null
                         workflow:
                           _state: overview.workflow

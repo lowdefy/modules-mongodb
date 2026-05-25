@@ -1,4 +1,22 @@
-id: workflow_header
+# Per-workflow strip with title, lifecycle badge, summary counts, milestone
+# label, workflow-overview link button, and a collapsible slot for caller-passed
+# blocks. Used internally by actions-on-entity (inside a List) and by
+# workflow-overview / group-overview (standalone).
+#
+# Required vars:
+#   id            — string. Sets the container's block id, and every child id
+#                   is derived from it via `_build.string.concat`. When used
+#                   inside a List, pass `<list_id>.$.workflow_header`. When
+#                   used standalone, pass any unique string (e.g. `workflow_header`).
+#   workflow      — object. The workflow doc (with status, summary, groups, etc).
+#
+# Optional vars:
+#   collapsed_default — boolean. Initial collapsed state (default false).
+#   is_overview_page  — boolean. Hides the workflow-overview link button when true.
+#   blocks            — array. Caller-passed blocks rendered in the collapsible slot.
+id:
+  _build.string.concat:
+    - _var: id
 type: Box
 events:
   onMount:
@@ -7,8 +25,8 @@ events:
       params:
         _object.fromEntries:
           - - - _string.concat:
-                  - workflow_header_collapsed_
-                  - _var: workflow._id
+                  - _var: id
+                  - .collapsed
               - _if:
                   test:
                     _eq:
@@ -17,15 +35,21 @@ events:
                   then: true
                   else: false
 layout:
-  contentGutter: 8
+  gap: 8
 blocks:
-  - id: strip
+  - id:
+      _build.string.concat:
+        - _var: id
+        - .strip
     type: Box
     layout:
-      contentGutter: 8
+      gap: 8
       contentAlign: middle
     blocks:
-      - id: title
+      - id:
+          _build.string.concat:
+            - _var: id
+            - .strip.title
         type: Title
         layout:
           flex: 1 1 auto
@@ -33,16 +57,21 @@ blocks:
           level: 4
           content:
             _js:
-              params:
-                - _var: workflow
-                - _module.var: workflows_config
-              body: |
-                const [workflow, workflowsConfig] = params;
+              args:
+                workflow:
+                  _var: workflow
+                workflowsConfig:
+                  _module.var: workflows_config
+              fn: |
+                const { workflow, workflowsConfig } = args;
                 const wfConfig = (workflowsConfig || []).find(
                   (w) => w.type === workflow.workflow_type
                 );
                 return (wfConfig && wfConfig.title) || workflow.workflow_type || "";
-      - id: overview_tooltip
+      - id:
+          _build.string.concat:
+            - _var: id
+            - .strip.overview_tooltip
         type: Tooltip
         visible:
           _ne:
@@ -53,7 +82,10 @@ blocks:
         properties:
           title: Workflow Overview
         blocks:
-          - id: overview_link
+          - id:
+              _build.string.concat:
+                - _var: id
+                - .strip.overview_link
             type: Button
             properties:
               icon: LuWorkflow
@@ -65,49 +97,80 @@ blocks:
                   type: Link
                   params:
                     pageId:
-                      _module.pageId:
-                        id: workflow-overview
-                        module: workflows
+                      _module.pageId: workflow-overview
                     urlQuery:
                       workflow_id:
-                        _var: workflow._id
-      - id: lifecycle_badge
+                        _get:
+                          from:
+                            _var: workflow
+                          key: _id
+      - id:
+          _build.string.concat:
+            - _var: id
+            - .strip.lifecycle_badge
         type: Tag
         layout:
           flex: 0 0 auto
         properties:
           color:
-            _global:
-              _string.concat:
-                - workflow_lifecycle_stages.
-                - _var: workflow.status.0.stage
-                - .color
-          content:
-            _global:
-              _string.concat:
-                - workflow_lifecycle_stages.
-                - _var: workflow.status.0.stage
-                - .title
-      - id: summary
+            _js:
+              args:
+                stages:
+                  _ref: enums/workflow_lifecycle_stages
+                stage:
+                  _get:
+                    from:
+                      _var: workflow
+                    key: status.0.stage
+              fn: |
+                const { stages, stage } = args;
+                return stages?.[stage]?.color;
+          title:
+            _js:
+              args:
+                stages:
+                  _ref: enums/workflow_lifecycle_stages.yaml
+                stage:
+                  _get:
+                    from:
+                      _var: workflow
+                    key: status.0.stage
+              fn: |
+                const { stages, stage } = args;
+                return stages?.[stage]?.title;
+      - id:
+          _build.string.concat:
+            - _var: id
+            - .strip.summary
         type: Paragraph
         layout:
           flex: 0 0 auto
         properties:
           content:
             _string.concat:
+              - ''
               - _sum:
-                  - _var:
-                      key: workflow.summary.done
+                  - _get:
+                      from:
+                        _var: workflow
+                      key: summary.done
                       default: 0
-                  - _var:
-                      key: workflow.summary.not_required
+                  - _get:
+                      from:
+                        _var: workflow
+                      key: summary.not_required
                       default: 0
-              - " of "
-              - _var:
-                  key: workflow.summary.total
+              - ' of '
+              - _get:
+                  from:
+                    _var: workflow
+                  key: summary.not_required
                   default: 0
-              - " done"
-      - id: milestone
+              - ' done'
+      - id:
+          _build.string.concat:
+            - _var: id
+            - .strip.milestone
         type: Paragraph
         layout:
           flex: 1 1 auto
@@ -115,11 +178,13 @@ blocks:
           type: secondary
           content:
             _js:
-              params:
-                - _var: workflow
-                - _module.var: workflows_config
-              body: |
-                const [workflow, workflowsConfig] = params;
+              args:
+                workflow:
+                  _var: workflow
+                workflowsConfig:
+                  _module.var: workflows_config
+              fn: |
+                const { workflow, workflowsConfig } = args;
                 const wfConfig = (workflowsConfig || []).find(
                   (w) => w.type === workflow.workflow_type
                 ) || {};
@@ -135,7 +200,10 @@ blocks:
                   return (def && def.title) || nextGroup.id;
                 }
                 return wfConfig.title || workflow.workflow_type || "";
-      - id: collapse_toggle
+      - id:
+          _build.string.concat:
+            - _var: id
+            - .strip.collapse_toggle
         type: Button
         layout:
           flex: 0 0 auto
@@ -148,8 +216,8 @@ blocks:
                 _eq:
                   - _state:
                       _string.concat:
-                        - workflow_header_collapsed_
-                        - _var: workflow._id
+                        - _var: id
+                        - .collapsed
                   - true
               then: AiOutlineDown
               else: AiOutlineUp
@@ -160,22 +228,25 @@ blocks:
               params:
                 _object.fromEntries:
                   - - - _string.concat:
-                          - workflow_header_collapsed_
-                          - _var: workflow._id
+                          - _var: id
+                          - .collapsed
                       - _ne:
                           - _state:
                               _string.concat:
-                                - workflow_header_collapsed_
-                                - _var: workflow._id
+                                - _var: id
+                                - .collapsed
                           - true
-  - id: slot
+  - id:
+      _build.string.concat:
+        - _var: id
+        - .slot
     type: Box
     visible:
       _ne:
         - _state:
             _string.concat:
-              - workflow_header_collapsed_
-              - _var: workflow._id
+              - _var: id
+              - .collapsed
         - true
     blocks:
       _var:

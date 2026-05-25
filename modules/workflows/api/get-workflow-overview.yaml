@@ -30,18 +30,18 @@ routine:
                     $eq:
                       - $workflow_id
                       - $$workflowId
-              - _ref: stages/access_filter.yaml
+              - _ref: api/stages/access_filter.yaml
               - $addFields:
-                  _group_index:
+                  groupIndex:
                     $indexOfArray:
                       - $$groupIds
                       - $action_group
               - $sort:
-                  _group_index: 1
+                  groupIndex: 1
                   sort_order: 1
                   _id: 1
               - $project:
-                  _group_index: 0
+                  groupIndex: 0
             as: actions
 
   - :set_state:

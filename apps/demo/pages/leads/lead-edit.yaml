@@ -1,0 +1,139 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: lead-edit
+    title:
+      _string.concat:
+        - "Edit: "
+        - _if_none:
+            - _request: get_lead.0.name
+            - ""
+    hide_title: true
+    content_width: 700
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Leads
+        pageId: lead-list
+      - label:
+          _request: get_lead.0.name
+        pageId: lead-view
+        urlQuery:
+          _id:
+            _url_query: _id
+      - label: Edit
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_lead
+        - id: redirect_if_not_found
+          type: Link
+          skip:
+            _ne:
+              - _request: get_lead.0
+              - null
+          params:
+            pageId: lead-list
+        - id: prime_state
+          type: SetState
+          params:
+            lead:
+              _request: get_lead.0
+    requests:
+      - id: get_lead
+        type: MongoDBAggregation
+        connectionId: leads-collection
+        payload:
+          _id:
+            _url_query: _id
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: _id
+            - $limit: 1
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title:
+              _string.concat:
+                - "Edit lead: "
+                - _if_none:
+                    - _request: get_lead.0.name
+                    - ""
+            doc:
+              _request: get_lead.0
+            width: 700
+            blocks:
+              - id: lead.name
+                type: TextInput
+                properties:
+                  title: Name
+                  required: true
+              - id: lead.email
+                type: TextInput
+                properties:
+                  title: Email
+                  required: true
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 700
+            actions:
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: cancel_btn
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        back: true
+              - id: save_btn
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Save
+                  icon: AiOutlineSave
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                      params:
+                        regex:
+                          - ^lead\.
+                    - id: update
+                      type: CallAPI
+                      params:
+                        endpointId: leads-update
+                        payload:
+                          _id:
+                            _url_query: _id
+                          name:
+                            _state: lead.name
+                          email:
+                            _state: lead.email
+                      messages:
+                        success: Lead saved.
+                    - id: reset
+                      type: Reset
+                    - id: back
+                      type: Link
+                      params:
+                        back: true

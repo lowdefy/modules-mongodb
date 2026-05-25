@@ -43,6 +43,8 @@ exports:
     - id: actions-on-entity
     - id: workflow-header
     - id: action_role_check
+    - id: action_statuses
+    - id: workflow_lifecycle_stages
 
 vars:
   workflows_config:
@@ -98,6 +100,16 @@ components:
     component: { _ref: components/workflow-header.yaml }
   - id: action_role_check
     component: { _ref: components/action_role_check.yaml }
+  - id: action_statuses
+    component:
+      _build.object.assign:
+        - _ref: enums/action_statuses.yaml
+        - _module.var: action_statuses_display
+  - id: workflow_lifecycle_stages
+    component:
+      _build.object.assign:
+        - _ref: enums/workflow_lifecycle_stages.yaml
+        - _module.var: workflow_lifecycle_stages_display
 
 pages:
   - _ref:
@@ -109,12 +121,6 @@ pages:
   - _ref: pages/task-view.yaml
   - _ref: pages/task-review.yaml
   - _ref: pages/workflow-overview.yaml
-
-global:
-  action_statuses:
-    _ref: enums/action_statuses.yaml # merged with vars.action_statuses_display at build time
-  workflow_lifecycle_stages:
-    _ref: enums/workflow_lifecycle_stages.yaml # merged with vars.workflow_lifecycle_stages_display
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"

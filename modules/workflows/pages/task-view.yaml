@@ -15,7 +15,7 @@ _ref:
     hide_title: true
     content_width: 750
     requests:
-      - _ref: ../requests/get_action.yaml
+      - _ref: requests/get_action.yaml
     events:
       onMount:
         # Step 1: action_id presence guard.
@@ -31,12 +31,19 @@ _ref:
         - id: get_action
           type: Request
           params: get_action
+        # Seed the List block's state key — the status_history_list block
+        # has no data property; it reads from _state.status_history_list.
+        - id: set_status_history
+          type: SetState
+          params:
+            status_history_list:
+              _request: get_action.status
         # Step 3 (stale-URL guard) — intentionally omitted on view.
         # Step 4 (get_workflow) — intentionally omitted on view (no form-state to prime).
         # Step 5 (get_entity) — intentionally omitted on all task pages (v1).
         # Step 6: role check — sets _state.action_allowed.
         - _ref:
-            path: ../components/action_role_check.yaml
+            path: components/action_role_check.yaml
             vars:
               action_config:
                 _request: get_action
@@ -71,32 +78,48 @@ _ref:
                     type: Tag
                     properties:
                       color:
-                        _global:
-                          _string.concat:
-                            - action_statuses.
-                            - _request: get_action.status.0.stage
-                            - .color
+                        _js:
+                          args:
+                            statuses:
+                              _ref: enums/action_statuses.yaml
+                            stage:
+                              _request: get_action.status.0.stage
+                          fn: |
+                            const { statuses, stage } = args;
+                            return statuses?.[stage]?.color;
                       style:
                         color:
-                          _global:
-                            _string.concat:
-                              - action_statuses.
-                              - _request: get_action.status.0.stage
-                              - .titleColor
+                          _js:
+                            args:
+                              statuses:
+                                _ref: enums/action_statuses.yaml
+                              stage:
+                                _request: get_action.status.0.stage
+                            fn: |
+                              const { statuses, stage } = args;
+                              return statuses?.[stage]?.titleColor;
                         borderColor:
-                          _global:
-                            _string.concat:
-                              - action_statuses.
-                              - _request: get_action.status.0.stage
-                              - .borderColor
+                          _js:
+                            args:
+                              statuses:
+                                _ref: enums/action_statuses.yaml
+                              stage:
+                                _request: get_action.status.0.stage
+                            fn: |
+                              const { statuses, stage } = args;
+                              return statuses?.[stage]?.borderColor;
                       content:
-                        _global:
-                          _string.concat:
-                            - action_statuses.
-                            - _request: get_action.status.0.stage
-                            - .title
+                        _js:
+                          args:
+                            statuses:
+                              _ref: enums/action_statuses.yaml
+                            stage:
+                              _request: get_action.status.0.stage
+                          fn: |
+                            const { statuses, stage } = args;
+                            return statuses?.[stage]?.title;
               - _ref:
-                  path: ../components/universal-fields/universal-fields.yaml
+                  path: components/universal-fields/universal-fields.yaml
                   vars:
                     mode: display
                     kind: task
@@ -118,11 +141,8 @@ _ref:
                 visible:
                   _gt:
                     - _array.length:
-                        _request: get_action.status
+                        _state: status_history_list
                     - 0
-                properties:
-                  data:
-                    _request: get_action.status
                 blocks:
                   - id: status_history_list.$.row
                     type: Box
@@ -134,17 +154,25 @@ _ref:
                         type: Tag
                         properties:
                           color:
-                            _global:
-                              _string.concat:
-                                - action_statuses.
-                                - _array_indices: stage
-                                - .color
+                            _js:
+                              args:
+                                statuses:
+                                  _ref: enums/action_statuses.yaml
+                                stage:
+                                  _state: status_history_list.$.stage
+                              fn: |
+                                const { statuses, stage } = args;
+                                return statuses?.[stage]?.color;
                           content:
-                            _global:
-                              _string.concat:
-                                - action_statuses.
-                                - _array_indices: stage
-                                - .title
+                            _js:
+                              args:
+                                statuses:
+                                  _ref: enums/action_statuses.yaml
+                                stage:
+                                  _state: status_history_list.$.stage
+                              fn: |
+                                const { statuses, stage } = args;
+                                return statuses?.[stage]?.title;
                       - id: status_history_list.$.timestamp
                         type: Paragraph
                         properties:
@@ -154,21 +182,21 @@ _ref:
                           content:
                             _dayjs.format:
                               on:
-                                _array_indices: created.timestamp
+                                _state: status_history_list.$.created.timestamp
                               params:
                                 format: YYYY-MM-DD HH:mm
                       - id: status_history_list.$.error
                         type: Paragraph
                         visible:
                           _ne:
-                            - _array_indices: error_message
+                            - _state: status_history_list.$.error_message
                             - null
                         properties:
                           type: danger
                           style:
                             fontSize: 12
                           content:
-                            _array_indices: error_message
+                            _state: status_history_list.$.error_message
       - _ref:
           module: layout
           component: card
@@ -181,7 +209,9 @@ _ref:
                   - id: get_comment_events
                     type: MongoDBAggregation
                     connectionId:
-                      _module.connectionId: events-collection
+                      _module.connectionId:
+                        id: events-collection
+                        module: events
                     payload:
                       action_id:
                         _request: get_action._id
@@ -200,6 +230,11 @@ _ref:
                     - id: fetch_comment_events
                       type: Request
                       params: get_comment_events
+                    - id: set_comment_events_list
+                      type: SetState
+                      params:
+                        comment_events_list:
+                          _request: get_comment_events
                 blocks:
                   - id: comment_events_empty
                     type: Paragraph
@@ -219,11 +254,8 @@ _ref:
                     visible:
                       _gt:
                         - _array.length:
-                            _request: get_comment_events
+                            _state: comment_events_list
                         - 0
-                    properties:
-                      data:
-                        _request: get_comment_events
                     blocks:
                       - id: comment_events_list.$.row
                         type: Box
@@ -238,15 +270,15 @@ _ref:
                                 fontSize: 12
                               content:
                                 _string.concat:
-                                  - _array_indices: created.by.name
+                                  - _state: comment_events_list.$.created.by.name
                                   - " — "
                                   - _dayjs.format:
                                       on:
-                                        _array_indices: created.timestamp
+                                        _state: comment_events_list.$.created.timestamp
                                       params:
                                         format: YYYY-MM-DD HH:mm
                           - id: comment_events_list.$.body
                             type: Html
                             properties:
                               html:
-                                _array_indices: metadata.comment
+                                _state: comment_events_list.$.metadata.comment

@@ -1,0 +1,21 @@
+type: onboarding
+entity_collection: leads-collection
+display_order: 1
+
+starting_actions:
+  - type: track-step-1
+    status: action-required
+
+action_groups:
+  - id: g1
+  - id: g2
+    blocked_by:
+      - g1
+  - id: g3
+    blocked_by:
+      - g2
+
+actions:
+  - _ref: modules/workflows/workflow_config/onboarding/track-step-1.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/track-step-2.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/track-step-3.yaml

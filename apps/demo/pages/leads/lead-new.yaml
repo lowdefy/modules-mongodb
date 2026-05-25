@@ -1,0 +1,101 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: lead-new
+    title: New lead
+    hide_title: true
+    content_width: 700
+    breadcrumbs:
+      - home: true
+        icon: AiOutlineHome
+      - label: Leads
+        pageId: lead-list
+      - label: New lead
+    events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            new_lead_id:
+              _nanoid: true
+            lead: {}
+    blocks:
+      - _ref:
+          module: layout
+          component: card
+          vars:
+            title: New lead
+            width: 700
+            blocks:
+              - id: lead.name
+                type: TextInput
+                properties:
+                  title: Name
+                  required: true
+              - id: lead.email
+                type: TextInput
+                properties:
+                  title: Email
+                  required: true
+      - _ref:
+          module: layout
+          component: floating-actions
+          vars:
+            width: 700
+            actions:
+              - id: spacer
+                type: Box
+                layout:
+                  flex: 1 0 auto
+              - id: cancel_btn
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Cancel
+                  icon: AiOutlineCloseCircle
+                  type: default
+                events:
+                  onClick:
+                    - id: back
+                      type: Link
+                      params:
+                        pageId: lead-list
+              - id: save_btn
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Create lead
+                  icon: AiOutlineUserAdd
+                  type: primary
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                      params:
+                        regex:
+                          - ^lead\.
+                    - id: create
+                      type: CallAPI
+                      params:
+                        endpointId: leads-create
+                        payload:
+                          _id:
+                            _state: new_lead_id
+                          name:
+                            _state: lead.name
+                          email:
+                            _state: lead.email
+                      messages:
+                        success: Lead created.
+                    - id: reset
+                      type: Reset
+                    - id: go_view
+                      type: Link
+                      params:
+                        pageId: lead-view
+                        urlQuery:
+                          _id:
+                            _state: new_lead_id

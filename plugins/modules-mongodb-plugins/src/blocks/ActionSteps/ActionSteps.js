@@ -1,6 +1,6 @@
 import React, { Fragment } from "react";
 import { Badge, Steps, Typography } from "antd";
-import { renderHtml, withBlockDefaults } from "@lowdefy/block-utils";
+import { cn, renderHtml, withBlockDefaults } from "@lowdefy/block-utils";
 import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import { type } from "@lowdefy/helpers";
 
@@ -25,8 +25,6 @@ const actionStatusColorMap = {
   "in-review": "var(--ant-purple-6, #722ed1)",
   "changes-required": "var(--ant-color-warning)",
 };
-
-const SECONDARY_TEXT_COLOR = "var(--ant-color-text-tertiary)";
 
 const setActionGroupStatus = (actions) => {
   if (!type.isArray(actions)) {
@@ -79,15 +77,11 @@ const ActionSteps = ({
 }) => {
   const { actionGroupConfig = {}, items = [] } = properties;
   return (
-    <div
-      id={blockId}
-      className={classNames.element}
-      style={styles.element}
-    >
+    <div id={blockId} className={cn(classNames.element)} style={styles.element}>
       {properties.title && (
         <Typography.Title
           level={5}
-          className={classNames.title}
+          className={cn(classNames.title)}
           style={styles.title}
         >
           {properties.title}
@@ -96,7 +90,7 @@ const ActionSteps = ({
       <Steps
         progressDot={properties.progressDot ?? false}
         direction={properties.direction ?? "vertical"}
-        className={classNames.steps}
+        className={cn(classNames.steps)}
         style={styles.steps}
         items={[...items]
           .sort(
@@ -123,7 +117,8 @@ const ActionSteps = ({
               ) : (
                 <Link
                   id={`${blockId}_group_link_${itemIdx}`}
-                  className={methods.makeCssClass([classNames.groupLink])}
+                  className={cn(classNames.groupLink)}
+                  style={styles.groupLink}
                   pageId={groupLink?.pageId}
                   urlQuery={groupLink?.urlQuery}
                   input={groupLink?.input}
@@ -155,14 +150,8 @@ const ActionSteps = ({
                       return (
                         <Fragment key={action.id ?? actionIdx}>
                           <Badge
-                            className={methods.makeCssClass([
-                              {
-                                marginLeft: "5px",
-                                width: "100%",
-                                paddingRight: "5px",
-                              },
-                              classNames.badge,
-                            ])}
+                            className={cn("action-steps-badge", classNames.badge)}
+                            style={styles.badge}
                             color={actionStatusColorMap[action.status]}
                             status={
                               action.status === "in-progress"
@@ -172,12 +161,12 @@ const ActionSteps = ({
                             text={
                               <Link
                                 id={`${blockId}_link_${itemIdx}_${actionIdx}`}
-                                className={methods.makeCssClass([
-                                  properties.linkStyle,
-                                  secondaryText && { color: SECONDARY_TEXT_COLOR },
-                                  linkDisabled && { cursor: "default" },
+                                className={cn(
+                                  secondaryText && "action-steps-link-secondary",
+                                  linkDisabled && "action-steps-link-disabled",
                                   classNames.link,
-                                ])}
+                                )}
+                                style={styles.link}
                                 disabled={linkDisabled}
                                 pageId={action?.link?.pageId}
                                 urlQuery={action?.link?.urlQuery}

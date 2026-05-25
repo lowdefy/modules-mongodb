@@ -15,8 +15,8 @@ _ref:
     hide_title: true
     content_width: 750
     requests:
-      - _ref: ../requests/get_action.yaml
-      - _ref: ../requests/get_workflow.yaml
+      - _ref: requests/get_action.yaml
+      - _ref: requests/get_workflow.yaml
     events:
       onMount:
         # Step 1: action_id presence guard.
@@ -52,7 +52,7 @@ _ref:
         # Step 5 (get_entity) — intentionally omitted on all task pages (v1).
         # Step 6: role check — sets _state.action_allowed.
         - _ref:
-            path: ../components/action_role_check.yaml
+            path: components/action_role_check.yaml
             vars:
               action_config:
                 _request: get_action
@@ -106,19 +106,27 @@ _ref:
                     type: Tag
                     properties:
                       color:
-                        _global:
-                          _string.concat:
-                            - action_statuses.
-                            - _request: get_action.status.0.stage
-                            - .color
+                        _js:
+                          args:
+                            statuses:
+                              _ref: enums/action_statuses.yaml
+                            stage:
+                              _request: get_action.status.0.stage
+                          fn: |
+                            const { statuses, stage } = args;
+                            return statuses?.[stage]?.color;
                       content:
-                        _global:
-                          _string.concat:
-                            - action_statuses.
-                            - _request: get_action.status.0.stage
-                            - .title
+                        _js:
+                          args:
+                            statuses:
+                              _ref: enums/action_statuses.yaml
+                            stage:
+                              _request: get_action.status.0.stage
+                          fn: |
+                            const { statuses, stage } = args;
+                            return statuses?.[stage]?.title;
               - _ref:
-                  path: ../components/universal-fields/universal-fields.yaml
+                  path: components/universal-fields/universal-fields.yaml
                   vars:
                     mode: display
                     kind: task
@@ -192,24 +200,15 @@ _ref:
                           - true
                 events:
                   onClick:
+                    # Approve flow targets the resolver-emitted
+                    # update-action-{action_type} endpoint that ships in part 20b.
+                    # Static surface stub: open a notification noting the deferral.
                     - id: submit_approve
-                      type: CallApi
+                      type: NotificationOpen
                       params:
-                        endpointId:
-                          _module.endpointId:
-                            id:
-                              _string.concat:
-                                - update-action-
-                                - _request: get_action.type
-                            module: workflows
-                        payload:
-                          action_id:
-                            _request: get_action._id
-                          interaction: approve
-                          fields:
-                            _state: fields
-                          comment:
-                            _state: comment
+                        type: info
+                        message: Approve ships in part 20b
+                        description: The update-action-{action_type} endpoint is emitted by the makeWorkflowApis resolver; not wired in part 20a's static surface.
       - id: request_changes_modal
         type: Modal
         properties:
@@ -222,24 +221,15 @@ _ref:
             - id: validate_comment
               type: Validate
               params: comment
+            # Request-changes flow targets the resolver-emitted
+            # update-action-{action_type} endpoint that ships in part 20b.
+            # Static surface stub: open a notification noting the deferral.
             - id: submit_request_changes
-              type: CallApi
+              type: NotificationOpen
               params:
-                endpointId:
-                  _module.endpointId:
-                    id:
-                      _string.concat:
-                        - update-action-
-                        - _request: get_action.type
-                    module: workflows
-                payload:
-                  action_id:
-                    _request: get_action._id
-                  interaction: request_changes
-                  fields:
-                    _state: fields
-                  comment:
-                    _state: comment
+                type: info
+                message: Request changes ships in part 20b
+                description: The update-action-{action_type} endpoint is emitted by the makeWorkflowApis resolver; not wired in part 20a's static surface.
           onClose:
             - id: reset_comment
               type: SetState

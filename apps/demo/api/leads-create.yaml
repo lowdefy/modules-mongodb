@@ -1,0 +1,25 @@
+id: leads-create
+type: Api
+routine:
+  - id: insert
+    type: MongoDBInsertOne
+    connectionId: leads-collection
+    properties:
+      doc:
+        _id:
+          _payload: _id
+        name:
+          _payload: name
+        email:
+          _payload: email
+        created:
+          _ref:
+            module: events
+            component: change_stamp
+        updated:
+          _ref:
+            module: events
+            component: change_stamp
+  - :return:
+      _id:
+        _payload: _id

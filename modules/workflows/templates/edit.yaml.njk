@@ -230,7 +230,7 @@ _ref:
                                   key: page_config.events.onSubmit
                                   default: []
                               - - id: submit_edit
-                                  type: CallApi
+                                  type: CallAPI
                                   params:
                                     endpointId:
                                       _module.endpointId:
@@ -264,11 +264,15 @@ _ref:
                             - _state: action_allowed
                             - true
                         - _gt:
-                            - _global:
-                                _string.concat:
-                                  - action_statuses.
-                                  - _request: get_action.status.0.stage
-                                  - .priority
+                            - _js:
+                                args:
+                                  statuses:
+                                    _ref: enums/action_statuses.yaml
+                                  stage:
+                                    _request: get_action.status.0.stage
+                                fn: |
+                                  const { statuses, stage } = args;
+                                  return statuses?.[stage]?.priority ?? 0;
                             - 0
                     properties:
                       title: Mark Not Required
@@ -298,7 +302,7 @@ _ref:
                                   key: page_config.events.onSubmit
                                   default: []
                               - - id: submit_not_required
-                                  type: CallApi
+                                  type: CallAPI
                                   params:
                                     endpointId:
                                       _module.endpointId:
@@ -352,7 +356,7 @@ _ref:
                           key: page_config.events.onSubmit
                           default: []
                       - - id: submit_edit
-                          type: CallApi
+                          type: CallAPI
                           params:
                             endpointId:
                               _module.endpointId:
@@ -404,7 +408,7 @@ _ref:
                           key: page_config.events.onSubmit
                           default: []
                       - - id: submit_not_required
-                          type: CallApi
+                          type: CallAPI
                           params:
                             endpointId:
                               _module.endpointId:
