@@ -25,7 +25,7 @@ Each part has its own folder under [parts/](parts/) with a `design.md` containin
 
 | #   | Part                                                                    | Source concept sub-design                                                                                                                         | Size |
 | --- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---- |
-| 1   | [call-api-primitive](parts/01-call-api-primitive/design.md)             | [call-api](../workflows-module-concept/call-api/spec.md)                                                                                          | S    |
+| 1   | [call-api-primitive](parts/_completed/01-call-api-primitive/design.md)  | [call-api](../workflows-module-concept/call-api/spec.md)                                                                                          | S    |
 | 2   | [dynamic-module-pages](parts/02-dynamic-module-pages/design.md)         | (new — upstream module-system extension)                                                                                                          | S    |
 | 3   | [engine-plugin-shell](parts/03-engine-plugin-shell/design.md)           | [engine](../workflows-module-concept/engine/spec.md)                                                                                              | M    |
 | 4   | [workflow-config-schema](parts/04-workflow-config-schema/design.md)     | [action-authoring](../workflows-module-concept/action-authoring/spec.md)                                                                          | M    |

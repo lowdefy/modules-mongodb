@@ -12,7 +12,7 @@ Three additions:
 
 When 20b lands, the admin-style buttons get removed and the parent tracker action will link into the child's `task-edit` page directly. For 20a, they're the only way the demo drives child-workflow status transitions.
 
-API call shape — the demo uses `CallApi` (or whatever Lowdefy primitive is available at the time; if the `callApi` primitive from [part 01](../../01-call-api-primitive/design.md) hasn't shipped yet, use the inline `Request` block pattern that exists in v0 demo pages). Endpoints to call:
+API call shape — the demo uses `CallApi` (the [part 01](../../_completed/01-call-api-primitive/design.md) primitive has shipped). Endpoints to call:
 
 - `start-workflow` — payload: `{ workflow_type: 'onboarding', entity_id: <lead._id>, entity_collection: 'leads-collection' }`. No `parent_action_id` for the top-level call (the engine starts the child workflow internally for each tracker action via its `start-workflow` invocation with `parent_action_id` set — confirm by reading [part 5](../../05-start-cancel-handlers/design.md)).
 - `close-workflow` — payload: `{ workflow_id: <child workflow id> }`. The child id needs to be discoverable from the parent tracker action's `child_workflow_id` field (returned by `get-entity-workflows`).
@@ -95,7 +95,7 @@ Label both buttons as `[admin]` in their text so the demo audience knows these a
 
 ## Notes
 
-- The exact button vocabulary (`Button`, `CallApi` event type vs inline `Request`) depends on whether [part 01](../../01-call-api-primitive/design.md) has shipped. If `CallApi` isn't yet a Lowdefy action type at this point in the timeline, use the existing v0 pattern (inline `Request` + manual refetch). The design notes 20a does NOT depend on part 01 — so prefer the v0 pattern.
+- Use `Button` with the `CallApi` action type ([part 01](../../_completed/01-call-api-primitive/design.md) has shipped). The design notes 20a does NOT block on part 01 for its core deliverable, but since the primitive is now available, the demo wiring can use it directly.
 - Verify the `start-workflow` endpoint's payload shape by reading `modules/workflows/api/start-workflow.yaml` before wiring the button.
 - The "admin-style" framing in the button labels is intentional — these buttons are scaffolding for 20a. The 20b task list will remove them.
 - `actions-on-entity` may auto-refetch on the page's request changes — if not, wire an explicit refetch trigger after each button-driven API call. Confirm by reading `modules/workflows/components/actions-on-entity.yaml`.

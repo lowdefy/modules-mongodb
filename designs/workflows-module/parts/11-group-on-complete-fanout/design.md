@@ -46,7 +46,7 @@ Group status is one-way (`blocked → in-progress → done`, no transitions back
 
 ## Depends on
 
-[Part 1](../01-call-api-primitive/design.md), [part 7](../07-group-state-machine/design.md), [part 9](../09-hook-invocation/design.md) (same `context.callApi` invocation pattern).
+[Part 1](../_completed/01-call-api-primitive/design.md), [part 7](../_completed/07-group-state-machine/design.md), [part 9](../09-hook-invocation/design.md) (same `context.callApi` invocation pattern).
 
 ## Verification
 

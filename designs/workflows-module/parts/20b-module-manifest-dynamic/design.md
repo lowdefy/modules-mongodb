@@ -2,7 +2,7 @@
 
 **Source rationale:** [workflows-module-concept/module-surface/spec.md](../../../workflows-module-concept/module-surface/spec.md). **Layer:** surface. **Size:** S. **Repo:** `modules/workflows/` + `apps/demo/`.
 
-Split from the original Part 20. This half lands the manifest entries that depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../01-call-api-primitive/design.md) and [part 02 (dynamic module page exports)](../02-dynamic-module-pages/design.md), plus the form-action and task-action demo flows that need those primitives. The static surface — connections, shared pages, operational APIs, components, enums — ships in [part 20a](../20a-module-manifest-static/design.md).
+Split from the original Part 20. This half lands the manifest entries that depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../_completed/01-call-api-primitive/design.md) and [part 02 (dynamic module page exports)](../02-dynamic-module-pages/design.md), plus the form-action and task-action demo flows that need those primitives. The static surface — connections, shared pages, operational APIs, components, enums — ships in [part 20a](../20a-module-manifest-static/design.md).
 
 After this part lands the v1 feature set is live end-to-end against the [concept worked example](../../../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs).
 
@@ -97,7 +97,7 @@ After this part lands, the demo walks through every bullet from the [concept wor
 ## Depends on
 
 - [Part 20a](../20a-module-manifest-static/design.md) — the static manifest entries this part extends.
-- [Part 01](../01-call-api-primitive/design.md) — `context.callApi` primitive. Required at runtime for the per-action endpoint's hook invocation, side-effect dispatch, log-event emission, and group `on_complete` fan-out.
+- [Part 01](../_completed/01-call-api-primitive/design.md) — `context.callApi` primitive. Required at runtime for the per-action endpoint's hook invocation, side-effect dispatch, log-event emission, and group `on_complete` fan-out.
 - [Part 02](../02-dynamic-module-pages/design.md) — dynamic page (and likely api) exports channel. Required for the two resolver entries this part lands.
 - [Part 12](../12-resolver-pages/design.md) — `makeActionPages` resolver.
 - [Part 13](../13-resolver-apis/design.md) — `makeWorkflowApis` resolver.

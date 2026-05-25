@@ -2,7 +2,7 @@
 
 **Source rationale:** [workflows-module-concept/module-surface/spec.md](../../../workflows-module-concept/module-surface/spec.md). **Layer:** surface. **Size:** S. **Repo:** `modules/workflows/` + `apps/demo/`.
 
-Split from the original Part 20. This half lands the manifest entries that do **not** depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../01-call-api-primitive/design.md) or [part 02 (dynamic module page exports)](../02-dynamic-module-pages/design.md), plus a tracker-only worked-example wiring that exercises the static surface end-to-end. The dynamic resolver-emitted exports — per-action pages from [part 12](../12-resolver-pages/design.md) and per-action submit endpoints from [part 13](../13-resolver-apis/design.md) — land in [part 20b](../20b-module-manifest-dynamic/design.md).
+Split from the original Part 20. This half lands the manifest entries that do **not** depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../_completed/01-call-api-primitive/design.md) or [part 02 (dynamic module page exports)](../02-dynamic-module-pages/design.md), plus a tracker-only worked-example wiring that exercises the static surface end-to-end. The dynamic resolver-emitted exports — per-action pages from [part 12](../12-resolver-pages/design.md) and per-action submit endpoints from [part 13](../13-resolver-apis/design.md) — land in [part 20b](../20b-module-manifest-dynamic/design.md).
 
 The split lets every static export (connections, shared pages, operational APIs, components, enums) be wired and verified before the upstream Lowdefy work (parts 01, 02) lands.
 
@@ -172,7 +172,7 @@ Every part that ships a static manifest entry referenced here:
 - [Part 23](../_completed/23-close-workflow-handler/design.md) — `close-workflow` API + handler.
 - [Part 25](../_completed/25-group-overview-page/design.md) — `group-overview` page + `get-action-group-overview` API.
 
-Does **not** depend on parts [01](../01-call-api-primitive/design.md), [02](../02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../14-form-components-library/design.md), [15](../15-resolver-form-builder/design.md), [16](../_completed/16-page-templates/design.md), [24](../24-universal-fields/design.md), or [28](../28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
+Does **not** depend on parts [01](../_completed/01-call-api-primitive/design.md), [02](../02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../14-form-components-library/design.md), [15](../15-resolver-form-builder/design.md), [16](../_completed/16-page-templates/design.md), [24](../24-universal-fields/design.md), or [28](../28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
 
 ## Verification
 
