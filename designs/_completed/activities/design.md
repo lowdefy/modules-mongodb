@@ -13,7 +13,7 @@ Apps building on these modules need:
 
 This design introduces an `activities` module that sits alongside `events`, follows the `companies`/`contacts` entity-module pattern, and reserves the schema surface needed for future ingestion channels.
 
-See [`decisions.md`](./decisions.md) for the log of resolved open
+See [`decisions.md`](decisions.md) for the log of resolved open
 questions and why each choice was made.
 
 ## Key decisions

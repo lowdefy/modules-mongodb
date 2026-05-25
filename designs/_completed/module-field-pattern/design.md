@@ -13,7 +13,7 @@ Each module bakes its own state root into these overrides (`user.profile.*` vs `
 ## Solution
 
 1. **Flatten the state namespace.** Replace `user.profile.*` / `contact.profile.*` with `profile.*` across all modules.
-2. **One block array per field group.** Consumer writes standard Lowdefy blocks once. Same file used in the edit form and in [SmartDescriptions](../smart-descriptions/design.md) for the view.
+2. **One block array per field group.** Consumer writes standard Lowdefy blocks once. Same file used in the edit form and in [SmartDescriptions](designs/_completed/smart-descriptions%201/design.md) for the view.
 3. **Whole-object save.** API does `profile: _payload: profile` instead of per-field mapping.
 4. **Pipeline stages for transforms.** Consumers who need data transformations provide MongoDB update pipeline stages.
 
@@ -405,7 +405,7 @@ Wired the same way in any module that surfaces global attributes.
 
 ### Dependency: SmartDescriptions
 
-The view page changes depend on the [SmartDescriptions block](../smart-descriptions/design.md) being implemented first. The form and API changes can proceed independently.
+The view page changes depend on the [SmartDescriptions block](designs/_completed/smart-descriptions%201/design.md) being implemented first. The form and API changes can proceed independently.
 
 ## Resolved Questions
 
