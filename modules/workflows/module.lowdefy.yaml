@@ -1,17 +1,15 @@
-# This manifest declares the part-04 enum components (action_statuses,
-# workflow_lifecycle_stages), the part-15 action_form_configs component,
-# the part-17 shared pages (task-edit / task-view / task-review /
-# workflow-overview), the part-19 operational APIs (start/cancel/close-workflow
-# + get-entity-workflows / get-workflow-overview), the part-18 entity-page
-# components (actions-on-entity, workflow-header, action_role_check), the
-# part-25 group-overview surface (group-overview page + get-action-group-overview
-# Api), and the part-20a static surface (workflows-collection / actions-collection
-# / workflow-api connections, MONGODB_URI secret, dependencies on layout + events,
-# user_schema + app_name + entities vars).
-#
-# The remaining module surface — resolver-channel page + API exports
-# (makeActionPages, makeWorkflowApis), form-fields component library
-# (part 14), notifications dependency, menu exports — lands in part 20b.
+# Build-time resolver invocations (resolvers in modules/workflows/resolvers/):
+#   makeWorkflowsConfig    — engine config validation; component
+#                            validated_workflows_config, consumed by
+#                            connections/workflow-api.yaml.
+#   makeWorkflowApis       — per-action update-action-{type} APIs;
+#                            spliced into api:.
+#   makeActionPages        — per-action edit/view/review/error pages from
+#                            templates/{verb}.yaml.njk; spliced into pages:.
+#   makeActionFormConfigs  — per-action form metadata map; component
+#                            action_form_configs, consumed by the overview pages.
+#   makeActionsForm        — template-scope form-block substitution (already
+#                            wired from templates/{verb}.yaml.njk).
 #
 # The workflow-api connection `_ref`s the canonical enum file directly
 # (`actionsEnum: { _ref: ../enums/action_statuses.yaml }`), so the engine
@@ -101,6 +99,12 @@ components:
   - id: workflows_config
     component:
       _ref: components/workflows_config.yaml
+  - id: validated_workflows_config
+    component:
+      _ref: components/validated_workflows_config.yaml
+  - id: action_form_configs
+    component:
+      _ref: components/action_form_configs.yaml
 
 connections:
   - _ref: connections/workflows-collection.yaml
@@ -108,19 +112,33 @@ connections:
   - _ref: connections/workflow-api.yaml
 
 api:
-  - _ref: api/start-workflow.yaml
-  - _ref: api/cancel-workflow.yaml
-  - _ref: api/close-workflow.yaml
-  - _ref: api/get-entity-workflows.yaml
-  - _ref: api/get-workflow-overview.yaml
-  - _ref: api/get-action-group-overview.yaml
+  _build.array.concat:
+    - - _ref: api/start-workflow.yaml
+      - _ref: api/cancel-workflow.yaml
+      - _ref: api/close-workflow.yaml
+      - _ref: api/get-entity-workflows.yaml
+      - _ref: api/get-workflow-overview.yaml
+      - _ref: api/get-action-group-overview.yaml
+    - _ref:
+        resolver: resolvers/makeWorkflowApis.js
+        vars:
+          workflows:
+            _module.var: workflows_config
 
 pages:
-  - _ref: pages/task-edit.yaml
-  - _ref: pages/task-view.yaml
-  - _ref: pages/task-review.yaml
-  - _ref: pages/workflow-overview.yaml
-  - _ref: pages/group-overview.yaml
+  _build.array.concat:
+    - - _ref: pages/task-edit.yaml
+      - _ref: pages/task-view.yaml
+      - _ref: pages/task-review.yaml
+      - _ref: pages/workflow-overview.yaml
+      - _ref: pages/group-overview.yaml
+    - _ref:
+        resolver: resolvers/makeActionPages.js
+        vars:
+          workflows:
+            _module.var: workflows_config
+          app_name:
+            _module.var: app_name
 
 plugins:
   - name: '@lowdefy/modules-mongodb-plugins'

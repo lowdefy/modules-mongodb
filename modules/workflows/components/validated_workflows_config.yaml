@@ -1,0 +1,7 @@
+# Build-time validated workflows config produced by makeWorkflowsConfig.
+# Consumed by the workflow-api connection's properties.workflowsConfig.
+_ref:
+  resolver: resolvers/makeWorkflowsConfig.js
+  vars:
+    workflows:
+      _module.var: workflows_config

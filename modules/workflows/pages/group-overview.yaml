@@ -363,13 +363,13 @@ _ref:
                             default: null
                         - null
                     properties:
-                      # Per-action form-data DataView. In part 20a's static
-                      # surface no form-kind action has shipped, so the form
-                      # configs are an empty array. Part 20b restores the
-                      # action_form_configs map (built by makeActionFormConfigs.js
-                      # from vars.workflows_config) and the form / form_review
-                      # field arrays index into it.
-                      formConfig: []
+                      formConfig:
+                        _get:
+                          from:
+                            _ref: components/action_form_configs.yaml
+                          key:
+                            _state: actions_list.$.type
+                          default: { form: [], form_review: [] }
                       data:
                         form:
                           _get:

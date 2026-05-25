@@ -1,5 +1,0 @@
-_ref:
-  resolver: resolvers/makeActionFormConfigs.js
-  vars:
-    workflows:
-      _module.var: workflows_config

@@ -35,8 +35,7 @@ blocks:
                 title:
                   _get:
                     from:
-                      _log:
-                        _ref: components/workflows_config.yaml
+                      _ref: components/workflows_config.yaml
                     key:
                       _string.concat:
                         - _state: entity_workflows.$.workflow_type
