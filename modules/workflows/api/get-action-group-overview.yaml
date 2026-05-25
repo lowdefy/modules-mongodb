@@ -10,57 +10,65 @@ routine:
         - $match:
             _id:
               _payload: workflow_id
-
         - $lookup:
             from: actions
-            let:
-              workflowId: $_id
+            localField: _id
+            foreignField: workflow_id
             pipeline:
               - $match:
-                  $expr:
-                    $and:
+                  action_group:
+                    _payload: group_id
+              - $addFields:
+                  status:
+                    $arrayElemAt:
+                      - $status.stage
+                      - 0
+              - $addFields:
+                  required_sort:
+                    $cond:
                       - $eq:
-                          - $workflow_id
-                          - $$workflowId
+                          - $status
+                          - 'not-required'
+                      - 1
+                      - 0
+                  sort:
+                    $cond:
                       - $eq:
-                          - $action_group
-                          - _payload: group_id
-              - _ref: api/stages/access_filter.yaml
+                          - $status
+                          - 'not-required'
+                      - 1
+                      - $sort_order
               - $sort:
-                  sort_order: 1
-                  _id: 1
+                  required_sort: 1
+                  sort: 1
+                  created.timestamp: 1
+              - $project:
+                  type: $type
+                  status: $status
+                  message:
+                    _string.concat:
+                      - $apps
+                      - .
+                      - _module.var: app_name
+                      - .message
+                  link:
+                    _string.concat:
+                      - $apps
+                      - .
+                      - _module.var: app_name
+                      - .link
             as: actions
 
   - :set_state:
       workflow_doc:
-        _get:
-          from:
-            _step: query
-          key: "0"
-          default: null
+        _step: query.0
 
   # `group` collapses to `null` alongside `workflow` (one deliberate divergence
   # from get-workflow-overview): the group payload has no meaning without a
   # visible workflow, and the access-vs-existence collapse stays consistent.
   - :return:
       workflow:
-        _if:
-          test:
-            _and:
-              - _ne:
-                  - _state: workflow_doc
-                  - null
-              - _gt:
-                  - _array.length:
-                      _get:
-                        from:
-                          _state: workflow_doc
-                        key: actions
-                        default: []
-                  - 0
-          then:
-            _state: workflow_doc
-          else: null
+        _state: workflow_doc
       group:
         _if:
           test:

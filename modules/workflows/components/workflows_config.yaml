@@ -1,0 +1,7 @@
+_build.object.fromEntries:
+  _build.array.map:
+    - _module.var: workflows_config
+    - _build.function:
+        - __build.args: 0.type
+        - title:
+            __build.args: 0.title

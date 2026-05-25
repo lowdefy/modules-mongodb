@@ -94,7 +94,7 @@ _ref:
                 type: Box
                 layout:
                   gap: 8
-                  contentAlign: middle
+                  align: middle
                 blocks:
                   - id: action_title
                     type: Title

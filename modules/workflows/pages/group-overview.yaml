@@ -57,14 +57,14 @@ _ref:
         # Null-redirect guard — Api returns workflow: null when no actions
         # pass the access filter, the workflow doc is missing, or the group
         # id is unknown.
-        - id: redirect_no_workflow_doc
-          type: Link
-          skip:
-            _ne:
-              - _state: overview.workflow
-              - null
-          params:
-            back: true
+        # - id: redirect_no_workflow_doc
+        #   type: Link
+        #   skip:
+        #     _ne:
+        #       - _state: overview.workflow
+        #       - null
+        #   params:
+        #     back: true
     blocks:
       - id: group_overview_header
         type: Box
@@ -132,7 +132,7 @@ _ref:
                       - _state: overview.workflow.entity_collection
                       - .title
                   default: Entity
-              - " "
+              - ' '
               - _state: overview.workflow.entity_id
           type: link
           icon: AiOutlineArrowLeft
@@ -231,14 +231,14 @@ _ref:
                     type: Box
                     layout:
                       gap: 8
-                      contentAlign: middle
+                      align: middle
                       justify: space-between
                     blocks:
                       - id: actions_list.$.title_row
                         type: Box
                         layout:
                           gap: 8
-                          contentAlign: middle
+                          align: middle
                         blocks:
                           - id: actions_list.$.status_badge
                             type: Tag
@@ -278,7 +278,7 @@ _ref:
                                           - .
                                           - _module.var: app_name
                                           - .message
-                                      default: ""
+                                      default: ''
                                   on:
                                     action:
                                       _state: actions_list.$

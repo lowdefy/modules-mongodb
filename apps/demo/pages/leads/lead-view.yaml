@@ -73,46 +73,76 @@ _ref:
                   _payload: _id
             - $limit: 1
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            title: Lead information
-            doc:
-              _request: get_lead.0
+      - id: lead_view_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: workflows_column
+            type: Box
+            layout:
+              span: 10
+              sm:
+                span: 24
             blocks:
-              - id: lead_name_row
-                type: Box
-                layout:
-                  gap: 8
-                  contentAlign: middle
-                blocks:
-                  - id: lead_name_label
-                    type: Paragraph
-                    properties:
-                      type: secondary
-                      content: 'Name:'
-                  - id: lead_name_value
-                    type: Paragraph
-                    properties:
-                      content:
-                        _request: get_lead.0.name
-              - id: lead_email_row
-                type: Box
-                layout:
-                  gap: 8
-                  contentAlign: middle
-                blocks:
-                  - id: lead_email_label
-                    type: Paragraph
-                    properties:
-                      type: secondary
-                      content: 'Email:'
-                  - id: lead_email_value
-                    type: Paragraph
-                    properties:
-                      content:
-                        _request: get_lead.0.email
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Workflows
+                    blocks:
+                      - _ref:
+                          module: workflows
+                          component: actions-on-entity
+                          vars:
+                            entity_id:
+                              _url_query: _id
+                            entity_collection: leads-collection
+          - id: lead_info_column
+            type: Box
+            layout:
+              span: 14
+              sm:
+                span: 24
+            blocks:
+              - _ref:
+                  module: layout
+                  component: card
+                  vars:
+                    title: Lead information
+                    blocks:
+                      - id: lead_name_row
+                        type: Box
+                        layout:
+                          gap: 8
+                          align: middle
+                        blocks:
+                          - id: lead_name_label
+                            type: Paragraph
+                            properties:
+                              type: secondary
+                              content: 'Name:'
+                          - id: lead_name_value
+                            type: Paragraph
+                            properties:
+                              content:
+                                _request: get_lead.0.name
+                      - id: lead_email_row
+                        type: Box
+                        layout:
+                          gap: 8
+                          align: middle
+                        blocks:
+                          - id: lead_email_label
+                            type: Paragraph
+                            properties:
+                              type: secondary
+                              content: 'Email:'
+                          - id: lead_email_value
+                            type: Paragraph
+                            properties:
+                              content:
+                                _request: get_lead.0.email
       - id: workflows_section
         type: Box
         layout:
@@ -122,7 +152,7 @@ _ref:
             type: Box
             layout:
               gap: 8
-              contentAlign: middle
+              align: middle
             blocks:
               - id: start_onboarding_btn
                 type: Button
@@ -298,16 +328,3 @@ _ref:
                                 (a) => a.kind === 'tracker' && a.child_workflow_id
                               );
                               return (tracker && tracker.child_workflow_id) || null;
-          - _ref:
-              module: layout
-              component: card
-              vars:
-                title: Workflows
-                blocks:
-                  - _ref:
-                      module: workflows
-                      component: actions-on-entity
-                      vars:
-                        entity_id:
-                          _url_query: _id
-                        entity_collection: leads-collection

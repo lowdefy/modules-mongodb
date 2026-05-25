@@ -46,14 +46,14 @@ _ref:
               _actions: call_get_overview.response.response.actions
         # Null-redirect guard — Api returns workflow: null when no actions
         # pass the access filter (or the workflow doc is missing).
-        - id: redirect_no_workflow_doc
-          type: Link
-          skip:
-            _ne:
-              - _state: overview.workflow
-              - null
-          params:
-            back: true
+        # - id: redirect_no_workflow_doc
+        #   type: Link
+        #   skip:
+        #     _ne:
+        #       - _state: overview.workflow
+        #       - null
+        #   params:
+        #     back: true
     blocks:
       - _ref:
           path: components/workflow-header.yaml
@@ -75,7 +75,7 @@ _ref:
                       - _state: overview.workflow.entity_collection
                       - .title
                   default: Entity
-              - " "
+              - ' '
               - _state: overview.workflow.entity_id
           type: link
           icon: AiOutlineArrowLeft
@@ -115,73 +115,48 @@ _ref:
                     type: Box
                     layout:
                       gap: 8
-                      contentAlign: middle
+                      align: middle
                       justify: space-between
                     blocks:
                       - id: actions_list.$.title_row
                         type: Box
                         layout:
                           gap: 8
-                          contentAlign: middle
+                          align: middle
                         blocks:
                           - id: actions_list.$.status_badge
                             type: Tag
+                            layout:
+                              flex: 0 0 auto
                             properties:
                               color:
-                                _js:
-                                  args:
-                                    statuses:
-                                      _ref: enums/action_statuses.yaml
-                                    stage:
-                                      _state: actions_list.$.status.0.stage
-                                  fn: |
-                                    const { statuses, stage } = args;
-                                    return statuses?.[stage]?.color;
-                              content:
-                                _js:
-                                  args:
-                                    statuses:
-                                      _ref: enums/action_statuses.yaml
-                                    stage:
-                                      _state: actions_list.$.status.0.stage
-                                  fn: |
-                                    const { statuses, stage } = args;
-                                    return statuses?.[stage]?.title;
+                                _get:
+                                  from:
+                                    _ref: components/action_statuses.yaml
+                                  key:
+                                    _string.concat:
+                                      - _state: actions_list.$.status
+                                      - .titleColor
+                              title:
+                                _get:
+                                  from:
+                                    _ref: components/action_statuses.yaml
+                                  key:
+                                    _string.concat:
+                                      - _state: actions_list.$.status
+                                      - .title
                           - id: actions_list.$.message
+                            layout:
+                              flex: 1 1 auto
                             type: Paragraph
                             properties:
                               content:
-                                _nunjucks:
-                                  template:
-                                    _get:
-                                      from:
-                                        _state: actions_list.$.status_map
-                                      key:
-                                        _string.concat:
-                                          - _state: actions_list.$.status.0.stage
-                                          - .
-                                          - _module.var: app_name
-                                          - .message
-                                      default: ""
-                                  on:
-                                    action:
-                                      _state: actions_list.$
-                                    workflow:
-                                      _state: overview.workflow
+                                _state: actions_list.$.message
                       - id: actions_list.$.link_button
                         type: Button
                         visible:
                           _ne:
-                            - _get:
-                                from:
-                                  _state: actions_list.$.status_map
-                                key:
-                                  _string.concat:
-                                    - _state: actions_list.$.status.0.stage
-                                    - .
-                                    - _module.var: app_name
-                                    - .link
-                                default: null
+                            - _state: actions_list.$.link
                             - null
                         properties:
                           title: Open
@@ -191,15 +166,7 @@ _ref:
                             - id: actions_list.$.link
                               type: Link
                               params:
-                                _get:
-                                  from:
-                                    _state: actions_list.$.status_map
-                                  key:
-                                    _string.concat:
-                                      - _state: actions_list.$.status.0.stage
-                                      - .
-                                      - _module.var: app_name
-                                      - .link
+                                _state: actions_list.$.link
                   - id: actions_list.$.body_empty
                     type: Html
                     visible:
