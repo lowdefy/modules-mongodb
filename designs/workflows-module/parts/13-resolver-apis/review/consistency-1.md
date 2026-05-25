@@ -7,7 +7,7 @@ Scanned part 13's tree (design.md + review-1.md) after the action review landed 
 ## Files Reviewed
 
 - **Design:** [design.md](../design.md)
-- **Reviews:** [review-1.md](review-1.md) (all 13 findings annotated; 12 Resolved, 1 Accepted)
+- **Reviews:** [review-1.md](designs/workflows-module/parts/13-resolver-apis/review/review-1.md) (all 13 findings annotated; 12 Resolved, 1 Accepted)
 - **Tasks / Plans:** none exist yet
 
 ## Inconsistencies Found

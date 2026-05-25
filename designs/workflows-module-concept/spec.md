@@ -1,6 +1,6 @@
 # Workflows Module — Spec
 
-Implementation-ready summary of the workflows module. Full rationale in [design.md](design.md) and the seven sub-design `design.md` files; this file carries only the committed decisions.
+Implementation-ready summary of the workflows module. Full rationale in [design.md](designs/workflows-module-concept/design.md) and the seven sub-design `design.md` files; this file carries only the committed decisions.
 
 ## Module shape
 

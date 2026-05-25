@@ -12,9 +12,9 @@ Scanned part 15's design.md, tasks/, and review/ against review-2's three resolu
 
 **Reviews (target):**
 
-- [`designs/workflows-module/parts/15-resolver-form-builder/review/review-1.md`](review-1.md) — 12 findings, all resolved; propagation tracked in consistency-1.
-- [`designs/workflows-module/parts/15-resolver-form-builder/review/review-2.md`](review-2.md) — 3 findings: #1 Resolved (option 1, `mode` + `viewOnly` filter); #2 Resolved (part-15 contract note + part-16 verification bullet); #3 Accepted (no design change).
-- [`designs/workflows-module/parts/15-resolver-form-builder/review/consistency-1.md`](consistency-1.md) — previous consistency pass on review-1 propagation.
+- [`designs/workflows-module/parts/15-resolver-form-builder/review/review-1.md`](designs/workflows-module/parts/_completed/15-resolver-form-builder/review/review-1.md) — 12 findings, all resolved; propagation tracked in consistency-1.
+- [`designs/workflows-module/parts/15-resolver-form-builder/review/review-2.md`](designs/workflows-module/parts/_completed/15-resolver-form-builder/review/review-2.md) — 3 findings: #1 Resolved (option 1, `mode` + `viewOnly` filter); #2 Resolved (part-15 contract note + part-16 verification bullet); #3 Accepted (no design change).
+- [`designs/workflows-module/parts/15-resolver-form-builder/review/consistency-1.md`](designs/workflows-module/parts/_completed/15-resolver-form-builder/review/consistency-1.md) — previous consistency pass on review-1 propagation.
 
 **Tasks:**
 

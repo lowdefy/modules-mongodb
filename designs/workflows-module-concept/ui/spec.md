@@ -1,6 +1,6 @@
 # Workflows UI — Spec
 
-Per-action page generation, templates, task pages, and entity-page UI components. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+Per-action page generation, templates, task pages, and entity-page UI components. Full rationale in [design.md](designs/workflows-module-concept/ui/design.md); this file carries only the committed decisions.
 
 ## Per-action page generation
 

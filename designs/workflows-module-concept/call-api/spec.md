@@ -1,6 +1,6 @@
 # CallApi from Plugin Connections — Spec
 
-`context.callApi` primitive on `@lowdefy/api` request handlers. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+`context.callApi` primitive on `@lowdefy/api` request handlers. Full rationale in [design.md](designs/workflows-module-concept/call-api/design.md); this file carries only the committed decisions.
 
 **Status:** Upstream-Lowdefy work in `@lowdefy/api`. First consumer: [submit-pipeline](../submit-pipeline/design.md). Submit-pipeline is gated on this landing.
 

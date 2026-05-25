@@ -93,7 +93,7 @@ Top-level sweep following the [part 6 review-1](../parts/06-submit-action-writes
 ### 7. Part 22 grandfathered-parts bullet — already consistent, surveyed only
 
 **Type:** Already consistent (no change needed).
-**Source of truth:** [top-level review-1 #3](review-1.md) — "Parts 3, 4, 5, 14 shipped before this convention; their existing posture stands."
+**Source of truth:** [top-level review-1 #3](designs/workflows-module/review/review-1.md) — "Parts 3, 4, 5, 14 shipped before this convention; their existing posture stands."
 **Files affected:** None — `parts/22-workflows-e2e-suite/design.md:83` already lists "Parts 3, 4, 5, 14" and links to the top-level Testing conventions subsection.
 **Resolution:** Verified. Listed here for coverage.
 
@@ -104,8 +104,8 @@ Areas checked where everything was consistent:
 - **`force: true` propagation** in parts 5, 8, 9, 10 and the engine spec — all references now reflect per-entry only. Part 5's `force: true` callers (parent-link push, cancel sweep) are engine-internal `updateAction` calls, which is the documented exit hatch.
 - **Idempotency triple** — the old `(action_id, current_status, interaction)` text only survives inside [part 6 review-1 #5's preserved finding body](../parts/06-submit-action-writes/review/review-1.md), which is the original text shown above the Resolved annotation per the action-review skill's convention. No design or task file carries the stale triple.
 - **`required_after_close` propagation** — part 6's terminal-workflow gate is documented in step 1; part 23's sweep filter is documented in the action-sweep bullet; part 5's cancel sweep correctly defers the filter as a part 23 open question.
-- **Testing conventions** — already verified clean by [consistency-2](consistency-2.md); no new drift in this pass.
-- **`entity_type` → `entity_collection`** — already verified clean by [consistency-1](consistency-1.md); part 23 design uses `entity_collection` only.
+- **Testing conventions** — already verified clean by [consistency-2](designs/workflows-module/review/consistency-2.md); no new drift in this pass.
+- **`entity_type` → `entity_collection`** — already verified clean by [consistency-1](designs/workflows-module/review/consistency-1.md); part 23 design uses `entity_collection` only.
 - **Part 22 e2e line** in every shipping part 5–20 + part 23 — all present.
 - **Top-level design.md** parts table, dependency graph, hard gates, follow-on parts narrative — all include part 23 consistently.
 - **Implementation-plan.md** — `close-workflow-handler` row present in Follow-ons table; repo footprint includes part 23 in both `plugins/` and `modules/workflows/`.

@@ -1,6 +1,6 @@
 # Workflows Module Surface — Spec
 
-`module.lowdefy.yaml` manifest and the four module APIs. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+`module.lowdefy.yaml` manifest and the four module APIs. Full rationale in [design.md](designs/workflows-module-concept/module-surface/design.md); this file carries only the committed decisions.
 
 ## `module.lowdefy.yaml`
 

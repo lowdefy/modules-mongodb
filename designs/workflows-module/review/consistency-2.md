@@ -2,7 +2,7 @@
 
 ## Summary
 
-Top-level sweep following [review-1](review-1.md) (testing conventions). Checked all 23 part designs, all task files, both review folders, and the implementation plan for drift from the new Testing conventions subsection in `design.md`. Found no drift requiring file changes — one soft surfacing question raised with the user and resolved as a deliberate no-op (trust the review annotation rather than pre-empt `/r:design-task`).
+Top-level sweep following [review-1](designs/workflows-module/review/review-1.md) (testing conventions). Checked all 23 part designs, all task files, both review folders, and the implementation plan for drift from the new Testing conventions subsection in `design.md`. Found no drift requiring file changes — one soft surfacing question raised with the user and resolved as a deliberate no-op (trust the review annotation rather than pre-empt `/r:design-task`).
 
 ## Files Reviewed
 
@@ -36,7 +36,7 @@ Top-level sweep following [review-1](review-1.md) (testing conventions). Checked
 
 Targeted grep across all design + task files for: `unit test`, `jest`, `node:test`, `node --test`, `@jest`, `mongodb-memory`, `in-memory mongo`, `test framework`, `test harness`, `test runner`, `test posture`.
 
-## Decisions Extracted from [review-1.md](review-1.md)
+## Decisions Extracted from [review-1.md](designs/workflows-module/review/review-1.md)
 
 1. **Jest is the unit-test framework.** Files colocate as `*.test.js` next to source under `modules/workflows/` and `plugins/modules-mongodb-plugins/src/`. (review-1 #1 → resolved → landed in [design.md § Testing conventions](../design.md#testing-conventions).)
 2. **Handler functions use `mongodb-memory-server`** booted per test file. (review-1 #1 → resolved.)
@@ -60,7 +60,7 @@ None requiring file changes. Surveyed surface and findings below.
 
 ### Soft finding raised with user (resolved as no-op)
 
-**Topic:** The `makeWorkflowsConfig.test.js` rewrite commitment lives only in [review-1.md finding #2's annotation](review-1.md). Part 6 has no `tasks/` directory yet; the rewrite will be picked up by `/r:design-task workflows-module/parts/06-submit-action-writes` when it generates part 6's task prompts.
+**Topic:** The `makeWorkflowsConfig.test.js` rewrite commitment lives only in [review-1.md finding #2's annotation](designs/workflows-module/review/review-1.md). Part 6 has no `tasks/` directory yet; the rewrite will be picked up by `/r:design-task workflows-module/parts/06-submit-action-writes` when it generates part 6's task prompts.
 
 **Options presented:**
 
@@ -78,4 +78,4 @@ None requiring file changes. Surveyed surface and findings below.
 
 ## Next Step
 
-Run `/r:design-task workflows-module/parts/06-submit-action-writes` when part 6 is ready to start. The first task it generates should be the Jest harness setup (devDeps + `jest.config.js` + `inMemoryMongo.js` helper + `test` script wiring + `makeWorkflowsConfig.test.js` rewrite from `node:test` to Jest) per [review-1 finding #2's annotation](review-1.md).
+Run `/r:design-task workflows-module/parts/06-submit-action-writes` when part 6 is ready to start. The first task it generates should be the Jest harness setup (devDeps + `jest.config.js` + `inMemoryMongo.js` helper + `test` script wiring + `makeWorkflowsConfig.test.js` rewrite from `node:test` to Jest) per [review-1 finding #2's annotation](designs/workflows-module/review/review-1.md).

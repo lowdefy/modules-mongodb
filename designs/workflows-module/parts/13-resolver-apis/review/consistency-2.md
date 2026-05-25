@@ -7,7 +7,7 @@ Re-scanned part 13's tree after the task files landed. Cross-checked the four ne
 ## Files Reviewed
 
 - **Design:** [design.md](../design.md)
-- **Reviews:** [review-1.md](review-1.md) (all 13 findings annotated), [consistency-1.md](consistency-1.md) (prior consistency pass — 1 in-tree fix + 3 cross-part drifts surfaced)
+- **Reviews:** [review-1.md](designs/workflows-module/parts/13-resolver-apis/review/review-1.md) (all 13 findings annotated), [consistency-1.md](designs/workflows-module/parts/13-resolver-apis/review/consistency-1.md) (prior consistency pass — 1 in-tree fix + 3 cross-part drifts surfaced)
 - **Tasks:** [tasks/tasks.md](../tasks/tasks.md), [tasks/01-inline-hook-schema.md](../tasks/01-inline-hook-schema.md), [tasks/02-make-workflow-apis.md](../tasks/02-make-workflow-apis.md), [tasks/03-manifest-wiring.md](../tasks/03-manifest-wiring.md)
 - **External cross-checks:** [modules/workflows/module.lowdefy.yaml](../../../../../modules/workflows/module.lowdefy.yaml), [part 12 tasks/tasks.md](../../12-resolver-pages/tasks/tasks.md), [part 2 design.md](../../02-dynamic-module-pages/design.md)
 
@@ -29,7 +29,7 @@ Re-scanned part 13's tree after the task files landed. Cross-checked the four ne
 
 ## Cross-part drift (re-surfaced from consistency-1, still out of edit scope)
 
-These were already noted in [consistency-1.md](consistency-1.md) and remain unchanged — included here only to confirm coverage:
+These were already noted in [consistency-1.md](designs/workflows-module/parts/13-resolver-apis/review/consistency-1.md) and remain unchanged — included here only to confirm coverage:
 
 - **A.** Part 9 design.md still says part 13 "validates" hook auth (pre-action-review wording). Folds in when part 9 enters its review cycle.
 - **B.** Part 11 design.md still carries the resolved-but-not-closed `on_complete` auth open question. Folds in when part 11 enters its review cycle.

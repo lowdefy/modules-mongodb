@@ -2,7 +2,7 @@
 
 ## Summary
 
-Second part-scoped consistency sweep of Part 23, run after the [`r:design-task` pass](../tasks/tasks.md) produced 7 task files. Surveyed Part 23's `design.md`, both review files, and all 8 task files against the decision register from [review-1](review-1.md) and the post-review reality that Part 10 has shipped. Found 9 inconsistencies — all auto-resolved.
+Second part-scoped consistency sweep of Part 23, run after the [`r:design-task` pass](../tasks/tasks.md) produced 7 task files. Surveyed Part 23's `design.md`, both review files, and all 8 task files against the decision register from [review-1](designs/workflows-module/parts/_completed/23-close-workflow-handler/review/review-1.md) and the post-review reality that Part 10 has shipped. Found 9 inconsistencies — all auto-resolved.
 
 ## Files Reviewed
 
@@ -34,7 +34,7 @@ Second part-scoped consistency sweep of Part 23, run after the [`r:design-task` 
 
 ## Decision Register
 
-Carried forward from [review-1](review-1.md):
+Carried forward from [review-1](designs/workflows-module/parts/_completed/23-close-workflow-handler/review/review-1.md):
 
 - **D1** — No new `shared/closeWorkflow.js`. Reuse shipped helpers inline; mirror `CancelWorkflow.js`'s two-write shape.
 - **D2** — Groups with `required_after_close: true` survivors land at `in-progress`/`blocked`, not `done`.
@@ -159,4 +159,4 @@ Areas checked where everything was consistent:
 
 ## Open follow-ons
 
-None new. Carried forward from [consistency-1](consistency-1.md): the Part 6 terminal-workflow gate follow-on (cancel-side `required_after_close` no longer applies; shipped Part 6 code + design + tasks need tightening).
+None new. Carried forward from [consistency-1](designs/workflows-module/parts/_completed/23-close-workflow-handler/review/consistency-1.md): the Part 6 terminal-workflow gate follow-on (cancel-side `required_after_close` no longer applies; shipped Part 6 code + design + tasks need tightening).

@@ -19,7 +19,7 @@ Scanned the full workflows-module design tree (parent + four sub-designs + engin
 
 **Reviews:**
 
-- [designs/workflows-module/engine/review/review-1.md](review-1.md) — 12 findings, all annotated as resolved
+- [designs/workflows-module/engine/review/review-1.md](designs/workflows-module-concept/engine/review/review-1.md) — 12 findings, all annotated as resolved
 
 **Tasks / plans:** None yet — no `tasks.md`, `tasks/`, or `plan/` directories exist for this design.
 

@@ -209,11 +209,11 @@ But submit-pipeline review-1 #8 added **per-entry `force`** on pre-hook `actions
 
 > **Resolved.** Changed "four sub-design `design.md` files" to "seven sub-design `design.md` files" at spec.md:3.
 
-[spec.md:3](../spec.md): "Full rationale in [design.md](design.md) and the four sub-design `design.md` files; this file carries only the committed decisions."
+[spec.md:3](../spec.md): "Full rationale in [design.md](designs/_completed/activities/design.md) and the four sub-design `design.md` files; this file carries only the committed decisions."
 
 Stale — there are seven sub-designs now.
 
-**Fix:** "Full rationale in [design.md](design.md) and the seven sub-design `design.md` files."
+**Fix:** "Full rationale in [design.md](designs/_completed/activities/design.md) and the seven sub-design `design.md` files."
 
 ## Summary
 

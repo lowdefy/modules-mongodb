@@ -1,6 +1,6 @@
 # Workflows Submit Pipeline — Spec
 
-Engine-orchestrated submit lifecycle. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+Engine-orchestrated submit lifecycle. Full rationale in [design.md](designs/workflows-module-concept/submit-pipeline/design.md); this file carries only the committed decisions.
 
 **Status:** Supersedes [module-surface](../module-surface/design.md) Decisions 4 & 5 (`submit-action` Api), [engine](../engine/design.md) Decision 1's `UpdateWorkflowActions` (renamed to `SubmitWorkflowAction`), and [action-authoring](../action-authoring/design.md) Decision 6's `makeWorkflowApis` (now emits `update-action-{action_type}`).
 

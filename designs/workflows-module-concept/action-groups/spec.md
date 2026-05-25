@@ -1,6 +1,6 @@
 # Workflows Action Groups — Spec
 
-Elevates `action_group` from UI label to engine concept. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+Elevates `action_group` from UI label to engine concept. Full rationale in [design.md](designs/workflows-module-concept/action-groups/design.md); this file carries only the committed decisions.
 
 ## Workflow YAML — top-level `action_groups:`
 

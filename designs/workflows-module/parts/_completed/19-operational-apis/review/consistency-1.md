@@ -7,7 +7,7 @@ Scanned part 19's `design.md` and `review-1.md` annotations after the action-rev
 ## Files Reviewed
 
 - **Design (this part):** [`designs/workflows-module/parts/19-operational-apis/design.md`](../design.md)
-- **Reviews:** [`designs/workflows-module/parts/19-operational-apis/review/review-1.md`](review-1.md)
+- **Reviews:** [`designs/workflows-module/parts/19-operational-apis/review/review-1.md`](designs/workflows-module/parts/_completed/19-operational-apis/review/review-1.md)
 - **Cross-part references checked:** [`designs/workflows-module/parts/17-shared-pages/design.md`](../../17-shared-pages/design.md), [`designs/workflows-module/parts/18-entity-components/design.md`](../../18-entity-components/design.md), [`designs/workflows-module/parts/20-module-manifest/design.md`](../../20-module-manifest/design.md), [`designs/workflows-module/parts/22-workflows-e2e-suite/design.md`](../../22-workflows-e2e-suite/design.md), [`designs/workflows-module/parts/23-close-workflow-handler/design.md`](../../23-close-workflow-handler/design.md)
 - **Concept docs:** [`designs/workflows-module-concept/module-surface/spec.md`](../../../../workflows-module-concept/module-surface/spec.md) (already updated during action review)
 
@@ -18,7 +18,7 @@ No `tasks/` or `plan/` directories exist for part 19 yet.
 ### 1. Stale "see #4" forward-reference inside design.md
 
 **Type:** Internal contradiction (stale reference)
-**Source of truth:** [review-1 #4](review-1.md#4-_userroles-source-not-specified--pulled-from-where) — the resolution added an anchor section under "Access enforcement"; the in-text cross-reference was meant to point at it.
+**Source of truth:** [review-1 #4](designs/workflows-module/parts/_completed/19-operational-apis/review/review-1.md#4-_userroles-source-not-specified--pulled-from-where) — the resolution added an anchor section under "Access enforcement"; the in-text cross-reference was meant to point at it.
 **Files affected:** [`design.md:45`](../design.md) — the `get-entity-workflows` access-rule bullet ended with `(empty or missing access.roles = no gate; see #4)`. Numbered references are review-file convention, not design-file convention; readers of the design have no #4.
 **Resolution:** Rewrote the tail to `(empty or missing access.roles = no gate; see [Access enforcement](#access-enforcement) below)`.
 
@@ -32,7 +32,7 @@ No `tasks/` or `plan/` directories exist for part 19 yet.
 ### 3. Cross-part: stale "Part 19's design needs updating" callout in part 23
 
 **Type:** Cross-part stale status note (Phase 3f)
-**Source of truth:** Part 19's [review-1 #12](review-1.md#12-close-workflow-api-not-yet-in-the-specs-api-list) resolution landed `close-workflow` in part 19's design (line 7), part 20's manifest (already there), and the concept spec.
+**Source of truth:** Part 19's [review-1 #12](designs/workflows-module/parts/_completed/19-operational-apis/review/review-1.md#12-close-workflow-api-not-yet-in-the-specs-api-list) resolution landed `close-workflow` in part 19's design (line 7), part 20's manifest (already there), and the concept spec.
 **Files affected:** [`23-close-workflow-handler/design.md:61`](../../23-close-workflow-handler/design.md) — "Part 19's design and exports list need updating to include this fifth API." Now past tense.
 **Resolution:** Rewrote to past tense with back-link to review-1 #12. User approved touching files outside the part 19 scope via AskUser.
 

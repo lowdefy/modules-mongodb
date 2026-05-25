@@ -1,6 +1,6 @@
 # Workflows Engine — Spec
 
-Server-side runtime for the workflows module. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+Server-side runtime for the workflows module. Full rationale in [design.md](designs/workflows-module-concept/engine/design.md); this file carries only the committed decisions.
 
 ## Plugin shape
 
@@ -92,7 +92,7 @@ Connection lifecycle, change-log writes (the `changeLog` block on the connection
 
 **No Mongo transactions in v1.** Ordering inside a handler invocation is preserved (sub-steps are awaited sequentially), but atomicity is not. The failure-mode story is the same risk class as `summary` writeback drift — caller retry is safe (idempotency guards converge), periodic reconciliation is the catch-all. Transactions are not available through the community-plugin dispatcher; if a future consumer needs ACID across a submit, the engine would need a parallel raw-driver path — out of scope for v1.
 
-> **Supersedes [engine review-1's "Client and transaction model" resolution](review/review-1.md).** Review-1 settled on a single-`MongoClient`-per-invocation raw-driver shape; this section walks that back to the community-plugin dispatcher to align with every other module in the repo, pick up `changeLog` integration for free, and reuse the prior-generation `WorkflowAPI` implementation under `plugins/modules-mongodb-plugins/src/connections/old/`. See [review/review-2.md](review/review-2.md) for the rationale.
+> **Supersedes [engine review-1's "Client and transaction model" resolution](designs/workflows-module-concept/engine/review/review-1.md).** Review-1 settled on a single-`MongoClient`-per-invocation raw-driver shape; this section walks that back to the community-plugin dispatcher to align with every other module in the repo, pick up `changeLog` integration for free, and reuse the prior-generation `WorkflowAPI` implementation under `plugins/modules-mongodb-plugins/src/connections/old/`. See [review/review-2.md](designs/workflows-module-concept/engine/review/review-2.md) for the rationale.
 
 ## Schema
 

@@ -159,7 +159,7 @@ These three components are exposed via `module.lowdefy.yaml`'s `exports.componen
 
 - **Restricted-action display** — concept marks as open question. Hide for v1.
 - **`workflow-history` timeline** mentioned in concept ui spec for status-map binding — out of v1 scope per the concept's component list (the exported set is the three above only).
-- **Entity-kind label on `workflow-header`** — [part 17 design.md:90](../17-shared-pages/design.md) notes that `workflow-header` *may* consume `vars.entities[entity_collection].title` for an entity-kind label (e.g. "Lead: Onboarding"). Deferred to v1.x per [review-1 #14](review/review-1.md); adding it later is purely additive since `_module.var: entities` is already required at the manifest level.
+- **Entity-kind label on `workflow-header`** — [part 17 design.md:90](../17-shared-pages/design.md) notes that `workflow-header` *may* consume `vars.entities[entity_collection].title` for an entity-kind label (e.g. "Lead: Onboarding"). Deferred to v1.x per [review-1 #14](designs/workflows-module/parts/_completed/18-entity-components/review/review-1.md); adding it later is purely additive since `_module.var: entities` is already required at the manifest level.
 
 ## Depends on
 

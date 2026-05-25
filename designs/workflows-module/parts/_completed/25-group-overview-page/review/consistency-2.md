@@ -7,7 +7,7 @@ Scanned the full Part 25 tree (design + review/ + tasks/) after the unit-test ve
 ## Files Reviewed
 
 - **Design:** [design.md](../design.md)
-- **Reviews:** [review/review-1.md](review-1.md), [review/consistency-1.md](consistency-1.md)
+- **Reviews:** [review/review-1.md](designs/workflows-module/parts/_completed/25-group-overview-page/review/review-1.md), [review/consistency-1.md](designs/workflows-module/parts/_completed/25-group-overview-page/review/consistency-1.md)
 - **Tasks:** [tasks/tasks.md](../tasks/tasks.md), [tasks/01-api-get-action-group-overview.md](../tasks/01-api-get-action-group-overview.md), [tasks/02-page-group-overview.md](../tasks/02-page-group-overview.md), [tasks/03-actions-on-entity-group-link.md](../tasks/03-actions-on-entity-group-link.md), [tasks/04-sibling-design-cross-refs.md](../tasks/04-sibling-design-cross-refs.md)
 - **Supporting / plans:** none.
 

@@ -2,7 +2,7 @@
 
 ## Summary
 
-Part-scoped consistency sweep of Part 23 following the [review-1 action-review pass](review-1.md) (10 findings annotated). Surveyed the part's own `design.md`, the top-level `designs/workflows-module/design.md` narrative, all sibling parts that cross-reference Part 23 (parts 19, 20, 22, and shipped parts 5–8 in `_completed/`), and the workflows-module-concept specs. Found 11 inconsistencies — 10 auto-resolved, 1 flagged as a Part 6 follow-on per user choice.
+Part-scoped consistency sweep of Part 23 following the [review-1 action-review pass](designs/workflows-module/parts/_completed/23-close-workflow-handler/review/review-1.md) (10 findings annotated). Surveyed the part's own `design.md`, the top-level `designs/workflows-module/design.md` narrative, all sibling parts that cross-reference Part 23 (parts 19, 20, 22, and shipped parts 5–8 in `_completed/`), and the workflows-module-concept specs. Found 11 inconsistencies — 10 auto-resolved, 1 flagged as a Part 6 follow-on per user choice.
 
 ## Files Reviewed
 
@@ -40,7 +40,7 @@ Part-scoped consistency sweep of Part 23 following the [review-1 action-review p
 
 ## Decision Register
 
-Extracted from [review-1](review-1.md):
+Extracted from [review-1](designs/workflows-module/parts/_completed/23-close-workflow-handler/review/review-1.md):
 
 1. **D1** (#1, #5, #7) — No new `shared/closeWorkflow.js`. `CloseWorkflow.js` reuses shipped `pushWorkflowStatus.js` + `recomputeGroups.js` inline, mirroring `CancelWorkflow.js`'s two-write shape. Part 7's bundle is left untouched.
 2. **D2** (#2) — Groups with `required_after_close: true` survivors land at `in-progress`/`blocked`, not `done`. Asymmetry with cancel is intentional and load-bearing for honest "open work" surfacing.

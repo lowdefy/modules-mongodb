@@ -7,7 +7,7 @@ Scanned part 19's full file tree (design, two reviews, seven task files, tasks.m
 ## Files Reviewed
 
 - **Design:** [`design.md`](../design.md)
-- **Reviews:** [`review-1.md`](review-1.md), [`consistency-1.md`](consistency-1.md)
+- **Reviews:** [`review-1.md`](designs/workflows-module/parts/_completed/19-operational-apis/review/review-1.md), [`consistency-1.md`](designs/workflows-module/parts/_completed/19-operational-apis/review/consistency-1.md)
 - **Tasks:** [`tasks/tasks.md`](../tasks/tasks.md), [`01-cancel-workflow-api.md`](../tasks/01-cancel-workflow-api.md), [`02-start-workflow-api.md`](../tasks/02-start-workflow-api.md), [`03-close-workflow-api.md`](../tasks/03-close-workflow-api.md), [`04-access-filter-stage.md`](../tasks/04-access-filter-stage.md), [`05-get-entity-workflows-api.md`](../tasks/05-get-entity-workflows-api.md), [`06-get-workflow-overview-api.md`](../tasks/06-get-workflow-overview-api.md), [`07-register-apis-in-manifest.md`](../tasks/07-register-apis-in-manifest.md)
 - **Cross-references checked:** shipped `CancelWorkflow.js`, `SubmitWorkflowAction/handleSubmit.js`; `_completed/{08-side-effect-dispatch,10-tracker-subscription}/` design directories; part 20 design's `exports.api` list.
 

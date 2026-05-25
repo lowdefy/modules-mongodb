@@ -1,6 +1,6 @@
 # Workflows Action Authoring — Spec
 
-YAML surface for workflows and actions. Full rationale in [design.md](design.md); this file carries only the committed decisions.
+YAML surface for workflows and actions. Full rationale in [design.md](designs/workflows-module-concept/action-authoring/design.md); this file carries only the committed decisions.
 
 ## File layout (app side)
 

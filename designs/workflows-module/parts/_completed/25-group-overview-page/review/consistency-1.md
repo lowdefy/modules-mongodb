@@ -7,7 +7,7 @@ Scanned Part 25's design tree after the review-1 action-review pass. Nine review
 ## Files Reviewed
 
 - **Design:** [design.md](../design.md)
-- **Reviews:** [review/review-1.md](review-1.md)
+- **Reviews:** [review/review-1.md](designs/workflows-module/parts/_completed/25-group-overview-page/review/review-1.md)
 - **Supporting / tasks / plans:** none exist yet.
 
 ## Inconsistencies Found

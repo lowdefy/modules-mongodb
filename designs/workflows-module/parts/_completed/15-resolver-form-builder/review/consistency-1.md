@@ -12,7 +12,7 @@ Scanned part 15's design.md against review-1's resolutions, plus the neighbourin
 
 **Review (target):**
 
-- [`designs/workflows-module/parts/15-resolver-form-builder/review/review-1.md`](review-1.md) — 12 findings, all resolved.
+- [`designs/workflows-module/parts/15-resolver-form-builder/review/review-1.md`](designs/workflows-module/parts/_completed/15-resolver-form-builder/review/review-1.md) — 12 findings, all resolved.
 
 **Neighbouring designs scanned for drift:**
 
