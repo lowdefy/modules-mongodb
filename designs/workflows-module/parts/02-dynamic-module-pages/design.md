@@ -1,5 +1,11 @@
 # Part 02 — Dynamic module page exports
 
+**Status: ✅ Resolved upstream** — but via a different mechanism than this design proposed. Rather than adding a resolver-emit channel for `exports.pages`, the upstream PR ([changeset `feat-modules-remove-exports`](../../../../../lowdefy/.changeset/feat-modules-remove-exports.md)) **removed the static `exports:` block from `module.lowdefy.yaml` entirely**. Modules can now generate page / connection / API endpoint ids dynamically via `_build.array.map` over `_module.var`, or via resolver functions, without declaring them upfront. Cross-module id validation moved to post-resolve checks (`validateLinkReferences`, `buildRequests`, `buildMenu`, new `validateCallApiRefs`). Existing `exports:` blocks are silently ignored.
+
+**Downstream impact for the workflows module:** Parts 12 (resolver-pages) and 13 (resolver-apis) no longer need a resolver-emit channel — per-action pages and `update-action-{action_type}` endpoints can be emitted directly from the manifest's `pages:` / `api:` arrays using `_build.array.map` over `_module.var: workflows_config`. Part 20b's "resolver-channel manifest entries" framing should be re-scoped to plain `_build.*` usage.
+
+---
+
 **Source rationale:** (new — not in concept design; surfaced during decomposition). **Layer:** foundational. **Size:** S. **Repo:** upstream `@lowdefy/build` (or wherever module loading lives).
 
 ## Goal

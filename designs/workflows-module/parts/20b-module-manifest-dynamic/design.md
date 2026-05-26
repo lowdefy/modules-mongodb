@@ -1,5 +1,13 @@
 # Part 20b — Module manifest (dynamic surface) + form/task demo wiring
 
+> **⚠️ Deviation from original design — substantive rework required before implementation.**
+>
+> [Part 02](../02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The two YAML snippets in "Manifest scope — dynamic surface only" below (the `_ref: { resolver: ..., vars: ... }` shape under `exports.pages` and `exports.api`) **no longer match the upstream API.** The replacement: the manifest's `pages:` / `api:` arrays use `_build.array.map` over `_module.var: workflows_config` directly — no `exports:` block, no resolver-channel entry. Concrete YAML shape needs to be pinned against a real build when task 3 of parts 12/13 lands.
+>
+> Scope unaffected: the demo wiring half (qualify / send-quote / schedule-followup / proof-of-installation YAML, the three hook APIs, lead-view link updates).
+>
+> Scope to rewrite: "Manifest scope — dynamic surface only" (both YAML snippets + framing), the README-update bullet ("per-action resolver-emitted exports"), the part-02 line under "Depends on", and the first open question (channel shape for `exports.api`) — dissolved.
+
 **Source rationale:** [workflows-module-concept/module-surface/spec.md](../../../workflows-module-concept/module-surface/spec.md). **Layer:** surface. **Size:** S. **Repo:** `modules/workflows/` + `apps/demo/`.
 
 Split from the original Part 20. This half lands the manifest entries that depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../_completed/01-call-api-primitive/design.md) and [part 02 (dynamic module page exports)](../02-dynamic-module-pages/design.md), plus the form-action and task-action demo flows that need those primitives. The static surface — connections, shared pages, operational APIs, components, enums — ships in [part 20a](../20a-module-manifest-static/design.md).

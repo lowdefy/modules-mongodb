@@ -1,5 +1,9 @@
 # Part 13 — `makeWorkflowApis` resolver
 
+> **⚠️ Deviation from original design — read before implementing task 3.**
+>
+> [Part 02](../02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The resolver logic in this part (tasks 1–2, already shipped — emission of `update-action-{action_type}`, inline-routine hook APIs, and group `on_complete` APIs) is unaffected. **What changes is task 3 (manifest wiring):** instead of a `resolver:` channel entry under `exports.api`, the manifest's `api:` array invokes the resolver from `_build.array.map` over `_module.var: workflows_config` (concrete shape pinned in [part 20b](../20b-module-manifest-dynamic/design.md) when task 3 lands). The "Upstream dependency" subsection below and the open question about a parallel `exports.api` channel are dissolved.
+
 **Source rationale:** [workflows-module-concept/action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md), [workflows-module-concept/submit-pipeline/spec.md](../../../workflows-module-concept/submit-pipeline/spec.md). **Layer:** resolvers. **Size:** M. **Repo:** `modules/workflows/resolvers/`.
 
 ## Goal
@@ -40,16 +44,9 @@ Empty / null `comment` is a no-op (no `metadata.comment` written).
 
 #### Pending handler work (part 6 follow-up)
 
-The resolver-emission piece of this contract is implemented in [makeWorkflowApis.js](../../../../modules/workflows/resolvers/makeWorkflowApis.js) — every emitted endpoint now passes `comment: { _payload: 'comment' }` to `SubmitWorkflowAction`. The handler side is **not yet wired**; until the steps below land, the resolver passes `comment` to the handler but nothing reads it.
+**Superseded by [Part 9 Task 9 — Extend `buildDefaultLogEventPayload`](../09-hook-invocation/tasks/09-extend-build-default-log-event-payload.md)** and [Part 9 Task 7 (`handleSubmit.js` wiring)](../09-hook-invocation/tasks/07-wire-step-2-pre-hook.md). Part 9 owns the handler-side fold-in (extend `buildDefaultLogEventPayload(comment)`, thread `params.comment` through `logEventInputBag`, drop `metadata.comment` when falsy, lock down the layer ordering via `mergeEventOverrides.test.js`). The "no schema validation on comment shape" rule still holds — free-text scalar, handler trusts the input, sanitisation is the events module's concern.
 
-Add a task to part 6's task list (`designs/workflows-module/parts/_completed/06-submit-action-writes/tasks/`) — or add it here as a tracked follow-up — covering:
-
-1. **`handleSubmit.js`** — extend `logEventInputBag` with `comment: params.comment ?? null`.
-2. **`dispatchLogEvent.js` / `buildDefaultLogEventPayload`** — accept `comment` and merge into `metadata.comment` when present and non-empty (drop the key when falsy). Place the merge **above** the part-9 layer-2 (`action.event[interaction].metadata`) override so a YAML-defined metadata field can't clobber the user-supplied comment. Document the layer-3 position in the function's JSDoc so part 9's implementer keeps the ordering correct.
-3. **Tests** — add a `dispatchLogEvent.test.js` case covering: (a) `comment: "hello"` writes `metadata.comment: "hello"`; (b) `comment: null` / `""` / `undefined` writes no `metadata.comment` key; (c) the part-9 merge (when it lands) doesn't drop the comment when an action declares `event.{interaction}.metadata`.
-4. **No schema validation on comment shape.** It's a free-text scalar from the page input; the handler trusts it. (Sanitization for storage / display is the events module's concern — same as every other `metadata.*` field.)
-
-Treat this as a small fold-in to part 6 (per the "review changes touching implemented parts" rule — small additions extend the existing design rather than spawning a new part). The resolver side is shipped; the handler side blocks end-to-end comment flow but doesn't break any current behavior (comment payloads are simply ignored until the handler reads them).
+The resolver-emission piece of this contract is implemented in [makeWorkflowApis.js](../../../../modules/workflows/resolvers/makeWorkflowApis.js) — every emitted endpoint passes `comment: { _payload: 'comment' }` to `SubmitWorkflowAction`. Until Part 9 Task 9 lands, the resolver passes `comment` to the handler but nothing reads it (no behaviour break — comment payloads are simply ignored).
 
 ### Hook emission (replaces the build-time auth gate)
 

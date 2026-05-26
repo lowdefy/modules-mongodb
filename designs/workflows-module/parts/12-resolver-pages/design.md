@@ -1,5 +1,9 @@
 # Part 12 — `makeActionPages` resolver
 
+> **⚠️ Deviation from original design — read before implementing task 3.**
+>
+> [Part 02](../02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The resolver logic in this part (tasks 1–2, already shipped) is unaffected — same inputs, same outputs. **What changes is task 3 (manifest wiring):** instead of a `resolver:` channel entry under `exports.pages`, the manifest's `pages:` array invokes the resolver from `_build.array.map` over `_module.var: workflows_config` (concrete shape pinned in [part 20b](../20b-module-manifest-dynamic/design.md) when task 3 lands). The "Upstream dependency" subsection below and the part-02 entry in "Depends on" are stale; treat them as historical context.
+
 **Source rationale:** [workflows-module-concept/action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md), [workflows-module-concept/ui/spec.md](../../../workflows-module-concept/ui/spec.md). **Layer:** resolvers. **Size:** M. **Repo:** `modules/workflows/resolvers/`.
 
 ## Goal
