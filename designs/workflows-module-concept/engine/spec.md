@@ -118,23 +118,23 @@ Connection lifecycle, change-log writes (the `changeLog` block on the connection
 
 ### Action doc
 
-| Field                                           | Type           | Notes                                                                                |
-| ----------------------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
-| `_id`                                           | string         | server-generated                                                                     |
-| `workflow_id`                                   | string         | parent workflow's `_id`                                                              |
-| `type`                                          | string         | from YAML                                                                            |
-| `kind`                                          | string         | `form` \| `task` \| `tracker`                                                        |
-| `key`                                           | string \| null | for fan-out actions (non-tracker); domain id like a device serial                    |
-| `status`                                        | array          | history, newest at index 0                                                           |
-| `entity_id`, `entity_collection`                | various        | matches parent workflow                                                              |
-| `assignees`                                     | string[]       | universal field                                                                      |
-| `due_date`                                      | Date \| null   | universal field                                                                      |
-| `description`                                   | string \| null | universal field                                                                      |
-| `tracker`                                       | object \| null | `{ workflow_type }` on tracker actions only                                          |
-| `child_workflow_id`                             | string \| null | tracker actions; set when child workflow is started (the child workflow doc's `_id`) |
-| `child_entity_id`                               | string \| null | tracker actions; set when child workflow is started                                  |
-| `child_entity_collection`                       | string \| null | tracker actions; collection connection id                                            |
-| `<reference keys>`                              | various        | spread from `references` payload                                                     |
+| Field                            | Type           | Notes                                                                                |
+| -------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
+| `_id`                            | string         | server-generated                                                                     |
+| `workflow_id`                    | string         | parent workflow's `_id`                                                              |
+| `type`                           | string         | from YAML                                                                            |
+| `kind`                           | string         | `form` \| `task` \| `tracker`                                                        |
+| `key`                            | string \| null | for fan-out actions (non-tracker); domain id like a device serial                    |
+| `status`                         | array          | history, newest at index 0                                                           |
+| `entity_id`, `entity_collection` | various        | matches parent workflow                                                              |
+| `assignees`                      | string[]       | universal field                                                                      |
+| `due_date`                       | Date \| null   | universal field                                                                      |
+| `description`                    | string \| null | universal field                                                                      |
+| `tracker`                        | object \| null | `{ workflow_type }` on tracker actions only                                          |
+| `child_workflow_id`              | string \| null | tracker actions; set when child workflow is started (the child workflow doc's `_id`) |
+| `child_entity_id`                | string \| null | tracker actions; set when child workflow is started                                  |
+| `child_entity_collection`        | string \| null | tracker actions; collection connection id                                            |
+| `<reference keys>`               | various        | spread from `references` payload                                                     |
 
 ### Form data layout
 
@@ -159,18 +159,23 @@ form_data: {
 - Non-keyed: `form_data.{action_type}.{field}`.
 - Keyed: `form_data.{action_type}.{key}.{field}`.
 - No `.review` namespace — reviewer values share the action-type tree with submitter values; authors pick non-colliding names.
-- No `.error` namespace — error context lives on the action doc's status entry (see "Action `error` transition" below).
+- No `.error` namespace — error context lives on the `events` collection entry written by step 7 of the submit lifecycle, surfaced via `event_overrides.metadata` (see [submit-pipeline § Pre-hook return](../submit-pipeline/spec.md#pre-hook-return-all-fields-optional) and "Action `error` transition" below). Status entries themselves are uniform `{ stage, created, event_id }`.
 
 **Write semantics:** per-field `$set` on dot-notation paths. Field-level granularity so concurrent edits on different fields don't clobber. Submitter (`form:`) and reviewer (`form_review:`) payloads are merged into one bag before write; the engine doesn't disambiguate.
 
 ### Action `error` transition
 
-Two entry paths put an action into `error` status:
+`error` is a purely **author-driven** domain stage. Engine sub-step failures do not write an `error` transition — they throw, and the throw propagates to `CallApi` (rationale and partial-write retry semantics in [Part 29 § D1](../../workflows-module/parts/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)).
 
-- **Engine-driven mid-submit failure.** The submit pipeline catches a thrown failure from a sub-step (submit hook, entity_update, event, notification dispatch) and converts it to an `error` transition: writes `{ stage: error, created, reason: <step-name>, error_message, error_metadata }` to the action's `status` array with **`force: true` semantics** (bypasses priority rule); skips remaining auto-complete / tracker-subscription / group-rollup work (an `error` action is non-terminal); returns partial `{ action_ids, event_id }`. `form_data` is not touched on error transitions — all error context lives on the status entry.
-- **Author-driven.** A pre-hook returns `hook_error: <message>` to abort the submit (submit-pipeline Decision 4) — engine treats abort as a normal `error` transition, writing `{ stage: error, reason: 'pre-hook', error_message: <message>, error_metadata? }` to the action's status array. No `form_data` write on the abort path.
+Three entry paths push an action into `error`:
 
-**Force-write rationale.** Priority rule would otherwise reject `error` pushes from terminal statuses. Operationally an error must always surface — a `done` transition that fails mid-side-effects needs to roll back to `error` so the user sees recovery, not a falsely-completed action.
+- **Pre-hook return.** A pre-hook can include `actions: [{ ..., status: 'error' }]` in its return ([submit-pipeline § Pre-hook return](../submit-pipeline/spec.md#pre-hook-return-all-fields-optional)). No `force` is needed — `error.priority = 1` is below every non-terminal stage, so the priority rule allows the write.
+- **Task `submit_edit` with caller-supplied status.** Task actions whose `task.statuses:` list includes `error` can be transitioned to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`. The engine's `submit_edit` resolver returns whatever `current_status` the caller sends for task actions; `task.statuses:` is a UI gate on the selector, not an engine-side validator. Priority rule allows the write.
+- **External systems.** Out-of-band processes (backend microservices, scheduled lambdas) write directly to the action doc, or in future will go through a follow-on injection API.
+
+Status entries are uniform `{ stage, created, event_id }` — there are no polymorphic `{ reason, error_message, error_metadata }` fields. Diagnostic context lives on the `events` collection entry written by step 7, carried via `event_overrides.metadata` on the pre-hook return (same channel as every other status push).
+
+**Force-write** is used by the recovery transition only. The `-error` page submit posts `interaction: resolve_error`; the handler internally writes the recovery transition with `force: true` (the only `force` on the recovery leg — invisible to authors). The asymmetry is deliberate: many entry sites can push `error` frictionlessly through the priority path; recovery happens from one well-defined site that can carry its own `force`. See [Part 29 § D4](../../workflows-module/parts/29-error-model-cleanup/design.md#d4-why-we-keep-the-priority-table).
 
 **Recovery.** A normal submission from the `-error` page — the user clicks the template-shipped `resolve_error` button, which calls the per-action endpoint with `interaction: resolve_error`. On success, engine writes the recovery transition (target status defaults to the same as `submit_edit` — see submit-pipeline Decision 3); the previous `{ stage: error, ... }` entry stays in the status array as audit history. No `form_data` cleanup needed.
 
@@ -188,7 +193,7 @@ The engine does not assert these at runtime; the dispatcher delegates every read
 ## Capabilities
 
 - **`StartWorkflow`** writes a workflow doc + N action docs. When `parent_action_id` is in the payload, the engine validates the action exists, is `kind: tracker`, and isn't already linked (`child_workflow_id` is null), then writes the new workflow's `parent_action_id` / `parent_entity_id` / `parent_entity_collection` (latter two read from the parent action's `entity_id` / `entity_collection`) and the parent tracker action's `child_workflow_id` (the new workflow's `_id`) / `child_entity_id` / `child_entity_collection` + `in-progress` transition. All writes share the same handler invocation.
-- **`SubmitWorkflowAction`** writes one or more action transitions per call. Payload uses `keys: [...]` plural; the plugin flat-maps over `keys` (omitted → one op `key: null`; `[]` → zero ops; `[k]` → one op `key: k`; `[k1,k2,...]` → N ops). On-disk action docs keep singular `key`. After action writes, recomputes affected `groups[]` statuses and writes them to the workflow doc; re-evaluates every blocked action's `blocked_by` against the new state and pushes `action-required` on those whose dependencies are now terminal; runs auto-complete check (all actions terminal → push `completed` to workflow status); fires tracker subscription if workflow status changed; recomputes workflow-level `summary` (eager writeback). Returns `{ action_ids, completed_groups, event_id, tracker_fired? }` — `completed_groups` lists groups that transitioned to `done` in this call; the engine fans out one `context.callApi` per `on_complete` engine-internally as step 11 of the submit-pipeline lifecycle (see action-groups Decision 6, submit-pipeline Decision 1).
+- **`SubmitWorkflowAction`** writes one or more action transitions per call. Payload uses `keys: [...]` plural; the plugin flat-maps over `keys` (omitted → one op `key: null`; `[]` → zero ops; `[k]` → one op `key: k`; `[k1,k2,...]` → N ops). On-disk action docs keep singular `key`. After action writes, recomputes affected `groups[]` statuses and writes them to the workflow doc; re-evaluates every blocked action's `blocked_by` against the new state and pushes `action-required` on those whose dependencies are now terminal; runs auto-complete check (all actions terminal → push `completed` to workflow status); fires tracker subscription if workflow status changed; recomputes workflow-level `summary` (eager writeback). Returns `{ action_ids, completed_groups, event_id, tracker_fired, pre_hook_response, post_hook_response }` on success — `completed_groups` lists groups that transitioned to `done` in this call; the engine fans out one `context.callApi` per `on_complete` engine-internally as step 11 of the submit-pipeline lifecycle (see action-groups Decision 6, submit-pipeline Decision 1). **Failures throw** — there is no failure-return shape, no `error_transition` / `hook_error` / `post_hook_error` fields. Sub-step throws propagate to `CallApi`; the user retries the same submit and the priority rule converges (see [Part 29 § D1, § D6](../../workflows-module/parts/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)).
 - **`CancelWorkflow`** pushes `cancelled` to workflow status; flips remaining open actions on the workflow to `not-required`. References at the call level spread onto the workflow doc on the cancelled push.
 - **Universal action fields** (`assignees`, `due_date`, `description`) flow through `SubmitWorkflowAction` payload's `actions[].fields`. Merged into per-action `$set` atomically with the status transition. `null` clears; omitted leaves unchanged.
 - **Access enforcement** — runs the per-app verb filter + role gate from action-authoring Decision 3 ("Action access semantics") at two server-side points: (1) **`get-entity-workflows`** filters returned actions by host app's verb map and intersects caller's `_user: roles` with `access.roles`. (2) **`SubmitWorkflowAction` handler** re-checks role gate before writes; rejects with structured error on mismatch (role revoked between render and submit). Verb-filter check at submit-time is implicit (page wouldn't have been generated if verb wasn't allowed in current app).
@@ -258,7 +263,7 @@ Reserved keys: `_id`, `workflow_id`, `type`, `entity_id`, `entity_collection`, `
 ```js
 async function pushWorkflowStatus(context, workflowId, newStage, eventId) {
   const { mongoDBConnection } = context;
-  const current = await mongoDBConnection('workflows').MongoDBFindOne({
+  const current = await mongoDBConnection("workflows").MongoDBFindOne({
     query: { _id: workflowId },
     options: {
       projection: { status: 1, workflow_type: 1, parent_action_id: 1 },
@@ -269,7 +274,7 @@ async function pushWorkflowStatus(context, workflowId, newStage, eventId) {
   await writeWorkflowStatus(context, workflowId, newStage, eventId);
 
   if (!current.parent_action_id) return;
-  const tracker = await mongoDBConnection('actions').MongoDBFindOne({
+  const tracker = await mongoDBConnection("actions").MongoDBFindOne({
     query: { _id: current.parent_action_id },
   });
   if (!tracker) return;
@@ -306,7 +311,7 @@ A status transition is allowed when the new status's priority is strictly less t
 
 **Per-entry is the only force surface.** There is no top-level `force` on the `SubmitWorkflowAction` payload. Engine-internal force-pushes split by mechanism:
 
-- **Per-doc force via `updateAction(...force: true)`** — `error` transitions in the submit pipeline, tracker subscription's parent push, `StartWorkflow`'s parent-link push. These are single-doc writes that need the helper's write-shape uniformity (event-stamp threading, status entry construction).
+- **Per-doc force via `updateAction(...force: true)`** — `resolve_error` recovery transition (handler-internal write on `interaction: resolve_error`), tracker subscription's parent push, `StartWorkflow`'s parent-link push. These are single-doc writes that need the helper's write-shape uniformity (event-stamp threading, status entry construction). The submit pipeline's catch-converter that previously force-wrote `error` transitions on mid-step throws was removed by [Part 29](../../workflows-module/parts/29-error-model-cleanup/design.md) — sub-step failures now propagate.
 - **Bulk bypass via `MongoDBUpdateMany`** — `CancelWorkflow`'s sweep, `CloseWorkflow`'s sweep. The bulk dispatcher is the only Mongo path that doesn't run through `updateAction`, so it bypasses the priority rule by structure rather than by flag. Sweeps prefer this for the one-round-trip vs N-round-trip win.
 
 Both mechanisms are inside the handler invocation — neither re-enters through the `SubmitWorkflowAction` payload surface.

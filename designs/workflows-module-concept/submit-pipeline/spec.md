@@ -13,7 +13,7 @@ Page button (template-shipped)
   → workflows/update-action-{action_type}        (resolver-generated Lowdefy Api per action)
       └─ SubmitWorkflowAction (plugin handler — single in-process invocation)
             1. Validate payload + permissions
-            2. Pre-hook for interaction (if declared) — returns optional actions[] + event_overrides + form_overrides + hook_error
+            2. Pre-hook for interaction (if declared) — returns optional actions[] + event_overrides + form_overrides; aborts via `throw` / `:reject`
             3. Compute auto-unblocks from blocked_by graph; merge with pre-hook actions[]
             4. Write action transitions (priority rule applies)
             5. Recompute workflow summary + groups[]
@@ -85,13 +85,13 @@ Templates ship a fixed set of submit-flavoured buttons. Each button is a templat
 1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event (if declared).
 2. Calls `update-action-{action_type}` with `interaction: <button-name>` + payload.
 
-| Button            | Renders on        | `interaction` value |
-| ----------------- | ----------------- | ------------------- |
-| `submit_edit`     | `edit`            | `submit_edit`       |
-| `not_required`    | `edit` (opt-in)   | `not_required`      |
-| `resolve_error`   | `error`           | `resolve_error`     |
-| `approve`         | `review`          | `approve`           |
-| `request_changes` | `review`          | `request_changes`   |
+| Button            | Renders on      | `interaction` value |
+| ----------------- | --------------- | ------------------- |
+| `submit_edit`     | `edit`          | `submit_edit`       |
+| `not_required`    | `edit` (opt-in) | `not_required`      |
+| `resolve_error`   | `error`         | `resolve_error`     |
+| `approve`         | `review`        | `approve`           |
+| `request_changes` | `review`        | `request_changes`   |
 
 **Status: open** — Steph's review asks to validate the button list. Locked during sub-design review.
 
@@ -187,15 +187,24 @@ pre_hook_payload:
     - { type, key, status, fields, upsert, force }
                             #   force: optional bool; bypasses priority rule for this entry only.
                             #   Use for replay / rollback (e.g. done → action-required).
+                            #   To push to error, set status: 'error' — no force needed
+                            #   (error.priority = 1 is below every non-terminal stage).
   event_overrides: object   # merged over action.event[interaction] over engine defaults
+                            #   Use event_overrides.metadata to attach diagnostic context to
+                            #   the events-log entry (the channel for failure context on an
+                            #   author-driven error push).
   form_overrides: object    # extra fields to $set on form_data.{action_type}[.{key}]
-  hook_error: string        # abort signal — engine writes status: error with this context
 }
 ```
 
-`hook_error` aborts the submit. Engine treats abort as a normal `error` transition (engine Decision 5) — `status[0]` carries `{ stage: error, reason: 'pre-hook', error_message: hook_error }`, no `form_data` writes.
+**Aborts.** A pre-hook aborts the lifecycle by throwing. Two flavours, the choice belongs to the hook author (see [Part 29 § D5](../../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently) and [Part 9 § Pre-hook abort modes](../../workflows-module/parts/09-hook-invocation/design.md)):
 
-**`form_overrides` merge rules:** pre-hook wins over user-submitted `form` / `form_review` on field collision; writes to the same flat `form_data.{action_type}.{field}` tree (engine D5 — no `.review` / `.error` sub-keys); skipped entirely when `hook_error` is set.
+- **`:reject`** (Lowdefy control) — for user-facing validation failures. Propagates as a `UserError(isReject: true)` throw; the wrapping per-action endpoint's `runRoutine` classifies as `{ status: 'reject', error }` and the calling app's `CallApi` surfaces the message via the platform's standard reject UI.
+- **`throw`** (or any thrown error) — for infrastructure failures. The wrapping endpoint classifies as `{ status: 'error', error }`; user sees a transient error toast and can retry.
+
+In both cases the engine catches nothing — the throw propagates through `invokePreHook.js`, `handleSubmit.js`, and the plugin handler unchanged. There is **no `hook_error` return field** and no `{ rejected, reject_message }` return surface.
+
+**`form_overrides` merge rules:** pre-hook wins over user-submitted `form` / `form_review` on field collision; writes to the same flat `form_data.{action_type}.{field}` tree (engine D5 — no `.review` / `.error` sub-keys).
 
 ### Post-hook payload
 
@@ -231,7 +240,7 @@ Every interaction generates a log event by default. Engine writes one event via 
 ```yaml
 type: action-{interaction} # e.g. action-submit_edit, action-approve
 display:
-  {app_name}:                              # consuming app's app_name (events module's display_key)
+  { app_name }: # consuming app's app_name (events module's display_key)
     title:
       _nunjucks:
         template: "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}"
@@ -239,7 +248,7 @@ display:
 references:
   workflow_ids: [<workflow_id>]
   action_ids: [<action_id>]
-  {entity-ref-key}: [<workflow.entity_id>] # entity_collection-derived key, see below
+  { entity-ref-key }: [<workflow.entity_id>] # entity_collection-derived key, see below
 metadata: action_type, workflow_type, interaction, current_key
   status_before, status_after
 ```
@@ -302,7 +311,7 @@ The button block (template-shipped) calls the per-action API with a fixed payloa
             form: { _state: form }
             form_review: { _state: form_review }
             fields: { _state: fields }
-            comment: { _state: comment }      # optional; handler maps to event.metadata.comment
+            comment: { _state: comment } # optional; handler maps to event.metadata.comment
 ```
 
 The page never builds this manually — the template ships the button and the wiring.

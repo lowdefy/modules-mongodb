@@ -10,9 +10,7 @@
  * @typedef {Object} StatusEntry
  * @property {string} stage
  * @property {ChangeStamp} created
- * @property {string} [reason]
- * @property {string} [error_message]
- * @property {Object} [error_metadata]
+ * @property {string} [event_id]
  */
 
 /**

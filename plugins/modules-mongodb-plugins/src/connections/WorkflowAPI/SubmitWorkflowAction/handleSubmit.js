@@ -32,13 +32,10 @@ function findMatchingActionDocs({ workflowActions, type, key }) {
  * 11 steps per submit-pipeline/spec.md § Flow. Parts 6 + 9 implement steps
  * 1–8 + 10 + 11; step 9 (group on_complete fan-out) lands in part 11.
  *
- * Pre-hook (step 2) sits OUTSIDE the mid-write try/catch at steps 4–6 so
- * throws — including `:reject` (UserError with isReject: true) — propagate
- * transparently before any writes happen (Part 29 § D5/D6).
- *
- * The mid-write try/catch is unchanged from pre-Part-9. It will be removed
- * by Part 29 Task 5, at which point the `error_transition` field on the
- * success return shape disappears.
+ * Every step that throws propagates — the handler catches nothing (Part 29
+ * § D6 propagate-everywhere). `:reject` (UserError with isReject: true) from
+ * a pre-hook propagates transparently as a throw; classification as 'reject'
+ * vs 'error' happens at the wrapping per-action endpoint's runRoutine.
  *
  * @param {Object} context
  * @returns {Promise<{
@@ -48,7 +45,6 @@ function findMatchingActionDocs({ workflowActions, type, key }) {
  *   tracker_fired: any | null,
  *   pre_hook_response: any | null,
  *   post_hook_response: any | null,
- *   error_transition?: { reason: string, error_message: string, error_metadata: any | null },
  * }>}
  */
 async function handleSubmit(context) {
@@ -196,168 +192,124 @@ async function handleSubmit(context) {
   let completedGroups = [];
   let recomputeResult = null;
 
-  try {
-    // Step 4 — Write action transitions (per-entry loop with priority rule).
-    for (const entry of internal.actions) {
-      const keys = entry.keys ?? [null];
-      for (const key of keys) {
-        const matchingDocs = findMatchingActionDocs({
-          workflowActions: context.workflowActions,
-          type: entry.type,
-          key,
-        });
+  // Step 4 — Write action transitions (per-entry loop with priority rule).
+  for (const entry of internal.actions) {
+    const keys = entry.keys ?? [null];
+    for (const key of keys) {
+      const matchingDocs = findMatchingActionDocs({
+        workflowActions: context.workflowActions,
+        type: entry.type,
+        key,
+      });
 
-        if (matchingDocs.length === 0) {
-          if (entry.upsert === true) {
-            const newDoc = createAction(context, {
-              workflow: context.workflow,
-              action: {
-                type: entry.type,
-                key,
-                status: entry.status,
-                fields: entry.fields,
-              },
-              eventId: context.eventId,
-            });
-            await context
-              .mongoDBConnection("actions")
-              .MongoDBInsertOne({ doc: newDoc });
-            actionIds.push(newDoc._id);
-            context.workflowActions.push(newDoc);
-          }
-          continue;
-        }
-
-        for (const doc of matchingDocs) {
-          let result;
-          try {
-            result = await updateAction(context, {
-              actionId: doc._id,
-              newStage: entry.status,
+      if (matchingDocs.length === 0) {
+        if (entry.upsert === true) {
+          const newDoc = createAction(context, {
+            workflow: context.workflow,
+            action: {
+              type: entry.type,
+              key,
+              status: entry.status,
               fields: entry.fields,
-              eventId: context.eventId,
-              currentActionId: internal.currentActionId,
-              force: entry.force === true,
-            });
-          } catch (err) {
-            err.step = err.step ?? "write-action-transitions";
-            throw err;
-          }
+            },
+            eventId: context.eventId,
+          });
+          await context
+            .mongoDBConnection("actions")
+            .MongoDBInsertOne({ doc: newDoc });
+          actionIds.push(newDoc._id);
+          context.workflowActions.push(newDoc);
+        }
+        continue;
+      }
 
-          if (result !== null && result !== undefined) {
-            actionIds.push(doc._id);
-            // Update the in-memory cache so step 5's summary recompute reads
-            // the post-write state without a re-fetch from Mongo.
-            doc.status = [
-              {
-                stage: entry.status,
-                event_id: context.eventId,
-                created: context.changeStamp,
-              },
-              ...(doc.status ?? []),
-            ];
-            doc.updated = context.changeStamp;
-          }
+      for (const doc of matchingDocs) {
+        const result = await updateAction(context, {
+          actionId: doc._id,
+          newStage: entry.status,
+          fields: entry.fields,
+          eventId: context.eventId,
+          currentActionId: internal.currentActionId,
+          force: entry.force === true,
+        });
+
+        if (result !== null && result !== undefined) {
+          actionIds.push(doc._id);
+          // Update the in-memory cache so step 5's summary recompute reads
+          // the post-write state without a re-fetch from Mongo.
+          doc.status = [
+            {
+              stage: entry.status,
+              event_id: context.eventId,
+              created: context.changeStamp,
+            },
+            ...(doc.status ?? []),
+          ];
+          doc.updated = context.changeStamp;
         }
       }
     }
+  }
 
-    // Always include the user-submitted action id in the returned set, even if
-    // its write no-op'd due to priority rule. Matches v0's posture so downstream
-    // consumers (parts 16/18) get the submitted id back.
-    if (
-      internal.currentActionId &&
-      !actionIds.includes(internal.currentActionId)
-    ) {
-      actionIds.push(internal.currentActionId);
+  // Always include the user-submitted action id in the returned set, even if
+  // its write no-op'd due to priority rule. Matches v0's posture so downstream
+  // consumers (parts 16/18) get the submitted id back.
+  if (
+    internal.currentActionId &&
+    !actionIds.includes(internal.currentActionId)
+  ) {
+    actionIds.push(internal.currentActionId);
+  }
+
+  // Sub-steps 4a/4b/4c + step 5 — extracted to shared helper so the tracker
+  // recursion path (part 10) can reuse this work on a *different* workflow
+  // without re-entering the public handler.
+  recomputeResult = await recomputeWorkflowAfterActionWrite(context, {
+    workflowId: context.workflow._id,
+  });
+  // Refresh in-memory cache so any downstream reads in this handler observe
+  // the post-walk action list (the helper reads its own fresh copy).
+  context.workflowActions = recomputeResult.workflowActions;
+
+  // Compute completed_groups: groups that transitioned from non-'done' to 'done'.
+  const declaredGroups = workflowConfig.action_groups ?? [];
+  const beforeById = new Map(
+    recomputeResult.groupsBefore.map((g) => [g.id, g]),
+  );
+  for (const after of recomputeResult.groupsAfter) {
+    const before = beforeById.get(after.id);
+    if (after.status === "done" && before?.status !== "done") {
+      const cfg = declaredGroups.find((g) => g.id === after.id);
+      completedGroups.push({
+        workflow_id: context.workflow._id,
+        id: after.id,
+        on_complete: cfg?.on_complete ?? null,
+      });
+    }
+  }
+
+  // Step 6 — Write form_data (merge form + form_review + pre-hook overrides
+  // at the field-path level, $set per-field).
+  const formMerged = mergeFormOverrides({
+    form: context.params.form,
+    formReview: context.params.form_review,
+    preHookOverrides: preHookResponse?.form_overrides,
+  });
+
+  if (Object.keys(formMerged).length > 0) {
+    const formDataPathPrefix = context.params.current_key
+      ? `form_data.${context.action.type}.${context.params.current_key}`
+      : `form_data.${context.action.type}`;
+
+    const setOps = { updated: context.changeStamp };
+    for (const [field, value] of Object.entries(formMerged)) {
+      setOps[`${formDataPathPrefix}.${field}`] = value;
     }
 
-    // Sub-steps 4a/4b/4c + step 5 — extracted to shared helper so the tracker
-    // recursion path (part 10) can reuse this work on a *different* workflow
-    // without re-entering the public handler.
-    recomputeResult = await recomputeWorkflowAfterActionWrite(context, {
-      workflowId: context.workflow._id,
+    await context.mongoDBConnection("workflows").MongoDBUpdateOne({
+      filter: { _id: context.workflow._id },
+      update: { $set: setOps },
     });
-    // Refresh in-memory cache so any downstream reads in this handler observe
-    // the post-walk action list (the helper reads its own fresh copy).
-    context.workflowActions = recomputeResult.workflowActions;
-
-    // Compute completed_groups: groups that transitioned from non-'done' to 'done'.
-    const declaredGroups = workflowConfig.action_groups ?? [];
-    const beforeById = new Map(
-      recomputeResult.groupsBefore.map((g) => [g.id, g]),
-    );
-    for (const after of recomputeResult.groupsAfter) {
-      const before = beforeById.get(after.id);
-      if (after.status === "done" && before?.status !== "done") {
-        const cfg = declaredGroups.find((g) => g.id === after.id);
-        completedGroups.push({
-          workflow_id: context.workflow._id,
-          id: after.id,
-          on_complete: cfg?.on_complete ?? null,
-        });
-      }
-    }
-
-    // Step 6 — Write form_data (merge form + form_review + pre-hook overrides
-    // at the field-path level, $set per-field).
-    const formMerged = mergeFormOverrides({
-      form: context.params.form,
-      formReview: context.params.form_review,
-      preHookOverrides: preHookResponse?.form_overrides,
-    });
-
-    if (Object.keys(formMerged).length > 0) {
-      const formDataPathPrefix = context.params.current_key
-        ? `form_data.${context.action.type}.${context.params.current_key}`
-        : `form_data.${context.action.type}`;
-
-      const setOps = { updated: context.changeStamp };
-      for (const [field, value] of Object.entries(formMerged)) {
-        setOps[`${formDataPathPrefix}.${field}`] = value;
-      }
-
-      try {
-        await context.mongoDBConnection("workflows").MongoDBUpdateOne({
-          filter: { _id: context.workflow._id },
-          update: { $set: setOps },
-        });
-      } catch (err) {
-        err.step = err.step ?? "write-form-data";
-        throw err;
-      }
-    }
-  } catch (err) {
-    // Force-push the error transition onto the user-submitted action.
-    // Per engine/spec.md § Action `error` transition: bypasses priority rule;
-    // skips remaining lifecycle work; returns partial.
-    // Removal of this catch is owned by Part 29 Task 5 — see Part 9 design
-    // § Mid-write catch — known inconsistency window.
-    const errorTransition = {
-      reason: err.step ?? "mid-write",
-      error_message: err.message,
-      error_metadata: err.metadata ?? null,
-    };
-
-    await updateAction(context, {
-      actionId: internal.currentActionId,
-      newStage: "error",
-      fields: {},
-      eventId: context.eventId,
-      currentActionId: null,
-      force: true,
-    });
-
-    // Skip steps 7-11.
-    return {
-      action_ids: actionIds,
-      completed_groups: [],
-      event_id: null,
-      tracker_fired: null,
-      pre_hook_response: preHookResponse,
-      post_hook_response: null,
-      error_transition: errorTransition,
-    };
   }
 
   // Step 7 — Generate log event. Four-layer merge: engine default (incl.
@@ -380,21 +332,10 @@ async function handleSubmit(context) {
     preHookOverride: preHookResponse?.event_overrides,
   });
 
-  let eventId;
-  try {
-    eventId = await dispatchLogEvent(context, mergedEventPayload);
-  } catch (err) {
-    err.step = err.step ?? "dispatch-log-event";
-    throw err;
-  }
+  const eventId = await dispatchLogEvent(context, mergedEventPayload);
 
   // Step 8 — Dispatch notifications.
-  try {
-    await dispatchNotifications(context, eventId);
-  } catch (err) {
-    err.step = err.step ?? "dispatch-notifications";
-    throw err;
-  }
+  await dispatchNotifications(context, eventId);
 
   // Step 9 — Group on_complete fan-out. → part 11.
 

@@ -770,12 +770,13 @@ These fields belong to the action's authored YAML — they ride into the generat
 
 ### Error pages and the `error` status
 
-The fourth verb the page-emission resolver handles is `error`, gated identically to the other three: the resolver emits the `-error` page when `error` is in the action's `access.{app_name}` verb list. Actions without `error` in the list have no `-error` page in that app deployment — the engine's `error` transition still records context on the action doc, but there is no reachable recovery surface in the UI for that action there. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent.
+The fourth verb the page-emission resolver handles is `error`, gated identically to the other three: the resolver emits the `-error` page when `error` is in the action's `access.{app_name}` verb list. Actions without `error` in the list have no `-error` page in that app deployment — an author-driven `error` push still lands on the action, but there is no reachable recovery surface in the UI for that action there. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent.
 
-**When an action enters `error`:**
+**When an action enters `error`:** `error` is purely author-driven ([Part 29 § D1–D2](../../workflows-module/parts/29-error-model-cleanup/design.md)). Engine sub-step failures throw and propagate to `CallApi`; they do not write an `error` transition. Three entry paths put an action into `error`:
 
-- The action's submit hook (or the engine's built-in side-effect steps) raises an unrecoverable failure mid-submit. The engine catches the failure and writes `{ stage: error, created, reason, error_message, error_metadata? }` to the action's status array. All error context lives on this status entry; `form_data` is not touched on the error transition (engine sub-design Decision 5).
-- A pre-hook (submit-pipeline Decision 4) returns `hook_error: <message>` to abort the submit. Used for app-validated business-rule failures the author wants to surface as a recovery flow rather than a thrown error. The engine writes `{ stage: error, reason: 'pre-hook', error_message: <message>, error_metadata? }` to the action's status array.
+- **Pre-hook return.** A pre-hook (submit-pipeline Decision 4) returns `actions: [{ ..., status: 'error' }]` through the regular merge channel. No `force` needed — `error.priority = 1` is below every non-terminal stage. Failure context rides on the events-log entry via `event_overrides.metadata`.
+- **Task `submit_edit` + caller-supplied status.** Task actions whose `task.statuses:` list includes `error` can be sent to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`.
+- **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly.
 
 Either way, the action's `status[0].stage` becomes `error` and the page resolver's `link.pageId` slot in `status_map.error.{app_name}` is expected to target `{workflow_type}-{action_type}-error?action_id=<id>`.
 
@@ -801,7 +802,7 @@ pages:
           content: This will re-attempt the submission. Continue?
 ```
 
-The recovery form schema **reuses** the action's `form:` block — the user sees the same fields they originally submitted with the failure context surfaced as `formHeader` / `formFooter` blocks (typically a banner reading from `status[0].error_message` / `status[0].error_metadata` on the action doc). Apps that need a different recovery schema declare a `form_error:` block parallel to `form:` / `form_review:`; if absent, the error page renders the `form:` schema by default.
+The recovery form schema **reuses** the action's `form:` block — the user sees the same fields they originally submitted with the failure context surfaced as `formHeader` / `formFooter` blocks (typically a banner reading from the events-log entry referenced by `status[0].event_id`, where the author-driven entry path attached metadata via `event_overrides.metadata`; status entries themselves are uniform `{ stage, created, event_id }` per [Part 29 § D2a](../../workflows-module/parts/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)). Apps that need a different recovery schema declare a `form_error:` block parallel to `form:` / `form_review:`; if absent, the error page renders the `form:` schema by default.
 
 **Stale-URL guard.** The error template's `onMount` ships a built-in redirect step: if the action's `status[0].stage` isn't `error` when the page loads, the template emits a `Link` to `-view`. Apps don't write this guard themselves; it's part of the template.
 

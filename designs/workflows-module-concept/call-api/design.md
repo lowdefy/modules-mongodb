@@ -93,13 +93,13 @@ Matches the tracker-subscription depth-limit mitigation already documented in [e
 
 ## Decision 4 — Error propagation
 
-Errors raised inside an invoked Api propagate to the calling handler as `{ success: false, error: { ... } }`. The handler decides:
+**Amended by [Part 29 § D6](../../workflows-module/parts/29-error-model-cleanup/design.md#d6-propagate-everywhere--no-engine-side-catching-of-sub-step-throws) and [Part 1 Deviation note](../../workflows-module/parts/_completed/01-call-api-primitive/design.md).** Shipped `callApi` throws on `:reject` / `:throw` rather than returning a `{ success: false, error }` envelope. The 11-step submit lifecycle catches nothing — every step that throws propagates to `CallApi`. Concretely:
 
-- **Pre-hook errors** abort the submit by default — engine writes the action's `status[0]` to `{ stage: error, reason, error_message, error_metadata }` carrying the captured failure context. (See engine Decision 5 "Action error transition.")
-- **Side-effect errors** (events module call fails, notifications call fails) are logged but don't abort the submit — those writes are recoverable; the user's action transition already happened.
-- **Post-hook errors** never abort; logged and surfaced in the API return as `post_hook_response.error`.
+- **Pre-hook throws** propagate. Authors choose between `:reject` (user-facing rejection — propagates as `UserError(isReject: true)`, surfaced as a `'reject'` by the wrapping endpoint's `runRoutine`; see [Part 29 § D5](../../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)) and `throw` (infrastructure failure — surfaced as a transient error toast). No engine-side `error` transition is written; no `hook_error` return field exists.
+- **Side-effect throws** (events module call fails, notifications call fails) propagate. The user sees the submit as failed — honest reporting, since they may want to manually notify the affected party while the system retries. The notifications module's own retry/queue still operates independently.
+- **Post-hook throws** propagate. Writes from steps 4–10 stay durable (deliberately non-atomic); authors must make post-hooks idempotent. No `post_hook_error` soft-surface field.
 
-Behaviour is per-call (the handler picks) — `context.callApi` itself doesn't decide; it just returns the structured error.
+The single rule: failures throw; success returns the structured success shape. `context.callApi`'s contract is unchanged — it still throws on inner-routine `:reject` / `:throw` and returns the raw response on success.
 
 ## Decision 5 — Payload evaluation
 

@@ -98,3 +98,4 @@ _(None — the hook-auth and `on_complete`-auth questions dissolved into the inl
 
 - **Part 9** reads the baked-in `hooks`, `event_overrides`, `interactions` maps via the endpoint payload that this resolver constructs.
 - **Part 16** templates call the emitted endpoints with the right `interaction` value from button blocks.
+- **Part 29** — per [§ D5](../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently), per-action endpoints emit **no** trailing `:if` / `:reject` control step. Pre-hook rejects propagate transparently as a `UserError(isReject: true)` throw and are classified at the wrapping endpoint's `runRoutine` (which lands the reject as `{ status: 'reject', error }` via the upstream `cc18b41e9` tweak — see [Part 29 § Upstream dependency](../29-error-model-cleanup/design.md#upstream-dependency)).

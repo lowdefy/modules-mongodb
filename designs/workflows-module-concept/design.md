@@ -138,7 +138,7 @@ The action declares no `interactions:` block, so the engine uses defaults: `subm
 
 ### `workflow_config/onboarding/api/qualify-pre-submit.yaml` — pre-hook
 
-The pre-hook is a Lowdefy Api invoked by the engine via the [call-api](call-api/design.md) primitive before any engine writes. It returns optional `actions[]` (merged with the engine's auto-unblocks), `event_overrides`, `form_overrides`, or `hook_error` (to abort).
+The pre-hook is a Lowdefy Api invoked by the engine via the [call-api](call-api/design.md) primitive before any engine writes. It returns optional `actions[]` (merged with the engine's auto-unblocks), `event_overrides`, and `form_overrides`. Aborting the submit is done by throwing — `:reject` for user-facing rejections, `throw` for infrastructure failures ([Part 29 § D5](../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)).
 
 ```yaml
 id: qualify-pre-submit

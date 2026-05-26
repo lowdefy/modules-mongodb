@@ -12,11 +12,11 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 ### Resolver output per action kind
 
-| Kind      | Pages generated                                                                                                                                                                                                                                                                                                                      |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list. All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`.                                                       |
-| `task`    | None (uses shared `task-edit` / `task-view` / `task-review`)                                                                                                                                                                                                                                                                         |
-| `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                                                                         |
+| Kind      | Pages generated                                                                                                                                                                                                                                                               |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list. All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. |
+| `task`    | None (uses shared `task-edit` / `task-view` / `task-review`)                                                                                                                                                                                                                  |
+| `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                  |
 
 ### Form-action page YAML shape
 
@@ -26,7 +26,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
     path: "templates/edit.yaml.njk" # ships from this module
     vars:
       action_config: { ... } # engine-runtime + build-time-only action fields (no `pages`)
-      page_config: { ... }   # per-verb slice of action.pages.{verb} (title/requests/events/formHeader/formFooter/modals/maxWidth/buttons)
+      page_config: { ... } # per-verb slice of action.pages.{verb} (title/requests/events/formHeader/formFooter/modals/maxWidth/buttons)
       workflow_type: "{workflow_type}"
       entity_collection: "{workflow.entity_collection}"
       page_ids:
@@ -51,9 +51,9 @@ The emitted shell is just an `_ref` — no `type:`, no inline `events`, no inlin
 - `templates/edit.yaml.njk` — edit form. Ships the template-shipped `submit_edit` button, plus `not_required` when the action opts in via `pages.edit.buttons.not_required.visible: true`. Buttons call `update-action-{action_type}` with the matching `interaction` value.
 - `templates/view.yaml.njk` — read-only view. No write buttons. (View is the read-only surface; `not_required` is a write and lives only on `edit.yaml.njk`.)
 - `templates/review.yaml.njk` — read-only form display + template-shipped `approve` / `request_changes` interaction buttons calling `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`. Also ships an `Edit` navigation button (a `Link` back to the edit page with `input: { skip_status_redirect: true }`) when the edit verb is in this app's access list, so reviewers can fix small issues themselves rather than bouncing the action back with `request_changes`.
-- `templates/error.yaml.njk` — recovery surface for actions in `error` status. Template ships:
+- `templates/error.yaml.njk` — recovery surface for actions in `error` status. The page is reached **only via author-driven entry** to `error` (pre-hook returning `actions: [{ ..., status: 'error' }]`, task `submit_edit + current_status: 'error'`, or external system writes — see [engine § Action error transition](../engine/spec.md#action-error-transition)). Engine sub-step failures no longer route here; they throw to `CallApi` and the user retries the same submit ([Part 29 § D1](../../workflows-module/parts/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)). Template ships:
   - **Stale-URL guard appended to `onMount`** — redirects to `-view` when `status[0].stage !== 'error'` at load.
-  - **Failure-context banner** above the form, surfacing `status[0].error_message` and `status[0].error_metadata` on the action doc.
+  - **Failure-context banner** above the form. Status entries are uniform `{ stage, created, event_id }` (no polymorphic error fields), so the banner reads diagnostic context from the `events` collection entry referenced by `status[0].event_id` (when the author-driven entry path attached metadata via `event_overrides.metadata`). Richer template rendering for this banner is deferred — see [Part 29 § Out of scope — Reject-rendering UX](../../workflows-module/parts/29-error-model-cleanup/design.md#out-of-scope--deferred).
   - **Recovery form** defaulting to the action's `form:` schema (or `form_error:` if declared).
   - **Template-shipped `resolve_error` button** (submit-pipeline Decision 3) wired to `update-action-{action_type}` with `interaction: resolve_error`; fires the author's `pages.error.events.onSubmit` first for page-state work. Title and optional confirm modal overridable via `pages.error.buttons.submit.{title, modal}`. Extra buttons go in `formFooter:`.
 
@@ -61,13 +61,13 @@ The `-error` page is gated identically to the other verbs: emitted iff `error` i
 
 ### Template-shipped button vocabulary
 
-| Button            | Template                                         | `interaction` value | Author event handler fired         | Engine target-status default                                               |
-| ----------------- | ------------------------------------------------ | ------------------- | ---------------------------------- | -------------------------------------------------------------------------- |
-| `submit_edit`     | `edit.yaml.njk`                                  | `submit_edit`       | `onSubmit`                         | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
-| `not_required`    | `edit.yaml.njk` (opt-in)                         | `not_required`      | `onSubmit`                         | `not-required`                                                             |
-| `resolve_error`   | `error.yaml.njk`                                 | `resolve_error`     | `onSubmit`                         | Same as `submit_edit` — recovery returns the action to its normal flow     |
-| `approve`         | `review.yaml.njk`                                | `approve`           | `onApprove`                        | `done`                                                                     |
-| `request_changes` | `review.yaml.njk`                                | `request_changes`   | `onRequestChanges`                 | `changes-required`                                                         |
+| Button            | Template                 | `interaction` value | Author event handler fired | Engine target-status default                                               |
+| ----------------- | ------------------------ | ------------------- | -------------------------- | -------------------------------------------------------------------------- |
+| `submit_edit`     | `edit.yaml.njk`          | `submit_edit`       | `onSubmit`                 | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
+| `not_required`    | `edit.yaml.njk` (opt-in) | `not_required`      | `onSubmit`                 | `not-required`                                                             |
+| `resolve_error`   | `error.yaml.njk`         | `resolve_error`     | `onSubmit`                 | Same as `submit_edit` — recovery returns the action to its normal flow     |
+| `approve`         | `review.yaml.njk`        | `approve`           | `onApprove`                | `done`                                                                     |
+| `request_changes` | `review.yaml.njk`        | `request_changes`   | `onRequestChanges`         | `changes-required`                                                         |
 
 On click, each button (1) fires the matching `pages.{verb}.events.{handler}` author-supplied event (for page-state work — set state, fire requests, validate), then (2) calls `update-action-{action_type}` with `interaction: <button-name>` and the standard payload (`form`, `form_review`, `fields`, `current_key`). Authors who need pre-write logic register a pre-hook (`hooks.{interaction}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
 

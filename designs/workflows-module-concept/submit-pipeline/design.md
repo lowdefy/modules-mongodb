@@ -65,7 +65,7 @@ The `WorkflowAPI` plugin's request handler is renamed and broadened. Same connec
 **What it owns**, in order, single in-process call:
 
 1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, role gate passes for the interaction.
-2. **Execute pre-hook** (if `action.hooks.{interaction}.pre` is declared): engine invokes the named Lowdefy Api via the new CallApi primitive. Pre-hook receives the full submit payload + computed action context; returns optional `{ actions: [...], event_overrides: {...}, form_overrides: {...}, hook_error: <string> }` (full contract in Decision 4).
+2. **Execute pre-hook** (if `action.hooks.{interaction}.pre` is declared): engine invokes the named Lowdefy Api via the new CallApi primitive. Pre-hook receives the full submit payload + computed action context; returns optional `{ status, actions: [...], event_overrides: {...}, form_overrides: {...} }`. Aborts via `throw` (infra failure) or Lowdefy's `:reject` control (user-facing rejection — propagates as `UserError(isReject: true)`, classified by the wrapping endpoint's `runRoutine`). Full contract in Decision 4; soft-reject rationale in [Part 29 § D5](../../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently).
 3. **Compute auto-unblocks.** Walk the workflow's `blocked_by` graph; identify actions whose dependencies are now terminal as a result of the current submission.
 4. **Merge pre-hook `actions[]` with auto-unblocks.** Pre-hook entries take precedence; auto-unblocks fill in the rest.
 5. **Write action transitions.** Apply the merged actions array via the existing `updateAction.js` / `createAction.js` helpers. Priority rule still applies (engine Decision 4).
@@ -299,14 +299,20 @@ Pre-hook may return:
                               #   for this entry (engine D4 — escape hatch for replay/rollback
                               #   scenarios where a pre-hook needs to push an action backward
                               #   in priority, e.g. done → action-required).
-  event_overrides: object     # optional; merged over the default log-event shape (Decision 5)
+  event_overrides: object     # optional; merged over the default log-event shape (Decision 5).
+                              #   Use event_overrides.metadata to attach diagnostic context to the
+                              #   events-log entry — the channel for failure context on an author-
+                              #   driven error push.
   form_overrides: object      # optional; additional fields to $set on form_data.{action_type}[.{key}]
-  hook_error: string          # optional; if present, engine aborts the submit and writes status: error
-                              #   with this string as the error context. Use for pre-condition failures.
 }
 ```
 
-Pre-hook **can abort** the submit by returning `hook_error`. Engine handles abort as a normal `error` transition (engine Decision 5 "Action error transition" rules apply — the action's `status[0]` entry carries `{ stage: error, reason: 'pre-hook', error_message: hook_error }`, no further writes).
+Pre-hook **can abort** the submit by throwing. Two flavours, the choice belongs to the hook author ([Part 29 § D5](../../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently), [Part 9 § Pre-hook abort modes](../../workflows-module/parts/09-hook-invocation/design.md#pre-hook-abort-modes--throw-vs-reject)):
+
+- **`:reject`** (Lowdefy control) — propagates as `UserError(isReject: true)`; the wrapping per-action endpoint's `runRoutine` classifies as `{ status: 'reject', error }` and the calling app's `CallApi` surfaces the message via the platform's standard reject UI. Use for user-facing validation rejections.
+- **`throw`** (or any thrown error) — classified as `{ status: 'error', error }`; user sees a transient error toast and can retry. Use for infrastructure failures the user can't fix.
+
+The engine catches neither. The `hook_error` return field is removed; pre-hooks that want to mark the action errored return `actions: [{ ..., status: 'error' }]` through the regular merge channel ([Part 29 § D2](../../workflows-module/parts/29-error-model-cleanup/design.md#d2-why-pre-hooks-no-longer-get-a-hook_error-field)).
 
 ### `form_overrides` semantics
 
@@ -314,7 +320,7 @@ The pre-hook return's `form_overrides` is merged into the user's `form` / `form_
 
 - **Pre-hook wins on collision.** If the user submitted `form: { contact_name: "Alice" }` and pre-hook returns `form_overrides: { contact_name: "Bob" }`, the workflow doc lands `form_data.{action_type}.contact_name = "Bob"`. The pre-hook ran later and is the explicit override surface.
 - **One flat namespace.** With the engine's flat `form_data` layout (engine D5 — no `.review` or `.error` sub-keys), `form_overrides` writes to `form_data.{action_type}.{field}` (or `.{key}.{field}` for keyed actions) the same way the user's `form` and `form_review` payloads do. No routing-by-interaction; no reserved-key collision check.
-- **Skipped on abort.** When `hook_error` is set alongside `form_overrides`, the engine takes the abort path and ignores `form_overrides` — only the action's `status[0]` entry is written. Hooks that want to persist partial form context before aborting use the pre-hook `actions[]` array to write to a different action's form_data instead.
+- **No abort-time merge.** Aborts throw (`:reject` / `throw`) — they propagate before step 4 ever runs, so `form_overrides` are never written on an abort path. Hooks that want to persist partial form context before aborting use the pre-hook `actions[]` array to write to a _different_ action's form_data instead, then `throw` / `:reject` to abort the current submit.
 
 ### Post-hook contract
 
@@ -359,7 +365,7 @@ Every interaction generates a log event by default — no author config required
 ```yaml
 type: action-{interaction} # e.g. action-submit_edit, action-approve, action-request_changes
 display:
-  {app_name}: # consuming app's app_name (= events module's display_key var)
+  { app_name }: # consuming app's app_name (= events module's display_key var)
     title:
       _nunjucks:
         template: "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}"
@@ -367,7 +373,7 @@ display:
 references:
   workflow_ids: [<workflow_id>]
   action_ids: [<action_id>]
-  {entity-ref-key}: [<workflow.entity_id>] # entity_collection-derived key, e.g. leads_ids
+  { entity-ref-key }: [<workflow.entity_id>] # entity_collection-derived key, e.g. leads_ids
 metadata:
   action_type: <action_type>
   workflow_type: <workflow_type>

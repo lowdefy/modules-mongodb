@@ -771,7 +771,7 @@ test("handleSubmit step 5: 4 actions, one already done + one already not-require
   expect(wf.summary).toEqual({ done: 2, not_required: 1, total: 4 });
 });
 
-test("handleSubmit task 13: step 5 throws → force-push error transition; action_ids still set; step 4 writes durable on disk", async () => {
+test("handleSubmit task 13: step 5 throws → handler rethrows; step-4 transition durable; no error layered (Part 29)", async () => {
   await seedWorkflow();
   await seedAction({ _id: "a-quote", type: "send-quote", stage: "action-required" });
 
@@ -795,30 +795,27 @@ test("handleSubmit task 13: step 5 throws → force-push error transition; actio
     return inner;
   };
 
-  const result = await handleSubmit({
-    mongoDBConnection: failingConn,
-    actionsEnum,
-    workflowsConfig: [onboardingWorkflowConfig],
-    changeStamp,
-    params: { action_id: "a-quote", interaction: "submit_edit" },
-    user: { id: "u1", roles: ["account-manager"] },
-    eventId: "event-err-1",
-  });
+  await expect(
+    handleSubmit({
+      mongoDBConnection: failingConn,
+      actionsEnum,
+      workflowsConfig: [onboardingWorkflowConfig],
+      changeStamp,
+      params: { action_id: "a-quote", interaction: "submit_edit" },
+      user: { id: "u1", roles: ["account-manager"] },
+      eventId: "event-err-1",
+    }),
+  ).rejects.toThrow(/simulated step 5 failure/);
 
-  expect(result.error_transition).toBeDefined();
-  expect(result.error_transition.reason).toBe("recompute-summary");
-  expect(result.error_transition.error_message).toMatch(/simulated step 5 failure/);
-  expect(result.action_ids).toContain("a-quote");
-
-  // Step 4's transition is durable on the action doc, and the error transition
-  // is layered on top via force-push.
+  // Step 4's transition is durable on the action doc. No `error` is layered —
+  // engine sub-step failures throw instead of writing an error transition
+  // (Part 29 § D1).
   const doc = await mongo.db.collection("actions").findOne({ _id: "a-quote" });
-  expect(doc.status[0].stage).toBe("error");
-  expect(doc.status[1].stage).toBe("in-review");
-  expect(doc.status).toHaveLength(3); // error + in-review + original action-required
+  expect(doc.status[0].stage).toBe("in-review"); // step 4's transition
+  expect(doc.status).toHaveLength(2); // in-review + original action-required
 });
 
-test("handleSubmit task 13: step 6 throws → action_ids still set; summary write durable; error layered on action", async () => {
+test("handleSubmit task 13: step 6 throws → handler rethrows; step-5 summary write stays durable; no error layered (Part 29)", async () => {
   await seedWorkflow();
   await seedAction({ _id: "a-quote", type: "send-quote", stage: "action-required" });
 
@@ -842,34 +839,34 @@ test("handleSubmit task 13: step 6 throws → action_ids still set; summary writ
     return inner;
   };
 
-  const result = await handleSubmit({
-    mongoDBConnection: failingConn,
-    actionsEnum,
-    workflowsConfig: [onboardingWorkflowConfig],
-    changeStamp,
-    params: {
-      action_id: "a-quote",
-      interaction: "submit_edit",
-      form: { score: 5 },
-    },
-    user: { id: "u1", roles: ["account-manager"] },
-    eventId: "event-err-2",
-  });
+  await expect(
+    handleSubmit({
+      mongoDBConnection: failingConn,
+      actionsEnum,
+      workflowsConfig: [onboardingWorkflowConfig],
+      changeStamp,
+      params: {
+        action_id: "a-quote",
+        interaction: "submit_edit",
+        form: { score: 5 },
+      },
+      user: { id: "u1", roles: ["account-manager"] },
+      eventId: "event-err-2",
+    }),
+  ).rejects.toThrow(/simulated step 6 failure/);
 
-  expect(result.error_transition).toBeDefined();
-  expect(result.error_transition.reason).toBe("write-form-data");
-
-  // Step 5's summary was already written.
+  // Step 5's summary was already written — partial-write durability per
+  // Part 29 § D1 table.
   const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
   expect(wf.summary).toEqual({ done: 0, not_required: 0, total: 1 });
 
-  // Action has error layered on top of the step-4 transition.
+  // Step-4 transition durable on the action doc; no `error` layered.
   const doc = await mongo.db.collection("actions").findOne({ _id: "a-quote" });
-  expect(doc.status[0].stage).toBe("error");
-  expect(doc.status[1].stage).toBe("in-review");
+  expect(doc.status[0].stage).toBe("in-review");
+  expect(doc.status).toHaveLength(2); // in-review + original action-required
 });
 
-test("handleSubmit task 13: step 1 throw still bubbles up (not caught) — no error_transition on response", async () => {
+test("handleSubmit task 13: step 1 throw still bubbles up (not caught)", async () => {
   // Pre-lookup throw via missing action_id.
   let caughtErr = null;
   try {
@@ -1984,7 +1981,7 @@ test("part 9: post-hook throw propagates; writes from steps 4-10 stay", async ()
   expect(doc.status[0].stage).toBe("done");
 });
 
-test("part 10 step 10: error path retains tracker_fired:null; subscription not called", async () => {
+test("part 10 step 10: mid-write throw propagates; tracker subscription not called (Part 29)", async () => {
   await seedWorkflow();
   await seedAction({ _id: "a-quote", type: "send-quote", stage: "action-required" });
 
@@ -2006,18 +2003,241 @@ test("part 10 step 10: error path retains tracker_fired:null; subscription not c
     return inner;
   };
 
-  const result = await handleSubmit({
-    mongoDBConnection: failingConn,
-    actionsEnum,
-    workflowsConfig: [onboardingWorkflowConfig],
-    changeStamp,
-    connection: { app_name: "test-app" },
-    params: { action_id: "a-quote", interaction: "submit_edit" },
-    user: { id: "u1", roles: ["account-manager"] },
-    callApi: jest.fn(async () => ({ success: true, response: {} })),
-    eventId: "event-1",
+  const callApi = jest.fn(async () => ({ success: true, response: {} }));
+
+  await expect(
+    handleSubmit({
+      mongoDBConnection: failingConn,
+      actionsEnum,
+      workflowsConfig: [onboardingWorkflowConfig],
+      changeStamp,
+      connection: { app_name: "test-app" },
+      params: { action_id: "a-quote", interaction: "submit_edit" },
+      user: { id: "u1", roles: ["account-manager"] },
+      callApi,
+      eventId: "event-1",
+    }),
+  ).rejects.toThrow(/simulated step 5 failure/);
+
+  // The tracker subscription (step 10) never runs because the throw at step 5
+  // propagates before steps 6–11.
+  expect(callApi).not.toHaveBeenCalled();
+});
+
+// ---------------------------------------------------------------------------
+// Part 29 — propagate-everywhere failure model.
+// ---------------------------------------------------------------------------
+
+test("part 29: step 4 sub-step throws → handler rethrows; no error transition; pre-submit status unchanged", async () => {
+  await seedWorkflow();
+  await seedAction({
+    _id: "a-quote",
+    type: "send-quote",
+    stage: "action-required",
   });
 
-  expect(result.tracker_fired).toBeNull();
-  expect(result.error_transition).toBeDefined();
+  // Wrap mongoDBConnection so the per-entry $set on actions throws on step 4.
+  const failingConn = (collection) => {
+    const inner = mongoDBConnection(collection);
+    if (collection === "actions") {
+      return {
+        ...inner,
+        MongoDBUpdateOne: async () => {
+          throw new Error("simulated step 4 failure");
+        },
+      };
+    }
+    return inner;
+  };
+
+  await expect(
+    handleSubmit({
+      mongoDBConnection: failingConn,
+      actionsEnum,
+      workflowsConfig: [onboardingWorkflowConfig],
+      changeStamp,
+      params: { action_id: "a-quote", interaction: "submit_edit" },
+      user: { id: "u1", roles: ["account-manager"] },
+      eventId: "event-step4-throw",
+    }),
+  ).rejects.toThrow(/simulated step 4 failure/);
+
+  // Action's status array is unchanged from pre-submit — no error layered.
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a-quote" });
+  expect(doc.status).toHaveLength(1);
+  expect(doc.status[0].stage).toBe("action-required");
+});
+
+test("part 29: step 7 (log event) throw propagates; steps 4–6 writes stay durable; no post_hook_error surface", async () => {
+  await seedWorkflow();
+  await seedAction({
+    _id: "a1",
+    type: "qualify",
+    stage: "action-required",
+  });
+
+  const callApi = jest.fn(async ({ id }) => {
+    if (id === "new-event") {
+      throw new Error("simulated step 7 failure");
+    }
+    return { success: true, response: {} };
+  });
+
+  await expect(
+    handleSubmit(
+      makeContext({
+        workflowsConfig: [onboardingWorkflowConfig],
+        params: {
+          action_id: "a1",
+          interaction: "submit_edit",
+          form: { score: 9 },
+        },
+        callApi,
+      }),
+    ),
+  ).rejects.toThrow(/simulated step 7 failure/);
+
+  // Step 4 write durable.
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done");
+  expect(doc.status).toHaveLength(2);
+
+  // Step 5 (summary) + Step 6 (form_data) writes durable.
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.summary).toEqual({ done: 1, not_required: 0, total: 1 });
+  expect(wf.form_data?.qualify?.score).toBe(9);
+
+  // Notifications (step 8) never invoked because step 7 threw first.
+  expect(
+    callApi.mock.calls.some(([endpoint]) => endpoint.id === "send-notification"),
+  ).toBe(false);
+});
+
+test("part 29: step 8 (notifications) throw propagates; steps 4–7 writes stay durable", async () => {
+  await seedWorkflow();
+  await seedAction({
+    _id: "a1",
+    type: "qualify",
+    stage: "action-required",
+  });
+
+  const callApi = jest.fn(async ({ id }) => {
+    if (id === "send-notification") {
+      throw new Error("simulated step 8 failure");
+    }
+    return { success: true, response: {} };
+  });
+
+  await expect(
+    handleSubmit(
+      makeContext({
+        workflowsConfig: [onboardingWorkflowConfig],
+        params: { action_id: "a1", interaction: "submit_edit" },
+        callApi,
+      }),
+    ),
+  ).rejects.toThrow(/simulated step 8 failure/);
+
+  // Step 4 + 5 writes durable.
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done");
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.summary).toEqual({ done: 1, not_required: 0, total: 1 });
+
+  // new-event (step 7) was called before step 8 threw.
+  expect(
+    callApi.mock.calls.some(([endpoint]) => endpoint.id === "new-event"),
+  ).toBe(true);
+});
+
+test("part 29: retry of partial step-4 write converges via priority rule + self-exception", async () => {
+  await seedWorkflow();
+  await seedAction({
+    _id: "a1",
+    type: "qualify",
+    stage: "action-required",
+  });
+
+  // First call: throw after the step 4 write is applied (to actions) but
+  // before step 5 completes — simulating partial step-4 durability across
+  // multiple entries / a mid-write infrastructure blip.
+  let firstSummaryAttempt = true;
+  const failingConn = (collection) => {
+    const inner = mongoDBConnection(collection);
+    if (collection === "workflows") {
+      return {
+        ...inner,
+        MongoDBUpdateOne: async (...args) => {
+          if (firstSummaryAttempt) {
+            firstSummaryAttempt = false;
+            throw new Error("simulated transient blip");
+          }
+          return inner.MongoDBUpdateOne(...args);
+        },
+      };
+    }
+    return inner;
+  };
+
+  // First submit — throws at step 5; step 4's write to the action landed.
+  await expect(
+    handleSubmit({
+      mongoDBConnection: failingConn,
+      actionsEnum,
+      workflowsConfig: [onboardingWorkflowConfig],
+      changeStamp,
+      params: { action_id: "a1", interaction: "submit_edit" },
+      user: { id: "u1", roles: ["account-manager"] },
+      eventId: "event-attempt-1",
+    }),
+  ).rejects.toThrow(/simulated transient blip/);
+
+  let doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done"); // step-4 write landed
+  expect(doc.status).toHaveLength(2);
+
+  // Second submit — succeeds. Self-exception writes a fresh status entry on
+  // the same-stage push (priority rule § currentActionId self-exception); the
+  // action's status array grows by one but the final state matches a single-
+  // shot success in terms of summary + workflow state.
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+      eventId: "event-attempt-2",
+    }),
+  );
+
+  expect(result.action_ids).toContain("a1");
+  doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done");
+
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.summary).toEqual({ done: 1, not_required: 0, total: 1 });
+});
+
+test("part 29: resolve_error recovery writes via handler-internal force: true (Part 29 § D4)", async () => {
+  await seedWorkflow();
+  // Seed an action already in `error`.
+  await seedAction({
+    _id: "a1",
+    type: "qualify",
+    stage: "error",
+  });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "resolve_error" },
+    }),
+  );
+
+  expect(result.action_ids).toContain("a1");
+
+  // Recovery transition landed on top of the `error` entry. The target status
+  // for resolve_error matches submit_edit (engine default — `done` here since
+  // the qualify action has no `review` verb in any access map).
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done");
+  expect(doc.status[1].stage).toBe("error"); // previous entry kept as audit
 });
