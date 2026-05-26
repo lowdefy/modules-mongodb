@@ -92,24 +92,65 @@ Authors who want a finer-grained "anyone can reassign, only specific roles can s
 
 The component reads `_state.action_allowed` (populated by `action_role_check` in step 6 of the page's `onMount`) and switches every input to read-only when `false`, regardless of `mode: edit`. This is defense in depth: the page-level button gate prevents submission, but rendering disabled inputs prevents users from typing changes that won't save.
 
+### Required-field signal
+
+Each action declares which universal fields are mandatory on its YAML:
+
+```yaml
+type: qualify
+kind: form
+access: { roles: [sales] }
+universal_fields_required:
+  assignees: true     # default false
+  due_date: false
+  description: false
+```
+
+`universal_fields_required` is an object with three optional booleans (`assignees`, `due_date`, `description`), all defaulting to `false`. Authoring contract amendment: add this field to [action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md) reserved-field table alongside `required_after_close`. Resolver passthrough (the existing `makeWorkflowsConfig.js` / `makeActionPages.js` allowlists) is updated to carry the new field — same pattern `required_after_close` already follows.
+
+Consuming pages pass the resolved config to the universal-fields component as a new var:
+
+```yaml
+- _ref:
+    path: components/universal-fields/universal-fields.yaml
+    vars:
+      mode: edit
+      kind: form
+      required:
+        _var: action_config.universal_fields_required
+      action_data: { ... }
+```
+
+Inside the component:
+
+- Edit mode — for each of the three inputs, stamp `required: true` when `_var: required.{field} === true`. Input-block validation handles the "Required" message at submit time (Part 16's `^fields\.` `Validate` regex already covers these blocks).
+- Display mode — `required` is ignored. The view-side reflects the stored value; the required signal only matters for the writer.
+
+Engine-side enforcement is deferred. The handler does not throw on missing required fields in v1 — input-block validation already catches the user-facing case. If an API consumer hits the per-action endpoint directly with a `null` assignee on a required-assignee action, the write goes through; revisit if real API consumers expose this gap. Tracked as Open question.
+
 ### Display rules
 
 - **Empty-state**: when a field is `null` / `[]`, display mode shows a dimmed placeholder (`Not assigned`, `No due date`, `No description`). Edit mode shows the empty input.
 - **Date formatting**: `due_date` displays via `_dayjs.format` with locale-aware formatting; component accepts a `date_format` var (default `MMM D, YYYY`).
-- **Assignees**: display mode shows avatar group + names (via the user-admin module's `user-avatar` component); edit mode shows a `Selector` populated from `users` — the request id is `selector_assignees`, shipped from the workflows module's `requests/` directory alongside the part-16 requests.
-- **Description**: short text input; long descriptions truncate in display mode with a "show more" affordance.
+- **Assignees**: display mode renders one `_ref: { module: user-account, component: user-avatar }` per assignee (picture + name); edit mode uses `_ref: { module: user-account, component: user-selector }` in multi-select mode, bound to `_state.fields.assignees`. Both components are shipped by [part 24a](../24a-user-account-selector-avatar/design.md) — `user-selector` is the migrated copy from user-admin (filtered to `apps.{app_name}.is_user: true` so the dropdown only lists actual app users); `user-avatar` is new.
+- **Description**: edit mode renders a `TiptapInput` (rich text — paragraphs, links, basic formatting); display mode renders an `Html` block reading `description.html`. Stored on the action doc as `{ text: string, html: string } | null` — mirrors how the existing `comment` field is already passed through the engine. The `text` shadow stays available for length checks, plain-text search, and required-field validation. No "show more" truncation in v1 — Tiptap content wraps; truncation can be added later if descriptions get unwieldy in practice.
+
+Engine spec amendment: [`workflows-module-concept/engine/spec.md:132`](../../../workflows-module-concept/engine/spec.md) currently lists `description` as `string | null` — update to `{ text: string, html: string } | null` to align with the shipped behaviour (the `comment` field already carries this shape today, even though its JSDoc still says "string"). Carry this amendment under part 24 rather than spinning a separate spec-fix part — it's the same change either way.
 
 ### Module-shipped requests added
 
-Adds one request to the part-16 set:
+None. The Selector and avatar both reach into user-account via cross-module component refs (see "Display rules"); no new requests ship from the workflows module for the universal-fields surface.
 
-- `requests/selector_assignees.yaml` — query against the `user_contacts` collection (the unified user record per [contact-fields guide](../../../../apps/demo/.claude/guides/contact-fields.md)), returning `{ value: user._id, label: user.profile.name, avatar: user.profile.picture }` for the assignees Selector. Filters on `apps.{app_name}.is_user: true` so authors can only assign to actual app users (mirrors `user-admin/requests/get_users_for_selector.yaml`). This is a Selector options source — queried from inside an input block — not a page-load request like the part-16 trio (`get_action`, `get_workflow`, `get_entity`). It ships in the same `requests/` directory but plays a different role.
+### Manifest dependency
+
+`modules/workflows/module.lowdefy.yaml` gains `user-account` under `dependencies:` (alongside the existing `layout` and `events`). Required so `_ref: { module: user-account, component: ... }` resolves at build time.
 
 ## Out of scope / deferred
 
 - **Dedicated `-metadata` edit surface.** Considered and deferred. Adding a separate page or modal for "edit metadata after close" is purely additive — v1 routes post-close edits through the `edit` page with `required_after_close: true`. Revisit if real apps need it; the new surface would land as part 24.x.
 - **Separate `update_metadata` interaction.** Deferred per "Interaction model" above.
 - **Per-field role gating.** Deferred per "Role gating" above.
+- **Engine-side handler enforcement of `universal_fields_required`.** Deferred per Open questions; v1 relies on input-block validation only.
 - **Custom universal-field schemas per app.** v1 fixes the three fields. Apps that need additional action-level metadata add it to the form schema; promoting more fields to the universal band is a v1.x consideration.
 - **Authoring overrides for the universal fields' display chrome** (e.g. custom date format per action). Apps style globally via the layout module; per-action customization is not in v1.
 
@@ -118,6 +159,7 @@ Adds one request to the part-16 set:
 - **[Part 5 (start/cancel handlers)](../_completed/05-start-cancel-handlers/design.md)** — the action doc shape these fields live on.
 - **[Part 6 (submit-action writes)](../_completed/06-submit-action-writes/design.md)** — handler reads / writes the fields.
 - **[Part 18 (entity-components)](../18-entity-components/design.md)** — `action_role_check` populates `_state.action_allowed` that gates the component's edit mode.
+- **[Part 24a (user-account selector + avatar)](../24a-user-account-selector-avatar/design.md)** — ships `user-selector` (migrated from user-admin) and the new `user-avatar` component; workflows depends on user-account to consume both.
 
 ## Consumers
 
@@ -139,7 +181,9 @@ Adds one request to the part-16 set:
 ## Open questions
 
 - **Tracker action authoring of universal fields.** Tracker actions don't have an edit page; how do their universal fields get set initially and edited later? Candidates: (a) on the parent form-action's edit page that spawned the tracker, (b) inline in `actions-on-entity` via a click-to-edit affordance, (c) a small modal launched from the tracker badge. v1 default: tracker universal fields are set on `StartWorkflow` if the parent action carries them through, and immutable otherwise. Revisit if apps need post-start tracker reassignments.
-- **`description` length and rich-text affordance.** v1 ships short text. Some apps may want a rich-text description (paragraphs, links). Promoting it to TiptapInput is a small change but affects the action-doc shape (string vs. structured). Defer until a real ask.
+- **Engine-side enforcement of `universal_fields_required`.** v1 relies on input-block validation (Part 16's `^fields\.` `Validate` regex). The submit handler does not check the flag — an API consumer hitting `update-action-{type}` directly with a missing required field will succeed. Add a handler-side check (and a matching error model) if a real API consumer surfaces the gap.
+- **`description` length and truncation affordance.** v1 ships full-height TiptapInput / Html rendering — long descriptions wrap, no truncate-with-expand. If real apps ship book-length descriptions and complain about page length, add a `line-clamp` + "show more" toggle in display mode (likely via an `Html` + `_state.description_expanded` flag, or a small custom block). Not promoting to a stricter affordance until somebody asks.
+- **Universal-field writes on form-kind actions — same endpoint as `submit_edit`, or split?** The current decision (under "Interaction model" above) is to keep universal-field writes on the same `submit_edit` interaction. That decision still holds for task-kind actions, where the universal fields are primary content. For form-kind actions, where the universal fields are a header band above a separate form body, it's worth considering whether the metadata write should split off into its own endpoint / interaction — for cleaner audit, finer-grained permission gating, or to let metadata edits land without re-running form validation. To be discussed separately. **If this resolves to a split for form-kind, finding #8 in [review-1](review/review-1.md) needs to come back to "Resolved" — `kind: form` vs `kind: task` would then drive a real behavioural difference inside the component (which endpoint the submit-adjacent affordances target), and the var earns its keep.**
 
 ## Contract to neighbours
 

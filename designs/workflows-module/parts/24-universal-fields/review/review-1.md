@@ -52,9 +52,13 @@ Per the contact-fields guide (`apps/demo/.claude/guides/contact-fields.md:33`), 
 
 ### 4. `user-avatar` component doesn't exist; the existing one is `profile-avatar` in user-account
 
+> **Resolved.** Part 24 now `_ref`s a new `user-avatar` component shipped by [part 24a](../../24a-user-account-selector-avatar/design.md) in the user-account module. Distinct from `profile-avatar` (which is a config fragment bound to the logged-in user and stays for the layout module's profile-menu slot). `user-avatar` takes a user-contacts doc via `vars.user` and renders picture + name.
+
 The design says display mode renders "via the user-admin module's `user-avatar` component". `grep -r 'user-avatar' modules/` returns nothing. There is a `profile-avatar` component in `modules/user-account` (`designs/_completed/profile-menu 1/design.md:44`), but no `user-avatar` in user-admin. The design either needs to (a) name the existing component correctly and the module that ships it, or (b) commit to shipping a new avatar component as part of this part (and add it to "Component shipped").
 
 ### 5. `selector_assignees` duplicates an existing component without justification
+
+> **Resolved.** Dropped the planned `selector_assignees.yaml` request entirely. Part 24's edit mode reuses the shared `user-selector` component instead. [Part 24a](../../24a-user-account-selector-avatar/design.md) migrates that selector from user-admin to user-account (user-account is universally present across apps; user-admin is optional) and Part 24 declares the new home as a dependency. The "Module-shipped requests added" section now reads "None."
 
 The user-admin module already ships `components/user-selector.yaml` backed by `requests/get_users_for_selector.yaml`, which:
 
@@ -69,15 +73,21 @@ The proposed `requests/selector_assignees.yaml` would be a near-duplicate. Eithe
 
 ### 6. Missing `is_user` filter would assign actions to non-app users
 
+> **Resolved.** Moot after #5 — the new design reuses user-account's `user-selector` (migrated from user-admin in part 24a), which already filters on `apps.{app_name}.is_user: true`. Documented this in part 24's "Display rules" bullet so the dependency is visible.
+
 The proposed request matches the `user_contacts` collection with no filter clause shown. Per the data model, that collection holds **every contact** — including invited-but-not-signed-up people and contacts who aren't users of this app. Without `apps.{app_name}.is_user: true`, the Selector would let an author assign an action to a contact who can't log in. The existing `get_users_for_selector` already gates on this; the new request needs the same gate. The design should spell this out so the implementer doesn't re-discover it during code-review.
 
 ### 7. Cross-module connection wiring not addressed
+
+> **Resolved.** Added a "Manifest dependency" sub-section: workflows gains `user-account` under `dependencies:`. No cross-module `connectionId` ref needed at the call site — both consumed components (`user-selector`, `user-avatar`) encapsulate their own connection wiring inside user-account. Part 24a is the carrier for the user-account-side changes.
 
 `modules/workflows/module.lowdefy.yaml` declares only `layout` and `events` as dependencies (lines 23–27). The shipped workflows module owns `workflows-collection` and `actions-collection` connections — it doesn't own `user-contacts-collection`. To query that collection from a request shipped by workflows, the manifest needs a dependency on user-admin (or contacts) plus a cross-module connection reference (`_module.connectionId: { id: user-contacts-collection, module: user-admin }`). Neither is mentioned in the design. This is the load-bearing wiring step that turns "ship a selector request" from a one-file change into a contract amendment on the module manifest — it deserves its own bullet under "Module-shipped requests added".
 
 ## Underspecified surface
 
 ### 8. `kind: form` vs `kind: task` — design doesn't say what the var changes
+
+> **Deferred to open questions.** Pending a separate discussion on whether universal-field writes on form-kind actions should split off from `submit_edit` into their own endpoint / interaction. If that resolves to a split, `kind` earns a real internal behavioural difference (which endpoint the band's submit-adjacent affordances target) and this finding flips to Resolved. If it resolves to "keep on the same endpoint," the `kind` var should be dropped as dead surface. See part 24 design.md → Open questions → "Universal-field writes on form-kind actions — same endpoint as `submit_edit`, or split?"
 
 The "Component shipped" example takes a `kind` var (`'form' | 'task'`), but no section of the design says what differs between `kind: form` and `kind: task` *inside the component*. Per the ui spec (`workflows-module-concept/ui/spec.md:200-206`), the difference is positional — form actions put the band above the form body, task actions put it as primary content with the status selector below. That's a *page-level* composition choice owned by parts 16 / 17, not a component-internal switch.
 
@@ -90,6 +100,8 @@ If the component renders identically regardless of `kind`, the var is dead weigh
 The component example under "Component shipped" shows `mode: edit` with `action_data` bound to `_state.fields.*`. But every shipped `mode: display` call site binds `action_data` to `_request: get_action.*` instead (e.g. `templates/view.yaml.njk:107-113`, `pages/task-view.yaml:125-131`). Both are valid — display mode reads from the loaded action doc; edit mode reads from primed form state — but the design only documents one. Add a second example or a sentence stating "in display mode, callers pass `_request: get_action.*`; in edit mode, they pass `_state.fields.*`" so the contract is unambiguous.
 
 ### 10. `description`'s input block type and "show more" affordance are unspecified
+
+> **Resolved.** Pinned blocks: edit mode renders `TiptapInput`, display mode renders an `Html` block reading `description.html`. Stored as `{ text: string, html: string } | null` on the action doc — same shape `comment` already uses through the engine, with a parallel one-line amendment to engine spec line 132 carried under this part. Dropped the "show more" affordance from v1; long descriptions wrap (deferred truncation logged in Open questions for the case where it becomes a real problem).
 
 "Display rules" says description "displays via" some unstated mechanism and "long descriptions truncate in display mode with a 'show more' affordance." Edit mode says "short text input" — `TextInput`? `TextArea`? `Paragraph` (Lowdefy doesn't ship a "show more" block by default — does this require an `Html` block? A custom component?). For an M-sized component these are the kinds of decisions that should be locked, since the alternative is "implementer guesses, reviewer disagrees, rework."
 
