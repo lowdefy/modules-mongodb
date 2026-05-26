@@ -20,8 +20,8 @@ Page button (template-shipped)
             6. Write form_data ($set per field) + workflow doc updates
             7. Generate log event (defaults overridable from action YAML + pre-hook)
             8. Dispatch notifications (via notifications module InternalApi)
-            9. Fire group on_complete pipelines for completed groups  [open]
-           10. Fire tracker subscription if workflow status changed (sync in-process per engine D3)
+            9. Fire tracker subscription if workflow status changed (sync in-process per engine D3) — accumulates parent-level `completed_groups` per level
+           10. Fire group on_complete pipelines for completed groups (originating + tracker-propagated union)
            11. Post-hook for interaction (if declared)
            12. Return { action_ids, completed_groups, event_id, tracker_fired?, pre_hook_response?, post_hook_response? }
 ```
@@ -281,8 +281,8 @@ event:
 | -------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Log event            | Always, after action writes                       | Engine `context.callApi('new-event', module: 'events')` with merged event payload                                                                                                                                                   |
 | Notifications        | Always, after the log event                       | Engine `context.callApi('send-notification', module: 'notifications')` with `{ event_ids: [<event_id>] }`. The app's `send_routine` (on the notifications module entry) decides recipients — silent no-op when no routine is wired. |
-| Group `on_complete`  | When groups transition to `done` this call (open) | Engine `context.callApi(<on_complete-api-id>)` per completed group                                                                                                                                                                  |
-| Tracker subscription | When workflow status changed                      | Synchronous in-process per engine D3. Engine writes parent tracker action via internal `updateAction` recursion; `SubmitWorkflowAction` invocations don't recurse on themselves.                                                    |
+| Tracker subscription | When workflow status changed                      | Synchronous in-process per engine D3. Engine writes parent tracker action via internal `updateAction` recursion; `SubmitWorkflowAction` invocations don't recurse on themselves. Each level emits `completed_groups` from its recompute diff and accumulates them on the fire chain.                                                                                       |
+| Group `on_complete`  | When groups transition to `done` this call        | Engine `context.callApi(<on_complete-api-id>)` per completed group. Fires for the union of the originating workflow's `completed_groups` and every tracker-propagated parent level's `completed_groups`. Runs after tracker subscription so parent-level completions are visible. |
 
 `entity_update` (the status-quo `submit-action` payload's optional Mongo write to the entity doc) is **dropped**. Apps that need to update the entity do so from a pre/post hook.
 

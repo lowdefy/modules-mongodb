@@ -2,6 +2,10 @@
 
 **Source rationale:** [workflows-module-concept/engine/spec.md](../../../workflows-module-concept/engine/spec.md). **Layer:** engine handlers. **Size:** S. **Repo:** `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`.
 
+> **Deviation note (added during Part 11 action review).** `fireTrackerSubscription`'s return shape is extended by [Part 11](../../11-group-on-complete-fanout/design.md) (see "Extends `fireTrackerSubscription`" there): each fire-chain entry gains a `completed_groups: Array<{ workflow_id, workflow_type, id, group_title, on_complete }>` field carrying the per-level diff from `recomputeWorkflowAfterActionWrite`'s already-returned `groupsBefore`/`groupsAfter`. This lets Part 11's fan-out fire `on_complete` for parent groups that transition to `done` via tracker propagation. Also: the submit-pipeline spec ordering is amended so this part runs at **step 9** and fan-out at step 10 — the original "step 10" label in this design predates the swap. The on-disk `handleSubmit.js` execution order will be updated to match when Part 11 lands.
+>
+> The original Part 10 design below is preserved as committed history.
+
 ## Goal
 
 Mirror child workflow status changes into the parent tracker action synchronously and in-process. After this part, completing a child workflow flips the parent's tracker action to `done`; cancelling the child flips it to `not-required`; reopening the child flips it back to `in-progress`.
