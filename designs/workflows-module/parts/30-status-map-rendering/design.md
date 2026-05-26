@@ -83,13 +83,13 @@ Mechanic: engine produces `{ pageId, urlQuery: { action_id: <id> } }` (or `null`
 
 Reference-implementation validation: the reference codebase encodes equivalent (kind, stage, verb) → page mapping by hand in each `status_map.{stage}.{slug}.link.pageId` cell across the workflow configs. The pattern is consistent — slugs with the `review` verb get the review page at `in-review`; slugs without get the view page. This part codifies that pattern in the engine.
 
-### D5a. Engine still substitutes the `action_id` sentinel for `kind: custom` links
+### D5. Engine still substitutes the `action_id` sentinel for `kind: custom` links
 
 For `kind: custom`, author-written `link:` in cells uses the `{ action_id: true }` sentinel convention so the cell config doesn't need to know the action's UUID at authoring time. Engine substitutes it post-render, before writing onto the action doc.
 
 For built-in kinds, the engine builds the `urlQuery` directly with the UUID — no sentinel needed.
 
-### D5b. Reserved keys inside a status_map cell
+### D6. Reserved keys inside a status_map cell
 
 Cells look like:
 
@@ -120,7 +120,7 @@ Anything else at cell top level is treated as an app slug. Per-slug value shape:
 - **Built-in kinds:** `{ message?: string }` only. `link:` rejected by validator.
 - **Custom kind:** `{ message?: string, link?: { pageId: string, urlQuery?: object, input?: object } }`.
 
-### D5. How display surfaces know which `appName` to read
+### D7. How display surfaces know which `appName` to read
 
 Display surfaces need to read `action[appName]` and `appName` varies per app. Going with `_module.var: app_name` — declared on the workflows manifest as `required: true`, so the build fails fast if a host app mounts workflows without setting it. No fallback to `_global` — explicit per-mount config beats two-places-to-set-the-same-value.
 
@@ -128,7 +128,7 @@ Multi-mounted setups (workflows mounted twice with different app slugs) each get
 
 **Forward-looking:** Lowdefy is adding an `_app: slug` operator that will replace `_module.var: app_name` repo-wide. This part uses `_module.var: app_name` today; migration to `_app: slug` is tracked separately.
 
-### D6. Caller-supplied per-app override (sticky-style)
+### D8. Caller-supplied per-app override (sticky-style)
 
 Reference allows the caller to pass `display.{appName}` in the update payload, which replaces the cell's app subtree. We keep this with sticky semantics:
 
@@ -143,7 +143,7 @@ Mechanics: if `payload.display?.[slug]` exists, it replaces `cell[slug]` after t
 
 This is a deliberate small feature surface. The 80% case is config templates; the override is the escape hatch for one-off transitions that need bespoke copy.
 
-### D7. Shape-only validation; no coverage requirement
+### D9. Shape-only validation; no coverage requirement
 
 The validator checks each authored cell's shape against the action's kind. Three rules:
 
@@ -157,7 +157,7 @@ The validator checks each authored cell's shape against the action's kind. Three
 
 Tracker note: trackers cannot reach `error` in v1 — no engine path propagates child-workflow failure upward. With cells optional, this doesn't translate into a validator rule; an author who writes `status_map.error.{slug}.message` for a tracker gets dead config but no validation error. Acceptable cost of relaxing the validator — child-failure propagation is a separate design concern and any `error` work there will revisit this.
 
-### D9. Render context = action-doc-before-write + merged metadata
+### D10. Render context = action-doc-before-write + merged metadata
 
 Not the post-write doc — that would create a self-reference (the doc's render reflects its own rendered fields). Caller's mental model is "this transition is happening to *this* action that's in *this* state right now." The render reflects that snapshot, with the new metadata layered on top.
 
@@ -176,7 +176,7 @@ Where `newMetadata` is from `payload.metadata` (start/submit), `null`-defaulted.
 
 Workflow-level fields (`workflow_type`, `entity_id`, `entity_collection`) are already on the action doc — accessible. We don't surface a `workflow:` sub-object in render context to keep the surface flat.
 
-### D8. One pipeline builder, three call sites
+### D11. One pipeline builder, three call sites
 
 Cancel and Close currently push `{ stage: 'not-required' }` onto every non-terminal action in one `MongoDBUpdateMany`. Render-on-write means each action's update payload is different (different render context per action), so a single `MongoDBUpdateMany` no longer fits.
 
@@ -215,13 +215,13 @@ Three call sites, one builder:
 
 `fireTrackerSubscription` (Part 10) and `reevaluateBlockedActions` (Part 11) call `updateAction` and inherit render + link computation automatically.
 
-### D9. No backfill for in-flight action docs
+### D12. No backfill for in-flight action docs
 
 The new top-level `<app-slug>` / `status_title` fields are written only on stage transitions going forward. There are no current consumers of this module — it's wip and currently non-functional — so the question of stranded in-flight docs doesn't arise. The demo app's actions will get fresh rendered cells on the next transition triggered by exercising the demo flows; no backfill migration, no UI fallback, no quiescence procedure.
 
 If a real consumer adopts this module before transitioning all its in-flight workflows, the rollout will need one of: a one-shot backfill that walks live action docs and writes the cell, a runtime read-fallback through `status_map[stage]` in the UI for one release, or quiescence. That's a future concern; not in scope here.
 
-### D10. Render walks the cell tree; doesn't JSON-stringify-roundtrip
+### D13. Render walks the cell tree; doesn't JSON-stringify-roundtrip
 
 Reference uses `JSON.stringify` → Nunjucks → `JSON.parse`. Works but type-lossy for edge cases (`undefined`, `Date`, dot-notation keys with reserved chars). We do a recursive walk:
 
@@ -306,7 +306,7 @@ Initial-stage insert (`StartWorkflow` → `createAction`):
 ```
 caller payload ──→ createAction(currentActionDoc = null)
                      ├── build draft action doc (assignees, due_date, key, type, entity_*, …)
-                     ├── (no fetch — initial insert; render against the in-memory draft per D9)
+                     ├── (no fetch — initial insert; render against the in-memory draft per D10)
                      ├── lookup cell, render against draft + mergedMetadata, sentinel swap
                      └── single InsertOne with full doc shape including rendered cell
 ```
@@ -483,7 +483,7 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
 - `plugins/modules-mongodb-plugins/src/connections/shared/substituteActionIdSentinel.js` — sentinel-swap helper for `kind: custom` cell links. Named to avoid collision with the existing `shared/populateIds.js` (UUID assigner for new action drafts).
 - `plugins/modules-mongodb-plugins/src/connections/shared/renderStatusMap.js` — render orchestrator. Inputs: `{ actionConfig, stage, actionDocBeforeWrite, payloadDisplay, mergedMetadata, actionId }`. Outputs: `{ renderedCell }` — the rendered cell ready to spread (Nunjucks applied; sentinel substituted for custom kind). Returns `{}` for absent cells (sticky display).
 - `plugins/modules-mongodb-plugins/src/connections/shared/computeEngineLinks.js` — `(actionConfig, stage, actionId) → { [slug]: { $mergeObjects: [...] } }` for built-in kinds; `{}` for `kind: custom`. Encapsulates the (kind, stage, access verbs) link defaults table from D4.
-- `plugins/modules-mongodb-plugins/src/connections/shared/buildActionStageUpdate.js` — builds the single-stage `$set` aggregation pipeline from `{ renderedCell, engineLinks, newStage, mergedMetadata, eventId, changeStamp }`. Per D8.
+- `plugins/modules-mongodb-plugins/src/connections/shared/buildActionStageUpdate.js` — builds the single-stage `$set` aggregation pipeline from `{ renderedCell, engineLinks, newStage, mergedMetadata, eventId, changeStamp }`. Per D11.
 - `plugins/modules-mongodb-plugins/src/connections/shared/renderStatusMap.test.js` — unit tests: render with action+metadata context, absent cell returns `{}`, sentinel swap for custom kind only, override merge, accumulated metadata.
 - `plugins/modules-mongodb-plugins/src/connections/shared/computeEngineLinks.test.js` — unit tests: task kind link table (edit slug, view slug, review slug, no-verb slug per stage), form kind table, tracker kind, custom kind returns `{}`.
 - `plugins/modules-mongodb-plugins/src/connections/shared/buildActionStageUpdate.test.js` — unit tests: pipeline shape; `$concatArrays` prepend; sticky `message` via `$mergeObjects`; engine links replace `link` field on each access slug.
@@ -493,21 +493,21 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
 - `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/ContactSelector.jsx` — update the `parseNunjucks` import from `./parseNunjucks.js` to `../../utils/parseNunjucks.js`. Delete the old local file as part of the move.
 - `plugins/modules-mongodb-plugins/src/connections/shared/createAction.js` — call `renderStatusMap` + `computeEngineLinks` against the in-memory draft doc; embed the merged result + `metadata` in the returned draft.
 - `plugins/modules-mongodb-plugins/src/connections/shared/updateAction.js` — call `renderStatusMap` + `computeEngineLinks` + `buildActionStageUpdate`; replace today's `$set` + `$push` update doc with the resulting aggregation pipeline.
-- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js` — replace inline `MongoDBUpdateMany` (lines 84-96) with: fetch non-terminal actions, loop, call the three helpers per action, push `updateOne` ops onto an array, send one `bulkWrite`. Per D8. Per-action `status[]` entry stays `{ stage: 'not-required', created, event_id }` — workflow-level `cancelled` carries `reason`, per-action sweep does not (preserve today's behaviour).
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js` — replace inline `MongoDBUpdateMany` (lines 84-96) with: fetch non-terminal actions, loop, call the three helpers per action, push `updateOne` ops onto an array, send one `bulkWrite`. Per D11. Per-action `status[]` entry stays `{ stage: 'not-required', created, event_id }` — workflow-level `cancelled` carries `reason`, per-action sweep does not (preserve today's behaviour).
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CloseWorkflow/CloseWorkflow.js` — same shape for the sweep at lines 84-130. Same no-`reason`-on-action-entries rule applies.
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js` — already routes through `updateAction`. No structural change; verify metadata flows through.
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js` — pass `payload.metadata` through to `createAction` for each starting action.
 
 `SubmitWorkflowAction/fireTrackerSubscription.js` and `SubmitWorkflowAction/reevaluateBlockedActions.js` both write stages via `updateAction` already. They inherit render + link computation automatically — no edits needed.
 
-- `modules/workflows/resolvers/makeWorkflowsConfig.js` — add `validateStatusMapCells(workflow, action)`: validate per-cell shape only (per D7). Built-in kinds reject `link:` in cells; custom accepts `{ message?, link? }`. No coverage validation. No `status_map_app_slugs` emission (engine doesn't need it).
+- `modules/workflows/resolvers/makeWorkflowsConfig.js` — add `validateStatusMapCells(workflow, action)`: validate per-cell shape only (per D9). Built-in kinds reject `link:` in cells; custom accepts `{ message?, link? }`. No coverage validation. No `status_map_app_slugs` emission (engine doesn't need it).
 - `modules/workflows/module.lowdefy.yaml` — update `app_name` var description to reflect its third role (action display); no schema change.
 - `modules/workflows/components/actions-on-entity.yaml` — switch reads from `a.status_map[stage][appName]` to `a[appName]` (and `a.status_title`).
 - `modules/workflows/pages/workflow-overview.yaml` — same switch at lines 158, 177, 196.
 - `modules/workflows/pages/group-overview.yaml` — same at lines 274, 293, 312.
-- `modules/workflows/api/start-workflow.yaml` — add `metadata: { _payload: metadata }` and `display: { _payload: display }` to the `StartWorkflow` action's `properties`, documenting the two new caller-facing payload fields (per D6 + Proposed-change item 5).
+- `modules/workflows/api/start-workflow.yaml` — add `metadata: { _payload: metadata }` and `display: { _payload: display }` to the `StartWorkflow` action's `properties`, documenting the two new caller-facing payload fields (per D8 + Proposed-change item 5).
 - `modules/workflows/resolvers/makeWorkflowApis.js` — extend the emitted-api payload mapping at lines 71-80 to pass `metadata: { _payload: metadata }` and `display: { _payload: display }` through every `update-action-{action_type}` Api. Both fields then flow into the `SubmitWorkflowAction` plugin handler via `request.metadata` / `request.display`.
-- `modules/workflows/README.md` — add `metadata` and `display` to the Start / Submit payload documentation. `display` should be documented as the per-call override path, scoped to one transition (not persisted to the action config); shape is `{ [slug]: cellShapeForKind }` matching the cell shape rules from D5b.
+- `modules/workflows/README.md` — add `metadata` and `display` to the Start / Submit payload documentation. `display` should be documented as the per-call override path, scoped to one transition (not persisted to the action config); shape is `{ [slug]: cellShapeForKind }` matching the cell shape rules from D6.
 
 ### Demo + tests
 
@@ -539,6 +539,6 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
 
 - [Part 04 — workflows-config resolver](../../../../modules/workflows/resolvers/makeWorkflowsConfig.js) — the resolver this part extends.
 - [Part 12 — resolver pages](../12-resolver-pages/design.md) — emits `action_config.status_map` onto page templates. Templates don't read it (engine-side concern), so no change there — the resolver-emitted field is now redundant for display but kept as authoring metadata.
-- [Part 18 — actions-on-entity](../_completed/) (if archived) — the component this part rewires.
+- [Part 18 — actions-on-entity](../_completed/18-entity-components/design.md) — the component this part rewires.
 - [Part 28 — custom action kind](../28-custom-action-kind/design.md) — `kind: custom` owns its `link:` authoring per cell; engine renders Nunjucks + substitutes the `{ action_id: true }` sentinel but doesn't compute defaults. Built-in kinds in this part do not author `link:`. Part 28 absorbs this contract when it lands.
 - Reference: an existing app's `WorkflowAPI/` connection — `getStatusConfig.js`, `parseStatusConfig.js`, its sentinel-swap helper, `createAction.js`, `updateAction.js`. Relevant snippets quoted inline in this design where needed.
