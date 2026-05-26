@@ -109,6 +109,8 @@ Concretely: pick the Lowdefy block per side, and if "show more" requires custom 
 
 ### 11. No required-field signal — some actions need a mandatory assignee
 
+> **Resolved.** Added a "Required-field signal" sub-section. Each action declares `universal_fields_required: { assignees?: boolean, due_date?: boolean, description?: boolean }` on its YAML (mirrors the `required_after_close` pattern — reserved field, resolver passthrough). Page templates pass the resolved config into the universal-fields component as a new `required` var; the component stamps `required: true` on the matching input blocks, and Part 16's `^fields\.` Validate regex handles the user-facing message. Action-authoring spec gets a corresponding reserved-field amendment carried under this part. Engine-side handler enforcement is deferred to Open questions — v1 trusts the input-block validator, with a follow-up if real API consumers bypass the form.
+
 The design takes no position on whether `assignees` / `due_date` / `description` can be required. The engine spec describes them as `string[]` / `Date | null` / `string | null` — all nullable — but real workflows often want "you can't submit until you've picked an assignee." There's no `required` flag on the component vars, no per-action knob, no validation declaration. Part 16's submit button validates `^fields\.` (line 226), which would fire `Required` if the input declared it — so the rails are there, just not exposed.
 
 Either commit to "v1 universal fields are never required; apps that need this declare equivalent fields on `form:`," or add a `required: { assignees?, due_date?, description? }` var to the component contract.
