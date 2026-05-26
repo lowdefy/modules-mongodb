@@ -105,140 +105,139 @@ _ref:
       - id: actions_list
         type: List
         blocks:
-          - _ref:
-              module: layout
-              component: card
-              vars:
-                hide_title: true
+          - id: actions_list.$.card
+            type: Card
+            layout:
+              gap: 16
+            blocks:
+              - id: actions_list.$.header
+                type: Box
+                layout:
+                  gap: 8
+                  align: middle
+                  justify: space-between
                 blocks:
-                  - id: actions_list.$.header
+                  - id: actions_list.$.title_row
                     type: Box
                     layout:
                       gap: 8
                       align: middle
-                      justify: space-between
                     blocks:
-                      - id: actions_list.$.title_row
-                        type: Box
+                      - id: actions_list.$.status_badge
+                        type: Tag
                         layout:
-                          gap: 8
-                          align: middle
-                        blocks:
-                          - id: actions_list.$.status_badge
-                            type: Tag
-                            layout:
-                              flex: 0 0 auto
-                            properties:
-                              color:
-                                _get:
-                                  from:
-                                    _ref: components/action_statuses.yaml
-                                  key:
-                                    _string.concat:
-                                      - _state: actions_list.$.status
-                                      - .titleColor
-                              title:
-                                _get:
-                                  from:
-                                    _ref: components/action_statuses.yaml
-                                  key:
-                                    _string.concat:
-                                      - _state: actions_list.$.status
-                                      - .title
-                          - id: actions_list.$.message
-                            layout:
-                              flex: 1 1 auto
-                            type: Paragraph
-                            properties:
-                              content:
-                                _state: actions_list.$.message
-                      - id: actions_list.$.link_button
-                        type: Button
-                        visible:
-                          _ne:
-                            - _state: actions_list.$.link
-                            - null
+                          flex: 0 0 auto
                         properties:
-                          title: Open
-                          type: link
-                        events:
-                          onClick:
-                            - id: actions_list.$.link
-                              type: Link
-                              params:
-                                _state: actions_list.$.link
-                  - id: actions_list.$.body_empty
-                    type: Html
-                    visible:
-                      _eq:
-                        - _get:
-                            from:
-                              _state: overview.workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
-                            default: null
-                        - null
-                    properties:
-                      html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
-                  - id: actions_list.$.body_dataview
-                    type: DataDescriptions
+                          color:
+                            _get:
+                              from:
+                                _ref: components/action_statuses.yaml
+                              key:
+                                _string.concat:
+                                  - _state: actions_list.$.status
+                                  - .titleColor
+                          title:
+                            _get:
+                              from:
+                                _ref: components/action_statuses.yaml
+                              key:
+                                _string.concat:
+                                  - _state: actions_list.$.status
+                                  - .title
+                      - id: actions_list.$.message
+                        layout:
+                          flex: 1 1 auto
+                        type: Paragraph
+                        properties:
+                          content:
+                            _state: actions_list.$.message
+                  - id: actions_list.$.link_button
+                    type: Button
                     visible:
                       _ne:
-                        - _get:
-                            from:
-                              _state: overview.workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
-                            default: null
+                        - _state: actions_list.$.link
                         - null
                     properties:
-                      formConfig:
-                        _get:
-                          from:
-                            _ref: components/action_form_configs.yaml
-                          key:
-                            _state: actions_list.$.type
-                          default: { form: [], form_review: [] }
-                      data:
-                        form:
-                          _get:
-                            from:
-                              _state: overview.workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
-                            default: null
-                        workflow:
-                          _state: overview.workflow
+                      title: Open
+                      type: link
+                    events:
+                      onClick:
+                        - id: actions_list.$.link
+                          type: Link
+                          params:
+                            _state: actions_list.$.link
+              - id: actions_list.$.body_empty
+                type: Html
+                visible:
+                  _eq:
+                    - _get:
+                        from:
+                          _state: overview.workflow.form_data
+                        key:
+                          _if:
+                            test:
+                              _ne:
+                                - _state: actions_list.$.key
+                                - null
+                            then:
+                              _string.concat:
+                                - _state: actions_list.$.type
+                                - .
+                                - _state: actions_list.$.key
+                            else:
+                              _state: actions_list.$.type
+                        default: null
+                    - null
+                properties:
+                  html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
+              - id: actions_list.$.body_dataview
+                type: DataDescriptions
+                visible:
+                  _ne:
+                    - _get:
+                        from:
+                          _state: overview.workflow.form_data
+                        key:
+                          _if:
+                            test:
+                              _ne:
+                                - _state: actions_list.$.key
+                                - null
+                            then:
+                              _string.concat:
+                                - _state: actions_list.$.type
+                                - .
+                                - _state: actions_list.$.key
+                            else:
+                              _state: actions_list.$.type
+                        default: null
+                    - null
+                properties:
+                  formConfig:
+                    _get:
+                      from:
+                        _ref: components/action_form_configs.yaml
+                      key:
+                        _state: actions_list.$.type
+                      default: { form: [], form_review: [] }
+                  data:
+                    form:
+                      _get:
+                        from:
+                          _state: overview.workflow.form_data
+                        key:
+                          _if:
+                            test:
+                              _ne:
+                                - _state: actions_list.$.key
+                                - null
+                            then:
+                              _string.concat:
+                                - _state: actions_list.$.type
+                                - .
+                                - _state: actions_list.$.key
+                            else:
+                              _state: actions_list.$.type
+                        default: null
+                    workflow:
+                      _state: overview.workflow

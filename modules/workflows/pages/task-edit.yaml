@@ -78,87 +78,86 @@ _ref:
         # task pages because static pages have no per-action page_config var.
         # Same gap as task-view; tracked in part 27 / follow-up.
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            hide_title: true
-            blocks:
-              # Workflow-closed banner — visible when the workflow is in a
-              # terminal lifecycle stage and the action doesn't opt in via
-              # required_after_close.
-              - id: workflow_closed_banner
-                type: Alert
-                visible:
-                  _and:
-                    - _or:
-                        - _eq:
-                            - _request: get_workflow.status.0.stage
-                            - completed
-                        - _eq:
-                            - _request: get_workflow.status.0.stage
-                            - cancelled
-                    - _ne:
-                        - _request: get_action.required_after_close
-                        - true
-                properties:
-                  type: warning
-                  showIcon: true
-                  message: Workflow closed
-                  description: This workflow is closed. Updates to this action are no longer accepted.
-              - _ref:
-                  path: components/universal-fields/universal-fields.yaml
-                  vars:
-                    mode: edit
-                    kind: task
-                    action_data:
-                      assignees:
-                        _state: fields.assignees
-                      due_date:
-                        _state: fields.due_date
-                      description:
-                        _state: fields.description
-              # Status selector — priority-filtered transitions. When the
-              # current stage is `not-required` (priority 0, terminal),
-              # render an Alert in place of the selector.
-              - id: status_no_transitions
-                type: Alert
-                visible:
-                  _eq:
-                    - _request: get_action.status.0.stage
-                    - not-required
-                properties:
-                  type: info
-                  showIcon: true
-                  message: No transitions available
-                  description: This action is marked Not Required and cannot be transitioned from the UI.
-              - id: status
-                type: Selector
-                visible:
-                  _ne:
-                    - _request: get_action.status.0.stage
-                    - not-required
-                properties:
-                  title: Status
-                  options:
-                    _js:
-                      args:
-                        statuses:
-                          _ref: enums/action_statuses.yaml
-                        currentStage:
-                          _request: get_action.status.0.stage
-                      fn: |
-                        const { statuses, currentStage } = args;
-                        const currentPriority = (statuses[currentStage] && statuses[currentStage].priority) || 0;
-                        if (currentPriority === 0) return [];
-                        return Object.entries(statuses)
-                          .filter(([slug, s]) => s.priority < currentPriority || slug === currentStage)
-                          .map(([slug, s]) => ({ label: s.title, value: slug }));
-              - id: comment
-                type: TiptapInput
-                properties:
-                  title: Comment
-                  placeholder: Add a comment (optional).
+      - id: action_card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          # Workflow-closed banner — visible when the workflow is in a
+          # terminal lifecycle stage and the action doesn't opt in via
+          # required_after_close.
+          - id: workflow_closed_banner
+            type: Alert
+            visible:
+              _and:
+                - _or:
+                    - _eq:
+                        - _request: get_workflow.status.0.stage
+                        - completed
+                    - _eq:
+                        - _request: get_workflow.status.0.stage
+                        - cancelled
+                - _ne:
+                    - _request: get_action.required_after_close
+                    - true
+            properties:
+              type: warning
+              showIcon: true
+              message: Workflow closed
+              description: This workflow is closed. Updates to this action are no longer accepted.
+          - _ref:
+              path: components/universal-fields/universal-fields.yaml
+              vars:
+                mode: edit
+                kind: task
+                action_data:
+                  assignees:
+                    _state: fields.assignees
+                  due_date:
+                    _state: fields.due_date
+                  description:
+                    _state: fields.description
+          # Status selector — priority-filtered transitions. When the
+          # current stage is `not-required` (priority 0, terminal),
+          # render an Alert in place of the selector.
+          - id: status_no_transitions
+            type: Alert
+            visible:
+              _eq:
+                - _request: get_action.status.0.stage
+                - not-required
+            properties:
+              type: info
+              showIcon: true
+              message: No transitions available
+              description: This action is marked Not Required and cannot be transitioned from the UI.
+          - id: status
+            type: Selector
+            visible:
+              _ne:
+                - _request: get_action.status.0.stage
+                - not-required
+            properties:
+              title: Status
+              options:
+                _js:
+                  args:
+                    statuses:
+                      _ref: enums/action_statuses.yaml
+                    currentStage:
+                      _request: get_action.status.0.stage
+                  fn: |
+                    const { statuses, currentStage } = args;
+                    const currentPriority = (statuses[currentStage] && statuses[currentStage].priority) || 0;
+                    if (currentPriority === 0) return [];
+                    return Object.entries(statuses)
+                      .filter(([slug, s]) => s.priority < currentPriority || slug === currentStage)
+                      .map(([slug, s]) => ({ label: s.title, value: slug }));
+          - id: comment
+            type: TiptapInput
+            properties:
+              title: Comment
+              placeholder: Add a comment (optional).
       - _ref:
           module: layout
           component: floating-actions
