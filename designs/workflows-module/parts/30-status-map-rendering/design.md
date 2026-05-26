@@ -1,11 +1,15 @@
-# Part 30 — Engine-managed action display
+# Part 30 — Engine-managed display
 
 **Layer:** engine handlers + config resolver + display surfaces. **Size:** M. **Repo:** `plugins/modules-mongodb-plugins/src/connections/`, `modules/workflows/`.
 
-Action documents are supposed to carry the **display fields the UI reads — `message`, `link`, `status_title` per app slug** — so the UI is dumb and other services (notifications, audit, external syncs) read the same fields the user sees. The mechanic was lost in implementation: the engine writes nothing related to `status_map` onto action docs, and the display surfaces read fields that don't exist (the lookup falls through `&&` guards silently). This part wires up engine-managed display as a first-class concern, splitting it into two streams:
+The workflows engine writes documents that downstream surfaces render dumb-ly — action docs read by display pages, event docs read by the events timeline. Both surfaces are supposed to receive **pre-rendered strings** so the UI never runs a template engine; both currently get something else. This part wires both up under one principle: render-on-write, downstream surfaces stay dumb.
+
+**Action display.** Action docs are supposed to carry the **display fields the UI reads — `message`, `link`, `status_title` per app slug** — so the UI is dumb and other services (notifications, audit, external syncs) read the same fields the user sees. The mechanic was lost in implementation: the engine writes nothing related to `status_map` onto action docs, and the display surfaces read fields that don't exist (the lookup falls through `&&` guards silently). Two streams:
 
 - **Author content (`message`, `status_title`).** Rendered from `status_map` cells via Nunjucks. Sticky across transitions — a cell only changes the fields it sets; everything else carries through.
 - **Engine-managed navigation (`link`).** Computed per transition from `(kind, stage, access verbs)` for built-in kinds. Authors don't write `link:` in cells for built-in kinds. `kind: custom` (Part 28) is the exception — apps own their navigation entirely, so authors do write `link:` in cells.
+
+**Event display.** Engine-written events flow through `context.callApi('new-event', module: 'events')` from connection-plugin JS code. That boundary bypasses Lowdefy's payload-evaluation pass — operator-shaped values in the payload reach `new-event`'s `_payload: display` unevaluated and land in Mongo as literal objects. The timeline block (`EventsTimeline.js:225`) has no operator evaluator. The cross-repo [`event_display` idiom](../../../../docs/idioms.md#event-display) (plain Nunjucks template strings, rendered by the writing layer) only holds when the writing layer is a Lowdefy YAML CallApi — engine-written events break it. This part renders event display in the engine before `context.callApi`, against a fixed render context, so the timeline block reads the same plain-string shape every other module's events already produce.
 
 ## Proposed change
 
@@ -17,6 +21,7 @@ Action documents are supposed to carry the **display fields the UI reads — `me
 6. **Render context is `{ ...actionDocBeforeWrite, ...mergedMetadata }`.** Templates can reference any field on the action (`key`, `assignees`, `due_date`, `description`, `form_data`, `entity_id`, etc.) plus anything in metadata. Action fields are read from the pre-write doc — or for the initial-insert path, the in-memory draft being built — so a stage's render reflects "the action that arrived at this stage."
 7. **Shape validation only — no coverage requirement.** Build-time validation checks each authored cell's shape (per-slug values are `{ message?: string }` for built-in kinds; `{ message?: string, link?: object }` for custom). No requirement that every reachable stage has a cell — sticky display fills the gap when a cell is omitted. Engine never throws on missing cell; missing cell just means "no display change beyond the auto-computed link."
 8. **Display surfaces stop reading `status_map` and read the rendered top-level fields.** `components/actions-on-entity.yaml`, `pages/workflow-overview.yaml`, `pages/group-overview.yaml` switch from `a.status_map[stage][appName].message` / `.link` to `a[appName].message` / `.link`. `appName` resolves from `_module.var: app_name`.
+9. **Engine renders event-display templates before `context.callApi('new-event')`.** All engine event writes flow through `dispatchLogEvent.js`. New helper `renderEventDisplay.js` runs `renderTree` on the event payload's `display` field against a fixed render context `{ user, action, workflow, interaction, metadata, status_before, status_after }`. Engine-default templates and pre-hook `event_overrides.display.{app}.title` are **plain Nunjucks template strings** — matching the shape of the [`event_display` idiom](../../../../docs/idioms.md#event-display) (the workflow path replaces the idiom's generic `target` binding with the domain-specific `action` — see D14). No `_nunjucks: { template, on }` wrapping anywhere on the engine path. The events module (`new-event.yaml`, `EventsTimeline.js`) is unchanged.
 
 ## Key decisions
 
@@ -64,16 +69,16 @@ For `kind: task | form | tracker`, the engine writes `action[slug].link` on ever
 
 `kind: task` (the table the engine ships):
 
-| Stage              | Slug has `edit` verb                          | Slug has only `view` verb     | Slug has no relevant verb |
-|--------------------|-----------------------------------------------|-------------------------------|---------------------------|
-| `action-required`  | `task-edit`                                   | `task-view`                   | `null`                    |
-| `in-progress`      | `task-edit`                                   | `task-view`                   | `null`                    |
-| `changes-required` | `task-edit`                                   | `task-view`                   | `null`                    |
+| Stage              | Slug has `edit` verb                             | Slug has only `view` verb | Slug has no relevant verb |
+| ------------------ | ------------------------------------------------ | ------------------------- | ------------------------- |
+| `action-required`  | `task-edit`                                      | `task-view`               | `null`                    |
+| `in-progress`      | `task-edit`                                      | `task-view`               | `null`                    |
+| `changes-required` | `task-edit`                                      | `task-view`               | `null`                    |
 | `in-review`        | `task-review` if `review` verb, else `task-view` | `task-view`               | `null`                    |
-| `done`             | `task-view`                                   | `task-view`                   | `null`                    |
-| `error`            | `task-view`                                   | `task-view`                   | `null`                    |
-| `blocked`          | `null`                                        | `null`                        | `null`                    |
-| `not-required`     | `null`                                        | `null`                        | `null`                    |
+| `done`             | `task-view`                                      | `task-view`               | `null`                    |
+| `error`            | `task-view`                                      | `task-view`               | `null`                    |
+| `blocked`          | `null`                                           | `null`                    | `null`                    |
+| `not-required`     | `null`                                           | `null`                    | `null`                    |
 
 `kind: form` uses the same shape against form-emitted page IDs from Part 13. `kind: tracker` links to the child workflow's `workflow-overview` (page ID resolved via the existing `child_workflow_id` field on tracker action docs).
 
@@ -134,9 +139,9 @@ Reference allows the caller to pass `display.{appName}` in the update payload, w
 
 ```js
 submit({
-  metadata: { physical_id: 'D123' },
-  display: { demo: { message: 'Special handling for {{ physical_id }}' } }
-})
+  metadata: { physical_id: "D123" },
+  display: { demo: { message: "Special handling for {{ physical_id }}" } },
+});
 ```
 
 Mechanics: if `payload.display?.[slug]` exists, it replaces `cell[slug]` after the deep-clone, before Nunjucks render. The override is still rendered (so it can reference metadata). It's still subject to the same per-kind shape rules (built-in kinds: only `message`; custom: `message` and `link`). Overrides work even when no cell exists for the stage — they're written under the slug's top-level key like any rendered field.
@@ -159,11 +164,11 @@ Tracker note: trackers cannot reach `error` in v1 — no engine path propagates 
 
 ### D10. Render context = action-doc-before-write + merged metadata
 
-Not the post-write doc — that would create a self-reference (the doc's render reflects its own rendered fields). Caller's mental model is "this transition is happening to *this* action that's in *this* state right now." The render reflects that snapshot, with the new metadata layered on top.
+Not the post-write doc — that would create a self-reference (the doc's render reflects its own rendered fields). Caller's mental model is "this transition is happening to _this_ action that's in _this_ state right now." The render reflects that snapshot, with the new metadata layered on top.
 
 ```js
 const renderCtx = {
-  ...actionDocBeforeWrite,                              // _id, type, key, assignees, due_date, etc.
+  ...actionDocBeforeWrite, // _id, type, key, assignees, due_date, etc.
   ...{ ...actionDocBeforeWrite.metadata, ...newMetadata }, // accumulated metadata wins over action-doc fields
 };
 ```
@@ -186,14 +191,21 @@ Cancel and Close currently push `{ stage: 'not-required' }` onto every non-termi
 
 ```js
 [
-  { $set: {
+  {
+    $set: {
       updated: changeStamp,
-      status: { $concatArrays: [[{ stage: newStage, event_id: eventId, created: changeStamp }], '$status'] },
+      status: {
+        $concatArrays: [
+          [{ stage: newStage, event_id: eventId, created: changeStamp }],
+          "$status",
+        ],
+      },
       metadata: mergedMetadata,
-      ...renderedCell,           // sticky author content (message, status_title)
-      ...engineLinks,            // built-in kinds: { [slug]: { ...existingSlug, link: <computed> } } per slug present in access; custom: {} (links are inside renderedCell)
-  } },
-]
+      ...renderedCell, // sticky author content (message, status_title)
+      ...engineLinks, // built-in kinds: { [slug]: { ...existingSlug, link: <computed> } } per slug present in access; custom: {} (links are inside renderedCell)
+    },
+  },
+];
 ```
 
 For built-in kinds, `engineLinks` is computed per slug declared in the action's `access` block (slugs are the keys of `access` excluding the reserved `roles` and `notification_roles`). For each slug, the helper emits a `$set` for `{slug}.link` using a Mongo `$mergeObjects` of the existing slug value plus the new `link`:
@@ -227,9 +239,9 @@ Reference uses `JSON.stringify` → Nunjucks → `JSON.parse`. Works but type-lo
 
 ```js
 function renderTree(node, ctx) {
-  if (typeof node === 'string') return parseNunjucks(node, ctx);
+  if (typeof node === "string") return parseNunjucks(node, ctx);
   if (Array.isArray(node)) return node.map((n) => renderTree(n, ctx));
-  if (node && typeof node === 'object') {
+  if (node && typeof node === "object") {
     const out = {};
     for (const [k, v] of Object.entries(node)) out[k] = renderTree(v, ctx);
     return out;
@@ -239,6 +251,54 @@ function renderTree(node, ctx) {
 ```
 
 For `kind: custom`, after render run `substituteActionIdSentinel` on the rendered tree to swap `{ action_id: true }` → UUID. For built-in kinds, no sentinel pass — the engine builds `urlQuery` directly with the UUID when computing the link.
+
+### D14. Engine renders event display before `callApi('new-event')`
+
+Engine-written events flow through `context.callApi('new-event', module: 'events')` from connection-plugin JS code (`dispatchLogEvent.js`). Lowdefy's payload-evaluation pass doesn't cross that boundary — JS-literal objects ship verbatim to `new-event`, where `_payload: display` returns the same literal, and the timeline block has no operator evaluator. The [`event_display` idiom](../../../../docs/idioms.md#event-display) (plain Nunjucks template strings, rendered by the writing layer) only holds when the writer is a Lowdefy YAML CallApi — every other module's case. Engine-written events break it.
+
+Fix: render in the engine before `context.callApi`. Same `renderTree` helper as action display.
+
+**Render context** (fixed; everything below is already in scope inside `dispatchLogEvent` and its caller — no extra fetches):
+
+| Binding         | Value                                                                            |
+| --------------- | -------------------------------------------------------------------------------- |
+| `user`          | `context.user` — invoking user                                                   |
+| `action`        | post-write action doc — the action this event is about                           |
+| `workflow`      | workflow doc — workflow-level fields not on the action (`key`, `summary`, …)     |
+| `interaction`   | `submit_edit` / `approve` / `request_changes` / `not_required` / `resolve_error` |
+| `metadata`      | merged metadata for the transition (also reachable as `action.metadata`)         |
+| `status_before` | prior stage, or `null` for the initial write                                     |
+| `status_after`  | new stage                                                                        |
+
+**Why `action`, not `target` (the idiom's name).** The [`event_display` idiom](../../../../docs/idioms.md#event-display) names the "entity being changed" binding `target` and documents the shape as module-specific. The spirit is "the noun is module-specific"; the workflow path uses `action` because every other surface in this module (designs, code, concept specs) calls it that. Renaming to `target` only at the template-binding layer is a context switch with no payoff — app authors writing workflow event-override templates are unlikely to also be authoring contacts/companies templates concurrently. Each module's README documents its binding noun; workflows = `action`.
+
+**`action` exposes the full post-write action doc:** `_id`, `workflow_id`, `type`, `kind`, `key`, `action_group`, `status[]`, `entity_id`, `entity_collection`, `assignees[]`, `due_date`, `description`, `tracker.workflow_type` (tracker only), `child_workflow_id` (tracker only), `metadata`, `status_title`, `<app-slug>.message`, `<app-slug>.link`, `created`, `updated`, plus any caller-supplied `references`.
+
+**`workflow` exposes workflow-level fields that aren't on the action:** `_id`, `workflow_type`, `key`, `display_order`, `status[]` (workflow open/closed/cancelled), `summary` (`{done, not_required, total}`), `entity_id`, `entity_collection`, `form_data`, `parent_action_id` / `parent_entity_id` / `parent_entity_collection`, `created`, `updated`. `workflow.workflow_type` and `workflow.key` are the common reaches; `workflow.summary` matters for group-complete and workflow-close events.
+
+**`interaction` lets the engine default be one template.** Without it the default has to either be one bland line for all interactions or branch in JS to pick a template per interaction. With it, `"{{ user.profile.name }} {{ interaction | replace('_',' ') }}d {{ action.key }}"` (or a per-verb map lookup in the template) covers all five interactions.
+
+**`metadata` top-level is convenience, not authority.** `metadata` is written onto the action doc (D6) — `action.metadata.physical_id` resolves. The top-level alias mirrors action-display's render context, keeps the common reference short, and is cheap.
+
+**`status_before` and `status_after` top-level.** Derivable from `action.status[1].stage` / `action.status[0].stage` post-write — top-level aliases are the convenience.
+
+**Plain templates, no `on:`.** Author syntax for engine-default event templates and pre-hook `event_overrides.display.{app}.title` is plain Nunjucks template strings. No `_nunjucks: { template, on }` operator wrapping anywhere on the engine-write path. The `on:` syntax used inside `_build.function`-wrapped callbacks in modules like `contacts/api/create-contact.yaml` is an implementation detail of how a Lowdefy YAML CallApi caller wires runtime bindings into a template — it has no parallel here, because the engine knows its own context directly.
+
+**Post-write action doc, not pre-write.** Events describe what just happened. `action = post-write action doc` and `status_after = newStage` give templates the obvious bindings to write `"{{ user.profile.name }} moved {{ action.key }} to {{ status_after }}"`. Different from action display's pre-write context (D10) — there, the cell describes the state being transitioned to; here, the event describes the transition having occurred.
+
+**No `entity` binding.** The underlying business entity (the lead, lot, company the workflow operates on) is **not exposed**. Two reasons:
+
+1. **Cost.** The engine doesn't fetch the entity doc today. Exposing `entity` would add a Mongo round-trip per submit purely for event rendering.
+2. **Shape varies per app.** Entity field names (`entity.name` vs `entity.company_name` vs `entity.title`) are app-specific. A binding whose shape we can't pin down would produce silently-empty `{{ entity.name }}` references in templates written for one app and reused in another.
+
+If an app needs entity-specific text in event copy, the workaround is clean: pass the relevant string in `metadata` at submit time (caller payload, or a pre-hook that fetches the entity and returns `event_overrides.metadata.entity_name`). Identity (the entity ID) is reachable via `action.entity_id` for timeline-side linkout.
+
+**Cross-reference Part 32.** Part 32 § "`_nunjucks` evaluation — equivalence verified" rests on the premise that the engine never renders and all event-override channels are interchangeable at storage. This part inverts that premise — the engine _does_ render. Two follow-on edits Part 32 needs:
+
+1. The Case B pre-hook example uses `_nunjucks: { template, on }` — update to a plain Nunjucks template string keyed by event type (matching `event_display`).
+2. The "`_nunjucks` evaluation — equivalence verified" section is obsolete; delete it, or rewrite to note that only one channel (the engine renderer) ever evaluates the template.
+
+Land Part 30 before Part 32 (or fold the two edits into Part 32's open work) so the contracts agree.
 
 ## Current state
 
@@ -266,6 +326,12 @@ For `kind: custom`, after render run `substituteActionIdSentinel` on the rendere
 - [`components/actions-on-entity.yaml`](../../../../modules/workflows/components/actions-on-entity.yaml):92-99 — reads `a.status_map[stage][appName]`. `a.status_map` is `undefined`. The `&&` chain falls through.
 - [`pages/workflow-overview.yaml`](../../../../modules/workflows/pages/workflow-overview.yaml):158, 177, 196 — `_state: actions_list.$.status_map` → `undefined`. Subsequent `_get` for `[stage][appName].message` / `.link` resolves to nothing.
 - [`pages/group-overview.yaml`](../../../../modules/workflows/pages/group-overview.yaml):274, 293, 312 — same.
+
+### Engine — event display ships operator literals unrendered
+
+- [`dispatchLogEvent.js`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js):106-122 — single entry point for engine-written events. Builds a JS-literal payload (engine default + runtime `comment` + pre-hook `event_overrides`) and calls `context.callApi('new-event', module: 'events')`. **No render pass.** Operator-shaped values in `display` (e.g. engine-default `_nunjucks: { template, on }` literals, pre-hook returns of the same shape) ship verbatim.
+- [`modules/events/api/new-event.yaml`](../../../../modules/events/api/new-event.yaml):8-13 — does `_payload: display`, which returns the literal it received. Operator objects are stored as Mongo docs.
+- [`EventsTimeline.js`](../../../../plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js):225 — `sanitize(title)`; expects a string. A literal `{ _nunjucks: ... }` object renders empty or `[object Object]`.
 
 ## Proposed data flow
 
@@ -332,12 +398,12 @@ No template engine in the UI. No nested traversal. The action doc carries everyt
 
 New top-level fields written by the engine:
 
-| Field                       | Type              | Source                                              | Lifecycle |
-| --------------------------- | ----------------- | --------------------------------------------------- | --------- |
-| `<access-slug>.message`     | string \| null    | Rendered cell `message` for the slug, or unchanged from previous stage if cell omits the slug | Sticky. Written when an authored cell sets it; persists across transitions until the next cell mentions it or an explicit `null` clears it. |
-| `<access-slug>.link`        | object \| null    | **Built-in kinds:** engine-computed from `(kind, stage, slug's access verbs)`. **Custom kind:** rendered from authored cell's `link:` field. | Recomputed every transition for built-in kinds — never stale. For custom kind, sticky like `message` — author re-authors per stage that changes it. |
-| `status_title`              | string \| null    | Rendered cell `status_title`, or unchanged from previous stage if cell omits it | Sticky. |
-| `metadata`                  | object \| null    | Caller-supplied; accumulated `{ ...old, ...new }`   | Set on every write that includes `metadata` in payload. |
+| Field                   | Type           | Source                                                                                                                                       | Lifecycle                                                                                                                                           |
+| ----------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<access-slug>.message` | string \| null | Rendered cell `message` for the slug, or unchanged from previous stage if cell omits the slug                                                | Sticky. Written when an authored cell sets it; persists across transitions until the next cell mentions it or an explicit `null` clears it.         |
+| `<access-slug>.link`    | object \| null | **Built-in kinds:** engine-computed from `(kind, stage, slug's access verbs)`. **Custom kind:** rendered from authored cell's `link:` field. | Recomputed every transition for built-in kinds — never stale. For custom kind, sticky like `message` — author re-authors per stage that changes it. |
+| `status_title`          | string \| null | Rendered cell `status_title`, or unchanged from previous stage if cell omits it                                                              | Sticky.                                                                                                                                             |
+| `metadata`              | object \| null | Caller-supplied; accumulated `{ ...old, ...new }`                                                                                            | Set on every write that includes `metadata` in payload.                                                                                             |
 
 Existing fields untouched (`_id`, `type`, `kind`, `key`, `status[]`, `action_group`, `entity_*`, `assignees`, `due_date`, `description`, etc.).
 
@@ -391,6 +457,7 @@ status_map:
 ```
 
 Notes on the config:
+
 - No `blocked` cell, no `not-required` cell. Sticky display: when the action transitions to `blocked`, last-written `message` persists; when it transitions to `not-required` (via close-sweep), same.
 - No `link:` anywhere. Engine computes link per slug from `(kind, stage, access verbs)` — see D4.
 - `customer` cell omitted at `in-progress` — `customer.message` from `action-required` ("Installation pending.") persists through `in-progress` until `done` overrides it.
@@ -428,10 +495,10 @@ Notes on the config:
 
 ```js
 submit({
-  currentActionId: 'a3f2-uuid',
-  actions: [{ type: 'install-step', status: 'in-progress' }],
-  metadata: { assignees: [{ name: 'Alice' }] },
-})
+  currentActionId: "a3f2-uuid",
+  actions: [{ type: "install-step", status: "in-progress" }],
+  metadata: { assignees: [{ name: "Alice" }] },
+});
 ```
 
 **Action doc after submit:**
@@ -487,6 +554,8 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
 - `plugins/modules-mongodb-plugins/src/connections/shared/renderStatusMap.test.js` — unit tests: render with action+metadata context, absent cell returns `{}`, sentinel swap for custom kind only, override merge, accumulated metadata.
 - `plugins/modules-mongodb-plugins/src/connections/shared/computeEngineLinks.test.js` — unit tests: task kind link table (edit slug, view slug, review slug, no-verb slug per stage), form kind table, tracker kind, custom kind returns `{}`.
 - `plugins/modules-mongodb-plugins/src/connections/shared/buildActionStageUpdate.test.js` — unit tests: pipeline shape; `$concatArrays` prepend; sticky `message` via `$mergeObjects`; engine links replace `link` field on each access slug.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/renderEventDisplay.js` — runs `renderTree` on the event payload's `display` field against the fixed `{ user, action, workflow, interaction, metadata, status_before, status_after }` render context (per D14). Uses the same `renderTree` walker and `parseNunjucks` helper as `renderStatusMap`. Inputs: `{ eventPayload, user, action, workflow, interaction, mergedMetadata, statusBefore, statusAfter }`. Output: a new event payload with `display` rendered to strings.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/renderEventDisplay.test.js` — unit tests: plain template renders against each binding; nested per-app keys (`display.app-a.title`, `display.app-b.title`) render independently; `action` exposes action-doc fields (assert `action.key`, `action.assignees[0].name`, `action.metadata.*` resolve); `workflow` exposes workflow-only fields (assert `workflow.workflow_type`, `workflow.key`, `workflow.summary.done` resolve); `interaction` binds to the verb string; `status_before: null` on initial write; non-string values pass through unchanged; payload fields outside `display` are untouched.
 
 ### Modified
 
@@ -508,6 +577,8 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
 - `modules/workflows/api/start-workflow.yaml` — add `metadata: { _payload: metadata }` and `display: { _payload: display }` to the `StartWorkflow` action's `properties`, documenting the two new caller-facing payload fields (per D8 + Proposed-change item 5).
 - `modules/workflows/resolvers/makeWorkflowApis.js` — extend the emitted-api payload mapping at lines 71-80 to pass `metadata: { _payload: metadata }` and `display: { _payload: display }` through every `update-action-{action_type}` Api. Both fields then flow into the `SubmitWorkflowAction` plugin handler via `request.metadata` / `request.display`.
 - `modules/workflows/README.md` — add `metadata` and `display` to the Start / Submit payload documentation. `display` should be documented as the per-call override path, scoped to one transition (not persisted to the action config); shape is `{ [slug]: cellShapeForKind }` matching the cell shape rules from D6.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js` — call `renderEventDisplay` on the assembled event payload before `context.callApi('new-event', ...)`. Render context is built from the handler's pre-existing locals (`context.user`, the post-write action doc, merged metadata, `statusBefore`/`statusAfter`); no caller-API change.
+- Engine event-default templates source (wherever `buildDefaultLogEventPayload` ships them — `SubmitWorkflowAction/defaults/log-event.js` or equivalent) — change the engine's default templates from `_nunjucks: { template, on }` operator-literal shape to **plain Nunjucks template strings**, matching the `event_display` idiom. Bindings the templates use map to the new fixed render context.
 
 ### Demo + tests
 
@@ -526,6 +597,13 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
   - Cell shape validation: built-in kind cell with `link:` in a slug throws.
   - Cell shape validation: custom kind cell with valid `{ message, link }` passes.
   - No coverage requirement: workflow with no `status_map` at all passes.
+- New tests in `dispatchLogEvent.test.js` (or equivalent SubmitWorkflowAction event-write test):
+  - Engine-default event template (plain Nunjucks string) renders against `{ user, action, workflow, interaction, status_before, status_after }` before reaching `new-event`. The payload that lands at `context.callApi('new-event', ...)` carries rendered strings, not operator literals.
+  - Pre-hook `event_overrides.display.app-a.title` with a plain Nunjucks string renders against the same context.
+  - `action` exposes post-write action-doc fields (assert `action.key`, `action.assignees[0].name`, `action.metadata.*` resolve correctly).
+  - `workflow` exposes workflow-only fields not on the action doc (assert `workflow.workflow_type`, `workflow.key` resolve).
+  - `interaction` renders to the verb string (e.g. `submit_edit`).
+  - Initial-write event (no prior stage) renders with `status_before: null` and templates referencing it produce empty strings.
 
 ## Non-goals
 
@@ -541,4 +619,6 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
 - [Part 12 — resolver pages](../12-resolver-pages/design.md) — emits `action_config.status_map` onto page templates. Templates don't read it (engine-side concern), so no change there — the resolver-emitted field is now redundant for display but kept as authoring metadata.
 - [Part 18 — actions-on-entity](../_completed/18-entity-components/design.md) — the component this part rewires.
 - [Part 28 — custom action kind](../28-custom-action-kind/design.md) — `kind: custom` owns its `link:` authoring per cell; engine renders Nunjucks + substitutes the `{ action_id: true }` sentinel but doesn't compute defaults. Built-in kinds in this part do not author `link:`. Part 28 absorbs this contract when it lands.
+- [Part 32 — drop static action-YAML overrides](../32-drop-static-overrides/design.md) — pre-hook becomes the only event-override channel. Two edits Part 32 needs once this part lands: (1) update the Case B pre-hook example to a plain Nunjucks template string keyed by event type; (2) delete or rewrite the "`_nunjucks` evaluation — equivalence verified" section, whose premise (engine never renders) is inverted by D14 here.
+- [`docs/idioms.md` § Event display](../../../../docs/idioms.md#event-display) — the cross-repo `event_display` idiom this part aligns engine-written events with.
 - Reference: an existing app's `WorkflowAPI/` connection — `getStatusConfig.js`, `parseStatusConfig.js`, its sentinel-swap helper, `createAction.js`, `updateAction.js`. Relevant snippets quoted inline in this design where needed.
