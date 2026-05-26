@@ -9,7 +9,7 @@ Re-scanned part 13's tree after the task files landed. Cross-checked the four ne
 - **Design:** [design.md](../design.md)
 - **Reviews:** [review-1.md](designs/workflows-module/parts/13-resolver-apis/review/review-1.md) (all 13 findings annotated), [consistency-1.md](designs/workflows-module/parts/13-resolver-apis/review/consistency-1.md) (prior consistency pass — 1 in-tree fix + 3 cross-part drifts surfaced)
 - **Tasks:** [tasks/tasks.md](../tasks/tasks.md), [tasks/01-inline-hook-schema.md](../tasks/01-inline-hook-schema.md), [tasks/02-make-workflow-apis.md](../tasks/02-make-workflow-apis.md), [tasks/03-manifest-wiring.md](../tasks/03-manifest-wiring.md)
-- **External cross-checks:** [modules/workflows/module.lowdefy.yaml](../../../../../modules/workflows/module.lowdefy.yaml), [part 12 tasks/tasks.md](../../12-resolver-pages/tasks/tasks.md), [part 2 design.md](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md)
+- **External cross-checks:** [modules/workflows/module.lowdefy.yaml](../../../../../modules/workflows/module.lowdefy.yaml), [part 12 tasks/tasks.md](../../12-resolver-pages/tasks/tasks.md), [part 2 design.md](../../_completed/02-dynamic-module-pages/design.md)
 
 ## Inconsistencies Found
 

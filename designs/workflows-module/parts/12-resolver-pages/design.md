@@ -2,7 +2,7 @@
 
 > **⚠️ Deviation from original design — read before implementing task 3.**
 >
-> [Part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The resolver logic in this part (tasks 1–2, already shipped) is unaffected — same inputs, same outputs. **What changes is task 3 (manifest wiring):** instead of a `resolver:` channel entry under `exports.pages`, the manifest's `pages:` array invokes the resolver from `_build.array.map` over `_module.var: workflows_config` (concrete shape pinned in [part 20b](../20b-module-manifest-dynamic/design.md) when task 3 lands). The "Upstream dependency" subsection below and the part-02 entry in "Depends on" are stale; treat them as historical context.
+> [Part 02](../_completed/02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The resolver logic in this part (tasks 1–2, already shipped) is unaffected — same inputs, same outputs. **What changes is task 3 (manifest wiring):** instead of a `resolver:` channel entry under `exports.pages`, the manifest's `pages:` array invokes the resolver from `_build.array.map` over `_module.var: workflows_config` (concrete shape pinned in [part 20b](../20b-module-manifest-dynamic/design.md) when task 3 lands). The "Upstream dependency" subsection below and the part-02 entry in "Depends on" are stale; treat them as historical context.
 
 **Source rationale:** [workflows-module-concept/action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md), [workflows-module-concept/ui/spec.md](../../../workflows-module-concept/ui/spec.md). **Layer:** resolvers. **Size:** M. **Repo:** `modules/workflows/resolvers/`.
 
@@ -38,7 +38,7 @@ For each form action:
 
 ### Upstream dependency
 
-This resolver emits dynamic pages whose ids depend on the app's `workflows_config`. That requires [part 2 (dynamic-module-pages)](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) — module-system support for resolver-emitted page exports.
+This resolver emits dynamic pages whose ids depend on the app's `workflows_config`. That requires [part 2 (dynamic-module-pages)](../_completed/02-dynamic-module-pages/design.md) — module-system support for resolver-emitted page exports.
 
 ### Placeholder templates
 
@@ -59,7 +59,7 @@ No template-existence or page-id-collision asserts. The Lowdefy build surfaces m
 
 ## Depends on
 
-[Part 2](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md), [part 4](../04-workflow-config-schema/design.md), [part 21](../21-entity-type-to-collection/design.md) (for the `entity_collection`-only entity-identity contract).
+[Part 2](../_completed/02-dynamic-module-pages/design.md), [part 4](../04-workflow-config-schema/design.md), [part 21](../21-entity-type-to-collection/design.md) (for the `entity_collection`-only entity-identity contract).
 
 ## Verification
 

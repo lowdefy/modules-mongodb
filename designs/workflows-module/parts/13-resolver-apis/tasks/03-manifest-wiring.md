@@ -4,7 +4,7 @@
 
 `makeWorkflowApis` produces an array of `{ id, definition }` Api objects at build time (task 2). For Lowdefy to merge those Apis into the app's Api tree, the module manifest needs to declare the resolver in its `exports.api` (or equivalent) section. The mechanism is part 2's dynamic-exports extension to `@lowdefy/build` — the same primitive `makeActionPages` uses for dynamic page exports.
 
-**This task is blocked on part 2.** Part 2's design ([parts/02-dynamic-module-pages/design.md](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md)) lists "whether `exports.api` rides on the same channel as `exports.pages`" as an open question. Until that resolves, there's no manifest shape to write against. Three candidate shapes:
+**This task is blocked on part 2.** Part 2's design ([parts/02-dynamic-module-pages/design.md](../../_completed/02-dynamic-module-pages/design.md)) lists "whether `exports.api` rides on the same channel as `exports.pages`" as an open question. Until that resolves, there's no manifest shape to write against. Three candidate shapes:
 
 - **Single shared channel.** Part 2 picks one mechanism (e.g. `exports.resolvers: { pages: [...], api: [...] }`) that handles both pages and Apis. Easiest manifest wiring.
 - **Parallel channels.** `exports.pages: [{ resolver, vars }]` and `exports.api: [{ resolver, vars }]` — same shape, two homes. Manifest carries both entries.

@@ -13,7 +13,7 @@ These ship before anything else in the workflows module proper. They live in **u
 | #   | Part                                                            | Size | Repo                                          | Status |
 | --- | --------------------------------------------------------------- | ---- | --------------------------------------------- | ------ |
 | 1   | [call-api-primitive](parts/_completed/01-call-api-primitive/design.md) | S    | upstream `@lowdefy/api`                       | ✅ shipped |
-| 2   | [dynamic-module-pages](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) | S    | upstream `@lowdefy/build` (or module loading) | ✅ shipped (resolved by removing `exports:` entirely — see part 02's design.md) |
+| 2   | [dynamic-module-pages](parts/_completed/02-dynamic-module-pages/design.md) | S    | upstream `@lowdefy/build` (or module loading) | ✅ shipped (resolved by removing `exports:` entirely — see part 02's design.md) |
 
 ## Wave 1 — Foundations (parallel; no dependencies)
 

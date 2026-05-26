@@ -2,7 +2,7 @@
 
 **Source rationale:** [workflows-module-concept/module-surface/spec.md](../../../workflows-module-concept/module-surface/spec.md). **Layer:** surface. **Size:** S. **Repo:** `modules/workflows/` + `apps/demo/`.
 
-Split from the original Part 20. This half lands the manifest entries that do **not** depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../_completed/01-call-api-primitive/design.md) or [part 02 (dynamic module page exports)](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md), plus a tracker-only worked-example wiring that exercises the static surface end-to-end. The dynamic resolver-emitted exports — per-action pages from [part 12](../12-resolver-pages/design.md) and per-action submit endpoints from [part 13](../13-resolver-apis/design.md) — land in [part 20b](../20b-module-manifest-dynamic/design.md).
+Split from the original Part 20. This half lands the manifest entries that do **not** depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../_completed/01-call-api-primitive/design.md) or [part 02 (dynamic module page exports)](../_completed/02-dynamic-module-pages/design.md), plus a tracker-only worked-example wiring that exercises the static surface end-to-end. The dynamic resolver-emitted exports — per-action pages from [part 12](../12-resolver-pages/design.md) and per-action submit endpoints from [part 13](../13-resolver-apis/design.md) — land in [part 20b](../20b-module-manifest-dynamic/design.md).
 
 The split lets every static export (connections, shared pages, operational APIs, components, enums) be wired and verified before the upstream Lowdefy work (parts 01, 02) lands.
 
@@ -35,7 +35,7 @@ Close the static-surface gap against `modules/workflows/module.lowdefy.yaml` —
 
 ## Manifest scope — static surface only
 
-This half adds everything in `module.lowdefy.yaml` *except* the two resolver-channel entries that depend on [part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md).
+This half adds everything in `module.lowdefy.yaml` *except* the two resolver-channel entries that depend on [part 02](../_completed/02-dynamic-module-pages/design.md).
 
 ### `vars` (final, matching the [concept spec](../../../workflows-module-concept/module-surface/spec.md) plus `entities`)
 
@@ -92,7 +92,7 @@ The `_global:` → `_ref: { module, component }` swap is a build-time read of th
 
 ## Tracker-only demo wiring (`apps/demo/`)
 
-The original Part 20 wired the four-action worked example verbatim from the [concept worked example](../../../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) — one action per kind, including `kind: form` and `kind: task`. Form actions need resolver-emitted pages (part 12) and resolver-emitted submit endpoints (part 13); task actions need the per-action endpoint to drive `task-edit`'s save. Both require [part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md).
+The original Part 20 wired the four-action worked example verbatim from the [concept worked example](../../../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) — one action per kind, including `kind: form` and `kind: task`. Form actions need resolver-emitted pages (part 12) and resolver-emitted submit endpoints (part 13); task actions need the per-action endpoint to drive `task-edit`'s save. Both require [part 02](../_completed/02-dynamic-module-pages/design.md).
 
 This half ships a **tracker-only-parent** variant that exercises every static surface without needing parts 01, 02, 12, or 13:
 
@@ -172,7 +172,7 @@ Every part that ships a static manifest entry referenced here:
 - [Part 23](../_completed/23-close-workflow-handler/design.md) — `close-workflow` API + handler.
 - [Part 25](../_completed/25-group-overview-page/design.md) — `group-overview` page + `get-action-group-overview` API.
 
-Does **not** depend on parts [01](../_completed/01-call-api-primitive/design.md), [02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../14-form-components-library/design.md), [15](../15-resolver-form-builder/design.md), [16](../_completed/16-page-templates/design.md), [24](../24-universal-fields/design.md), or [28](../28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
+Does **not** depend on parts [01](../_completed/01-call-api-primitive/design.md), [02](../_completed/02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../14-form-components-library/design.md), [15](../15-resolver-form-builder/design.md), [16](../_completed/16-page-templates/design.md), [24](../24-universal-fields/design.md), or [28](../28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
 
 ## Verification
 
@@ -193,7 +193,7 @@ Does **not** depend on parts [01](../_completed/01-call-api-primitive/design.md)
 
 ### Closed during review
 
-- **Skeleton `makeActionPages` / `makeWorkflowApis` resolvers.** Skip. Pre-registering no-op resolvers would require [part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md)'s resolver channel shape, which is the very dependency this split is built to avoid. The resolver-channel entries land cleanly in [part 20b](../20b-module-manifest-dynamic/design.md) alongside the resolvers themselves.
+- **Skeleton `makeActionPages` / `makeWorkflowApis` resolvers.** Skip. Pre-registering no-op resolvers would require [part 02](../_completed/02-dynamic-module-pages/design.md)'s resolver channel shape, which is the very dependency this split is built to avoid. The resolver-channel entries land cleanly in [part 20b](../20b-module-manifest-dynamic/design.md) alongside the resolvers themselves.
 - **Child workflow shape for the tracker-only demo.** Resolved as a `kind: task` "installation step" workflow (the spec's documented minimal shim, action-authoring/spec.md:489) whose pages are intentionally not surfaced in the demo UI. See "Child workflow rendering — skipped in 20a" above.
 - **Part 27 fate.** Retire. Part 27 (demo-workflows-wiring) was originally scoped for the full worked example. After this split, 20a absorbs the static-testable demo wiring (tracker-only) and 20b absorbs the form/task demo flows — leaving Part 27 with nothing of its own to ship. The retirement was applied during the consistency review: the part 27 directory was deleted, its row was removed from [implementation-plan.md](../../implementation-plan.md), and the "Part 27 spun out" sentence in the plan's "Shipped so far" paragraph was rewritten. Historical references to Part 27 inside completed-parts task files (`_completed/17-shared-pages/tasks/`, `_completed/18-entity-components/tasks/`, `_completed/25-group-overview-page/tasks/`) are left intact as accurate records of what those parts spun out at the time. Keeping a "thin verification-record pointer" version would have created three places (20a verification, 20b verification, Part 27) that all claim to verify the same thing — net negative.
 
