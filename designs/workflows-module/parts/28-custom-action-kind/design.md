@@ -48,6 +48,11 @@ Add `custom` to `ACTION_KINDS`. New rules in `validateAction`:
 
 The kind passes through into the runtime `workflowsConfig` via the existing `ACTION_FIELDS` pick — no schema-shape change to the runtime config, only a new enum value.
 
+**Absorb Part 30's link / validator contracts for `custom`.** Part 30 ships engine-driven `link` computation (D4) and shape-only cell validation (D7) for built-in kinds only — `custom` was deliberately deferred. When this part lands, do three things:
+
+1. **`computeEngineLinks` short-circuits for `custom`** — Part 30 already special-cases this (returns `{}`); confirm the branch is hit and add the `kind: custom` test case to `computeEngineLinks.test.js`.
+2. **Cell shape validator accepts `link:` for `custom`** — Part 30's `validateStatusMapCells` rejects `link:` for built-in kinds. Extend the validator's kind branch so `kind: custom` cells pass with the shape `{ message?: string, link?: { pageId: string, urlQuery?: object, input?: object } }`. The `{ action_id: true }` sentinel substitution path (`substituteActionIdSentinel.js`) is wired for custom in Part 30; nothing further needed here on the engine side.
+
 ### Page emission (`makeActionPages`)
 
 Branch as today: `if (action.kind !== "form") return []`. The `!== "form"` check already excludes `task` and `tracker`; adding `custom` to the kind enum doesn't change this line. No work needed beyond the validation update.
