@@ -32,7 +32,7 @@ Part 5 unlocks the rest of the engine. Resolver 12 depends on parts 2/4; resolve
 | #   | Part                                                              | Size | Repo                                                           | Status     |
 | --- | ----------------------------------------------------------------- | ---- | -------------------------------------------------------------- | ---------- |
 | 5   | [start-cancel-handlers](parts/05-start-cancel-handlers/design.md) | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/` | ✅ shipped |
-| 12  | [resolver-pages](parts/12-resolver-pages/design.md)               | M    | `modules/workflows/resolvers/`                                 | 🚧 tasks 1–2 done; task 3 (manifest wiring) unblocked — re-scope to `_build.array.map` over `_module.var: workflows_config` in `pages:` (no resolver channel needed) |
+| 12  | [resolver-pages](parts/_completed/12-resolver-pages/design.md)               | M    | `modules/workflows/resolvers/`                                 | 🚧 tasks 1–2 done; task 3 (manifest wiring) unblocked — re-scope to `_build.array.map` over `_module.var: workflows_config` in `pages:` (no resolver channel needed) |
 | 15  | [resolver-form-builder](parts/15-resolver-form-builder/design.md) | M    | `modules/workflows/resolvers/`                                 | ✅ shipped |
 
 ## Wave 3 — The load-bearing write (solo)
@@ -52,7 +52,7 @@ Each extends part 6's lifecycle orthogonally. Part 13 (resolver-apis) only needs
 | 7   | [group-state-machine](parts/07-group-state-machine/design.md)   | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` | ✅ shipped |
 | 8   | [side-effect-dispatch](parts/_completed/08-side-effect-dispatch/design.md) | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` | ✅ shipped |
 | 10  | [tracker-subscription](parts/_completed/10-tracker-subscription/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`                      | ✅ shipped |
-| 13  | [resolver-apis](parts/13-resolver-apis/design.md)               | M    | `modules/workflows/resolvers/`                                                      | 🚧 tasks 1–2 done; task 3 (manifest wiring) unblocked — re-scope to `_build.array.map` over `_module.var: workflows_config` in `api:` (no resolver channel needed) |
+| 13  | [resolver-apis](parts/_completed/13-resolver-apis/design.md)               | M    | `modules/workflows/resolvers/`                                                      | 🚧 tasks 1–2 done; task 3 (manifest wiring) unblocked — re-scope to `_build.array.map` over `_module.var: workflows_config` in `api:` (no resolver channel needed) |
 
 ## Wave 5 — Hooks, fan-out, operational APIs (parallel; need Wave 4)
 
@@ -79,8 +79,8 @@ All four need the resolver outputs from Waves 2/4 and (for 17/18) the operationa
 
 | #   | Part                                                  | Size | Repo                                | Status |
 | --- | ----------------------------------------------------- | ---- | ----------------------------------- | ------ |
-| 20a | [module-manifest-static](parts/20a-module-manifest-static/design.md) | S    | `modules/workflows/` + `apps/demo/` |        |
-| 20b | [module-manifest-dynamic](parts/20b-module-manifest-dynamic/design.md) | S    | `modules/workflows/` + `apps/demo/` |        |
+| 20a | [module-manifest-static](modules-mongodb/designs/workflows-module/parts/_completed/20a-module-manifest-static/design.md) | S    | `modules/workflows/` + `apps/demo/` |        |
+| 20b | [module-manifest-dynamic](modules-mongodb/designs/workflows-module/parts/_completed/20b-module-manifest-dynamic/design.md) | S    | `modules/workflows/` + `apps/demo/` |        |
 
 ## Follow-ons (added after the original waves)
 
