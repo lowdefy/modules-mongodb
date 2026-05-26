@@ -8,6 +8,17 @@ const schema = {
       description:
         'MongoDB connection URI; typically resolved via _secret in app YAML.',
     },
+    read: {
+      type: 'boolean',
+      default: true,
+      description: 'Allow read requests on this connection.',
+    },
+    write: {
+      type: 'boolean',
+      default: false,
+      description:
+        'Allow write requests on this connection. Required for StartWorkflow, SubmitWorkflowAction, CancelWorkflow, and CloseWorkflow handlers, which all set meta.checkWrite = true.',
+    },
     databaseName: {
       type: 'string',
       description: 'Optional database name; defaults to the URI default.',
