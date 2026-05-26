@@ -57,14 +57,14 @@ _ref:
         # Null-redirect guard — Api returns workflow: null when no actions
         # pass the access filter, the workflow doc is missing, or the group
         # id is unknown.
-        - id: redirect_no_workflow_doc
-          type: Link
-          skip:
-            _ne:
-              - _state: overview.workflow
-              - null
-          params:
-            back: true
+        # - id: redirect_no_workflow_doc
+        #   type: Link
+        #   skip:
+        #     _ne:
+        #       - _state: overview.workflow
+        #       - null
+        #   params:
+        #     back: true
     blocks:
       - id: group_overview_header
         type: Box
@@ -132,7 +132,7 @@ _ref:
                       - _state: overview.workflow.entity_collection
                       - .title
                   default: Entity
-              - " "
+              - ' '
               - _state: overview.workflow.entity_id
           type: link
           icon: AiOutlineArrowLeft
@@ -221,92 +221,53 @@ _ref:
       - id: actions_list
         type: List
         blocks:
-          - _ref:
-              module: layout
-              component: card
-              vars:
-                hide_title: true
+          - id: actions_list.$.card
+            type: Card
+            layout:
+              gap: 16
+            blocks:
+              - id: actions_list.$.header
+                type: Box
+                layout:
+                  gap: 8
+                  align: middle
+                  justify: space-between
                 blocks:
-                  - id: actions_list.$.header
+                  - id: actions_list.$.title_row
                     type: Box
                     layout:
                       gap: 8
-                      contentAlign: middle
-                      justify: space-between
+                      align: middle
                     blocks:
-                      - id: actions_list.$.title_row
-                        type: Box
-                        layout:
-                          gap: 8
-                          contentAlign: middle
-                        blocks:
-                          - id: actions_list.$.status_badge
-                            type: Tag
-                            properties:
-                              color:
-                                _js:
-                                  args:
-                                    statuses:
-                                      _ref: enums/action_statuses.yaml
-                                    stage:
-                                      _state: actions_list.$.status.0.stage
-                                  fn: |
-                                    const { statuses, stage } = args;
-                                    return statuses?.[stage]?.color;
-                              content:
-                                _js:
-                                  args:
-                                    statuses:
-                                      _ref: enums/action_statuses.yaml
-                                    stage:
-                                      _state: actions_list.$.status.0.stage
-                                  fn: |
-                                    const { statuses, stage } = args;
-                                    return statuses?.[stage]?.title;
-                          - id: actions_list.$.message
-                            type: Paragraph
-                            properties:
-                              content:
-                                _nunjucks:
-                                  template:
-                                    _get:
-                                      from:
-                                        _state: actions_list.$.status_map
-                                      key:
-                                        _string.concat:
-                                          - _state: actions_list.$.status.0.stage
-                                          - .
-                                          - _module.var: app_name
-                                          - .message
-                                      default: ""
-                                  on:
-                                    action:
-                                      _state: actions_list.$
-                                    workflow:
-                                      _state: overview.workflow
-                      - id: actions_list.$.link_button
-                        type: Button
-                        visible:
-                          _ne:
-                            - _get:
-                                from:
-                                  _state: actions_list.$.status_map
-                                key:
-                                  _string.concat:
-                                    - _state: actions_list.$.status.0.stage
-                                    - .
-                                    - _module.var: app_name
-                                    - .link
-                                default: null
-                            - null
+                      - id: actions_list.$.status_badge
+                        type: Tag
                         properties:
-                          title: Open
-                          type: link
-                        events:
-                          onClick:
-                            - id: actions_list.$.link
-                              type: Link
-                              params:
+                          color:
+                            _js:
+                              args:
+                                statuses:
+                                  _ref: enums/action_statuses.yaml
+                                stage:
+                                  _state: actions_list.$.status.0.stage
+                              fn: |
+                                const { statuses, stage } = args;
+                                return statuses?.[stage]?.color;
+                          content:
+                            _js:
+                              args:
+                                statuses:
+                                  _ref: enums/action_statuses.yaml
+                                stage:
+                                  _state: actions_list.$.status.0.stage
+                              fn: |
+                                const { statuses, stage } = args;
+                                return statuses?.[stage]?.title;
+                      - id: actions_list.$.message
+                        type: Paragraph
+                        properties:
+                          content:
+                            _nunjucks:
+                              template:
                                 _get:
                                   from:
                                     _state: actions_list.$.status_map
@@ -315,79 +276,117 @@ _ref:
                                       - _state: actions_list.$.status.0.stage
                                       - .
                                       - _module.var: app_name
-                                      - .link
-                  - id: actions_list.$.body_empty
-                    type: Html
-                    visible:
-                      _eq:
-                        - _get:
-                            from:
-                              _state: overview.workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
-                            default: null
-                        - null
-                    properties:
-                      html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
-                  - id: actions_list.$.body_dataview
-                    type: DataDescriptions
+                                      - .message
+                                  default: ''
+                              on:
+                                action:
+                                  _state: actions_list.$
+                                workflow:
+                                  _state: overview.workflow
+                  - id: actions_list.$.link_button
+                    type: Button
                     visible:
                       _ne:
                         - _get:
                             from:
-                              _state: overview.workflow.form_data
+                              _state: actions_list.$.status_map
                             key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
+                              _string.concat:
+                                - _state: actions_list.$.status.0.stage
+                                - .
+                                - _module.var: app_name
+                                - .link
                             default: null
                         - null
                     properties:
-                      # Per-action form-data DataView. In part 20a's static
-                      # surface no form-kind action has shipped, so the form
-                      # configs are an empty array. Part 20b restores the
-                      # action_form_configs map (built by makeActionFormConfigs.js
-                      # from vars.workflows_config) and the form / form_review
-                      # field arrays index into it.
-                      formConfig: []
-                      data:
-                        form:
-                          _get:
-                            from:
-                              _state: overview.workflow.form_data
-                            key:
-                              _if:
-                                test:
-                                  _ne:
-                                    - _state: actions_list.$.key
-                                    - null
-                                then:
-                                  _string.concat:
-                                    - _state: actions_list.$.type
-                                    - .
-                                    - _state: actions_list.$.key
-                                else:
-                                  _state: actions_list.$.type
-                            default: null
-                        workflow:
-                          _state: overview.workflow
+                      title: Open
+                      type: link
+                    events:
+                      onClick:
+                        - id: actions_list.$.link
+                          type: Link
+                          params:
+                            _get:
+                              from:
+                                _state: actions_list.$.status_map
+                              key:
+                                _string.concat:
+                                  - _state: actions_list.$.status.0.stage
+                                  - .
+                                  - _module.var: app_name
+                                  - .link
+              - id: actions_list.$.body_empty
+                type: Html
+                visible:
+                  _eq:
+                    - _get:
+                        from:
+                          _state: overview.workflow.form_data
+                        key:
+                          _if:
+                            test:
+                              _ne:
+                                - _state: actions_list.$.key
+                                - null
+                            then:
+                              _string.concat:
+                                - _state: actions_list.$.type
+                                - .
+                                - _state: actions_list.$.key
+                            else:
+                              _state: actions_list.$.type
+                        default: null
+                    - null
+                properties:
+                  html: "<p style='color:#999;font-style:italic;font-size:12px'>No data submitted yet.</p>"
+              - id: actions_list.$.body_dataview
+                type: DataDescriptions
+                visible:
+                  _ne:
+                    - _get:
+                        from:
+                          _state: overview.workflow.form_data
+                        key:
+                          _if:
+                            test:
+                              _ne:
+                                - _state: actions_list.$.key
+                                - null
+                            then:
+                              _string.concat:
+                                - _state: actions_list.$.type
+                                - .
+                                - _state: actions_list.$.key
+                            else:
+                              _state: actions_list.$.type
+                        default: null
+                    - null
+                properties:
+                  formConfig:
+                    _get:
+                      from:
+                        _ref: components/action_form_configs.yaml
+                      key:
+                        _state: actions_list.$.type
+                      default: { form: [], form_review: [] }
+                  data:
+                    form:
+                      _get:
+                        from:
+                          _state: overview.workflow.form_data
+                        key:
+                          _if:
+                            test:
+                              _ne:
+                                - _state: actions_list.$.key
+                                - null
+                            then:
+                              _string.concat:
+                                - _state: actions_list.$.type
+                                - .
+                                - _state: actions_list.$.key
+                            else:
+                              _state: actions_list.$.type
+                        default: null
+                    workflow:
+                      _state: overview.workflow

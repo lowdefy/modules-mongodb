@@ -1,0 +1,32 @@
+user-access-admin:
+  title: User Access
+  icon: AiOutlineUserAdd
+  order: 5
+devices-admin:
+  title: Administrative Processing
+  icon: GrDocumentText
+  order: 10
+client-installation:
+  title: Client Installation
+  icon: AiOutlineUserAdd
+  order: 15
+technician-assignment:
+  title: Technician Assignment
+  icon: AiOutlineUserAdd
+  order: 20
+technician-progress:
+  title: Technician Progress
+  icon: AiOutlineTool
+  order: 30
+devices-invoicing:
+  title: Finalising & Invoicing
+  icon: AiOutlineBank
+  order: 40
+site-setup-admin:
+  title: Site Setup Admin
+  icon: IoLocationOutline
+  order: 50
+finance-admin:
+  title: Finance
+  icon: AiOutlineBank
+  order: 60

@@ -6,7 +6,7 @@ properties:
   workflowsCollection: workflows
   actionsCollection: actions
   workflowsConfig:
-    _module.var: workflows_config
+    _ref: components/validated_workflows_config.yaml
   app_name:
     _module.var: app_name
   actionsEnum:

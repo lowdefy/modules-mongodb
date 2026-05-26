@@ -13,6 +13,8 @@ routine:
 
         - $lookup:
             from: actions
+            localField: _id
+            foreignField: workflow_id
             let:
               workflowId: $_id
               groupIds:
@@ -25,17 +27,26 @@ routine:
                   as: g
                   in: $$g.id
             pipeline:
-              - $match:
-                  $expr:
-                    $eq:
-                      - $workflow_id
-                      - $$workflowId
-              - _ref: api/stages/access_filter.yaml
               - $addFields:
                   groupIndex:
                     $indexOfArray:
                       - $$groupIds
                       - $action_group
+                  type: $type
+                  status:
+                    $arrayElemAt:
+                      - $status.stage
+                      - 0
+                  message:
+                    _string.concat:
+                      - $
+                      - _module.var: app_name
+                      - .message
+                  link:
+                    _string.concat:
+                      - $
+                      - _module.var: app_name
+                      - .link
               - $sort:
                   groupIndex: 1
                   sort_order: 1
@@ -44,36 +55,8 @@ routine:
                   groupIndex: 0
             as: actions
 
-  - :set_state:
-      workflow_doc:
-        _get:
-          from:
-            _step: query
-          key: "0"
-          default: null
-
   - :return:
       workflow:
-        _if:
-          test:
-            _and:
-              - _ne:
-                  - _state: workflow_doc
-                  - null
-              - _gt:
-                  - _array.length:
-                      _get:
-                        from:
-                          _state: workflow_doc
-                        key: actions
-                        default: []
-                  - 0
-          then:
-            _state: workflow_doc
-          else: null
+        _step: query.0
       actions:
-        _get:
-          from:
-            _state: workflow_doc
-          key: actions
-          default: []
+        _step: query.0.actions

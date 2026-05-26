@@ -65,83 +65,82 @@ _ref:
         # Step 8 (author-supplied pages.review.events.onMount) — omitted on
         # shared task pages; same gap as task-view / task-edit.
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            hide_title: true
+      - id: action_card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          - id: workflow_closed_banner
+            type: Alert
+            visible:
+              _and:
+                - _or:
+                    - _eq:
+                        - _request: get_workflow.status.0.stage
+                        - completed
+                    - _eq:
+                        - _request: get_workflow.status.0.stage
+                        - cancelled
+                - _ne:
+                    - _request: get_action.required_after_close
+                    - true
+            properties:
+              type: warning
+              showIcon: true
+              message: Workflow closed
+              description: This workflow is closed. Updates to this action are no longer accepted.
+          - id: action_header
+            type: Box
+            layout:
+              gap: 8
+              align: middle
             blocks:
-              - id: workflow_closed_banner
-                type: Alert
-                visible:
-                  _and:
-                    - _or:
-                        - _eq:
-                            - _request: get_workflow.status.0.stage
-                            - completed
-                        - _eq:
-                            - _request: get_workflow.status.0.stage
-                            - cancelled
-                    - _ne:
-                        - _request: get_action.required_after_close
-                        - true
+              - id: action_title
+                type: Title
                 properties:
-                  type: warning
-                  showIcon: true
-                  message: Workflow closed
-                  description: This workflow is closed. Updates to this action are no longer accepted.
-              - id: action_header
-                type: Box
-                layout:
-                  gap: 8
-                  contentAlign: middle
-                blocks:
-                  - id: action_title
-                    type: Title
-                    properties:
-                      level: 4
-                      content:
-                        _request: get_action.title
-                  - id: action_status_badge
-                    type: Tag
-                    properties:
-                      color:
-                        _js:
-                          args:
-                            statuses:
-                              _ref: enums/action_statuses.yaml
-                            stage:
-                              _request: get_action.status.0.stage
-                          fn: |
-                            const { statuses, stage } = args;
-                            return statuses?.[stage]?.color;
-                      content:
-                        _js:
-                          args:
-                            statuses:
-                              _ref: enums/action_statuses.yaml
-                            stage:
-                              _request: get_action.status.0.stage
-                          fn: |
-                            const { statuses, stage } = args;
-                            return statuses?.[stage]?.title;
-              - _ref:
-                  path: components/universal-fields/universal-fields.yaml
-                  vars:
-                    mode: display
-                    kind: task
-                    action_data:
-                      assignees:
-                        _request: get_action.assignees
-                      due_date:
-                        _request: get_action.due_date
-                      description:
-                        _request: get_action.description
-              - id: comment
-                type: TiptapInput
+                  level: 4
+                  content:
+                    _request: get_action.title
+              - id: action_status_badge
+                type: Tag
                 properties:
-                  title: Comment
-                  placeholder: Add a comment (optional).
+                  color:
+                    _js:
+                      args:
+                        statuses:
+                          _ref: enums/action_statuses.yaml
+                        stage:
+                          _request: get_action.status.0.stage
+                      fn: |
+                        const { statuses, stage } = args;
+                        return statuses?.[stage]?.color;
+                  content:
+                    _js:
+                      args:
+                        statuses:
+                          _ref: enums/action_statuses.yaml
+                        stage:
+                          _request: get_action.status.0.stage
+                      fn: |
+                        const { statuses, stage } = args;
+                        return statuses?.[stage]?.title;
+          - _ref:
+              path: components/universal-fields/universal-fields.yaml
+              vars:
+                mode: display
+                kind: task
+                action_data:
+                  assignees:
+                    _request: get_action.assignees
+                  due_date:
+                    _request: get_action.due_date
+                  description:
+                    _request: get_action.description
+          - id: comment
+            type: TiptapInput
+            properties:
+              title: Comment
+              placeholder: Add a comment (optional).
       - _ref:
           module: layout
           component: floating-actions

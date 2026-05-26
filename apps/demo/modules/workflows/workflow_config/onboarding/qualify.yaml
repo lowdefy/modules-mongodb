@@ -1,0 +1,51 @@
+type: qualify
+kind: form
+action_group: g1
+sort_order: 10
+description: Confirm the lead's contact details and capture qualification notes.
+access:
+  demo:
+    - edit
+    - view
+  roles:
+    - admin
+form:
+  - key: contact_name
+    component: text_input
+    title: Contact name
+    required: true
+  - key: notes
+    component: text_area
+    title: Qualification notes
+interactions:
+  submit_edit:
+    status: done
+hooks:
+  submit_edit:
+    pre:
+      routine:
+        _ref: modules/workflows/workflow_config/onboarding/hooks/qualify-pre-submit.yaml
+status_map:
+  action-required:
+    demo:
+      message: Qualify the lead.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-qualify-edit
+            module: workflows
+        urlQuery:
+          action_id: true
+  in-progress:
+    demo:
+      message: Qualifying the lead.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-qualify-view
+            module: workflows
+        urlQuery:
+          action_id: true
+  done:
+    demo:
+      message: Lead qualified.

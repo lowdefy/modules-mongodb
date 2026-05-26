@@ -23,80 +23,77 @@ blocks:
   - id: entity_workflows
     type: List
     blocks:
-      - _ref:
-          path: components/workflow-header.yaml
-          vars:
-            id: entity_workflows.$.workflow_header
-            workflow:
-              _state: entity_workflows.$
-            collapsed_default:
-              _eq:
-                - _state: entity_workflows.$.status.0.stage
-                - completed
-            is_overview_page: false
-            blocks:
-              - id: entity_workflows.$.action_steps
-                type: ActionSteps
-                properties:
-                  direction: vertical
-                  actionGroupConfig:
-                    _js:
-                      args:
-                        workflow:
-                          _state: entity_workflows.$
-                        workflowsConfig:
-                          _module.var: workflows_config
-                        groupOverviewPageId:
-                          _module.pageId: group-overview
-                      fn: |
-                        const { workflow, workflowsConfig, groupOverviewPageId } = args;
-                        const wfConfig = (workflowsConfig || []).find(
-                          (w) => w.type === workflow.workflow_type
-                        ) || {};
-                        const groupsDef = wfConfig.action_groups || [];
-                        const config = {};
-                        groupsDef.forEach((g, i) => {
-                          config[g.id] = {
-                            order: i,
-                            title: g.title,
-                            link: {
-                              pageId: groupOverviewPageId,
-                              urlQuery: { workflow_id: workflow._id, group_id: g.id },
-                            },
-                          };
-                          if (g.icon) config[g.id].icon = g.icon;
-                        });
-                        return config;
-                  items:
-                    _js:
-                      args:
-                        workflow:
-                          _state: entity_workflows.$
-                        appName:
-                          _module.var: app_name
-                      fn: |
-                        const { workflow, appName } = args;
-                        return (workflow.groups || []).map((group) => {
-                          const groupActions = (workflow.actions || [])
-                            .filter((a) => a.action_group === group.id)
-                            .sort((a, b) => {
-                              const so =
-                                (a.sort_order ?? 0) - (b.sort_order ?? 0);
-                              if (so !== 0) return so;
-                              return (a._id || "").localeCompare(b._id || "");
-                            });
-                          const actions = groupActions.map((a) => {
-                            const stage =
-                              a.status && a.status[0] && a.status[0].stage;
-                            const cell =
-                              (a.status_map &&
-                                a.status_map[stage] &&
-                                a.status_map[stage][appName]) ||
-                              {};
-                            const out = { status: stage };
-                            if (cell.message) out.message = cell.message;
-                            if (cell.link) out.link = cell.link;
-                            return out;
-                          });
-                          return { action_group: group.id, actions };
-                        });
+      - id: entity_workflows.$.title
+        type: Html
+        layout:
+          flex: 1 1 auto
+        properties:
+          html:
+            _nunjucks:
+              template: '<h2>{{ title }}</h2>'
+              on:
+                title:
+                  _get:
+                    from:
+                      _ref: components/workflows_config.yaml
+                    key:
+                      _string.concat:
+                        - _state: entity_workflows.$.workflow_type
+                        - '.title'
+                    default: Workflow Progress
+      - id: workflow_overview_tooltip
+        type: Tooltip
+        layout:
+          flex: 0 0 auto
+        properties:
+          title: Workflow Overview
+        blocks:
+          - id: workflow_overview
+            type: Button
+            properties:
+              icon: LuWorkflow
+              hideTitle: true
+            events:
+              onClick:
+                - id: link_to_overview
+                  type: Link
+                  params:
+                    pageId:
+                      _module.pageId: workflow-overview
+                    urlQuery:
+                      workflow_id:
+                        _state: entity_workflows.$._id
+      - id: entity_workflows.$.action_steps
+        type: ActionSteps
+        properties:
+          direction: vertical
+          actionGroupConfig:
+            _js:
+              args:
+                workflow:
+                  _state: entity_workflows.$
+                workflowsConfig:
+                  _module.var: workflows_config
+                groupOverviewPageId:
+                  _module.pageId: group-overview
+              fn: |
+                const { workflow, workflowsConfig, groupOverviewPageId } = args;
+                const wfConfig = (workflowsConfig || []).find(
+                  (w) => w.type === workflow.workflow_type
+                ) || {};
+                const groupsDef = wfConfig.action_groups || [];
+                const config = {};
+                groupsDef.forEach((g, i) => {
+                  config[g.id] = {
+                    order: i,
+                    title: g.title,
+                    link: {
+                      pageId: groupOverviewPageId,
+                      urlQuery: { workflow_id: workflow._id, group_id: g.id },
+                    },
+                  };
+                  if (g.icon) config[g.id].icon = g.icon;
+                });
+                return config;
+          items:
+            _state: entity_workflows.$.actions

@@ -1,0 +1,38 @@
+type: schedule-followup
+kind: task
+action_group: g2
+sort_order: 20
+description: Schedule a follow-up call with the lead within a week of qualification.
+access:
+  demo:
+    - edit
+    - view
+  roles:
+    - admin
+status_map:
+  blocked:
+    demo:
+      message: Awaiting qualification.
+  action-required:
+    demo:
+      message: Schedule the follow-up call.
+      link:
+        pageId:
+          _module.pageId:
+            id: task-edit
+            module: workflows
+        urlQuery:
+          action_id: true
+  in-progress:
+    demo:
+      message: Follow-up scheduled.
+      link:
+        pageId:
+          _module.pageId:
+            id: task-edit
+            module: workflows
+        urlQuery:
+          action_id: true
+  done:
+    demo:
+      message: Follow-up complete.

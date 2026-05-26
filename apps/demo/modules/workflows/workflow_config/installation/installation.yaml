@@ -1,4 +1,5 @@
 type: installation
+title: Installation
 entity_collection: leads-collection
 display_order: 2
 
@@ -8,6 +9,8 @@ starting_actions:
 
 action_groups:
   - id: g1
+    title: Group 1
+    icon: GrDocumentText
 
 actions:
   - _ref: modules/workflows/workflow_config/installation/install-step.yaml

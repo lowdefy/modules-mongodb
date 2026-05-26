@@ -19,16 +19,56 @@ routine:
 
         - $lookup:
             from: actions
-            let:
-              workflowId: $_id
-            pipeline:
-              - $match:
-                  $expr:
-                    $eq:
-                      - $workflow_id
-                      - $$workflowId
-              - _ref: api/stages/access_filter.yaml
+            localField: _id
+            foreignField: workflow_id
             as: actions
+            pipeline:
+              - $addFields:
+                  status:
+                    $arrayElemAt:
+                      - $status.stage
+                      - 0
+              - $addFields:
+                  required_sort:
+                    $cond:
+                      - $eq:
+                          - $status
+                          - 'not-required'
+                      - 1
+                      - 0
+                  sort:
+                    $cond:
+                      - $eq:
+                          - $status
+                          - 'not-required'
+                      - 1
+                      - $sort_order
+              - $sort:
+                  required_sort: 1
+                  sort: 1
+                  created.timestamp: 1
+              - $group:
+                  _id: $action_group
+                  action_group:
+                    $first: $action_group
+                  workflow_type:
+                    $first: $workflow_type
+                  workflow_id:
+                    $first: $workflow_id
+                  actions:
+                    $push:
+                      type: $type
+                      status: $status
+                      message:
+                        _string.concat:
+                          - $
+                          - _module.var: app_name
+                          - .message
+                      link:
+                        _string.concat:
+                          - $
+                          - _module.var: app_name
+                          - .link
 
   - :return:
       workflows:

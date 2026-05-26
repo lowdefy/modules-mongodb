@@ -1,6 +1,6 @@
 # Per-workflow strip with title, lifecycle badge, summary counts, milestone
-# label, workflow-overview link button, and a collapsible slot for caller-passed
-# blocks. Used internally by actions-on-entity (inside a List) and by
+# label, workflow-overview link button, and a slot for caller-passed blocks.
+# Used internally by actions-on-entity (inside a List) and by
 # workflow-overview / group-overview (standalone).
 #
 # Required vars:
@@ -11,29 +11,16 @@
 #   workflow      — object. The workflow doc (with status, summary, groups, etc).
 #
 # Optional vars:
-#   collapsed_default — boolean. Initial collapsed state (default false).
-#   is_overview_page  — boolean. Hides the workflow-overview link button when true.
-#   blocks            — array. Caller-passed blocks rendered in the collapsible slot.
+#   is_overview_page — boolean. Hides the workflow-overview link button when true.
+#   blocks           — array. Caller-passed blocks rendered in the slot.
 id:
   _build.string.concat:
     - _var: id
 type: Box
-events:
-  onMount:
-    - id: prime_collapsed
-      type: SetState
-      params:
-        _object.fromEntries:
-          - - - _string.concat:
-                  - _var: id
-                  - .collapsed
-              - _if:
-                  test:
-                    _eq:
-                      - _var: collapsed_default
-                      - true
-                  then: true
-                  else: false
+visible:
+  _ne:
+    - _var: workflow
+    - null
 layout:
   gap: 8
 blocks:
@@ -44,30 +31,98 @@ blocks:
     type: Box
     layout:
       gap: 8
-      contentAlign: middle
+      align: middle
     blocks:
       - id:
           _build.string.concat:
             - _var: id
-            - .strip.title
-        type: Title
+            - .strip.title_block
+        type: Box
         layout:
+          gap: 2
           flex: 1 1 auto
-        properties:
-          level: 4
-          content:
-            _js:
-              args:
-                workflow:
-                  _var: workflow
-                workflowsConfig:
-                  _module.var: workflows_config
-              fn: |
-                const { workflow, workflowsConfig } = args;
-                const wfConfig = (workflowsConfig || []).find(
-                  (w) => w.type === workflow.workflow_type
-                );
-                return (wfConfig && wfConfig.title) || workflow.workflow_type || "";
+        blocks:
+          - id:
+              _build.string.concat:
+                - _var: id
+                - .strip.title_block.title
+            type: Title
+            properties:
+              level: 4
+              content:
+                _js:
+                  args:
+                    workflow:
+                      _var: workflow
+                    workflowsConfig:
+                      _module.var: workflows_config
+                  fn: |
+                    const { workflow, workflowsConfig } = args;
+                    if (!workflow) return "";
+                    const wfConfig = (workflowsConfig || []).find(
+                      (w) => w.type === workflow.workflow_type
+                    );
+                    return (wfConfig && wfConfig.title) || workflow.workflow_type || "";
+          - id:
+              _build.string.concat:
+                - _var: id
+                - .strip.title_block.summary
+            type: Paragraph
+            properties:
+              type: secondary
+              content:
+                _string.concat:
+                  - ''
+                  - _sum:
+                      - _get:
+                          from:
+                            _var: workflow
+                          key: summary.done
+                          default: 0
+                      - _get:
+                          from:
+                            _var: workflow
+                          key: summary.not_required
+                          default: 0
+                  - ' of '
+                  - _get:
+                      from:
+                        _var: workflow
+                      key: summary.total
+                      default: 0
+                  - ' done'
+          - id:
+              _build.string.concat:
+                - _var: id
+                - .strip.title_block.milestone
+            type: Paragraph
+            properties:
+              type: secondary
+              content:
+                _js:
+                  args:
+                    workflow:
+                      _var: workflow
+                    workflowsConfig:
+                      _module.var: workflows_config
+                  fn: |
+                    const { workflow, workflowsConfig } = args;
+                    if (!workflow) return "";
+                    const wfConfig = (workflowsConfig || []).find(
+                      (w) => w.type === workflow.workflow_type
+                    ) || {};
+                    const groupsDef = wfConfig.action_groups || [];
+                    const groupsByOrder = (workflow.groups || []).map((g) => ({
+                      ...g,
+                      order: groupsDef.findIndex((d) => d.id === g.id),
+                    }));
+                    groupsByOrder.sort((a, b) => a.order - b.order);
+                    const nextGroup = groupsByOrder.find((g) => g.status !== "done");
+                    if (nextGroup) {
+                      const def = groupsDef.find((d) => d.id === nextGroup.id);
+                      return (def && def.title) || nextGroup.id;
+                    }
+                    return wfConfig.title || workflow.workflow_type || "";
       - id:
           _build.string.concat:
             - _var: id
@@ -100,10 +155,12 @@ blocks:
                       _module.pageId: workflow-overview
                     urlQuery:
                       workflow_id:
-                        _get:
-                          from:
-                            _var: workflow
-                          key: _id
+                        _js:
+                          args:
+                            workflow:
+                              _var: workflow
+                          fn: |
+                            return args?.workflow?._id ?? null;
       - id:
           _build.string.concat:
             - _var: id
@@ -138,116 +195,11 @@ blocks:
               fn: |
                 const { stages, stage } = args;
                 return stages?.[stage]?.title;
-      - id:
-          _build.string.concat:
-            - _var: id
-            - .strip.summary
-        type: Paragraph
-        layout:
-          flex: 0 0 auto
-        properties:
-          content:
-            _string.concat:
-              - ''
-              - _sum:
-                  - _get:
-                      from:
-                        _var: workflow
-                      key: summary.done
-                      default: 0
-                  - _get:
-                      from:
-                        _var: workflow
-                      key: summary.not_required
-                      default: 0
-              - ' of '
-              - _get:
-                  from:
-                    _var: workflow
-                  key: summary.total
-                  default: 0
-              - ' done'
-      - id:
-          _build.string.concat:
-            - _var: id
-            - .strip.milestone
-        type: Paragraph
-        layout:
-          flex: 1 1 auto
-        properties:
-          type: secondary
-          content:
-            _js:
-              args:
-                workflow:
-                  _var: workflow
-                workflowsConfig:
-                  _module.var: workflows_config
-              fn: |
-                const { workflow, workflowsConfig } = args;
-                const wfConfig = (workflowsConfig || []).find(
-                  (w) => w.type === workflow.workflow_type
-                ) || {};
-                const groupsDef = wfConfig.action_groups || [];
-                const groupsByOrder = (workflow.groups || []).map((g) => ({
-                  ...g,
-                  order: groupsDef.findIndex((d) => d.id === g.id),
-                }));
-                groupsByOrder.sort((a, b) => a.order - b.order);
-                const nextGroup = groupsByOrder.find((g) => g.status !== "done");
-                if (nextGroup) {
-                  const def = groupsDef.find((d) => d.id === nextGroup.id);
-                  return (def && def.title) || nextGroup.id;
-                }
-                return wfConfig.title || workflow.workflow_type || "";
-      - id:
-          _build.string.concat:
-            - _var: id
-            - .strip.collapse_toggle
-        type: Button
-        layout:
-          flex: 0 0 auto
-        properties:
-          type: link
-          hideTitle: true
-          icon:
-            _if:
-              test:
-                _eq:
-                  - _state:
-                      _string.concat:
-                        - _var: id
-                        - .collapsed
-                  - true
-              then: AiOutlineDown
-              else: AiOutlineUp
-        events:
-          onClick:
-            - id: toggle_collapsed
-              type: SetState
-              params:
-                _object.fromEntries:
-                  - - - _string.concat:
-                          - _var: id
-                          - .collapsed
-                      - _ne:
-                          - _state:
-                              _string.concat:
-                                - _var: id
-                                - .collapsed
-                          - true
   - id:
       _build.string.concat:
         - _var: id
         - .slot
     type: Box
-    visible:
-      _ne:
-        - _state:
-            _string.concat:
-              - _var: id
-              - .collapsed
-        - true
     blocks:
       _var:
         key: blocks

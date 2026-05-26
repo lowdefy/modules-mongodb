@@ -80,7 +80,7 @@ function findApi(apis, id) {
 }
 
 function propsOf(api) {
-  return api.definition.routine[0].properties;
+  return api.routine[0].properties;
 }
 
 test("makeWorkflowApis: worked example emits the expected update-action-* set, no tracker", () => {
@@ -135,11 +135,9 @@ test("makeWorkflowApis: hook Api emission with synthesized auth.roles", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const hook = findApi(apis, "update-action-qualify-submit_edit-pre");
   expect(hook).toBeDefined();
-  expect(hook.definition.type).toBe("Api");
-  expect(hook.definition.auth).toEqual({ roles: ["account-manager"] });
-  expect(hook.definition.routine).toEqual([
-    { id: "x", type: "MongoDBFindOne" },
-  ]);
+  expect(hook.type).toBe("Api");
+  expect(hook.auth).toEqual({ roles: ["account-manager"] });
+  expect(hook.routine).toEqual([{ id: "x", type: "MongoDBFindOne" }]);
 });
 
 test("makeWorkflowApis: group on_complete Api emission with union of access.roles", () => {
@@ -149,13 +147,11 @@ test("makeWorkflowApis: group on_complete Api emission with union of access.role
     "workflow-onboarding-group-phase-1-on-complete"
   );
   expect(onComplete).toBeDefined();
-  expect(onComplete.definition.type).toBe("Api");
-  expect(onComplete.definition.auth.roles.sort()).toEqual(
+  expect(onComplete.type).toBe("Api");
+  expect(onComplete.auth.roles.sort()).toEqual(
     ["account-manager", "ops-lead"].sort()
   );
-  expect(onComplete.definition.routine).toEqual([
-    { id: "notify", type: "CallApi" },
-  ]);
+  expect(onComplete.routine).toEqual([{ id: "notify", type: "CallApi" }]);
 });
 
 test("makeWorkflowApis: on_complete auth.roles dedupes across actions sharing roles", () => {
@@ -190,7 +186,7 @@ test("makeWorkflowApis: on_complete auth.roles dedupes across actions sharing ro
     apis,
     "workflow-onboarding-group-phase-1-on-complete"
   );
-  expect(onComplete.definition.auth).toEqual({ roles: ["account-manager"] });
+  expect(onComplete.auth).toEqual({ roles: ["account-manager"] });
 });
 
 test("makeWorkflowApis: empty roles pass through verbatim", () => {
@@ -220,12 +216,12 @@ test("makeWorkflowApis: empty roles pass through verbatim", () => {
   };
   const apis = makeWorkflowApis(null, { workflows: [workflow] });
   const hook = findApi(apis, "update-action-a-submit_edit-pre");
-  expect(hook.definition.auth).toEqual({ roles: [] });
+  expect(hook.auth).toEqual({ roles: [] });
   const onComplete = findApi(
     apis,
     "workflow-onboarding-group-phase-1-on-complete"
   );
-  expect(onComplete.definition.auth).toEqual({ roles: [] });
+  expect(onComplete.auth).toEqual({ roles: [] });
 });
 
 test("makeWorkflowApis: event_overrides carries the four-tuple", () => {
@@ -253,8 +249,8 @@ test("makeWorkflowApis: emitted endpoint properties contain no force slot", () =
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   for (const api of apis.filter((a) => a.id.startsWith("update-action-"))) {
     // Only action endpoints have routine[0].properties.
-    if (api.definition.routine?.[0]?.properties) {
-      expect(api.definition.routine[0].properties).not.toHaveProperty("force");
+    if (api.routine?.[0]?.properties) {
+      expect(api.routine[0].properties).not.toHaveProperty("force");
     }
   }
 });

@@ -1,0 +1,49 @@
+type: proof-of-installation
+kind: form
+key: $device_serial
+action_group: g3
+sort_order: 10
+blocked_by:
+  - send-quote
+description: Capture proof of installation for each device.
+access:
+  demo:
+    - edit
+    - view
+  roles:
+    - admin
+form:
+  - key: device_serial
+    component: text_input
+    title: Device serial
+    required: true
+  - key: installation_photo
+    component: file_upload
+    title: Installation photo
+status_map:
+  blocked:
+    demo:
+      message: Awaiting quote approval.
+  action-required:
+    demo:
+      message: Capture proof of installation.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-proof-of-installation-edit
+            module: workflows
+        urlQuery:
+          action_id: true
+  in-progress:
+    demo:
+      message: Installation in progress.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-proof-of-installation-view
+            module: workflows
+        urlQuery:
+          action_id: true
+  done:
+    demo:
+      message: Installation verified.

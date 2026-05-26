@@ -29,10 +29,10 @@ _ref:
         default: 750
     requests:
       _build.array.concat:
-        - - _ref: ../requests/get_action.yaml
-          - _ref: ../requests/get_workflow.yaml
+        - - _ref: requests/get_action.yaml
+          - _ref: requests/get_workflow.yaml
           - _ref:
-              path: ../requests/get_entity.yaml.njk
+              path: requests/get_entity.yaml.njk
               vars:
                 entity_collection: {{ entity_collection }}
         - _var:
@@ -65,7 +65,7 @@ _ref:
               params: get_entity
             # Step 6: role check — sets _state.action_allowed.
             - _ref:
-                path: ../components/action_role_check.yaml
+                path: components/action_role_check.yaml
                 vars:
                   action_config:
                     _var: action_config
@@ -90,38 +90,37 @@ _ref:
               key: page_config.events.onMount
               default: []
     blocks:
-      - _ref:
-          module: layout
-          component: card
-          vars:
-            hide_title: true
-            blocks:
-              _build.array.concat:
-                - _var:
-                    key: page_config.formHeader
-                    default: []
-                - - _ref:
-                      path: ../components/universal-fields/universal-fields.yaml
-                      vars:
-                        mode: display
-                        kind: form
-                        action_data:
-                          assignees:
-                            _request: get_action.assignees
-                          due_date:
-                            _request: get_action.due_date
-                          description:
-                            _request: get_action.description
-                - - id: form_body
-                    type: DataDescriptions
-                    properties:
-                      formConfig:
-                        _var: action_config.form
-                      data:
-                        form:
-                          _state: form
-                        entity:
-                          _request: get_entity
-                - _var:
-                    key: page_config.formFooter
-                    default: []
+      - id: form_card
+        type: Card
+        layout:
+          gap: 16
+        blocks:
+          _build.array.concat:
+            - _var:
+                key: page_config.formHeader
+                default: []
+            - - _ref:
+                  path: components/universal-fields/universal-fields.yaml
+                  vars:
+                    mode: display
+                    kind: form
+                    action_data:
+                      assignees:
+                        _request: get_action.assignees
+                      due_date:
+                        _request: get_action.due_date
+                      description:
+                        _request: get_action.description
+            - - id: form_body
+                type: DataDescriptions
+                properties:
+                  formConfig:
+                    _var: action_config.form
+                  data:
+                    form:
+                      _state: form
+                    entity:
+                      _request: get_entity
+            - _var:
+                key: page_config.formFooter
+                default: []

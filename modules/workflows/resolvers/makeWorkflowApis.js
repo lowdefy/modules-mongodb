@@ -11,11 +11,9 @@ const EVENT_OVERRIDE_FIELDS = ['type', 'display', 'references', 'metadata'];
 function emitHookApi(action, interaction, phase, body) {
   return {
     id: `update-action-${action.type}-${interaction}-${phase}`,
-    definition: {
-      type: 'Api',
-      auth: { roles: [...(action.access?.roles ?? [])] },
-      routine: body.routine,
-    },
+    type: 'Api',
+    auth: { roles: [...(action.access?.roles ?? [])] },
+    routine: body.routine,
   };
 }
 
@@ -85,27 +83,25 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMa
 
   return {
     id: `update-action-${action.type}`,
-    definition: {
-      type: 'Api',
-      routine: [
-        {
-          id: 'submit',
-          type: 'SubmitWorkflowAction',
-          connectionId: { '_module.connectionId': 'workflow-api' },
-          properties,
+    type: 'Api',
+    routine: [
+      {
+        id: 'submit',
+        type: 'SubmitWorkflowAction',
+        connectionId: { '_module.connectionId': 'workflow-api' },
+        properties,
+      },
+      {
+        ':return': {
+          action_ids: { _step: 'submit.action_ids' },
+          completed_groups: { _step: 'submit.completed_groups' },
+          event_id: { _step: 'submit.event_id' },
+          tracker_fired: { _step: 'submit.tracker_fired' },
+          pre_hook_response: { _step: 'submit.pre_hook_response' },
+          post_hook_response: { _step: 'submit.post_hook_response' },
         },
-        {
-          ':return': {
-            action_ids: { _step: 'submit.action_ids' },
-            completed_groups: { _step: 'submit.completed_groups' },
-            event_id: { _step: 'submit.event_id' },
-            tracker_fired: { _step: 'submit.tracker_fired' },
-            pre_hook_response: { _step: 'submit.pre_hook_response' },
-            post_hook_response: { _step: 'submit.post_hook_response' },
-          },
-        },
-      ],
-    },
+      },
+    ],
   };
 }
 
@@ -119,11 +115,9 @@ function emitGroupOnCompleteApi(workflow, group) {
   ];
   return {
     id: `workflow-${workflow.type}-group-${group.id}-on-complete`,
-    definition: {
-      type: 'Api',
-      auth: { roles },
-      routine: group.on_complete.routine,
-    },
+    type: 'Api',
+    auth: { roles },
+    routine: group.on_complete.routine,
   };
 }
 
