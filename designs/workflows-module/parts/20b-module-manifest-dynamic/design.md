@@ -2,7 +2,7 @@
 
 > **⚠️ Deviation from original design — substantive rework required before implementation.**
 >
-> [Part 02](../02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The two YAML snippets in "Manifest scope — dynamic surface only" below (the `_ref: { resolver: ..., vars: ... }` shape under `exports.pages` and `exports.api`) **no longer match the upstream API.** The replacement: the manifest's `pages:` / `api:` arrays use `_build.array.map` over `_module.var: workflows_config` directly — no `exports:` block, no resolver-channel entry. Concrete YAML shape needs to be pinned against a real build when task 3 of parts 12/13 lands.
+> [Part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The two YAML snippets in "Manifest scope — dynamic surface only" below (the `_ref: { resolver: ..., vars: ... }` shape under `exports.pages` and `exports.api`) **no longer match the upstream API.** The replacement: the manifest's `pages:` / `api:` arrays use `_build.array.map` over `_module.var: workflows_config` directly — no `exports:` block, no resolver-channel entry. Concrete YAML shape needs to be pinned against a real build when task 3 of parts 12/13 lands.
 >
 > Scope unaffected: the demo wiring half (qualify / send-quote / schedule-followup / proof-of-installation YAML, the three hook APIs, lead-view link updates).
 >
@@ -10,7 +10,7 @@
 
 **Source rationale:** [workflows-module-concept/module-surface/spec.md](../../../workflows-module-concept/module-surface/spec.md). **Layer:** surface. **Size:** S. **Repo:** `modules/workflows/` + `apps/demo/`.
 
-Split from the original Part 20. This half lands the manifest entries that depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../_completed/01-call-api-primitive/design.md) and [part 02 (dynamic module page exports)](../02-dynamic-module-pages/design.md), plus the form-action and task-action demo flows that need those primitives. The static surface — connections, shared pages, operational APIs, components, enums — ships in [part 20a](../20a-module-manifest-static/design.md).
+Split from the original Part 20. This half lands the manifest entries that depend on the upstream Lowdefy extensions in [part 01 (`callApi`)](../_completed/01-call-api-primitive/design.md) and [part 02 (dynamic module page exports)](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md), plus the form-action and task-action demo flows that need those primitives. The static surface — connections, shared pages, operational APIs, components, enums — ships in [part 20a](../20a-module-manifest-static/design.md).
 
 After this part lands the v1 feature set is live end-to-end against the [concept worked example](../../../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs).
 
@@ -20,7 +20,7 @@ Extend `module.lowdefy.yaml` (shipped by [part 20a](../20a-module-manifest-stati
 
 ## Proposed change
 
-1. Extend `modules/workflows/module.lowdefy.yaml` with two resolver-channel entries — `makeActionPages` under `exports.pages` and `makeWorkflowApis` under `exports.api` — using the [part 02](../02-dynamic-module-pages/design.md) shape.
+1. Extend `modules/workflows/module.lowdefy.yaml` with two resolver-channel entries — `makeActionPages` under `exports.pages` and `makeWorkflowApis` under `exports.api` — using the [part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) shape.
 2. Extend `apps/demo/workflow_config/onboarding/` from the tracker-only variant ([part 20a](../20a-module-manifest-static/design.md)) into the four-action worked example — adding `qualify` (form), `schedule-followup` (task), and `proof-of-installation` (form, keyed by device) alongside the existing `track-installation` (tracker).
 3. Author the worked-example pre/post hook APIs (`qualify-pre-submit.yaml`, `send-quote-pre-submit.yaml`, `send-quote-post-approve.yaml`) under `apps/demo/workflow_config/onboarding/api/` and wire them into the action YAML's `hooks:` blocks.
 4. Update `modules/workflows/README.md` to drop the "shipped in part 20b" pointer and list the per-action resolver-emitted exports inline.
@@ -32,7 +32,7 @@ This half adds **only** the two resolver-channel entries under `exports.pages` a
 
 ### `exports.pages` — resolver channel
 
-Per the [concept module-surface spec](../../../workflows-module-concept/module-surface/spec.md), the dynamic entry rides the [part 02](../02-dynamic-module-pages/design.md) shape. Concrete syntax pinned during part 02 implementation; expected form:
+Per the [concept module-surface spec](../../../workflows-module-concept/module-surface/spec.md), the dynamic entry rides the [part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) shape. Concrete syntax pinned during part 02 implementation; expected form:
 
 ```yaml
 pages:
@@ -106,7 +106,7 @@ After this part lands, the demo walks through every bullet from the [concept wor
 
 - [Part 20a](../20a-module-manifest-static/design.md) — the static manifest entries this part extends.
 - [Part 01](../_completed/01-call-api-primitive/design.md) — `context.callApi` primitive. Required at runtime for the per-action endpoint's hook invocation, side-effect dispatch, log-event emission, and group `on_complete` fan-out.
-- [Part 02](../02-dynamic-module-pages/design.md) — dynamic page (and likely api) exports channel. Required for the two resolver entries this part lands.
+- [Part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) — dynamic page (and likely api) exports channel. Required for the two resolver entries this part lands.
 - [Part 12](../12-resolver-pages/design.md) — `makeActionPages` resolver.
 - [Part 13](../13-resolver-apis/design.md) — `makeWorkflowApis` resolver.
 - [Part 14](../14-form-components-library/design.md) — form components used in `qualify.yaml` / `send-quote.yaml` form blocks.
@@ -133,7 +133,7 @@ After this part lands, the demo walks through every bullet from the [concept wor
 
 ## Open questions
 
-- **Exact channel shape for `exports.api`.** [Part 02](../02-dynamic-module-pages/design.md) leaves "whether `exports.api` rides on the same channel" as an open question. Confirm during 20b implementation; manifest changes here are minor either way.
+- **Exact channel shape for `exports.api`.** [Part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) leaves "whether `exports.api` rides on the same channel" as an open question. Confirm during 20b implementation; manifest changes here are minor either way.
 - **Whether 20b ships in one PR.** Three resolver-emitted pages + three resolver-emitted endpoints + four new YAML action files + three hook APIs is more surface than the original Part 20's S sizing. If 20a closes out cleanly, 20b may earn its own M sizing on first review.
 
 ## Related

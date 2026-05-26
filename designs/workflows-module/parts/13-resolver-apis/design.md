@@ -2,7 +2,7 @@
 
 > **⚠️ Deviation from original design — read before implementing task 3.**
 >
-> [Part 02](../02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The resolver logic in this part (tasks 1–2, already shipped — emission of `update-action-{action_type}`, inline-routine hook APIs, and group `on_complete` APIs) is unaffected. **What changes is task 3 (manifest wiring):** instead of a `resolver:` channel entry under `exports.api`, the manifest's `api:` array invokes the resolver from `_build.array.map` over `_module.var: workflows_config` (concrete shape pinned in [part 20b](../20b-module-manifest-dynamic/design.md) when task 3 lands). The "Upstream dependency" subsection below and the open question about a parallel `exports.api` channel are dissolved.
+> [Part 02](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The resolver logic in this part (tasks 1–2, already shipped — emission of `update-action-{action_type}`, inline-routine hook APIs, and group `on_complete` APIs) is unaffected. **What changes is task 3 (manifest wiring):** instead of a `resolver:` channel entry under `exports.api`, the manifest's `api:` array invokes the resolver from `_build.array.map` over `_module.var: workflows_config` (concrete shape pinned in [part 20b](../20b-module-manifest-dynamic/design.md) when task 3 lands). The "Upstream dependency" subsection below and the open question about a parallel `exports.api` channel are dissolved.
 
 **Source rationale:** [workflows-module-concept/action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md), [workflows-module-concept/submit-pipeline/spec.md](../../../workflows-module-concept/submit-pipeline/spec.md). **Layer:** resolvers. **Size:** M. **Repo:** `modules/workflows/resolvers/`.
 
@@ -75,7 +75,7 @@ Like [part 12](../12-resolver-pages/design.md), this resolver emits dynamic expo
 
 ## Depends on
 
-[Part 2](../02-dynamic-module-pages/design.md) (or a parallel API-resolver channel), [part 6](../06-submit-action-writes/design.md) (so the endpoint payload shape matches what the handler accepts). [Part 4](../04-workflow-config-schema/design.md) validates the YAML this resolver consumes but its normalized output is not consumed here — the resolver reads `vars.workflows_config` directly.
+[Part 2](designs/workflows-module/parts/_completed/02-dynamic-module-pages/design.md) (or a parallel API-resolver channel), [part 6](../06-submit-action-writes/design.md) (so the endpoint payload shape matches what the handler accepts). [Part 4](../04-workflow-config-schema/design.md) validates the YAML this resolver consumes but its normalized output is not consumed here — the resolver reads `vars.workflows_config` directly.
 
 ## Verification
 
