@@ -6,6 +6,24 @@ Monorepo of reusable Lowdefy modules backed by MongoDB.
 
 Never use client names in design documents, commits, or any content tracked in git. Use generic terms — "an existing app", "existing solutions", "production apps". If a design requires app-specific configuration details (e.g., extracting code from a specific app), add a single anonymous reference at the top of the design file and use that name throughout. Designs that don't need app-specific config (e.g., performance improvements) should not reference specific apps at all.
 
+## Designs
+
+**Designs are the source of truth.** Code implements designs; when they disagree, update the design first or flag the mismatch.
+
+Designs under `designs/_completed/` are already implemented — treat as read-only history. Add notes documenting deviations if helpful, but handle any changes in a new design/task.
+
+Never move design folders into `_completed/` unless the user explicitly requests it.
+
+**Resolve the open question; don't defer it.** When a design or review surfaces a verifiable factual question ("does this operator behave X or Y?", "what does the SDK do on conflict?", "is this block prop supported?"), answer it now — vendor docs, open-source source, a tiny probe — and bake the verified answer into the design/task. Don't punt with "verify at code time" or "spike during implementation" unless the answer genuinely requires running code in a real environment. Pushing the work down the line means the same question gets re-asked later by someone with less context, or the implementer guesses and the design ships on an unverified assumption.
+
+## Principles
+
+**One correct way.** Prefer APIs, manifests, and shared components that enforce the pattern mechanically over conventions that rely on each caller remembering to follow them. Opt-in correctness drifts; mandatory wrappers don't. Favour this even when it means a bit more scaffolding up front — understanding multiple implementations costs more than writing one.
+
+**Check the docs before spiking.** If a question is "how does this operator behave?" or "what does this block prop do?", search the Lowdefy / AgGrid / MongoDB docs first — it's usually faster and more reliable than a code spike or a live probe. Spikes are for things the docs can't answer (real runtime behaviour, integration quirks).
+
+**Build for what exists, not what might.** Every speculative `var`, slot, flag, condition, or abstraction is design surface you owe forever. Don't add module vars, optional slots, `when:`-style branches, or "what if this fails?" wrappers until a second concrete need has actually surfaced. This applies double to agent-driven changes: "extra checks and features" added to look thorough are the most common source of accidental complexity. Three identical modules beat one module with three variants; a component that handles the cases you've seen beats one that handles cases you've imagined.
+
 ## Project Structure
 
 ```
