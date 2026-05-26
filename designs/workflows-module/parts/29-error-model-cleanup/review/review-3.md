@@ -104,6 +104,8 @@ Two consequences:
 
 ### 5. FYI — the catch-converter has a latent bug the cleanup retires for free
 
+> **Rejected.** The catch-converter is deleted in Task 5; the case-mismatch has no post-change surface. Mentioning it in D1/D2a would add noise without informational value. Leaving unmentioned per the reviewer's "alternatively, just leave it unmentioned" option.
+
 [`handleSubmit.js:309`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) reads `err.metadata ?? null` when building `error_transition.error_metadata`. The shipped `UserError` (verified at [`UserError.js:24`](../../../../../lowdefy/packages/utils/errors/src/UserError.js)) carries diagnostic data on `this.metaData = metaData` — capital D. A `UserError` reaching the catch-converter would have its `metaData` silently dropped from `error_transition.error_metadata`; the field would always be `null` for any `:throw`-shaped error from a pre-hook. (`:reject` doesn't reach the catch-converter today, but `:throw` could.)
 
 Not a blocker for Part 29 — the catch-converter is being deleted entirely (Change 1 + Task 5). But worth a one-line acknowledgement somewhere in D1 or D2a that the cleanup also retires this case-mismatch wart, so a reader doing forensic git-blame later doesn't re-discover it as a fresh bug. Alternatively, just leave it unmentioned — it dies with the catch-converter and has no surface after the change. Reviewer's call.
