@@ -1349,6 +1349,641 @@ test("part 10 step 10: auto-complete with valid parent_action_id → non-empty t
   expect(tracker.status[0].stage).toBe("done");
 });
 
+// ---------------------------------------------------------------------------
+// Part 9 — pre-hook (step 2) integration tests.
+// ---------------------------------------------------------------------------
+
+function makeHookCallApi({ hookResponses = {}, throwForHook } = {}) {
+  return jest.fn(async ({ id, module }, _payload, _opts) => {
+    if (module === "workflows" && Object.prototype.hasOwnProperty.call(hookResponses, id)) {
+      return hookResponses[id];
+    }
+    if (module === "workflows" && throwForHook && throwForHook.id === id) {
+      throw throwForHook.error;
+    }
+    // Default for non-hook callApi (events, notifications) — wrapped shape.
+    return { success: true, response: {} };
+  });
+}
+
+test("part 9: pre-hook status overrides YAML override which overrides engine default (three-layer)", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": { status: "done" },
+    },
+  });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+        // YAML override would map submit_edit → in-review; pre-hook beats it.
+        interactions: { submit_edit: { status: "in-review" } },
+      },
+      callApi,
+    }),
+  );
+
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done");
+  expect(result.pre_hook_response).toEqual({ status: "done" });
+});
+
+test("part 9: YAML override wins over engine default when no pre-hook declared", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        // qualify has no `review` verb → engine default would be done; YAML lifts it.
+        interactions: { submit_edit: { status: "in-review" } },
+      },
+    }),
+  );
+
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("in-review");
+});
+
+test("part 9: pre-hook actions[] (type, key) collision replaces auto-unblock", async () => {
+  // Submit qualify → done; without a pre-hook, send-quote auto-unblocks to
+  // action-required. The pre-hook should override and push send-quote to done
+  // with force (since priority would block done <- blocked).
+  await seedWorkflow();
+  await seedAction({ _id: "a-qualify", type: "qualify", stage: "done" });
+  await seedAction({ _id: "a-quote", type: "send-quote", stage: "blocked" });
+
+  const blockedConfig = {
+    ...onboardingWorkflowConfig,
+    actions: onboardingWorkflowConfig.actions.map((a) =>
+      a.type === "send-quote" ? { ...a, blocked_by: ["qualify"] } : a,
+    ),
+  };
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": {
+        actions: [
+          { type: "send-quote", status: "in-review" },
+        ],
+      },
+    },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [blockedConfig],
+      params: {
+        action_id: "a-qualify",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+      },
+      callApi,
+    }),
+  );
+
+  // Auto-unblock would have produced action-required; pre-hook replaced with in-review.
+  const quote = await mongo.db.collection("actions").findOne({ _id: "a-quote" });
+  expect(quote.status[0].stage).toBe("in-review");
+});
+
+test("part 9: pre-hook actions[] entry colliding with currentActionId omits status → resolved status grafted in", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": {
+        // No status, no current_key — collides with currentActionEntry at (qualify, null).
+        actions: [{ type: "qualify", fields: { tag: "hooked" } }],
+      },
+    },
+  });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+      },
+      callApi,
+    }),
+  );
+
+  // Submitted action lands at engine-default 'done' (no YAML, no pre-hook status).
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done");
+  expect(result.action_ids).toContain("a1");
+});
+
+test("part 9: pre-hook actions[] with force: true bypasses priority rule", async () => {
+  await seedWorkflow();
+  // qualify is done; pre-hook wants to push it back to action-required (a
+  // backwards transition normally blocked by priority).
+  await seedAction({ _id: "a1", type: "qualify", stage: "done" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": {
+        actions: [
+          {
+            type: "qualify",
+            status: "action-required",
+            force: true,
+          },
+        ],
+      },
+    },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+      },
+      callApi,
+    }),
+  );
+
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("action-required");
+});
+
+test("part 9: pre-hook actions[] without force: backwards transition on non-self action is silently dropped per priority rule", async () => {
+  // User submits qualify (the currentActionId); pre-hook ALSO returns an entry
+  // for send-quote, which is already done. No force; no self-exception (the
+  // entry isn't for the currentActionId). Priority rule rejects the write.
+  await seedWorkflow();
+  await seedAction({ _id: "a-qualify", type: "qualify", stage: "action-required" });
+  await seedAction({ _id: "a-quote", type: "send-quote", stage: "done" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": {
+        actions: [{ type: "send-quote", status: "action-required" }],
+      },
+    },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a-qualify",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+      },
+      callApi,
+    }),
+  );
+
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a-quote" });
+  expect(doc.status[0].stage).toBe("done");
+});
+
+test("part 9: pre-hook form_overrides + user form write both field paths", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": { form_overrides: { a: 1 } },
+    },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+        form: { b: 2 },
+      },
+      callApi,
+    }),
+  );
+
+  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
+  expect(wf.form_data.qualify).toEqual({ a: 1, b: 2 });
+});
+
+test("part 9: pre-hook event_overrides merges metadata; default metadata preserved", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": { event_overrides: { metadata: { scrubbed: true } } },
+    },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+      },
+      callApi,
+    }),
+  );
+
+  const newEventCall = callApi.mock.calls.find(
+    ([endpoint]) => endpoint.id === "new-event",
+  );
+  expect(newEventCall).toBeDefined();
+  const [, payload] = newEventCall;
+  expect(payload.metadata.scrubbed).toBe(true);
+  expect(payload.metadata.action_type).toBe("qualify");
+});
+
+test("part 9: pre-hook event_overrides.metadata.comment overrides user-supplied params.comment", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": { event_overrides: { metadata: { comment: "SCRUBBED" } } },
+    },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+        comment: "hello",
+      },
+      callApi,
+    }),
+  );
+
+  const newEventCall = callApi.mock.calls.find(
+    ([endpoint]) => endpoint.id === "new-event",
+  );
+  const [, payload] = newEventCall;
+  expect(payload.metadata.comment).toBe("SCRUBBED");
+});
+
+test("part 9: YAML event_overrides.metadata.foo coexists with user comment (layer 3 not clobbered)", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = makeHookCallApi();
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        comment: "hello",
+        event_overrides: {
+          submit_edit: { metadata: { foo: "bar" } },
+        },
+      },
+      callApi,
+    }),
+  );
+
+  const newEventCall = callApi.mock.calls.find(
+    ([endpoint]) => endpoint.id === "new-event",
+  );
+  const [, payload] = newEventCall;
+  expect(payload.metadata.foo).toBe("bar");
+  expect(payload.metadata.comment).toBe("hello");
+});
+
+test("part 9: pre-hook :reject (UserError isReject: true) rethrows; no writes; no event/notification", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  class UserError extends Error {
+    constructor(message, opts) {
+      super(message);
+      this.name = "UserError";
+      this.isReject = opts?.isReject ?? false;
+    }
+  }
+  const reject = new UserError("validation failed", { isReject: true });
+
+  const callApi = makeHookCallApi({
+    throwForHook: { id: "h-pre", error: reject },
+  });
+
+  await expect(
+    handleSubmit(
+      makeContext({
+        workflowsConfig: [onboardingWorkflowConfig],
+        params: {
+          action_id: "a1",
+          interaction: "submit_edit",
+          hooks: { submit_edit: { pre: "h-pre" } },
+        },
+        callApi,
+      }),
+    ),
+  ).rejects.toBe(reject);
+
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("action-required");
+  expect(doc.status).toHaveLength(1);
+  expect(
+    callApi.mock.calls.some(([endpoint]) => endpoint.id === "new-event"),
+  ).toBe(false);
+  expect(
+    callApi.mock.calls.some(([endpoint]) => endpoint.id === "send-notification"),
+  ).toBe(false);
+});
+
+test("part 9: pre-hook generic throw rethrows; no writes; status unchanged", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const callApi = makeHookCallApi({
+    throwForHook: { id: "h-pre", error: new Error("upstream down") },
+  });
+
+  await expect(
+    handleSubmit(
+      makeContext({
+        workflowsConfig: [onboardingWorkflowConfig],
+        params: {
+          action_id: "a1",
+          interaction: "submit_edit",
+          hooks: { submit_edit: { pre: "h-pre" } },
+        },
+        callApi,
+      }),
+    ),
+  ).rejects.toThrow("upstream down");
+
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("action-required");
+});
+
+test("part 9: pre-hook actions: [{ status: 'error' }] writes error transition via priority path; log event + notifications fire", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": { actions: [{ type: "qualify", status: "error" }] },
+    },
+  });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+      },
+      callApi,
+    }),
+  );
+
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("error");
+  // Side effects still fire (this is a successful submit, not an error path).
+  expect(
+    callApi.mock.calls.some(([endpoint]) => endpoint.id === "new-event"),
+  ).toBe(true);
+  expect(
+    callApi.mock.calls.some(([endpoint]) => endpoint.id === "send-notification"),
+  ).toBe(true);
+  expect(result.event_id).toBe("event-1");
+});
+
+test("part 9: pre_hook_response surfaces raw return verbatim", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const response = { status: "done", actions: [], custom_field: "x" };
+  const callApi = makeHookCallApi({
+    hookResponses: { "h-pre": response },
+  });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { pre: "h-pre" } },
+      },
+      callApi,
+    }),
+  );
+
+  expect(result.pre_hook_response).toEqual(response);
+});
+
+test("part 9: pre_hook_response is null when no pre-hook declared", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+    }),
+  );
+
+  expect(result.pre_hook_response).toBeNull();
+});
+
+// ---------------------------------------------------------------------------
+// Part 9 — post-hook (step 11) integration tests.
+// ---------------------------------------------------------------------------
+
+test("part 9: post_hook_response is null when no post-hook declared", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: { action_id: "a1", interaction: "submit_edit" },
+    }),
+  );
+
+  expect(result.post_hook_response).toBeNull();
+});
+
+test("part 9: post_hook_response surfaces raw return verbatim", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-post": { foo: "bar" },
+    },
+  });
+
+  const result = await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { post: "h-post" } },
+      },
+      callApi,
+    }),
+  );
+
+  expect(result.post_hook_response).toEqual({ foo: "bar" });
+});
+
+test("part 9: post-hook receives result with final post-write state (action_ids, event_id, tracker_fired)", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: { "h-post": {} },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { post: "h-post" } },
+      },
+      callApi,
+    }),
+  );
+
+  const postCall = callApi.mock.calls.find(
+    ([endpoint]) => endpoint.id === "h-post",
+  );
+  expect(postCall).toBeDefined();
+  const [, payload] = postCall;
+  expect(payload.result).toMatchObject({
+    action_ids: ["a1"],
+    event_id: "event-1",
+    completed_groups: [],
+  });
+  expect(payload.result.tracker_fired).toEqual([]);
+});
+
+test("part 9: post-hook fires AFTER tracker subscription (call ordering)", async () => {
+  // Set up a parent/child tracker so step 10 actually fires a tracker
+  // subscription. The post-hook callApi must appear after tracker writes have
+  // happened.
+  await mongo.db.collection("workflows").insertOne({
+    _id: "wf-parent",
+    workflow_type: "onboarding",
+    entity_id: "lead-parent",
+    entity_collection: "leads-collection",
+    status: [{ stage: "active", created: new Date() }],
+    summary: { done: 0, not_required: 0, total: 0 },
+    groups: [],
+    form_data: {},
+  });
+  await mongo.db.collection("actions").insertOne({
+    _id: "p-tracker",
+    workflow_id: "wf-parent",
+    type: "send-quote",
+    kind: "tracker",
+    key: null,
+    child_workflow_id: "wf-1",
+    status: [{ stage: "in-progress", created: new Date() }],
+  });
+  await mongo.db.collection("workflows").insertOne({
+    _id: "wf-1",
+    workflow_type: "onboarding",
+    entity_id: "lead-1",
+    entity_collection: "leads-collection",
+    parent_action_id: "p-tracker",
+    status: [{ stage: "active", created: new Date() }],
+    summary: { done: 0, not_required: 0, total: 0 },
+    groups: [],
+    form_data: {},
+  });
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const callApi = makeHookCallApi({
+    hookResponses: { "h-post": {} },
+  });
+
+  await handleSubmit(
+    makeContext({
+      workflowsConfig: [onboardingWorkflowConfig],
+      params: {
+        action_id: "a1",
+        interaction: "submit_edit",
+        hooks: { submit_edit: { post: "h-post" } },
+      },
+      callApi,
+    }),
+  );
+
+  const ids = callApi.mock.calls.map(([endpoint]) => endpoint.id);
+  // dispatchLogEvent (new-event) and dispatchNotifications (send-notification)
+  // fire in steps 7+8 before tracker subscription / post-hook. fireTrackerSubscription
+  // does not go through callApi, so the post-hook call appears after the
+  // notification but reflects tracker_fired in its payload.result.
+  const postIdx = ids.lastIndexOf("h-post");
+  const notifIdx = ids.lastIndexOf("send-notification");
+  expect(postIdx).toBeGreaterThan(notifIdx);
+
+  const postCall = callApi.mock.calls[postIdx];
+  expect(postCall[1].result.tracker_fired).toHaveLength(1);
+  expect(postCall[1].result.tracker_fired[0]).toMatchObject({
+    parent_action_id: "p-tracker",
+  });
+});
+
+test("part 9: post-hook throw propagates; writes from steps 4-10 stay", async () => {
+  await seedWorkflow();
+  await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+
+  const callApi = makeHookCallApi({
+    throwForHook: { id: "h-post", error: new Error("post-hook boom") },
+  });
+
+  await expect(
+    handleSubmit(
+      makeContext({
+        workflowsConfig: [onboardingWorkflowConfig],
+        params: {
+          action_id: "a1",
+          interaction: "submit_edit",
+          hooks: { submit_edit: { post: "h-post" } },
+        },
+        callApi,
+      }),
+    ),
+  ).rejects.toThrow("post-hook boom");
+
+  // Step 4 writes landed (action moved to 'done') despite the post-hook throw.
+  const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
+  expect(doc.status[0].stage).toBe("done");
+});
+
 test("part 10 step 10: error path retains tracker_fired:null; subscription not called", async () => {
   await seedWorkflow();
   await seedAction({ _id: "a-quote", type: "send-quote", stage: "action-required" });

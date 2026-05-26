@@ -123,22 +123,37 @@ describe("buildDefaultLogEventPayload", () => {
     );
     expect(result.metadata.status_before).toBe("action-required");
   });
+
+  test("metadata.comment is set when comment is a non-empty string", () => {
+    const result = buildDefaultLogEventPayload(
+      baseArgs({ comment: "looks good" }),
+    );
+    expect(result.metadata.comment).toBe("looks good");
+  });
+
+  test("metadata.comment is omitted when comment is null", () => {
+    const result = buildDefaultLogEventPayload(baseArgs({ comment: null }));
+    expect(result.metadata).not.toHaveProperty("comment");
+  });
+
+  test("metadata.comment is omitted when comment is an empty string", () => {
+    const result = buildDefaultLogEventPayload(baseArgs({ comment: "" }));
+    expect(result.metadata).not.toHaveProperty("comment");
+  });
+
+  test("metadata.comment is omitted when comment is undefined", () => {
+    const result = buildDefaultLogEventPayload(
+      baseArgs({ comment: undefined }),
+    );
+    expect(result.metadata).not.toHaveProperty("comment");
+  });
 });
 
 describe("dispatchLogEvent", () => {
-  function makeContext({ callApi, connection, eventId } = {}) {
+  function makeContext({ callApi, eventId } = {}) {
     return {
-      workflow: {
-        _id: "W1",
-        workflow_type: "onboarding",
-        entity_id: "L1",
-        entity_collection: "leads-collection",
-      },
-      action: { _id: "A1", type: "qualify", key: null },
-      actionConfig: { kind: "form", access: { roles: ["account-manager"] } },
       user: { id: "u1", profile: { name: "Test User" }, roles: ["admin"] },
       eventId: eventId ?? "EV-1",
-      connection: connection ?? { app_name: "demo" },
       callApi:
         callApi ??
         jest.fn(async () => ({
@@ -148,18 +163,29 @@ describe("dispatchLogEvent", () => {
     };
   }
 
-  const inputBag = {
-    interaction: "submit_edit",
-    current_key: null,
-    status_before: "action-required",
-    status_after: "done",
+  const samplePayload = {
+    type: "action-submit_edit",
+    display: { demo: { title: { _nunjucks: { template: "t" } } } },
+    references: {
+      workflow_ids: ["W1"],
+      action_ids: ["A1"],
+      leads_ids: ["L1"],
+    },
+    metadata: {
+      action_type: "qualify",
+      workflow_type: "onboarding",
+      interaction: "submit_edit",
+      current_key: null,
+      status_before: "action-required",
+      status_after: "done",
+    },
   };
 
   test("calls callApi with the new-event endpoint reference", async () => {
     const callApi = jest.fn(async () => ({ success: true, response: {} }));
     const context = makeContext({ callApi });
 
-    await dispatchLogEvent(context, inputBag);
+    await dispatchLogEvent(context, samplePayload);
 
     expect(callApi).toHaveBeenCalledTimes(1);
     const [endpoint] = callApi.mock.calls[0];
@@ -170,37 +196,24 @@ describe("dispatchLogEvent", () => {
     const callApi = jest.fn(async () => ({ success: true, response: {} }));
     const context = makeContext({ callApi, eventId: "EV-99" });
 
-    await dispatchLogEvent(context, inputBag);
+    await dispatchLogEvent(context, samplePayload);
 
     const [, payload] = callApi.mock.calls[0];
     expect(payload._id).toBe("EV-99");
     expect(payload.type).toBe("action-submit_edit");
-    expect(payload.display).toBeDefined();
-    expect(payload.references).toBeDefined();
-    expect(payload.metadata).toBeDefined();
+    expect(payload.display).toEqual(samplePayload.display);
+    expect(payload.references).toEqual(samplePayload.references);
+    expect(payload.metadata).toEqual(samplePayload.metadata);
   });
 
   test("passes user via options", async () => {
     const callApi = jest.fn(async () => ({ success: true, response: {} }));
     const context = makeContext({ callApi });
 
-    await dispatchLogEvent(context, inputBag);
+    await dispatchLogEvent(context, samplePayload);
 
     const [, , options] = callApi.mock.calls[0];
     expect(options).toEqual({ user: context.user });
-  });
-
-  test("reads appName from context.connection.app_name", async () => {
-    const callApi = jest.fn(async () => ({ success: true, response: {} }));
-    const context = makeContext({
-      callApi,
-      connection: { app_name: "fixture-app" },
-    });
-
-    await dispatchLogEvent(context, inputBag);
-
-    const [, payload] = callApi.mock.calls[0];
-    expect(payload.display["fixture-app"]).toBeDefined();
   });
 
   test("returns context.eventId, ignoring callApi response eventId", async () => {
@@ -210,7 +223,7 @@ describe("dispatchLogEvent", () => {
     }));
     const context = makeContext({ callApi, eventId: "EV-CORRECT" });
 
-    const result = await dispatchLogEvent(context, inputBag);
+    const result = await dispatchLogEvent(context, samplePayload);
 
     expect(result).toBe("EV-CORRECT");
   });
@@ -222,10 +235,26 @@ describe("dispatchLogEvent", () => {
     }));
     const context = makeContext({ callApi });
 
-    await expect(dispatchLogEvent(context, inputBag)).rejects.toMatchObject({
+    await expect(
+      dispatchLogEvent(context, samplePayload),
+    ).rejects.toMatchObject({
       message: expect.stringMatching(/new-event failed: insert failed/),
       step: "dispatch-log-event",
       cause: { message: "insert failed" },
     });
+  });
+
+  test("passes through the payload unchanged (no mutation, no rebuild)", async () => {
+    const callApi = jest.fn(async () => ({ success: true, response: {} }));
+    const context = makeContext({ callApi });
+
+    const customised = {
+      ...samplePayload,
+      metadata: { ...samplePayload.metadata, comment: "from-handler" },
+    };
+    await dispatchLogEvent(context, customised);
+
+    const [, payload] = callApi.mock.calls[0];
+    expect(payload.metadata.comment).toBe("from-handler");
   });
 });

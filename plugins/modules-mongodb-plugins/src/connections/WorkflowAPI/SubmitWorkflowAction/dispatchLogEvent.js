@@ -4,24 +4,34 @@ const DEFAULT_TITLE_TEMPLATE =
   "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}";
 
 /**
- * Assemble the default log-event payload.
+ * Assemble the default log-event payload (Part 9's four-layer merge layer 1 + 3).
  *
  * Pure function — no context, no I/O. Returns the unkeyed
  * `{ type, display, references, metadata }` shape per
  * designs/workflows-module-concept/submit-pipeline/spec.md § Default log event.
  *
- * Part 9 imports this as the bottom layer of its three-layer event_overrides
- * merge (engine default < YAML override < pre-hook override).
+ * Layer ordering for Part 9's event_overrides four-layer merge:
+ *   1. Engine default                       ← this function (without comment)
+ *   3. Runtime `comment` from params        ← this function folds it into metadata.comment
+ *   2. YAML `event_overrides[interaction]`  ← mergeEventOverrides applies on top
+ *   4. Pre-hook `event_overrides`           ← mergeEventOverrides applies last
+ *
+ * Layer 3 is intentionally folded into layer 1 here so a YAML override that
+ * touches other metadata.* fields cannot clobber the user's comment. The
+ * separate merge function (mergeEventOverrides.js) must NOT re-inject comment
+ * — doing so would double-inject.
  *
  * @param {object} args
- * @param {object} args.workflow         - context.workflow (has _id, workflow_type, entity_id, entity_collection)
- * @param {object} args.action           - context.action (has _id, type, key)
- * @param {object} args.actionConfig     - context.actionConfig (kind, access, etc.)
- * @param {string} args.interaction      - one of submit_edit | not_required | resolve_error | approve | request_changes
- * @param {string|null} args.current_key - per-submit key or null for non-keyed
- * @param {string|null} args.status_before - pre-step-4 action.status[0].stage
- * @param {string} args.status_after     - engine-resolved targetStatus
- * @param {string} args.appName - connection.app_name (required; throws if missing)
+ * @param {object} args.workflow
+ * @param {object} args.action
+ * @param {object} args.actionConfig
+ * @param {string} args.interaction
+ * @param {string|null} args.current_key
+ * @param {string|null} args.status_before
+ * @param {string} args.status_after
+ * @param {string} args.appName
+ * @param {string|null} [args.comment] - user-supplied free-text comment; written to
+ *   metadata.comment when a non-empty string; key omitted when falsy.
  * @returns {{ type: string, display: object, references: object, metadata: object }}
  */
 export function buildDefaultLogEventPayload({
@@ -35,6 +45,7 @@ export function buildDefaultLogEventPayload({
   status_before,
   status_after,
   appName,
+  comment,
 }) {
   if (typeof appName !== "string" || appName.length === 0) {
     throw new Error(
@@ -43,6 +54,18 @@ export function buildDefaultLogEventPayload({
     );
   }
   const refKey = deriveEntityRefKey(workflow.entity_collection);
+
+  const metadata = {
+    action_type: action.type,
+    workflow_type: workflow.workflow_type,
+    interaction,
+    current_key: current_key ?? null,
+    status_before: status_before ?? null,
+    status_after,
+  };
+  if (typeof comment === "string" && comment.length > 0) {
+    metadata.comment = comment;
+  }
 
   return {
     type: `action-${interaction}`,
@@ -61,47 +84,26 @@ export function buildDefaultLogEventPayload({
       action_ids: [action._id],
       [refKey]: [workflow.entity_id],
     },
-    metadata: {
-      action_type: action.type,
-      workflow_type: workflow.workflow_type,
-      interaction,
-      current_key: current_key ?? null,
-      status_before: status_before ?? null,
-      status_after,
-    },
+    metadata,
   };
 }
 
 /**
- * Dispatch the default log event for the just-completed submit.
+ * Dispatch the log event for the just-completed submit.
  *
- * Builds the default payload via `buildDefaultLogEventPayload`, passes
- * `_id: context.eventId` so the event doc's `_id` matches every action's
- * `status[0].event_id` (engine spec § Client and transaction model:
- * "one id per invocation"). Fires `context.callApi` to the events module's
- * `new-event` Api.
+ * Accepts a fully-composed payload from the handler (Part 9 builds the
+ * default via `buildDefaultLogEventPayload` and merges YAML + pre-hook
+ * overrides on top via `mergeEventOverrides`). Passes `_id: context.eventId`
+ * so the event doc's `_id` matches every action's `status[0].event_id`
+ * (engine spec § Client and transaction model: "one id per invocation").
  *
- * Returns `context.eventId` for the response payload — no round-trip
- * dependency on `new-event`'s return.
+ * Returns `context.eventId` — no round-trip dependency on `new-event`'s return.
  *
- * @param {object} context - handler context (must carry workflow, action,
- *   actionConfig, user, eventId, connection, callApi)
- * @param {object} inputBag - log-event inputs captured at step 1 of handleSubmit:
- *   { interaction, current_key, status_before, status_after }
+ * @param {object} context
+ * @param {{ type: string, display: object, references: object, metadata: object }} payload
  * @returns {Promise<string>} eventId (= context.eventId)
  */
-async function dispatchLogEvent(context, inputBag) {
-  const payload = buildDefaultLogEventPayload({
-    workflow: context.workflow,
-    action: context.action,
-    actionConfig: context.actionConfig,
-    interaction: inputBag.interaction,
-    current_key: inputBag.current_key,
-    status_before: inputBag.status_before,
-    status_after: inputBag.status_after,
-    appName: context.connection?.app_name,
-  });
-
+async function dispatchLogEvent(context, payload) {
   const result = await context.callApi(
     { id: "new-event", module: "events" },
     { _id: context.eventId, ...payload },

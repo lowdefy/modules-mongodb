@@ -1,10 +1,19 @@
+import createAction from "../../shared/createAction.js";
 import getActions from "../../shared/getActions.js";
 import recomputeWorkflowAfterActionWrite from "../../shared/recomputeWorkflowAfterActionWrite.js";
 import updateAction from "../../shared/updateAction.js";
 import computeAutoUnblocks from "./computeAutoUnblocks.js";
-import dispatchLogEvent from "./dispatchLogEvent.js";
+import dispatchLogEvent, {
+  buildDefaultLogEventPayload,
+} from "./dispatchLogEvent.js";
 import dispatchNotifications from "./dispatchNotifications.js";
 import fireTrackerSubscription from "./fireTrackerSubscription.js";
+import invokePostHook from "./invokePostHook.js";
+import invokePreHook from "./invokePreHook.js";
+import mergeEventOverrides from "./mergeEventOverrides.js";
+import mergeFormOverrides from "./mergeFormOverrides.js";
+import mergePreHookActions from "./mergePreHookActions.js";
+import resolveTargetStatus from "./resolveTargetStatus.js";
 import getCurrentAction from "./utils/getCurrentAction.js";
 
 function findMatchingActionDocs({ workflowActions, type, key }) {
@@ -18,45 +27,18 @@ function findMatchingActionDocs({ workflowActions, type, key }) {
 }
 
 /**
- * Resolve the engine-default target status for the user-submitted action.
- * Inlined for v1 (single call site). Part 9 will extract when YAML and
- * pre-hook override layers are introduced.
- */
-function resolveTargetStatus({ interaction, actionConfig, params }) {
-  const hasReviewVerb = Object.values(actionConfig.access ?? {})
-    .filter((v) => Array.isArray(v))
-    .some((verbs) => verbs.includes("review"));
-
-  switch (interaction) {
-    case "submit_edit":
-      if (actionConfig.kind === "task") {
-        if (typeof params.current_status !== "string") {
-          throw new Error(
-            "SubmitWorkflowAction: task submit_edit requires caller-supplied current_status",
-          );
-        }
-        return params.current_status;
-      }
-      return hasReviewVerb ? "in-review" : "done";
-    case "not_required":
-      return "not-required";
-    case "resolve_error":
-      return hasReviewVerb ? "in-review" : "done";
-    case "approve":
-      return "done";
-    case "request_changes":
-      return "changes-required";
-    default:
-      throw new Error(`SubmitWorkflowAction: unknown interaction "${interaction}"`);
-  }
-}
-
-/**
  * Orchestrate the SubmitWorkflowAction lifecycle.
  *
- * 11 steps per submit-pipeline/spec.md § Flow. Only steps 1, 3, 4, 5, 6 have
- * working bodies in part 6. Steps 2, 7, 8, 9, 10, 11 are no-op stubs with
- * TODO markers pointing at the parts that light them up.
+ * 11 steps per submit-pipeline/spec.md § Flow. Parts 6 + 9 implement steps
+ * 1–8 + 10 + 11; step 9 (group on_complete fan-out) lands in part 11.
+ *
+ * Pre-hook (step 2) sits OUTSIDE the mid-write try/catch at steps 4–6 so
+ * throws — including `:reject` (UserError with isReject: true) — propagate
+ * transparently before any writes happen (Part 29 § D5/D6).
+ *
+ * The mid-write try/catch is unchanged from pre-Part-9. It will be removed
+ * by Part 29 Task 5, at which point the `error_transition` field on the
+ * success return shape disappears.
  *
  * @param {Object} context
  * @returns {Promise<{
@@ -75,20 +57,29 @@ async function handleSubmit(context) {
   if (typeof params.action_id !== "string" || params.action_id.length === 0) {
     throw new Error("SubmitWorkflowAction: action_id is required");
   }
-  if (typeof params.interaction !== "string" || params.interaction.length === 0) {
+  if (
+    typeof params.interaction !== "string" ||
+    params.interaction.length === 0
+  ) {
     throw new Error("SubmitWorkflowAction: interaction is required");
   }
 
-  const action = await getCurrentAction(context, { actionId: params.action_id });
+  const action = await getCurrentAction(context, {
+    actionId: params.action_id,
+  });
   if (!action) {
-    throw new Error(`SubmitWorkflowAction: action ${params.action_id} not found`);
+    throw new Error(
+      `SubmitWorkflowAction: action ${params.action_id} not found`,
+    );
   }
 
   const workflow = await context
     .mongoDBConnection("workflows")
     .MongoDBFindOne({ query: { _id: action.workflow_id } });
   if (!workflow) {
-    throw new Error(`SubmitWorkflowAction: workflow ${action.workflow_id} not found`);
+    throw new Error(
+      `SubmitWorkflowAction: workflow ${action.workflow_id} not found`,
+    );
   }
 
   const workflowConfig = (context.workflowsConfig ?? []).find(
@@ -101,7 +92,9 @@ async function handleSubmit(context) {
   }
   context.actionsConfig = workflowConfig.actions ?? [];
 
-  const actionConfig = context.actionsConfig.find((cfg) => cfg.type === action.type);
+  const actionConfig = context.actionsConfig.find(
+    (cfg) => cfg.type === action.type,
+  );
   if (!actionConfig) {
     throw new Error(
       `SubmitWorkflowAction: action type "${action.type}" not in workflow "${workflow.workflow_type}" config`,
@@ -133,39 +126,58 @@ async function handleSubmit(context) {
     );
   }
 
-  const targetStatus = resolveTargetStatus({
+  // Resolve target status with layers 1 (engine default) + 2 (YAML). Layer 3
+  // (pre-hook return) is grafted in after step 2 below.
+  const initialTargetStatus = resolveTargetStatus({
     interaction: params.interaction,
     actionConfig,
     params,
+    yamlInteractions: params.interactions,
   });
 
-  // Capture log-event inputs before step 4 mutates context.workflowActions
-  // in-memory. status_before reads from the pre-write stage; status_after is
-  // the engine-resolved target. → part 8 dispatchLogEvent.
   const logEventInputBag = {
     interaction: params.interaction,
     current_key: params.current_key ?? null,
     status_before: context.action.status?.[0]?.stage ?? null,
-    status_after: targetStatus,
+    status_after: initialTargetStatus,
+    comment: params.comment ?? null,
+  };
+
+  const currentActionEntry = {
+    type: action.type,
+    status: initialTargetStatus,
+    keys: params.current_key ? [params.current_key] : undefined,
+    fields: params.fields,
   };
 
   const internal = {
     currentActionId: action._id,
-    actions: [
-      {
-        type: action.type,
-        status: targetStatus,
-        keys: params.current_key ? [params.current_key] : undefined,
-        fields: params.fields,
-      },
-    ],
+    actions: [currentActionEntry],
     eventId: context.eventId,
   };
 
-  // Step 2 — Pre-hook. → part 9.
+  // Step 2 — Pre-hook. Outside the mid-write try/catch so throws (including
+  // :reject as UserError with isReject: true) propagate transparently before
+  // any writes happen.
+  const preHookResponse = await invokePreHook(context);
+
+  // Re-resolve target status now that the pre-hook has had a chance to
+  // contribute layer 3.
+  const resolvedTargetStatus = resolveTargetStatus({
+    interaction: params.interaction,
+    actionConfig,
+    params,
+    yamlInteractions: params.interactions,
+    preHookStatus: preHookResponse?.status,
+  });
+  currentActionEntry.status = resolvedTargetStatus;
+  logEventInputBag.status_after = resolvedTargetStatus;
 
   // Step 3 — Compute auto-unblocks (mixed action types + group ids).
-  const workflowActions = await getActions(context.mongoDBConnection, context.workflow._id);
+  const workflowActions = await getActions(
+    context.mongoDBConnection,
+    context.workflow._id,
+  );
   context.workflowActions = workflowActions;
   const autoUnblockEntries = computeAutoUnblocks({
     workflowActions,
@@ -173,10 +185,12 @@ async function handleSubmit(context) {
     groups: context.workflow.groups ?? [],
     declaredGroups: workflowConfig.action_groups ?? [],
   });
-  // PART 9 EXTENSION: pre-hook returned actions[] entries merge here, taking
-  // precedence over auto-unblock entries on (type, key) collision. v1 has no
-  // pre-hook entries, so the append-only flow below is sufficient.
-  internal.actions.push(...autoUnblockEntries);
+  internal.actions = mergePreHookActions({
+    currentActionEntry,
+    autoUnblockEntries,
+    preHookActions: preHookResponse?.actions,
+    resolvedStatus: resolvedTargetStatus,
+  });
 
   const actionIds = [];
   let completedGroups = [];
@@ -194,11 +208,23 @@ async function handleSubmit(context) {
         });
 
         if (matchingDocs.length === 0) {
-          // PART 9 EXTENSION: pre-hook entries with `upsert: true` land in part 9;
-          // the create branch goes here (call `shouldCreate(entry, matchingDocs)`;
-          // if true, call `createAction` from `../../shared/createAction.js` and
-          // append the new doc's id to actionIds + workflowActions). v1 has no
-          // upsert entries — silently skip per `keys: []` semantics.
+          if (entry.upsert === true) {
+            const newDoc = createAction(context, {
+              workflow: context.workflow,
+              action: {
+                type: entry.type,
+                key,
+                status: entry.status,
+                fields: entry.fields,
+              },
+              eventId: context.eventId,
+            });
+            await context
+              .mongoDBConnection("actions")
+              .MongoDBInsertOne({ doc: newDoc });
+            actionIds.push(newDoc._id);
+            context.workflowActions.push(newDoc);
+          }
           continue;
         }
 
@@ -239,7 +265,10 @@ async function handleSubmit(context) {
     // Always include the user-submitted action id in the returned set, even if
     // its write no-op'd due to priority rule. Matches v0's posture so downstream
     // consumers (parts 16/18) get the submitted id back.
-    if (internal.currentActionId && !actionIds.includes(internal.currentActionId)) {
+    if (
+      internal.currentActionId &&
+      !actionIds.includes(internal.currentActionId)
+    ) {
       actionIds.push(internal.currentActionId);
     }
 
@@ -270,14 +299,13 @@ async function handleSubmit(context) {
       }
     }
 
-    // Step 6 — Write form_data (merge form + form_review, $set per-field).
-    const formMerged = {
-      ...(context.params.form ?? {}),
-      ...(context.params.form_review ?? {}),
-    };
-    // PART 9 EXTENSION: part 9's pre-hook `form_overrides` merges on top of
-    // formMerged here. Pre-hook overrides win on field collision; skipped
-    // entirely when hook_error is set.
+    // Step 6 — Write form_data (merge form + form_review + pre-hook overrides
+    // at the field-path level, $set per-field).
+    const formMerged = mergeFormOverrides({
+      form: context.params.form,
+      formReview: context.params.form_review,
+      preHookOverrides: preHookResponse?.form_overrides,
+    });
 
     if (Object.keys(formMerged).length > 0) {
       const formDataPathPrefix = context.params.current_key
@@ -303,13 +331,14 @@ async function handleSubmit(context) {
     // Force-push the error transition onto the user-submitted action.
     // Per engine/spec.md § Action `error` transition: bypasses priority rule;
     // skips remaining lifecycle work; returns partial.
+    // Removal of this catch is owned by Part 29 Task 5 — see Part 9 design
+    // § Mid-write catch — known inconsistency window.
     const errorTransition = {
       reason: err.step ?? "mid-write",
       error_message: err.message,
       error_metadata: err.metadata ?? null,
     };
 
-    // PART 9: hook_error path takes the same shape but with reason: 'pre-hook'.
     await updateAction(context, {
       actionId: internal.currentActionId,
       newStage: "error",
@@ -319,23 +348,41 @@ async function handleSubmit(context) {
       force: true,
     });
 
-    // Skip steps 7-11 (no-ops in v1; the early return makes it explicit and
-    // protects parts 7-11 once they wire bodies in).
+    // Skip steps 7-11.
     return {
       action_ids: actionIds,
       completed_groups: [],
       event_id: null,
       tracker_fired: null,
-      pre_hook_response: null,
+      pre_hook_response: preHookResponse,
       post_hook_response: null,
       error_transition: errorTransition,
     };
   }
 
-  // Step 7 — Generate log event.
+  // Step 7 — Generate log event. Four-layer merge: engine default (incl.
+  // runtime comment via buildDefaultLogEventPayload) → YAML override →
+  // pre-hook override.
+  const defaultEventPayload = buildDefaultLogEventPayload({
+    workflow: context.workflow,
+    action: context.action,
+    actionConfig: context.actionConfig,
+    interaction: logEventInputBag.interaction,
+    current_key: logEventInputBag.current_key,
+    status_before: logEventInputBag.status_before,
+    status_after: logEventInputBag.status_after,
+    appName: context.connection?.app_name,
+    comment: logEventInputBag.comment,
+  });
+  const mergedEventPayload = mergeEventOverrides({
+    defaultPayload: defaultEventPayload,
+    yamlOverride: params.event_overrides?.[params.interaction],
+    preHookOverride: preHookResponse?.event_overrides,
+  });
+
   let eventId;
   try {
-    eventId = await dispatchLogEvent(context, logEventInputBag);
+    eventId = await dispatchLogEvent(context, mergedEventPayload);
   } catch (err) {
     err.step = err.step ?? "dispatch-log-event";
     throw err;
@@ -361,15 +408,22 @@ async function handleSubmit(context) {
     });
   }
 
-  // Step 11 — Post-hook. → part 9.
+  // Step 11 — Post-hook. Throws propagate; writes from steps 4–10 stay
+  // (deliberately non-atomic). Authors must make post-hooks idempotent.
+  const postHookResponse = await invokePostHook(context, {
+    action_ids: actionIds,
+    completed_groups: completedGroups,
+    event_id: eventId,
+    tracker_fired: trackerFired,
+  });
 
   return {
     action_ids: actionIds,
     completed_groups: completedGroups,
     event_id: eventId,
     tracker_fired: trackerFired,
-    pre_hook_response: null,
-    post_hook_response: null,
+    pre_hook_response: preHookResponse,
+    post_hook_response: postHookResponse,
   };
 }
 
