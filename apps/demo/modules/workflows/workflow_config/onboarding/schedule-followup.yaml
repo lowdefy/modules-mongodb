@@ -21,6 +21,7 @@ status_map:
           _module.pageId:
             id: task-edit
             module: workflows
+        title: Schedule Follow-up
         urlQuery:
           action_id: true
   in-progress:
@@ -31,6 +32,7 @@ status_map:
           _module.pageId:
             id: task-edit
             module: workflows
+        title: Schedule Follow-up
         urlQuery:
           action_id: true
   done:

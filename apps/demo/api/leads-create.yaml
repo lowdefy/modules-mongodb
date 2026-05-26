@@ -20,6 +20,26 @@ routine:
           _ref:
             module: events
             component: change_stamp
+  - id: log_lead_created
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: new-event
+          module: events
+      payload:
+        type: create-lead
+        display:
+          demo:
+            title:
+              _nunjucks:
+                template: '{{ name }} created'
+                on:
+                  name:
+                    _payload: name
+        references:
+          lead_ids:
+            - _payload: _id
   - :return:
       _id:
         _payload: _id

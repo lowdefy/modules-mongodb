@@ -12,23 +12,6 @@ _ref:
         pageId: lead-list
       - label:
           _request: get_lead.0.name
-    page_actions:
-      - id: edit_btn
-        type: Button
-        layout:
-          flex: 0 1 auto
-        properties:
-          title: Edit
-          icon: AiOutlineEdit
-        events:
-          onClick:
-            - id: go_edit
-              type: Link
-              params:
-                pageId: lead-edit
-                urlQuery:
-                  _id:
-                    _url_query: _id
     events:
       onMount:
         - id: fetch
@@ -81,7 +64,7 @@ _ref:
           - id: workflows_column
             type: Box
             layout:
-              span: 10
+              span: 8
               sm:
                 span: 24
             blocks:
@@ -91,17 +74,96 @@ _ref:
                   vars:
                     title: Workflows
                     blocks:
-                      - _ref:
-                          module: workflows
-                          component: actions-on-entity
-                          vars:
-                            entity_id:
-                              _url_query: _id
-                            entity_collection: leads-collection
+                      - id: workflows_card_body
+                        type: Box
+                        layout:
+                          gap: 16
+                        blocks:
+                          - _ref:
+                              module: workflows
+                              component: actions-on-entity
+                              vars:
+                                entity_id:
+                                  _url_query: _id
+                                entity_collection: leads-collection
+                          - id: start_onboarding_btn
+                            type: Button
+                            visible:
+                              _eq:
+                                - _state: entity_workflows.length
+                                - 0
+                            layout:
+                              flex: 0 1 auto
+                            properties:
+                              title: Start onboarding
+                              icon: AiOutlinePlayCircle
+                              type: primary
+                            events:
+                              onClick:
+                                _build.array.concat:
+                                  - - id: start
+                                      type: CallAPI
+                                      params:
+                                        endpointId:
+                                          _module.endpointId:
+                                            module: workflows
+                                            id: start-workflow
+                                        payload:
+                                          workflow_type: onboarding
+                                          entity_id:
+                                            _url_query: _id
+                                          entity_collection: leads-collection
+                                      messages:
+                                        success: Onboarding workflow started.
+                                    - id: log_onboarding_started
+                                      type: CallAPI
+                                      params:
+                                        endpointId:
+                                          _module.endpointId:
+                                            module: events
+                                            id: new-event
+                                        payload:
+                                          type: start-onboarding
+                                          display:
+                                            demo:
+                                              title: Onboarding workflow started
+                                          references:
+                                            lead_ids:
+                                              - _url_query: _id
+                                            workflow_ids:
+                                              - _actions: start.response.response.workflow_id
+                                            action_ids:
+                                              _actions: start.response.response.action_ids
+                                    - id: refetch_events
+                                      type: Request
+                                      params: get-events
+                                  - _ref:
+                                      module: workflows
+                                      component: entity-workflows-refetch
+                                      vars:
+                                        entity_id:
+                                          _url_query: _id
+                                        entity_collection: leads-collection
+                                  - - id: recompute_installation_child_id
+                                      type: SetState
+                                      params:
+                                        installation_child_id:
+                                          _js:
+                                            args:
+                                              workflows:
+                                                _state: entity_workflows
+                                            fn: |
+                                              const { workflows } = args;
+                                              const onboarding = (workflows || []).find((w) => w.workflow_type === 'onboarding');
+                                              if (!onboarding) return null;
+                                              const tracker = (onboarding.actions || []).find(
+                                                (a) => a.kind === 'tracker' && a.child_workflow_id
+                                              );
+                                              return (tracker && tracker.child_workflow_id) || null;
           - id: lead_info_column
             type: Box
             layout:
-              span: 14
+              span: 16
               sm:
                 span: 24
               gap: 16
@@ -112,38 +174,27 @@ _ref:
                   vars:
                     title: Lead information
                     blocks:
-                      - id: lead_name_row
-                        type: Box
-                        layout:
-                          gap: 8
-                          align: middle
-                        blocks:
-                          - id: lead_name_label
-                            type: Paragraph
-                            properties:
-                              type: secondary
-                              content: 'Name:'
-                          - id: lead_name_value
-                            type: Paragraph
-                            properties:
-                              content:
-                                _request: get_lead.0.name
-                      - id: lead_email_row
-                        type: Box
-                        layout:
-                          gap: 8
-                          align: middle
-                        blocks:
-                          - id: lead_email_label
-                            type: Paragraph
-                            properties:
-                              type: secondary
-                              content: 'Email:'
-                          - id: lead_email_value
-                            type: Paragraph
-                            properties:
-                              content:
-                                _request: get_lead.0.email
+                      - id: lead_info_fields
+                        type: Html
+                        properties:
+                          html:
+                            _nunjucks:
+                              template: |
+                                <div style="display: flex; flex-direction: column; gap: 8px;">
+                                  <div style="display: flex; gap: 8px; align-items: baseline;">
+                                    <span style="color: rgba(0, 0, 0, 0.45);">Name:</span>
+                                    <span>{{ name }}</span>
+                                  </div>
+                                  <div style="display: flex; gap: 8px; align-items: baseline;">
+                                    <span style="color: rgba(0, 0, 0, 0.45);">Email:</span>
+                                    <span>{{ email }}</span>
+                                  </div>
+                                </div>
+                              on:
+                                name:
+                                  _request: get_lead.0.name
+                                email:
+                                  _request: get_lead.0.email
               - _ref:
                   module: layout
                   component: card
@@ -168,172 +219,6 @@ _ref:
               gap: 8
               align: middle
             blocks:
-              - id: start_onboarding_btn
-                type: Button
-                visible:
-                  _eq:
-                    - _state: entity_workflows.length
-                    - 0
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Start onboarding
-                  icon: AiOutlinePlayCircle
-                  type: primary
-                events:
-                  onClick:
-                    - id: seed_devices
-                      type: SetState
-                      params:
-                        devices:
-                          - device_serial: ''
-                    - id: open_start_onboarding_modal
-                      type: CallMethod
-                      params:
-                        blockId: start_onboarding_modal
-                        method: setOpen
-                        args:
-                          - open: true
-              - id: start_onboarding_modal
-                type: Modal
-                properties:
-                  title: Start onboarding
-                  footer: false
-                  width: 560
-                events:
-                  onCancel:
-                    - id: clear_devices
-                      type: SetState
-                      params:
-                        devices: null
-                slots:
-                  content:
-                    blocks:
-                      - id: start_onboarding_body
-                        type: Box
-                        layout:
-                          gap: 16
-                        blocks:
-                          - id: start_onboarding_intro
-                            type: Paragraph
-                            properties:
-                              type: secondary
-                              content: Add one row per device. Each device gets its own proof-of-installation action.
-                          - id: devices
-                            type: ControlledList
-                            layout:
-                              gap: 8
-                            properties:
-                              title: Devices
-                              minItems: 1
-                            blocks:
-                              - id: devices.$.device_serial
-                                type: TextInput
-                                required: true
-                                properties:
-                                  title: Device serial
-                                  placeholder: e.g. device-001
-                          - id: start_onboarding_actions
-                            type: Box
-                            layout:
-                              gap: 8
-                              justify: end
-                            blocks:
-                              - id: start_onboarding_cancel
-                                type: Button
-                                layout:
-                                  flex: 0 0 auto
-                                properties:
-                                  title: Cancel
-                                  type: default
-                                events:
-                                  onClick:
-                                    - id: close_modal_cancel
-                                      type: CallMethod
-                                      params:
-                                        blockId: start_onboarding_modal
-                                        method: setOpen
-                                        args:
-                                          - open: false
-                                    - id: clear_devices
-                                      type: SetState
-                                      params:
-                                        devices: null
-                              - id: start_onboarding_submit
-                                type: Button
-                                layout:
-                                  flex: 0 0 auto
-                                properties:
-                                  title: Start onboarding
-                                  icon: AiOutlinePlayCircle
-                                  type: primary
-                                events:
-                                  onClick:
-                                    _build.array.concat:
-                                      - - id: validate
-                                          type: Validate
-                                        - id: start
-                                          type: CallAPI
-                                          params:
-                                            endpointId:
-                                              _module.endpointId:
-                                                module: workflows
-                                                id: start-workflow
-                                            payload:
-                                              workflow_type: onboarding
-                                              entity_id:
-                                                _url_query: _id
-                                              entity_collection: leads-collection
-                                              actions:
-                                                _js:
-                                                  args:
-                                                    devices:
-                                                      _state: devices
-                                                  fn: |
-                                                    return (args.devices || [])
-                                                      .filter((row) => row && row.device_serial)
-                                                      .map((row) => ({
-                                                        type: 'proof-of-installation',
-                                                        key: row.device_serial,
-                                                        status: 'blocked',
-                                                        fields: { device_serial: row.device_serial },
-                                                      }));
-                                          messages:
-                                            success: Onboarding workflow started.
-                                      - _ref:
-                                          module: workflows
-                                          component: entity-workflows-refetch
-                                          vars:
-                                            entity_id:
-                                              _url_query: _id
-                                            entity_collection: leads-collection
-                                      - - id: recompute_installation_child_id
-                                          type: SetState
-                                          params:
-                                            installation_child_id:
-                                              _js:
-                                                args:
-                                                  workflows:
-                                                    _state: entity_workflows
-                                                fn: |
-                                                  const { workflows } = args;
-                                                  const onboarding = (workflows || []).find((w) => w.workflow_type === 'onboarding');
-                                                  if (!onboarding) return null;
-                                                  const tracker = (onboarding.actions || []).find(
-                                                    (a) => a.kind === 'tracker' && a.child_workflow_id
-                                                  );
-                                                  return (tracker && tracker.child_workflow_id) || null;
-                                        - id: close_modal_submit
-                                          type: CallMethod
-                                          params:
-                                            blockId: start_onboarding_modal
-                                            method: setOpen
-                                            args:
-                                              - open: false
-                                        - id: clear_devices_after_submit
-                                          type: SetState
-                                          params:
-                                            devices: null
               - id: close_child_btn
                 type: Button
                 layout:

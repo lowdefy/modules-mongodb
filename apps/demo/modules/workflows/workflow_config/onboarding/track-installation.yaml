@@ -24,6 +24,7 @@ status_map:
           _module.pageId:
             id: workflow-overview
             module: workflows
+        title: View Installation Workflow
         urlQuery:
           workflow_id: $child_workflow_id
   done:
@@ -34,6 +35,7 @@ status_map:
           _module.pageId:
             id: workflow-overview
             module: workflows
+        title: View Installation Workflow
         urlQuery:
           workflow_id: $child_workflow_id
   not-required:
