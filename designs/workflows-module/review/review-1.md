@@ -12,7 +12,7 @@ Focus: the design tree references unit tests across ~10 parts but never names th
 
 - [Part 6 design.md:120–126](../parts/06-submit-action-writes/design.md) — "Unit tests on `handleSubmit`: priority rule honored; per-entry `force: true` bypasses…"
 - [Part 7 design.md:63](../parts/07-group-state-machine/design.md) — "Unit tests on `deriveGroupStatus`: table-driven over every status combination."
-- [Part 13 design.md:50–55](../parts/13-resolver-apis/design.md) — "Unit tests: Worked-example onboarding workflow produces `update-action-qualify`…"
+- [Part 13 design.md:50–55](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md) — "Unit tests: Worked-example onboarding workflow produces `update-action-qualify`…"
 - [Part 22 design.md:9](../parts/22-workflows-e2e-suite/design.md) — "The unit-test verification in each engine / resolver / UI part continues to live there. This part is the *integration* layer."
 
 But nowhere in the design tree is it recorded that:

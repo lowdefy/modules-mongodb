@@ -10,7 +10,7 @@ Turn `SubmitWorkflowAction` into the full per-interaction lifecycle: invoke the 
 
 ### `invokePreHook.js`
 
-- Resolves `hooks[interaction].pre` from the endpoint config (baked in by [part 13](../13-resolver-apis/design.md)).
+- Resolves `hooks[interaction].pre` from the endpoint config (baked in by [part 13](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md)).
 - Invokes via `context.callApi({ id: <hook-api-id>, module: <auto-from-resolver-config> }, payload, { user })`.
 - Payload shape:
   - `workflow_id`, `workflow_type`, `action_id`, `action_type`, `current_key`, `interaction`.
@@ -50,11 +50,11 @@ Authors can override the default target status per interaction in YAML (part 4 a
 
 ### Build-time hook auth gate (handed off to part 13)
 
-The auth gate (`hook.auth.roles ⊇ action.access.roles`, reject `auth.public: true`) is a build-time check in [part 13](../13-resolver-apis/design.md). This part assumes that validation; runtime enforcement happens because hooks won't have privileged access to bypass `access.roles` anyway. Document the contract here so the resolver's failure message points at this part for what runtime guarantees.
+The auth gate (`hook.auth.roles ⊇ action.access.roles`, reject `auth.public: true`) is a build-time check in [part 13](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md). This part assumes that validation; runtime enforcement happens because hooks won't have privileged access to bypass `access.roles` anyway. Document the contract here so the resolver's failure message points at this part for what runtime guarantees.
 
 ## Out of scope / deferred
 
-- **`hook.auth.roles` validation** → [part 13](../13-resolver-apis/design.md).
+- **`hook.auth.roles` validation** → [part 13](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md).
 - **Hook payload `context.shallow` flag** for large workflow docs — flagged as a concept open question; defer.
 
 ## Depends on
