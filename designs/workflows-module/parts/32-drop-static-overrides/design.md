@@ -1,45 +1,29 @@
-# Part 32 — Drop static action-YAML overrides; pre-hook is the only override channel
+# Part 32 — Drop static `interactions.status` override; pre-hook is the only status override channel
 
-**Source rationale:** [workflows-module-concept/submit-pipeline/spec.md § Status resolution](../../../workflows-module-concept/submit-pipeline/spec.md), [workflows-module-concept/submit-pipeline/spec.md § Default log event](../../../workflows-module-concept/submit-pipeline/spec.md#default-log-event), revisited under [CLAUDE.md § Principles "One correct way"](../../../../CLAUDE.md). **Layer:** build-time config + resolvers + engine handlers (cross-cutting cleanup). **Size:** S–M. **Repo:** `modules/workflows/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/`.
+**Source rationale:** [workflows-module-concept/submit-pipeline/spec.md § Status resolution](../../../workflows-module-concept/submit-pipeline/spec.md), revisited under [CLAUDE.md § Principles "One correct way"](../../../../CLAUDE.md). **Layer:** build-time config + resolvers + engine handlers (cross-cutting cleanup). **Size:** S. **Repo:** `modules/workflows/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/`.
 
-Today the engine resolves a handful of per-interaction values across three (or four) merge layers: an engine default, an optional static layer baked into the action YAML, an optional runtime layer, and an optional pre-hook return. The static YAML layer ("Layer 2") exists for two fields — `interactions.{interaction}.status` and the `event:` block — and is the only build-time-baked override channel the action surface offers. This part drops Layer 2 entirely: pre-hooks become the single override channel.
+Today the engine resolves the per-interaction target status across three merge layers: an engine default, an optional static layer baked into the action YAML (`interactions.{interaction}.status`), and an optional pre-hook return. The static YAML layer ("Layer 2") is the only build-time-baked override channel for status. This part drops it: pre-hooks become the single override channel for status.
+
+> **Scope note.** An earlier draft also dropped the action-YAML `event:` block. That has been pulled out — `event:` stays as a build-time override channel for now. The investigation surfaced a related but distinct question (how the user-supplied `comment` interacts with the events module's timeline rendering) that deserves its own design. See [Part 33 — Comment rendering on the events timeline](../33-comment-rendering/design.md). The task files under [`tasks/`](./tasks/) still reference the broader scope and will need to be re-scoped before implementation.
 
 ## Proposed change
 
 1. **Remove `interactions: { <interaction>: { status: <stage> } }`** from the action YAML schema. The status resolver collapses from three layers to two: engine default per interaction, then pre-hook return `status`.
-2. **Remove the `event: { <interaction>: { type?, display?, references?, metadata? } }`** block from the action YAML schema. The event merge collapses from four layers to three: engine default → runtime `comment` → pre-hook `event_overrides`.
-3. **Drop the resolver's bake-in of both maps.** `makeWorkflowApis` no longer emits `event_overrides:` or `interactions:` literals into the per-action endpoint payload. The handler stops reading them from `context.params`.
-4. **Drop the merge functions and tests for Layer 2.** `mergeEventOverrides.js` collapses to a 2-layer merge (engine default + pre-hook); `resolveTargetStatus.js` drops the YAML-override branch.
-5. **Authors needing a different target status or event payload write a pre-hook routine** (inline on the action YAML, per [part 13 § Hook emission](../13-resolver-apis/design.md#hook-emission-replaces-the-build-time-auth-gate)). The resolver emits one hook Api per declared `{interaction}.pre` slot — incremental cost is one Api per interaction that didn't already declare a pre-hook (if the override piggy-backs onto an existing pre-hook routine, zero new Apis).
-6. **`resolveTargetStatus` runtime-validates the pre-hook `status` return** against `action_statuses` and throws on miss. The check fires inside the second `resolveTargetStatus` invocation in `handleSubmit` (after step 2 pre-hook invocation, before step 4 writes) so no engine writes have landed; the action doc is unchanged. Pre-hook side effects re-run on retry per the [Part 29 § D6](../29-error-model-cleanup/design.md) idempotency contract — pre-hook authors own retry safety; this throw doesn't create a new exposure. Throw shape: `UserError` with `isReject: false` (default) — per [Part 29 § D5](../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently), the wrapping endpoint's `runRoutine` classifies it as `{ status: 'error' }` and the calling app's `CallApi` sees a transient error. Not `:reject` — a misspelled status enum is a workflow-author bug, not user-facing validation the submitting user can fix.
+2. **Drop the resolver's bake-in of the `interactions` map.** `makeWorkflowApis` no longer emits the `interactions:` literal into the per-action endpoint payload. The handler stops reading it from `context.params`.
+3. **Drop the resolver's YAML-override branch.** `resolveTargetStatus.js` drops the Layer 2 read and its tests.
+4. **Authors needing a different target status write a pre-hook routine** (inline on the action YAML, per [part 13 § Hook emission](../13-resolver-apis/design.md#hook-emission-replaces-the-build-time-auth-gate)). The resolver emits one hook Api per declared `{interaction}.pre` slot — incremental cost is one Api per interaction that didn't already declare a pre-hook (if the override piggy-backs onto an existing pre-hook routine, zero new Apis).
+5. **`resolveTargetStatus` runtime-validates the pre-hook `status` return** against `action_statuses` and throws on miss. The check fires inside the second `resolveTargetStatus` invocation in `handleSubmit` (after step 2 pre-hook invocation, before step 4 writes) so no engine writes have landed; the action doc is unchanged. Pre-hook side effects re-run on retry per the [Part 29 § D6](../29-error-model-cleanup/design.md) idempotency contract — pre-hook authors own retry safety; this throw doesn't create a new exposure. Throw shape: `UserError` with `isReject: false` (default) — per [Part 29 § D5](../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently), the wrapping endpoint's `runRoutine` classifies it as `{ status: 'error' }` and the calling app's `CallApi` sees a transient error. Not `:reject` — a misspelled status enum is a workflow-author bug, not user-facing validation the submitting user can fix.
 
 ## Why this is being considered
 
-The repo principle ([CLAUDE.md § Principles "One correct way"](../../../../CLAUDE.md)) says: prefer mechanically enforced patterns over conventions, even if it means more scaffolding up front, because understanding multiple implementations costs more than writing one. Today there are two ways to alter a per-interaction value: a static YAML map (Layer 2) and a pre-hook return (Layer 3). For any author writing a workflow, knowing which to reach for is a documentation-and-experience problem we'd be removing. Concretely, the cleanup:
+The repo principle ([CLAUDE.md § Principles "One correct way"](../../../../CLAUDE.md)) says: prefer mechanically enforced patterns over conventions, even if it means more scaffolding up front, because understanding multiple implementations costs more than writing one. Today there are two ways to alter the per-interaction target status: a static YAML map (Layer 2) and a pre-hook return (Layer 3). For any author writing a workflow, knowing which to reach for is a documentation-and-experience problem we'd be removing. Concretely, the cleanup:
 
-- Removes two fields and their inline validators from the action YAML schema (`interactions:`, `event:`) in [part 4 `makeWorkflowsConfig`](../_completed/04-workflow-config-schema/design.md).
-- Removes two literals from the per-action endpoint payload emitted by [part 13 `makeWorkflowApis`](../13-resolver-apis/design.md).
-- Removes one layer from the status resolver and one from the event-overrides merge in [part 9 `hook-invocation`](../09-hook-invocation/design.md).
-- Removes the `interactions:` / `event:` discussion from the action-authoring concept spec.
+- Removes one field and its inline validator from the action YAML schema (`interactions:`) in [part 4 `makeWorkflowsConfig`](../_completed/04-workflow-config-schema/design.md).
+- Removes one literal from the per-action endpoint payload emitted by [part 13 `makeWorkflowApis`](../13-resolver-apis/design.md).
+- Removes one layer from the status resolver in [part 9 `hook-invocation`](../09-hook-invocation/design.md).
+- Removes the `interactions:` discussion from the action-authoring concept spec.
 
-## Current state — what Layer 2 surfaces actually exist
-
-A grep across the concept specs and part designs surfaces **exactly two** engine-runtime override surfaces baked into the action YAML at build time:
-
-| Surface                                | Path on action YAML                                         | Layer in merge | Validation                                         |
-| -------------------------------------- | ----------------------------------------------------------- | -------------- | -------------------------------------------------- |
-| Per-interaction target status override | `interactions.{interaction}.status`                         | Layer 2 of 3   | `status` must be a member of `action_statuses`     |
-| Per-interaction event payload override | `event.{interaction}.{type, display, references, metadata}` | Layer 2 of 4   | Shape-only (matches `buildDefaultLogEventPayload`) |
-
-These are the only static fields that flow into the **engine's runtime decision-making**. Everything else on the action YAML is either:
-
-- **Engine-runtime config** that is itself the source of truth, not an override (`type`, `kind`, `access`, `blocked_by`, `assignees`, `due_date`, `description`, `key`, `tracker.workflow_type`, `required_after_close`) — out of scope.
-- **Build-time UI / chrome config** consumed by the page resolver, not by the engine handler (`pages.{verb}.{title|requests|events|buttons|modals|formHeader|formFooter|maxWidth}`, `status_map`, `form`, `form_review`, `form_error`) — not "overrides" in the engine sense; they author the page rendering and are out of scope for this proposal.
-- **Hooks themselves** (`hooks.{interaction}.{pre|post}`) — the proposal's replacement channel, not a target.
-
-So the proposal scope is narrow: two action-YAML fields go away. There is no third Layer-2 surface lurking in the corners.
-
-## Use cases considered — does Layer 2 earn its keep?
+## Use cases considered — does the static status override earn its keep?
 
 The case for keeping `interactions.{interaction}.status` rests on whether real workflows actually need a static per-action status override. The engine defaults are:
 
@@ -65,13 +49,9 @@ The defaults already auto-detect review presence from the `access.{app_name}` ve
 
 Confirming evidence: the concept design's worked example explicitly notes ([workflows-module-concept/design.md:137](../../../workflows-module-concept/design.md)) that the `qualify` action "declares no `interactions:` block, so the engine uses defaults." The canonical worked example doesn't use the override.
 
-The `event:` block has clearer cases — actions commonly want a per-interaction custom event `type` and `display.title`. But the rewrite to a pre-hook is essentially the same body wrapped in `Return`, and the routing-through-pre-hook story is cleaner for richer payload composition (Nunjucks templates, conditional metadata) anyway.
+**Conclusion:** Layer 2 for status has no real-world cases. Drop it.
 
-**Conclusion:** Layer 2 is doubly unjustified. `interactions.{interaction}.status` has no real-world cases; `event:` has cases but they migrate cleanly. Drop both.
-
-## What the rewrites look like
-
-### Case A — status override
+## What the rewrite looks like
 
 Layer 2 form (if any author had reached for it):
 
@@ -97,80 +77,39 @@ hooks:
 
 The pre-hook also emits an extra Lowdefy Api at build time (`update-action-qualify-submit_edit-pre`) and incurs an in-process `context.callApi` round-trip per `submit_edit` invocation. Cost is small; usage is rare (see § Use cases considered).
 
-### Case B — event override
-
-Layer 2 form:
-
-```yaml
-type: qualify
-kind: form
-event:
-  submit_edit:
-    type: lead-qualified
-    display:
-      consumer:
-        title:
-          _nunjucks:
-            template: "{{ user.profile.name }} qualified the lead"
-            on: { user }
-```
-
-Pre-hook form:
-
-```yaml
-type: qualify
-kind: form
-hooks:
-  submit_edit:
-    pre:
-      routine:
-        - :return:
-            event_overrides:
-              type: lead-qualified
-              display:
-                consumer:
-                  title:
-                    _nunjucks:
-                      template: "{{ user.profile.name }} qualified the lead"
-                      on: { user }
-```
-
-Same body; the wrapping changes. ~3 extra lines of boilerplate per override.
-
-### Case C — both at once
-
-A single `Return` step carries both `status` and `event_overrides`. The pre-hook form is _less_ repetitive than the Layer 2 form (one routine vs. two YAML blocks).
-
 ## Trade-offs
 
 ### What gets better
 
-- **One channel** — the resolution table for both surfaces collapses (status: 3 → 2 layers; event: 4 → 3 layers).
-- **Concept-spec and part-9 docs shrink** — the "which layer wins on collision" prose disappears for Layer 2.
-- **Validator surface shrinks** — `makeWorkflowsConfig` drops two field-validators.
-- **Resolver bake-in shrinks** — `makeWorkflowApis` stops emitting `interactions:` / `event_overrides:` literals.
-- **Pre-hook authors no longer think about Layer 2 collisions** — today a pre-hook returning `status: done` has to reason about a YAML `interactions.submit_edit.status: changes-required` sitting below it in the merge. Gone.
-- **Mental model simpler** — the action YAML's engine-facing surface becomes `type`, `kind`, `access`, `blocked_by`, `assignees`, `due_date`, `description`, `key`, `tracker.workflow_type`, `required_after_close`, `hooks`. Nine config fields + one extension channel. No "and also two override maps that change engine behaviour."
-- **Net-new runtime enum check on the pre-hook `status` return.** Today there is no enum-membership validation on either the YAML or pre-hook channel — `makeWorkflowsConfig` doesn't inspect `action.interactions[].status` (the field is in the build-time-excluded set and `validateAction` only enum-checks `status_map`), and `makeWorkflowApis.emitInteractions` passes `v.status` through unchanged. A typo on either channel silently ships and `updateAction` writes it. Change #6 adds the first enum check in this pipeline; the throw fires at the merge step before any engine writes.
+- **One channel for status** — the status resolution table collapses (3 → 2 layers).
+- **Concept-spec and part-9 docs shrink** — the "which layer wins on collision" prose disappears for the status Layer 2.
+- **Validator surface shrinks** — `makeWorkflowsConfig` drops one field-validator.
+- **Resolver bake-in shrinks** — `makeWorkflowApis` stops emitting the `interactions:` literal.
+- **Pre-hook authors no longer think about Layer 2 collisions on status** — today a pre-hook returning `status: done` has to reason about a YAML `interactions.submit_edit.status: changes-required` sitting below it in the merge. Gone.
+- **Net-new runtime enum check on the pre-hook `status` return.** Today there is no enum-membership validation on either the YAML or pre-hook channel — `makeWorkflowsConfig` doesn't inspect `action.interactions[].status` (the field is in the build-time-excluded set and `validateAction` only enum-checks `status_map`), and `makeWorkflowApis.emitInteractions` passes `v.status` through unchanged. A typo on either channel silently ships and `updateAction` writes it. Change #5 adds the first enum check in this pipeline; the throw fires at the merge step before any engine writes.
 
 ### What gets worse
 
 - **Static analysability loss for the rare reader who _would_ have written a static override.** Information lives one indirection deeper (inside the `:return:` step) than a top-level `interactions:` map would have surfaced it. Acceptable: the cases this matters in are the same ones we couldn't construct.
-- **Per-overridden-interaction Api count grows.** Each new override on an interaction that didn't already declare a pre-hook adds one emitted hook Api (`update-action-{type}-{interaction}-pre`); if the interaction already has a pre-hook for some other reason, the override piggy-backs and adds zero. Per § Use cases considered, real workflows are expected to override rarely — incremental Api count is small in practice.
-- **Per-invocation `context.callApi` round-trip.** A submit that previously read a status override from the baked-in endpoint payload now makes one extra in-process `context.callApi` call to a one-line `Return` routine. In-process and cheap. The user's framing — "extra API endpoint cost is negligible" — holds.
+- **Per-overridden-interaction Api count grows.** Each new status override on an interaction that didn't already declare a pre-hook adds one emitted hook Api (`update-action-{type}-{interaction}-pre`); if the interaction already has a pre-hook for some other reason, the override piggy-backs and adds zero. Per § Use cases considered, real workflows are expected to override rarely — incremental Api count is small in practice.
+- **Per-invocation `context.callApi` round-trip.** A submit that previously read a status override from the baked-in endpoint payload now makes one extra in-process `context.callApi` call to a one-line `Return` routine. In-process and cheap.
 
 ## Parts touched
 
 ### Cross-cutting impact
 
-| Part                                                                                                    | Status            | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| ------------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [Part 4 `makeWorkflowsConfig`](../_completed/04-workflow-config-schema/design.md)                       | shipped           | Drop `interactions:` and `event:` from the per-action schema. Drop their inline validators. No dedicated rejecting-validator — `makeWorkflowsConfig` is a hand-written-checks validator (no Joi/Ajv schema, no unknown-keys rejection), so stale `interactions:`/`event:` fields left on an action YAML will be silently accepted and ignored. Accepted as cheap risk: no real-world users to migrate, and the demo edit in this part removes the only YAML carrying these fields. |
-| [Part 9 `hook-invocation`](../09-hook-invocation/design.md)                                             | in progress       | `resolveTargetStatus` drops the layer-2 branch; status resolver becomes 2-layer and adds a runtime enum check on the pre-hook `status` return. `mergeEventOverrides` drops layer 2; event merge becomes 3-layer. Tests for the dropped layers go away.                                                                                                                                                                                                                    |
-| [Part 13 `makeWorkflowApis`](../13-resolver-apis/design.md)                                             | tasks 1–2 shipped | Stop emitting `event_overrides:` and `interactions:` literals into the per-action endpoint payload. Drop the `event → event_overrides` rename note.                                                                                                                                                                                                                                                                                                                                |
-| Concept spec — [`submit-pipeline/spec.md`](../../../workflows-module-concept/submit-pipeline/spec.md)   | committed         | Status resolution: drop the 3-layer table's Layer 2 row. Event override paths: drop the Layer 2 bullet from "Override paths." Drop the example `action.interactions:` block.                                                                                                                                                                                                                                                                                                       |
-| Concept spec — [`action-authoring/spec.md`](../../../workflows-module-concept/action-authoring/spec.md) | committed         | Drop `interactions:` and `event:` from the per-action field list. Update the worked-example YAML accordingly (the `qualify` action already doesn't use overrides per the spec example).                                                                                                                                                                                                                                                                                            |
-| Worked-example YAML in the demo app                                                                     | needs edit        | Delete all `interactions:` blocks. Current state: `qualify.yaml` has one (redundant — matches engine default); `send-quote.yaml` has three, two redundant and one (`request_changes: action-required`) non-default that exists only because Layer 2 was there to demonstrate, not because the demo workflow needs that semantic. No pre-hook ports required. (Verified: no `event:` blocks exist in any demo workflow_config — grep returned zero hits.) **Behavioural side effect:** `send-quote`'s `request_changes` flow now writes `changes-required` (engine default) instead of `action-required`. Accepted per § Use cases considered — the static `action-required` override is artifact-of-Layer-2, not a load-bearing demo semantic.                           |
+| Part                                                                                                    | Status            | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------------------------------------------------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Part 4 `makeWorkflowsConfig`](../_completed/04-workflow-config-schema/design.md)                       | shipped           | Drop `interactions:` from the per-action schema. Drop its inline validator. No dedicated rejecting-validator — `makeWorkflowsConfig` is a hand-written-checks validator (no Joi/Ajv schema, no unknown-keys rejection), so a stale `interactions:` field left on an action YAML will be silently accepted and ignored. Accepted as cheap risk: no real-world users to migrate, and the demo edit in this part removes the only YAMLs carrying these fields. |
+| [Part 9 `hook-invocation`](../09-hook-invocation/design.md)                                             | in progress       | `resolveTargetStatus` drops the layer-2 branch; status resolver becomes 2-layer and adds a runtime enum check on the pre-hook `status` return. Tests for the dropped layer go away.                                                                                                                                                                                                                                                                          |
+| [Part 13 `makeWorkflowApis`](../13-resolver-apis/design.md)                                             | tasks 1–2 shipped | Stop emitting the `interactions:` literal into the per-action endpoint payload.                                                                                                                                                                                                                                                                                                                                                                              |
+| Concept spec — [`submit-pipeline/spec.md`](../../../workflows-module-concept/submit-pipeline/spec.md)   | committed         | Status resolution: drop the 3-layer table's Layer 2 row. Drop the example `action.interactions:` block.                                                                                                                                                                                                                                                                                                                                                      |
+| Concept spec — [`action-authoring/spec.md`](../../../workflows-module-concept/action-authoring/spec.md) | committed         | Drop `interactions:` from the per-action field list.                                                                                                                                                                                                                                                                                                                                                                                                         |
+| Worked-example YAML in the demo app                                                                     | needs edit        | Delete all `interactions:` blocks. Current state: `qualify.yaml` has one (redundant — matches engine default); `send-quote.yaml` has three, two redundant and one (`request_changes: action-required`) non-default that exists only because Layer 2 was there to demonstrate, not because the demo workflow needs that semantic. No pre-hook ports required. **Behavioural side effect:** `send-quote`'s `request_changes` flow now writes `changes-required` (engine default) instead of `action-required`. Accepted per § Use cases considered — the static `action-required` override is artifact-of-Layer-2, not a load-bearing demo semantic. |
+
+### Out of scope (was previously in scope; pulled out)
+
+- **Action-YAML `event:` block** — stays. The investigation surfaced a related rendering question (whether the user-supplied `comment` should flow into the events timeline's secondary-text channel, and how that interacts with template scoping) that needs its own design before deciding whether the static channel can be safely retired. Tracked under [Part 33 — Comment rendering on the events timeline](../33-comment-rendering/design.md).
 
 ### Migration
 
@@ -182,6 +121,7 @@ The hardest churn is **rewriting cross-referencing design documents** (parts 4, 
 
 ## Out of scope / deferred
 
+- **Action-YAML `event:` block.** See § Out of scope above. Tracked under Part 33.
 - **Page chrome overrides** (`pages.{verb}.{title|buttons|...}`) stay. They're build-time UI composition, not engine-runtime overrides — different concept.
 - **`status_map`** stays. Per-stage display copy, no engine-runtime channel.
 - **Form schemas** (`form:`, `form_review:`, `form_error:`) stay. They define the action's data contract, not overrides of it.
@@ -191,29 +131,22 @@ The hardest churn is **rewriting cross-referencing design documents** (parts 4, 
 
 ## Depends on
 
-[Part 9 `hook-invocation`](../09-hook-invocation/design.md) — the merge-function and resolver changes amend code part 9 ships. Land _after_ Part 9's first cut, or fold the collapse into Part 9 directly if it's still in flight (saves a round of ship-then-delete on Layer 2). [Part 13 `makeWorkflowApis`](../13-resolver-apis/design.md) — task 2 (which bakes `event_overrides:` and `interactions:` literals) is shipped; this part amends shipped resolver code directly.
+[Part 9 `hook-invocation`](../09-hook-invocation/design.md) — the merge-function and resolver changes amend code part 9 ships. Land _after_ Part 9's first cut, or fold the collapse into Part 9 directly if it's still in flight (saves a round of ship-then-delete on Layer 2). [Part 13 `makeWorkflowApis`](../13-resolver-apis/design.md) — task 2 (which bakes the `interactions:` literal) is shipped; this part amends shipped resolver code directly.
 
-**Independent of [Part 29 `error-model-cleanup`](../29-error-model-cleanup/design.md).** Part 29 changes throw classification (drops `hook_error`, drops the mid-write catch-converter, adds `UserError.isReject`). This part doesn't touch any of those surfaces. The throw from change #6 fires before step 4 writes so it pre-dates the catch-converter in either ordering; behaviour is identical pre- and post-Part-29.
+**Independent of [Part 29 `error-model-cleanup`](../29-error-model-cleanup/design.md).** Part 29 changes throw classification (drops `hook_error`, drops the mid-write catch-converter, adds `UserError.isReject`). This part doesn't touch any of those surfaces. The throw from change #5 fires before step 4 writes so it pre-dates the catch-converter in either ordering; behaviour is identical pre- and post-Part-29.
 
 ## Verification
 
-- `makeWorkflowsConfig` no longer references `interactions:` or `event:` (the inline validators for those fields are gone). Stale fields on an action YAML are silently ignored — verified by reading the resolver, not by a unit test (the validator has no unknown-keys rejection; see § Parts touched).
-- `makeWorkflowApis` emits no `event_overrides:` or `interactions:` keys in `properties:` on any per-action endpoint (snapshot the worked-example demo output).
+- `makeWorkflowsConfig` no longer references `interactions:` (the inline validator for that field is gone). Stale fields on an action YAML are silently ignored — verified by reading the resolver, not by a unit test (the validator has no unknown-keys rejection; see § Parts touched).
+- `makeWorkflowApis` emits no `interactions:` keys in `properties:` on any per-action endpoint (snapshot the worked-example demo output).
 - `resolveTargetStatus` resolves to engine default unless a pre-hook returns `status`.
 - `resolveTargetStatus` throws a `UserError(isReject: false)` on a pre-hook `status` return that is not a member of `action_statuses`. Test that no writes have landed when the throw fires (action's `status[0]` unchanged from pre-submit), and that the wrapping endpoint classifies it as `'error'` (not `'reject'`).
-- `mergeEventOverrides` is a 3-layer merge (engine default → runtime `comment` → pre-hook).
-- Worked-example smoke (in [part 22](../22-workflows-e2e-suite/design.md)): every action with a non-default target status or event payload still produces the same submit-time behaviour after any YAML overrides have been ported to pre-hook routines.
-
-## `_nunjucks` evaluation — equivalence verified
-
-The `_nunjucks` operator inside `display.{app_name}.title` (and the metadata templates the events module ships) is **not evaluated by the workflow engine in any override path**. The operator object travels as a literal through `context.callApi('new-event', module: 'events')` ([dispatchLogEvent.js:106–122](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js)), the events module's [`new-event.yaml`](../../../../modules/events/api/new-event.yaml) inserts it verbatim into MongoDB via `_payload: display`, and the timeline aggregation reads it back as a literal. Final evaluation happens at **page render time** inside the `EventsTimeline` block's `title` prop resolution ([EventsTimeline.js:225](../../../../plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js) — `sanitize(title)`).
-
-Same destination for the engine default (JS literal in `buildDefaultLogEventPayload`), the dropped Layer 2 path (YAML literal baked into endpoint properties), and the pre-hook path (returning `event_overrides` from a `:return:`). All three produce equivalent stored event documents; bindings are resolved by the timeline block, not by the engine or by the routine that wrote the override. **No scope shim, no documented divergence, no migration concern.**
+- Worked-example smoke (in [part 22](../22-workflows-e2e-suite/design.md)): every action with a non-default target status still produces the same submit-time behaviour after any YAML overrides have been ported to pre-hook routines.
 
 ## Contract to neighbours
 
-- **Part 4** drops two field definitions and their inline validators; updates the schema commit. No dedicated rejecting-validator — `makeWorkflowsConfig` has no unknown-keys mechanism, so stale fields are silently ignored (accepted as cheap risk per § Parts touched / § Migration).
-- **Part 9** drops merge layers and tests; adds the runtime `status` enum check in `resolveTargetStatus`.
-- **Part 13** stops baking two literals into the per-action endpoint payload.
-- **Worked example demo** audited for any `event:` overrides; ports them to inline pre-hooks. Status overrides are not expected to exist.
-- **Concept specs** (`submit-pipeline`, `action-authoring`) revise the override-paths sections.
+- **Part 4** drops one field definition and its inline validator; updates the schema commit. No dedicated rejecting-validator — `makeWorkflowsConfig` has no unknown-keys mechanism, so stale fields are silently ignored (accepted as cheap risk per § Parts touched / § Migration).
+- **Part 9** drops the status merge layer and its tests; adds the runtime `status` enum check in `resolveTargetStatus`.
+- **Part 13** stops baking the `interactions:` literal into the per-action endpoint payload.
+- **Worked example demo** audited for `interactions:` blocks; all are deleted.
+- **Concept specs** (`submit-pipeline`, `action-authoring`) revise the status-resolution section and drop the `interactions:` field documentation.

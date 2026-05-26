@@ -1,4 +1,4 @@
-# Task 7: Clean up demo workflow YAML + `makeWorkflowsConfig` field comment
+# Task 6: Clean up demo workflow YAML + `makeWorkflowsConfig` field comment
 
 ## Context
 
@@ -12,7 +12,7 @@ Two pieces of cleanup remain after the engine-side changes:
    // excluded — they're consumed by build-time resolvers (parts 12, 13, 15)
    // against the raw workflow YAML, not via workflowsConfig at runtime.
    ```
-   After Part 32, `interactions` and `event` are not consumed by any resolver — they shouldn't appear in this comment. Note: the validator has no unknown-keys rejection (see `validateAction` in the same file — it only inspects known fields), so stale YAML fields are silently accepted; this comment is the only place they're mentioned.
+   After Part 32, `interactions` is no longer consumed by any resolver and should be dropped from this comment. `event` **stays** in the list — `makeWorkflowApis` still bakes it into the per-action endpoint payload as `event_overrides:`. Note: the validator has no unknown-keys rejection (see `validateAction` in the same file — it only inspects known fields), so stale `interactions:` YAML fields are silently accepted; this comment is the only place they're listed.
 
 2. **Demo workflow YAMLs** still carry `interactions:` blocks (no `event:` blocks per the design's grep verification):
    - `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml` line 20–22 — `submit_edit: { status: done }` (redundant; matches engine default for a form with no `review` verb).
@@ -22,12 +22,12 @@ The design (§ Migration) accepts deleting all four entries — the `request_cha
 
 ## Task
 
-1. **Update `makeWorkflowsConfig.js` head comment** to drop `interactions, event` from the build-time-only field list. The comment becomes:
+1. **Update `makeWorkflowsConfig.js` head comment** to drop `interactions` from the build-time-only field list. Keep `event` in the list. The comment becomes:
    ```js
    // Engine-runtime needs + per-action UI lookups. Build-time-only fields
-   // (form, form_review, form_error, pages, hooks) are excluded — they're
-   // consumed by build-time resolvers (parts 12, 13, 15) against the raw
-   // workflow YAML, not via workflowsConfig at runtime.
+   // (form, form_review, form_error, pages, hooks, event) are excluded —
+   // they're consumed by build-time resolvers (parts 12, 13, 15) against
+   // the raw workflow YAML, not via workflowsConfig at runtime.
    ```
 2. **Delete the `interactions:` block** from `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml` (lines 20–22 of the current file — verify with grep before editing).
 3. **Delete the `interactions:` block** from `apps/demo/modules/workflows/workflow_config/onboarding/send-quote.yaml` (lines 27–33 of the current file). No pre-hook port is required for `request_changes` — engine default `changes-required` is accepted by the design.
@@ -36,14 +36,13 @@ The design (§ Migration) accepts deleting all four entries — the `request_cha
 ## Acceptance Criteria
 
 - `grep -rn "^interactions:" apps/demo/modules/workflows/workflow_config/` returns no matches.
-- `grep -rn "^event:" apps/demo/modules/workflows/workflow_config/` returns no matches (design verified zero hits already; double-check post-edit).
-- `grep -n "interactions, event\|interactions,event" modules/workflows/resolvers/makeWorkflowsConfig.js` returns no matches.
+- `grep -n "interactions, event\|interactions,event\|, interactions," modules/workflows/resolvers/makeWorkflowsConfig.js` returns no matches. (`event` is still listed; `interactions` is not.)
 - Demo app build succeeds (no broken `_ref`, no validator complaint).
 - Manually exercising the demo `send-quote` action's `request_changes` interaction lands the action at status `changes-required` (the engine default) rather than `action-required`. **This is a deliberate behavioural change** to the demo workflow — accepted per the design's § Parts touched / Worked-example row and § Use cases considered's `request_changes` analysis. No test fixture update needed unless an e2e test asserted the old value.
 
 ## Files
 
-- `modules/workflows/resolvers/makeWorkflowsConfig.js` — modify — strip `interactions, event` from the head-of-file comment.
+- `modules/workflows/resolvers/makeWorkflowsConfig.js` — modify — strip `interactions` from the head-of-file comment. Keep `event` in the list.
 - `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml` — modify — delete the `interactions:` block (3 lines).
 - `apps/demo/modules/workflows/workflow_config/onboarding/send-quote.yaml` — modify — delete the `interactions:` block (7 lines).
 

@@ -1,4 +1,4 @@
-# Task 3: Drop `event_overrides:` / `interactions:` bake-in from `makeWorkflowApis`
+# Task 3: Drop `interactions:` bake-in from `makeWorkflowApis`
 
 ## Context
 
@@ -14,30 +14,30 @@ const properties = {
 };
 ```
 
-The two map helpers (`emitEventOverrides`, `emitInteractions`) read `action.event` and `action.interactions` and project them into per-interaction maps. Part 32 drops these literals — the handler will no longer consume them.
+Part 32 drops the `interactions:` literal only. The `event_overrides:` literal stays — the `event:` channel survives (see the design's § Scope note and [Part 33](../../33-comment-rendering/design.md)). So `emitEventOverrides`, the `EVENT_OVERRIDE_FIELDS` constant, and the `event_overrides:` property spread all remain untouched.
 
 Snapshot of the relevant code (current `makeWorkflowApis.js`):
 
 ```js
-function emitEventOverrides(action) { /* lines 40-53 */ }
-function emitInteractions(action)   { /* lines 55-64 */ }
+function emitEventOverrides(action) { /* lines 40-53 — KEEP */ }
+function emitInteractions(action)   { /* lines 55-64 — DELETE */ }
 function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMap) { /* line 66 */ }
 function emitForWorkflow(workflow) {
   // ...
   const { apis: hookApis, map: hooksMap } = emitHooks(action);
   apis.push(...hookApis);
-  const eventMap = emitEventOverrides(action);
-  const interactionsMap = emitInteractions(action);
+  const eventMap = emitEventOverrides(action);        // KEEP
+  const interactionsMap = emitInteractions(action);   // DELETE
   apis.push(emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMap));
 }
 ```
 
-Tests live in `modules/workflows/resolvers/makeWorkflowApis.test.js` and cover both the `event_overrides:` and `interactions:` emission paths.
+Tests live in `modules/workflows/resolvers/makeWorkflowApis.test.js` and cover both the `event_overrides:` and `interactions:` emission paths. Only the `interactions:` tests go away.
 
 ## Task
 
-1. **Delete `emitEventOverrides` and `emitInteractions`** from `modules/workflows/resolvers/makeWorkflowApis.js`. Delete the top-of-file `EVENT_OVERRIDE_FIELDS` constant (only `emitEventOverrides` uses it).
-2. **Change `emitActionEndpoint`'s signature** to `(workflow, action, hooksMap)`. Remove the two trailing parameters and the two spread expressions that injected `event_overrides:` and `interactions:` into the `properties:` object. The remaining `properties` shape should be:
+1. **Delete `emitInteractions`** from `modules/workflows/resolvers/makeWorkflowApis.js`. Leave `emitEventOverrides` and the `EVENT_OVERRIDE_FIELDS` constant untouched.
+2. **Change `emitActionEndpoint`'s signature** to `(workflow, action, hooksMap, eventMap)`. Remove the trailing `interactionsMap` parameter and the spread expression that injected `interactions:` into the `properties:` object. The remaining `properties` shape should be:
    ```js
    const properties = {
      action_id: { _payload: 'action_id' },
@@ -51,26 +51,29 @@ Tests live in `modules/workflows/resolvers/makeWorkflowApis.test.js` and cover b
      comment: { _payload: 'comment' },
      ...(isTask ? { current_status: { _payload: 'current_status' } } : {}),
      ...(hooksMap ? { hooks: hooksMap } : {}),
+     ...(eventMap ? { event_overrides: eventMap } : {}),
    };
    ```
-3. **Update `emitForWorkflow`** to drop the `eventMap` and `interactionsMap` locals and pass only `(workflow, action, hooksMap)` to `emitActionEndpoint`.
+3. **Update `emitForWorkflow`** to drop the `interactionsMap` local and pass only `(workflow, action, hooksMap, eventMap)` to `emitActionEndpoint`. The `eventMap` local stays.
 4. **Update `makeWorkflowApis.test.js`**:
-   - Delete any test case asserting `event_overrides:` or `interactions:` appears in the emitted endpoint payload.
-   - If any test fixture still carries an `action.event:` or `action.interactions:` declaration to exercise emission, either remove that fixture block (preferred) or convert the assertion to verify the bake-in does *not* happen (a single safety-net test that an action with `event:` and `interactions:` declared in YAML produces an endpoint payload without those keys is fine).
+   - Delete any test case asserting `interactions:` appears in the emitted endpoint payload.
+   - If any test fixture still carries an `action.interactions:` declaration to exercise emission, either remove that fixture block (preferred) or convert the assertion to verify the bake-in does *not* happen (a single safety-net test that an action with `interactions:` declared in YAML produces an endpoint payload without that key is fine).
+   - **Keep** tests covering `event_overrides:` emission and `action.event:` fixtures — that channel is unchanged.
    - Other tests (hooks emission, group on_complete emission, basic endpoint shape) stay.
 
 ## Acceptance Criteria
 
-- `grep -n "event_overrides\|emitEventOverrides\|emitInteractions\|EVENT_OVERRIDE_FIELDS\|interactionsMap\|eventMap" modules/workflows/resolvers/makeWorkflowApis.js` returns no matches.
+- `grep -n "emitInteractions\|interactionsMap" modules/workflows/resolvers/makeWorkflowApis.js` returns no matches.
+- `grep -n "emitEventOverrides\|EVENT_OVERRIDE_FIELDS\|eventMap" modules/workflows/resolvers/makeWorkflowApis.js` **still** returns matches — those symbols are unchanged.
 - `pnpm --filter=@lowdefy/modules-mongodb-plugins test makeWorkflowApis` passes.
-- A run of `makeWorkflowApis` against the demo workflow_config emits per-action endpoints whose `properties:` contain no `event_overrides:` or `interactions:` keys. (Spot-check by snapshot or by inlining a `console.log` during the test run if needed.)
+- A run of `makeWorkflowApis` against the demo workflow_config emits per-action endpoints whose `properties:` contain no `interactions:` key. The `event_overrides:` key appears whenever the action YAML declares `event:`. (Spot-check by snapshot or by inlining a `console.log` during the test run if needed.)
 
 ## Files
 
-- `modules/workflows/resolvers/makeWorkflowApis.js` — modify — drop two emit helpers, the `EVENT_OVERRIDE_FIELDS` constant, the two `emitActionEndpoint` params, and the two property spreads.
-- `modules/workflows/resolvers/makeWorkflowApis.test.js` — modify — drop tests for the dropped literals; keep coverage for hook Api emission and base endpoint shape.
+- `modules/workflows/resolvers/makeWorkflowApis.js` — modify — drop `emitInteractions`, the `emitActionEndpoint` `interactionsMap` param, and the `interactions:` property spread. Keep everything `event_overrides:`-related.
+- `modules/workflows/resolvers/makeWorkflowApis.test.js` — modify — drop `interactions:`-emission tests; keep `event_overrides:`-emission tests and base endpoint shape coverage.
 
 ## Notes
 
-- The handler-side reads (`params.interactions`, `params.event_overrides`) keep working for now — they'll just always be `undefined` after this task lands. Tasks 4–6 remove the reads.
-- A workflow author who leaves `interactions:` or `event:` on an action YAML after this lands gets silent acceptance: `makeWorkflowsConfig` doesn't reject unknown keys and `makeWorkflowApis` ignores them. The design accepts this — no real-world users to migrate.
+- The handler-side read of `params.interactions` keeps working for now — it'll just always be `undefined` after this task lands. Task 5 removes the read.
+- A workflow author who leaves `interactions:` on an action YAML after this lands gets silent acceptance: `makeWorkflowsConfig` doesn't reject unknown keys and `makeWorkflowApis` ignores them. The design accepts this — no real-world users to migrate.
