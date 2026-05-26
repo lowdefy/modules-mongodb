@@ -8,7 +8,7 @@ These tasks implement [Part 29](../design.md): the engine stops force-writing `e
 
 | #   | File                                       | Summary                                                                                                            | Depends On |
 | --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-upstream-lowdefy-reject-flag.md`       | Upstream PR: add `UserError.isReject`, pass it from `controlReject`, classify `runRoutine` catch by it             | —          |
+| 1   | `01-upstream-lowdefy-reject-flag.md`       | **Done — shipped as `cc18b41e9`.** Upstream PR landing `UserError.isReject`, `controlReject` flag, `runRoutine` reclassification. Remaining: pin the SDK version this monorepo consumes to a release that includes `cc18b41e9` | —          |
 | 2   | `02-concept-spec-amendments.md`            | Edit `engine/spec.md`, `submit-pipeline/spec.md`, `ui/spec.md` to the new error model                              | —          |
 | 3   | `03-part-1-and-part-6-design-notes.md`     | Add Part 1 callApi-throws deviation note; rewrite Part 6 § Failure shape for uniform status entries                | —          |
 | 4   | `04-types-cleanup.md`                      | Drop polymorphic fields from `StatusEntry` typedef and `error_transition` from the handler return-type docs        | —          |
@@ -19,7 +19,7 @@ These tasks implement [Part 29](../design.md): the engine stops force-writing `e
 
 ## Ordering Rationale
 
-**T1 (upstream PR)** is a hard precondition for shipping Part 29 (per design § Upstream dependency) but unblocks no in-repo unit work — most tasks can land in parallel against it. Integration-layer `:reject` classification needs T1 merged; T8's E2E specs do too.
+**T1 (upstream PR)** has already shipped on the sibling Lowdefy checkout as `cc18b41e9`. The remaining work is a one-line SDK-version pin in this monorepo (covered in T1's "Done" note). Integration-layer `:reject` classification and T8's E2E specs require the SDK consumed here to include `cc18b41e9`.
 
 **T2 (concept specs) and T3 (Part 1/Part 6 design notes)** are documentation-only and independent of code. Landing them first puts the contract in writing so reviewers of the code changes have something to verify against.
 
@@ -29,7 +29,7 @@ These tasks implement [Part 29](../design.md): the engine stops force-writing `e
 
 **T7 and T8** are independent of the in-repo code edits. T7 is a small verification on the in-flight Part 13 design. T8's specs depend on T5 (the new failure behaviour they exercise) and on T1 (for the `:reject` end-to-end spec).
 
-T2, T3, T4, T7 can run in parallel. T1 can run in parallel with everything; it's a separate repo.
+T2, T3, T4, T7 can run in parallel. T1's upstream change has already shipped; only the SDK pin remains.
 
 ## Scope
 

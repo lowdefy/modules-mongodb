@@ -1,5 +1,7 @@
 # Task 1: Upstream Lowdefy PR — `UserError.isReject` + transparent `:reject` propagation
 
+> **Done — shipped upstream.** All three edits below landed in the sibling Lowdefy checkout under commit `cc18b41e9` ("feat(api): Propagate :reject status across runRoutine throw boundary.") on 2026-05-26. Verified: `UserError.isReject` constructor flag present, `controlReject.js` passes `isReject: true`, `runRoutine.js` branches on `error.isReject` before `context.handleError`, and `runRoutine.reject.test.js` covers the four prescribed behaviours. Remaining in-repo work: pin the SDK version consumed by this monorepo to a release that includes `cc18b41e9`.
+
 ## Context
 
 This part of the workflows module needs Lowdefy's `:reject` control to propagate as a throw across nested routine boundaries without losing its reject identity. Today both `:reject` and `:throw` end up constructing the same `UserError` shape, and `runRoutine.js`'s catch reclassifies every caught throw as `{ status: 'error' }` — so by the time a `:reject` has crossed any routine boundary as a throw, the discriminator is gone.
