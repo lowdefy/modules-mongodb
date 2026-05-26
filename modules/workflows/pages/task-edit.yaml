@@ -46,7 +46,8 @@ _ref:
                   - _input: skip_status_redirect
                   - true
           params:
-            pageId: task-view
+            pageId:
+              _module.pageId: task-view
             urlQuery:
               _url_query: true
         # Step 4: load workflow — needed for required_after_close gate.
@@ -192,12 +193,23 @@ _ref:
                         regex:
                           - ^fields\.
                           - ^status$
-                    # Submit flow targets the resolver-emitted
-                    # update-action-{action_type} endpoint that ships in part 20b.
-                    # Static surface stub: open a notification noting the deferral.
                     - id: submit_edit
-                      type: NotificationOpen
+                      type: CallAPI
                       params:
-                        type: info
-                        message: Submit ships in part 20b
-                        description: The update-action-{action_type} endpoint is emitted by the makeWorkflowApis resolver; not wired in part 20a's static surface.
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /update-action-
+                            - _request: get_action.type
+                        payload:
+                          action_id:
+                            _request: get_action._id
+                          interaction: submit_edit
+                          current_key:
+                            _request: get_action.key
+                          current_status:
+                            _state: status
+                          fields:
+                            _state: fields
+                          comment:
+                            _state: comment

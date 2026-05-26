@@ -12,7 +12,6 @@ function emitHookApi(action, interaction, phase, body) {
   return {
     id: `update-action-${action.type}-${interaction}-${phase}`,
     type: 'Api',
-    auth: { roles: [...(action.access?.roles ?? [])] },
     routine: body.routine,
   };
 }
@@ -107,16 +106,9 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMa
 
 function emitGroupOnCompleteApi(workflow, group) {
   if (!group.on_complete) return null;
-  const groupActions = (workflow.actions ?? []).filter(
-    (a) => a.action_group === group.id
-  );
-  const roles = [
-    ...new Set(groupActions.flatMap((a) => a.access?.roles ?? [])),
-  ];
   return {
     id: `workflow-${workflow.type}-group-${group.id}-on-complete`,
     type: 'Api',
-    auth: { roles },
     routine: group.on_complete.routine,
   };
 }

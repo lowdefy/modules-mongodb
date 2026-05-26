@@ -59,7 +59,8 @@ _ref:
                   - error
               params:
                 pageId:
-                  _var: page_ids.view
+                  _module.pageId:
+                    _var: page_ids.view
                 urlQuery:
                   _url_query: true
             - id: get_workflow
@@ -137,14 +138,14 @@ _ref:
                             _request: get_action.due_date
                           description:
                             _request: get_action.description
-                - - _ref:
-                      resolver: resolvers/makeActionsForm.js
-                      vars:
-                        form:
-                          _var:
-                            key: action_config.form_error
-                            default: []
-                        mode: error
+                - _ref:
+                    resolver: resolvers/makeActionsForm.js
+                    vars:
+                      form:
+                        _var:
+                          key: action_config.form_error
+                          default: []
+                      mode: error
                 - - id: comment
                     type: TiptapInput
                     properties:
@@ -193,14 +194,14 @@ _ref:
                                 _request: get_action.due_date
                               description:
                                 _request: get_action.description
-                    - - _ref:
-                          resolver: resolvers/makeActionsForm.js
-                          vars:
-                            form:
-                              _var:
-                                key: action_config.form_error
-                                default: []
-                            mode: error
+                    - _ref:
+                        resolver: resolvers/makeActionsForm.js
+                        vars:
+                          form:
+                            _var:
+                              key: action_config.form_error
+                              default: []
+                          mode: error
                     - - id: comment
                         type: TiptapInput
                         properties:

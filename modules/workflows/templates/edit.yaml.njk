@@ -66,7 +66,8 @@ _ref:
                       - true
               params:
                 pageId:
-                  _var: page_ids.view
+                  _module.pageId:
+                    _var: page_ids.view
                 urlQuery:
                   _url_query: true
             - id: get_workflow
@@ -128,12 +129,12 @@ _ref:
                             _state: fields.due_date
                           description:
                             _state: fields.description
-                - - _ref:
-                      resolver: resolvers/makeActionsForm.js
-                      vars:
-                        form:
-                          _var: action_config.form
-                        mode: edit
+                - _ref:
+                    resolver: resolvers/makeActionsForm.js
+                    vars:
+                      form:
+                        _var: action_config.form
+                      mode: edit
                 - - id: comment
                     type: TiptapInput
                     properties:
@@ -165,12 +166,12 @@ _ref:
                                 _state: fields.due_date
                               description:
                                 _state: fields.description
-                    - - _ref:
-                          resolver: resolvers/makeActionsForm.js
-                          vars:
-                            form:
-                              _var: action_config.form
-                            mode: edit
+                    - _ref:
+                        resolver: resolvers/makeActionsForm.js
+                        vars:
+                          form:
+                            _var: action_config.form
+                          mode: edit
                     - - id: comment
                         type: TiptapInput
                         properties:
@@ -244,8 +245,6 @@ _ref:
                                         _request: get_action.key
                                       form:
                                         _state: form
-                                      form_review:
-                                        _state: form_review
                                       fields:
                                         _state: fields
                                       comment:
@@ -366,8 +365,6 @@ _ref:
                                 _request: get_action.key
                               form:
                                 _state: form
-                              form_review:
-                                _state: form_review
                               fields:
                                 _state: fields
                               comment:

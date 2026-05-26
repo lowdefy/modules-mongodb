@@ -42,7 +42,8 @@ _ref:
                 - error
               - _request: get_action.status.0.stage
           params:
-            pageId: task-view
+            pageId:
+              _module.pageId: task-view
             urlQuery:
               _url_query: true
         # Step 4: load workflow — needed for required_after_close gate.
@@ -199,15 +200,22 @@ _ref:
                           - true
                 events:
                   onClick:
-                    # Approve flow targets the resolver-emitted
-                    # update-action-{action_type} endpoint that ships in part 20b.
-                    # Static surface stub: open a notification noting the deferral.
                     - id: submit_approve
-                      type: NotificationOpen
+                      type: CallAPI
                       params:
-                        type: info
-                        message: Approve ships in part 20b
-                        description: The update-action-{action_type} endpoint is emitted by the makeWorkflowApis resolver; not wired in part 20a's static surface.
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /update-action-
+                            - _request: get_action.type
+                        payload:
+                          action_id:
+                            _request: get_action._id
+                          interaction: approve
+                          current_key:
+                            _request: get_action.key
+                          comment:
+                            _state: comment
       - id: request_changes_modal
         type: Modal
         properties:
@@ -220,15 +228,22 @@ _ref:
             - id: validate_comment
               type: Validate
               params: comment
-            # Request-changes flow targets the resolver-emitted
-            # update-action-{action_type} endpoint that ships in part 20b.
-            # Static surface stub: open a notification noting the deferral.
             - id: submit_request_changes
-              type: NotificationOpen
+              type: CallAPI
               params:
-                type: info
-                message: Request changes ships in part 20b
-                description: The update-action-{action_type} endpoint is emitted by the makeWorkflowApis resolver; not wired in part 20a's static surface.
+                endpointId:
+                  _string.concat:
+                    - _module.id: true
+                    - /update-action-
+                    - _request: get_action.type
+                payload:
+                  action_id:
+                    _request: get_action._id
+                  interaction: request_changes
+                  current_key:
+                    _request: get_action.key
+                  comment:
+                    _state: comment
           onClose:
             - id: reset_comment
               type: SetState

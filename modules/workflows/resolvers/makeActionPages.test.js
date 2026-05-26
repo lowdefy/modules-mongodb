@@ -136,7 +136,7 @@ test("makeActionPages: action_config carries access, status_map, and form", () =
     app_name: APP,
   });
 
-  const vars = editPage.definition._ref.vars;
+  const vars = editPage._ref.vars;
   expect(vars.action_config.access).toEqual(qualifyAction.access);
   expect(vars.action_config.status_map).toEqual(qualifyAction.status_map);
   expect(vars.action_config.form).toEqual(qualifyAction.form);
@@ -148,7 +148,7 @@ test("makeActionPages: page_ids only contains emitted verbs", () => {
     app_name: APP,
   });
 
-  const pageIds = editPage.definition._ref.vars.page_ids;
+  const pageIds = editPage._ref.vars.page_ids;
   expect(Object.keys(pageIds).sort()).toEqual(["edit", "view"]);
   expect(pageIds.review).toBeUndefined();
   expect(pageIds.error).toBeUndefined();
@@ -197,8 +197,8 @@ test("makeActionPages: page_config var passes through action.pages.{verb} verbat
   const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
   const viewPage = pages.find((p) => p.id === "onboarding-qualify-view");
 
-  expect(editPage.definition._ref.vars.page_config).toEqual({ maxWidth: 1200 });
-  expect(viewPage.definition._ref.vars.page_config).toEqual({});
+  expect(editPage._ref.vars.page_config).toEqual({ maxWidth: 1200 });
+  expect(viewPage._ref.vars.page_config).toEqual({});
 });
 
 test("makeActionPages: action_config does not carry the `pages` slot (duplicate path removed)", () => {
@@ -208,5 +208,5 @@ test("makeActionPages: action_config does not carry the `pages` slot (duplicate 
   });
 
   const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
-  expect(editPage.definition._ref.vars.action_config.pages).toBeUndefined();
+  expect(editPage._ref.vars.action_config.pages).toBeUndefined();
 });

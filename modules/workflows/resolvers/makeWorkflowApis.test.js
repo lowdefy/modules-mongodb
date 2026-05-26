@@ -131,16 +131,15 @@ test("makeWorkflowApis: sparse hooks, event_overrides, interactions maps", () =>
   expect(propsOf(sendQuote)).not.toHaveProperty("interactions");
 });
 
-test("makeWorkflowApis: hook Api emission with synthesized auth.roles", () => {
+test("makeWorkflowApis: hook Api emission", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const hook = findApi(apis, "update-action-qualify-submit_edit-pre");
   expect(hook).toBeDefined();
   expect(hook.type).toBe("Api");
-  expect(hook.auth).toEqual({ roles: ["account-manager"] });
   expect(hook.routine).toEqual([{ id: "x", type: "MongoDBFindOne" }]);
 });
 
-test("makeWorkflowApis: group on_complete Api emission with union of access.roles", () => {
+test("makeWorkflowApis: group on_complete Api emission", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const onComplete = findApi(
     apis,
@@ -148,80 +147,7 @@ test("makeWorkflowApis: group on_complete Api emission with union of access.role
   );
   expect(onComplete).toBeDefined();
   expect(onComplete.type).toBe("Api");
-  expect(onComplete.auth.roles.sort()).toEqual(
-    ["account-manager", "ops-lead"].sort()
-  );
   expect(onComplete.routine).toEqual([{ id: "notify", type: "CallApi" }]);
-});
-
-test("makeWorkflowApis: on_complete auth.roles dedupes across actions sharing roles", () => {
-  const workflow = {
-    type: "onboarding",
-    entity_collection: "leads-collection",
-    display_order: 1,
-    action_groups: [
-      {
-        id: "phase-1",
-        on_complete: { routine: [{ id: "x", type: "CallApi" }] },
-      },
-    ],
-    starting_actions: [{ type: "a", status: "action-required" }],
-    actions: [
-      {
-        type: "a",
-        kind: "task",
-        action_group: "phase-1",
-        access: { roles: ["account-manager"] },
-      },
-      {
-        type: "b",
-        kind: "task",
-        action_group: "phase-1",
-        access: { roles: ["account-manager"] },
-      },
-    ],
-  };
-  const apis = makeWorkflowApis(null, { workflows: [workflow] });
-  const onComplete = findApi(
-    apis,
-    "workflow-onboarding-group-phase-1-on-complete"
-  );
-  expect(onComplete.auth).toEqual({ roles: ["account-manager"] });
-});
-
-test("makeWorkflowApis: empty roles pass through verbatim", () => {
-  const workflow = {
-    type: "onboarding",
-    entity_collection: "leads-collection",
-    display_order: 1,
-    action_groups: [
-      {
-        id: "phase-1",
-        on_complete: { routine: [{ id: "x", type: "CallApi" }] },
-      },
-    ],
-    starting_actions: [{ type: "a", status: "action-required" }],
-    actions: [
-      {
-        type: "a",
-        kind: "form",
-        action_group: "phase-1",
-        access: { roles: [] },
-        form: [{ id: "x", type: "TextInput" }],
-        hooks: {
-          submit_edit: { pre: { routine: [{ id: "x", type: "CallApi" }] } },
-        },
-      },
-    ],
-  };
-  const apis = makeWorkflowApis(null, { workflows: [workflow] });
-  const hook = findApi(apis, "update-action-a-submit_edit-pre");
-  expect(hook.auth).toEqual({ roles: [] });
-  const onComplete = findApi(
-    apis,
-    "workflow-onboarding-group-phase-1-on-complete"
-  );
-  expect(onComplete.auth).toEqual({ roles: [] });
 });
 
 test("makeWorkflowApis: event_overrides carries the four-tuple", () => {

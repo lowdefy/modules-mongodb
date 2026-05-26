@@ -240,6 +240,9 @@ importers:
       '@lowdefy/block-utils':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-aggrid':
+        specifier: 0.0.0-experimental-20260525131701
+        version: 0.0.0-experimental-20260525131701(@ant-design/icons@6.2.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.19)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -252,6 +255,9 @@ importers:
       '@lowdefy/blocks-loaders':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@lowdefy/blocks-markdown':
+        specifier: 0.0.0-experimental-20260525131701
+        version: 0.0.0-experimental-20260525131701(@types/react@19.2.15)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-tiptap':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -285,9 +291,24 @@ importers:
       '@lowdefy/node-utils':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701
+      '@lowdefy/operators-dayjs':
+        specifier: 0.0.0-experimental-20260525131701
+        version: 0.0.0-experimental-20260525131701
       '@lowdefy/operators-js':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701
+      '@lowdefy/operators-mql':
+        specifier: 0.0.0-experimental-20260525131701
+        version: 0.0.0-experimental-20260525131701
+      '@lowdefy/operators-nunjucks':
+        specifier: 0.0.0-experimental-20260525131701
+        version: 0.0.0-experimental-20260525131701
+      '@lowdefy/operators-uuid':
+        specifier: 0.0.0-experimental-20260525131701
+        version: 0.0.0-experimental-20260525131701
+      '@lowdefy/plugin-aws':
+        specifier: 0.0.0-experimental-20260525131701
+        version: 0.0.0-experimental-20260525131701(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(next-auth@4.24.10(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(next@16.1.6(@babel/core@7.29.0)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
