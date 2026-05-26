@@ -4,6 +4,8 @@
 
 ### 1. Demo app already uses `interactions:` — migration is not zero-cost
 
+> **Resolved.** Reframed: the demo's overrides aren't load-bearing — they exist because Layer 2 was there to demonstrate, not because the demo workflows need non-default behaviour. § Migration now reads "no real-world users; the demo's four `interactions:` overrides get deleted (no pre-hook ports needed) — the demo runs on engine defaults afterwards." § Parts touched's demo row spells out the per-file delta and notes the verified absence of any `event:` blocks. § Use cases considered's `request_changes` row was tightened with a footnote explaining that the demo's static `request_changes: action-required` is artifact-of-Layer-2, not a real workflow semantic — so the dismissal stands and option (b) (accept migration cost) was not adopted.
+
 The design concludes from § Use cases considered that "every override case I could construct is either (a) a misconfigured `access.{app_name}` verb list or (b) genuinely conditional logic that is properly a pre-hook anyway" and § Parts touched / "Worked-example YAML in the demo app" hedges with "Audit needed — § Use cases considered suggests the demo likely uses zero status overrides." That hedge is contradicted by the demo's current state.
 
 - [`apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml:20-22`](../../../../apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml) declares `interactions: { submit_edit: { status: done } }`. The action's `access.demo: [edit, view]` (no `review`), so the engine default for `submit_edit` is already `done` — the override is **redundant**, drop-on-migrate.
@@ -17,6 +19,8 @@ The third one is exactly the case § Use cases considered dismisses for `request
 - Reconsider whether the dismissal-of-`request_changes` analysis under § Use cases considered is the right framing, or whether the design should land with "static `request_changes` overrides exist; we accept the migration cost of porting them to one-line `:return:` routines." The latter is a stronger story — fewer claims to defend, just a clean cost statement.
 
 ### 2. Pre-hook example YAML uses non-existent step type
+
+> **Resolved.** Rewrote Case A and Case B example pre-hooks to use the `:return:` control prefix (`- :return: { status: done }` / `- :return: { event_overrides: ... }`) instead of the non-existent `type: Return` step. The § `_nunjucks` evaluation reframing (finding #3) handles the remaining "Return params.event_overrides" reference.
 
 § What the rewrites look like / Case A and Case B show pre-hook routines written as:
 
@@ -40,6 +44,8 @@ Both Case A and Case B need fixing — Case B compounds it ("`Return params.even
 
 ### 3. § `_nunjucks` evaluation — equivalence verified is right by accident
 
+> **Deferred to nunjucks-template-handling rewrite.** Finding is valid against the current section text, but the entire `_nunjucks` evaluation mechanism is being rewritten in separate in-flight work. Revisiting the § `_nunjucks` evaluation section before that rewrite lands would mean rewriting it twice. The section stays as-is for now; it will be re-derived against the new template-handling model when that work completes. No part of this finding is separable from the nunjucks-evaluation question.
+
 The section claims "[the `_nunjucks` operator] is **not evaluated by the workflow engine in any override path**. The operator object travels as a literal through `context.callApi('new-event', module: 'events')`."
 
 For the **engine default** path (`buildDefaultLogEventPayload`), that's true: the operator is constructed as a JS literal in [`dispatchLogEvent.js:80-86`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js) after operator evaluation has already run, so it travels as a literal.
@@ -57,6 +63,8 @@ Two fixes:
 
 ### 4. Pre-hook side-effects re-run on retry — not "naturally idempotent"
 
+> **Resolved.** Reworded change #6 to drop "naturally idempotent" and call out the Part 29 § D6 contract: no engine writes have landed and the action doc is unchanged, but pre-hook side effects re-run on retry per the existing idempotency-is-author's-responsibility contract.
+
 Change #6 says: "The throw fires at the merge step (after step 2 pre-hook invocation, before step 4 writes) so no writes have landed; the action stays in its pre-submit state and retry is naturally idempotent."
 
 Step 2 has already run when `mergeStatus` throws. A pre-hook that called an external validator, posted to a logging service, charged an account, or mutated any external resource has already fired its side effects. The retry will fire them again. "Naturally idempotent" is true of the action doc (no writes happened) and false of the pre-hook (it did run, fully).
@@ -69,6 +77,8 @@ The bigger question this surfaces: should `mergeStatus`'s enum check fire **befo
 
 ### 5. "Incremental cost is one Api per overridden interaction" undersells
 
+> **Resolved.** Tightened both occurrences (change #5 in § Proposed change and the "what gets worse" bullet in § Trade-offs) to: "one Api per interaction that didn't already declare a pre-hook; zero if the override piggy-backs onto an existing pre-hook routine."
+
 § Trade-offs / "What gets worse" says: "Each new overridden interaction adds one emitted hook Api (`update-action-{type}-{interaction}-pre`)."
 
 Per [Part 13 § Pre-hook emission](../13-resolver-apis/design.md), the resolver emits one Api per `hooks.{interaction}.pre` declared — regardless of whether the pre-hook returns a status / event override or does other work. If an interaction already has a pre-hook for some other reason (validation, side effect), porting a Layer 2 override into the same pre-hook adds **zero** Apis. If the interaction has no pre-hook today, porting adds **one** Api. The cost is "one Api per interaction that didn't already declare a pre-hook" — narrower than the current wording.
@@ -76,6 +86,8 @@ Per [Part 13 § Pre-hook emission](../13-resolver-apis/design.md), the resolver 
 Probably not worth re-flowing the section, but worth a one-word tightening to avoid future-reader confusion when they grep for the cost.
 
 ### 6. Schema unknown-key rejection — confirm the failure mode is friendly
+
+> **Accepted.** Audit confirmed `makeWorkflowsConfig` is a hand-written-checks validator with no Joi/Ajv schema and no unknown-keys rejection — stale `interactions:`/`event:` fields will be silently accepted and ignored. No real users to migrate, and the demo edit in this part removes the only YAML carrying these fields, so silent acceptance is cheap risk; not adding a rejecting validator (out of scope). Design updated in three places to drop the wrong "standard schema unknown-key rejection" mechanism claim and state the actual position.
 
 § Proposed change / "Drop the merge functions and tests for Layer 2" + § Migration / "no migration needed" rest on schema unknown-key rejection catching anyone who carries the old fields forward. Worth a quick check that `makeWorkflowsConfig`'s current schema validator does error on unknown keys (and produces a message that names the offending field), since Joi / Ajv defaults vary on this. If the rejection is silent (passes validation with the field ignored), the migration loses its safety net and authors get the override silently stripped.
 
