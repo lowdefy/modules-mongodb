@@ -1,8 +1,6 @@
 # Workflows
 
-Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Ships shared task-action pages (`task-edit`, `task-view`, `task-review`), a `workflow-overview` page, a `group-overview` page, and six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`). The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp` so every workflow + action mutation is auditable.
-
-This is the **static surface** shipped by part 20a. Part 20b adds the resolver-emitted per-action pages (`-edit` / `-view` / `-review` / `-error`) and per-action submit endpoints (`update-action-{action_type}`).
+Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Ships shared task-action pages (`task-edit`, `task-view`, `task-review`), a `workflow-overview` page, a `group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/task action (`update-action-{action_type}`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp` so every workflow + action mutation is auditable.
 
 ## Dependencies
 
@@ -11,7 +9,7 @@ This is the **static surface** shipped by part 20a. Part 20b adds the resolver-e
 | [layout](../layout/README.md) | Page wrapper consumed by every shared page |
 | [events](../events/README.md) | Provides the `change_stamp` component referenced by the `workflow-api` connection |
 
-`notifications` becomes a dependency when part 20b lands the per-action submit endpoint that fires hook-driven and `event:`-override notifications. Not declared yet.
+`notifications` is consumed at runtime by the per-action submit endpoint (log-event + override-driven notifications) but is not declared as a module dependency — apps wire it independently.
 
 ## How to Use
 
@@ -46,9 +44,54 @@ modules:
 
 See `apps/demo/modules/workflows/vars.yaml` for a worked example.
 
+### Worked example — a single form action
+
+Declare a workflow with one form action in the app's `workflow_config/`:
+
+```yaml
+# app/workflow_config/lead-pipeline.yaml
+type: lead-pipeline
+entity_collection: leads-collection
+starting_actions:
+  - { type: qualify, status: action-required }
+action_groups:
+  - { id: discovery, title: Discovery }
+actions:
+  - type: qualify
+    kind: form
+    action_group: discovery
+    access:
+      my-app: [edit, view]
+      roles: [account-manager]
+    form:
+      - { key: contact_name, component: text_input, title: Contact name, required: true }
+      - { key: notes, component: text_area, title: Qualification notes }
+    interactions:
+      submit_edit: { status: done }
+    status_map:
+      action-required:
+        my-app:
+          message: Qualify the lead.
+          link:
+            pageId: { _module.pageId: { id: lead-pipeline-qualify-edit, module: workflows } }
+            urlQuery: { action_id: true }
+      done:
+        my-app:
+          message: Lead qualified.
+```
+
+The build emits:
+
+- Pages at `/{workflows-entry}/lead-pipeline-qualify-edit` and `/{workflows-entry}/lead-pipeline-qualify-view`.
+- An endpoint at `/api/{workflows-entry}/update-action-qualify` that pipes the submitted payload through the engine via the `workflow-api` connection.
+
+`actions-on-entity` reads the per-status `link:` block off each action and renders it as a clickable row.
+
 ## Exports
 
 ### Pages
+
+**Shared pages** (static):
 
 | ID | Description | Path |
 |---|---|---|
@@ -58,7 +101,7 @@ See `apps/demo/modules/workflows/vars.yaml` for a worked example.
 | `workflow-overview` | Workflow detail page (header + action cards with form_data DataView). Addressed by `?workflow_id=<id>` | `/{entryId}/workflow-overview` |
 | `group-overview` | Group detail page (header + progress bar + group-status badge + action cards). Addressed by `?workflow_id=<id>&group_id=<id>` | `/{entryId}/group-overview` |
 
-Per-action pages (`-edit` / `-view` / `-review` / `-error`) and per-action submit endpoints (`update-action-{action_type}`) ship in part 20b.
+**Per-action form pages** (resolver-emitted by `makeActionPages`): one page per `(workflow_type, action_type, verb)` tuple, where `verb` is the intersection of `action.access.{app_name}.verbs` and the supported set `[edit, view, review, error]`. Only `kind: form` actions emit pages — task and tracker actions emit none. Page ID format: `{workflow_type}-{action_type}-{verb}`. Path: `/{entryId}/{workflow_type}-{action_type}-{verb}`. Example: a `qualify` form action in the `onboarding` workflow with `access.demo.verbs: [edit, view]` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
 
 ### Components
 
@@ -67,8 +110,11 @@ Per-action pages (`-edit` / `-view` / `-review` / `-error`) and per-action submi
 - **`actions-on-entity`** — Entity-page widget surfacing every workflow attached to one entity with its action list. Takes `entity_id` + `entity_collection` vars.
 - **`workflow-header`** — Per-workflow strip with title, lifecycle badge, summary counts, milestone label, workflow-overview link button. Used internally by `actions-on-entity` and `workflow-overview`.
 - **`action_role_check`** — Client-side role-gate action sequence. Composed into a page's `onMount`; writes the boolean to `_state.action_allowed`.
+- **`entity-workflows-refetch`** — Reusable action sequence (`CallAPI` `get-entity-workflows` → `SetState` `entity_workflows`) that any page mutating workflows on an entity can `_ref` into its event chain to refresh `actions-on-entity` without knowing the endpoint id or state key. Takes `entity_id` + `entity_collection` vars. Canonical consumer: `apps/demo/pages/leads/lead-view.yaml`'s start-onboarding modal.
 
 ### API Endpoints
+
+**Operational** (static):
 
 | ID | Description |
 |---|---|
@@ -78,6 +124,12 @@ Per-action pages (`-edit` / `-view` / `-review` / `-error`) and per-action submi
 | `get-entity-workflows` | Return workflows + filtered actions for one entity. Consumed by `actions-on-entity` |
 | `get-workflow-overview` | Return one workflow + ordered + filtered actions for the `workflow-overview` page |
 | `get-action-group-overview` | Return one workflow + one action group's metadata + ordered + filtered actions in that group |
+
+**Per-action submit endpoints** (resolver-emitted by `makeWorkflowApis`):
+
+- `update-action-{action_type}` — one per `kind: form` or `kind: task` action (tracker actions emit none). Bakes the action's `hooks:` / `event:` / `interactions:` blocks in as build-time literals; routes the submitted payload through `SubmitWorkflowAction` on the `workflow-api` connection.
+- `update-action-{action_type}-{interaction}-{phase}` — one per declared inline hook routine (`hooks.{interaction}.{phase}.routine` on the action). Phases: `pre`, `post`. Interactions: `submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`.
+- `workflow-{workflow_type}-group-{group_id}-on-complete` — one per declared `action_groups[*].on_complete.routine`. Fired by the group state machine when the group reaches a terminal status.
 
 ### Connections
 
@@ -130,5 +182,5 @@ None in v1. Menu exports land alongside per-app navigation work.
 ## Notes
 
 - **Prerelease (0.x).** Pin to an exact version or commit SHA in production.
-- **Part split.** Part 20a ships the static surface documented here. Part 20b extends with per-action form/task page resolvers and per-action submit endpoints (`update-action-{action_type}`).
+- **Runtime dependencies.** Hook invocation, group `on_complete` fan-out, and per-status runtime-field projection (`status_map.{status}.{app_name}` → action root) ship behind separate engine work; until those land, declared hook routines, group callbacks, and `{ pageId, urlQuery }` links are authored but inert.
 - **Cross-cutting idioms.** See [`docs/idioms.md`](../../docs/idioms.md) anchors `#change-stamps`, `#event-display`, `#slots`, `#app-name`, `#secrets`.

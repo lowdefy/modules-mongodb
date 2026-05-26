@@ -105,6 +105,9 @@ components:
   - id: action_form_configs
     component:
       _ref: components/action_form_configs.yaml
+  - id: entity-workflows-refetch
+    component:
+      _ref: components/entity-workflows-refetch.yaml
 
 connections:
   - _ref: connections/workflows-collection.yaml

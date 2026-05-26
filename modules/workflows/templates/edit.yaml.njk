@@ -27,10 +27,10 @@ _ref:
         default: 750
     requests:
       _build.array.concat:
-        - - _ref: ../requests/get_action.yaml
-          - _ref: ../requests/get_workflow.yaml
+        - - _ref: requests/get_action.yaml
+          - _ref: requests/get_workflow.yaml
           - _ref:
-              path: ../requests/get_entity.yaml.njk
+              path: requests/get_entity.yaml.njk
               vars:
                 entity_collection: {{ entity_collection }}
         - _var:
@@ -76,7 +76,7 @@ _ref:
               type: Request
               params: get_entity
             - _ref:
-                path: ../components/action_role_check.yaml
+                path: components/action_role_check.yaml
                 vars:
                   action_config:
                     _var: action_config
@@ -106,7 +106,7 @@ _ref:
         - _build.if:
             test:
               _build.ne:
-                - _build.get:
+                - _var:
                     key: action_config.form.0.form
                     default: null
                 - null
@@ -117,7 +117,7 @@ _ref:
                     key: page_config.formHeader
                     default: []
                 - - _ref:
-                      path: ../components/universal-fields/universal-fields.yaml
+                      path: components/universal-fields/universal-fields.yaml
                       vars:
                         mode: edit
                         kind: form
@@ -129,7 +129,7 @@ _ref:
                           description:
                             _state: fields.description
                 - - _ref:
-                      resolver: ../resolvers/makeActionsForm.js
+                      resolver: resolvers/makeActionsForm.js
                       vars:
                         form:
                           _var: action_config.form
@@ -154,7 +154,7 @@ _ref:
                         key: page_config.formHeader
                         default: []
                     - - _ref:
-                          path: ../components/universal-fields/universal-fields.yaml
+                          path: components/universal-fields/universal-fields.yaml
                           vars:
                             mode: edit
                             kind: form
@@ -166,7 +166,7 @@ _ref:
                               description:
                                 _state: fields.description
                     - - _ref:
-                          resolver: ../resolvers/makeActionsForm.js
+                          resolver: resolvers/makeActionsForm.js
                           vars:
                             form:
                               _var: action_config.form
@@ -207,7 +207,7 @@ _ref:
                         _build.if:
                           test:
                             _build.ne:
-                              - _build.get:
+                              - _var:
                                   key: page_config.buttons.submit_edit.modal
                                   default: null
                               - null
@@ -233,11 +233,9 @@ _ref:
                                   params:
                                     endpointId:
                                       _module.endpointId:
-                                        id:
-                                          _string.concat:
-                                            - update-action-
-                                            - _var: action_config.type
-                                        module: workflows
+                                        _build.string.concat:
+                                          - update-action-
+                                          - _var: action_config.type
                                     payload:
                                       action_id:
                                         _request: get_action._id
@@ -285,7 +283,7 @@ _ref:
                         _build.if:
                           test:
                             _build.ne:
-                              - _build.get:
+                              - _var:
                                   key: page_config.buttons.not_required.modal
                                   default: null
                               - null
@@ -305,11 +303,9 @@ _ref:
                                   params:
                                     endpointId:
                                       _module.endpointId:
-                                        id:
-                                          _string.concat:
-                                            - update-action-
-                                            - _var: action_config.type
-                                        module: workflows
+                                        _build.string.concat:
+                                          - update-action-
+                                          - _var: action_config.type
                                     payload:
                                       action_id:
                                         _request: get_action._id
@@ -324,7 +320,7 @@ _ref:
         - _build.if:
             test:
               _build.ne:
-                - _build.get:
+                - _var:
                     key: page_config.buttons.submit_edit.modal
                     default: null
                 - null
@@ -359,11 +355,9 @@ _ref:
                           params:
                             endpointId:
                               _module.endpointId:
-                                id:
-                                  _string.concat:
-                                    - update-action-
-                                    - _var: action_config.type
-                                module: workflows
+                                _build.string.concat:
+                                  - update-action-
+                                  - _var: action_config.type
                             payload:
                               action_id:
                                 _request: get_action._id
@@ -382,7 +376,7 @@ _ref:
         - _build.if:
             test:
               _build.ne:
-                - _build.get:
+                - _var:
                     key: page_config.buttons.not_required.modal
                     default: null
                 - null
@@ -411,11 +405,9 @@ _ref:
                           params:
                             endpointId:
                               _module.endpointId:
-                                id:
-                                  _string.concat:
-                                    - update-action-
-                                    - _var: action_config.type
-                                module: workflows
+                                _build.string.concat:
+                                  - update-action-
+                                  - _var: action_config.type
                             payload:
                               action_id:
                                 _request: get_action._id

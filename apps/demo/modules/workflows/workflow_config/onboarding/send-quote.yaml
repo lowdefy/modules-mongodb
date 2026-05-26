@@ -1,0 +1,89 @@
+type: send-quote
+kind: form
+action_group: g2
+sort_order: 10
+blocked_by:
+  - qualify
+description: Build and send the lead a quote; reviewer approves before send.
+access:
+  demo:
+    - edit
+    - view
+    - review
+  roles:
+    - admin
+form:
+  - key: quote_total
+    component: number
+    title: Quote total
+    required: true
+  - key: notes
+    component: text_area
+    title: Quote notes
+form_review:
+  - key: review_notes
+    component: text_area
+    title: Reviewer notes
+interactions:
+  submit_edit:
+    status: in-review
+  approve:
+    status: done
+  request_changes:
+    status: action-required
+hooks:
+  submit_edit:
+    pre:
+      routine:
+        _ref: modules/workflows/workflow_config/onboarding/hooks/send-quote-pre-submit.yaml
+  approve:
+    post:
+      routine:
+        _ref: modules/workflows/workflow_config/onboarding/hooks/send-quote-post-approve.yaml
+status_map:
+  blocked:
+    demo:
+      message: Awaiting lead qualification.
+  action-required:
+    demo:
+      message: Build and send the quote.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-send-quote-edit
+            module: workflows
+        urlQuery:
+          action_id: true
+  in-progress:
+    demo:
+      message: Quote in progress.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-send-quote-view
+            module: workflows
+        urlQuery:
+          action_id: true
+  in-review:
+    demo:
+      message: Quote awaiting review.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-send-quote-review
+            module: workflows
+        urlQuery:
+          action_id: true
+  changes-required:
+    demo:
+      message: Reviewer requested changes.
+      link:
+        pageId:
+          _module.pageId:
+            id: onboarding-send-quote-edit
+            module: workflows
+        urlQuery:
+          action_id: true
+  done:
+    demo:
+      message: Quote approved and sent.

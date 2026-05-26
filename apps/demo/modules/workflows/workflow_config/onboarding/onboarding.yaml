@@ -4,25 +4,46 @@ entity_collection: leads-collection
 display_order: 1
 
 starting_actions:
-  - type: track-step-1
+  - type: qualify
     status: action-required
 
 action_groups:
   - id: g1
-    title: Group 1
-    icon: GrDocumentText
+    title: Qualify
+    icon: AiOutlineUserAdd
+    on_complete:
+      routine:
+        - id: log_g1_complete_event
+          type: CallApi
+          properties:
+            endpointId:
+              _module.endpointId:
+                id: new-event
+                module: events
+            payload:
+              type: workflow-group-complete
+              display:
+                demo:
+                  title: Onboarding group g1 (Qualify) complete.
+              references:
+                workflow_ids:
+                  - _payload: workflow_id
+        - :return:
+            message: Onboarding group g1 (Qualify) complete.
   - id: g2
-    title: Group 2
-    icon: AiOutlineBank
+    title: Quote
+    icon: GrDocumentText
     blocked_by:
       - g1
   - id: g3
-    title: Group 3
-    icon: AiOutlineUserAdd
+    title: Installation
+    icon: AiOutlineTool
     blocked_by:
       - g2
 
 actions:
-  - _ref: modules/workflows/workflow_config/onboarding/track-step-1.yaml
-  - _ref: modules/workflows/workflow_config/onboarding/track-step-2.yaml
-  - _ref: modules/workflows/workflow_config/onboarding/track-step-3.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/qualify.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/send-quote.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/schedule-followup.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/proof-of-installation.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/track-installation.yaml

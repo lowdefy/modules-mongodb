@@ -61,14 +61,12 @@ routine:
                       status: $status
                       message:
                         _string.concat:
-                          - $apps
-                          - .
+                          - $
                           - _module.var: app_name
                           - .message
                       link:
                         _string.concat:
-                          - $apps
-                          - .
+                          - $
                           - _module.var: app_name
                           - .link
 
