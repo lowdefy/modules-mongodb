@@ -30,6 +30,25 @@ This part exists because the universal fields touch enough of the module — edi
 
 Block-id conventions match the CLAUDE.md "Input block IDs match data paths" rule: `fields.assignees`, `fields.due_date`, `fields.description`. The component-level inputs bind to `_state.fields.*` so the page-level button can post `fields: { _state: fields }` (per part 16 "Button payload").
 
+Binding convention by mode:
+
+- **`mode: edit`** — callers pass `action_data` bound to `_state.fields.*` (as above). Inputs are primed by the page's `onMount` step that seeds `_state.fields` from the loaded action doc, and the submit button posts the same `_state.fields` subtree.
+- **`mode: display`** — callers pass `action_data` bound to `_request: get_action.*`:
+
+  ```yaml
+  - _ref:
+      path: components/universal-fields/universal-fields.yaml
+      vars:
+        mode: display
+        kind: form
+        action_data:
+          assignees:   { _request: get_action.assignees }
+          due_date:    { _request: get_action.due_date }
+          description: { _request: get_action.description }
+  ```
+
+  Display mode reads straight from the loaded action doc — there's no `_state.fields` priming on `-view` / `-review` pages.
+
 ### Where the component renders
 
 | Surface                                | Mode                                                          | Notes                                                                                                                  |
@@ -49,7 +68,8 @@ Reasons:
 
 - One write per user submit — minimizes round-trips and avoids two events on a single user action.
 - Form data and universal fields live on different documents (form data on workflow, universal fields on action), but they're a single logical edit from the user's POV — splitting at the user surface is artificial.
-- The event-timeline cleanliness concern (assignee change blurs into status change) is solvable by surfacing the metadata diff in the event payload (`event.metadata.fields_diff`) rather than splitting interactions.
+
+Trade-off: the engine-default event timeline row (rendered by `buildDefaultLogEventPayload`'s Nunjucks template) shows the status transition + comment; a same-submit universal-field change isn't called out separately. The action doc carries the new field values regardless — the gap is purely on the timeline's display string, not on the underlying audit data. Apps that need universal-field changes called out today can wire a pre-hook on the affected actions to stamp a custom `event_overrides.display` (the layer-3 path described in [part 9 (hook invocation)](../_completed/09-hook-invocation/design.md)). A future engine-level enhancement could ship a richer default template that surfaces metadata diffs out of the box — out of scope here.
 
 Deferred to v1.x if real apps complain: a `update_metadata` interaction with `update-action-{action_type}` accepting `interaction: update_metadata` + a `fields` payload, no form data, no status change. The engine already has the plumbing — only the page-level affordance is missing.
 
@@ -60,7 +80,7 @@ Universal fields are editable iff the action's current stage allows writes — s
 - **Editable**: `action-required`, `in-progress`, `changes-required`.
 - **Read-only**: `in-review`, `done`, `not-required`, `error`, `blocked`.
 
-Post-close edits (after the action has reached `done` / `not-required`) require `required_after_close: true` on the action YAML — same flag the engine consults at submit time. When `required_after_close: true`, the universal-fields band remains editable on the action's `edit` page even after terminal status; the engine's role gate is the only thing standing between the user and the write.
+`required_after_close: true` is **about the workflow lifecycle, not the action stage**. The flag lets an action survive `close-workflow` (it is not swept to `not-required`) and lets `SubmitWorkflowAction` accept writes against a `completed` / `cancelled` workflow. The surviving action keeps its current non-terminal stage (`action-required`, `in-progress`, etc.), so the existing editable-stage allowlist already covers the edit page — no URL-guard exception is needed. Once the action's own stage reaches `done` / `not-required`, the universal-fields band is read-only regardless of `required_after_close` (a dedicated post-terminal metadata-edit surface is deferred — see "Out of scope").
 
 `error` status: universal fields are **read-only** on the `-error` page. The recovery flow focuses on resolving the failure context, not bulk-editing metadata. Authors who need universal-field changes mid-error use the `submit_edit` route (the `resolve_error` interaction does not reach the universal-fields band).
 
@@ -83,7 +103,7 @@ The component reads `_state.action_allowed` (populated by `action_role_check` in
 
 Adds one request to the part-16 set:
 
-- `requests/selector_assignees.yaml` — query against the `user_contacts` collection (the unified user record per [contact-fields guide](.claude/guides/contact-fields.md)), returning `{ value: user._id, label: user.profile.name, avatar: user.profile.avatar }` for the assignees Selector.
+- `requests/selector_assignees.yaml` — query against the `user_contacts` collection (the unified user record per [contact-fields guide](../../../../apps/demo/.claude/guides/contact-fields.md)), returning `{ value: user._id, label: user.profile.name, avatar: user.profile.picture }` for the assignees Selector. Filters on `apps.{app_name}.is_user: true` so authors can only assign to actual app users (mirrors `user-admin/requests/get_users_for_selector.yaml`). This is a Selector options source — queried from inside an input block — not a page-load request like the part-16 trio (`get_action`, `get_workflow`, `get_entity`). It ships in the same `requests/` directory but plays a different role.
 
 ## Out of scope / deferred
 

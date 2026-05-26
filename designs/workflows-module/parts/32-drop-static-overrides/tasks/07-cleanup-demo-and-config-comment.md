@@ -39,7 +39,7 @@ The design (§ Migration) accepts deleting all four entries — the `request_cha
 - `grep -rn "^event:" apps/demo/modules/workflows/workflow_config/` returns no matches (design verified zero hits already; double-check post-edit).
 - `grep -n "interactions, event\|interactions,event" modules/workflows/resolvers/makeWorkflowsConfig.js` returns no matches.
 - Demo app build succeeds (no broken `_ref`, no validator complaint).
-- Manually exercising the demo `send-quote` action's `request_changes` interaction lands the action at status `changes-required` (the engine default) rather than `action-required`. The design accepts this behavioural change — no test fixture update needed unless an e2e test asserted the old value.
+- Manually exercising the demo `send-quote` action's `request_changes` interaction lands the action at status `changes-required` (the engine default) rather than `action-required`. **This is a deliberate behavioural change** to the demo workflow — accepted per the design's § Parts touched / Worked-example row and § Use cases considered's `request_changes` analysis. No test fixture update needed unless an e2e test asserted the old value.
 
 ## Files
 

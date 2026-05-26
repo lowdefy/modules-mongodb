@@ -48,7 +48,7 @@ Be terse. The design document already articulates the rationale at length — th
 - `grep -n "interactions:" designs/workflows-module-concept/submit-pipeline/spec.md designs/workflows-module-concept/action-authoring/spec.md` returns no matches that refer to the action YAML override block. (Matches that refer to `hooks.{interaction}` keying or `interactions[interaction].status` inside the schema's pre-hook return are fine — but in fact the design drops the latter; only the former should remain.)
 - `grep -n "action.event\|action.interactions" designs/workflows-module-concept/submit-pipeline/spec.md designs/workflows-module-concept/action-authoring/spec.md` returns no matches.
 - The status-resolution section in `submit-pipeline/spec.md` describes exactly two layers: engine default + pre-hook return.
-- The event-overrides section in `submit-pipeline/spec.md` describes three layers post-fold: engine default (with runtime `comment` folded in by `buildDefaultLogEventPayload`) + pre-hook return.
+- The event-overrides section in `submit-pipeline/spec.md` describes three layers: engine default + runtime `comment` + pre-hook return (the first two folded together by `buildDefaultLogEventPayload`).
 - The per-action field list in `action-authoring/spec.md` does not list `interactions:` or `event:`.
 
 ## Files

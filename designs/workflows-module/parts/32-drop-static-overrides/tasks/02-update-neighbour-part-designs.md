@@ -35,7 +35,7 @@ Keep each edit tight. Do not duplicate Part 32's rationale — link to it.
 
 - Part 4 and Part 13 each carry a single top-of-file deviation note pointing at Part 32. The body text is otherwise untouched (verified by diff being purely additive).
 - Part 9's body no longer describes a three-layer status resolution or a four-layer event-overrides merge.
-- Part 9 documents the new `mergeStatus` runtime enum check and links to Part 29 § D5 for the `UserError(isReject: false)` classification.
+- Part 9 documents the new runtime enum check inside `resolveTargetStatus` (fired on the pre-hook `status` return) and links to Part 29 § D5 for the `UserError(isReject: false)` classification.
 - `grep -n "interactions:" designs/workflows-module/parts/09-hook-invocation/design.md` returns no matches that reference the action-YAML override block (matches about `hooks.{interaction}` keying are fine — but the part's three-layer prose should not survive).
 - `grep -nri "Layer 2" designs/workflows-module/parts/_completed/04-workflow-config-schema designs/workflows-module/parts/09-hook-invocation designs/workflows-module/parts/_completed/13-resolver-apis` returns matches only inside Part 32's link target or in deviation notes — not in any descriptive prose claiming Layer 2 still exists.
 

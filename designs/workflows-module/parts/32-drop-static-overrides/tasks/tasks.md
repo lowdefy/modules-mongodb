@@ -29,4 +29,4 @@ Tasks 3, 4, 5 are also independent of tasks 1 + 2 — code changes don't read th
 
 **Source:** [`designs/workflows-module/parts/32-drop-static-overrides/design.md`](../design.md)
 **Context files considered:** `design.md` only — this part has no other supporting files.
-**Review files skipped:** `review/review-1.md` (per design-task convention).
+**Review files skipped:** `review/review-1.md`, `review/review-2.md` (per design-task convention; review findings were applied to the design and tasks before task break-out).
