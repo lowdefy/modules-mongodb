@@ -11,7 +11,7 @@ Contract (per design § `invokePostHook.js`):
 - Dispatch shape: `context.callApi({ id, module: 'workflows' }, payload, { user: context.user })` — same form as Task 5.
 - **Throws propagate. No try/catch wrap.** A thrown post-hook surfaces to `CallApi` as a failed submit even though writes (steps 4–10) have landed. Authors must make post-hooks idempotent. Authors who want a best-effort branch wrap it in `:try` inside their own routine. There is no `post_hook_error` field on the response.
 - **No-hook fallback — skip on missing at every level.** Same three independent undefined cases as the pre-hook (see Task 5): `params.hooks`, `params.hooks[interaction]`, and `params.hooks[interaction].post` are each independently optional. Use optional chaining on every level — `params.hooks?.[interaction]?.post` — and return `null` without calling `callApi` if any is undefined.
-- Timeout: omit; [Part 1's 10s default](../../_completed/01-call-api-primitive/design.md) applies.
+- Timeout: omit; [Part 1's 10s default](../../01-call-api-primitive/design.md) applies.
 
 This is a deliberate departure from [submit-pipeline/spec.md § Post-hook return](../../../workflows-module-concept/submit-pipeline/spec.md#post-hook-return)'s "logged but not propagated" posture — see [Part 29 § D6](../../29-error-model-cleanup/design.md#d6-propagate-everywhere--no-engine-side-catching-of-sub-step-throws) for rationale.
 

@@ -11,7 +11,7 @@ and merge-flow contracts that work in isolation but conflict with neighbours.
 
 ### 1. Auto-unblock entries don't arrive in "plural shape" — they arrive keyless
 
-> **Resolved.** Restated normalization as bilateral in `design.md` — both pre-hook and auto-unblock entries are normalized to engine-internal `{ type, keys, ... }` shape inside `mergePreHookActions.js` (kept upstream `computeAutoUnblocks` untouched). Task 02 updated to match. The keyed-action fan-out question raised in passing (auto-unblock only matches `doc.key === null` today) is split out as draft [Part 31 — Keyed auto-unblock fan-out](../../31-keyed-auto-unblock-fanout/design.md) for team discussion; out of scope for Part 9.
+> **Resolved.** Restated normalization as bilateral in `design.md` — both pre-hook and auto-unblock entries are normalized to engine-internal `{ type, keys, ... }` shape inside `mergePreHookActions.js` (kept upstream `computeAutoUnblocks` untouched). Task 02 updated to match. The keyed-action fan-out question raised in passing (auto-unblock only matches `doc.key === null` today) is split out as draft [Part 31 — Keyed auto-unblock fan-out](../../../31-keyed-auto-unblock-fanout/design.md) for team discussion; out of scope for Part 9.
 
 [design.md:48](../design.md):
 

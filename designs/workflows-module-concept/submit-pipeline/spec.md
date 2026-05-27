@@ -197,7 +197,7 @@ pre_hook_payload:
 }
 ```
 
-**Aborts.** A pre-hook aborts the lifecycle by throwing. Two flavours, the choice belongs to the hook author (see [Part 29 § D5](../../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently) and [Part 9 § Pre-hook abort modes](../../workflows-module/parts/09-hook-invocation/design.md)):
+**Aborts.** A pre-hook aborts the lifecycle by throwing. Two flavours, the choice belongs to the hook author (see [Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently) and [Part 9 § Pre-hook abort modes](../../workflows-module/parts/_completed/09-hook-invocation/design.md)):
 
 - **`:reject`** (Lowdefy control) — for user-facing validation failures. Propagates as a `UserError(isReject: true)` throw; the wrapping per-action endpoint's `runRoutine` classifies as `{ status: 'reject', error }` and the calling app's `CallApi` surfaces the message via the platform's standard reject UI.
 - **`throw`** (or any thrown error) — for infrastructure failures. The wrapping endpoint classifies as `{ status: 'error', error }`; user sees a transient error toast and can retry.

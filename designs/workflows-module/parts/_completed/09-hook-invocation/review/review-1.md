@@ -87,7 +87,7 @@ so readers know the gate holds by construction, not by validation.
 "`<auto-from-resolver-config>`" is not a real value. Hook Apis are emitted by
 [Part 13](../../13-resolver-apis/design.md#hook-emission-replaces-the-build-time-auth-gate)
 "alongside the `update-action-{action_type}` endpoint" — i.e. under the
-workflows module entry id. Per [Part 11 review-1 finding #2](../../11-group-on-complete-fanout/review/review-1.md) and
+workflows module entry id. Per [Part 11 review-1 finding #2](../../../11-group-on-complete-fanout/review/review-1.md) and
 [dispatchNotifications.js:17–21](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchNotifications.js),
 the canonical call shape for a module-scoped Api is:
 

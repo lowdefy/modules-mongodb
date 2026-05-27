@@ -19,7 +19,7 @@ Per the design, the merge function must:
 
 - Normalise **all three** inputs to engine-internal `{ type, keys, ... }` shape — the step-1 `currentActionEntry`, the auto-unblock entries, and the pre-hook entries. Apply the same default everywhere: `keys: undefined → [null]`. Specifically:
   - Pre-hook entries: singular `key` → plural `keys: [<key>]`; omitted/null key → `keys: [null]`.
-  - Auto-unblock entries arrive **keyless** from `computeAutoUnblocks` (`{ type, status: 'action-required' }`); default `keys: undefined → [null]`. Keyed-action fan-out for auto-unblocks is tracked under [Part 31](../../31-keyed-auto-unblock-fanout/design.md) — out of scope here.
+  - Auto-unblock entries arrive **keyless** from `computeAutoUnblocks` (`{ type, status: 'action-required' }`); default `keys: undefined → [null]`. Keyed-action fan-out for auto-unblocks is tracked under [Part 31](../../../31-keyed-auto-unblock-fanout/design.md) — out of scope here.
   - The step-1 `currentActionEntry` has `keys: params.current_key ? [params.current_key] : undefined` ([`handleSubmit.js:152–161`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) — non-keyed actions land at `keys: undefined` and need the same default before collision evaluation.
 - Expand both pre-hook and auto-unblock entries across their (now-normalised) `keys` arrays before evaluating collisions.
 - **Collision rule:** on `(type, key)` match between a pre-hook entry and an auto-unblock entry, the pre-hook entry **replaces** the auto-unblock entry for that pair (not a per-field overlay).

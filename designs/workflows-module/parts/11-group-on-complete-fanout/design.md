@@ -31,7 +31,7 @@ Both producers ([handleSubmit.js](../../../../plugins/modules-mongodb-plugins/sr
     - `workflow_type` — `entry.workflow_type`.
     - `group_id` — `entry.id`.
     - `group_title` — `entry.group_title` (may be `null` if not declared on the group config).
-    - `user: context.user` — explicit on the payload (mirrors [part 9](../09-hook-invocation/design.md)'s pre/post hook payload contract). The third-arg `{ user }` is the `callApi` auth context for the target Api; it doesn't auto-inject `user` into the payload, so the field is set explicitly.
+    - `user: context.user` — explicit on the payload (mirrors [part 9](../_completed/09-hook-invocation/design.md)'s pre/post hook payload contract). The third-arg `{ user }` is the `callApi` auth context for the target Api; it doesn't auto-inject `user` into the payload, so the field is set explicitly.
     - `event_id` — `context.eventId` (the same id threaded through every write in this submit; equals the just-dispatched log event's `_id` per [part 8](../_completed/08-side-effect-dispatch/design.md)). The hook chains its own event with `references` pointing at this id. Parent-level fires reference the **originating** submit's event, which is the correct provenance — the parent-level group transition was caused by this submit's tracker propagation, and there is no separate per-level log event written.
 - **Error policy.** Wrap each `callApi` invocation in a local try/catch. On failure, log with `{ workflow_id, group_id, on_complete_api_id, error }` and continue with the next entry — exceptions never escape `fireGroupOnComplete.js`. Match `dispatchNotifications.js`'s `result.success` check shape but invert the policy: on `result.success === false`, log instead of throw.
 
@@ -82,7 +82,7 @@ This is engine-side bookkeeping only. The `on_complete` Api itself is arbitrary 
 
 ## Depends on
 
-[Part 1](../_completed/01-call-api-primitive/design.md), [part 7](../_completed/07-group-state-machine/design.md), [part 9](../09-hook-invocation/design.md) (same `context.callApi` invocation pattern), [part 10](../_completed/10-tracker-subscription/design.md) (this part extends `fireTrackerSubscription`'s return shape — see "Extends `fireTrackerSubscription`" above), [part 13](../_completed/13-resolver-apis/design.md) (Api id template — the handler hard-codes the template; the unit test pins it so divergence fails loudly).
+[Part 1](../_completed/01-call-api-primitive/design.md), [part 7](../_completed/07-group-state-machine/design.md), [part 9](../_completed/09-hook-invocation/design.md) (same `context.callApi` invocation pattern), [part 10](../_completed/10-tracker-subscription/design.md) (this part extends `fireTrackerSubscription`'s return shape — see "Extends `fireTrackerSubscription`" above), [part 13](../_completed/13-resolver-apis/design.md) (Api id template — the handler hard-codes the template; the unit test pins it so divergence fails loudly).
 
 ## Verification
 

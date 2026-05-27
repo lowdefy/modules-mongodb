@@ -1,6 +1,6 @@
 # Part 31 — Keyed auto-unblock fan-out
 
-**Status:** Draft / open for team discussion. Out of scope for Part 9; surfaced from [Part 9 § Review 3 finding #1](../09-hook-invocation/review/review-3.md).
+**Status:** Draft / open for team discussion. Out of scope for Part 9; surfaced from [Part 9 § Review 3 finding #1](../_completed/09-hook-invocation/review/review-3.md).
 
 **Source rationale:** [workflows-module/parts/_completed/07-group-state-machine/design.md](../_completed/07-group-state-machine/design.md), [workflows-module/parts/_completed/06-submit-action-writes/design.md § Per-entry write loop](../_completed/06-submit-action-writes/design.md). **Layer:** engine handlers. **Size:** S–M (depends on chosen approach). **Repo:** `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/`.
 
@@ -51,7 +51,7 @@ Part 9's review surfaced the keyless shape and asked for bilateral normalization
 
 - [Part 7 — group state machine](../_completed/07-group-state-machine/design.md) — owner of `computeAutoUnblocks`.
 - [Part 6 — submit action writes](../_completed/06-submit-action-writes/design.md) — owner of the per-entry write loop and `(type, key)` contract.
-- [Part 9 — hook invocation](../09-hook-invocation/design.md) — collision-pass contract that any producer-side shape change has to align with.
+- [Part 9 — hook invocation](../_completed/09-hook-invocation/design.md) — collision-pass contract that any producer-side shape change has to align with.
 
 ## Open questions
 

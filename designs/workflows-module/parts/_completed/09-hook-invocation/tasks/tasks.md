@@ -2,7 +2,7 @@
 
 ## Overview
 
-Light up step 2 (pre-hook, pre-write) and step 11 (post-hook, after all side effects) of the 11-step lifecycle skeleton committed by [part 6](../../_completed/06-submit-action-writes/design.md). Add the three-layer status resolver (engine default → action YAML `interactions:` → pre-hook return `status`), the per-channel pre-hook return merges (actions[] with auto-unblock + `currentActionId` collision rules, four-layer event overrides, field-path form overrides), the two abort modes (`throw` for crashes, `:reject` for user-facing rejections — both propagate transparently), and post-hook invocation that includes post-write `result` state on the payload. Surfaces `pre_hook_response` and `post_hook_response` (raw returns, pre-merge) on the handler API return. Derived from `designs/workflows-module/parts/09-hook-invocation/design.md`.
+Light up step 2 (pre-hook, pre-write) and step 11 (post-hook, after all side effects) of the 11-step lifecycle skeleton committed by [part 6](../../06-submit-action-writes/design.md). Add the three-layer status resolver (engine default → action YAML `interactions:` → pre-hook return `status`), the per-channel pre-hook return merges (actions[] with auto-unblock + `currentActionId` collision rules, four-layer event overrides, field-path form overrides), the two abort modes (`throw` for crashes, `:reject` for user-facing rejections — both propagate transparently), and post-hook invocation that includes post-write `result` state on the payload. Surfaces `pre_hook_response` and `post_hook_response` (raw returns, pre-merge) on the handler API return. Derived from `designs/workflows-module/parts/09-hook-invocation/design.md`.
 
 ## Tasks
 
@@ -56,7 +56,7 @@ Part 09 ships **unit tests per task** per the top-level § Testing conventions. 
   - Pre-hook returning `actions: [{ ..., status: 'error' }]`: writes the error transition via the priority path (no `force` needed); log event + notifications fire normally.
   - `pre_hook_response` raw return surfaces on the API response; `null` when no pre-hook declared.
   - `post_hook_response` raw return surfaces; post-hook throw propagates (writes from steps 4–10 stay).
-- **End-to-end coverage** lands in [part 22 — workflows-e2e-suite](../../22-workflows-e2e-suite/design.md). The integration-layer reject-classification path (`isReject` reaches `runRoutine` and is labelled `'reject'`) depends on the upstream `runRoutine.js` tweak (see [Part 29 § Upstream dependency](../../29-error-model-cleanup/design.md#upstream-dependency)) and is verified there, not here.
+- **End-to-end coverage** lands in [part 22 — workflows-e2e-suite](../../../22-workflows-e2e-suite/design.md). The integration-layer reject-classification path (`isReject` reaches `runRoutine` and is labelled `'reject'`) depends on the upstream `runRoutine.js` tweak (see [Part 29 § Upstream dependency](../../29-error-model-cleanup/design.md#upstream-dependency)) and is verified there, not here.
 
 ### What's not in scope (deferred per design)
 

@@ -65,7 +65,7 @@ The `WorkflowAPI` plugin's request handler is renamed and broadened. Same connec
 **What it owns**, in order, single in-process call:
 
 1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, role gate passes for the interaction.
-2. **Execute pre-hook** (if `action.hooks.{interaction}.pre` is declared): engine invokes the named Lowdefy Api via the new CallApi primitive. Pre-hook receives the full submit payload + computed action context; returns optional `{ status, actions: [...], event_overrides: {...}, form_overrides: {...} }`. Aborts via `throw` (infra failure) or Lowdefy's `:reject` control (user-facing rejection — propagates as `UserError(isReject: true)`, classified by the wrapping endpoint's `runRoutine`). Full contract in Decision 4; soft-reject rationale in [Part 29 § D5](../../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently).
+2. **Execute pre-hook** (if `action.hooks.{interaction}.pre` is declared): engine invokes the named Lowdefy Api via the new CallApi primitive. Pre-hook receives the full submit payload + computed action context; returns optional `{ status, actions: [...], event_overrides: {...}, form_overrides: {...} }`. Aborts via `throw` (infra failure) or Lowdefy's `:reject` control (user-facing rejection — propagates as `UserError(isReject: true)`, classified by the wrapping endpoint's `runRoutine`). Full contract in Decision 4; soft-reject rationale in [Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently).
 3. **Compute auto-unblocks.** Walk the workflow's `blocked_by` graph; identify actions whose dependencies are now terminal as a result of the current submission.
 4. **Merge pre-hook `actions[]` with auto-unblocks.** Pre-hook entries take precedence; auto-unblocks fill in the rest.
 5. **Write action transitions.** Apply the merged actions array via the existing `updateAction.js` / `createAction.js` helpers. Priority rule still applies (engine Decision 4).
@@ -307,12 +307,12 @@ Pre-hook may return:
 }
 ```
 
-Pre-hook **can abort** the submit by throwing. Two flavours, the choice belongs to the hook author ([Part 29 § D5](../../workflows-module/parts/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently), [Part 9 § Pre-hook abort modes](../../workflows-module/parts/09-hook-invocation/design.md#pre-hook-abort-modes--throw-vs-reject)):
+Pre-hook **can abort** the submit by throwing. Two flavours, the choice belongs to the hook author ([Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently), [Part 9 § Pre-hook abort modes](../../workflows-module/parts/_completed/09-hook-invocation/design.md#pre-hook-abort-modes--throw-vs-reject)):
 
 - **`:reject`** (Lowdefy control) — propagates as `UserError(isReject: true)`; the wrapping per-action endpoint's `runRoutine` classifies as `{ status: 'reject', error }` and the calling app's `CallApi` surfaces the message via the platform's standard reject UI. Use for user-facing validation rejections.
 - **`throw`** (or any thrown error) — classified as `{ status: 'error', error }`; user sees a transient error toast and can retry. Use for infrastructure failures the user can't fix.
 
-The engine catches neither. The `hook_error` return field is removed; pre-hooks that want to mark the action errored return `actions: [{ ..., status: 'error' }]` through the regular merge channel ([Part 29 § D2](../../workflows-module/parts/29-error-model-cleanup/design.md#d2-why-pre-hooks-no-longer-get-a-hook_error-field)).
+The engine catches neither. The `hook_error` return field is removed; pre-hooks that want to mark the action errored return `actions: [{ ..., status: 'error' }]` through the regular merge channel ([Part 29 § D2](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2-why-pre-hooks-no-longer-get-a-hook_error-field)).
 
 ### `form_overrides` semantics
 

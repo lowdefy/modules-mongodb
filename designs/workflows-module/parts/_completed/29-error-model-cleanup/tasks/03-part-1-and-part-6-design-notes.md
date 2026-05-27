@@ -25,11 +25,11 @@ Suggested content:
 Rewrite § Failure shape (find the section by heading). The new content:
 
 - Status entries are uniform `{ stage, created, event_id }` — no polymorphic `{ reason, error_message, error_metadata }` fields. (This matches what shipped `shared/updateAction.js` already writes; Part 29 collapses the documented contract to the shipped reality.)
-- The submit-pipeline does **not** synthesise an `error` transition on mid-write failure. Sub-step throws propagate to `CallApi` per [Part 29 § D1](../../29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error). The priority-rule self-exception keeps retries safe under partial writes.
+- The submit-pipeline does **not** synthesise an `error` transition on mid-write failure. Sub-step throws propagate to `CallApi` per [Part 29 § D1](../design.md#d1-why-throwing-is-safer-than-force-writing-error). The priority-rule self-exception keeps retries safe under partial writes.
 - The handler return shape carries no `error_transition` field. There is no failure-return shape; failures throw.
 - Cross-reference Part 29's partial-write retry table (the step-by-step "what's visible after a throw" table in D1) instead of restating it here.
 
-Add a one-liner at the top of the rewritten section: "Amended by Part 29. See [Part 29 § D2a](../../29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)."
+Add a one-liner at the top of the rewritten section: "Amended by Part 29. See [Part 29 § D2a](../design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)."
 
 ## Acceptance Criteria
 

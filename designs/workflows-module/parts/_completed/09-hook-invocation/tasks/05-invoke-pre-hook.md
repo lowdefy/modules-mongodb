@@ -15,7 +15,7 @@ The contract:
   - `user: { id, profile, roles }` — from `context.user`.
   - `context: { workflow: context.workflow, action: context.action }`.
 - **No try/catch.** The function does **not** wrap `context.callApi`. Throws — both generic crashes and `:reject` (`UserError(isReject: true)`) — propagate transparently. Discrimination happens upstream at the wrapping endpoint's `runRoutine` once the [Part 29 upstream tweak](../../29-error-model-cleanup/design.md#upstream-dependency) lands; the invoker itself is opinion-free.
-- **Timeout.** Omit `options.timeout` — [Part 1's `callApi` default (10s)](../../_completed/01-call-api-primitive/design.md) applies.
+- **Timeout.** Omit `options.timeout` — [Part 1's `callApi` default (10s)](../../01-call-api-primitive/design.md) applies.
 - **No-hook fallback — skip on missing at every level.** Three independent undefined cases must all collapse to "return `null` without calling `callApi`":
   1. `params.hooks` is undefined (action declares no `hooks:` at all — the resolver omits the slot entirely; see [`makeWorkflowApis.js` `emitHooks`](../../../../modules/workflows/resolvers/makeWorkflowApis.js)).
   2. `params.hooks[interaction]` is undefined (action declares hooks for some interactions but not this one).

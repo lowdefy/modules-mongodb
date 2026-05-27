@@ -15,7 +15,7 @@ Two pieces of cleanup remain after the engine-side changes:
    After Part 32, `interactions` is no longer consumed by any resolver and should be dropped from this comment. `event` **stays** in the list — `makeWorkflowApis` still bakes it into the per-action endpoint payload as `event_overrides:`. Note: the validator has no unknown-keys rejection (see `validateAction` in the same file — it only inspects known fields), so stale `interactions:` YAML fields are silently accepted; this comment is the only place they're listed.
 
 2. **Demo workflow YAMLs** still carry `interactions:` blocks (no `event:` blocks per the design's grep verification):
-   - `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml` line 20–22 — `submit_edit: { status: done }` (redundant; matches engine default for a form with no `review` verb).
+   - `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml` lines 29–31 — `submit_edit: { status: done }` (redundant; matches engine default for a form with no `review` verb). Note: `qualify.yaml` already declares a `submit_edit.pre` hook (`hooks/qualify-pre-submit.yaml`) for the onboarding demo's spawn-proof-of-installation flow; that hook returns no `status`, so dropping the static override leaves status resolution unchanged.
    - `apps/demo/modules/workflows/workflow_config/onboarding/send-quote.yaml` lines 27–33 — three entries: `submit_edit: in-review` (redundant — engine default for a form with `review` in access), `approve: done` (redundant — engine default), `request_changes: action-required` (non-default — engine default is `changes-required`).
 
 The design (§ Migration) accepts deleting all four entries — the `request_changes: action-required` is the only non-default semantic, and the design states: "the demo is happy with the engine default `changes-required` once Layer 2 is gone."
@@ -29,7 +29,7 @@ The design (§ Migration) accepts deleting all four entries — the `request_cha
    // they're consumed by build-time resolvers (parts 12, 13, 15) against
    // the raw workflow YAML, not via workflowsConfig at runtime.
    ```
-2. **Delete the `interactions:` block** from `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml` (lines 20–22 of the current file — verify with grep before editing).
+2. **Delete the `interactions:` block** from `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml` (lines 29–31 of the current file — verify with grep before editing). The existing `hooks.submit_edit.pre` routine stays untouched.
 3. **Delete the `interactions:` block** from `apps/demo/modules/workflows/workflow_config/onboarding/send-quote.yaml` (lines 27–33 of the current file). No pre-hook port is required for `request_changes` — engine default `changes-required` is accepted by the design.
 4. **Smoke-check the demo build**: run `pnpm --filter=demo build` (or the project's equivalent — check `apps/demo/package.json` `scripts:` for the build command) and confirm it completes without complaining about the missing fields.
 

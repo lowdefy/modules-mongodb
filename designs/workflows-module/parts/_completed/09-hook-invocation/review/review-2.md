@@ -27,7 +27,7 @@ ambiguities not covered by review-1.
 }
 ```
 
-Part 06 ([design.md:68](../../_completed/06-submit-action-writes/design.md))
+Part 06 ([design.md:68](../../06-submit-action-writes/design.md))
 commits the success return as `{ action_ids, completed_groups, event_id,
 tracker_fired, pre_hook_response, post_hook_response, post_hook_error }` —
 and Part 29 ([§ change 5](../../29-error-model-cleanup/design.md#proposed-change))
@@ -38,8 +38,7 @@ Part 09 doesn't say whether the success return also carries `rejected: false`
 / `reject_message: null` (so the response shape is uniform and callers can
 read `result.rejected` without an `in` guard), or whether the two fields are
 **polymorphic** and present only on the reject path. Part 13's emitted
-trailing control step keys off `_step: submit.rejected` ([Part 29 §
-D5](../../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-surfaces-as-a-rejection-at-the-calling-app),
+trailing control step keys off `_step: submit.rejected` ([](../../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-surfaces-as-a-rejection-at-the-calling-app),
 step 5), which works either way — `_eq: [..., true]` returns false on a
 missing key — but the contract should be pinned, and Part 6's return-shape
 skeleton needs the same fold-in Part 29 already commits for `hook_error` /
@@ -61,7 +60,7 @@ alongside).
 `{ type, key?, status?, fields?, upsert?, force? }` (singular `key`),
 matching [submit-pipeline/spec.md § Pre-hook return](../../../workflows-module-concept/submit-pipeline/spec.md#pre-hook-return-all-fields-optional).
 
-[Part 06 § Payload](../../_completed/06-submit-action-writes/design.md#payload)
+[Part 06 § Payload](../../06-submit-action-writes/design.md#payload)
 commits the engine-internal `actions[]` shape as
 `{ type, status, keys?, fields?, references?, force? }` (plural `keys`, an
 array). Shipped code confirms — [`handleSubmit.js:188`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js):
@@ -72,7 +71,7 @@ for (const key of keys) { ... }
 ```
 
 Pre-hook entries pass through "the same loop" per Part 06 §
-[v1 fan-out posture](../../_completed/06-submit-action-writes/design.md#payload),
+[v1 fan-out posture](../../06-submit-action-writes/design.md#payload),
 but Part 9 doesn't say where `key` → `keys` translation happens. Without it,
 either:
 
@@ -107,7 +106,7 @@ auto-unblock entries**:
 > **replaces** the auto-unblock entry in the merged list…
 
 But step 1 of the lifecycle puts a `currentActionId` entry into `actions[]`
-(per [Part 06 § Payload](../../_completed/06-submit-action-writes/design.md#payload):
+(per [Part 06 § Payload](../../06-submit-action-writes/design.md#payload):
 "single-entry `actions[]` with the `currentActionId` slot populated").
 What happens if a pre-hook returns an `actions[]` entry whose `(type, key)`
 matches the `currentActionId` entry?
@@ -147,7 +146,7 @@ with a build-warning). Add a verification bullet covering it.
 > After step 6 writes complete and side effects (parts 8, 11) fire, invokes
 > `hooks[interaction].post` if declared.
 
-Per [Part 06 § Lifecycle scaffold](../../_completed/06-submit-action-writes/design.md#lifecycle-scaffold),
+Per [Part 06 § Lifecycle scaffold](../../06-submit-action-writes/design.md#lifecycle-scaffold),
 the 11-step order is: 6 (form_data) → 7 (log event) → 8 (notifications) → 9
 (group on-complete fan-out) → 10 (tracker subscription) → 11 (post-hook).
 "Side effects (parts 8, 11)" picks up the log-event/notifications + fan-out
@@ -178,8 +177,7 @@ step 10, so the post-hook firing order needs to include it.
 > retry, and the pre-hook re-runs.
 
 The `:reject` branch has the same retry surface — `:reject` is the
-*user-facing-fixable* abort mode (per [Part 29 §
-D5](../../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-surfaces-as-a-rejection-at-the-calling-app)),
+*user-facing-fixable* abort mode (per [](../../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-surfaces-as-a-rejection-at-the-calling-app)),
 which means the user can read the message, fix the form, and resubmit. The
 pre-hook re-runs on resubmit. Any side effects the hook performed before
 the `:reject` step (an HTTP call to a validator, a write to a staging
@@ -238,7 +236,7 @@ still overrides the runtime comment") doesn't catch the double-injection.
 > **Resolved.** Pinned the contract in the `invokePreHook.js` section: the **raw return object (pre-merge, exactly what the hook returned)** is surfaced as `pre_hook_response`; `null` when no pre-hook is declared. Symmetric with `post_hook_response`. Rationale recorded inline: raw return keeps author debugging direct and avoids leaking engine-internal normalization (e.g. the `key` → `keys` translation) into the response. Added a parallel verification bullet.
 
 [design.md:80](../design.md) lists `pre_hook_response: null` on the reject
-return shape. [Part 06 § Lifecycle scaffold](../../_completed/06-submit-action-writes/design.md#lifecycle-scaffold)
+return shape. [Part 06 § Lifecycle scaffold](../../06-submit-action-writes/design.md#lifecycle-scaffold)
 lists `pre_hook_response: null` as a default-null return field, populated
 by Part 9. But Part 9's body never explicitly says "pre-hook return is
 surfaced on the API response as `pre_hook_response`" — only the post-hook
@@ -249,7 +247,7 @@ Add the parallel statement in the `invokePreHook.js` section: "Pre-hook
 return (the full merged-into object, post-merge — or just the raw return,
 TBD) is surfaced as `pre_hook_response` on the API return." Or pick one
 shape and pin it — today's wording at
-[Part 6 § Lifecycle scaffold](../../_completed/06-submit-action-writes/design.md#lifecycle-scaffold)
+[Part 6 § Lifecycle scaffold](../../06-submit-action-writes/design.md#lifecycle-scaffold)
 just says "populated by part 9" without committing to *what* gets put
 there.
 

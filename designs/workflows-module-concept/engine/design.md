@@ -470,7 +470,7 @@ form_data: {
 - **Non-keyed action:** `form_data.{action_type}.{field}` — all values, submitter and reviewer alike, live directly under the action type.
 - **Keyed action** (action-authoring Decision 9): `form_data.{action_type}.{key}.{field}` — one sub-object per instance key.
 - **No `.review` namespace.** `form_review:` is a render-time concern (the review page renders these blocks alongside the read-only `form:` data), but submitted values write to the same flat tree as `form:`. Authors who declare both `form:` and `form_review:` must use non-colliding field names — the same constraint that already applies to fields within a single `form:` block.
-- **No `.error` namespace.** Error context lives on the `events` collection entry written by step 7 of the submit lifecycle, surfaced via `event_overrides.metadata` from a pre-hook return — same channel as every other status push ([Part 29 § D2a](../../workflows-module/parts/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)). Status entries themselves are uniform `{ stage, created, event_id }`.
+- **No `.error` namespace.** Error context lives on the `events` collection entry written by step 7 of the submit lifecycle, surfaced via `event_overrides.metadata` from a pre-hook return — same channel as every other status push ([Part 29 § D2a](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)). Status entries themselves are uniform `{ stage, created, event_id }`.
 
 ### Write semantics
 
@@ -483,7 +483,7 @@ The per-action endpoint payload (submit-pipeline) carries form data as a flat ma
 Earlier drafts reserved `review` and `error` as sub-keys under `form_data.{action_type}`. v1 drops both:
 
 - **Reviewer fields** share the action-type namespace with submitter fields. Authors pick non-colliding names the same way they already do inside a single `form:` block. The v0 corpus did this without trouble (reviewer fields under `form.validation.*`, submitter fields elsewhere in the same tree).
-- **Error context** lives on the `events` collection entry, not on the action doc's status entry. Status entries are uniform `{ stage, created, event_id }`. The recovery surface (`-error` page) reads diagnostic context from the events-log entry referenced by `status[0].event_id` (carried into the event by a pre-hook's `event_overrides.metadata`). See [Part 29 § D2a](../../workflows-module/parts/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup).
+- **Error context** lives on the `events` collection entry, not on the action doc's status entry. Status entries are uniform `{ stage, created, event_id }`. The recovery surface (`-error` page) reads diagnostic context from the events-log entry referenced by `status[0].event_id` (carried into the event by a pre-hook's `event_overrides.metadata`). See [Part 29 § D2a](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup).
 
 This collapses two reserved keys to zero. `makeWorkflowsConfig` no longer needs to validate against the list.
 
@@ -496,19 +496,19 @@ This collapses two reserved keys to zero. `makeWorkflowsConfig` no longer needs 
 
 ### Transitioning an action to `error`
 
-`error` is purely an **author-driven** domain stage ([Part 29 § D1–D4](../../workflows-module/parts/29-error-model-cleanup/design.md)). Engine sub-step failures **throw** rather than writing an `error` transition — the throw propagates to `CallApi`, the user retries the same submission, and the priority rule converges. The action does not pick up a synthetic `error` entry that nobody designed for.
+`error` is purely an **author-driven** domain stage ([Part 29 § D1–D4](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md)). Engine sub-step failures **throw** rather than writing an `error` transition — the throw propagates to `CallApi`, the user retries the same submission, and the priority rule converges. The action does not pick up a synthetic `error` entry that nobody designed for.
 
 Three entry paths put an action into `error`:
 
 1. **Pre-hook return.** A pre-hook returns `actions: [{ ..., status: 'error' }]` through the regular merge channel (submit-pipeline Decision 4). No `force` needed — `error.priority = 1` is below every non-terminal stage, so the priority rule allows the write. Failure context rides on the `events` collection entry via `event_overrides.metadata`.
 2. **Task `submit_edit` + caller-supplied status.** Task actions whose `task.statuses:` list includes `error` can be transitioned to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`. The priority rule lets it through cleanly.
-3. **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly. A follow-on injection API is deferred ([Part 29 § Out of scope](../../workflows-module/parts/29-error-model-cleanup/design.md#out-of-scope--deferred)).
+3. **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly. A follow-on injection API is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
 
 Status entries are uniform `{ stage, created, event_id }` — no polymorphic `reason` / `error_message` / `error_metadata` fields. The on-disk shape is identical regardless of which entry path was used.
 
 **Recovery (action leaves `error`).** Recovery is a normal submission from the `-error` page — the user clicks the template-shipped `resolve_error` button, which calls the per-action endpoint with `interaction: resolve_error`. The handler internally writes the recovery transition with `force: true` (target status defaults to the same as `submit_edit` per submit-pipeline Decision 3); the previous `status` entry stays in the array as audit history. No `form_data` cleanup needed since error context was never written there.
 
-**Why `force: true` on the recovery leg only.** The priority rule (Decision 4) would otherwise reject a recovery push from `error(1)` to e.g. `in-review(2)` — `error.priority = 1` is below every non-terminal stage by design, which is what makes entry into `error` frictionless for the three paths above. Recovery is the rare, well-defined site that needs the bypass; centralising one `force: true` inside the handler's `resolve_error` mapping is invisible to authors and cheap. See [Part 29 § D4](../../workflows-module/parts/29-error-model-cleanup/design.md#d4-why-we-keep-the-priority-table).
+**Why `force: true` on the recovery leg only.** The priority rule (Decision 4) would otherwise reject a recovery push from `error(1)` to e.g. `in-review(2)` — `error.priority = 1` is below every non-terminal stage by design, which is what makes entry into `error` frictionless for the three paths above. Recovery is the rare, well-defined site that needs the bypass; centralising one `force: true` inside the handler's `resolve_error` mapping is invisible to authors and cheap. See [Part 29 § D4](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d4-why-we-keep-the-priority-table).
 
 ## Risks
 
