@@ -4,7 +4,7 @@
 
 Drops the action YAML `interactions:` block (Layer 2 of status resolution) so the pre-hook return is the only override channel for per-interaction target status. Implements the design in [`design.md`](../design.md).
 
-The static action-YAML `event:` block stays — see the design's § Scope note and [Part 33 — Comment rendering on the events timeline](../../33-comment-rendering/design.md) for the question that pulled the event channel out of scope. `mergeEventOverrides` keeps its 4-layer shape; the `event_overrides:` literal in the per-action endpoint payload stays; `handleSubmit` still passes `yamlOverride: params.event_overrides?.[params.interaction]` through to the event merge.
+The static action-YAML `event:` block stays — see the design's § Scope note and [Part 33 — Comment rendering on the events timeline](../../../33-comment-rendering/design.md) for the question that pulled the event channel out of scope. `mergeEventOverrides` keeps its 4-layer shape; the `event_overrides:` literal in the per-action endpoint payload stays; `handleSubmit` still passes `yamlOverride: params.event_overrides?.[params.interaction]` through to the event merge.
 
 ## Tasks
 

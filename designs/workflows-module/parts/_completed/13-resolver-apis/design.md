@@ -1,6 +1,6 @@
 # Part 13 — `makeWorkflowApis` resolver
 
-> **Deviation (Part 32):** Task 2's `interactions:` literal is no longer emitted in the per-action endpoint payload. The `event_overrides:` literal is unchanged. See [Part 32 design](../../32-drop-static-overrides/design.md).
+> **Deviation (Part 32):** Task 2's `interactions:` literal is no longer emitted in the per-action endpoint payload. The `event_overrides:` literal is unchanged. See [Part 32 design](../32-drop-static-overrides/design.md).
 
 > **⚠️ Deviation from original design — read before implementing task 3.**
 >

@@ -1,6 +1,6 @@
 # Part 33 — Comment rendering on the events timeline
 
-**Status:** placeholder / stub. No decisions yet. Surfaced while scoping [Part 32](../32-drop-static-overrides/design.md); pulled out so the question gets dedicated thought.
+**Status:** placeholder / stub. No decisions yet. Surfaced while scoping [Part 32](../_completed/32-drop-static-overrides/design.md); pulled out so the question gets dedicated thought.
 
 ## The question
 

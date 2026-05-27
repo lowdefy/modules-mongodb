@@ -8,7 +8,7 @@ Three other part design docs cite Layer 2 by name and need their prose updated s
 - **Part 9** (`_completed/09-hook-invocation/design.md`) — shipped. Drops the Layer 2 branch in `resolveTargetStatus`. Adds pre-hook `status` enum-membership runtime check. Three-layer status resolution becomes two-layer. **Does not** touch the event-overrides merge (still four-layer).
 - **Part 13** (`_completed/13-resolver-apis/design.md`) — tasks 1–2 shipped. Stop emitting the `interactions:` literal into the per-action endpoint payload. **Does not** touch the `event_overrides:` literal.
 
-The `event:` block stays as a build-time override channel — out of scope for Part 32, tracked under [Part 33](../../33-comment-rendering/design.md). Do not touch any prose describing the event-overrides merge or the `event_overrides:` endpoint literal.
+The `event:` block stays as a build-time override channel — out of scope for Part 32, tracked under [Part 33](../../../33-comment-rendering/design.md). Do not touch any prose describing the event-overrides merge or the `event_overrides:` endpoint literal.
 
 Read each file before editing — the prose styles differ.
 
@@ -18,15 +18,15 @@ For each of the three parts, update the design doc so a reader landing on it col
 
 1. **Part 4** (`designs/workflows-module/parts/_completed/04-workflow-config-schema/design.md`):
    - Since this is in `_completed/`, do NOT rewrite the body. Add a short note at the top (under the title, before the first heading) along the lines of:
-     > **Deviation (Part 32):** The `interactions:` per-action field described below is dropped from the schema. `makeWorkflowsConfig` has no unknown-keys rejection, so stale fields are silently ignored rather than rejected. See [Part 32 design](../../32-drop-static-overrides/design.md). The `event:` field is unchanged.
+     > **Deviation (Part 32):** The `interactions:` per-action field described below is dropped from the schema. `makeWorkflowsConfig` has no unknown-keys rejection, so stale fields are silently ignored rather than rejected. See [Part 32 design](../design.md). The `event:` field is unchanged.
    - Use repo-relative paths in the link.
 2. **Part 9** (`designs/workflows-module/parts/_completed/09-hook-invocation/design.md`):
    - Since this is in `_completed/`, do NOT rewrite the body. Add a short top-note like Part 4's:
-     > **Deviation (Part 32):** The Layer 2 branch in `resolveTargetStatus` (the action YAML `interactions[interaction].status` override) is dropped — status resolution collapses to two layers (engine default → pre-hook `status` return). A runtime enum-membership check on the pre-hook `status` return fires inside `resolveTargetStatus` (after the pre-hook return, before step-4 writes) and throws `UserError(isReject: false)` on a non-`action_statuses` value; the wrapping endpoint's `runRoutine` classifies the throw as `{ status: 'error' }` (per [Part 29 § D5](../_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)). The `action.interactions:` YAML override subsection and the three-layer status-resolution prose are superseded; the four-layer event-overrides merge is unchanged. See [Part 32 design](../../32-drop-static-overrides/design.md).
+     > **Deviation (Part 32):** The Layer 2 branch in `resolveTargetStatus` (the action YAML `interactions[interaction].status` override) is dropped — status resolution collapses to two layers (engine default → pre-hook `status` return). A runtime enum-membership check on the pre-hook `status` return fires inside `resolveTargetStatus` (after the pre-hook return, before step-4 writes) and throws `UserError(isReject: false)` on a non-`action_statuses` value; the wrapping endpoint's `runRoutine` classifies the throw as `{ status: 'error' }` (per [Part 29 § D5](../_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)). The `action.interactions:` YAML override subsection and the three-layer status-resolution prose are superseded; the four-layer event-overrides merge is unchanged. See [Part 32 design](../design.md).
    - Use repo-relative paths in the links.
 3. **Part 13** (`designs/workflows-module/parts/_completed/13-resolver-apis/design.md`):
    - Since this is in `_completed/`, do NOT rewrite the body. Add a short top-note like Part 4's:
-     > **Deviation (Part 32):** Task 2's `interactions:` literal is no longer emitted in the per-action endpoint payload. The `event_overrides:` literal is unchanged. See [Part 32 design](../../32-drop-static-overrides/design.md).
+     > **Deviation (Part 32):** Task 2's `interactions:` literal is no longer emitted in the per-action endpoint payload. The `event_overrides:` literal is unchanged. See [Part 32 design](../design.md).
 
 Keep each edit tight. Do not duplicate Part 32's rationale — link to it.
 

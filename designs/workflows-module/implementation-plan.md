@@ -93,14 +93,15 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/api/` | ✅ shipped |
 | 25  | [group-overview-page](parts/_completed/25-group-overview-page/design.md) | S    | `modules/workflows/pages/` + `modules/workflows/api/`          | ✅ shipped |
 | 29  | [error-model-cleanup](parts/_completed/29-error-model-cleanup/design.md)         | M    | `plugins/modules-mongodb-plugins/` + concept specs             | ✅ shipped |
+| 32  | [drop-static-overrides](parts/_completed/32-drop-static-overrides/design.md)     | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/`      | ✅ shipped |
 
 ## Repo footprint at a glance
 
 | Repo                                           | Parts                                             |
 | ---------------------------------------------- | ------------------------------------------------- |
 | upstream `@lowdefy/*`                          | 1, 2                                              |
-| `plugins/modules-mongodb-plugins/` (this repo) | 3, 5, 6, 7, 8, 9, 10, 11, 21, 23, 29              |
-| `modules/workflows/` (this repo)               | 4, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25 |
+| `plugins/modules-mongodb-plugins/` (this repo) | 3, 5, 6, 7, 8, 9, 10, 11, 21, 23, 29, 32          |
+| `modules/workflows/` (this repo)               | 4, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 23, 24, 25, 32 |
 | `apps/demo/` (this repo)                       | 20a (tracker-only demo wiring), 20b (form/task demo extension), 22 (e2e suite) |
 
 Two clear streams once Wave 0 lands: an **engine stream** in the plugin package and a **module stream** under `modules/workflows/`. They only converge at parts 20a / 20b.

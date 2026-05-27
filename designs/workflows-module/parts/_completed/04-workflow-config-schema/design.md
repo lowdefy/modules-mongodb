@@ -1,6 +1,6 @@
 # Part 04 — Workflow config schema + `makeWorkflowsConfig`
 
-> **Deviation (Part 32):** The `interactions:` per-action field described below is dropped from the schema. `makeWorkflowsConfig` has no unknown-keys rejection, so stale fields are silently ignored rather than rejected. See [Part 32 design](../../32-drop-static-overrides/design.md). The `event:` field is unchanged.
+> **Deviation (Part 32):** The `interactions:` per-action field described below is dropped from the schema. `makeWorkflowsConfig` has no unknown-keys rejection, so stale fields are silently ignored rather than rejected. See [Part 32 design](../32-drop-static-overrides/design.md). The `event:` field is unchanged.
 
 **Source rationale:** [workflows-module-concept/action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md). **Layer:** build-time config. **Size:** M. **Repo:** `modules/workflows/`.
 

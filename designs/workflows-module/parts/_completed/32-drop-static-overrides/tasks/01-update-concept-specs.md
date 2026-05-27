@@ -4,7 +4,7 @@
 
 The concept specs are the canonical description of the action-YAML surface and the submit-pipeline merge layers. They currently describe a three-layer status resolution and document `action.interactions:` as a build-time status-override block. Part 32 collapses status resolution to two layers — pre-hook becomes the only status-override channel.
 
-The `event:` block stays as a build-time override (out of scope for Part 32; tracked under [Part 33](../../33-comment-rendering/design.md)). Do not touch the four-layer event-override prose or the `action.event:` documentation.
+The `event:` block stays as a build-time override (out of scope for Part 32; tracked under [Part 33](../../../33-comment-rendering/design.md)). Do not touch the four-layer event-override prose or the `action.event:` documentation.
 
 Affected files (from a grep across the concept spec):
 
