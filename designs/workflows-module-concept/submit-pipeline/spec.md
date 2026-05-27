@@ -97,11 +97,10 @@ Templates ship a fixed set of submit-flavoured buttons. Each button is a templat
 
 ### Interaction → target status
 
-Resolved last-wins across three layers (full rationale in design Decision 3):
+Resolved last-wins across two layers (full rationale in design Decision 3):
 
 1. **Engine default per interaction** (table below).
-2. **Action YAML `interactions:` block** — optional, build-time-baked into the generated endpoint.
-3. **Pre-hook return `status` field** — runtime, overrides both above.
+2. **Pre-hook return `status` field** — runtime, overrides the engine default.
 
 #### Engine default per interaction
 
@@ -112,16 +111,6 @@ Resolved last-wins across three layers (full rationale in design Decision 3):
 | `resolve_error`   | same as `submit_edit` (`in-review` if review verb exists, else `done`) | same as `submit_edit` (caller-supplied) |
 | `approve`         | `done`                                                                 | `done`                                  |
 | `request_changes` | `changes-required`                                                     | `changes-required`                      |
-
-#### Action YAML `interactions:` block
-
-```yaml
-type: qualify
-kind: form
-interactions:
-  submit_edit: { status: done }
-  approve: { status: done }
-```
 
 Priority rule (engine D4) still applies to the resolved status — unreachable transitions are rejected unless an entry on the pre-hook `actions[]` opts into `force: true`.
 
@@ -182,7 +171,7 @@ pre_hook_payload:
 ```
 {
   status: string            # overrides current action's target status (precedence:
-                            #   pre-hook > action.interactions[interaction].status > engine default)
+                            #   pre-hook > engine default)
   actions: array            # merged with auto-unblocks; entries take precedence
     - { type, key, status, fields, upsert, force }
                             #   force: optional bool; bypasses priority rule for this entry only.

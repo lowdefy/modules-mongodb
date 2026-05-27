@@ -393,7 +393,7 @@ status_map:
     my-team-app: { message: Lead qualified }
 ```
 
-`makeWorkflowApis` always emits a `update-action-{action_type}` endpoint for form / task actions; the action's `hooks:`, `event:`, and `interactions:` blocks are baked in as build-time literals. If the action declares no `hooks:`, the engine runs the default lifecycle (no pre/post extension points). See submit-pipeline Decisions 2 + 4 for the canonical endpoint shape and hook contract.
+`makeWorkflowApis` always emits a `update-action-{action_type}` endpoint for form / task actions; the action's `hooks:` and `event:` blocks are baked in as build-time literals. If the action declares no `hooks:`, the engine runs the default lifecycle (no pre/post extension points). See submit-pipeline Decisions 2 + 4 for the canonical endpoint shape and hook contract.
 
 ## Task action
 
@@ -498,7 +498,7 @@ Five JS resolvers consume authored YAML at build time:
 | Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                      | Used in                                                                                                                      |
 | ----------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML, one per (workflow_type, action_type, verb) for form actions only                                                                                                                                                                       | `module.lowdefy.yaml` `pages:`                                                                                               |
-| `makeWorkflowApis`      | `workflows_config`                                      | Array of `Api` YAML — one `update-action-{action_type}` per form / task action (bakes in `hooks:` / `event_overrides:` / `interactions:` blocks as build-time literals); also emits resolver-derived hook Apis (one per declared `hooks.{interaction}.{pre | post}`routine) and group`on_complete`Apis with`auth.roles`synthesized from`action.access.roles`; skipped for tracker actions | `module.lowdefy.yaml` `api:` |
+| `makeWorkflowApis`      | `workflows_config`                                      | Array of `Api` YAML — one `update-action-{action_type}` per form / task action (bakes in `hooks:` / `event_overrides:` blocks as build-time literals); also emits resolver-derived hook Apis (one per declared `hooks.{interaction}.{pre | post}`routine) and group`on_complete`Apis with`auth.roles`synthesized from`action.access.roles`; skipped for tracker actions | `module.lowdefy.yaml` `api:` |
 | `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection. Also the single place all build-time validation of `workflows_config` lives (workflow + action invariants — see "Action kinds" section for the full list).                                   | `module.lowdefy.yaml` connection config                                                                                      |
 | `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name                                                                                                                                                                                       | Called inside form-action page templates                                                                                     |
 | `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, defaults, types)                                                                                                                                                                                                 | `global.action_form_configs`                                                                                                 |
@@ -507,7 +507,7 @@ Resolvers live at `resolvers/{name}.js` in the module package and are invoked vi
 
 ### `makeWorkflowApis` generated endpoint
 
-One `update-action-{action_type}` endpoint per form / task action. The routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals. Full shape in [submit-pipeline spec](../submit-pipeline/spec.md) "Per-action `update-action-{action_type}` Api"; summarized here:
+One `update-action-{action_type}` endpoint per form / task action. The routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks baked in as build-time literals. Full shape in [submit-pipeline spec](../submit-pipeline/spec.md) "Per-action `update-action-{action_type}` Api"; summarized here:
 
 ```yaml
 - id: update-action-{action_type}
@@ -532,7 +532,6 @@ One `update-action-{action_type}` endpoint per form / task action. The routine i
         hooks:
           submit_edit: { pre: update-action-{action_type}-submit_edit-pre }
         event_overrides: { submit_edit: { type, display, references, metadata }, ... }
-        interactions: { submit_edit: { status: <override-or-null> }, ... }
     - :return:
         action_ids: { _step: submit.action_ids }
         completed_groups: { _step: submit.completed_groups }

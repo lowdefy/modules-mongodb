@@ -24,13 +24,6 @@ form_review:
   - key: review_notes
     component: text_area
     title: Reviewer notes
-interactions:
-  submit_edit:
-    status: in-review
-  approve:
-    status: done
-  request_changes:
-    status: action-required
 hooks:
   submit_edit:
     pre:

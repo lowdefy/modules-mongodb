@@ -114,7 +114,7 @@ test("makeWorkflowApis: every form/task endpoint passes runtime comment through 
   expect(propsOf(sendQuote).comment).toEqual({ _payload: "comment" });
 });
 
-test("makeWorkflowApis: sparse hooks, event_overrides, interactions maps", () => {
+test("makeWorkflowApis: sparse hooks, event_overrides maps", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const qualify = findApi(apis, "update-action-qualify");
   const sendQuote = findApi(apis, "update-action-send-quote");
@@ -125,10 +125,9 @@ test("makeWorkflowApis: sparse hooks, event_overrides, interactions maps", () =>
   expect(propsOf(qualify).hooks).not.toHaveProperty("post");
   expect(propsOf(qualify).hooks.submit_edit).not.toHaveProperty("post");
 
-  // send-quote declares no hooks/event/interactions — all three keys absent.
+  // send-quote declares no hooks/event — both keys absent.
   expect(propsOf(sendQuote)).not.toHaveProperty("hooks");
   expect(propsOf(sendQuote)).not.toHaveProperty("event_overrides");
-  expect(propsOf(sendQuote)).not.toHaveProperty("interactions");
 });
 
 test("makeWorkflowApis: hook Api emission", () => {
@@ -163,12 +162,12 @@ test("makeWorkflowApis: event_overrides carries the four-tuple", () => {
   });
 });
 
-test("makeWorkflowApis: interactions[interaction].status baked in", () => {
+test("makeWorkflowApis: stale interactions: YAML field is not baked into the endpoint payload", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const qualify = findApi(apis, "update-action-qualify");
-  expect(propsOf(qualify).interactions).toEqual({
-    submit_edit: { status: "done" },
-  });
+  // qualifyAction fixture declares `interactions: { submit_edit: { status: "done" } }`
+  // — the resolver silently drops it (Part 32 collapse).
+  expect(propsOf(qualify)).not.toHaveProperty("interactions");
 });
 
 test("makeWorkflowApis: emitted endpoint properties contain no force slot", () => {

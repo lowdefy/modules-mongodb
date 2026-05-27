@@ -1363,13 +1363,13 @@ function makeHookCallApi({ hookResponses = {}, throwForHook } = {}) {
   });
 }
 
-test("part 9: pre-hook status overrides YAML override which overrides engine default (three-layer)", async () => {
+test("part 9: pre-hook status overrides engine default (two-layer)", async () => {
   await seedWorkflow();
   await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
 
   const callApi = makeHookCallApi({
     hookResponses: {
-      "h-pre": { status: "done" },
+      "h-pre": { status: "in-review" },
     },
   });
 
@@ -1380,36 +1380,60 @@ test("part 9: pre-hook status overrides YAML override which overrides engine def
         action_id: "a1",
         interaction: "submit_edit",
         hooks: { submit_edit: { pre: "h-pre" } },
-        // YAML override would map submit_edit → in-review; pre-hook beats it.
-        interactions: { submit_edit: { status: "in-review" } },
       },
       callApi,
     }),
   );
 
+  // qualify has no `review` verb → engine default would be done; pre-hook lifts it.
   const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  expect(doc.status[0].stage).toBe("done");
-  expect(result.pre_hook_response).toEqual({ status: "done" });
+  expect(doc.status[0].stage).toBe("in-review");
+  expect(result.pre_hook_response).toEqual({ status: "in-review" });
 });
 
-test("part 9: YAML override wins over engine default when no pre-hook declared", async () => {
+test("part 32: pre-hook returns an invalid status → UserError before any writes land", async () => {
   await seedWorkflow();
   await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
 
-  await handleSubmit(
-    makeContext({
-      workflowsConfig: [onboardingWorkflowConfig],
-      params: {
-        action_id: "a1",
-        interaction: "submit_edit",
-        // qualify has no `review` verb → engine default would be done; YAML lifts it.
-        interactions: { submit_edit: { status: "in-review" } },
-      },
-    }),
-  );
+  const callApi = makeHookCallApi({
+    hookResponses: {
+      "h-pre": { status: "not-a-real-stage" },
+    },
+  });
 
+  let caught;
+  try {
+    await handleSubmit(
+      makeContext({
+        workflowsConfig: [onboardingWorkflowConfig],
+        params: {
+          action_id: "a1",
+          interaction: "submit_edit",
+          hooks: { submit_edit: { pre: "h-pre" } },
+        },
+        callApi,
+      }),
+    );
+  } catch (err) {
+    caught = err;
+  }
+
+  expect(caught).toBeDefined();
+  expect(caught.name).toBe("UserError");
+  expect(caught.isReject).toBe(false);
+  expect(caught.message).toContain("not-a-real-stage");
+
+  // No writes landed — action's status[0] is the pre-submit value.
   const doc = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  expect(doc.status[0].stage).toBe("in-review");
+  expect(doc.status[0].stage).toBe("action-required");
+  expect(doc.status).toHaveLength(1);
+
+  // callApi was invoked exactly once — for the pre-hook itself. No log event,
+  // no notification dispatch (both go through callApi too).
+  expect(callApi).toHaveBeenCalledTimes(1);
+  expect(callApi.mock.calls[0][0]).toEqual(
+    expect.objectContaining({ id: "h-pre" }),
+  );
 });
 
 test("part 9: pre-hook actions[] (type, key) collision replaces auto-unblock", async () => {

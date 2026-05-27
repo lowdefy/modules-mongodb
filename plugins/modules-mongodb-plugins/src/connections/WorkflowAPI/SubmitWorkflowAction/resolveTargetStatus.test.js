@@ -120,55 +120,8 @@ describe("resolveTargetStatus — engine default layer", () => {
   });
 });
 
-describe("resolveTargetStatus — YAML override layer", () => {
-  test("YAML override wins over engine default", () => {
-    expect(
-      resolveTargetStatus({
-        interaction: "submit_edit",
-        actionConfig: formAction,
-        params: {},
-        yamlInteractions: { submit_edit: { status: "in-review" } },
-      }),
-    ).toBe("in-review");
-  });
-
-  test("YAML override for a different interaction does not leak", () => {
-    expect(
-      resolveTargetStatus({
-        interaction: "submit_edit",
-        actionConfig: formAction,
-        params: {},
-        yamlInteractions: { approve: { status: "in-review" } },
-      }),
-    ).toBe("done");
-  });
-
-  test("YAML override missing status key falls through to engine default", () => {
-    expect(
-      resolveTargetStatus({
-        interaction: "submit_edit",
-        actionConfig: formAction,
-        params: {},
-        yamlInteractions: { submit_edit: {} },
-      }),
-    ).toBe("done");
-  });
-});
-
 describe("resolveTargetStatus — pre-hook override layer (last wins)", () => {
-  test("pre-hook status wins over YAML override", () => {
-    expect(
-      resolveTargetStatus({
-        interaction: "submit_edit",
-        actionConfig: formAction,
-        params: {},
-        yamlInteractions: { submit_edit: { status: "in-review" } },
-        preHookStatus: "done",
-      }),
-    ).toBe("done");
-  });
-
-  test("pre-hook status wins over engine default when no YAML override", () => {
+  test("pre-hook status wins over engine default", () => {
     expect(
       resolveTargetStatus({
         interaction: "submit_edit",
@@ -179,26 +132,23 @@ describe("resolveTargetStatus — pre-hook override layer (last wins)", () => {
     ).toBe("changes-required");
   });
 
-  test("pre-hook status undefined falls through to lower layers", () => {
+  test("pre-hook status undefined falls through to engine default", () => {
     expect(
       resolveTargetStatus({
         interaction: "submit_edit",
         actionConfig: formAction,
         params: {},
-        yamlInteractions: { submit_edit: { status: "in-review" } },
         preHookStatus: undefined,
       }),
-    ).toBe("in-review");
+    ).toBe("done");
   });
 
-  test("task submit_edit still requires current_status when overrides present", () => {
+  test("task submit_edit still requires current_status when pre-hook status absent", () => {
     expect(() =>
       resolveTargetStatus({
         interaction: "submit_edit",
         actionConfig: taskAction,
         params: {},
-        yamlInteractions: { submit_edit: { status: "in-progress" } },
-        preHookStatus: "in-progress",
       }),
     ).toThrow(/task submit_edit requires caller-supplied current_status/);
   });
@@ -212,5 +162,50 @@ describe("resolveTargetStatus — pre-hook override layer (last wins)", () => {
         preHookStatus: "done",
       }),
     ).toBe("done");
+  });
+});
+
+describe("resolveTargetStatus — pre-hook status enum-membership check", () => {
+  const actionConfig = { ...formAction, type: "qualify" };
+
+  test("valid pre-hook status passes through without throwing", () => {
+    expect(
+      resolveTargetStatus({
+        interaction: "submit_edit",
+        actionConfig,
+        params: {},
+        preHookStatus: "done",
+      }),
+    ).toBe("done");
+  });
+
+  test("invalid pre-hook status throws UserError(isReject: false)", () => {
+    let caught;
+    try {
+      resolveTargetStatus({
+        interaction: "submit_edit",
+        actionConfig,
+        params: {},
+        preHookStatus: "not-a-real-stage",
+      });
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeDefined();
+    expect(caught.name).toBe("UserError");
+    expect(caught.isReject).toBe(false);
+    expect(caught.message).toContain("not-a-real-stage");
+    expect(caught.message).toContain("qualify");
+  });
+
+  test("pre-hook status undefined skips the enum check", () => {
+    expect(() =>
+      resolveTargetStatus({
+        interaction: "submit_edit",
+        actionConfig,
+        params: {},
+        preHookStatus: undefined,
+      }),
+    ).not.toThrow();
   });
 });

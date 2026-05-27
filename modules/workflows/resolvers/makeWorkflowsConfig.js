@@ -1,7 +1,7 @@
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
-// (form, form_review, form_error, pages, hooks, interactions, event) are
-// excluded — they're consumed by build-time resolvers (parts 12, 13, 15)
-// against the raw workflow YAML, not via workflowsConfig at runtime.
+// (form, form_review, form_error, pages, hooks, event) are excluded —
+// they're consumed by build-time resolvers (parts 12, 13, 15) against
+// the raw workflow YAML, not via workflowsConfig at runtime.
 const ACTION_FIELDS = [
   'type',
   'kind',

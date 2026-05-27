@@ -1,5 +1,7 @@
 # Part 13 — `makeWorkflowApis` resolver
 
+> **Deviation (Part 32):** Task 2's `interactions:` literal is no longer emitted in the per-action endpoint payload. The `event_overrides:` literal is unchanged. See [Part 32 design](../../32-drop-static-overrides/design.md).
+
 > **⚠️ Deviation from original design — read before implementing task 3.**
 >
 > [Part 02](../02-dynamic-module-pages/design.md) was resolved upstream by **removing the static `exports:` block from `module.lowdefy.yaml` entirely** rather than by adding a resolver-emit channel. The resolver logic in this part (tasks 1–2, already shipped — emission of `update-action-{action_type}`, inline-routine hook APIs, and group `on_complete` APIs) is unaffected. **What changes is task 3 (manifest wiring):** instead of a `resolver:` channel entry under `exports.api`, the manifest's `api:` array invokes the resolver from `_build.array.map` over `_module.var: workflows_config` (concrete shape pinned in [part 20b](../20b-module-manifest-dynamic/design.md) when task 3 lands). The "Upstream dependency" subsection below and the open question about a parallel `exports.api` channel are dissolved.

@@ -51,18 +51,7 @@ function emitEventOverrides(action) {
   return Object.keys(map).length > 0 ? map : undefined;
 }
 
-function emitInteractions(action) {
-  if (!action.interactions) return undefined;
-  const map = {};
-  for (const interaction of HOOK_INTERACTIONS) {
-    const v = action.interactions[interaction];
-    if (!v || !('status' in v)) continue;
-    map[interaction] = { status: v.status };
-  }
-  return Object.keys(map).length > 0 ? map : undefined;
-}
-
-function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMap) {
+function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
   const isTask = action.kind === 'task';
   const properties = {
     action_id: { _payload: 'action_id' },
@@ -77,7 +66,6 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMa
     ...(isTask ? { current_status: { _payload: 'current_status' } } : {}),
     ...(hooksMap ? { hooks: hooksMap } : {}),
     ...(eventMap ? { event_overrides: eventMap } : {}),
-    ...(interactionsMap ? { interactions: interactionsMap } : {}),
   };
 
   return {
@@ -121,10 +109,7 @@ function emitForWorkflow(workflow) {
     const { apis: hookApis, map: hooksMap } = emitHooks(action);
     apis.push(...hookApis);
     const eventMap = emitEventOverrides(action);
-    const interactionsMap = emitInteractions(action);
-    apis.push(
-      emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMap)
-    );
+    apis.push(emitActionEndpoint(workflow, action, hooksMap, eventMap));
   }
 
   for (const group of workflow.action_groups ?? []) {

@@ -122,13 +122,12 @@ async function handleSubmit(context) {
     );
   }
 
-  // Resolve target status with layers 1 (engine default) + 2 (YAML). Layer 3
-  // (pre-hook return) is grafted in after step 2 below.
+  // Resolve target status from engine default. The pre-hook return is grafted
+  // in after step 2 below.
   const initialTargetStatus = resolveTargetStatus({
     interaction: params.interaction,
     actionConfig,
     params,
-    yamlInteractions: params.interactions,
   });
 
   const logEventInputBag = {
@@ -158,12 +157,12 @@ async function handleSubmit(context) {
   const preHookResponse = await invokePreHook(context);
 
   // Re-resolve target status now that the pre-hook has had a chance to
-  // contribute layer 3.
+  // contribute its `status` return. An invalid status throws here before any
+  // writes land (UserError with isReject: false).
   const resolvedTargetStatus = resolveTargetStatus({
     interaction: params.interaction,
     actionConfig,
     params,
-    yamlInteractions: params.interactions,
     preHookStatus: preHookResponse?.status,
   });
   currentActionEntry.status = resolvedTargetStatus;

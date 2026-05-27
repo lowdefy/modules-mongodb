@@ -1,5 +1,7 @@
 # Part 09 — Hook invocation (pre/post + `force` + status resolution layers)
 
+> **Deviation (Part 32):** The Layer 2 branch in `resolveTargetStatus` (the action YAML `interactions[interaction].status` override) is dropped — status resolution collapses to two layers (engine default → pre-hook `status` return). A runtime enum-membership check on the pre-hook `status` return fires inside `resolveTargetStatus` (after the pre-hook return, before step-4 writes) and throws `UserError(isReject: false)` on a non-`action_statuses` value; the wrapping endpoint's `runRoutine` classifies the throw as `{ status: 'error' }` (per [Part 29 § D5](../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)). The `action.interactions:` YAML override subsection and the three-layer status-resolution prose are superseded; the four-layer event-overrides merge is unchanged. See [Part 32 design](../../32-drop-static-overrides/design.md).
+
 **Source rationale:** [workflows-module-concept/submit-pipeline/spec.md](../../../workflows-module-concept/submit-pipeline/spec.md). **Layer:** engine handlers. **Size:** M. **Repo:** `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/`.
 
 ## Goal

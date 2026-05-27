@@ -26,9 +26,6 @@ form:
         component: text_input
         title: Device serial
         required: true
-interactions:
-  submit_edit:
-    status: done
 hooks:
   submit_edit:
     pre:
