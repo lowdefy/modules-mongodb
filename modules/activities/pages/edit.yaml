@@ -62,6 +62,9 @@ _ref:
                 - {}
             updated:
               _request: get_activity.0.updated
+            cycle_check_self_id:
+              _request: get_activity.0._id
+            cycle_check_ids: []
     requests:
       - _ref: requests/get_activity.yaml
     blocks:

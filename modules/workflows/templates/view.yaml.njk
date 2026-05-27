@@ -22,7 +22,12 @@ _ref:
       _var:
         key: page_config.title
         default: null
-    hide_title: true
+    hide_title:
+      _build.eq:
+        - _var:
+            key: page_config.title
+            default: null
+        - null
     content_width:
       _var:
         key: page_config.maxWidth
@@ -54,6 +59,11 @@ _ref:
             - id: get_action
               type: Request
               params: get_action
+            - id: set_action
+              type: SetState
+              params:
+                action:
+                  _request: get_action.0
             # Step 3 (stale-URL guard) — intentionally omitted on view.
             # Step 4: load the parent workflow (form_data lives here).
             - id: get_workflow
@@ -80,11 +90,11 @@ _ref:
                       - _var: action_config.type
                 fields:
                   assignees:
-                    _request: get_action.assignees
+                    _state: action.assignees
                   due_date:
-                    _request: get_action.due_date
+                    _state: action.due_date
                   description:
-                    _request: get_action.description
+                    _state: action.description
           # Step 8: author-supplied onMount runs last.
           - _var:
               key: page_config.events.onMount
@@ -106,11 +116,11 @@ _ref:
                     kind: form
                     action_data:
                       assignees:
-                        _request: get_action.assignees
+                        _state: action.assignees
                       due_date:
-                        _request: get_action.due_date
+                        _state: action.due_date
                       description:
-                        _request: get_action.description
+                        _state: action.description
             - - id: form_body
                 type: DataDescriptions
                 properties:

@@ -17,6 +17,15 @@ form:
   - key: notes
     component: text_area
     title: Qualification notes
+  - key: devices
+    component: controlled_list
+    title: Devices
+    minItems: 1
+    form:
+      - key: devices.$.device_serial
+        component: text_input
+        title: Device serial
+        required: true
 interactions:
   submit_edit:
     status: done
@@ -34,6 +43,7 @@ status_map:
           _module.pageId:
             id: onboarding-qualify-edit
             module: workflows
+        title: Qualify Lead
         urlQuery:
           action_id: true
   in-progress:
@@ -44,8 +54,14 @@ status_map:
           _module.pageId:
             id: onboarding-qualify-view
             module: workflows
+        title: Qualify Lead
         urlQuery:
           action_id: true
   done:
     demo:
       message: Lead qualified.
+pages:
+  edit:
+    title: Qualify Lead
+  view:
+    title: Qualify Lead

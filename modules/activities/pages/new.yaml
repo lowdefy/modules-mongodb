@@ -55,6 +55,8 @@ _ref:
                     - _url_query: company_ids
                     - []
             attributes: {}
+            cycle_check_self_id: null
+            cycle_check_ids: []
     blocks:
       - id: card
         type: Card

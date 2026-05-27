@@ -119,6 +119,7 @@ connections:
 api:
   - _ref: api/leads-create.yaml
   - _ref: api/leads-update.yaml
+  - _ref: api/onboarding-spawn-proof-of-installation-actions.yaml
 
 pages:
   - _ref: pages/router.yaml
@@ -128,4 +129,3 @@ pages:
   - _ref: pages/leads/lead-list.yaml
   - _ref: pages/leads/lead-new.yaml
   - _ref: pages/leads/lead-view.yaml
-  - _ref: pages/leads/lead-edit.yaml

@@ -21,7 +21,12 @@ _ref:
       _var:
         key: page_config.title
         default: null
-    hide_title: true
+    hide_title:
+      _build.eq:
+        - _var:
+            key: page_config.title
+            default: null
+        - null
     content_width:
       _var:
         key: page_config.maxWidth
@@ -51,15 +56,21 @@ _ref:
             - id: get_action
               type: Request
               params: get_action
+            - id: set_action
+              type: SetState
+              params:
+                action:
+                  _request: get_action.0
             - id: redirect_stale_status
               type: Link
               skip:
                 _eq:
-                  - _request: get_action.status.0.stage
+                  - _state: action.status.0.stage
                   - error
               params:
                 pageId:
-                  _var: page_ids.view
+                  _module.pageId:
+                    _var: page_ids.view
                 urlQuery:
                   _url_query: true
             - id: get_workflow
@@ -83,11 +94,11 @@ _ref:
                       - _var: action_config.type
                 fields:
                   assignees:
-                    _request: get_action.assignees
+                    _state: action.assignees
                   due_date:
-                    _request: get_action.due_date
+                    _state: action.due_date
                   description:
-                    _request: get_action.description
+                    _state: action.description
                 comment: null
           - _var:
               key: page_config.events.onMount
@@ -110,7 +121,7 @@ _ref:
                       type: error
                       showIcon: true
                       message:
-                        _request: get_action.status.0.error_message
+                        _state: action.status.0.error_message
                       description:
                         _nunjucks:
                           template: |
@@ -119,7 +130,7 @@ _ref:
                             metadata:
                               _js:
                                 params:
-                                  - _request: get_action.status.0.error_metadata
+                                  - _state: action.status.0.error_metadata
                                 body: |
                                   return JSON.stringify(params[0], null, 2);
                 - _var:
@@ -132,19 +143,19 @@ _ref:
                         kind: form
                         action_data:
                           assignees:
-                            _request: get_action.assignees
+                            _state: action.assignees
                           due_date:
-                            _request: get_action.due_date
+                            _state: action.due_date
                           description:
-                            _request: get_action.description
-                - - _ref:
-                      resolver: resolvers/makeActionsForm.js
-                      vars:
-                        form:
-                          _var:
-                            key: action_config.form_error
-                            default: []
-                        mode: error
+                            _state: action.description
+                - _ref:
+                    resolver: resolvers/makeActionsForm.js
+                    vars:
+                      form:
+                        _var:
+                          key: action_config.form_error
+                          default: []
+                      mode: error
                 - - id: comment
                     type: TiptapInput
                     properties:
@@ -166,7 +177,7 @@ _ref:
                           type: error
                           showIcon: true
                           message:
-                            _request: get_action.status.0.error_message
+                            _state: action.status.0.error_message
                           description:
                             _nunjucks:
                               template: |
@@ -175,7 +186,7 @@ _ref:
                                 metadata:
                                   _js:
                                     params:
-                                      - _request: get_action.status.0.error_metadata
+                                      - _state: action.status.0.error_metadata
                                     body: |
                                       return JSON.stringify(params[0], null, 2);
                     - _var:
@@ -188,19 +199,19 @@ _ref:
                             kind: form
                             action_data:
                               assignees:
-                                _request: get_action.assignees
+                                _state: action.assignees
                               due_date:
-                                _request: get_action.due_date
+                                _state: action.due_date
                               description:
-                                _request: get_action.description
-                    - - _ref:
-                          resolver: resolvers/makeActionsForm.js
-                          vars:
-                            form:
-                              _var:
-                                key: action_config.form_error
-                                default: []
-                            mode: error
+                                _state: action.description
+                    - _ref:
+                        resolver: resolvers/makeActionsForm.js
+                        vars:
+                          form:
+                            _var:
+                              key: action_config.form_error
+                              default: []
+                          mode: error
                     - - id: comment
                         type: TiptapInput
                         properties:
@@ -271,10 +282,10 @@ _ref:
                                           - _var: action_config.type
                                     payload:
                                       action_id:
-                                        _request: get_action._id
+                                        _state: action._id
                                       interaction: resolve_error
                                       current_key:
-                                        _request: get_action.key
+                                        _state: action.key
                                       form:
                                         _state: form
                                       form_review:
@@ -330,10 +341,10 @@ _ref:
                                   - _var: action_config.type
                             payload:
                               action_id:
-                                _request: get_action._id
+                                _state: action._id
                               interaction: resolve_error
                               current_key:
-                                _request: get_action.key
+                                _state: action.key
                               form:
                                 _state: form
                               form_review:

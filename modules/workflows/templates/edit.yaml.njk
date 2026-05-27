@@ -20,7 +20,12 @@ _ref:
       _var:
         key: page_config.title
         default: null
-    hide_title: true
+    hide_title:
+      _build.eq:
+        - _var:
+            key: page_config.title
+            default: null
+        - null
     content_width:
       _var:
         key: page_config.maxWidth
@@ -50,6 +55,11 @@ _ref:
             - id: get_action
               type: Request
               params: get_action
+            - id: set_action
+              type: SetState
+              params:
+                action:
+                  _request: get_action.0
             # Stale-URL guard: skip when status is in the allowlist OR
             # when the caller (review's Edit-link) opted out.
             - id: redirect_stale_status
@@ -60,13 +70,14 @@ _ref:
                       - - action-required
                         - in-progress
                         - changes-required
-                      - _request: get_action.status.0.stage
+                      - _state: action.status.0.stage
                   - _eq:
                       - _input: skip_status_redirect
                       - true
               params:
                 pageId:
-                  _var: page_ids.view
+                  _module.pageId:
+                    _var: page_ids.view
                 urlQuery:
                   _url_query: true
             - id: get_workflow
@@ -90,11 +101,11 @@ _ref:
                       - _var: action_config.type
                 fields:
                   assignees:
-                    _request: get_action.assignees
+                    _state: action.assignees
                   due_date:
-                    _request: get_action.due_date
+                    _state: action.due_date
                   description:
-                    _request: get_action.description
+                    _state: action.description
                 comment: null
           - _var:
               key: page_config.events.onMount
@@ -128,12 +139,12 @@ _ref:
                             _state: fields.due_date
                           description:
                             _state: fields.description
-                - - _ref:
-                      resolver: resolvers/makeActionsForm.js
-                      vars:
-                        form:
-                          _var: action_config.form
-                        mode: edit
+                - _ref:
+                    resolver: resolvers/makeActionsForm.js
+                    vars:
+                      form:
+                        _var: action_config.form
+                      mode: edit
                 - - id: comment
                     type: TiptapInput
                     properties:
@@ -165,12 +176,12 @@ _ref:
                                 _state: fields.due_date
                               description:
                                 _state: fields.description
-                    - - _ref:
-                          resolver: resolvers/makeActionsForm.js
-                          vars:
-                            form:
-                              _var: action_config.form
-                            mode: edit
+                    - _ref:
+                        resolver: resolvers/makeActionsForm.js
+                        vars:
+                          form:
+                            _var: action_config.form
+                          mode: edit
                     - - id: comment
                         type: TiptapInput
                         properties:
@@ -238,14 +249,12 @@ _ref:
                                           - _var: action_config.type
                                     payload:
                                       action_id:
-                                        _request: get_action._id
+                                        _state: action._id
                                       interaction: submit_edit
                                       current_key:
-                                        _request: get_action.key
+                                        _state: action.key
                                       form:
                                         _state: form
-                                      form_review:
-                                        _state: form_review
                                       fields:
                                         _state: fields
                                       comment:
@@ -266,7 +275,7 @@ _ref:
                                   statuses:
                                     _ref: enums/action_statuses.yaml
                                   stage:
-                                    _request: get_action.status.0.stage
+                                    _state: action.status.0.stage
                                 fn: |
                                   const { statuses, stage } = args;
                                   return statuses?.[stage]?.priority ?? 0;
@@ -308,10 +317,10 @@ _ref:
                                           - _var: action_config.type
                                     payload:
                                       action_id:
-                                        _request: get_action._id
+                                        _state: action._id
                                       interaction: not_required
                                       current_key:
-                                        _request: get_action.key
+                                        _state: action.key
                                       fields:
                                         _state: fields
                                       comment:
@@ -360,14 +369,12 @@ _ref:
                                   - _var: action_config.type
                             payload:
                               action_id:
-                                _request: get_action._id
+                                _state: action._id
                               interaction: submit_edit
                               current_key:
-                                _request: get_action.key
+                                _state: action.key
                               form:
                                 _state: form
-                              form_review:
-                                _state: form_review
                               fields:
                                 _state: fields
                               comment:
@@ -410,10 +417,10 @@ _ref:
                                   - _var: action_config.type
                             payload:
                               action_id:
-                                _request: get_action._id
+                                _state: action._id
                               interaction: not_required
                               current_key:
-                                _request: get_action.key
+                                _state: action.key
                               fields:
                                 _state: fields
                               comment:

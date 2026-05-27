@@ -76,6 +76,7 @@ function substituteEntry(entry, mode) {
   return {
     _ref: {
       path: `${FIELDS_DIR}/${component}.yaml`,
+      key: "config",
       vars,
     },
   };

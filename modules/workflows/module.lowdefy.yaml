@@ -90,9 +90,6 @@ components:
   - id: actions-on-entity
     component:
       _ref: components/actions-on-entity.yaml
-  - id: workflow-header
-    component:
-      _ref: components/workflow-header.yaml
   - id: action_role_check
     component:
       _ref: components/action_role_check.yaml

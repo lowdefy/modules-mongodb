@@ -52,21 +52,19 @@ function emitForAction(workflow, action, appName) {
 
   return emittedVerbs.map((verb) => ({
     id: pageIds[verb],
-    definition: {
-      _ref: {
-        path: `templates/${verb}.yaml.njk`,
-        vars: {
-          action_config: actionConfig,
-          workflow_type: workflow.type,
-          entity_collection: workflow.entity_collection,
-          page_ids: pageIds,
-          // Per-verb page customization (title, requests, events, formHeader,
-          // formFooter, modals, maxWidth, buttons.submit on error) passes
-          // through verbatim as a top-level var. Templates read off
-          // `page_config.*` — the duplicate path through `action_config.pages`
-          // is intentionally removed (see `ACTION_FIELDS_FOR_TEMPLATE`).
-          page_config: action.pages?.[verb] ?? {},
-        },
+    _ref: {
+      path: `templates/${verb}.yaml.njk`,
+      vars: {
+        action_config: actionConfig,
+        workflow_type: workflow.type,
+        entity_collection: workflow.entity_collection,
+        page_ids: pageIds,
+        // Per-verb page customization (title, requests, events, formHeader,
+        // formFooter, modals, maxWidth, buttons.submit on error) passes
+        // through verbatim as a top-level var. Templates read off
+        // `page_config.*` — the duplicate path through `action_config.pages`
+        // is intentionally removed (see `ACTION_FIELDS_FOR_TEMPLATE`).
+        page_config: action.pages?.[verb] ?? {},
       },
     },
   }));

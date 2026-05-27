@@ -32,6 +32,7 @@ status_map:
           _module.pageId:
             id: onboarding-proof-of-installation-edit
             module: workflows
+        title: Proof of Installation
         urlQuery:
           action_id: true
   in-progress:
@@ -42,8 +43,14 @@ status_map:
           _module.pageId:
             id: onboarding-proof-of-installation-view
             module: workflows
+        title: Proof of Installation
         urlQuery:
           action_id: true
   done:
     demo:
       message: Installation verified.
+pages:
+  edit:
+    title: Proof of Installation
+  view:
+    title: Proof of Installation

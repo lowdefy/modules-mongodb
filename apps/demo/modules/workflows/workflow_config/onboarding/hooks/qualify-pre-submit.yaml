@@ -17,6 +17,19 @@
           - _payload: action_id
         workflow_ids:
           - _payload: workflow_id
+- id: spawn_proof_of_installation_actions
+  type: CallApi
+  properties:
+    endpointId: onboarding-spawn-proof-of-installation-actions
+    payload:
+      workflow_id:
+        _payload: workflow_id
+      entity_id:
+        _payload: context.workflow.entity_id
+      entity_collection:
+        _payload: context.workflow.entity_collection
+      devices:
+        _payload: fields.devices
 - :return:
     event_overrides:
       display: Lead qualified by demo pre-hook.

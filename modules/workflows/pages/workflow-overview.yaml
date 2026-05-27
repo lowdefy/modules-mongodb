@@ -40,8 +40,8 @@ _ref:
         - id: set_overview_state
           type: SetState
           params:
-            overview:
-              _actions: call_get_overview.response.response
+            workflow:
+              _actions: call_get_overview.response.response.workflow
             actions_list:
               _actions: call_get_overview.response.response.actions
         # Null-redirect guard — Api returns workflow: null when no actions
@@ -50,33 +50,106 @@ _ref:
         #   type: Link
         #   skip:
         #     _ne:
-        #       - _state: overview.workflow
+        #       - _state: workflow
         #       - null
         #   params:
         #     back: true
     blocks:
-      - _ref:
-          path: components/workflow-header.yaml
-          vars:
-            id: workflow_header
-            is_overview_page: true
-            workflow:
-              _state: overview.workflow
+      - id: workflow_header
+        type: Box
+        layout:
+          gap: 8
+          align: middle
+        blocks:
+          - id: workflow_title
+            type: Html
+            layout:
+              flex: 1 1 auto
+            properties:
+              html:
+                _nunjucks:
+                  template: |
+                    <h1 class="text-3xl font-semibold" style="margin: 0;">{{ title | default('Workflow') }}</h1>
+                  on:
+                    _get:
+                      from:
+                        _ref: components/workflows_config.yaml
+                      key:
+                        _state: workflow.workflow_type
+          - id: workflow_lifecycle_badge
+            type: Tag
+            layout:
+              flex: 0 0 auto
+            properties:
+              color:
+                _get:
+                  from:
+                    _ref: components/workflow_lifecycle_stages.yaml
+                  key:
+                    _string.concat:
+                      - _state: workflow.status.0.stage
+                      - .titleColor
+              title:
+                _get:
+                  from:
+                    _ref: components/workflow_lifecycle_stages.yaml
+                  key:
+                    _string.concat:
+                      - _state: workflow.status.0.stage
+                      - .title
+          - id: workflow_progress
+            type: Progress
+            properties:
+              type: line
+              percent:
+                _js:
+                  args:
+                    summary:
+                      _state: workflow.summary
+                  fn: |
+                    const { summary } = args;
+                    if (!summary) return 0;
+                    const total = summary.total || 0;
+                    if (total === 0) return 100;
+                    const filled = (summary.done || 0) + (summary.not_required || 0);
+                    return Math.round((filled / total) * 100);
+          - id: workflow_summary
+            type: Paragraph
+            properties:
+              type: secondary
+              content:
+                _string.concat:
+                  - ''
+                  - _sum:
+                      - _get:
+                          from:
+                            _state: workflow
+                          key: summary.done
+                          default: 0
+                      - _get:
+                          from:
+                            _state: workflow
+                          key: summary.not_required
+                          default: 0
+                  - ' of '
+                  - _get:
+                      from:
+                        _state: workflow
+                      key: summary.total
+                      default: 0
+                  - ' done'
       - id: entity_back_button
         type: Button
         properties:
           title:
-            _string.concat:
-              - _get:
-                  from:
-                    _module.var: entities
-                  key:
-                    _string.concat:
-                      - _state: overview.workflow.entity_collection
-                      - .title
-                  default: Entity
-              - ' '
-              - _state: overview.workflow.entity_id
+            _get:
+              from:
+                _module.var: entities
+              key:
+                _string.concat:
+                  - _state: workflow.entity_collection
+                  - .title
+              default: Entity
           type: link
           icon: AiOutlineArrowLeft
         events:
@@ -90,18 +163,18 @@ _ref:
                       _module.var: entities
                     key:
                       _string.concat:
-                        - _state: overview.workflow.entity_collection
+                        - _state: workflow.entity_collection
                         - .page_id
                 urlQuery:
                   _object.fromEntries:
-                    - - - _get:
-                            from:
-                              _module.var: entities
-                            key:
-                              _string.concat:
-                                - _state: overview.workflow.entity_collection
-                                - .id_query_key
-                        - _state: overview.workflow.entity_id
+                    - - _get:
+                          from:
+                            _module.var: entities
+                          key:
+                            _string.concat:
+                              - _state: workflow.entity_collection
+                              - .id_query_key
+                      - _state: workflow.entity_id
       - id: actions_list
         type: List
         blocks:
@@ -151,28 +224,33 @@ _ref:
                         properties:
                           content:
                             _state: actions_list.$.message
-                  - id: actions_list.$.link_button
-                    type: Button
-                    visible:
-                      _ne:
-                        - _state: actions_list.$.link
-                        - null
-                    properties:
-                      title: Open
-                      type: link
-                    events:
-                      onClick:
-                        - id: actions_list.$.link
-                          type: Link
-                          params:
-                            _state: actions_list.$.link
+                      - id: actions_list.$.link_button
+                        type: Button
+                        layout:
+                          flex: 0 0 auto
+                        visible:
+                          _ne:
+                            - _state: actions_list.$.link
+                            - null
+                        properties:
+                          title:
+                            _if_none:
+                              - _state: actions_list.$.link.title
+                              - Open
+                          type: link
+                        events:
+                          onClick:
+                            - id: actions_list.$.link
+                              type: Link
+                              params:
+                                _state: actions_list.$.link
               - id: actions_list.$.body_empty
                 type: Html
                 visible:
                   _eq:
                     - _get:
                         from:
-                          _state: overview.workflow.form_data
+                          _state: workflow.form_data
                         key:
                           _if:
                             test:
@@ -196,7 +274,7 @@ _ref:
                   _ne:
                     - _get:
                         from:
-                          _state: overview.workflow.form_data
+                          _state: workflow.form_data
                         key:
                           _if:
                             test:
@@ -224,7 +302,7 @@ _ref:
                     form:
                       _get:
                         from:
-                          _state: overview.workflow.form_data
+                          _state: workflow.form_data
                         key:
                           _if:
                             test:
@@ -240,4 +318,4 @@ _ref:
                               _state: actions_list.$.type
                         default: null
                     workflow:
-                      _state: overview.workflow
+                      _state: workflow

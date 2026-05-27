@@ -59,7 +59,7 @@ config:
         _var: key
       type: ControlledList
       layout:
-        contentGutter: 8
+        gap: 8
       visible:
         _var:
           key: visible

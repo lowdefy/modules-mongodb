@@ -1,0 +1,63 @@
+id: onboarding-spawn-proof-of-installation-actions
+type: Api
+routine:
+  - id: insert
+    type: MongoDBInsertMany
+    connectionId:
+      _module.connectionId:
+        id: actions-collection
+        module: workflows
+    properties:
+      docs:
+        _array.map:
+          on:
+            _array.filter:
+              on:
+                _if_none:
+                  - _payload: devices
+                  - []
+              callback:
+                _function:
+                  __ne:
+                    - __args: 0.device_serial
+                    - null
+          callback:
+            _function:
+              _id:
+                __uuid: true
+              workflow_id:
+                __payload: workflow_id
+              type: proof-of-installation
+              kind: form
+              key:
+                __args: 0.device_serial
+              action_group: g3
+              status:
+                - stage: blocked
+                  event_id: null
+                  created:
+                    _ref:
+                      module: events
+                      component: change_stamp
+              entity_id:
+                __payload: entity_id
+              entity_collection:
+                __payload: entity_collection
+              assignees: []
+              due_date: null
+              description: null
+              tracker: null
+              child_workflow_id: null
+              child_entity_id: null
+              child_entity_collection: null
+              created:
+                _ref:
+                  module: events
+                  component: change_stamp
+              updated:
+                _ref:
+                  module: events
+                  component: change_stamp
+  - :return:
+      inserted_count:
+        _step: insert.insertedCount

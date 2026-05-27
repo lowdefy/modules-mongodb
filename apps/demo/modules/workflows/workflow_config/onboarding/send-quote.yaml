@@ -52,6 +52,7 @@ status_map:
           _module.pageId:
             id: onboarding-send-quote-edit
             module: workflows
+        title: Send Quote
         urlQuery:
           action_id: true
   in-progress:
@@ -62,6 +63,7 @@ status_map:
           _module.pageId:
             id: onboarding-send-quote-view
             module: workflows
+        title: Send Quote
         urlQuery:
           action_id: true
   in-review:
@@ -72,6 +74,7 @@ status_map:
           _module.pageId:
             id: onboarding-send-quote-review
             module: workflows
+        title: Review Quote
         urlQuery:
           action_id: true
   changes-required:
@@ -82,8 +85,16 @@ status_map:
           _module.pageId:
             id: onboarding-send-quote-edit
             module: workflows
+        title: Send Quote
         urlQuery:
           action_id: true
   done:
     demo:
       message: Quote approved and sent.
+pages:
+  edit:
+    title: Send Quote
+  view:
+    title: Send Quote
+  review:
+    title: Review Quote
