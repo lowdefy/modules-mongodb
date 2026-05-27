@@ -16,7 +16,7 @@ Tasks implementing Part 30: the workflows engine renders `status_map` cells and 
 | 6   | `06-extend-api-contract-metadata-action-display.md` | Add `metadata` + `action_display` to start/submit API payloads; refresh `app_name` manifest doc.       | —          |
 | 7   | `07-wire-createAction-and-StartWorkflow.md`         | Wire `createAction` to render the initial cell; pass `metadata` through `StartWorkflow`.               | 3, 4, 6    |
 | 8   | `08-wire-updateAction.md`                           | Replace `updateAction`'s `$set` + `$push` with the new aggregation pipeline.                           | 3, 4, 5    |
-| 9   | `09-refactor-cancel-close-cascade.md`               | Switch Cancel/Close per-action sweeps to `bulkWrite` with per-action render + link computation.        | 3, 4, 5    |
+| 9   | `09-refactor-cancel-close-cascade.md`               | Switch Cancel/Close per-action sweeps to a per-action `MongoDBUpdateOne` loop with render + link computation. | 3, 4, 5    |
 | 10  | `10-strip-link-from-demo-configs.md`                | Remove authored `link:` from demo workflow configs; align `install-step` with the worked example.     | —          |
 | 11  | `11-resolver-cell-shape-validation.md`              | Add per-cell shape validation in `makeWorkflowsConfig`; built-in kinds reject `link:`.                 | 10         |
 | 12  | `12-switch-group-overview-to-top-level-fields.md`   | Update `pages/group-overview.yaml` to read `actions_list.$.message` / `.link` instead of `status_map`. | 7, 8, 9    |

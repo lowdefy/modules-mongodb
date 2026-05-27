@@ -6,6 +6,8 @@ Three load-bearing claims in the design rest on things that aren't true of the c
 
 ### 1. `bulkWrite` is not exposed by `@lowdefy/community-plugin-mongodb`
 
+> **Resolved (via review-4 #1).** Picked option (c) — Cancel/Close cascade loops `MongoDBUpdateOne` per action. D11 § Wire shape rewritten with the structural rationale (community plugin's change-log feature deliberately omits bulkWrite); Cancel/Close Modified bullets updated.
+
 D11 ([design.md:198-200](../design.md)) commits the Cancel/Close cascade to `bulkWrite` and explicitly rejects the per-action-`updateOne`-in-a-loop alternative as "a real regression on sweeps hitting 20-100+ actions per workflow." That rationale is the design's only argument for the chosen mechanic, and it depends on the underlying connection plugin shipping a bulk-write request.
 
 It doesn't. `@lowdefy/community-plugin-mongodb` ships exactly these request handlers (from `node_modules/@lowdefy/community-plugin-mongodb/dist/connections/MongoDBCollection/`):
@@ -29,6 +31,8 @@ Options, none of them free:
 
 ### 2. Event-display render context uses `context.action`, which is the pre-write doc
 
+> **Resolved (via review-4 #2).** Picked option (b) variant — reassign `context.action` from `recomputeResult.workflowActions.find(...)` after step 5. No extra Mongo trip (recompute already re-fetched the doc). handleSubmit Modified bullet enumerates the edit.
+
 D14 ([design.md:302](../design.md)): "**Post-write action doc, not pre-write.** Events describe what just happened. `action = post-write action doc` and `status_after = newStage` give templates the obvious bindings to write `{{ user.profile.name }} moved {{ action.key }} to {{ status_after }}`."
 
 The current submit pipeline doesn't have a post-write `context.action` to hand in. [`handleSubmit.js:63-65, 100-101`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) fetches the action once via `getCurrentAction` *before* step 4, stashes it on `context.action`, and never refreshes it. Step 4's per-entry write loop ([handleSubmit.js:226-249](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) does an in-memory cache update on the matching doc in `context.workflowActions`, but those are different object references from `context.action` (one comes from `getCurrentAction`, the other from `getActions(workflow._id)`). By step 7 (`buildDefaultLogEventPayload({ action: context.action, ... })` at [handleSubmit.js:319-328](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)), `context.action.metadata`, `context.action.status[0].stage`, and every newly-written `action[slug]` subdoc are the values that were on disk *before* this submit started.
@@ -42,6 +46,8 @@ This breaks the design in several concrete places:
 **Fix:** add an explicit step in the design — either (a) re-fetch the action doc after step 4 and before step 7 (`context.action = await getCurrentAction(...)`), (b) maintain `context.action` as a live reference to the post-write doc by reassigning it from the in-memory cache after each write, or (c) document that the event render context's `action` is **pre-write plus the just-applied fields** and pass an explicit `actionAfter` to `renderEventDisplay` built from the `mergedActionDoc` D11 already computes. Option (a) is the simplest and least surprising; cost is one MongoDBFindOne per submit. The handler-side change needs a bullet under "Files changed → Modified" — currently `handleSubmit.js` is annotated as "no structural change; verify metadata flows through", which understates the work.
 
 ### 3. `workflow_type` is not on the action doc
+
+> **Resolved (via review-4 #3).** Picked option (a) — `createAction.js` now persists `workflow_type` on every action doc (alongside existing `entity_id` / `entity_collection` denormalisations). Justified by MongoDB conventions, report-aggregation usefulness, and reference-impl parity. New Schema additions row + D14 binding-list update + createAction Modified bullet.
 
 Three places — D4's per-kind table ([design.md:90](../design.md)), the `computeEngineLinks` signature paragraph ([design.md:572](../design.md)), and `computeEngineLinks.test.js`'s test plan ([design.md:575](../design.md)) — all assume `actionDoc.workflow_type` is readable off any action doc. It isn't.
 
@@ -59,6 +65,8 @@ Either way, D4's per-kind table needs a footnote spelling out where `workflow_ty
 ## Spec gaps
 
 ### 4. `updateAction`'s new signature is not enumerated
+
+> **Resolved (via review-4 #4 + loose-end close).** D11 now spells the full signature with safe defaults: `updateAction(context, { actionId, newStage, fields, actionDisplay = {}, metadata = null, ... })`. Engine-internal callers (`fireTrackerSubscription`, `reevaluateBlockedActions`) omit `actionDisplay` and `metadata`; defaults let sticky display fill the gap and keep `metadata` at its prior value. `actionConfig` lookup is implicit via `context.actionsConfig` (no new param).
 
 The current signature ([updateAction.js:36-46](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/updateAction.js)) is `({ actionId, newStage, fields, eventId, currentActionId, force })`. D11 says `updateAction` now calls `renderStatusMap` + `computeEngineLinks` + `buildActionStageUpdate`. To do that, it needs:
 
@@ -78,6 +86,8 @@ Either pattern works; pick one. Today the design leaves it implicit and the impl
 
 ### 5. `handleSubmit.js` "Modified" entry understates the work
 
+> **Resolved (via review-4 #2/#6 + loose-end close).** handleSubmit Modified bullet rewritten to enumerate three edits: (1) pass `actionDisplay: params.action_display` + `metadata: params.metadata` into `updateAction` / `createAction` in the per-entry loop; (2) refresh `context.action` from `recomputeResult.workflowActions`; (3) reassign `context.workflow = recomputeResult.workflow`. `makeWorkflowApis.js` modification already covers the emitted-API properties.
+
 The current bullet ([design.md:587](../design.md)): "already routes through `updateAction`. No structural change; verify metadata flows through."
 
 The actual changes needed:
@@ -92,6 +102,8 @@ The actual changes needed:
 
 ### 6. `mergeEventOverrides` is unchanged but the override shape changes
 
+> **Rejected.** No consumers — the module is wip and non-functional (per D12), and the demo has zero operator-literal overrides. D14 already establishes plain Nunjucks as the only supported shape going forward. Documenting a contract break for non-existent users is the kind of speculative scaffolding the codebase principle ("build for what exists") avoids.
+
 [`mergeEventOverrides.js`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/mergeEventOverrides.js) does a one-level overlay on `display` / `references` / `metadata`. Today the default's `display.{app}.title` value is a `_nunjucks: { template, on }` object. YAML overrides written today as plain strings (or as the same operator literal) replace it wholesale.
 
 After the change, the default is a plain Nunjucks template string. A YAML or pre-hook override that still ships `_nunjucks: { template, on }` would silently replace the default with an unrenderable object — `renderEventDisplay`'s walker would either treat the `{ _nunjucks: ... }` object as a tree to recurse into (its keys are strings, the `template` value is a string and gets rendered against the context, but the result is `{ _nunjucks: { template: '<rendered>', on: <rendered> } }` and gets serialised to Mongo as-is) or pass it through unchanged. Either way the timeline block reads `[object Object]`.
@@ -104,6 +116,8 @@ The design doesn't mention auditing override authoring. The demo has none ([`app
 
 ### 7. D14 leaves two candidate default templates in play
 
+> **Resolved.** Kept the "marked X as Y" shape (`"{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"`) that the `dispatchLogEvent.js` Modified bullet already commits to. Rewrote the D14 paragraph that previously showed the alternate `{{ interaction | replace... }}` candidate so it no longer reads as a competing default — it now just notes that `interaction` is what makes any single-template default possible. Reading-fluency improvements for `request_changes` are deferred to separate copy work.
+
 D14 proposes two engine-default title strings without picking one:
 
 - [design.md:294](../design.md) — `"{{ user.profile.name }} {{ interaction | replace('_',' ') }}d {{ action.key }}"`.
@@ -114,6 +128,8 @@ The second reads oddly for `request_changes` → `changes-required` ("marked X a
 **Fix:** pick one. The current default ([dispatchLogEvent.js:3-4](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js)) and the design's primary candidate ([design.md:602](../design.md)) point to the same shape ("marked X as Y") — keep that for continuity; if it needs to read better for `request_changes` interactions, that's a separate copy task and not blocked on Part 30.
 
 ### 8. Tests not in the "Demo + tests" list
+
+> **Resolved.** Added a bullet to Demo + tests naming the five existing test files that need re-asserting (`updateAction`, `handleSubmit`, `fireTrackerSubscription`, `reevaluateBlockedActions`, `event-id-round-trip`) against the new aggregation-pipeline shape and rendered top-level fields.
 
 `updateAction.test.js`, `handleSubmit.test.js`, `fireTrackerSubscription.test.js`, `reevaluateBlockedActions.test.js`, `event-id-round-trip.test.js` all assert against the current update-doc shape (`$set` + `$push`). The cutover to an aggregation `$set` pipeline with `$concatArrays` changes the on-disk shape and the test snapshots. The "Demo + tests" section enumerates new tests but doesn't call out the existing tests that need re-asserting against the new shapes.
 

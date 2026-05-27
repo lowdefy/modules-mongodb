@@ -6,6 +6,8 @@ Review 3 flagged three concrete codebase mismatches and three under-specified si
 
 ### 1. `bulkWrite` is not exposed by `@lowdefy/community-plugin-mongodb`
 
+> **Resolved (option a).** Cancel/Close cascade now loops `MongoDBUpdateOne` per affected action. The community plugin omits `MongoDBBulkWrite` for a structural reason — its change-log feature relies on per-op before/after reads that don't compose with a single bulk round-trip. Looping keeps the engine's write surface uniform (every write change-logged), with sub-second latency on typical 20-100 sweeps. D11 § Wire shape + Cancel/Close ordering paragraphs rewritten; Cancel/Close Modified bullets updated to name `MongoDBUpdateOne` per action.
+
 D11 ([design.md:201](../design.md)) and the Cancel/Close "Modified" bullets ([design.md:585-586](../design.md)) still commit the cascade to `bulkWrite`. The community plugin (verified at `node_modules/.pnpm/@lowdefy+community-plugin-mongodb@3.0.0_*/node_modules/@lowdefy/community-plugin-mongodb/dist/connections/MongoDBCollection/`) ships:
 
 ```
@@ -20,6 +22,8 @@ No `MongoDBBulkWrite`. Today's cascades (`CancelWorkflow.js:84`, `CloseWorkflow.
 
 ### 2. `context.action` is the pre-write doc when event display renders
 
+> **Resolved.** Updated the `handleSubmit.js` "Modified" bullet: after the step-5 recompute, refresh `context.action` by picking the submitted action out of `recomputeResult.workflowActions` (`.find(a => a._id === context.action._id)`). Reuses the recompute's already-fetched data — no extra Mongo round-trip.
+
 D14 ([design.md:286, 290, 302](../design.md)) ties the event-render context to the post-write action doc and lists `action.{slug}.message`, `action.metadata.*`, and `action.status[0]` as the bindings authors will write against. The "Modified" bullet for `handleSubmit.js` ([design.md:587](../design.md)) still reads "already routes through `updateAction`. No structural change; verify metadata flows through."
 
 `handleSubmit.js` fetches `context.action` once at line 63 and assigns it at line 101. The per-entry write loop at lines 226-249 mutates `doc.status` and `doc.updated` on `context.workflowActions[i]` — a different object reference from `context.action`. By the time `buildDefaultLogEventPayload({ action: context.action, ... })` runs at line 320, `context.action.metadata`, `context.action.status[0].stage`, and every `action[slug]` subdoc are the pre-write values.
@@ -27,6 +31,8 @@ D14 ([design.md:286, 290, 302](../design.md)) ties the event-render context to t
 **Fix:** add an explicit handler-side edit to the "Modified" bullet: refresh `context.action = await getCurrentAction(context, { actionId: context.action._id })` after the step-4 write loop and before step 7, or pass `recomputeResult.workflowActions.find(a => a._id === context.action._id)` to `renderEventDisplay` as the post-write doc. "No structural change" is wrong.
 
 ### 3. `workflow_type` is not on the action doc — and D10 contradicts D14 about this
+
+> **Resolved (option a).** Extending `createAction.js` to persist `workflow_type` on every action doc (alongside existing `entity_id` / `entity_collection` denormalisations). Justified by MongoDB conventions (denormalisation is standard), report-aggregation usefulness (count completed actions per workflow type without joining workflows), and parity with the reference implementation. D10's claim becomes factually true (no edit needed); D14's "workflow exposes fields not on the action" list is updated to drop `workflow_type` / `entity_id` / `entity_collection`; new row added to the Schema additions § Action doc table; `createAction.js` Modified bullet updated.
 
 D10 ([design.md:196](../design.md)) says "Workflow-level fields (`workflow_type`, `entity_id`, `entity_collection`) are already on the action doc — accessible." D14 ([design.md:290](../design.md)) says the opposite: "`workflow` exposes workflow-level fields that aren't on the action: `_id`, `workflow_type`, `key`, ...". D11 ([design.md:572](../design.md)) sides with D10: "`actionDoc.workflow_type` (form `pageId`)".
 
@@ -37,6 +43,8 @@ The form-pageId rule (`${actionDoc.workflow_type}-${actionDoc.type}-${verb}`, D4
 **Fix:** pick one: (a) extend `createAction.js` to persist `workflow_type` on every action doc (one extra field, makes the entity-rendering claim in D10 true and unifies the action-vs-workflow boundary for renderers); (b) change `computeEngineLinks`'s contract to take the workflow doc (or `workflowType`) as an extra arg and remove the line-196 claim from D10. Then resolve the D10-vs-D14 contradiction either way.
 
 ### 4. `updateAction` and `createAction` parameter additions are still not enumerated
+
+> **Resolved.** Spelled the new full signatures into D11 and the "Modified" entries: `updateAction(context, { actionId, newStage, fields, actionDisplay, metadata, eventId, currentActionId, force })`, `createAction(context, { workflow, action, actionDisplay, metadata, eventId })`, with `actionDisplay` and `metadata` called out as the new caller-facing params.
 
 D11 ([design.md:238-240](../design.md)) names `payload.action_display` and `payload.metadata` as new caller-facing inputs. The "Modified" bullets for `updateAction.js` ([design.md:584](../design.md)) and `createAction.js` ([design.md:583](../design.md)) don't enumerate the new parameters those helpers must accept. Today's signatures are:
 
@@ -50,6 +58,8 @@ Render-on-write needs both to accept `actionDisplay` (per-call override per D8) 
 ## New findings
 
 ### 5. `force=true` path in `updateAction` skips the pre-write fetch — render needs it
+
+> **Resolved.** Pulled the fetch out of the `if (force !== true)` block — `updateAction` now fetches unconditionally. `force` is narrowed to control only whether `shouldUpdate` runs. Added a "Force/fetch unification" paragraph to D11 and updated the `updateAction.js` "Modified" bullet. Drops the force-vs-non-force asymmetry and gives both the gate and the renderer the freshest doc; the extra reads (handful per submit, sub-ms each) are negligible against the simpler code path.
 
 Review-1 finding #5 was resolved by committing render to live inside `updateAction` (so `fireTrackerSubscription`, `reevaluateBlockedActions`, `StartWorkflow`'s parent push, and any other `force: true` caller inherit it). But [`updateAction.js:47-61`](../../../../plugins/modules-mongodb-plugins/src/connections/shared/updateAction.js) only fetches `fetchedAction` when `force !== true`:
 
@@ -67,6 +77,8 @@ return context.mongoDBConnection("actions").MongoDBUpdateOne({ ... });
 
 ### 6. `context.workflow` is stale at event-render time — `workflow.summary` won't resolve
 
+> **Resolved.** Folded into the same handleSubmit.js "Modified" bullet as #2: after the step-5 recompute, also reassign `context.workflow = recomputeResult.workflow`. Reuses the recompute's already-fetched workflow doc.
+
 D14 ([design.md:292](../design.md)) puts `workflow` in the event-render context and says "`workflow.summary` matters for group-complete and workflow-close events." `recomputeWorkflowAfterActionWrite` ([recomputeWorkflowAfterActionWrite.js:132-140](../../../../plugins/modules-mongodb-plugins/src/connections/shared/recomputeWorkflowAfterActionWrite.js)) returns `{ workflow, summary, workflowActions, ... }`. `handleSubmit.js:270-272` only reassigns `context.workflowActions = recomputeResult.workflowActions` — `context.workflow` is the pre-recompute object, and `context.workflow.summary` is the pre-write summary (or unset on a fresh workflow).
 
 Same shape as finding 2 but for `workflow` instead of `action`. By the time `dispatchLogEvent` runs at `handleSubmit.js:318+`, `context.workflow.summary.done` is stale.
@@ -74,6 +86,8 @@ Same shape as finding 2 but for `workflow` instead of `action`. By the time `dis
 **Fix:** add `context.workflow = recomputeResult.workflow` after the recompute at `handleSubmit.js:272`, or pass `recomputeResult.workflow` to `renderEventDisplay` explicitly. Either way, name the edit in the "Modified" bullet.
 
 ### 7. The `parseNunjucks` consumer named in "Modified" doesn't exist
+
+> **Resolved.** Rewrote the "Modified" bullet to name `ContactListItem.js` (verified as the only importer via grep) and noted the grep should be rerun before the move in case a new importer landed.
 
 "Modified" ([design.md:582](../design.md)):
 
@@ -88,6 +102,8 @@ import parseNunjucks from "./parseNunjucks.js";
 **Fix:** rewrite the bullet to name `ContactListItem.js` (and any other importer — `grep -rn "parseNunjucks" plugins/modules-mongodb-plugins/src/` returns only `ContactListItem.js` today, but rerun before the move).
 
 ### 8. `access`-shape inconsistency between the design and the existing demo configs
+
+> **Resolved (config bug-fix).** Added a line to the install-step.yaml Demo + tests bullet to migrate its `access.demo` from `{ roles, verbs }` to the array-of-verbs shape the rest of the demo and `handleSubmit.js` already use. Not proclaiming a canonical-shape decision in D4 — there's a separate in-flight design reevaluating access shape; this part just fixes the bad config so `computeEngineLinks` doesn't emit divergent link sets across demo workflows.
 
 The design's worked example ([design.md:460-462](../design.md)) and the link-table reasoning in D4 ([design.md:71-89](../design.md)) treat `access[slug]` as an array of verbs:
 

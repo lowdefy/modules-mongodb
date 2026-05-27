@@ -1,24 +1,25 @@
-# Task 9: Refactor Cancel/Close cascades to `bulkWrite`
+# Task 9: Refactor Cancel/Close cascades to per-action `MongoDBUpdateOne` loop
 
 ## Context
 
-`CancelWorkflow.js:84-96` and `CloseWorkflow.js:84-130` today push `{ stage: 'not-required' }` onto every affected action in one `MongoDBUpdateMany`. With render-on-write, each action's update payload is different (each has its own render context — different `_id`, `assignees`, `metadata`, etc.), so one `MongoDBUpdateMany` no longer fits. Per design D11, the wire shape becomes a `bulkWrite` — one round trip carrying N per-action `updateOne` operations.
+`CancelWorkflow.js:84-96` and `CloseWorkflow.js:84-130` today push `{ stage: 'not-required' }` onto every affected action in one `MongoDBUpdateMany`. With render-on-write, each action's update payload is different (each has its own render context — different `_id`, `assignees`, `metadata`, etc.), so one `MongoDBUpdateMany` no longer fits.
+
+Per design D11, the wire shape becomes a loop of `MongoDBUpdateOne` — one community-plugin call per affected action. The community plugin (`@lowdefy/community-plugin-mongodb`) deliberately omits `MongoDBBulkWrite` because its change-log feature relies on per-op before/after reads that don't compose with a single bulk round-trip. Every other engine write goes through the change-logged single-doc paths; the cascade staying on that pattern keeps the engine's write surface uniform. Cancel/Close are infrequent user-triggered operations — sub-second sweep latency on typical 20-100 affected actions, and per-action change-log entries improve audit granularity over today's single `MongoDBUpdateMany` log entry.
 
 Per-action loop steps:
 1. Fetch the non-terminal action.
 2. Build merged doc — cascade does not pass caller fields, so `mergedActionDoc = actionDocBeforeWrite`.
 3. Run `renderStatusMap` + `computeEngineLinks` against the merged doc.
 4. Run `buildActionStageUpdate` with `newStage: 'not-required'`.
-5. Push `{ updateOne: { filter: { _id }, update: <pipeline> } }` onto the bulkWrite ops array.
-6. Send one `bulkWrite`.
+5. `await context.mongoDBConnection('actions').MongoDBUpdateOne({ filter: { _id }, update: <pipeline> })` for that action.
 
 Per-action `status[]` entries stay `{ stage: 'not-required', created, event_id }` — workflow-level `cancelled` carries `reason`, per-action sweep entries do **not** (preserve today's behaviour).
 
-Cancel/Close cascade ordering preserved: the post-sweep summary recompute (the `MongoDBFind` over all actions in `CancelWorkflow.js:98-129` and the equivalent block in `CloseWorkflow.js`) still runs **after** the bulkWrite completes — same read-after-write order as today's `MongoDBUpdateMany` + summary read. Only the per-action update mechanic changes.
+Cancel/Close cascade ordering preserved: the post-sweep summary recompute (the `MongoDBFind` over all actions in `CancelWorkflow.js:98-129` and the equivalent block in `CloseWorkflow.js`) still runs **after** the per-action loop completes — same read-after-write order as today's `MongoDBUpdateMany` + summary read. Only the per-action update mechanic changes.
 
 ## Task
 
-1. **`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js`** — replace the `MongoDBUpdateMany` at lines 84-96 with the loop described above, sending one `bulkWrite`. The summary-recompute `MongoDBFind` after the sweep is unchanged.
+1. **`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js`** — replace the `MongoDBUpdateMany` at lines 84-96 with the per-action loop described above. Each iteration issues one `MongoDBUpdateOne` call. The summary-recompute `MongoDBFind` after the sweep is unchanged.
 
 2. **`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CloseWorkflow/CloseWorkflow.js`** — same shape for the sweep at lines 84-130.
 
@@ -29,10 +30,11 @@ Cancel/Close cascade ordering preserved: the post-sweep summary recompute (the `
    - `status_title` persists.
    - `metadata` is unchanged (sweep does not supply new metadata).
    - The post-sweep `MongoDBFind` still runs and the workflow-level summary recompute lands on post-sweep state.
+   - Per-action loop issues N `MongoDBUpdateOne` calls (one per affected action), not a single bulk write.
 
 ## Acceptance Criteria
 
-- Both cascades use `bulkWrite`. The action update mechanic is identical between Cancel and Close — only the surrounding workflow-level operation differs.
+- Both cascades loop `MongoDBUpdateOne` per affected action. The action update mechanic is identical between Cancel and Close — only the surrounding workflow-level operation differs.
 - All new test cases pass.
 - Existing Cancel/Close tests continue to pass.
 
@@ -46,3 +48,5 @@ Cancel/Close cascade ordering preserved: the post-sweep summary recompute (the `
 ## Notes
 
 The change is mechanic-only. Don't restructure the workflow-level `MongoDBUpdateOne` / `MongoDBFind` calls around the per-action sweep — the existing two-write structure (sweep, then summary read) is what preserves the read-after-write order.
+
+`MongoDBBulkWrite` is not exposed by `@lowdefy/community-plugin-mongodb`; don't try to reach for it. If a real-world deployment hits sweep-latency problems later, adding `MongoDBBulkWrite` (with a change-log compatibility story) becomes separate, scoped work — out of scope here.
