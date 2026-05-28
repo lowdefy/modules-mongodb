@@ -1,6 +1,6 @@
 # Workflows Action Authoring
 
-What an author writes — the YAML surface for workflows, actions, and tracker linking. Action kinds (form / task / tracker) declared via a required `kind:` field. Universal action fields (`assignees`, `due_date`, `description`). Status enum vocabulary. Form components library. Resolver pipeline that consumes authored YAML.
+What an author writes — the YAML surface for workflows, actions, and tracker linking. Action kinds (form / simple / tracker) declared via a required `kind:` field. Universal action fields (`assignees`, `due_date`, `description`). Status enum vocabulary. Form components library. Resolver pipeline that consumes authored YAML.
 
 This sub-design owns "what authors type." The engine's runtime semantics that consume these shapes come from [engine](../engine/design.md); the page surface generated from these YAMLs comes from [ui](../ui/design.md); the module-level wiring that ties resolvers together comes from [module-surface](../module-surface/design.md).
 
@@ -133,9 +133,9 @@ Every action declares its kind explicitly via a **required `kind:` field**. Thre
   kind: form
   form: [...]
 
-# Task action
+# Simple action
 - type: schedule-followup
-  kind: task
+  kind: simple
 
 # Tracker action
 - type: track-installation
@@ -144,22 +144,25 @@ Every action declares its kind explicitly via a **required `kind:` field**. Thre
     workflow_type: device-installation
 ```
 
-**Why explicit, not inferred.** An earlier draft inferred kind from YAML shape (`tracker:` → tracker, `form:` → form, otherwise → task). Switched to explicit because (1) the action's kind drives three pieces of build-time and runtime machinery — page generation, submit API surface, resolver invocation — and making that discriminator a label at the top of the file is more readable than scanning for the presence of `form:` / `tracker:` blocks; (2) it surfaces author mistakes earlier — `kind: form` without a `form:` block throws a clear build-time error, whereas the inference would just have generated a task action silently; (3) it follows the canonical "tagged union" pattern (e.g. TypeScript's discriminated-union `kind` field) — the word `kind` is deliberately distinct from Lowdefy's overloaded `type`.
+**Why explicit, not inferred.** An earlier draft inferred kind from YAML shape (`tracker:` → tracker, `form:` → form, otherwise → simple). Switched to explicit because (1) the action's kind drives three pieces of build-time and runtime machinery — page generation, submit API surface, resolver invocation — and making that discriminator a label at the top of the file is more readable than scanning for the presence of `form:` / `tracker:` blocks; (2) it surfaces author mistakes earlier — `kind: form` without a `form:` block throws a clear build-time error, whereas the inference would just have generated a simple action silently; (3) it follows the canonical "tagged union" pattern (e.g. TypeScript's discriminated-union `kind` field) — the word `kind` is deliberately distinct from Lowdefy's overloaded `type`.
+
+**Why `simple`, not `task`.** Earlier drafts used `kind: task` for the no-input-surface workflow action. Renamed to `simple` to free the word "task" for adhoc todos owned by the future tasks module ([tasks-module-plan](../tasks-module-plan/design.md)). `kind` is the lifecycle-driver discriminator across the shared `actions` collection — workflow actions take `form` / `simple` / `tracker`; `kind: task` is reserved for adhoc-todo docs with `workflow_id: null` and is rejected in workflow-config validation.
 
 **Validation at build time.**
 
 - `kind: form` requires a non-empty `form:` block; rejects if `tracker:` is also present.
 - `kind: tracker` requires a `tracker:` block with `workflow_type`; rejects if `form:` is also present.
-- `kind: task` rejects both `form:` and `tracker:`.
+- `kind: simple` rejects both `form:` and `tracker:`.
+- `kind: task` is rejected — reserved for the future tasks module, not for workflow authoring.
 - Any other `kind:` value rejects with a clear "unknown action kind" error.
 
 The validations run inside `makeWorkflowsConfig` (resolver pipeline, Decision 6); errors fail the app build with a path to the offending action.
 
 The kind drives three things downstream:
 
-1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; all four verbs gated identically). Task actions don't get per-action pages — they use shared module-level `task-edit` / `task-view` / `task-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
-2. **Submit API surface.** Form and task actions each get a resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline). Template-shipped buttons call it with an `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine maps interaction → target status per submit-pipeline Decision 3. Task `submit_edit` is the one interaction where the caller supplies `current_status` directly (status selector on `task-edit`). Tracker actions don't submit at all — the engine writes their status via the tracker subscription.
-3. **Resolver invocation.** `makeActionsForm` and `makeActionFormConfigs` run only for form actions; task and tracker actions skip both. `makeActionPages` skips per-action emission for task and tracker kinds.
+1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; all four verbs gated identically). Simple actions don't get per-action pages — they use shared module-level `simple-edit` / `simple-view` / `simple-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
+2. **Submit API surface.** Form and simple actions each get a resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline). Template-shipped buttons call it with an `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine maps interaction → target status per submit-pipeline Decision 3. Simple `submit_edit` is the one interaction where the caller supplies `current_status` directly (status selector on `simple-edit`). Tracker actions don't submit at all — the engine writes their status via the tracker subscription.
+3. **Resolver invocation.** `makeActionsForm` and `makeActionFormConfigs` run only for form actions; simple and tracker actions skip both. `makeActionPages` skips per-action emission for simple and tracker kinds.
 
 ## Decision 3 — Action access semantics
 
@@ -180,9 +183,9 @@ Keys are app deployment names (matching `vars.app_name` on each module compositi
 
 | Verb     | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows the action in `actions-on-entity` on the entity page and renders read-only detail pages (form-action `-view`, task-action `task-view`).                                                                                                                                                                                                                                                                                                                                                                              |
-| `edit`   | Renders the submit form — form-action `-edit` pages, task-action `task-edit`. Implies `view`.                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `review` | Renders a dedicated review page — form actions get `{workflow_type}-{action_type}-review` (generated alongside `-edit` / `-view` / `-error` when present in the verb list); task actions use the shared `task-review` page. Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `interaction: approve` and `interaction: request_changes`; the engine resolves target status (`done` and `changes-required` respectively, per submit-pipeline Decision 3). Implies `view`. |
+| `view`   | Shows the action in `actions-on-entity` on the entity page and renders read-only detail pages (form-action `-view`, simple-action `simple-view`).                                                                                                                                                                                                                                                                                                                                                                          |
+| `edit`   | Renders the submit form — form-action `-edit` pages, simple-action `simple-edit`. Implies `view`.                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `review` | Renders a dedicated review page — form actions get `{workflow_type}-{action_type}-review` (generated alongside `-edit` / `-view` / `-error` when present in the verb list); simple actions use the shared `simple-review` page. Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `interaction: approve` and `interaction: request_changes`; the engine resolves target status (`done` and `changes-required` respectively, per submit-pipeline Decision 3). Implies `view`. |
 
 Apps without a key for a given app deployment **hide the action entirely** in that app — no `actions-on-entity` row, no edit page generated, no link reachable. The resolver's `makeActionPages` reads the host app's `app_name` and filters per-action page emission based on that app's verb list (form actions only emit `-edit` when `edit` is in the list, etc.). The runtime UI affordances on entity pages read the same map to decide what to render.
 
@@ -226,12 +229,12 @@ Every action doc — regardless of kind — carries three optional fields:
 | ------------- | ---------- | -------------------------------------------------------------- |
 | `assignees`   | `String[]` | User IDs assigned to the action; multi-select on the edit page |
 | `due_date`    | `Date?`    | When the action is due; date picker on the edit page           |
-| `description` | `String?`  | Free-text description; rendered alongside form/task content    |
+| `description` | `String?`  | Free-text description; rendered alongside form/simple content  |
 
 The fields are **uniformly user-editable** on the action's edit page, regardless of kind:
 
 - On a **form action's** edit page they render in the page header alongside the form (a small assignees / due-date / description band above the form schema).
-- On a **task action's** edit page they're the primary content, with a status selector and a comment field below.
+- On a **simple action's** edit page they're the primary content, with a status selector and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
 Updates flow through the per-action endpoint (`update-action-{action_type}`) like any other action change: the payload includes the new field values in `fields`, the engine writes them to the action doc atomically with the status transition, and a log event is emitted. Comments live on the events module — the comment is part of the `event.metadata.comment` payload that the engine forwards to `events.new-event`.
@@ -357,7 +360,7 @@ What's ruled out by the constraint:
 
 - One child workflow being mirrored by multiple parent tracker actions, across any parent workflows. Apps that need the same physical event (e.g. one installation visit) to drive multiple parent workflows either spawn one child workflow per parent or read shared entity state independently.
 - One parent action mirroring multiple sequential children.
-- A parent action that's both a regular action and a tracker action — `kind: form` / `kind: tracker` / `kind: task` are mutually exclusive (Decision 2).
+- A parent action that's both a regular action and a tracker action — `kind: form` / `kind: tracker` / `kind: simple` are mutually exclusive (Decision 2).
 
 ### Two paired actions, not one
 
@@ -384,14 +387,14 @@ actions:
 ```yaml
 # workflow_config/site-setup/complete-site-setup.yaml
 type: complete-site-setup
-kind: task
+kind: simple
 description: Mark site setup complete.
 status_map:
   action-required:
     my-team-app:
       message: Complete site setup
       link:
-        pageId: { _module.pageId: { id: task-edit, module: workflows } }
+        pageId: { _module.pageId: { id: simple-edit, module: workflows } }
         urlQuery: { action_id: true }
   done:
     my-team-app: { message: Site setup completed. }
@@ -410,7 +413,7 @@ The module exports five JS resolvers that consume authored YAML at build time:
 | Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                          | Used in                                                                              |
 | ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML (one per (workflow, action, verb))                                                                                                                                                                                                          | `module.lowdefy.yaml` `pages:`                                                       |
-| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` entry per form / task action (bakes in the action's `hooks:`, `event:`, `interactions:` blocks as build-time literals; validates `hook.auth.roles ⊇ action.access.roles`); skipped for tracker actions | `module.lowdefy.yaml` `api:`                                                         |
+| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` entry per form / simple action (bakes in the action's `hooks:`, `event:`, `interactions:` blocks as build-time literals; validates `hook.auth.roles ⊇ action.access.roles`); skipped for tracker actions | `module.lowdefy.yaml` `api:`                                                         |
 | `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection                                                                                                                                                                                                   | `module.lowdefy.yaml` `connections:` (the connection's `properties.workflowsConfig`) |
 | `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name (used inside the page templates)                                                                                                                                                          | Inside templates, called recursively per action (form actions only)                  |
 | `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, default values, field types)                                                                                                                                                                                         | `global.action_form_configs` — read by templates and the workflow-overview page      |
@@ -437,10 +440,11 @@ Validation rules:
 **Per action** (each entry in `actions`):
 
 - `type` (string) — required, non-empty.
-- `kind` (`form` | `task` | `tracker`) — required.
+- `kind` (`form` | `simple` | `tracker`) — required.
 - `kind: form` requires a non-empty `form:` block; rejects if `tracker:` is also present.
 - `kind: tracker` requires a `tracker:` block with `workflow_type` (string); rejects if `form:` is also present.
-- `kind: task` rejects both `form:` and `tracker:`.
+- `kind: simple` rejects both `form:` and `tracker:`.
+- `kind: task` is rejected — reserved for the future tasks module ([tasks-module-plan](../tasks-module-plan/design.md)), not for workflow authoring.
 - Any other `kind:` value rejects with "unknown action kind."
 - `status_map` keys (if present) must be members of `action_statuses`. Display-config under each key must be keyed by `app_name`. (Same app-keyed-display family as the events module's `event_display.{app_name}.{event_type}` pattern — see [docs/idioms.md "Event display"](../../../../docs/idioms.md#event-display); the workflows nesting is `status_map.{stage}.{app_name}` so per-stage display lives together.)
 - `action_group` (if present) must reference a declared `action_groups[].id` in the same workflow.
@@ -448,14 +452,14 @@ Validation rules:
 - `access.<app_name>` entries (if present) must be arrays of valid verbs (`view`, `edit`, `review` — see Decision 3 "Action access semantics" for the canonical verb vocabulary; unknown verbs are silently ignored at runtime but flagged at build time).
 - Reference-key collisions: any key in `references:` payloads that collides with a reserved key (see engine sub-design "References write contract") is flagged. (Note: this is a _warning_ at build time only when the workflow YAML literally contains a `references:` block; runtime references go through the engine's merge-order silencing per the engine sub-design.)
 
-The validations run inside `makeWorkflowsConfig`. Decision 2's per-kind invariants (form / task / tracker validation rules) are the same rules expressed from the action-kind perspective; this section restates them in resolver-implementation terms alongside the broader workflow-level invariants.
+The validations run inside `makeWorkflowsConfig`. Decision 2's per-kind invariants (form / simple / tracker validation rules) are the same rules expressed from the action-kind perspective; this section restates them in resolver-implementation terms alongside the broader workflow-level invariants.
 
 ### `makeWorkflowApis` — the per-action endpoint generator
 
-The resolver walks the workflows config and emits, per form / task action, one `update-action-{action_type}` `Api` entry. The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals (see submit-pipeline Decision 2 for the canonical shape):
+The resolver walks the workflows config and emits, per form / simple action, one `update-action-{action_type}` `Api` entry. The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals (see submit-pipeline Decision 2 for the canonical shape):
 
 ```yaml
-# Generated request — one per form / task action.
+# Generated request — one per form / simple action.
 - id: update-action-{action_type}
   type: Api
   routine:
@@ -493,7 +497,7 @@ The resolver walks the workflows config and emits, per form / task action, one `
         post_hook_response: { _step: submit.post_hook_response }
 ```
 
-**Scope: form and task actions.** Tracker actions don't get an endpoint (the engine writes their status via the tracker subscription, never via a caller invocation).
+**Scope: form and simple actions.** Tracker actions don't get an endpoint (the engine writes their status via the tracker subscription, never via a caller invocation).
 
 **One endpoint per action, all interactions multiplexed.** Every button on every page for this action calls the same endpoint with a different `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`). The handler resolves `hooks[interaction]` and `event_overrides[interaction]` once on entry and treats them as scalar bags for the rest of the lifecycle. See submit-pipeline Decision 3 for the layered "interaction → target status" resolution (engine default → `interactions[interaction].status` → pre-hook return).
 
@@ -775,7 +779,7 @@ The fourth verb the page-emission resolver handles is `error`, gated identically
 **When an action enters `error`:** `error` is purely author-driven ([Part 29 § D1–D2](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md)). Engine sub-step failures throw and propagate to `CallApi`; they do not write an `error` transition. Three entry paths put an action into `error`:
 
 - **Pre-hook return.** A pre-hook (submit-pipeline Decision 4) returns `actions: [{ ..., status: 'error' }]` through the regular merge channel. No `force` needed — `error.priority = 1` is below every non-terminal stage. Failure context rides on the events-log entry via `event_overrides.metadata`.
-- **Task `submit_edit` + caller-supplied status.** Task actions whose `task.statuses:` list includes `error` can be sent to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`.
+- **Simple `submit_edit` + caller-supplied status.** Simple actions whose `simple.statuses:` list includes `error` can be sent to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`.
 - **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly.
 
 Either way, the action's `status[0].stage` becomes `error` and the page resolver's `link.pageId` slot in `status_map.error.{app_name}` is expected to target `{workflow_type}-{action_type}-error?action_id=<id>`.

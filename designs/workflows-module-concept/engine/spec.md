@@ -170,7 +170,7 @@ form_data: {
 Three entry paths push an action into `error`:
 
 - **Pre-hook return.** A pre-hook can include `actions: [{ ..., status: 'error' }]` in its return ([submit-pipeline § Pre-hook return](../submit-pipeline/spec.md#pre-hook-return-all-fields-optional)). No `force` is needed — `error.priority = 1` is below every non-terminal stage, so the priority rule allows the write.
-- **Task `submit_edit` with caller-supplied status.** Task actions whose `task.statuses:` list includes `error` can be transitioned to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`. The engine's `submit_edit` resolver returns whatever `current_status` the caller sends for task actions; `task.statuses:` is a UI gate on the selector, not an engine-side validator. Priority rule allows the write.
+- **Simple `submit_edit` with caller-supplied status.** Simple actions whose `simple.statuses:` list includes `error` can be transitioned to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`. The engine's `submit_edit` resolver returns whatever `current_status` the caller sends for simple actions; `simple.statuses:` is a UI gate on the selector, not an engine-side validator. Priority rule allows the write.
 - **External systems.** Out-of-band processes (backend microservices, scheduled lambdas) write directly to the action doc, or in future will go through a follow-on injection API.
 
 Status entries are uniform `{ stage, created, event_id }` — there are no polymorphic `{ reason, error_message, error_metadata }` fields. Diagnostic context lives on the `events` collection entry written by step 7, carried via `event_overrides.metadata` on the pre-hook return (same channel as every other status push).

@@ -73,12 +73,12 @@ Each entry carries `priority`, `title`, `color`, `borderColor`, `titleColor`, op
 
 ## Action kinds
 
-Every action declares its kind via a required `kind:` field:
+Every action declares its kind via a required `kind:` field. `kind` is the **lifecycle-driver discriminator** for an action — it tells the engine what code path produces and transitions this action, and what UI surface (if any) the module emits for it. Workflow actions take one of the values below; a sixth value `kind: task` is reserved for adhoc todos owned by the future tasks module (those docs have `workflow_id: null` and are out of scope for workflow authoring — see [tasks-module-plan](../tasks-module-plan/design.md)).
 
 | `kind:`   | Required companion block | Primary content                                                       |
 | --------- | ------------------------ | --------------------------------------------------------------------- |
 | `form`    | `form:` block            | Domain-specific form schema; rendered as the edit page's main content |
-| `task`    | none                     | Generic status selector + comment field on shared task-edit page      |
+| `simple`  | none                     | Generic status selector + comment field on shared simple-edit page    |
 | `tracker` | `tracker:` block         | Display-only inline; mirrors a child workflow                         |
 
 **Build-time validation** (in `makeWorkflowsConfig` — single place all workflow-config validation lives):
@@ -97,7 +97,8 @@ Per action:
 - `type`, `kind` required.
 - `kind: form` requires non-empty `form:` block; rejects if `tracker:` is also present.
 - `kind: tracker` requires `tracker:` block with `workflow_type`; rejects if `form:` is also present.
-- `kind: task` rejects both `form:` and `tracker:`.
+- `kind: simple` rejects both `form:` and `tracker:`.
+- `kind: task` is rejected in workflow-config validation — that value is reserved for the future tasks module, whose docs are not authored via `workflows_config`.
 - Any other `kind:` value rejects with "unknown action kind."
 - `status_map` keys (if present) must be members of `action_statuses`; display config keyed by `app_name`.
 - `action_group` (if present) must reference a declared `action_groups[].id` in the same workflow.
@@ -110,9 +111,9 @@ Errors fail the app build with a path to the offending workflow / action.
 
 The kind drives:
 
-1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by `access.{app_name}` verb list; all four verbs are gated identically); task → shared `task-edit` / `task-view` / `task-review`; tracker → no pages (inline display).
-2. **Submit API surface**: form → resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline) called with an `interaction` value; task → same endpoint with `interaction: submit_edit` and caller-supplied `current_status` (status selector on `task-edit`); tracker → no caller submission (engine writes via subscription).
-3. **Resolver invocation**: `makeActionsForm` and `makeActionFormConfigs` run only for form actions; `makeWorkflowApis` emits endpoints only for form actions.
+1. **Page generation**: form → per-action `edit` / `view` / `review` / `error` pages (per-verb gated by `access.{app_name}` verb list; all four verbs are gated identically); simple → shared `simple-edit` / `simple-view` / `simple-review`; tracker → no pages (inline display).
+2. **Submit API surface**: form → resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline) called with an `interaction` value; simple → same endpoint with `interaction: submit_edit` and caller-supplied `current_status` (status selector on `simple-edit`); tracker → no caller submission (engine writes via subscription).
+3. **Resolver invocation**: `makeActionsForm` and `makeActionFormConfigs` run only for form actions; `makeWorkflowApis` emits endpoints only for form and simple actions.
 
 ## Access
 
@@ -131,9 +132,9 @@ Keys are app deployment names (matching `vars.app_name` per module composition).
 
 | Verb     | Effect                                                                                                                                                                                                                                                                                                                                |
 | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows action in `actions-on-entity`; renders read-only detail pages (form `-view`, task `task-view`).                                                                                                                                                                                                                                 |
-| `edit`   | Renders submit form (form `-edit`, task `task-edit`). Implies `view`.                                                                                                                                                                                                                                                                 |
-| `review` | Renders a dedicated review page (form: per-action `-review`; task: shared `task-review`). Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `interaction: approve` and `interaction: request_changes`; engine resolves target status (`done` / `changes-required`). Implies `view`. |
+| `view`   | Shows action in `actions-on-entity`; renders read-only detail pages (form `-view`, simple `simple-view`).                                                                                                                                                                                                                             |
+| `edit`   | Renders submit form (form `-edit`, simple `simple-edit`). Implies `view`.                                                                                                                                                                                                                                                             |
+| `review` | Renders a dedicated review page (form: per-action `-review`; simple: shared `simple-review`). Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `interaction: approve` and `interaction: request_changes`; engine resolves target status (`done` / `changes-required`). Implies `view`. |
 
 Apps without a key for a given app deployment hide the action entirely there. `makeActionPages` reads the host app's `app_name` and filters page emission accordingly (form actions only emit `-edit` when `edit` is listed, etc.). Vocabulary is module-defined and extensible in v1.x; unknown verbs are silently ignored.
 
@@ -293,7 +294,7 @@ These fields ride into the generated page YAML via the page-emission resolver (u
 `error` is purely **author-driven** ([engine § Action error transition](../engine/spec.md#action-error-transition), [Part 29 § D2](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2-why-pre-hooks-no-longer-get-a-hook_error-field)). Three entry paths:
 
 - **Pre-hook return.** A pre-hook (submit-pipeline Decision 4) returns `actions: [{ ..., status: 'error' }]` through the regular merge channel. No `force` needed — `error.priority = 1` is below every non-terminal stage. Diagnostic context rides on the events-log entry via `event_overrides.metadata`.
-- **Task `submit_edit` + caller-supplied status.** Task actions whose `task.statuses:` list includes `error` can be sent to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`.
+- **Simple `submit_edit` + caller-supplied status.** Simple actions whose `simple.statuses:` list includes `error` can be sent to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`.
 - **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly. A follow-on injection API is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
 
 Status entries are uniform `{ stage, created, event_id }` — there are no polymorphic `reason` / `error_message` / `error_metadata` fields. Engine sub-step failures **throw**, they do not write an `error` transition. Any of the three paths above makes the action's `status_map.error.{app_name}.link` (typically pointing at `{workflow_type}-{action_type}-error?action_id=<id>`) the reachable recovery surface.
@@ -393,13 +394,13 @@ status_map:
     my-team-app: { message: Lead qualified }
 ```
 
-`makeWorkflowApis` always emits a `update-action-{action_type}` endpoint for form / task actions; the action's `hooks:` and `event:` blocks are baked in as build-time literals. If the action declares no `hooks:`, the engine runs the default lifecycle (no pre/post extension points). See submit-pipeline Decisions 2 + 4 for the canonical endpoint shape and hook contract.
+`makeWorkflowApis` always emits a `update-action-{action_type}` endpoint for form / simple actions; the action's `hooks:` and `event:` blocks are baked in as build-time literals. If the action declares no `hooks:`, the engine runs the default lifecycle (no pre/post extension points). See submit-pipeline Decisions 2 + 4 for the canonical endpoint shape and hook contract.
 
-## Task action
+## Simple action
 
 ```yaml
 type: schedule-followup
-kind: task
+kind: simple
 action_group: follow-up
 sort_order: 30
 description: Schedule a follow-up call with the lead within a week of qualification.
@@ -415,13 +416,13 @@ status_map:
       message: Schedule a follow-up call
       link:
         pageId:
-          _module.pageId: { id: task-edit, module: workflows }
+          _module.pageId: { id: simple-edit, module: workflows }
         urlQuery: { action_id: true }
   done:
     my-team-app: { message: Follow-up scheduled. }
 ```
 
-No `hooks:` declared — engine runs the default lifecycle. The shared `task-edit` page calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the page surfaces a status selector), `fields:`, and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment`).
+No `hooks:` declared — engine runs the default lifecycle. The shared `simple-edit` page calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the page surfaces a status selector), `fields:`, and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment`).
 
 ## Tracker action
 
@@ -481,7 +482,7 @@ One `CallApi`; no follow-up submit to write the link.
 
 Each child workflow has at most one `parent_action_id`; each tracker action has at most one `child_workflow_id`. Apps needing the same physical event to drive multiple parents either spawn separate child workflows per parent or read shared entity state independently.
 
-`kind: form` / `kind: task` / `kind: tracker` are mutually exclusive.
+`kind: form` / `kind: simple` / `kind: tracker` are mutually exclusive.
 
 ### Recommended shape: paired trigger + tracker actions
 
@@ -489,7 +490,7 @@ A trigger form action creates the child entity and starts the child workflow wit
 
 ### Tracking simple entities
 
-Tracker actions only track workflows — there is no entity-only mode. For entities whose lifecycle is a single status field, declare a minimal workflow with one `kind: task` action; the user marks it `done` (or app calls `cancel-workflow`) and the existing tracker subscription flips the parent. Per-app-type cost: one (workflow, action) YAML pair, reused per entity instance. See action-authoring/design.md "Tracking simple entities (minimal workflow shim)" for the worked example.
+Tracker actions only track workflows — there is no entity-only mode. For entities whose lifecycle is a single status field, declare a minimal workflow with one `kind: simple` action; the user marks it `done` (or app calls `cancel-workflow`) and the existing tracker subscription flips the parent. Per-app-type cost: one (workflow, action) YAML pair, reused per entity instance. See action-authoring/design.md "Tracking simple entities (minimal workflow shim)" for the worked example.
 
 ## Resolver pipeline
 
@@ -498,7 +499,7 @@ Five JS resolvers consume authored YAML at build time:
 | Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                      | Used in                                                                                                                      |
 | ----------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
 | `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML, one per (workflow_type, action_type, verb) for form actions only                                                                                                                                                                       | `module.lowdefy.yaml` `pages:`                                                                                               |
-| `makeWorkflowApis`      | `workflows_config`                                      | Array of `Api` YAML — one `update-action-{action_type}` per form / task action (bakes in `hooks:` / `event_overrides:` blocks as build-time literals); also emits resolver-derived hook Apis (one per declared `hooks.{interaction}.{pre | post}`routine) and group`on_complete`Apis with`auth.roles`synthesized from`action.access.roles`; skipped for tracker actions | `module.lowdefy.yaml` `api:` |
+| `makeWorkflowApis`      | `workflows_config`                                      | Array of `Api` YAML — one `update-action-{action_type}` per form / simple action (bakes in `hooks:` / `event_overrides:` blocks as build-time literals); also emits resolver-derived hook Apis (one per declared `hooks.{interaction}.{pre | post}`routine) and group`on_complete`Apis with`auth.roles`synthesized from`action.access.roles`; skipped for tracker actions | `module.lowdefy.yaml` `api:` |
 | `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection. Also the single place all build-time validation of `workflows_config` lives (workflow + action invariants — see "Action kinds" section for the full list).                                   | `module.lowdefy.yaml` connection config                                                                                      |
 | `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name                                                                                                                                                                                       | Called inside form-action page templates                                                                                     |
 | `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, defaults, types)                                                                                                                                                                                                 | `global.action_form_configs`                                                                                                 |
@@ -507,7 +508,7 @@ Resolvers live at `resolvers/{name}.js` in the module package and are invoked vi
 
 ### `makeWorkflowApis` generated endpoint
 
-One `update-action-{action_type}` endpoint per form / task action. The routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks baked in as build-time literals. Full shape in [submit-pipeline spec](../submit-pipeline/spec.md) "Per-action `update-action-{action_type}` Api"; summarized here:
+One `update-action-{action_type}` endpoint per form / simple action. The routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks baked in as build-time literals. Full shape in [submit-pipeline spec](../submit-pipeline/spec.md) "Per-action `update-action-{action_type}` Api"; summarized here:
 
 ```yaml
 - id: update-action-{action_type}

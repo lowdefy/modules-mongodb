@@ -38,13 +38,13 @@ exports:
       description: Form-action review page; read-only form data display plus approve / request-changes affordances. Generated per form action with `review` in its app verb list.
     - id: action-error
       description: Form-action error display. Generated per form action (always, alongside any other generated verb pages).
-    # Module-level shared pages (task actions — one of each, addressed by ?action_id=<id>)
-    - id: task-edit
-      description: Generic task-action edit page (status selector + assignees + due_date + comment). Shared across all task actions.
-    - id: task-view
-      description: Generic task-action read-only view (status timeline + comments). Shared across all task actions.
-    - id: task-review
-      description: Generic task-action review page (read-only fields + approve / request-changes affordances). Shared across all task actions.
+    # Module-level shared pages (simple actions — one of each, addressed by ?action_id=<id>)
+    - id: simple-edit
+      description: Generic simple-action edit page (status selector + assignees + due_date + comment). Shared across all simple actions.
+    - id: simple-view
+      description: Generic simple-action read-only view (status timeline + comments). Shared across all simple actions.
+    - id: simple-review
+      description: Generic simple-action review page (read-only fields + approve / request-changes affordances). Shared across all simple actions.
     # Module-level shared page — read-only overview of one workflow
     - id: workflow-overview
       description: Generic read-only overview of one workflow (selected by ?workflow_id=<id>). Renders all actions in declaration order as cards with status badge, status_map message, link to action verb pages, and a DataView of any stored form_data per action.
@@ -164,9 +164,9 @@ pages:
         workflows: { _module.var: workflows_config }
         app_name: { _module.var: app_name }
   # Static module-shipped pages
-  - _ref: pages/task-edit.yaml
-  - _ref: pages/task-view.yaml
-  - _ref: pages/task-review.yaml
+  - _ref: pages/simple-edit.yaml
+  - _ref: pages/simple-view.yaml
+  - _ref: pages/simple-review.yaml
   - _ref: pages/workflow-overview.yaml
 
 # Module-shipped enums (static — same shape across all consuming apps)
@@ -195,7 +195,7 @@ secrets:
 
 ### Notes on the surface
 
-**Submit-side composition lives in the `SubmitWorkflowAction` plugin handler** (submit-pipeline). The module exposes one resolver-generated `update-action-{action_type}` endpoint per form / task action; template-shipped buttons on each per-action page call those endpoints with an `interaction` value. Authors don't write submit routines — they declare per-interaction pre/post hooks on the action YAML and let the engine drive the lifecycle.
+**Submit-side composition lives in the `SubmitWorkflowAction` plugin handler** (submit-pipeline). The module exposes one resolver-generated `update-action-{action_type}` endpoint per form / simple action; template-shipped buttons on each per-action page call those endpoints with an `interaction` value. Authors don't write submit routines — they declare per-interaction pre/post hooks on the action YAML and let the engine drive the lifecycle.
 
 **No `menus:` export.** Unlike `contacts` and `companies`, the workflows module doesn't ship a default navigation menu. Workflow pages are accessed via deep-links from the `actions-on-entity` component on each entity's view page, not via top-level navigation. Apps that want a "workflows inbox" or "my actions" view build it themselves as an app page that queries the actions collection directly.
 
@@ -205,13 +205,13 @@ secrets:
 
 **`vars.app_name`** is the host app's own deployment name — the perspective the module renders from for this build. The same workflow YAML can be shared across multiple host apps (each one declares its own `id: workflows` entry in its `modules.yaml` with a different `app_name`). The module emits one set of per-action pages per build, scoped to the host app's view.
 
-**`exports.pages`** lists three generic page kinds for form actions (`action-edit`, `action-view`, `action-error`), three shared task-action pages (`task-edit`, `task-view`, `task-review`), and one shared read-only workflow overview page (`workflow-overview`, addressed by `?workflow_id=<id>`). The actual per-action page IDs at runtime are scoped by the resolver: `{module-entry}/{workflow_type}-{action_type}-{verb}` (e.g. `workflows/lead-onboarding-qualify-edit`). The ui sub-design owns the page templates, the static task pages, and the workflow-overview page.
+**`exports.pages`** lists three generic page kinds for form actions (`action-edit`, `action-view`, `action-error`), three shared simple-action pages (`simple-edit`, `simple-view`, `simple-review`), and one shared read-only workflow overview page (`workflow-overview`, addressed by `?workflow_id=<id>`). The actual per-action page IDs at runtime are scoped by the resolver: `{module-entry}/{workflow_type}-{action_type}-{verb}` (e.g. `workflows/lead-onboarding-qualify-edit`). The ui sub-design owns the page templates, the static simple-action pages, and the workflow-overview page.
 
 **Dependencies on `events` and `notifications`** are explicit. The module declares them as hard dependencies because the `SubmitWorkflowAction` handler calls into their endpoints (`new-event`, `send-notification`) via the call-api primitive on every successful submit. The notifications module is required even if a consuming app never wires a `send_routine` — `send-notification` is a silent no-op in that case (submit-pipeline Decision 6). Same convention as `events`: every consuming module declares the dependency whether or not every code path logs events.
 
 ## Decision 2 — The four module APIs
 
-The module ships four operational Lowdefy `Api` endpoints, plus a resolver-generated submit endpoint per form / task action (`update-action-{action_type}`, owned by [submit-pipeline](../submit-pipeline/design.md)). Per modules-mongodb convention, the module exposes APIs rather than a routine helper library — consuming apps either call the operational APIs directly or hit the per-action endpoint via the template-shipped button on each per-action page.
+The module ships four operational Lowdefy `Api` endpoints, plus a resolver-generated submit endpoint per form / simple action (`update-action-{action_type}`, owned by [submit-pipeline](../submit-pipeline/design.md)). Per modules-mongodb convention, the module exposes APIs rather than a routine helper library — consuming apps either call the operational APIs directly or hit the per-action endpoint via the template-shipped button on each per-action page.
 
 ### The operational APIs
 
@@ -292,7 +292,7 @@ The single `submit-action` API that earlier drafts of this sub-design exposed ha
 
 ### Universal fields and form data via the per-action endpoint
 
-Universal action fields (`assignees`, `due_date`, `description`) flow through the per-action endpoint's `fields:` payload block regardless of action kind. Form actions can update universal fields alongside form data; task actions use them as their primary write surface; tracker actions don't receive submissions. `null` clears a field; omitted leaves it unchanged. Atomic with the status transition.
+Universal action fields (`assignees`, `due_date`, `description`) flow through the per-action endpoint's `fields:` payload block regardless of action kind. Form actions can update universal fields alongside form data; simple actions use them as their primary write surface; tracker actions don't receive submissions. `null` clears a field; omitted leaves it unchanged. Atomic with the status transition.
 
 Form data (both `form:` submitter values and `form_review:` reviewer values from the action YAML) lands on the workflow doc at `form_data.{action_type}.{field}` (non-keyed) or `form_data.{action_type}.{key}.{field}` (keyed) — engine D5 owns the layout. There are no reserved sub-keys; authors who declare both `form:` and `form_review:` pick non-colliding field names. Error context lives on the action doc's status entry, not in `form_data`.
 
@@ -309,7 +309,7 @@ Apps wanting entity writes on submit do them from a pre/post hook (regular Lowde
 
 ## Risks
 
-- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / task action (`update-action-{action_type}`, owned by submit-pipeline) plus four operational APIs (this sub-design). If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Mitigation: keep the hook return shape extensible from the start (optional fields default to no-op); document the extension pattern in README.
+- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`update-action-{action_type}`, owned by submit-pipeline) plus four operational APIs (this sub-design). If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Mitigation: keep the hook return shape extensible from the start (optional fields default to no-op); document the extension pattern in README.
 
 ## Next Step
 

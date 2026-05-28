@@ -34,7 +34,7 @@ Connection structure: see [engine spec](../engine/spec.md) for the canonical `sr
 
 ## Per-action `update-action-{action_type}` Api (resolver-emitted)
 
-`makeWorkflowApis` (action-authoring Decision 6) emits one Lowdefy Api per form / task action. Shape:
+`makeWorkflowApis` (action-authoring Decision 6) emits one Lowdefy Api per form / simple action. Shape:
 
 ```yaml
 id: update-action-{action_type}
@@ -72,7 +72,7 @@ routine:
       post_hook_response: { _step: submit.post_hook_response }
 ```
 
-**Scope:** Emitted for `kind: form` and `kind: task` actions. Tracker actions get no endpoint (engine writes their status via the tracker subscription).
+**Scope:** Emitted for `kind: form` and `kind: simple` actions. Tracker actions get no endpoint (engine writes their status via the tracker subscription).
 
 **Per-app emission:** Endpoints are emitted regardless of `access.{app_name}` verb list — the engine enforces access at submit time via the role gate. (Per-page emission still verb-filtered per ui spec.)
 
@@ -104,7 +104,7 @@ Resolved last-wins across two layers (full rationale in design Decision 3):
 
 #### Engine default per interaction
 
-| Interaction       | Form action default                                                    | Task action default                     |
+| Interaction       | Form action default                                                    | Simple action default                   |
 | ----------------- | ---------------------------------------------------------------------- | --------------------------------------- |
 | `submit_edit`     | `in-review` if any `access.{app}` includes `review`, else `done`       | caller-supplied via status selector     |
 | `not_required`    | `not-required`                                                         | `not-required`                          |

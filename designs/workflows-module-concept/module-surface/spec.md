@@ -21,10 +21,10 @@ exports:
     - id: action-view # generated when `view` in app verb list
     - id: action-review # generated when `review` in app verb list
     - id: action-error # generated when `error` in app verb list
-    # Shared task-action pages
-    - id: task-edit
-    - id: task-view
-    - id: task-review
+    # Shared simple-action pages
+    - id: simple-edit
+    - id: simple-view
+    - id: simple-review
     # Shared read-only workflow overview page (?workflow_id=<id>)
     - id: workflow-overview
   connections:
@@ -117,9 +117,9 @@ pages:
       vars:
         workflows: { _module.var: workflows_config }
         app_name: { _module.var: app_name }
-  - _ref: pages/task-edit.yaml
-  - _ref: pages/task-view.yaml
-  - _ref: pages/task-review.yaml
+  - _ref: pages/simple-edit.yaml
+  - _ref: pages/simple-view.yaml
+  - _ref: pages/simple-review.yaml
   - _ref: pages/workflow-overview.yaml
 
 plugins:
@@ -236,4 +236,4 @@ Per-action `update-action-{action_type}` endpoints are resolver-emitted by `make
 
 ## Risk
 
-- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / task action (`update-action-{action_type}`) plus four operational APIs. If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Current shape stays extensible (optional fields default to no-op).
+- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`update-action-{action_type}`) plus four operational APIs. If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Current shape stays extensible (optional fields default to no-op).

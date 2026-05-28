@@ -501,7 +501,7 @@ This collapses two reserved keys to zero. `makeWorkflowsConfig` no longer needs 
 Three entry paths put an action into `error`:
 
 1. **Pre-hook return.** A pre-hook returns `actions: [{ ..., status: 'error' }]` through the regular merge channel (submit-pipeline Decision 4). No `force` needed — `error.priority = 1` is below every non-terminal stage, so the priority rule allows the write. Failure context rides on the `events` collection entry via `event_overrides.metadata`.
-2. **Task `submit_edit` + caller-supplied status.** Task actions whose `task.statuses:` list includes `error` can be transitioned to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`. The priority rule lets it through cleanly.
+2. **Simple `submit_edit` + caller-supplied status.** Simple actions whose `simple.statuses:` list includes `error` can be transitioned to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`. The priority rule lets it through cleanly.
 3. **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly. A follow-on injection API is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
 
 Status entries are uniform `{ stage, created, event_id }` — no polymorphic `reason` / `error_message` / `error_metadata` fields. The on-disk shape is identical regardless of which entry path was used.

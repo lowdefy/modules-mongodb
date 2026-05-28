@@ -1,6 +1,6 @@
 # Workflows UI
 
-The user-facing view layer — where per-action pages live, what page kinds the module exposes, the Nunjucks templates that render form actions, the static task pages that handle every task action, and the entity-page UI components (`actions-on-entity`, `workflow-header`, `action_role_check`).
+The user-facing view layer — where per-action pages live, what page kinds the module exposes, the Nunjucks templates that render form actions, the static shared pages that handle every simple action, and the entity-page UI components (`actions-on-entity`, `workflow-header`, `action_role_check`).
 
 This sub-design owns the visible surface — what users see and click. The page IDs and component IDs are exported by the module so apps can navigate to them ([module-surface](../module-surface/design.md) "Decision 1" lists the exports). The YAML that drives page generation comes from [action-authoring](../action-authoring/design.md); the runtime data the pages read comes from the [engine](../engine/design.md) via the module's APIs.
 
@@ -10,7 +10,7 @@ What this sub-design commits about the UI:
 
 - **Where per-action pages live.** The resolver pipeline generates pages, and this sub-design picks the placement.
 - The shape of the default Nunjucks page templates the module ships.
-- How task-action UX works given task actions don't get per-action pages.
+- How simple-action UX works given simple actions don't get per-action pages.
 - The three module-level components (`actions-on-entity`, `workflow-header`, `action_role_check`) — what they do and how they consume the engine's APIs.
 
 ## Decision 1 — Where per-action pages live (and how)
@@ -53,7 +53,7 @@ Option B's appeal was that page IDs would be unprefixed (e.g. `lead-onboarding-q
 The resolver branches on action kind (see [action-authoring](../action-authoring/design.md) "Action kinds"):
 
 - **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`). Per-verb pages are emitted only when the action's `access.{app_name}` verb list contains that verb (per [action-authoring](../action-authoring/design.md) Decision 3). All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. One page doc per emitted (action, verb).
-- **Task actions** — emits **no per-action pages**. The module ships two shared pages (`task-edit` and `task-view` exposed in `exports.pages`) that handle every task action across the build, addressed by `?action_id=<id>` in the URL.
+- **Simple actions** — emits **no per-action pages**. The module ships three shared pages (`simple-edit`, `simple-view`, `simple-review` exposed in `exports.pages`) that handle every simple action across the build, addressed by `?action_id=<id>` in the URL.
 - **Tracker actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
 
 For form actions, the per-action page YAML the resolver outputs looks like:
@@ -88,14 +88,14 @@ For form actions, the per-action page YAML the resolver outputs looks like:
           ...
 ```
 
-Task actions don't go through this loop at all — the `task-edit`, `task-view`, and `task-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (status selector + comment for edit; read-only display for view; approve/request-changes for review). No per-action customisation; identical experience for every task action across every workflow.
+Simple actions don't go through this loop at all — the `simple-edit`, `simple-view`, and `simple-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (status selector + comment for edit; read-only display for view; approve/request-changes for review). No per-action customisation; identical experience for every simple action across every workflow.
 
 Notable shape choices the resolver commits to:
 
 1. **`app_name` is read, not iterated.** The resolver takes `app_name` and uses it to filter `access.{app_name}` per action — one app per build, no inner loop. Workflow YAML shared across host apps maps to multiple module compositions in `modules.yaml`, one per host app.
 2. **Module-relative template paths.** Templates live at `templates/{verb}.yaml.njk` in the module's own tree. Apps that need to override a per-action page supply a custom template via the action's YAML; the resolver checks for that override before falling back to the module default (see Decision 2 below).
 3. **`entity_id` / `entity_collection` (entity-agnostic).** The resolver passes scalar `entity_id` (the doc `_id`) and `entity_collection` (the MongoDB collection connection id, e.g. `leads-collection`) to templates. `entity_collection` is the sole entity-identity scalar — no separate named-kind field rides alongside it. Per-action templates read these to build the right query (using `entity_collection` as the `connectionId`) and the back-link to the entity page.
-4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — task actions use the module-shipped `task-edit` / `task-view` / `task-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on the action's `access.{app_name}` verb list: minimum one page (one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all four verbs in the access list).
+4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — simple actions use the module-shipped `simple-edit` / `simple-view` / `simple-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on the action's `access.{app_name}` verb list: minimum one page (one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all four verbs in the access list).
 
 ## Decision 2 — Page templates (sketch)
 
@@ -158,13 +158,13 @@ The block-tree shape for each button looks roughly like:
 
 Templates compose this via a small Nunjucks macro per button to keep the block trees terse and consistent. Authors don't write the CallApi step themselves; the template owns the wiring.
 
-**Task-action pages** — `pages/task-edit.yaml`, `pages/task-view.yaml`, and `pages/task-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
+**Simple-action pages** — `pages/simple-edit.yaml`, `pages/simple-view.yaml`, and `pages/simple-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
 
-- **`task-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — it calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, `form:` (empty for tasks), and a top-level `comment` field (resolver-emitted API maps it to `event.metadata.comment`).
-- **`task-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
-- **`task-review`**: action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively (submit-pipeline Decision 3). The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
+- **`simple-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — it calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, `form:` (empty for simple actions), and a top-level `comment` field (resolver-emitted API maps it to `event.metadata.comment`).
+- **`simple-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
+- **`simple-review`**: action header + universal-fields display (same shape as `simple-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively (submit-pipeline Decision 3). The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
 
-All three task pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead, with a minimal form that captures whatever extra data they need.
+All three simple-action pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override these pages — simple actions intentionally share one experience per verb. Apps that need different UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
 Apps with bespoke action pages compose against the form components library ([action-authoring](../action-authoring/design.md) Decision 7) — authors build custom fields and reference them by name in `form:` blocks, or drop in app-side custom blocks via `component: <plugin-name>:foo`. v1 does not support per-action template overrides (a `pages.{verb}.template` field on the action YAML was considered but dropped — path resolution, vars contract, and layering semantics are unspecified, and the components library covers realistic v1 needs). The feature is purely additive in v1.x if real apps surface it as a need.
 
@@ -172,7 +172,7 @@ Detailed template content is implementation-time material — the exact block tr
 
 ### All module-shipped pages wrap content in `layout.page`
 
-Every page the workflows module ships — generated per-action pages (`templates/edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`, `error.yaml.njk`), shared task pages (`pages/task-edit.yaml`, `task-view.yaml`, `task-review.yaml`), and the shared workflow overview (`pages/workflow-overview.yaml`) — composes its top-level block tree by `_ref`ing the layout module's `page` component. Cards inside the page (action cards, info cards) `_ref` the layout module's `card` component.
+Every page the workflows module ships — generated per-action pages (`templates/edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`, `error.yaml.njk`), shared simple-action pages (`pages/simple-edit.yaml`, `simple-view.yaml`, `simple-review.yaml`), and the shared workflow overview (`pages/workflow-overview.yaml`) — composes its top-level block tree by `_ref`ing the layout module's `page` component. Cards inside the page (action cards, info cards) `_ref` the layout module's `card` component.
 
 ```yaml
 # Canonical shape for every module-shipped page:
@@ -207,13 +207,13 @@ _ref:
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `id`           | Page id (auto-scoped under the module entry, e.g. `workflows/lead-onboarding-qualify-edit`)                                                                                   |
 | `title`        | Page header title — Nunjucks-templated against action / workflow state when needed                                                                                            |
-| `breadcrumbs`  | Optional. For per-action pages: `[Home, EntityList, EntityDetail, ActionTitle]`. For task pages and workflow-overview: `[Home, EntityDetail]`.                                |
+| `breadcrumbs`  | Optional. For per-action pages: `[Home, EntityList, EntityDetail, ActionTitle]`. For simple-action pages and workflow-overview: `[Home, EntityDetail]`.                       |
 | `page_actions` | Optional right-aligned buttons in the page header (e.g. a "View History" button on `-edit` pages, an "Edit" link on `-view` pages, "Approve / Request Changes" on `-review`). |
 | `requests`     | Page-level Lowdefy request refs — `get_action.yaml`, `get_workflow.yaml`, etc.                                                                                                |
 | `events`       | Page-level `onInit` / `onMount` handlers (per Decision 4 event vocabulary)                                                                                                    |
 | `blocks`       | The page content — typically one or more `layout.card` blocks                                                                                                                 |
 
-**Cards within the page** use `_ref: { module: layout, component: card, vars: { title, blocks, footer? } }`. Card is the standard content wrapper — title bar, optional back button, body, optional footer. The form-action templates render the form inside a card; the task pages render the status selector / timeline inside cards; the workflow-overview page renders one card per action.
+**Cards within the page** use `_ref: { module: layout, component: card, vars: { title, blocks, footer? } }`. Card is the standard content wrapper — title bar, optional back button, body, optional footer. The form-action templates render the form inside a card; the simple-action pages render the status selector / timeline inside cards; the workflow-overview page renders one card per action.
 
 **Floating actions** (Save / Submit / Approve buttons on edit and review pages) use `_ref: { module: layout, component: floating-actions, vars: { blocks: [...] } }` — the standard sticky-bottom action bar layout module ships. Templates that include floating-actions wire them to the four page-event handlers (`onSubmit`, `onApprove`, `onRequestChanges`); the buttons themselves are template-shipped, not author-authored.
 
@@ -222,7 +222,7 @@ _ref:
 Universal action fields (`assignees`, `due_date`, `description` — see [action-authoring](../action-authoring/design.md) "Universal action fields") render differently per kind:
 
 - On a **form action's** edit page they render in the page header alongside the form (a small assignees / due-date / description band above the form schema).
-- On a **task action's** edit page they're the primary content, with a status selector and a comment field below.
+- On a **simple action's** edit page they're the primary content, with a status selector and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
 Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
@@ -383,7 +383,7 @@ Joining is opt-in via the action authoring `reference_fields:` block (action-aut
 
 ## Decision 6 — Instanced action pages
 
-Actions declaring `key:` (action-authoring Decision 9) generate one page per verb, **not** N pages. The page reads `?action_id=<id>` from the URL (same as task pages) and resolves the specific instance from that id.
+Actions declaring `key:` (action-authoring Decision 9) generate one page per verb, **not** N pages. The page reads `?action_id=<id>` from the URL (same as simple-action pages) and resolves the specific instance from that id.
 
 ### Page emission
 
@@ -401,9 +401,9 @@ Entity-page link cells (rendered from `status_map`) build URLs with `urlQuery: {
 
 Instanced actions render as N rows (one per instance) within their `action_group`. Each row uses its own `status_map` entry — message templating injects per-instance context, so authors can write `Awaiting installation of device {{ physical_id }}.` and get one row per device with the right device id.
 
-## Decision 7 — Status-selector behaviour on `task-edit`
+## Decision 7 — Status-selector behaviour on `simple-edit`
 
-The `task-edit` page surfaces a status selector populated from the module-shipped `global.action_statuses` enum (see [action-authoring](../action-authoring/design.md) "Action status enum"). The selector should NOT show every status — it should filter to **allowed transitions** via the priority rule (see [engine](../engine/design.md) "Status enum priority rule"):
+The `simple-edit` page surfaces a status selector populated from the module-shipped `global.action_statuses` enum (see [action-authoring](../action-authoring/design.md) "Action status enum"). The selector should NOT show every status — it should filter to **allowed transitions** via the priority rule (see [engine](../engine/design.md) "Status enum priority rule"):
 
 - From current stage, only stages with strictly lower priority are valid transitions.
 - **Same-stage allowed for the current action** — matches the engine's `currentActionId` self-exception (lets users re-save the action without changing its stage, e.g. updating `assignees` only).
@@ -426,7 +426,7 @@ Generating per-workflow overview pages was considered and rejected:
 
 - **No per-workflow customization needed.** The action cards already know how to render themselves from `action_form_configs` (the DataView reads form schemas from `global.action_form_configs`); the page just iterates.
 - **Easier deep-linking.** A single page id (`workflows/workflow-overview?workflow_id=<id>`) is a stable URL shape across workflow types. Per-workflow page ids (`workflows/{workflow_type}-overview`) would force callers to know the workflow type to build the URL — workflow_id alone is enough today.
-- **Matches `task-view` precedent.** The same argument that put `task-view` as a single module-level page rather than per-task pages applies here, one level up.
+- **Matches `simple-view` precedent.** The same argument that put `simple-view` as a single module-level page rather than per-action pages applies here, one level up.
 
 Apps with truly bespoke overview needs build a custom page; the module provides the default.
 
@@ -568,9 +568,9 @@ Tracker actions render as a single row with status badge + message + a link butt
 
 1. **`makeActionsForm` recursion across module boundaries** — flagged in [action-authoring](../action-authoring/design.md). The form-action templates `_ref` the form resolver to build the form block tree; if the resolver can't recurse from inside a template the form builder falls back to a flat emitter. Templates accommodate either shape during the spike.
 2. **`completed-workflow` collapsed-tile UX detail and the workflow-header milestone label.** v1 ships sensible defaults; iteration after first consumer adoption.
-3. **Comment timeline shape on `task-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references are spread to event-doc root by the events module's `new-event` routine, so the query path is `action_ids`, not `references.action_ids`). Refinement based on real-app patterns.
+3. **Comment timeline shape on `simple-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references are spread to event-doc root by the events module's `new-event` routine, so the query path is `action_ids`, not `references.action_ids`). Refinement based on real-app patterns.
 
 ## Next Step
 
-Implementation of the templates, task pages, and module-level components. Apps drop `actions-on-entity` onto their entity pages and the rest renders automatically from the action-authoring YAML + engine writes.
+Implementation of the templates, simple-action pages, and module-level components. Apps drop `actions-on-entity` onto their entity pages and the rest renders automatically from the action-authoring YAML + engine writes.
 ```

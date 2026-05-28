@@ -1,6 +1,6 @@
 # Workflows UI — Spec
 
-Per-action page generation, templates, task pages, and entity-page UI components. Full rationale in [design.md](designs/workflows-module-concept/ui/design.md); this file carries only the committed decisions.
+Per-action page generation, templates, simple-action pages, and entity-page UI components. Full rationale in [design.md](designs/workflows-module-concept/ui/design.md); this file carries only the committed decisions.
 
 ## Per-action page generation
 
@@ -15,7 +15,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 | Kind      | Pages generated                                                                                                                                                                                                                                                               |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb is in the action's `access.{app_name}` list. All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. |
-| `task`    | None (uses shared `task-edit` / `task-view` / `task-review`)                                                                                                                                                                                                                  |
+| `simple`  | None (uses shared `simple-edit` / `simple-view` / `simple-review`)                                                                                                                                                                                                            |
 | `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                  |
 
 ### Form-action page YAML shape
@@ -51,7 +51,7 @@ The emitted shell is just an `_ref` — no `type:`, no inline `events`, no inlin
 - `templates/edit.yaml.njk` — edit form. Ships the template-shipped `submit_edit` button, plus `not_required` when the action opts in via `pages.edit.buttons.not_required.visible: true`. Buttons call `update-action-{action_type}` with the matching `interaction` value.
 - `templates/view.yaml.njk` — read-only view. No write buttons. (View is the read-only surface; `not_required` is a write and lives only on `edit.yaml.njk`.)
 - `templates/review.yaml.njk` — read-only form display + template-shipped `approve` / `request_changes` interaction buttons calling `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`. Also ships an `Edit` navigation button (a `Link` back to the edit page with `input: { skip_status_redirect: true }`) when the edit verb is in this app's access list, so reviewers can fix small issues themselves rather than bouncing the action back with `request_changes`.
-- `templates/error.yaml.njk` — recovery surface for actions in `error` status. The page is reached **only via author-driven entry** to `error` (pre-hook returning `actions: [{ ..., status: 'error' }]`, task `submit_edit + current_status: 'error'`, or external system writes — see [engine § Action error transition](../engine/spec.md#action-error-transition)). Engine sub-step failures no longer route here; they throw to `CallApi` and the user retries the same submit ([Part 29 § D1](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)). Template ships:
+- `templates/error.yaml.njk` — recovery surface for actions in `error` status. The page is reached **only via author-driven entry** to `error` (pre-hook returning `actions: [{ ..., status: 'error' }]`, simple `submit_edit + current_status: 'error'`, or external system writes — see [engine § Action error transition](../engine/spec.md#action-error-transition)). Engine sub-step failures no longer route here; they throw to `CallApi` and the user retries the same submit ([Part 29 § D1](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)). Template ships:
   - **Stale-URL guard appended to `onMount`** — redirects to `-view` when `status[0].stage !== 'error'` at load.
   - **Failure-context banner** above the form. Status entries are uniform `{ stage, created, event_id }` (no polymorphic error fields), so the banner reads diagnostic context from the `events` collection entry referenced by `status[0].event_id` (when the author-driven entry path attached metadata via `event_overrides.metadata`). Richer template rendering for this banner is deferred — see [Part 29 § Out of scope — Reject-rendering UX](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred).
   - **Recovery form** defaulting to the action's `form:` schema (or `form_error:` if declared).
@@ -71,13 +71,13 @@ The `-error` page is gated identically to the other verbs: emitted iff `error` i
 
 On click, each button (1) fires the matching `pages.{verb}.events.{handler}` author-supplied event (for page-state work — set state, fire requests, validate), then (2) calls `update-action-{action_type}` with `interaction: <button-name>` and the standard payload (`form`, `form_review`, `fields`, `current_key`). Authors who need pre-write logic register a pre-hook (`hooks.{interaction}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
 
-**Static task-action pages** at `pages/`:
+**Static simple-action pages** at `pages/`:
 
-- `pages/task-edit.yaml` — status selector populated from `global.action_statuses` (filtered to allowed transitions via priority rule), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` before the event hits the events module).
-- `pages/task-view.yaml` — action header (title from action YAML, current status badge), universal-fields display, status timeline (from action's `status` history), comments timeline (events with `metadata.comment` populated for this `action_id`).
-- `pages/task-review.yaml` — action header + universal-fields display (same shape as `task-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively. The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
+- `pages/simple-edit.yaml` — status selector populated from `global.action_statuses` (filtered to allowed transitions via priority rule), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` before the event hits the events module).
+- `pages/simple-view.yaml` — action header (title from action YAML, current status badge), universal-fields display, status timeline (from action's `status` history), comments timeline (events with `metadata.comment` populated for this `action_id`).
+- `pages/simple-review.yaml` — action header + universal-fields display (same shape as `simple-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively. The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
 
-All three task pages take `?action_id=<id>` as a URL query. Apps don't override task pages — task actions intentionally share one experience per verb. Apps that need different task UX use form actions instead.
+All three simple-action pages take `?action_id=<id>` as a URL query. Apps don't override these pages — simple actions intentionally share one experience per verb. Apps that need different UX use form actions instead.
 
 **Workflow overview page** at `pages/workflow-overview.yaml`:
 
@@ -95,7 +95,7 @@ All three task pages take `?action_id=<id>` as a URL query. Apps don't override 
 
 ### Layout-module composition (all module-shipped pages)
 
-Every page the module ships — generated per-action pages, shared task pages, and the shared workflow-overview page — wraps content in the layout module's components. Hard `layout` dependency in `module.lowdefy.yaml` ensures the host app pulls it in.
+Every page the module ships — generated per-action pages, shared simple-action pages, and the shared workflow-overview page — wraps content in the layout module's components. Hard `layout` dependency in `module.lowdefy.yaml` ensures the host app pulls it in.
 
 **Canonical page shape:**
 
@@ -121,7 +121,7 @@ _ref:
 
 | Layout component          | Where                                                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `layout.page`             | Top-level wrapper of every module-shipped page (form-action `edit`/`view`/`review`/`error`, task `edit`/`view`/`review`, `workflow-overview`) |
+| `layout.page`             | Top-level wrapper of every module-shipped page (form-action `edit`/`view`/`review`/`error`, simple-action `edit`/`view`/`review`, `workflow-overview`) |
 | `layout.card`             | Each content section — form card, info card, action card on the overview page                                                                 |
 | `layout.floating-actions` | Sticky submit / approve / request-changes bar on `-edit` and `-review` pages                                                                  |
 
@@ -192,7 +192,7 @@ Apps that need additional buttons add them via `formFooter:` with their own `eve
 Actions declaring `key:` generate the same set of per-verb pages as single-instance actions — one `-edit` / `-view` / `-review` / `-error` per action type, not per instance.
 
 - **Page ID:** `{workflow_type}-{action_type}-{verb}`. No key segment.
-- **Instance selection:** via `?action_id=<id>` URL query (same as task pages).
+- **Instance selection:** via `?action_id=<id>` URL query (same as simple-action pages).
 - **Form-state path:** `form_data.{action_type}.{key}.{field}` on the workflow doc; `key` sourced from `_request: get_action.key`.
 - **URL contract:** status-map link cells use `urlQuery: { action_id: true }` only.
 - **In `actions-on-entity`:** instanced actions render as N rows within their `action_group`, one per instance. Each row uses its own `status_map` cell with per-instance message templating.
@@ -202,12 +202,12 @@ Actions declaring `key:` generate the same set of per-verb pages as single-insta
 Universal action fields (`assignees`, `due_date`, `description`) render differently per kind:
 
 - **Form action's edit page**: header band above the form schema.
-- **Task action's edit page**: primary content (status selector and comment field sit below).
+- **Simple action's edit page**: primary content (status selector and comment field sit below).
 - **Tracker action inline display**: small badges next to the link in `actions-on-entity`.
 
 Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` payload from form-state plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
 
-## Status-selector behaviour on `task-edit`
+## Status-selector behaviour on `simple-edit`
 
 Selector populated from `global.action_statuses` (with app-supplied display merges from `vars.action_statuses_display`). Filters to **allowed transitions** via the priority rule at render time:
 
@@ -270,4 +270,4 @@ Reusable access-check primitive. Reads the current user's effective roles via `_
 
 1. **`makeActionsForm` recursion across module boundaries** — flagged in action-authoring spec. Templates should be written to accommodate either the recursive or flat-emitter shape during the spike.
 2. **Completed-workflow tile UX detail and the "Restricted" tile.** v1 ships sensible defaults; iteration after first consumer adoption.
-3. **Comment timeline shape on `task-view`.** v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references spread to root). Refinement based on real-app patterns.
+3. **Comment timeline shape on `simple-view`.** v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references spread to root). Refinement based on real-app patterns.
