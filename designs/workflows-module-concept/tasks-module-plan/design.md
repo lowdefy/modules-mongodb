@@ -54,7 +54,7 @@ The shared `actions` collection holds both streams. Field categories:
 ### Common (every doc)
 
 - `_id`, `change_stamp`
-- `kind` — discriminator. Workflows: `form` / `simple` / `tracker` / `custom` / `external`. Tasks: `task`.
+- `kind` — discriminator. Workflows: `form` / `simple` / `tracker` / `custom` / `external`. Tasks: `task`. `custom` is in-design (Part 28); `external` is a planned future kind for system-driven actions with no user-facing surface — listed here so the taxonomy and the rename discussion below are forward-looking, but no dedicated part exists yet.
 - `status` (current) and the status-history array — both streams use the same shape.
 - `assignees` — universal-fields component, already shipped.
 - `due_date` — universal-fields component.
@@ -64,27 +64,26 @@ The shared `actions` collection holds both streams. Field categories:
 ### Workflow-only (set on workflow actions, **null/absent** on tasks)
 
 - `workflow_id`, `workflow_type`
-- `entity_id`, `entity_collection` (workflow actions always have these — they're scoped to an entity by the workflow they belong to)
 - `action_group`, `type`
 - `blocked_by`, `unblocks_on` (engine-managed)
 - `child_workflow_id` / `child_entity_id` / `child_entity_collection` (tracker actions only — already a sparse field)
 - `form_data` (form actions only — already sparse)
 - The engine-computed `link` / `status_map` rendering output (engine-managed; only meaningful for workflow actions)
 
-### Task-only (set on tasks, **null/absent** on workflow actions)
+### Shared but conditional (workflow actions always set them; tasks-module decides)
 
-- `title` — user-supplied. Workflow actions have title derived from `type` + `status_map`; tasks need a top-level user-editable string.
-- `entity_id`, `entity_collection` — *optional* for tasks (a task can be standalone or filed against a specific entity). Same field names as workflow actions; tasks just allow null.
-- Possibly a `created_by` field — though `change_stamp` already records this for both streams.
+- `entity_id`, `entity_collection` — workflow actions always populate these (scoped to the workflow's entity). Whether adhoc tasks populate them as top-level fields or rely on `references` for entity linkage (e.g., a meeting-minutes action item referencing a company + a deal) is a tasks-module design call. Either way, the schema must allow null — see Constraints below.
 
-No task-only field is required on workflow-action docs. No workflow-only field is required on task docs. The discriminator that separates the streams is `workflow_id`: set means workflow-action, null means task.
+No task-only fields. Tasks share the Common fields with workflow actions, may set the Shared-but-conditional fields, and leave the Workflow-only fields null/absent. Creator is captured by `change_stamp.created.user.id` on insert (the `events`-module idiom — see `docs/idioms.md` "Change stamps"), the same as for workflow actions; no separate `created_by` field.
+
+Two discriminators, at different layers: `kind` discriminates the action's **user-facing surface** (`form` / `simple` / `tracker` / `custom` / `external` for workflow actions, `task` for adhoc); `workflow_id` discriminates the **stream** — set means a workflow engine wrote it, null means a tasks module wrote it. The tasks module ignores `kind` on read; the workflows engine ignores any doc with `workflow_id: null`.
 
 ### Constraints this places on the workflows module
 
 These are the things the workflows module ships must respect so the tasks module can write to the same collection cleanly:
 
 - **No collection-level required fields** beyond `_id`, `kind`, `status`, `change_stamp`. In particular, `workflow_id`, `type`, `entity_id`, `entity_collection`, `action_group` must all be nullable at the schema level. (None of the shipped Mongo writes enforce these as required today — verified — but the constraint needs to stay.)
-- **No index assumes `workflow_id` is present.** Existing indexes on `actions` are on `(workflow_id, status)`, `(entity_id, entity_collection)`, etc. — partial indexes filtered on `workflow_id` existing would be fine; non-partial indexes on `workflow_id` are also fine because Mongo indexes nulls. No change needed; just don't add a non-null constraint later.
+- **No index assumes `workflow_id` is present.** The workflows module ships no documented index definitions on `actions` today — a separate gap to close, since other modules in this repo document required indexes in their README (e.g. `activities/README.md`). When workflows adds them, they must accept `workflow_id: null` docs. Non-partial indexes on `workflow_id` are fine — Mongo indexes nulls. Partial indexes filtered on `workflow_id` existing are fine as workflow-only optimisations but must not be the sole index serving a query path that both streams use.
 - **`type` is not required.** Workflow actions always have a `type`; tasks may not. If the field exists on a task, it's a free-form tag, not a workflow-config slug.
 - **The status enum stays a strict superset** of what adhoc tasks need. The shipped enum (`action_statuses`) already includes `action-required`, `in-progress`, `done`, `not-required` — the four states adhoc tasks need. No engine work assumes a workflow action will *never* sit in just those four states either.
 
@@ -117,6 +116,11 @@ Shipped code (already in `modules/workflows/` and `plugins/`):
 - `plugins/modules-mongodb-plugins/src/connections/shared/types.js` — `ActionKind` typedef
 - `modules/workflows/README.md` — wording
 
+Demo app (the repo's only `workflows_config` consumer — runs through the same `makeWorkflowsConfig` validator):
+
+- `apps/demo/modules/workflows/workflow_config/installation/install-step.yaml` — `kind: task` → `kind: simple`
+- `apps/demo/modules/workflows/workflow_config/onboarding/schedule-followup.yaml` — `kind: task` → `kind: simple`; two `_module.pageId: { id: task-edit, module: workflows }` link references → `simple-edit`
+
 Active follow-on parts (designs not yet implemented or amending shipped code):
 
 - `workflows-module/parts/24-universal-fields/` — `kind: form | task` comment becomes `form | simple`
@@ -129,7 +133,7 @@ The rename is mechanical — no behavioural change, no migration of existing dat
 
 ### Migration of the page IDs
 
-The three shared pages (`task-edit`, `task-view`, `task-review` in `modules/workflows/pages/`) become `simple-edit`, `simple-view`, `simple-review`. Action `status_map.{stage}.{slug}.link.pageId` references these via `_module.pageId: { id: task-edit, module: workflows }` — all such references in concept docs + shipped templates flip to `simple-edit`. The link table in `parts/30-status-map-rendering/design.md` updates accordingly.
+The three shared pages (`task-edit`, `task-view`, `task-review` in `modules/workflows/pages/`) become `simple-edit`, `simple-view`, `simple-review`. Action `status_map.{stage}.{slug}.link.pageId` references these via `_module.pageId: { id: task-edit, module: workflows }` — all such references in concept docs, shipped templates, and the demo app's `workflow_config/**` flip to `simple-edit`. The link table in `parts/30-status-map-rendering/design.md` updates accordingly.
 
 ## Status enum subset for adhoc tasks
 
@@ -200,11 +204,9 @@ These belong to the tasks module's own design(s), not this one:
 - External-creation SDK / API for LLMs and external systems to create tasks. Its own dedicated design, after workflows and the tasks module v1 both ship.
 - Subtask / hierarchy on adhoc tasks (most tools support this — Linear sub-issues, Asana subtasks). Not v1; if added later it's a `parent_task_id` field, not a new collection.
 
-## Open questions
+## Decisions
 
-1. **Should the `kind: task` rename land as a standalone follow-on part before more of the workflows module ships, or batch it with the next active part?** Recommendation: standalone, small (S-sized), runs in parallel with whatever's in flight. The rename is mechanical but touches enough surface that batching it inside an unrelated part muddies that part's review.
-2. **Where does the `title` field live on workflow actions?** Today workflow actions get display strings from `status_map.{stage}.{slug}.message`. There's no top-level `title` on the doc. Tasks need a user-editable `title` at the top level. Decision: tasks add `title` as a task-only top-level field; workflow actions keep using the status-map message; the entity-page renderers branch on `kind` to pick the right display string. No retrofit needed on workflow actions.
-3. **Does the existing `entity_id` / `entity_collection` field on the actions collection accept null?** Workflow actions always set them (they're scoped to an entity by their workflow). Adhoc tasks may be standalone (no entity). Action: confirm the field has no `required` constraint in the shipped schema; if it does, drop the constraint as part of the rename PR.
+1. **Display title on adhoc tasks.** Part 30 standardises action display under top-level `<app-slug>.message` fields, written from `status_map` cells for workflow actions. Tasks write `<app-slug>.message` directly from user input — same field, same read path, no `kind`-branching in renderers. How user input maps to per-app values (single shared title fanned out vs per-app variants) is for the tasks-module design to decide.
 
 ## Related
 
