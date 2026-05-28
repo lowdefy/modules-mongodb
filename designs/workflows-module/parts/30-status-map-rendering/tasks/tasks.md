@@ -13,7 +13,7 @@ Tasks implementing Part 30: the workflows engine renders `status_map` cells and 
 | 3   | `03-add-computeEngineLinks.md`                      | Add `(kind, stage, verbs) → link` table + helper for built-in kinds.                                   | —          |
 | 4   | `04-add-renderStatusMap.md`                         | Add render orchestrator: clone cell, apply override, render Nunjucks, sentinel-swap.                   | 1, 2       |
 | 5   | `05-add-buildActionStageUpdate.md`                  | Add single-stage `$set` aggregation pipeline builder.                                                  | —          |
-| 6   | `06-extend-api-contract-metadata-action-display.md` | Add `metadata` + `action_display` to start/submit API payloads; refresh `app_name` manifest doc.       | —          |
+| 6   | `06-extend-api-contract-metadata-action-display.md` | Add `metadata` + `action_display` to start/submit API payloads; refresh `app_name` manifest doc; wire `entry_id` connection schema + YAML. | —          |
 | 7   | `07-wire-createAction-and-StartWorkflow.md`         | Wire `createAction` to render the initial cell; pass `metadata` through `StartWorkflow`.               | 3, 4, 6    |
 | 8   | `08-wire-updateAction.md`                           | Replace `updateAction`'s `$set` + `$push` with the new aggregation pipeline.                           | 3, 4, 5    |
 | 9   | `09-refactor-cancel-close-cascade.md`               | Switch Cancel/Close per-action sweeps to a per-action `MongoDBUpdateOne` loop with render + link computation. | 3, 4, 5    |
@@ -28,7 +28,7 @@ Tasks implementing Part 30: the workflows engine renders `status_map` cells and 
 
 Foundation helpers (1–5) are file-additions with unit tests; tasks 1, 2, 3, 5 are independent and can be implemented in parallel. Task 4 depends on 1 and 2.
 
-Task 6 (extending the public payload contract for `metadata` / `action_display`) is independent of the helpers but must land before any engine wiring that reads those payload fields.
+Task 6 (extending the public payload contract for `metadata` / `action_display`, plus wiring the new `entry_id` connection field) is independent of the helpers but must land before any engine wiring that reads those payload fields or threads `context.entry_id` through `computeEngineLinks` (Tasks 7, 8, 9).
 
 Engine writers (7, 8, 9) all depend on the helpers. They can be split because each touches a distinct call site (insert, single update, cascade sweep). The cascade refactor (9) is grouped into one task — Cancel and Close share the same shape.
 

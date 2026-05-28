@@ -30,10 +30,13 @@ Key wording requirements (per design D8):
    ```
    with a one-sentence note that the override is rendered against the same context as the cell.
 
+3. **Document the event-display authoring contract.** Under the README section that covers `event_overrides` (or add one if missing), state that authored event templates — `event.{interaction}.display.{app}.{field}` in the workflow's action YAML, and `event_overrides.display.{app}.{field}` returned from pre-hooks — are **plain Nunjucks template strings** rendered by the engine against the fixed context `{ user, action, workflow, interaction, status_before, status_after }` (per D14). Call out the contrast with the cross-repo [`event_display` idiom](../../../../docs/idioms.md#event-display) explicitly: the `_nunjucks: { template, on }` operator wrapping used elsewhere in modules-mongodb (e.g. `contacts/api/create-contact.yaml`) is **not** valid on the workflow engine path — Lowdefy's `evaluateOperators` pre-handler pass would pre-render it against the calling page's state (where engine bindings like `action.type` / `status_after` don't exist), producing silently-empty or wrong values. The engine intentionally renders only plain strings. List the bindings authors can reference, and link to D14 in this part's design.md for the full contract.
+
 ## Acceptance Criteria
 
 - README documents `metadata` and `action_display` under the appropriate Start / Submit payload section.
 - The distinction from `event_overrides.{interaction}.display` is called out explicitly.
+- README documents the event-display authoring contract: plain Nunjucks strings only, list of bindings, contrast with the `_nunjucks: { template, on }` idiom called out.
 - Cross-links to `docs/idioms.md#event-display` and the `app_name` var doc resolve.
 - Markdown lints / link-checkers (if any are part of the repo's build) pass.
 

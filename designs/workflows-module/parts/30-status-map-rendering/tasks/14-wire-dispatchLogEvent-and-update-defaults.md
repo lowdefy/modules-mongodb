@@ -25,6 +25,7 @@ Same rename applies to any other engine-default template that referenced flat-bo
 2. **Tests** — extend `dispatchLogEvent.test.js`:
    - Engine-default event template (plain Nunjucks string) renders against `{ user, action, workflow, interaction, status_before, status_after }` before reaching `new-event`. Assert the payload landing at `context.callApi('new-event', ...)` carries rendered strings, not operator literals.
    - Pre-hook `event_overrides.display.app-a.title` with a plain Nunjucks string renders against the same context.
+   - YAML-authored `params.event_overrides[interaction].display.app-a.title` with a plain Nunjucks string renders against the same context (the YAML channel fans through the same `mergeEventOverrides` → `renderEventDisplay` path as the pre-hook channel; this asserts the plain-string contract holds for the third source layer per D14).
    - `action` exposes post-write action-doc fields — assert `{{ action.key }}`, `{{ action.assignees[0].name }}`, `{{ action.metadata.physical_id }}` resolve in the rendered output.
    - `workflow` exposes workflow-only fields — assert `{{ workflow.workflow_type }}`, `{{ workflow.key }}` resolve.
    - `interaction` renders to the verb string (e.g. `submit_edit`).
@@ -46,5 +47,3 @@ Same rename applies to any other engine-default template that referenced flat-bo
 ## Notes
 
 The events module (`modules/events/api/new-event.yaml`, `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js`) is unchanged. The fix lives entirely on the writer side.
-
-Coordination with Part 32: D14 of this design notes that Part 32's "`_nunjucks` evaluation — equivalence verified" section is obsoleted by this part. Once this task lands, the two edits to Part 32 listed in D14 should follow (separate work; not part of this task).

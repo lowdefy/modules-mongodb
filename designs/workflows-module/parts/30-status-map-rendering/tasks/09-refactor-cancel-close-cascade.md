@@ -9,7 +9,7 @@ Per design D11, the wire shape becomes a loop of `MongoDBUpdateOne` — one comm
 Per-action loop steps:
 1. Fetch the non-terminal action.
 2. Build merged doc — cascade does not pass caller fields, so `mergedActionDoc = actionDocBeforeWrite`.
-3. Run `renderStatusMap` + `computeEngineLinks` against the merged doc.
+3. Run `renderStatusMap` + `computeEngineLinks` against the merged doc. Pass `entryId: context.entry_id` into `computeEngineLinks` (per Task 6 + Task 3 — engine-written `link.pageId` must be prefixed with the workflows module entry id).
 4. Run `buildActionStageUpdate` with `newStage: 'not-required'`.
 5. `await context.mongoDBConnection('actions').MongoDBUpdateOne({ filter: { _id }, update: <pipeline> })` for that action.
 
