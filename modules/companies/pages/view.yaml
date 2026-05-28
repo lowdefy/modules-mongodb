@@ -53,13 +53,12 @@ _ref:
             address: {}
             registration: {}
             attributes: {}
-            # TEMPORARY — paired with the inline activities tile below.
-            # The tile's capture modal uses company-selector, whose request
-            # reads `_state.cycle_check_*` and trips ConfigWarning on pages
-            # that don't declare those keys. Runtime behaviour unchanged
-            # (the request's `_if_none` defaults already handle null/empty).
-            # Remove these alongside the inline-tile workaround once the
-            # framework limitation (decisions.md §7) is fixed.
+            # company-selector (used by any sidebar slot that includes
+            # activities' tile_activities → capture modal → form_activity)
+            # reads _state.cycle_check_* via get_companies_for_selector.
+            # Init to null/[] here so the build's _state validator doesn't
+            # warn on this page. Runtime unchanged — the request's _if_none
+            # defaults already cover null/empty.
             cycle_check_self_id: null
             cycle_check_ids: []
       onMount:
@@ -127,35 +126,14 @@ _ref:
               _build.array.concat:
                 - - _ref: components/tile_contacts.yaml
                 # Hierarchy tile (build-gated). Sits between contacts and
-                # activity so hierarchy navigation comes before activity.
+                # events so hierarchy navigation comes before activity.
                 # Self-hides at runtime when both parents and children are
-                # empty (visibility on the wrapper Box). Lifted to its own
-                # concat element so the inner [tile_hierarchy] array flattens.
+                # empty (visibility on the wrapper Box).
                 - _build.if:
                     test:
                       _module.var: hierarchy.enabled
                     then:
                       - _ref: components/tile_hierarchy.yaml
                     else: []
-                # TEMPORARY inline activities tile — intended pattern is
-                # app-level slot wiring via components.sidebar_slots
-                # (decisions.md §7); blocked by framework limitation. Move
-                # back to app vars once fixed. Paired with the activities
-                # module dep (module.lowdefy.yaml) and the cycle_check_*
-                # state init in this page's onInit — revert all three.
-                - - _ref:
-                      module: activities
-                      component: tile_activities
-                      vars:
-                        reference_field: company_ids
-                        reference_value:
-                          _url_query: _id
-                        prefill:
-                          company_ids:
-                            - _url_query: _id
-                        on_created:
-                          - id: refetch_events
-                            type: Request
-                            params: get-events
-                  - _ref: components/tile_events.yaml
+                - - _ref: components/tile_events.yaml
                 - _module.var: components.sidebar_slots
