@@ -1,39 +1,68 @@
 # Part 24 — Universal-fields surface (`assignees`, `due_date`, `description`)
 
-**Source rationale:** [workflows-module-concept/engine/spec.md](../../../workflows-module-concept/engine/spec.md) (reserved action-doc fields), [workflows-module-concept/ui/spec.md](../../../workflows-module-concept/ui/spec.md) (display rules per kind/verb). **Layer:** UI + write-path. **Size:** M. **Repo:** `modules/workflows/components/universal-fields/`.
+The three action-level fields every action carries — `assignees`, `due_date`, `description` — are **metadata about the action**, not part of what a form submission captures. This part pins their contract across the form and simple kinds and ships one reusable Lowdefy component the page templates compose.
 
-## Goal
+The headline change from the previous draft: on **form-kind** actions, universal fields are written by their **own operation**, fully decoupled from the form submit. They render as a right-hand **sidebar card** with its own Update button, and the form's `submit` / `progress` buttons no longer carry a `fields` payload at all. On **simple-kind** actions the universal fields *are* the submission content, so they stay as primary content written on the `submit` signal. This is the minimal, scoped landing of the "operations vs transitions" split from [critique-concepts.md §3](../../../workflows-module-concept/review/critique-concepts.md) — the category the [state-machine](../../../workflows-module-concept/state-machine/design.md) sub-design deliberately parked as a non-goal (`state-machine/design.md:323`), here implemented for exactly one operation (write the three fields) on exactly one kind (form).
 
-Pin the contract for the three action-level fields every form/task action carries — `assignees`, `due_date`, `description` — across the form and task kinds, all template verbs, all read/write surfaces. Ship one reusable Lowdefy component the page templates (part 16) and shared task pages (part 17) compose; lock the interaction / lifecycle / role-gating rules so the consuming parts don't each invent their own.
+Tracker actions are excluded — they have no view surface (no `-view` / `-edit`, only inline rendering in `actions-on-entity` via `status_map.message`), so there's nowhere to render the fields. The tracker doc still carries the three fields (the engine writes them at `StartWorkflow`, carried from the parent action), but no UI renders them in v1.
 
-Tracker actions are excluded from v1 — they have no view surface (no `-view` / `-edit`, only inline rendering in `actions-on-entity` via `status_map.message`), so there's nowhere to render the universal-fields band. The tracker doc still carries the three fields (the engine writes them at `StartWorkflow` time, carried from the parent action), but no UI renders them in v1. See "Open questions" for the deferred discussion.
+## Proposed change
 
-This part exists because the universal fields touch enough of the module — edit-time inputs, view-time display, post-close edits, event-timeline integrity, role gating, badge formats on entity pages — that pinning them down via a sub-section in part 16 underspecified the cross-cutting questions. Split into its own part so the contract is reviewable in one place.
+1. **Form-kind universal fields become a state-orthogonal operation.** A new resolver-emitted endpoint `update-action-fields-{action_type}` writes the three fields with no `signal`, no `form`, and no FSM transition. The form-submit payload (`submit` / `progress`) drops its `fields` key.
+2. **This part owns the full write path.** It ships the `UpdateActionFields` plugin handler + `planFieldsUpdate.js` planner, the `makeWorkflowApis` change to emit the fields endpoint, the connection registration, the `universal_fields` resolver passthrough, and the submit-planner guard that confines the universal-field write to `kind: simple`. The handler reuses [Part 38](../38-engine-rebuild/design.md)'s load→plan→commit + render helpers: set fields, merge metadata, **re-render the status-map cell**, emit an `action-fields-updated` log event, no workflow write. The form submit endpoint is unchanged (it stays kind-uniform); the guard's kind check keeps form submit from touching the fields. The consuming parts (16/17/39) are left with template/layout rendering only.
+3. **Form-kind fields render as a right-hand sidebar card** with its own Update button, beside the form body (not a header band). Simple-kind fields stay as primary content on the submit surface.
+4. **Universal fields are editable whenever the user has access** — the stage-based editable allowlist and the `required_after_close` carve-out are gone. You can reassign a `done` action or fix a due date on an `in-review` one.
+5. **Presence is author-declared via `universal_fields`** (which of the three to show). Default: all three, shown and optional. `universal_fields: false` / `[]` hides the surface. `universal_fields_required` is **dropped** (no demonstrated need; re-addable later).
+6. **One reusable component** (`components/universal-fields/universal-fields.yaml`) with `kind` × (`edit`/`display`) modes; `kind` now drives a real behavioural difference (form = own operation + Update button; simple = rides submit). Resolves Part 24 review-1 finding #8.
+
+## Why decouple (and why it simplifies)
+
+Bundling the universal fields into the form submit forced three kinds of friction, all of which this split removes:
+
+- **You couldn't touch metadata without a transition.** Reassigning or re-dating an action meant re-submitting it — re-running form validation and (for actions with a `review` verb) bouncing it back through review. critique §3 named this exactly ("You can't update assignees on a `done` action"). As an independent operation, metadata edits are role-gated and stage-agnostic.
+- **The editable-stage allowlist and `required_after_close` band-handling vanish.** The previous draft tied the band's editability to the form lifecycle (`action-required` / `in-progress` / `changes-required` editable; everything else read-only) and added a `required_after_close` exception so a surviving action stayed editable past `close-workflow`. None of that is needed now: the operation is editable iff the user has access, full stop. `required_after_close` reverts to its real meaning — whether *form submit* survives a closed workflow ([action-authoring spec](../../../workflows-module-concept/action-authoring/spec.md)) — and stops touching this surface.
+- **`kind` earns its keep.** Form vs simple now selects which write path the submit-adjacent affordances target (independent operation vs the submit payload), so the component's `kind` var drives behaviour rather than just cosmetics — closing Part 24 review-1 finding #8.
+
+### Why it still goes through the engine (not a plain `MongoDBUpdateOne`)
+
+Status-map cells can reference `assignees` / `due_date` (Part 38 D12's render context spreads them into the cell template), so a field change must **re-render the sticky cell** — otherwise the entity-page card keeps showing the old assignee until the next transition, the precise staleness class [Part 38](../38-engine-rebuild/design.md) exists to eliminate. A plain plugin write would either skip the re-render (stale display) or duplicate the render helpers in YAML (violates "one correct way"). So the operation runs through a real engine handler that reuses Part 38's render path. It is **not** an FSM signal — keeping it out of the signal model is the deliberate operations/transitions boundary state-machine.md draws.
 
 ## In scope
 
 ### Component shipped
 
-`modules/workflows/components/universal-fields/universal-fields.yaml` — single Lowdefy component with two render modes (`edit` / `display`). Consuming pages `_ref` it with vars:
+`modules/workflows/components/universal-fields/universal-fields.yaml` — one Lowdefy component, composed by the page templates (Part 16) and shared simple pages (Part 17):
 
 ```yaml
 - _ref:
     path: components/universal-fields/universal-fields.yaml
     vars:
-      mode: edit            # 'edit' | 'display'
-      kind: form            # 'form' | 'task' — tracker excluded per Goal above
-      action_data:          # action doc fields the inputs bind to
-        assignees: { _state: fields.assignees }
-        due_date:  { _state: fields.due_date }
+      mode: edit              # 'edit' | 'display'
+      kind: form              # 'form' | 'simple' — tracker excluded
+      action_type: qualify    # builds update-action-fields-{action_type} (form + edit only)
+      show:                   # which fields render; from action_config.universal_fields
+        _var: action_config.universal_fields   # default [assignees, due_date, description]
+      action_data:            # bindings the inputs/display read
+        assignees:   { _state: fields.assignees }
+        due_date:    { _state: fields.due_date }
         description: { _state: fields.description }
 ```
 
-Block-id conventions match the CLAUDE.md "Input block IDs match data paths" rule: `fields.assignees`, `fields.due_date`, `fields.description`. The component-level inputs bind to `_state.fields.*` so the page-level button can post `fields: { _state: fields }` (per part 16 "Button payload").
+Block-id convention follows the CLAUDE.md "Input block IDs match data paths" rule: `fields.assignees`, `fields.due_date`, `fields.description`.
 
-Binding convention by mode:
+**Behaviour by `kind` × `mode`:**
 
-- **`mode: edit`** — callers pass `action_data` bound to `_state.fields.*` (as above). Inputs are primed by the page's `onMount` step that seeds `_state.fields` from the loaded action doc, and the submit button posts the same `_state.fields` subtree.
-- **`mode: display`** — callers pass `action_data` bound to `_request: get_action.*`:
+| `kind` | `mode` | Renders | Write path |
+| ------ | ------ | ------- | ---------- |
+| `form` | `edit` | Sidebar card: the declared inputs **plus its own Update button** | Button calls `update-action-fields-{action_type}` with `fields: { _state: fields }` + optional `comment`. **Independent of form submit.** |
+| `form` | `display` | Sidebar card, read-only | — (reads `get_action.*`) |
+| `simple` | `edit` | Primary content: the declared inputs, **no own button** | The page's `submit` button carries `fields: { _state: fields }` (unchanged). |
+| `simple` | `display` | Primary content, read-only | — |
+
+**Binding by mode:**
+
+- **`edit`** — `action_data` bound to `_state.fields.*`; primed by the page's `onMount` from the loaded action doc. For form kind the component's own Update button posts the `_state.fields` subtree; for simple kind the page's submit button posts it.
+- **`display`** — `action_data` bound to `_request: get_action.*`; reads straight from the loaded action doc (no `_state.fields` priming on `-view` / `-review`).
 
   ```yaml
   - _ref:
@@ -41,151 +70,201 @@ Binding convention by mode:
       vars:
         mode: display
         kind: form
+        show: { _var: action_config.universal_fields }
         action_data:
           assignees:   { _request: get_action.assignees }
           due_date:    { _request: get_action.due_date }
           description: { _request: get_action.description }
   ```
 
-  Display mode reads straight from the loaded action doc — there's no `_state.fields` priming on `-view` / `-review` pages.
-
 ### Where the component renders
 
-| Surface                                | Mode                                                          | Notes                                                                                                                  |
-| -------------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Form action `edit` page (part 16)      | `edit` — header band above the form body                      | Same `submit_edit` interaction writes both universal fields and form fields.                                            |
-| Form action `view` page (part 16)      | `display`                                                     | Read-only.                                                                                                              |
-| Form action `review` page (part 16)    | `display`                                                     | Read-only. Reviewers don't edit universal fields here; if they need to, they round-trip via the `Edit` navigation button. |
-| Form action `error` page (part 16)     | `display`                                                     | Read-only. Recovery flow doesn't include metadata edits.                                                                |
-| Task action `task-edit` page (part 17) | `edit` — primary content (status selector + comment sit below) | Same `submit_edit` interaction.                                                                                         |
-| Task action `task-view` / `task-review` (part 17) | `display`                                          | Read-only.                                                                                                              |
+| Surface                                       | Mode      | Placement / notes                                                                                  |
+| --------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------- |
+| Form action `edit` (Part 16)                  | `edit`    | Right sidebar card with its own Update button. Form submit does **not** write these fields.        |
+| Form action `view` (Part 16)                  | `display` | Right sidebar card, read-only.                                                                     |
+| Form action `review` (Part 16)                | `display` | Right sidebar card, read-only. Reviewers who need to change metadata use the `edit` page sidebar.  |
+| Form action `error` (Part 16)                 | `display` | Right sidebar card, read-only. Recovery flow doesn't edit metadata.                                |
+| Simple action `simple-edit` (Part 17)         | `edit`    | Primary content (status buttons + comment below). Written on `submit`.                             |
+| Simple action `simple-view` / `simple-review` | `display` | Primary content, read-only.                                                                        |
 
-### Interaction model
+The template renders the form-kind sidebar column **iff `show` is non-empty**; when an action declares `universal_fields: false` / `[]` the column is omitted and the form body spans full width.
 
-**Decision: keep universal-field writes on the same `submit_edit` interaction** as form fields, not a separate `update_metadata` interaction.
+### The operation: `update-action-fields-{action_type}`
 
-Reasons:
+Resolver-emitted by **this part's** `makeWorkflowApis` change (one per **form** action). Simple actions get no fields endpoint in v1 — they write fields on `submit`.
 
-- One write per user submit — minimizes round-trips and avoids two events on a single user action.
-- Form data and universal fields live on different documents (form data on workflow, universal fields on action), but they're a single logical edit from the user's POV — splitting at the user surface is artificial.
+```yaml
+id: update-action-fields-{action_type}
+type: Api
+routine:
+  - id: update_fields
+    type: UpdateActionFields
+    connectionId: { _module.connectionId: workflow-api }
+    properties:
+      action_id: { _payload: action_id }
+      action_type: <action_type>       # build-time literal
+      workflow_type: <workflow_type>   # build-time literal
+      fields: { _payload: fields }     # { assignees, due_date, description }
+      comment: { _payload: comment }   # optional; handler maps to event.metadata.comment
+  - :return:
+      action_id: { _step: update_fields.action_id }
+      event_id:  { _step: update_fields.event_id }
+```
 
-Trade-off: the engine-default event timeline row (rendered by `buildDefaultLogEventPayload`'s Nunjucks template) shows the status transition + comment; a same-submit universal-field change isn't called out separately. The action doc carries the new field values regardless — the gap is purely on the timeline's display string, not on the underlying audit data. Apps that need universal-field changes called out today can wire a pre-hook on the affected actions to stamp a custom `event_overrides.display` (the layer-3 path described in [part 9 (hook invocation)](../_completed/09-hook-invocation/design.md)). A future engine-level enhancement could ship a richer default template that surfaces metadata diffs out of the box — out of scope here.
+The component's Update button:
 
-Deferred to v1.x if real apps complain: a `update_metadata` interaction with `update-action-{action_type}` accepting `interaction: update_metadata` + a `fields` payload, no form data, no status change. The engine already has the plumbing — only the page-level affordance is missing.
+```yaml
+- id: button_update_fields            # sidebar card footer
+  type: Button
+  properties: { title: Update, type: primary }
+  visible: { _eq: [{ _state: action_allowed }, true] }
+  events:
+    onClick:
+      - id: validate
+        type: Validate
+        params: { regex: ['^fields\.'] }
+      - id: update_fields
+        type: CallApi
+        params:
+          endpointId:
+            _module.endpointId:
+              _build.string.concat: [update-action-fields-, { _var: action_type }]
+          payload:
+            action_id: { _state: action._id }
+            fields:    { _state: fields }
+            comment:   { _state: fields_comment }   # optional
+```
 
-### Lifecycle rules
+**Engine handler `UpdateActionFields`** — a new plugin entry point in `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/UpdateActionFields/`, **shipped by this part**, on the same `WorkflowAPI` connection as `SubmitWorkflowAction` / `StartWorkflow` / etc. It reuses [Part 38](../38-engine-rebuild/design.md)'s helpers — `loadWorkflowState` / `commitPlan` (`shared/phases/`), `planEventDispatch` (`shared/phases/planners/`), and `renderStatusMap` (`shared/render/`) — and adds one new planner `shared/phases/planners/planFieldsUpdate.js`:
 
-Universal fields are editable iff the action's current stage allows writes — same allowlist as the `edit` template's stale-URL guard:
+- **Load** — workflow + target action + configs; role check (`access.roles` ⊇ user roles), identical to `SubmitWorkflowAction`.
+- **Plan** (pure) — compose planned action doc = loaded action with `assignees` / `due_date` / `description` `$set`, change-stamp refreshed, `metadata` merged; **re-render the status-map cell** (Part 38 D12 render path) against the planned doc; build an `action-fields-updated` log event (references + entity-ref key as in submit-pipeline's default event, `metadata.comment` from payload); build the change-log delta. **No workflow doc write** — summary/groups/form_data are unaffected by metadata, so the workflow is untouched.
+- **Commit** — `bulkWriteActions` (one action update) + event via `new-event` + change-log. Because no workflow doc is written there is no CAS gate; concurrent fields-updates are last-write-wins on the action doc (acceptable for metadata, consistent with Part 38 D15's deferral of per-action CAS).
 
-- **Editable**: `action-required`, `in-progress`, `changes-required`.
-- **Read-only**: `in-review`, `done`, `not-required`, `error`, `blocked`.
+**Connection registration.** `WorkflowAPI/index.js` (or the connection's request-type map) registers `UpdateActionFields` alongside the existing handlers; `WorkflowAPI/schema.js` needs no new connection-level fields (the handler reads the same `databaseUri` / `app_name` / `entry_id` / `changeLog` config the other handlers use).
 
-`required_after_close: true` is **about the workflow lifecycle, not the action stage**. The flag lets an action survive `close-workflow` (it is not swept to `not-required`) and lets `SubmitWorkflowAction` accept writes against a `completed` / `cancelled` workflow. The surviving action keeps its current non-terminal stage (`action-required`, `in-progress`, etc.), so the existing editable-stage allowlist already covers the edit page — no URL-guard exception is needed. Once the action's own stage reaches `done` / `not-required`, the universal-fields band is read-only regardless of `required_after_close` (a dedicated post-terminal metadata-edit surface is deferred — see "Out of scope").
+**Submit-planner guard (kind-based field write).** Today's monolithic `SubmitWorkflowAction` sets the three universal fields from `payload.fields` unconditionally, for every kind. Part 38's rebuild carries that write into the shared `planActionTransition.js` (the contract Part 38 must establish — see "Contract to neighbours"). This part amends it to a **kind-based rule: the planner writes `assignees` / `due_date` / `description` only for `kind: simple`** — the kind whose submission content *is* those fields. For `kind: form` the planner never touches them; they are owned exclusively by the `update-action-fields-{action_type}` operation. The rule keys on the action's `kind` (already loaded in the plan context), **not** on the payload shape, so it cannot be defeated by a stray `fields` payload, and the form template dropping `fields` (Part 39) becomes hygiene — don't validate sidebar inputs on submit, don't post dead state — rather than a correctness precondition. Simple submit is unaffected: its `fields` payload is written exactly as today.
 
-`error` status: universal fields are **read-only** on the `-error` page. The recovery flow focuses on resolving the failure context, not bulk-editing metadata. Authors who need universal-field changes mid-error use the `submit_edit` route (the `resolve_error` interaction does not reach the universal-fields band).
+**Role gating.** Same `access.roles` as the action, enforced in the handler's load phase. The component additionally reads `_state.action_allowed` (from `action_role_check`, Part 18) and switches inputs + Update button to read-only / hidden when `false` — defense in depth so users can't type changes that won't save.
 
-### Role gating
+**Lifecycle.** Editable in any stage the user has access to — including `done` / `not-required` / `error`. There is no stage allowlist and no `required_after_close` interaction; metadata is always editable for an accessible action.
 
-**Decision: same `access.roles` as the parent action.**
-
-Authors who want a finer-grained "anyone can reassign, only specific roles can submit" model declare a custom action with a stripped-down form schema. The universal-fields surface doesn't introduce a separate role vocabulary in v1.
-
-The component reads `_state.action_allowed` (populated by `action_role_check` in step 6 of the page's `onMount`) and switches every input to read-only when `false`, regardless of `mode: edit`. This is defense in depth: the page-level button gate prevents submission, but rendering disabled inputs prevents users from typing changes that won't save.
-
-### Required-field signal
-
-Each action declares which universal fields are mandatory on its YAML:
+### Authoring: `universal_fields`
 
 ```yaml
 type: qualify
 kind: form
 access: { roles: [sales] }
-universal_fields_required:
-  assignees: true     # default false
-  due_date: false
-  description: false
+universal_fields: [assignees, due_date]   # which fields render; omit = all three; false / [] = none
 ```
 
-`universal_fields_required` is an object with three optional booleans (`assignees`, `due_date`, `description`), all defaulting to `false`. Authoring contract amendment: add this field to [action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md) reserved-field table alongside `required_after_close`. Resolver passthrough (the existing `makeWorkflowsConfig.js` / `makeActionPages.js` allowlists) is updated to carry the new field — same pattern `required_after_close` already follows.
+`universal_fields` is an optional list drawn from `[assignees, due_date, description]`. **Default (field omitted): all three, shown and optional.** Set `false` or `[]` to hide the surface entirely (data-only forms). It is purely a UI presence declaration — the action doc always carries all three fields physically (the engine writes them at `StartWorkflow`); `universal_fields` only controls what the templates render.
 
-Consuming pages pass the resolved config to the universal-fields component as a new var:
+Authoring-contract amendment: add `universal_fields` to the [action-authoring spec](../../../workflows-module-concept/action-authoring/spec.md) reserved-field table. Resolver passthrough (the `makeWorkflowsConfig.js` / `makeActionPages.js` allowlists) carries it through to `action_config.universal_fields` — same pattern `required_after_close` follows.
 
-```yaml
-- _ref:
-    path: components/universal-fields/universal-fields.yaml
-    vars:
-      mode: edit
-      kind: form
-      required:
-        _var: action_config.universal_fields_required
-      action_data: { ... }
-```
-
-Inside the component:
-
-- Edit mode — for each of the three inputs, stamp `required: true` when `_var: required.{field} === true`. Input-block validation handles the "Required" message at submit time (Part 16's `^fields\.` `Validate` regex already covers these blocks).
-- Display mode — `required` is ignored. The view-side reflects the stored value; the required signal only matters for the writer.
-
-Engine-side enforcement is deferred. The handler does not throw on missing required fields in v1 — input-block validation already catches the user-facing case. If an API consumer hits the per-action endpoint directly with a `null` assignee on a required-assignee action, the write goes through; revisit if real API consumers expose this gap. Tracked as Open question.
+`universal_fields_required` from the previous draft is **dropped**. There was no consumer requiring mandatory universal fields, and once fields are decoupled from submit, "required" can only gate the operation's own Update (it cannot block form submit without re-coupling the two writes). Per "build for what exists," it's removed; re-adding a per-field `required` flag (a 2-line `Validate` addition on the operation) is trivial when a real need surfaces.
 
 ### Display rules
 
-- **Empty-state**: when a field is `null` / `[]`, display mode shows a dimmed placeholder (`Not assigned`, `No due date`, `No description`). Edit mode shows the empty input.
-- **Date formatting**: `due_date` displays via `_dayjs.format` with locale-aware formatting; component accepts a `date_format` var (default `MMM D, YYYY`).
-- **Assignees**: display mode renders one `_ref: { module: user-account, component: user-avatar }` per assignee (picture + name); edit mode uses `_ref: { module: user-account, component: user-selector }` in multi-select mode, bound to `_state.fields.assignees`. Both components are shipped by [part 24a](../24a-user-account-selector-avatar/design.md) — `user-selector` is the migrated copy from user-admin (filtered to `apps.{app_name}.is_user: true` so the dropdown only lists actual app users); `user-avatar` is new.
-- **Description**: edit mode renders a `TiptapInput` (rich text — paragraphs, links, basic formatting); display mode renders an `Html` block reading `description.html`. Stored on the action doc as `{ text: string, html: string } | null` — mirrors how the existing `comment` field is already passed through the engine. The `text` shadow stays available for length checks, plain-text search, and required-field validation. No "show more" truncation in v1 — Tiptap content wraps; truncation can be added later if descriptions get unwieldy in practice.
+- **Empty-state** — `null` / `[]` shows a dimmed placeholder in display mode (`Not assigned`, `No due date`, `No description`); edit mode shows the empty input.
+- **Date formatting** — `due_date` via `_dayjs.format`; component accepts a `date_format` var (default `MMM D, YYYY`).
+- **Assignees** — display renders one `_ref: { module: user-account, component: user-avatar }` per assignee (picture + name); edit uses `_ref: { module: user-account, component: user-selector }` (multi-select, filtered to `apps.{app_name}.is_user: true`) bound to `_state.fields.assignees`. Both ship from [Part 24a](../24a-user-account-selector-avatar/design.md).
+- **Description** — edit renders a `TiptapInput` (rich text); display renders an `Html` block reading `description.html`. Stored as `{ text: string, html: string } | null`, mirroring the `comment` field. The `text` shadow stays for plain-text search / length checks. No truncation in v1.
 
-Engine spec amendment: [`workflows-module-concept/engine/spec.md:132`](../../../workflows-module-concept/engine/spec.md) currently lists `description` as `string | null` — update to `{ text: string, html: string } | null` to align with the shipped behaviour (the `comment` field already carries this shape today, even though its JSDoc still says "string"). Carry this amendment under part 24 rather than spinning a separate spec-fix part — it's the same change either way.
+Engine spec amendment: [`engine/spec.md:132`](../../../workflows-module-concept/engine/spec.md) lists `description` as `string | null` — update to `{ text: string, html: string } | null` to match shipped behaviour (the `comment` field already carries this shape). Carry this amendment under Part 24.
 
 ### Module-shipped requests added
 
-None. The Selector and avatar both reach into user-account via cross-module component refs (see "Display rules"); no new requests ship from the workflows module for the universal-fields surface.
+None. The selector and avatar reach user-account via cross-module component refs; the fields operation is a resolver-emitted Api, not a module-shipped request.
 
 ### Manifest dependency
 
-`modules/workflows/module.lowdefy.yaml` gains `user-account` under `dependencies:` (alongside the existing `layout` and `events`). Required so `_ref: { module: user-account, component: ... }` resolves at build time.
+`modules/workflows/module.lowdefy.yaml` gains `user-account` under `dependencies:` (alongside `layout` and `events`), so `_ref: { module: user-account, component: ... }` resolves at build time.
+
+## Files changed (owned by this part)
+
+All API / plugin / resolver / schema edits for the universal-fields write path live here. The consuming template parts (below) only render.
+
+### Plugin — `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`
+
+- **`UpdateActionFields/UpdateActionFields.js`** (new) — the operation handler: load → role check → plan → commit. No pre/post hook in v1.
+- **`UpdateActionFields/UpdateActionFields.test.js`** (new) — handler unit tests (fields write, cell re-render, no workflow write, role reject).
+- **`shared/phases/planners/planFieldsUpdate.js`** (new) — pure planner: planned action doc (`$set` fields + change-stamp + metadata merge), re-rendered status-map cell, `action-fields-updated` event payload, change-log delta.
+- **`shared/phases/planners/planFieldsUpdate.test.js`** (new).
+- **`shared/phases/planners/planActionTransition.js`** (amend — Part 38's file) — the kind-based field write: `$set` the universal fields only for `kind: simple`; `kind: form` never writes them here. (Part 38 must first carry the existing universal-field `$set` into this planner — see "Contract to neighbours".)
+- **`WorkflowAPI/index.js`** (amend) — register `UpdateActionFields` in the connection's request-type map.
+
+`schema.js` is unchanged — the handler uses the existing connection config.
+
+### Resolver — `modules/workflows/resolvers/`
+
+- **`makeWorkflowApis.js`** (amend) — emit `update-action-fields-{action_type}` for every `kind: form` action (payload `action_id` / `fields` / `comment`; `action_type` + `workflow_type` build-time literals; returns `action_id` + `event_id`). The submit endpoint is left as-is.
+- **`makeWorkflowsConfig.js` / `makeActionPages.js`** (amend) — add `universal_fields` to the passthrough allowlist (`ACTION_FIELDS` / `ACTION_FIELDS_FOR_TEMPLATE`) so it reaches `action_config.universal_fields` (default `[assignees, due_date, description]`). Do **not** add `universal_fields_required`: it was proposed in review-1 but is dropped here and was never actually present in either allowlist, so there is nothing to remove.
+
+### Module
+
+- **`modules/workflows/components/universal-fields/universal-fields.yaml`** (new) — the reusable component (modes + the form-kind Update button calling the operation).
+- **`modules/workflows/module.lowdefy.yaml`** (amend) — add `user-account` to `dependencies`.
+
+### Concept-spec amendments
+
+- **[`action-authoring/spec.md`](../../../workflows-module-concept/action-authoring/spec.md)** — add `universal_fields` to the reserved-field table; remove `universal_fields_required`.
+- **[`engine/spec.md:132`](../../../workflows-module-concept/engine/spec.md)** — `description`: `string | null` → `{ text: string, html: string } | null`.
+- **[`engine/spec.md`](../../../workflows-module-concept/engine/spec.md)** — document the `UpdateActionFields` request type on the `WorkflowAPI` connection alongside the other handlers.
+
+## Consumed by (template/layout only — owned by other parts)
+
+These parts hold no API/plugin/resolver work for this surface — they compose the component and lay it out:
+
+- **[Part 16 (page-templates)](../_completed/16-page-templates/design.md)** — form templates lay content out as a two-column row (form card + universal-fields sidebar card) instead of a header band, gated on `universal_fields` being non-empty.
+- **[Part 39 (form-submit buttons)](../39-form-submit-buttons/design.md)** — **should** drop the `fields` key from the `submit` / `progress` button payloads and narrow the submit `Validate` regex from `[^form\., ^fields\.]` to `[^form\.]`. This is hygiene, not a correctness precondition: the kind-based guard means `planActionTransition.js` never writes the universal fields for `kind: form`, so a stray `fields` payload is ignored either way. Dropping it just stops form submit validating sidebar inputs it no longer owns and posting dead `_state.fields`. The two parts are therefore independent and can land in any order.
+- **[Part 17 (shared-pages)](../_completed/17-shared-pages/design.md)** — simple pages keep universal fields as primary content on `submit` (no behavioural change; `kind: task` references update to `kind: simple` per [Part 35](../35-rename-task-kind-to-simple/design.md)).
+
+> Parts 16 and 17 live in `_completed/`. Their template edits are deviations from already-implemented designs — handle as a follow-on task, not by reopening those folders.
 
 ## Out of scope / deferred
 
-- **Dedicated `-metadata` edit surface.** Considered and deferred. Adding a separate page or modal for "edit metadata after close" is purely additive — v1 routes post-close edits through the `edit` page with `required_after_close: true`. Revisit if real apps need it; the new surface would land as part 24.x.
-- **Separate `update_metadata` interaction.** Deferred per "Interaction model" above.
-- **Per-field role gating.** Deferred per "Role gating" above.
-- **Engine-side handler enforcement of `universal_fields_required`.** Deferred per Open questions; v1 relies on input-block validation only.
-- **Custom universal-field schemas per app.** v1 fixes the three fields. Apps that need additional action-level metadata add it to the form schema; promoting more fields to the universal band is a v1.x consideration.
-- **Authoring overrides for the universal fields' display chrome** (e.g. custom date format per action). Apps style globally via the layout module; per-action customization is not in v1.
+- **A fields operation for simple actions** (e.g. reassigning a `done` simple action without a transition). Simple kind writes fields on `submit` in v1. Emitting `update-action-fields-{action_type}` for simple actions too — for consistency — is additive when a real need surfaces.
+- **Save-on-change per field** (assignee dropdown writes immediately, Linear/Asana-style). v1 uses one Update button per sidebar card (one write, matches existing patterns). Per-field auto-save is a later UX refinement.
+- **`universal_fields_required` / mandatory metadata.** Dropped per above; re-add a per-field `required` flag when a consumer needs it.
+- **Tracker universal-fields UI.** No edit/view surface in v1 (see opening). Tracker fields are seeded from the parent at `StartWorkflow` and otherwise immutable in v1.
+- **Per-action display-chrome overrides** (custom date format per action). Apps style globally via the layout module.
+- **Custom universal-field schemas per app.** v1 fixes the three fields; extra action metadata goes in the form schema.
 
 ## Depends on
 
-- **[Part 5 (start/cancel handlers)](../_completed/05-start-cancel-handlers/design.md)** — the action doc shape these fields live on.
-- **[Part 6 (submit-action writes)](../_completed/06-submit-action-writes/design.md)** — handler reads / writes the fields.
-- **[Part 18 (entity-components)](../18-entity-components/design.md)** — `action_role_check` populates `_state.action_allowed` that gates the component's edit mode.
-- **[Part 24a (user-account selector + avatar)](../24a-user-account-selector-avatar/design.md)** — ships `user-selector` (migrated from user-admin) and the new `user-avatar` component; workflows depends on user-account to consume both.
+- **[Part 38 (engine rebuild)](../38-engine-rebuild/design.md)** — supplies the load-plan-commit + render helpers the `UpdateActionFields` handler reuses; this part adds the handler to it.
+- **[Part 5 (start/cancel handlers)](../_completed/05-start-cancel-handlers/design.md)** — the action doc shape these fields live on (seeded at `StartWorkflow`).
+- **[Part 18 (entity-components)](../18-entity-components/design.md)** — `action_role_check` populates `_state.action_allowed` gating the component's edit affordances.
+- **[Part 24a (user-account selector + avatar)](../24a-user-account-selector-avatar/design.md)** — `user-selector` + `user-avatar`.
+- **[Part 35 (rename `task` → `simple`)](../35-rename-task-kind-to-simple/design.md)** — every `kind: simple` reference in this design (the component table, the simple-page consumption row) is only coherent once Part 35 lands; the resolver still keys on `kind: task` until then. The `form`-emission path is unaffected by the rename. Sequence after Part 35 (Part 35 item 6 already flips this design's `task` references in place).
 
-## Consumers
-
-- **[Part 16 (page-templates)](../16-page-templates/design.md)** — form-action edit/view/review/error templates compose this component for the universal-fields band.
-- **[Part 17 (shared-pages)](../17-shared-pages/design.md)** — task pages compose this component as primary content (task-edit) or display (task-view, task-review).
+Consumers (Parts 16 / 17 / 39, template-only) are enumerated under "Consumed by" above.
 
 ## Verification
 
-- Unit / build-time:
-  - Component renders with `mode: edit` and inputs auto-bind to `_state.fields.*`.
+- Build-time / unit:
+  - Component renders `kind: form, mode: edit` as a sidebar card with an Update button bound to `update-action-fields-{action_type}`; `kind: simple, mode: edit` renders inputs with no own button.
   - `mode: display` renders read-only with placeholders for null/empty values.
-- Integration (covered by demo app):
-  - Form action's edit page submits both form fields and universal fields in one `submit_edit` payload; action doc shows the update.
-  - Task action's edit page renders universal fields as primary content with the status selector below.
-  - `required_after_close: true` keeps the band editable after terminal status.
-  - `_state.action_allowed === false` switches all inputs to read-only.
-- End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md).
+  - `show: []` / `universal_fields: false` omits the surface (form body spans full width).
+  - Enum/passthrough: `universal_fields` reaches `action_config.universal_fields` with the all-three default.
+- Integration (demo app):
+  - Form edit page: changing the assignee in the sidebar and clicking Update writes the action doc and **re-renders the status-map cell** (entity-page card shows the new assignee) without touching form data or the action's stage.
+  - Form submit (`submit` / `progress`) does **not** alter `assignees` / `due_date` / `description`.
+  - A `done` form action's universal fields are still editable via the sidebar.
+  - Simple edit page writes universal fields on `submit` as primary content.
+  - `_state.action_allowed === false` hides the Update button and renders inputs read-only.
+- End-to-end coverage lands in [Part 22](../22-workflows-e2e-suite/design.md).
 
 ## Open questions
 
-- **Tracker action authoring of universal fields.** Tracker actions don't have an edit page; how do their universal fields get set initially and edited later? Candidates: (a) on the parent form-action's edit page that spawned the tracker, (b) inline in `actions-on-entity` via a click-to-edit affordance, (c) a small modal launched from the tracker badge. v1 default: tracker universal fields are set on `StartWorkflow` if the parent action carries them through, and immutable otherwise. Revisit if apps need post-start tracker reassignments.
-- **Engine-side enforcement of `universal_fields_required`.** v1 relies on input-block validation (Part 16's `^fields\.` `Validate` regex). The submit handler does not check the flag — an API consumer hitting `update-action-{type}` directly with a missing required field will succeed. Add a handler-side check (and a matching error model) if a real API consumer surfaces the gap.
-- **`description` length and truncation affordance.** v1 ships full-height TiptapInput / Html rendering — long descriptions wrap, no truncate-with-expand. If real apps ship book-length descriptions and complain about page length, add a `line-clamp` + "show more" toggle in display mode (likely via an `Html` + `_state.description_expanded` flag, or a small custom block). Not promoting to a stricter affordance until somebody asks.
-- **Universal-field writes on form-kind actions — same endpoint as `submit_edit`, or split?** The current decision (under "Interaction model" above) is to keep universal-field writes on the same `submit_edit` interaction. That decision still holds for task-kind actions, where the universal fields are primary content. For form-kind actions, where the universal fields are a header band above a separate form body, it's worth considering whether the metadata write should split off into its own endpoint / interaction — for cleaner audit, finer-grained permission gating, or to let metadata edits land without re-running form validation. To be discussed separately. **If this resolves to a split for form-kind, finding #8 in [review-1](../24-universal-fields/review/review-1.md) needs to come back to "Resolved" — `kind: form` vs `kind: task` would then drive a real behavioural difference inside the component (which endpoint the submit-adjacent affordances target), and the var earns its keep.**
+- **Comment binding on the fields operation.** The Update button optionally posts a `comment` (mapped to `event.metadata.comment`). Whether the sidebar surfaces a comment field by default, or only when the action opts in, is a UI detail to settle when Part 16's sidebar layout is built. Default v1: no comment field on the sidebar; the operation accepts `comment` for callers that want it.
+- **Last-write-wins on concurrent fields updates.** The operation writes no workflow doc, so there's no CAS gate (Part 38 D15 defers per-action CAS). Two near-simultaneous metadata edits to the same action are last-write-wins. Acceptable for v1; add an action-level CAS filter to the bulkWrite if contention proves real.
 
 ## Contract to neighbours
 
-- **Parts 16 / 17** consume this component via `_ref`. They don't author universal-field inputs inline. Part 18 doesn't consume it in v1 — tracker rendering stays `status_map.message`-only (see Goal).
-- **Part 6 (handler)** reads `fields.{assignees, due_date, description}` from the payload and writes them to the action doc — already shipped per the reserved-field list in engine spec.
+- **This part owns** the `UpdateActionFields` handler, its planner, the `makeWorkflowApis` endpoint emission, the connection registration, the `universal_fields` passthrough, the submit-planner no-clobber guard, and the component. Parts 16 / 17 / 39 only render against this contract.
+- **Part 38** supplies the load-plan-commit + render helpers this part's handler reuses; this part adds the handler to Part 38's engine and amends its `planActionTransition.js` with the kind-based field write. **Part 38 must carry the existing universal-field `$set` (today inside the monolithic `SubmitWorkflowAction`) into `planActionTransition.js`** — Part 38's current spec for that planner (one line: "returns the planned post-commit action doc + change-log delta") does not pin where field-setting lives. Part 24 then constrains that `$set` to `kind: simple`; if Part 38 ships the planner without it, Part 24 owns adding it. Sequence after Part 38.
+- **Parts 16 / 17** consume the component via `_ref`; they don't author universal-field inputs inline. Part 18 doesn't consume it in v1 — tracker rendering stays `status_map.message`-only.
+- **Part 39** should stop sending `fields` in the `submit` / `progress` button payloads and narrow the submit `Validate` regex to `[^form\.]` (template-only) — hygiene, not correctness: the kind-based guard already keeps form submit from touching the universal fields, so the parts are independent (see "Consumed by").
