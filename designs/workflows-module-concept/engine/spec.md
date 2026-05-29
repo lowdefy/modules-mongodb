@@ -14,8 +14,8 @@ src/connections/WorkflowAPI/
   SubmitWorkflowAction/
     SubmitWorkflowAction.js          # handler entry point
     handleSubmit.js                  # lifecycle orchestration (validate → pre-hook → writes → side effects → post-hook)
-    invokePreHook.js                 # context.callApi to action.hooks[interaction].pre
-    invokePostHook.js                # context.callApi to action.hooks[interaction].post
+    invokePreHook.js                 # context.callApi to action.hooks[signal].pre
+    invokePostHook.js                # context.callApi to action.hooks[signal].post
     computeAutoUnblocks.js           # walks blocked_by, identifies actions to unblock
     dispatchLogEvent.js              # context.callApi to events.new-event with merged event payload
     dispatchNotifications.js         # context.callApi to notifications.send-notification
@@ -123,7 +123,7 @@ Connection lifecycle, change-log writes (the `changeLog` block on the connection
 | `_id`                            | string         | server-generated                                                                     |
 | `workflow_id`                    | string         | parent workflow's `_id`                                                              |
 | `type`                           | string         | from YAML                                                                            |
-| `kind`                           | string         | `form` \| `task` \| `tracker`                                                        |
+| `kind`                           | string         | `form` \| `simple` \| `tracker`                                                      |
 | `key`                            | string \| null | for fan-out actions (non-tracker); domain id like a device serial                    |
 | `status`                         | array          | history, newest at index 0                                                           |
 | `entity_id`, `entity_collection` | various        | matches parent workflow                                                              |
@@ -167,17 +167,16 @@ form_data: {
 
 `error` is a purely **author-driven** domain stage. Engine sub-step failures do not write an `error` transition — they throw, and the throw propagates to `CallApi` (rationale and partial-write retry semantics in [Part 29 § D1](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)).
 
-Three entry paths push an action into `error`:
+Two entry paths push an action into `error` (both form and simple kind):
 
-- **Pre-hook return.** A pre-hook can include `actions: [{ ..., status: 'error' }]` in its return ([submit-pipeline § Pre-hook return](../submit-pipeline/spec.md#pre-hook-return-all-fields-optional)). No `force` is needed — `error.priority = 1` is below every non-terminal stage, so the priority rule allows the write.
-- **Simple `submit_edit` with caller-supplied status.** Simple actions whose `simple.statuses:` list includes `error` can be transitioned to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`. The engine's `submit_edit` resolver returns whatever `current_status` the caller sends for simple actions; `simple.statuses:` is a UI gate on the selector, not an engine-side validator. Priority rule allows the write.
+- **Pre-hook `error` signal.** A pre-hook fires `error` against *another* action via `actions: [{ type, signal: error }]` ([submit-pipeline § Pre-hook return](../submit-pipeline/spec.md#pre-hook-return-all-fields-optional)). The form/simple FSM accepts `error` from every non-terminal state (`action-required`, `in-progress`, `in-review`, `changes-required`, `blocked`) → `error`. This replaces the v0 `{ ..., status: 'error' }` return. There is no way to error the *current* action from its own pre-hook — to fail a submission, `:reject` / `throw` instead.
 - **External systems.** Out-of-band processes (backend microservices, scheduled lambdas) write directly to the action doc, or in future will go through a follow-on injection API.
+
+The engine never sets `error` itself — engine sub-step failures **throw**, surfacing as an API-level reject/error toast (submit-pipeline), not an action-status transition.
 
 Status entries are uniform `{ stage, created, event_id }` — there are no polymorphic `{ reason, error_message, error_metadata }` fields. Diagnostic context lives on the `events` collection entry written by step 7, carried via `event_overrides.metadata` on the pre-hook return (same channel as every other status push).
 
-**Force-write** is used by the recovery transition only. The `-error` page submit posts `interaction: resolve_error`; the handler internally writes the recovery transition with `force: true` (the only `force` on the recovery leg — invisible to authors). The asymmetry is deliberate: many entry sites can push `error` frictionlessly through the priority path; recovery happens from one well-defined site that can carry its own `force`. See [Part 29 § D4](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d4-why-we-keep-the-priority-table).
-
-**Recovery.** A normal submission from the `-error` page — the user clicks the template-shipped `resolve_error` button, which calls the per-action endpoint with `interaction: resolve_error`. On success, engine writes the recovery transition (target status defaults to the same as `submit_edit` — see submit-pipeline Decision 3); the previous `{ stage: error, ... }` entry stays in the status array as audit history. No `form_data` cleanup needed.
+**Recovery.** A normal submission from the `-error` page — the user clicks the template-shipped `resolve_error` button, which calls the per-action endpoint with `signal: resolve_error`. The form FSM resolves `error → resolve_error → in-review` ([state-machine](../state-machine/design.md)); the previous `{ stage: error, ... }` entry stays in the status array as audit history. No `force`, no special-cased recovery leg — `resolve_error` is an ordinary signal with an ordinary FSM transition. No `form_data` cleanup needed.
 
 ### Indexes
 
@@ -193,8 +192,8 @@ The engine does not assert these at runtime; the dispatcher delegates every read
 ## Capabilities
 
 - **`StartWorkflow`** writes a workflow doc + N action docs. When `parent_action_id` is in the payload, the engine validates the action exists, is `kind: tracker`, and isn't already linked (`child_workflow_id` is null), then writes the new workflow's `parent_action_id` / `parent_entity_id` / `parent_entity_collection` (latter two read from the parent action's `entity_id` / `entity_collection`) and the parent tracker action's `child_workflow_id` (the new workflow's `_id`) / `child_entity_id` / `child_entity_collection` + `in-progress` transition. All writes share the same handler invocation.
-- **`SubmitWorkflowAction`** writes one or more action transitions per call. Payload uses `keys: [...]` plural; the plugin flat-maps over `keys` (omitted → one op `key: null`; `[]` → zero ops; `[k]` → one op `key: k`; `[k1,k2,...]` → N ops). On-disk action docs keep singular `key`. After action writes, recomputes affected `groups[]` statuses and writes them to the workflow doc; re-evaluates every blocked action's `blocked_by` against the new state and pushes `action-required` on those whose dependencies are now terminal; runs auto-complete check (all actions terminal → push `completed` to workflow status); fires tracker subscription if workflow status changed; recomputes workflow-level `summary` (eager writeback). Returns `{ action_ids, completed_groups, event_id, tracker_fired, pre_hook_response, post_hook_response }` on success — `completed_groups` lists groups that transitioned to `done` in this call; the engine fans out one `context.callApi` per `on_complete` engine-internally as step 11 of the submit-pipeline lifecycle (see action-groups Decision 6, submit-pipeline Decision 1). **Failures throw** — there is no failure-return shape, no `error_transition` / `hook_error` / `post_hook_error` fields. Sub-step throws propagate to `CallApi`; the user retries the same submit and the priority rule converges (see [Part 29 § D1, § D6](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)).
-- **`CancelWorkflow`** pushes `cancelled` to workflow status; flips remaining open actions on the workflow to `not-required`. References at the call level spread onto the workflow doc on the cancelled push.
+- **`SubmitWorkflowAction`** resolves one or more signals against the FSM per call. Payload uses `keys: [...]` plural; the plugin flat-maps over `keys` (omitted → one op `key: null`; `[]` → zero ops; `[k]` → one op `key: k`; `[k1,k2,...]` → N ops). On-disk action docs keep singular `key`. For each staged signal it resolves `transitions[kind][currentStatus][signal]` and writes the resulting status (an unlisted cell no-ops, no write). After action writes, recomputes affected `groups[]` statuses and writes them to the workflow doc; re-evaluates every blocked action's `blocked_by` against the new state and fires `unblock` on those whose dependencies are now terminal; runs auto-complete check (all actions terminal → push `completed` to workflow status); fires tracker subscription if workflow status changed; recomputes workflow-level `summary` (eager writeback). Returns `{ action_ids, completed_groups, event_id, tracker_fired, pre_hook_response, post_hook_response }` on success — `completed_groups` lists groups that transitioned to `done` in this call; the engine fans out one `context.callApi` per `on_complete` engine-internally as step 11 of the submit-pipeline lifecycle (see action-groups Decision 6, submit-pipeline Decision 1). **Failures throw** — there is no failure-return shape, no `error_transition` / `hook_error` / `post_hook_error` fields. Sub-step throws propagate to `CallApi`; the user retries the same submit and the FSM idempotency guards converge (see [Part 29 § D1, § D6](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d1-why-throwing-is-safer-than-force-writing-error)).
+- **`CancelWorkflow`** pushes `cancelled` to workflow status; emits the `internal_cancel_action` signal against every open action on the workflow (the form/simple/tracker FSMs resolve it to `not-required` from any non-terminal state). References at the call level spread onto the workflow doc on the cancelled push.
 - **Universal action fields** (`assignees`, `due_date`, `description`) flow through `SubmitWorkflowAction` payload's `actions[].fields`. Merged into per-action `$set` atomically with the status transition. `null` clears; omitted leaves unchanged.
 - **Access enforcement** — runs the per-app verb filter + role gate from action-authoring Decision 3 ("Action access semantics") at two server-side points: (1) **`get-entity-workflows`** filters returned actions by host app's verb map and intersects caller's `_user: roles` with `access.roles`. (2) **`SubmitWorkflowAction` handler** re-checks role gate before writes; rejects with structured error on mismatch (role revoked between render and submit). Verb-filter check at submit-time is implicit (page wouldn't have been generated if verb wasn't allowed in current app).
 
@@ -202,18 +201,16 @@ The engine does not assert these at runtime; the dispatcher delegates every read
 
 ```
 {
-  currentActionId: string | null,    // the action the user submitted on; same as the per-action endpoint's action_id (submit-pipeline)
+  currentActionId: string | null,    // the action the user fired the signal against; same as the per-action endpoint's action_id (submit-pipeline). The current action lands per that fired signal; a pre-hook cannot re-signal it.
   actions: [
-    { type, status, keys?, fields?, references?, force? }
-                                     //   force: optional per-entry bypass of the priority rule
-                                     //   for that entry only (used by submit-pipeline pre-hook
-                                     //   actions[]; see submit-pipeline Decision 4).
-                                     //   Per-entry is the only force surface — no top-level force
-                                     //   on the handler payload. Engine-internal force-pushes
-                                     //   (error transition, tracker subscription, StartWorkflow's
-                                     //   parent-link push, CancelWorkflow's sweep) call
-                                     //   updateAction(...force: true) directly rather than
-                                     //   reconstructing a handler payload.
+    { type, signal, keys?, fields?, references?, upsert?, status? }
+                                     //   signal: the named signal to resolve against this target's
+                                     //     FSM (transitions[kind][currentStatus][signal]); unlisted
+                                     //     cell = silent no-op. No `force` — the FSM no-op replaces
+                                     //     the priority bypass.
+                                     //   status: ONLY for upsert spawns — the initial status of a
+                                     //     newly-created keyed instance (creation seed, not a transition).
+                                     //   upsert: when true, creates a new keyed instance in `status`.
   ],
   eventId: string,                   // generated by SubmitWorkflowAction on entry; threaded through every write in this invocation
 }
@@ -246,21 +243,28 @@ Reserved keys: `_id`, `workflow_id`, `type`, `entity_id`, `entity_collection`, `
 
 ## Tracker subscription
 
-**Terminology.** A tracker action lives on a parent workflow with `kind: tracker` and a `tracker:` block. It mirrors a child workflow. Data flow is **child → parent**: child status changes drive parent action status writes via the hard-coded child-stage map.
+**Terminology.** A tracker action lives on a parent workflow with `kind: tracker` and a `tracker:` block. It mirrors a child workflow. Data flow is **child → parent**: a child status change emits the matching `internal_mirror_child_*` signal against the parent tracker action (via the hard-coded child-stage → tracker signal map), which the tracker FSM resolves.
 
-**Child-stage map** (fixed by the module; apps cannot override per action):
+**Child-stage → tracker signal map** (fixed by the module; apps cannot override per action). Each child stage maps to a `internal_mirror_child_*` signal; the tracker kind's FSM table ([state-machine](../state-machine/design.md)) maps each signal to the parent status, conditional on the tracker's current state:
 
-| Child workflow stage | Parent tracker action stage |
-| -------------------- | --------------------------- |
-| `active`             | `in-progress`               |
-| `completed`          | `done`                      |
-| `cancelled`          | `not-required`              |
+| Child workflow stage | Tracker signal emitted            | Tracker target (typical) |
+| -------------------- | --------------------------------- | ------------------------ |
+| `active`             | `internal_mirror_child_active`    | `in-progress`            |
+| `completed`          | `internal_mirror_child_completed` | `done`                   |
+| `cancelled`          | `internal_mirror_child_cancelled` | `not-required`           |
 
-**Mechanism**: synchronous in-process within `SubmitWorkflowAction`. When the handler writes a workflow's `status[0].stage` (via auto-complete or `CancelWorkflow`), it reads the workflow's `parent_action_id` and fetches the tracker action by primary key. If the new stage maps to a target, the tracker action is updated via an inner `updateAction` call with `force: true` (tracker writes bypass the priority rule).
+**Mechanism**: synchronous in-process within `SubmitWorkflowAction`. When the handler writes a workflow's `status[0].stage` (via auto-complete or `CancelWorkflow`), it reads the workflow's `parent_action_id` and fetches the tracker action by primary key. If the new stage maps to a signal, the engine emits that signal against the tracker action via an inner `emitSignal` call (no `force`). The tracker FSM accepts `internal_mirror_child_*` from `done` / `not-required` too, so a child that re-activates or completes after the tracker had landed terminal recovers the parent — the backward-move case the priority-rule model needed `force` for. An unlisted cell no-ops silently.
 
 **Pseudo-code:**
 
 ```js
+// Child workflow stage → the tracker signal the engine emits against the parent.
+const CHILD_STAGE_SIGNAL = {
+  active: "internal_mirror_child_active", // → in-progress
+  completed: "internal_mirror_child_completed", // → done
+  cancelled: "internal_mirror_child_cancelled", // → not-required
+};
+
 async function pushWorkflowStatus(context, workflowId, newStage, eventId) {
   const { mongoDBConnection } = context;
   const current = await mongoDBConnection("workflows").MongoDBFindOne({
@@ -279,15 +283,16 @@ async function pushWorkflowStatus(context, workflowId, newStage, eventId) {
   });
   if (!tracker) return;
 
-  const targetStage = CHILD_STAGE_MAP[newStage];
-  if (!targetStage) return;
+  const signal = CHILD_STAGE_SIGNAL[newStage];
+  if (!signal) return; // unmapped child stage → no signal, no parent update
 
-  await updateAction(context, {
+  await emitSignal(context, {
     currentActionId: null,
-    actions: [{ type: tracker.type, key: tracker.key, status: targetStage }],
-    eventId,
-    force: true,
+    actions: [{ type: tracker.type, key: tracker.key, signal }],
+    eventId, // reuse the same eventId — the tracker update is part of this transition
   });
+  // No `force`. emitSignal resolves transitions[tracker.kind][tracker.status][signal];
+  // an unlisted entry no-ops silently.
 }
 ```
 
@@ -295,40 +300,40 @@ async function pushWorkflowStatus(context, workflowId, newStage, eventId) {
 
 ## Idempotency
 
-- **Action status pushes** are guarded by the priority rule. Retrying a `done` push on an already-`done` action is rejected automatically (strict-less-than).
-- **Workflow status pushes** have no priority ordering. Guarded by a same-stage no-op check at the top of `pushWorkflowStatus` — reads `status[0].stage`, returns early if it equals the new stage. Prevents duplicate `$push` and double-firing tracker subscription on retry.
+- **Action signal emissions** are guarded by the FSM tables (see "Signal-driven FSM transitions"). Re-firing a signal against an action that has already moved past the signal's reach resolves to an undefined cell and writes nothing — e.g. re-firing `approve` against a `done` action (`done` has no `approve` transition) is a silent no-op; re-firing `unblock` against an already-unblocked `action-required` action is a silent no-op. This re-fire safety is the structural guarantee the priority rule used to provide; the protection is automatic from the table.
+- **Workflow status pushes** are not signal-driven and not covered by the FSM. Guarded by a same-stage no-op check at the top of `pushWorkflowStatus` — reads `status[0].stage`, returns early if it equals the new stage. Prevents duplicate `$push` and double-firing tracker subscription on retry.
 - **Submit retry is safe end-to-end:** the engine's idempotency guards converge to the same state; the side-effect steps inside `SubmitWorkflowAction` (log event, notifications dispatch) are the leaky cases — known cost, duplicate events / notifications on retry.
 
-## Priority rule
+## Signal-driven FSM transitions
 
-A status transition is allowed when the new status's priority is strictly less than the current. Exceptions:
+Every status mutation is the result of a named **signal** fired against an action. The plugin's transition resolver reads the action's `kind` and current `status[0].stage`, then looks up `transitions[kind][currentStatus][signal]` ([state-machine](../state-machine/design.md) owns the per-kind tables):
 
-- `currentActionId` self-exception: same-stage allowed for the one action the user submitted on.
-- `force: true` per-entry: bypasses the priority rule and the universal-terminal exception for that entry only. Used by submit-pipeline pre-hook `actions[]` for replay / rollback scenarios.
-- `not-required` (priority 0) is the universal terminal — only per-entry `force: true` moves it.
+- **A listed cell** gives the new status; the engine writes it.
+- **An unlisted cell** is a silent no-op — no write, no error. This replaces the priority rule's strict-less-than ordering: re-fires against states past a signal's reach (and signals against terminal states) can't regress an action.
 
-`currentActionId` carries the user-submitted action's id — the per-action endpoint's `action_id` payload field maps directly to `currentActionId` inside the handler.
+`currentActionId` carries the user-fired action's id — the per-action endpoint's `action_id` payload field maps directly to `currentActionId` inside the handler. The current action lands per the signal the user fired; a pre-hook cannot re-signal it. Every `actions[]` entry names its own *other* target and signal.
 
-**Per-entry is the only force surface.** There is no top-level `force` on the `SubmitWorkflowAction` payload. Engine-internal force-pushes split by mechanism:
+**Three emitters, one resolution.** Signals come from (1) user button clicks, (2) engine cascades (`unblock` on `blocked_by` satisfaction, `internal_mirror_child_*` from the tracker subscription, `internal_cancel_action` from `CancelWorkflow`), and (3) pre-hook `actions[]` entries against other actions. All resolve through the same FSM lookup. There is no separate user-driven-vs-auxiliary code path — the old `currentActionId` self-exception is gone (the tables list same-state transitions explicitly where wanted, e.g. `in-progress → progress → in-progress`).
 
-- **Per-doc force via `updateAction(...force: true)`** — `resolve_error` recovery transition (handler-internal write on `interaction: resolve_error`), tracker subscription's parent push, `StartWorkflow`'s parent-link push. These are single-doc writes that need the helper's write-shape uniformity (event-stamp threading, status entry construction). The submit pipeline's catch-converter that previously force-wrote `error` transitions on mid-step throws was removed by [Part 29](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md) — sub-step failures now propagate.
-- **Bulk bypass via `MongoDBUpdateMany`** — `CancelWorkflow`'s sweep, `CloseWorkflow`'s sweep. The bulk dispatcher is the only Mongo path that doesn't run through `updateAction`, so it bypasses the priority rule by structure rather than by flag. Sweeps prefer this for the one-round-trip vs N-round-trip win.
+**Unknown signal names throw.** The signal vocabulary is engine-locked in v1, so the handler has the complete known-signal list at entry. A signal name not in that list is a programming error and throws (same posture as a missing `actions[]` target) — distinct from an *unlisted transition* (known signal, state doesn't accept it), which is the meaningful silent no-op.
 
-Both mechanisms are inside the handler invocation — neither re-enters through the `SubmitWorkflowAction` payload surface.
+**No `force: true`.** All mutations go through the FSM; there is no per-call or per-entry bypass. Migrations and admin overrides stay out-of-band (direct DB writes). Engine-internal write paths use explicit `internal_*` signals declared in the FSM tables (`internal_cancel_action`, `internal_mirror_child_*`) — the backward moves tracker writes used to need `force` for (e.g. a child uncancelling to push the parent `not-required → in-progress`) are now listed transitions in the tracker table.
+
+**`priority` is display-only.** The module-shipped status enum still orders the eight statuses for pickers and visualizations, but `priority` numbers no longer drive transition legality.
 
 ## Ordering inside one `SubmitWorkflowAction` invocation
 
 The full 11-step lifecycle (validate → pre-hook → writes → side effects → post-hook → return) is owned by [submit-pipeline Decision 1](../submit-pipeline/design.md#decision-1--submitworkflowaction-replaces-updateworkflowactions). Engine ownership inside that lifecycle covers steps 1, 3–8, 12 (validation, auto-unblock computation, action transitions, summary + groups recompute, form_data writes, workflow-doc updates, tracker subscription). The internal write-ordering for the engine's contribution:
 
-1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, role gate passes for the interaction. (Submit-pipeline lifecycle step 1.)
-2. **Compute auto-unblocks.** Walk the workflow's `blocked_by` graph; identify actions whose dependencies are now terminal. Merge pre-hook `actions[]` (precedence) with auto-unblocks. (Lifecycle steps 3–4.)
-3. **Write action transitions** (priority rule applies; per-entry `force` bypasses). (Lifecycle step 5.)
+1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, role gate passes for the signal, signal name is known (unknown signal names throw — see "Signal-driven FSM transitions"). (Submit-pipeline lifecycle step 1.)
+2. **Compute auto-unblocks.** Walk the workflow's `blocked_by` graph; for each action whose dependencies are now terminal, stage an `unblock` signal. Merge pre-hook `actions[]` signals (precedence) with auto-unblocks. (Lifecycle steps 3–4.)
+3. **Resolve and write action transitions.** For each staged signal, resolve `transitions[kind][currentStatus][signal]`; write the resulting status (unlisted cell = no-op, no write). (Lifecycle step 5.)
 4. **Recompute affected groups' statuses**; write `groups[]` back to the workflow doc (action-groups Decision 4). (Lifecycle step 6.)
-5. **Re-evaluate `blocked_by`** for every blocked action against the new group/action state; push `action-required` on those whose dependencies are now terminal (action-groups Decision 2).
+5. **Re-evaluate `blocked_by`** for every blocked action against the new group/action state; fire `unblock` on those whose dependencies are now terminal (action-groups Decision 2).
 6. **Auto-complete check** on the workflow if all actions are terminal — push `completed` to workflow status. Re-run after step 5.
 7. **Write `form_data`** per-field `$set` (engine Decision 5 layout); write workflow-doc updates (summary, groups, form_data) in one Mongo update where possible. (Lifecycle steps 7–8.)
 8. **Generate log event** + **dispatch notifications** + **fire group `on_complete` pipelines** for any groups that transitioned to `done` in step 4 — all via `context.callApi` (submit-pipeline Decision 6). (Lifecycle steps 9–11.)
-9. **Tracker subscription**: if step 6 pushed a workflow status, run the synchronous in-process subscription via internal `updateAction` recursion (Decision 3). (Lifecycle step 12.)
+9. **Tracker subscription**: if step 6 pushed a workflow status, run the synchronous in-process subscription via internal `emitSignal` recursion firing the `internal_mirror_child_*` signal against the parent tracker action (Decision 3). (Lifecycle step 12.)
 10. **Recompute the workflow's `summary`** (eager writeback).
 11. **Return** `{ action_ids, completed_groups, event_id, tracker_fired?, pre_hook_response?, post_hook_response? }` — `completed_groups` lists groups that transitioned to `done` in step 4; `tracker_fired` is populated when step 9 propagated to a parent.
 
@@ -343,19 +348,19 @@ Summary recompute is idempotent — nested recursion may recompute the same work
 - **Workflow A** on a `lead` (`entity_collection: leads-collection`). Two actions: `qualify` (form, `in-review`) and `track-installation` (tracker, `in-progress`, `child_workflow_id: Workflow B._id`, `child_entity_id: ticket._id`, `child_entity_collection: tickets-collection`, `tracker.workflow_type: device-installation`). `parent_*` fields null.
 - **Workflow B** on a `ticket` (`entity_collection: tickets-collection`), `workflow_type: device-installation`. One action: `install-device` (form, `in-review`). `status = [{active}]`, `parent_action_id: track-installation._id`, `parent_entity_id: lead._id`, `parent_entity_collection: leads-collection`.
 
-**User submits `install-device` → `done`** via `update-action-install-device` (per-action endpoint, submit-pipeline). The endpoint passes `action_id` straight through to `SubmitWorkflowAction`, which generates `eventId E1` on entry.
+**A reviewer approves `install-device`** via `update-action-install-device` (per-action endpoint, submit-pipeline) with `signal: approve`. The endpoint passes `action_id` straight through to `SubmitWorkflowAction`, which generates `eventId E1` on entry; the form FSM resolves `in-review → approve → done`.
 
 **Trace:**
 
 ```
-updateAction(currentActionId=install-device._id, actions=[{type: install-device, status: done}], eventId=E1)
-├─ step 3 (write transitions): install-device.status = done
+emitSignal(currentActionId=install-device._id, actions=[{type: install-device, signal: approve}], eventId=E1)
+├─ step 3 (resolve+write): form FSM in-review → approve → done; install-device.status = done
 ├─ step 6 (auto-complete check): B fully terminal → pushWorkflowStatus(B, 'completed', E1)
 │   ├─ same-stage guard: B.status[0]='active' ≠ 'completed' → proceed
 │   ├─ writeWorkflowStatus(B, 'completed')
 │   ├─ step 9 (tracker subscription): load tracker by B.parent_action_id (primary-key)
-│   └─ updateAction(actions=[{type: track-installation, status: done}], eventId=E1, force=true)
-│       ├─ step 3 (write transitions): track-installation.status = done
+│   └─ emitSignal(actions=[{type: track-installation, signal: internal_mirror_child_completed}], eventId=E1)
+│       ├─ step 3 (resolve+write): tracker FSM in-progress → internal_mirror_child_completed → done; track-installation.status = done
 │       ├─ step 6 (auto-complete check): A not terminal (qualify still in-review) → no pushWorkflowStatus
 │       └─ step 10 (summary recompute): recomputeSummary(A) → { done: 1, not_required: 0, total: 2 }
 └─ step 10 (summary recompute): recomputeSummary(B) → { done: 1, not_required: 0, total: 1 }
@@ -363,7 +368,7 @@ updateAction(currentActionId=install-device._id, actions=[{type: install-device,
 
 **End state.** B auto-completed; A unchanged status array (qualify still in-review); A's summary reflects track-installation now done. One `eventId` across all writes.
 
-**Retry.** A retried submit produces no duplicate writes: priority rule no-ops the action push; same-stage guard no-ops the workflow push; tracker doesn't refire; summary recompute is idempotent.
+**Retry.** A retried submit produces no duplicate writes: re-firing `approve` against the now-`done` action resolves to an undefined FSM cell → silent no-op; same-stage guard no-ops the workflow push; tracker doesn't refire; summary recompute is idempotent.
 
 ## Open questions (in scope; deferred)
 

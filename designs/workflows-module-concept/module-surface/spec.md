@@ -10,7 +10,7 @@ version: 0.1.0
 description: >
   Multi-workflow engine: parallel workflow instances on one entity, declarative
   blocked_by dependencies, engine-orchestrated submit lifecycle
-  (SubmitWorkflowAction handler with per-interaction pre/post hooks) reached
+  (SubmitWorkflowAction handler with per-signal pre/post hooks) reached
   via resolver-generated per-action endpoints, per-action pages generated at
   build time from app-supplied workflow YAML.
 
@@ -147,14 +147,14 @@ Three separate connections are exported by design:
 | API                     | Purpose                                                                                                                                                                                                                                                                                       |
 | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `start-workflow`        | Instantiate a workflow on an entity. Optional `parent_action_id` writes parent/child link atomically.                                                                                                                                                                                         |
-| `cancel-workflow`       | Push `cancelled` to workflow status; flip remaining open actions to `not-required`.                                                                                                                                                                                                           |
+| `cancel-workflow`       | Push `cancelled` to workflow status; emit `internal_cancel_action` against every open action (FSM resolves to `not-required`).                                                                                                                                                                 |
 | `close-workflow`        | Push `completed` to workflow status (user-initiated normal termination); sweep non-terminal actions to `not-required` while honoring `required_after_close: true`. Owned by [parts 19 + 23](../../workflows-module/parts/23-close-workflow-handler/design.md).                                |
 | `get-entity-workflows`  | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Filters by access (per-app verb map + role gate, action-authoring spec "Access"). Returned workflow docs carry persisted `groups[]` array (engine-written).                                               |
 | `get-workflow-overview` | Return one workflow doc + its actions ordered for display. Consumed by the shipped `workflow-overview` page. Filters actions by access (same rules as `get-entity-workflows`). Returns one row per action (one per instance for keyed actions), ordered by `display_order` then `sort_order`. |
 
-**Submit endpoints.** Per-action `update-action-{action_type}` endpoints are emitted by the `makeWorkflowApis` resolver — owned by [submit-pipeline](../submit-pipeline/spec.md). The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals. Template-shipped buttons on per-action pages call the endpoint with an `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves the target status per submit-pipeline Decision 3.
+**Submit endpoints.** Per-action `update-action-{action_type}` endpoints are emitted by the `makeWorkflowApis` resolver — owned by [submit-pipeline](../submit-pipeline/spec.md). The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks (both keyed by signal) baked in as build-time literals. (The v0 `interactions:` block — per-interaction status overrides — is dropped; the FSM determines the target.) Template-shipped buttons on per-action pages call the endpoint with a `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves the transition via the action's FSM ([state-machine](../state-machine/design.md), engine "Signal-driven FSM transitions").
 
-Migrations and admin tools that need `force: true` call the `SubmitWorkflowAction` handler directly via a privileged route gated by app-level access control.
+There is no `force: true`. Migrations and admin overrides that need to bypass the FSM stay out-of-band (direct DB writes), same as today.
 
 ## `start-workflow` payload
 

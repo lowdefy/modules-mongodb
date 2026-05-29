@@ -122,7 +122,7 @@ Ordered steps (extending engine sub-design's existing ordering):
 
 `completed_groups` is populated only when step 2 transitioned a group from any other status to `done`. Already-`done` groups don't appear. Retry of an idempotent `SubmitWorkflowAction` call produces `completed_groups: []` because step 2 no-ops.
 
-**Idempotency.** Step 2 is idempotent (writing the same `groups[]` produces the same state). Step 3 is idempotent (priority rule no-ops repeated stage pushes). Step 7's `completed_groups` is computed from actual transitions; retries don't re-fire hooks.
+**Idempotency.** Step 2 is idempotent (writing the same `groups[]` produces the same state). Step 3 is idempotent (the FSM no-ops repeated `unblock` re-fires — an already-unblocked `action-required` action has no `unblock` transition). Step 7's `completed_groups` is computed from actual transitions; retries don't re-fire hooks.
 
 ## `on_complete` invocation — engine-internal fan-out (submit-pipeline)
 
