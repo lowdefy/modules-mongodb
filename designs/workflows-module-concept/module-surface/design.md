@@ -23,7 +23,7 @@ version: 0.1.0
 description: >
   Multi-workflow engine: parallel workflow instances on one entity, declarative
   blocked_by dependencies, engine-orchestrated submit lifecycle
-  (SubmitWorkflowAction handler with per-interaction pre/post hooks) reached
+  (SubmitWorkflowAction handler with per-signal pre/post hooks) reached
   via resolver-generated per-action endpoints, per-action pages generated at
   build time from app-supplied workflow YAML.
 
@@ -40,7 +40,7 @@ exports:
       description: Form-action error display. Generated per form action (always, alongside any other generated verb pages).
     # Module-level shared pages (simple actions — one of each, addressed by ?action_id=<id>)
     - id: simple-edit
-      description: Generic simple-action edit page (status selector + assignees + due_date + comment). Shared across all simple actions.
+      description: Generic simple-action edit page (assignees + due_date + comment + the submit / progress / not_required signal buttons). Shared across all simple actions.
     - id: simple-view
       description: Generic simple-action read-only view (status timeline + comments). Shared across all simple actions.
     - id: simple-review
@@ -195,7 +195,7 @@ secrets:
 
 ### Notes on the surface
 
-**Submit-side composition lives in the `SubmitWorkflowAction` plugin handler** (submit-pipeline). The module exposes one resolver-generated `update-action-{action_type}` endpoint per form / simple action; template-shipped buttons on each per-action page call those endpoints with an `interaction` value. Authors don't write submit routines — they declare per-interaction pre/post hooks on the action YAML and let the engine drive the lifecycle.
+**Submit-side composition lives in the `SubmitWorkflowAction` plugin handler** (submit-pipeline). The module exposes one resolver-generated `update-action-{action_type}` endpoint per form / simple action; template-shipped buttons on each per-action page call those endpoints with a `signal` value. Authors don't write submit routines — they declare per-signal pre/post hooks on the action YAML and let the engine drive the lifecycle.
 
 **No `menus:` export.** Unlike `contacts` and `companies`, the workflows module doesn't ship a default navigation menu. Workflow pages are accessed via deep-links from the `actions-on-entity` component on each entity's view page, not via top-level navigation. Apps that want a "workflows inbox" or "my actions" view build it themselves as an app page that queries the actions collection directly.
 
@@ -224,7 +224,7 @@ The module ships four operational Lowdefy `Api` endpoints, plus a resolver-gener
 
 ### Submit endpoints (owned by submit-pipeline)
 
-The `update-action-{action_type}` per-action endpoint, the `SubmitWorkflowAction` plugin handler that runs the engine-orchestrated lifecycle, the interaction → status resolution, pre/post hook contracts, log-event override paths, notifications dispatch, and tracker-fired signal all live in submit-pipeline. The first three operational APIs above are specified in Decision 3 / Decision 4 below; submit-related decisions belong in submit-pipeline.
+The `update-action-{action_type}` per-action endpoint, the `SubmitWorkflowAction` plugin handler that runs the engine-orchestrated lifecycle, the signal/FSM transition resolution, pre/post hook contracts, log-event override paths, notifications dispatch, and tracker-fired signal all live in submit-pipeline (transition model in [state-machine](../state-machine/design.md)). The first three operational APIs above are specified in Decision 3 / Decision 4 below; submit-related decisions belong in submit-pipeline.
 
 ## Decision 3 — `start-workflow` payload contract
 
@@ -286,7 +286,7 @@ The single `submit-action` API that earlier drafts of this sub-design exposed ha
 
 **Per-action endpoint shape:** see [submit-pipeline Decision 2](../submit-pipeline/design.md#decision-2--per-action-update-action-action_type-resolver) for the canonical YAML the resolver emits.
 
-**Author-supplied hooks per interaction:** declared on the action YAML under `hooks:` — see [submit-pipeline Decision 4](../submit-pipeline/design.md#decision-4--pre-and-post-hooks-at-action-root) and the `hook.auth.roles ⊇ action.access.roles` build-time validation.
+**Author-supplied hooks per signal:** declared on the action YAML under `hooks:` (keyed by button-surfaced signal name) — see [submit-pipeline Decision 4](../submit-pipeline/design.md#decision-4--pre-and-post-hooks-at-action-root) and the `hook.auth.roles ⊇ action.access.roles` build-time validation.
 
 **Pre/post hook payload + return contracts, log-event shape, notifications dispatch, tracker-fired signal:** all owned by submit-pipeline.
 

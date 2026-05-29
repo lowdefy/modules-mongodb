@@ -110,7 +110,7 @@ Group status is a **derived** value: the engine computes it from the actions in 
 
 **Empty groups.** A group with no actions is `done` by convention — no work to wait on. Matches author intent: declaring an empty placeholder group and seeing it as `done` is the least surprising behaviour. Build-time validation MAY warn on empty groups but doesn't error.
 
-**No `action_statuses` reuse.** Mapping action priorities to a group status would invent semantics that don't exist (what's the "priority" of a group with a mix of `done` and `blocked`?). The three-value enum captures exactly what matters for downstream logic: "did this group complete?" (`done`), "is something happening in it?" (`in-progress`), "is it untouched?" (`blocked`). Nothing else queries group status.
+**No `action_statuses` reuse.** Folding the eight-status action enum into a group status would invent semantics that don't exist (what does a group with a mix of `done` and `blocked` actions resolve to?). The three-value enum captures exactly what matters for downstream logic: "did this group complete?" (`done`), "is something happening in it?" (`in-progress`), "is it untouched?" (`blocked`). Nothing else queries group status.
 
 **Cancelled workflows.** When `CancelWorkflow` flips all open actions to `not-required`, every group lands at `done` (every action terminal, group non-empty). The `on_complete` hook **does not fire** on cancellation — see Decision 6 invocation rules.
 
@@ -171,11 +171,11 @@ The handler's existing ordered steps (engine sub-design "Ordering relative to ot
 7. Return { action_ids, completed_groups }    (NEW return shape — Decision 6)
 ```
 
-**Step 2 — affected-groups recompute.** "Affected groups" means: the group containing the requesting action, plus any group that has actions transitioning as a result of this call (e.g. when `unblocks: [{ type: send-quote, status: action-required }]` moves an action into a different group). The handler tracks which actions it wrote in step 1 and groups them by `action_group` before recomputing.
+**Step 2 — affected-groups recompute.** "Affected groups" means: the group containing the requesting action, plus any group that has actions transitioning as a result of this call (e.g. when an `unblock` signal moves a `send-quote` action that lives in a different group). The handler tracks which actions it wrote in step 1 and groups them by `action_group` before recomputing.
 
 The handler MAY recompute every group on every call without correctness issues — only an efficiency consideration. v1 implementation recomputes the affected groups; later optimisations are additive.
 
-**Step 3 — `blocked_by` re-evaluation.** A general scan of every action in the workflow with current status `blocked`. For each, evaluate the action's `blocked_by` list against the new state of groups (`groups[].status`) and actions (`actions.status[0].stage`). If every entry resolves to terminal, write `action-required` to that action's status (subject to the priority transition rule — see engine sub-design "Decision 4").
+**Step 3 — `blocked_by` re-evaluation.** A general scan of every action in the workflow with current status `blocked`. For each, evaluate the action's `blocked_by` list against the new state of groups (`groups[].status`) and actions (`actions.status[0].stage`). If every entry resolves to terminal, fire an `unblock` signal against that action; the FSM resolves `blocked → unblock → action-required` (engine Decision 4, [state-machine](../state-machine/design.md)). An action that isn't `blocked` has no `unblock` transition, so a stray re-fire no-ops.
 
 This single evaluation step covers both inter-action and inter-group dependencies. Today the engine doesn't do this — apps declare explicit `unblocks: [...]` in submit hooks. With group references becoming valid `blocked_by` entries, the engine has to do the unblock work itself (the submit hook can't enumerate "every action waiting on phase-1"). The same evaluation handles action-type entries too; in v2 we MAY deprecate the explicit `unblocks:` field if real apps prefer purely declarative `blocked_by`. v1 keeps both — `unblocks:` for backward compatibility with already-authored hooks.
 
@@ -193,7 +193,7 @@ This single evaluation step covers both inter-action and inter-group dependencie
 
 `completed_groups` is populated when step 2 transitioned a group to `done` (from any other status). Groups that were already `done` before this call don't appear. The outer orchestration layer reads this list and fans out to hook invocations (Decision 6).
 
-**Idempotency / retry.** Step 2 is idempotent: writing the same `groups[]` array twice produces the same state. Step 3 is idempotent: the priority transition rule no-ops repeated stage pushes. Step 7's `completed_groups` is computed from step 2's transitions, so a retry that no-ops step 2 returns an empty `completed_groups` — the hook does not fire twice. Matches the design's existing partial-state-plus-retry model.
+**Idempotency / retry.** Step 2 is idempotent: writing the same `groups[]` array twice produces the same state. Step 3 is idempotent: re-firing `unblock` against an already-unblocked action resolves to an undefined FSM cell and no-ops. Step 7's `completed_groups` is computed from step 2's transitions, so a retry that no-ops step 2 returns an empty `completed_groups` — the hook does not fire twice. Matches the design's existing partial-state-plus-retry model.
 
 **Recursion bound.** Step 3 may push actions to `action-required`, which doesn't trigger another `SubmitWorkflowAction` invocation — the transition is a write, not a request. Group `on_complete` hooks (invoked engine-internally as step 11 of the lifecycle per submit-pipeline Decision 1) may themselves call back into other per-action endpoints, which loop back into `SubmitWorkflowAction`. The existing tracker-update + call-api depth-limit story (engine sub-design open question 1; call-api Decision 3) extends here: same depth-limit guard, same default of 10 levels.
 
@@ -206,7 +206,7 @@ A group with `on_complete: <api-id>` declared in its workflow YAML wants its Low
 - `SubmitWorkflowAction` returns `completed_groups` from its handler (Decision 5 step 7). Each entry carries the `on_complete` Api id declared in YAML (or null).
 - Fan-out is **engine-internal** — step 11 of the `SubmitWorkflowAction` lifecycle (submit-pipeline Decision 1) calls `context.callApi(<on_complete-api-id>)` per `completed_groups` entry. The call-api primitive (call-api sub-design) makes this possible from inside the plugin handler.
 - Invocation rules:
-  - Fire **at most once per group per workflow lifetime** — the group transitions `blocked` → `in-progress` → `done`, not back. Same priority semantics as action statuses (`done` is terminal in the three-value enum).
+  - Fire **at most once per group per workflow lifetime** — the group transitions `blocked` → `in-progress` → `done`, not back. The three-value group status is monotonic (`done` is terminal in that enum).
   - Do **not** fire on `CancelWorkflow` — cancellation flips actions to `not-required` and groups to `done`, but the hook is for natural completion, not for cleanup-on-cancel. Engine distinguishes via the call site: `CancelWorkflow` doesn't populate `completed_groups`.
   - **Reuse the same `eventId`** as the triggering call (existing engine convention for tracker subscription updates).
 - Ordering inside the lifecycle: after notifications dispatch (step 10) — so phase-complete hooks see the log event already in the database and notifications already in-flight — and before the post-hook (step 13) — so post-hooks can react to group fan-out outcomes via standard return values. See submit-pipeline Decision 1 step 11.
@@ -278,12 +278,12 @@ actions:
 
 **Runtime sequence when the user submits `send-quote` (last open action in phase-1):**
 
-1. App page's template-shipped `submit_edit` button on the `onboarding-send-quote-edit` page calls `workflows/update-action-send-quote` (resolver-generated per submit-pipeline Decision 2) with `interaction: submit_edit`.
+1. App page's template-shipped `submit` button on the `onboarding-send-quote-edit` page calls `workflows/update-action-send-quote` (resolver-generated per submit-pipeline Decision 2) with `signal: submit`.
 2. The endpoint's routine fires `SubmitWorkflowAction`, which runs the lifecycle:
    1. Validate payload + role gate.
    2. Pre-hook (if declared on `send-quote`).
-   3. Compute auto-unblocks; merge with pre-hook `actions[]`.
-   4. Resolve `interaction: submit_edit` → target status (`done` if no review verb).
+   3. Stage auto-unblocks (`unblock` signals); merge with pre-hook `actions[]` signals.
+   4. Resolve the `submit` signal via the form FSM → `done` (no review verb).
    5. Write `send-quote.status[0] = done`.
    6. Recompute affected groups: phase-1 now has every action terminal → `groups[0].status = done`. Write `groups[]` to the workflow doc.
    7. Re-evaluate `blocked_by` on every `blocked` action. `schedule-followup` had `blocked_by: [phase-1]`; phase-1 is now `done` → push `action-required`. (Auto-complete check on the workflow finds `schedule-followup` and `track-installation` still open → no workflow transition; tracker subscription skipped; workflow summary recomputed.)

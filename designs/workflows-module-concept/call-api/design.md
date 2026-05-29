@@ -26,16 +26,16 @@ async function SubmitWorkflowAction({ payload, connection, context }) {
 
   if (preHookId) {
     const preResult = await context.callApi(preHookId, {
-      workflow_id, action_id, interaction, form, ...
+      workflow_id, action_id, signal, form, ...
     });
-    // merge preResult.actions[] with auto-unblocks
+    // merge preResult.actions[] signals with auto-unblocks
   }
 
   // ... engine writes ...
 
   await context.callApi(
     { id: 'new-event', module: 'events' },
-    { type: 'action-submit_edit', references: { workflow_ids: [workflow_id], action_ids: [action_id] }, ... }
+    { type: 'action-submit', references: { workflow_ids: [workflow_id], action_ids: [action_id] }, ... }
   );
 
   // ... post hook ...

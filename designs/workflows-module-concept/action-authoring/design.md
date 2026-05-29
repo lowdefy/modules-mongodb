@@ -19,7 +19,7 @@ What this sub-design commits about the authoring vocabulary:
 
 The module ships **the status enum as a static YAML file**, not as a per-app resolver-generated config. The file lives at `enums/action_statuses.yaml` in the module package and is exposed as `global.action_statuses` (read by the WorkflowAPI plugin's `actionsEnum` parameter at runtime). Same for the workflow lifecycle stages at `enums/workflow_lifecycle_stages.yaml`, exposed as `global.workflow_lifecycle_stages`.
 
-The action-status enum has eight statuses, each with `priority`, `title`, `color`, `borderColor`, `titleColor`, optional `icon`:
+The action-status enum has eight statuses, each with `priority` (display-ordering only — see note below), `title`, `color`, `borderColor`, `titleColor`, optional `icon`:
 
 ```yaml
 # enums/action_statuses.yaml — module-shipped, not editable per app
@@ -61,11 +61,13 @@ blocked:
   # ...
 ```
 
-The workflow lifecycle stages enum mirrors the display-field shape with a smaller set: `active`, `completed`, `cancelled`. Workflow stages do **not** carry `priority` — the engine doesn't apply the priority rule to workflow status pushes (those are guarded by a same-stage no-op check inside `pushWorkflowStatus`; see engine sub-design "Idempotency"). Each entry carries only display fields (`title`, `color`, `borderColor`, `titleColor`, optional `icon`).
+> **`priority` is display-ordering only.** The engine no longer consults priority numbers to decide transition legality — that's the signal-driven FSM's job ([engine](../engine/design.md) Decision 4, [state-machine](../state-machine/design.md)). `priority` survives on the action-status enum solely to order statuses in pickers, selectors, and visualizations. The eight key names remain the engine's canonical vocabulary.
 
-**Status set is fixed; display attributes are app-overridable.** The eight status keys (and the three workflow-lifecycle keys) are the engine's vocabulary — the priority rule depends on them, and forcing a canonical set keeps every consuming app on the same semantics. Apps **cannot** add new statuses, remove statuses, or change priorities. But the display attributes — `title`, `color`, `borderColor`, `titleColor`, `icon` — are presentation-only; the engine doesn't read them. Apps that want different labels ("To Do" vs "Action Required") or different colors per deployment can override these per status without touching the engine's vocabulary.
+The workflow lifecycle stages enum mirrors the display-field shape with a smaller set: `active`, `completed`, `cancelled`. Workflow stages carry no `priority` — workflow status pushes are guarded by a same-stage no-op check inside `pushWorkflowStatus` (see engine sub-design "Idempotency"), not by any ordering. Each entry carries only display fields (`title`, `color`, `borderColor`, `titleColor`, optional `icon`).
 
-Override mechanism: the module exposes two optional vars on the manifest, `action_statuses_display` and `workflow_lifecycle_stages_display`. Each is an object keyed by the canonical status name, with whichever display fields the app wants to override. Unknown keys are silently dropped (apps can't smuggle new statuses in this way). At build time, the module merges each override over the shipped enum's display fields per key — same shape and merge semantics as the events module's `event_display` var. The engine reads `priority` and the canonical key names from the merged enum; the UI reads everything else.
+**Status set is fixed; display attributes are app-overridable.** The eight status keys (and the three workflow-lifecycle keys) are the engine's vocabulary — the FSM tables are keyed on them, and forcing a canonical set keeps every consuming app on the same semantics. Apps **cannot** add new statuses, remove statuses, or change priorities. But the display attributes — `title`, `color`, `borderColor`, `titleColor`, `icon` — are presentation-only; the engine doesn't read them. Apps that want different labels ("To Do" vs "Action Required") or different colors per deployment can override these per status without touching the engine's vocabulary.
+
+Override mechanism: the module exposes two optional vars on the manifest, `action_statuses_display` and `workflow_lifecycle_stages_display`. Each is an object keyed by the canonical status name, with whichever display fields the app wants to override. Unknown keys are silently dropped (apps can't smuggle new statuses in this way). At build time, the module merges each override over the shipped enum's display fields per key — same shape and merge semantics as the events module's `event_display` var. The engine reads only the canonical key names from the merged enum (to validate signal targets against the FSM); the UI reads everything else, including `priority` for display ordering.
 
 ```yaml
 # An app overriding display on two statuses
@@ -82,7 +84,7 @@ Override mechanism: the module exposes two optional vars on the manifest, `actio
         title: Needs Revision
 ```
 
-The runtime priority-transition semantics that consume these enums are owned by the [engine](../engine/design.md) sub-design.
+The runtime signal-driven FSM transition semantics that consume these enums are owned by the [engine](../engine/design.md) sub-design (Decision 4) and the [state-machine](../state-machine/design.md) sub-design (signal inventory + FSM tables).
 
 ### Workflow-level `action_groups:` declaration
 
@@ -124,7 +126,7 @@ Every action declares its kind explicitly via a **required `kind:` field**. Thre
 | `kind:` value | Required companion block      | Primary content                                                             |
 | ------------- | ----------------------------- | --------------------------------------------------------------------------- |
 | `form`        | `form:` block                 | A domain-specific form schema, rendered as the edit page's main content     |
-| `task`        | none (no `form`/`tracker`)    | Generic status selector + comment field on a shared edit page               |
+| `simple`      | none (no `form`/`tracker`)    | Universal fields + comment + the same nullary signal buttons as form edit, on a shared edit page |
 | `tracker`     | `tracker:` block (Decision 5) | None — display-only inline; status_map link points at the child entity view |
 
 ```yaml
@@ -161,7 +163,7 @@ The validations run inside `makeWorkflowsConfig` (resolver pipeline, Decision 6)
 The kind drives three things downstream:
 
 1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; all four verbs gated identically). Simple actions don't get per-action pages — they use shared module-level `simple-edit` / `simple-view` / `simple-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
-2. **Submit API surface.** Form and simple actions each get a resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline). Template-shipped buttons call it with an `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine maps interaction → target status per submit-pipeline Decision 3. Simple `submit_edit` is the one interaction where the caller supplies `current_status` directly (status selector on `simple-edit`). Tracker actions don't submit at all — the engine writes their status via the tracker subscription.
+2. **Submit API surface.** Form and simple actions each get a resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline). Template-shipped buttons call it with a `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves each signal through the action's FSM ([engine](../engine/design.md) Decision 4, [state-machine](../state-machine/design.md)). Simple and form kinds share **one FSM table** — `submit` is nullary for both (the `review` verb selects `in-review` vs `done`); the v0 simple status selector and its `target_status` payload are removed. Tracker actions don't submit at all — the engine writes their status via the tracker subscription's `internal_mirror_child_*` signals.
 3. **Resolver invocation.** `makeActionsForm` and `makeActionFormConfigs` run only for form actions; simple and tracker actions skip both. `makeActionPages` skips per-action emission for simple and tracker kinds.
 
 ## Decision 3 — Action access semantics
@@ -185,7 +187,7 @@ Keys are app deployment names (matching `vars.app_name` on each module compositi
 | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `view`   | Shows the action in `actions-on-entity` on the entity page and renders read-only detail pages (form-action `-view`, simple-action `simple-view`).                                                                                                                                                                                                                                                                                                                                                                          |
 | `edit`   | Renders the submit form — form-action `-edit` pages, simple-action `simple-edit`. Implies `view`.                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `review` | Renders a dedicated review page — form actions get `{workflow_type}-{action_type}-review` (generated alongside `-edit` / `-view` / `-error` when present in the verb list); simple actions use the shared `simple-review` page. Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `interaction: approve` and `interaction: request_changes`; the engine resolves target status (`done` and `changes-required` respectively, per submit-pipeline Decision 3). Implies `view`. |
+| `review` | Renders a dedicated review page — form actions get `{workflow_type}-{action_type}-review` (generated alongside `-edit` / `-view` / `-error` when present in the verb list); simple actions use the shared `simple-review` page. Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `signal: approve` and `signal: request_changes`; the FSM resolves target status (`done` and `changes-required` respectively, [state-machine](../state-machine/design.md)). Implies `view`. |
 
 Apps without a key for a given app deployment **hide the action entirely** in that app — no `actions-on-entity` row, no edit page generated, no link reachable. The resolver's `makeActionPages` reads the host app's `app_name` and filters per-action page emission based on that app's verb list (form actions only emit `-edit` when `edit` is in the list, etc.). The runtime UI affordances on entity pages read the same map to decide what to render.
 
@@ -234,7 +236,7 @@ Every action doc — regardless of kind — carries three optional fields:
 The fields are **uniformly user-editable** on the action's edit page, regardless of kind:
 
 - On a **form action's** edit page they render in the page header alongside the form (a small assignees / due-date / description band above the form schema).
-- On a **simple action's** edit page they're the primary content, with a status selector and a comment field below.
+- On a **simple action's** edit page they're the primary content, with the signal buttons (`submit` / `progress` / `not_required`) and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
 Updates flow through the per-action endpoint (`update-action-{action_type}`) like any other action change: the payload includes the new field values in `fields`, the engine writes them to the action doc atomically with the status transition, and a log event is emitted. Comments live on the events module — the comment is part of the `event.metadata.comment` payload that the engine forwards to `events.new-event`.
@@ -413,7 +415,7 @@ The module exports five JS resolvers that consume authored YAML at build time:
 | Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                          | Used in                                                                              |
 | ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML (one per (workflow, action, verb))                                                                                                                                                                                                          | `module.lowdefy.yaml` `pages:`                                                       |
-| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` entry per form / simple action (bakes in the action's `hooks:`, `event:`, `interactions:` blocks as build-time literals; validates `hook.auth.roles ⊇ action.access.roles`); skipped for tracker actions | `module.lowdefy.yaml` `api:`                                                         |
+| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` entry per form / simple action (bakes in the action's `hooks:` + `event:` blocks as signal-keyed build-time literals; validates `hook.auth.roles ⊇ action.access.roles` and flags `status:` keys in pre-hook returns); skipped for tracker actions | `module.lowdefy.yaml` `api:`                                                         |
 | `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection                                                                                                                                                                                                   | `module.lowdefy.yaml` `connections:` (the connection's `properties.workflowsConfig`) |
 | `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name (used inside the page templates)                                                                                                                                                          | Inside templates, called recursively per action (form actions only)                  |
 | `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, default values, field types)                                                                                                                                                                                         | `global.action_form_configs` — read by templates and the workflow-overview page      |
@@ -456,7 +458,7 @@ The validations run inside `makeWorkflowsConfig`. Decision 2's per-kind invarian
 
 ### `makeWorkflowApis` — the per-action endpoint generator
 
-The resolver walks the workflows config and emits, per form / simple action, one `update-action-{action_type}` `Api` entry. The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:`, `event:`, and `interactions:` blocks baked in as build-time literals (see submit-pipeline Decision 2 for the canonical shape):
+The resolver walks the workflows config and emits, per form / simple action, one `update-action-{action_type}` `Api` entry. The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks baked in as signal-keyed build-time literals (see submit-pipeline Decision 2 for the canonical shape):
 
 ```yaml
 # Generated request — one per form / simple action.
@@ -471,22 +473,20 @@ The resolver walks the workflows config and emits, per form / simple action, one
         action_id: { _payload: action_id }
         action_type: <action_type>                 # build-time literal
         workflow_type: <workflow_type>             # build-time literal
-        interaction: { _payload: interaction }     # which template button fired
+        signal: { _payload: signal }               # which signal the button fired (nullary — no target payload)
         current_key: { _payload: current_key }     # for keyed actions; omit for non-keyed
         form: { _payload: form }
         form_review: { _payload: form_review }
         fields: { _payload: fields }
-        hooks:                                     # build-time literal map from action.hooks
-          submit_edit: { pre: <api-id-or-null>, post: <api-id-or-null> }
+        hooks:                                     # build-time literal map from action.hooks, keyed by signal
+          submit: { pre: <api-id-or-null>, post: <api-id-or-null> }
+          progress: { pre, post }
           not_required: { pre, post }
           resolve_error: { pre, post }
           approve: { pre, post }
           request_changes: { pre, post }
-        event_overrides:                           # build-time literal map from action.event
-          submit_edit: { type, display, metadata }
-          ...
-        interactions:                              # build-time literal map from action.interactions
-          submit_edit: { status: <override-or-null> }
+        event_overrides:                           # build-time literal map from action.event, keyed by signal
+          submit: { type, display, metadata }
           ...
     - :return:
         action_ids: { _step: submit.action_ids }
@@ -499,13 +499,15 @@ The resolver walks the workflows config and emits, per form / simple action, one
 
 **Scope: form and simple actions.** Tracker actions don't get an endpoint (the engine writes their status via the tracker subscription, never via a caller invocation).
 
-**One endpoint per action, all interactions multiplexed.** Every button on every page for this action calls the same endpoint with a different `interaction` value (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`). The handler resolves `hooks[interaction]` and `event_overrides[interaction]` once on entry and treats them as scalar bags for the rest of the lifecycle. See submit-pipeline Decision 3 for the layered "interaction → target status" resolution (engine default → `interactions[interaction].status` → pre-hook return).
+**One endpoint per action, all signals multiplexed.** Every button on every page for this action calls the same endpoint with a different `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`). The handler resolves `hooks[signal]` and `event_overrides[signal]` once on entry and treats them as scalar bags for the rest of the lifecycle. The target status is the FSM cell `transitions[kind][currentStatus][signal]` ([engine](../engine/design.md) Decision 4, [state-machine](../state-machine/design.md)) — there is no author-side per-signal status override (the former `interactions:` block is dropped; the FSM is engine-locked in v1).
 
-### Build-time validation: hook auth gate
+### Build-time validation: hook auth gate + pre-hook return shape
 
-`makeWorkflowApis` validates that each hook API referenced from `action.hooks.{interaction}.{pre,post}` satisfies the auth rule from submit-pipeline Decision 4: `hook.auth.roles ⊇ action.access.roles`, and `hook.auth.public` must not be `true`. The build fails with a path to the offending hook + action when the relationship doesn't hold. This catches the "user passes the action's role gate but the hook hard-fails on auth" mismatch at build, not at submit time.
+`makeWorkflowApis` validates that each hook API referenced from `action.hooks.{signal}.{pre,post}` satisfies the auth rule from submit-pipeline Decision 4: `hook.auth.roles ⊇ action.access.roles`, and `hook.auth.public` must not be `true`. The build fails with a path to the offending hook + action when the relationship doesn't hold. This catches the "user passes the action's role gate but the hook hard-fails on auth" mismatch at build, not at submit time.
 
-An action YAML's submit-side authoring surface is the `hooks:` / `event:` / `interactions:` blocks (action-authoring Decision 4 grammar), all optional:
+Per [state-machine](../state-machine/design.md) "Next step", the resolver also adds a build-time validator that flags any `status:` key in a pre-hook routine's `:return:` (the superseded `{ type, status }` / `{ status }` shape) with a clear "use `signal:` instead" error pointing at the migration mapping. This catches pre-hooks not yet migrated to the signal model.
+
+An action YAML's submit-side authoring surface is the `hooks:` / `event:` blocks (action-authoring Decision 4 grammar), all optional:
 
 ```yaml
 # An action YAML in workflow_config/lead-onboarding/qualify.yaml
@@ -514,17 +516,17 @@ kind: form
 action_group: discovery
 status_map: { ... }
 form: [...]
-hooks: # optional; per-interaction pre/post hook APIs
-  submit_edit:
+hooks: # optional; per-signal pre/post hook APIs (keyed by button-surfaced signal name)
+  submit:
     pre: lead-onboarding-qualify-pre-submit
     post: lead-onboarding-qualify-post-submit
-event: # optional; per-interaction log-event overrides
-  submit_edit:
+event: # optional; per-signal log-event overrides
+  submit:
     type: lead-qualified
     display:
       my-team-app: { title: "Lead qualified" }
-interactions: # optional; per-interaction target-status overrides
-  submit_edit: { status: done } # skip review even if `review` verb exists
+# No `interactions:` block — the FSM (not the author) determines the target status.
+# An action that should skip the review step simply omits the `review` access verb.
 ```
 
 ### Resolver invocation in `module.lowdefy.yaml`
@@ -746,7 +748,7 @@ pages:
       onRequestChanges: [...]
 ```
 
-The per-action endpoint (`update-action-{action_type}`) is what each template-shipped button calls; the action's `hooks:` block declares which pre/post Lowdefy Apis the engine fires per interaction. See submit-pipeline for the endpoint resolution detail.
+The per-action endpoint (`update-action-{action_type}`) is what each template-shipped button calls; the action's `hooks:` block declares which pre/post Lowdefy Apis the engine fires per signal. See submit-pipeline for the endpoint resolution detail.
 
 ### Per-page chrome: `formHeader`, `formFooter`, `requests`, `modals`
 
@@ -776,13 +778,12 @@ These fields belong to the action's authored YAML — they ride into the generat
 
 The fourth verb the page-emission resolver handles is `error`, gated identically to the other three: the resolver emits the `-error` page when `error` is in the action's `access.{app_name}` verb list. Actions without `error` in the list have no `-error` page in that app deployment — an author-driven `error` push still lands on the action, but there is no reachable recovery surface in the UI for that action there. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent.
 
-**When an action enters `error`:** `error` is purely author-driven ([Part 29 § D1–D2](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md)). Engine sub-step failures throw and propagate to `CallApi`; they do not write an `error` transition. Three entry paths put an action into `error`:
+**When an action enters `error`:** `error` is purely author-driven ([Part 29 § D1–D2](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md)). The engine never writes `error` itself — engine sub-step failures throw and surface as an API-level reject/error toast, not an action-status transition. Entry paths under the signal model (both form and simple kind):
 
-- **Pre-hook return.** A pre-hook (submit-pipeline Decision 4) returns `actions: [{ ..., status: 'error' }]` through the regular merge channel. No `force` needed — `error.priority = 1` is below every non-terminal stage. Failure context rides on the events-log entry via `event_overrides.metadata`.
-- **Simple `submit_edit` + caller-supplied status.** Simple actions whose `simple.statuses:` list includes `error` can be sent to `error` from the status-selector dropdown via `submit_edit + current_status: 'error'`.
-- **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly.
+- **Pre-hook `error` signal.** A pre-hook fires the `error` signal against another action — `actions: [{ type, signal: error }]`. The FSM accepts `error` from every non-terminal state → `error`. This replaces the v0 pre-hook `actions: [{ ..., status: 'error' }]` return ([state-machine](../state-machine/design.md) inventory; engine Decision 5). (To fail the current submission, `:reject` / `throw` instead.) Failure context rides on the events-log entry via `event_overrides.metadata`.
+- **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly (direct DB write).
 
-Either way, the action's `status[0].stage` becomes `error` and the page resolver's `link.pageId` slot in `status_map.error.{app_name}` is expected to target `{workflow_type}-{action_type}-error?action_id=<id>`.
+Either way, the action's `status[0].stage` becomes `error` and the page resolver's `link.pageId` slot in `status_map.error.{app_name}` is expected to target `{workflow_type}-{action_type}-error?action_id=<id>`. (Simple actions have no `-error` page in v1 — recovery surface is a [ui](../ui/design.md) follow-on.)
 
 **Authoring the recovery form:**
 
@@ -859,7 +860,7 @@ The `key:` value is a symbolic placeholder (`$device_id`). The app supplies conc
 Two paths:
 
 1. **At workflow start.** The `start-workflow` payload's `actions:` list may include instance specs: `{ type: proof-of-installation, key: device-123, status: action-required }`. The engine writes one action doc per entry.
-2. **Mid-workflow.** A pre-hook return's `actions[]` array (submit-pipeline Decision 4) can append `{ type: proof-of-installation, key: device-456, status: action-required, upsert: true }` to spawn a new instance. The engine inserts a new action doc; existing instances are unaffected.
+2. **Mid-workflow.** A pre-hook return's `actions[]` array (submit-pipeline Decision 4) can append `{ type: proof-of-installation, key: device-456, status: action-required, upsert: true }` to spawn a new instance. `status` here is the new doc's **initial status** (a creation seed), not an FSM transition — the one place `actions[]` carries `status` instead of `signal`, valid only with `upsert: true`. The engine inserts a new action doc; existing instances are unaffected, and any later movement of the spawned instance is signal-driven.
 
 Both paths flow through the same `SubmitWorkflowAction` engine handler (engine sub-design). No new public endpoint.
 

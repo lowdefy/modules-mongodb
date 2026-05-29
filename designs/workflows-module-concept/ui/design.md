@@ -88,7 +88,7 @@ For form actions, the per-action page YAML the resolver outputs looks like:
           ...
 ```
 
-Simple actions don't go through this loop at all — the `simple-edit`, `simple-view`, and `simple-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (status selector + comment for edit; read-only display for view; approve/request-changes for review). No per-action customisation; identical experience for every simple action across every workflow.
+Simple actions don't go through this loop at all — the `simple-edit`, `simple-view`, and `simple-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (the `submit` / `progress` / `not_required` signal buttons + comment for edit; read-only display for view; approve/request-changes for review). No status selector — simple actions advance through the same nullary signal buttons as form actions (state-machine "Simple kind"). No per-action customisation; identical experience for every simple action across every workflow.
 
 Notable shape choices the resolver commits to:
 
@@ -101,38 +101,39 @@ Notable shape choices the resolver commits to:
 
 The module ships two sets of templates:
 
-**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. Each template ships the matching button(s) from the submit-pipeline five-button vocabulary (see "Template-shipped button vocabulary" below); buttons call the action's resolver-generated `update-action-{action_type}` endpoint with the appropriate `interaction` value. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with the approve / request-changes button band added.
+**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. Each template declares its button bar over the signal namespace (see "Template-shipped button bars" below, and [state-machine](../state-machine/design.md) "Templates and buttons" for the canonical list); buttons call the action's resolver-generated `update-action-{action_type}` endpoint with the appropriate `signal` value. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with the approve / request-changes button band added.
 
 **Error template (`error.yaml.njk`).** Renders the recovery surface for an action whose `status[0].stage` is `error`. Three template-shipped behaviours:
 
 1. **Stale-URL guard.** Template appends a redirect step to the page's `onMount`: if the loaded action's `status[0].stage !== 'error'`, the template emits `Link` to the action's `-view` page so users hitting a stale error URL are bounced out automatically.
 2. **Failure-context banner.** Template surfaces diagnostic context as a read-only banner above the form. Status entries are uniform `{ stage, created, event_id }` ([Part 29 § D2a](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)) — the banner reads from the `events` collection entry referenced by `status[0].event_id` (when an author-driven entry path attached metadata via `event_overrides.metadata`). Richer banner rendering is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
-3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` interaction (submit-pipeline Decision 3) — wired to call `update-action-{action_type}` with `interaction: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
+3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` signal (form FSM `error → resolve_error → in-review`, [state-machine](../state-machine/design.md)) — wired to call `update-action-{action_type}` with `signal: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
 
 The `-error` page is gated identically to the other verbs: emitted iff `error` is in the action's `access.{app_name}` verb list. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent. Per-app visibility of the recovery link from other pages is additionally controlled at the status-map level — omitting `status_map.error.{app_name}` suppresses the link even when the page exists. See [action-authoring](../action-authoring/design.md) "Error pages and the `error` status" for the authoring shape.
 
-### Template-shipped button vocabulary
+### Template-shipped button bars
 
-Each form-action template ships the matching button(s) from the submit-pipeline five-button vocabulary (submit-pipeline Decision 3). Each button is a template-shipped block that, on click:
+Each form-action template declares a button bar over the signal namespace ([state-machine](../state-machine/design.md) "Templates and buttons"). Each button is a template-shipped block that, on click:
 
 1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event handler (if declared), for page-state work — set state, fire requests, validate.
-2. Calls the action's `update-action-{action_type}` endpoint with `interaction: <button-name>` + the standard payload (`form`, `form_review`, `fields`, `current_key`).
+2. Calls the action's `update-action-{action_type}` endpoint with `signal: <name>` + the standard payload (`form`, `form_review`, `fields`, `current_key`).
 
-| Button            | Rendered on template     | `interaction` value | Author event handler fired | Engine target-status default                                               |
-| ----------------- | ------------------------ | ------------------- | -------------------------- | -------------------------------------------------------------------------- |
-| `submit_edit`     | `edit.yaml.njk`          | `submit_edit`       | `onSubmit`                 | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
-| `not_required`    | `edit.yaml.njk` (opt-in) | `not_required`      | `onSubmit`                 | `not-required`                                                             |
-| `resolve_error`   | `error.yaml.njk`         | `resolve_error`     | `onSubmit`                 | Same as `submit_edit` (recovery returns the action to its normal flow)     |
-| `approve`         | `review.yaml.njk`        | `approve`           | `onApprove`                | `done`                                                                     |
-| `request_changes` | `review.yaml.njk`        | `request_changes`   | `onRequestChanges`         | `changes-required`                                                         |
+| Button            | Rendered on template     | `signal` value    | Author event handler fired | FSM-resolved target (form kind)                                            |
+| ----------------- | ------------------------ | ----------------- | -------------------------- | -------------------------------------------------------------------------- |
+| `submit`     | `edit.yaml.njk`          | `submit`     | `onSubmit`                 | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
+| `progress`      | `edit.yaml.njk`          | `progress`      | `onSubmit`                 | `in-progress` (persists `form_data` without advancing — restored in v1)    |
+| `not_required`    | `edit.yaml.njk` (opt-in) | `not_required`    | `onSubmit`                 | `not-required`                                                             |
+| `resolve_error`   | `error.yaml.njk`         | `resolve_error`   | `onSubmit`                 | `in-review` (recovery returns the action to its normal flow)               |
+| `approve`         | `review.yaml.njk`        | `approve`         | `onApprove`                | `done`                                                                     |
+| `request_changes` | `review.yaml.njk`        | `request_changes` | `onRequestChanges`         | `changes-required`                                                         |
 
-The author event handlers (`onSubmit`, `onApprove`, `onRequestChanges`) are unchanged from action-authoring Decision 8 and stay separate from the engine call (Decision 4 above lists the four-verb event vocabulary). Authors who need pre-write logic register a pre-hook on the action YAML (`hooks.{interaction}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
+These are the *button-surfaced* signals (the "interactions"); the FSM also accepts engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) that no template surfaces. The author event handlers (`onSubmit`, `onApprove`, `onRequestChanges`) are unchanged from action-authoring Decision 8 and stay separate from the engine call (Decision 4 above lists the four-verb event vocabulary). Authors who need pre-write logic register a pre-hook on the action YAML (`hooks.{signal}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
 
 The block-tree shape for each button looks roughly like:
 
 ```yaml
 # Inside templates/edit.yaml.njk
-- id: submit_edit_button
+- id: submit_button
   type: Button
   properties:
     title: Submit
@@ -149,7 +150,7 @@ The block-tree shape for each button looks roughly like:
             _module.endpointId: { id: update-action-{action_type}, module: workflows }
           payload:
             action_id: { _request: get_action._id }
-            interaction: submit_edit
+            signal: submit
             current_key: { _request: get_action.key }
             form: { _state: form }
             form_review: { _state: form_review }
@@ -160,9 +161,9 @@ Templates compose this via a small Nunjucks macro per button to keep the block t
 
 **Simple-action pages** — `pages/simple-edit.yaml`, `pages/simple-view.yaml`, and `pages/simple-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
 
-- **`simple-edit`**: status selector (populated from `global.action_statuses`), `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), Save button. The Save button is the template-shipped `submit_edit` block — it calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>` (the one interaction where caller supplies the status; submit-pipeline Decision 3), `fields:` block, `form:` (empty for simple actions), and a top-level `comment` field (resolver-emitted API maps it to `event.metadata.comment`).
+- **`simple-edit`**: `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), and the template-shipped signal buttons (`submit`, `progress`, `not_required` — same bar as the form edit template; see Decision 7). The `submit` button calls `update-action-{action_type}` with `signal: submit` (nullary — no `target_status`; the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions), `fields:` block, `form:` (empty for simple actions), and a top-level `comment` field (resolver-emitted API maps it to `event.metadata.comment`).
 - **`simple-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
-- **`simple-review`**: action header + universal-fields display (same shape as `simple-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `interaction: approve` / `interaction: request_changes`; engine resolves target status to `done` / `changes-required` respectively (submit-pipeline Decision 3). The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
+- **`simple-review`**: action header + universal-fields display (same shape as `simple-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `update-action-{action_type}` with `signal: approve` / `signal: request_changes`; the simple FSM resolves target status to `done` / `changes-required` respectively ([state-machine](../state-machine/design.md)). The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
 
 All three simple-action pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override these pages — simple actions intentionally share one experience per verb. Apps that need different UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
@@ -213,7 +214,7 @@ _ref:
 | `events`       | Page-level `onInit` / `onMount` handlers (per Decision 4 event vocabulary)                                                                                                    |
 | `blocks`       | The page content — typically one or more `layout.card` blocks                                                                                                                 |
 
-**Cards within the page** use `_ref: { module: layout, component: card, vars: { title, blocks, footer? } }`. Card is the standard content wrapper — title bar, optional back button, body, optional footer. The form-action templates render the form inside a card; the simple-action pages render the status selector / timeline inside cards; the workflow-overview page renders one card per action.
+**Cards within the page** use `_ref: { module: layout, component: card, vars: { title, blocks, footer? } }`. Card is the standard content wrapper — title bar, optional back button, body, optional footer. The form-action templates render the form inside a card; the simple-action pages render the universal-field inputs / timeline inside cards; the workflow-overview page renders one card per action.
 
 **Floating actions** (Save / Submit / Approve buttons on edit and review pages) use `_ref: { module: layout, component: floating-actions, vars: { blocks: [...] } }` — the standard sticky-bottom action bar layout module ships. Templates that include floating-actions wire them to the four page-event handlers (`onSubmit`, `onApprove`, `onRequestChanges`); the buttons themselves are template-shipped, not author-authored.
 
@@ -222,7 +223,7 @@ _ref:
 Universal action fields (`assignees`, `due_date`, `description` — see [action-authoring](../action-authoring/design.md) "Universal action fields") render differently per kind:
 
 - On a **form action's** edit page they render in the page header alongside the form (a small assignees / due-date / description band above the form schema).
-- On a **simple action's** edit page they're the primary content, with a status selector and a comment field below.
+- On a **simple action's** edit page they're the primary content, with the signal buttons (`submit` / `progress` / `not_required`) and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
 Updates flow through `update-action-{action_type}` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
@@ -401,16 +402,18 @@ Entity-page link cells (rendered from `status_map`) build URLs with `urlQuery: {
 
 Instanced actions render as N rows (one per instance) within their `action_group`. Each row uses its own `status_map` entry — message templating injects per-instance context, so authors can write `Awaiting installation of device {{ physical_id }}.` and get one row per device with the right device id.
 
-## Decision 7 — Status-selector behaviour on `simple-edit`
+## Decision 7 — Signal buttons on `simple-edit` (no status selector)
 
-The `simple-edit` page surfaces a status selector populated from the module-shipped `global.action_statuses` enum (see [action-authoring](../action-authoring/design.md) "Action status enum"). The selector should NOT show every status — it should filter to **allowed transitions** via the priority rule (see [engine](../engine/design.md) "Status enum priority rule"):
+The v0 simple-edit **status selector is removed** ([state-machine](../state-machine/design.md) "Simple kind", review #6). A simple action is a form action with no `form:` body — its edit page surfaces the **same nullary signal buttons as the form edit template**, not a status dropdown:
 
-- From current stage, only stages with strictly lower priority are valid transitions.
-- **Same-stage allowed for the current action** — matches the engine's `currentActionId` self-exception (lets users re-save the action without changing its stage, e.g. updating `assignees` only).
-- **If current stage is `not-required`** (priority 0, universal terminal), no valid transitions exist via the priority rule. The selector is disabled with a "no transitions available" message rather than rendered with an empty option list.
-- `force: true` overrides aren't typically exposed through the UI — migrations and admin tools bypass the per-action endpoint and call `SubmitWorkflowAction` directly via a privileged route.
+- **`simple-edit` button bar:** `submit`, `progress`, `not_required` (the same bar `edit.yaml.njk` ships). `submit` is nullary — the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions; the caller supplies no target. `progress` ("mark started") re-saves in `in-progress` without advancing — the `schedule-followup` "set a due date now, complete later" flow. `not_required` lands `not-required`.
+- **`simple-review`** (when the action lists the `review` verb) ships `approve` / `request_changes`, same as the form review template.
+- Each button only renders when the FSM lists an outgoing transition for it from the action's current state — a button whose signal the current state doesn't accept is hidden (same gating the form templates apply). No "pick any status" affordance exists.
+- There is no `force: true` escape hatch in the UI — migrations and admin overrides are out-of-band direct DB writes (engine Decision 4). Pushing a simple action straight to `blocked` or `error` is a pre-hook `block` / `error` cascade from elsewhere, not a self-set on its own edit page.
 
-The selector hides invalid options at render time. Save attempts that violate the rule (e.g. concurrent stage push from another user that the local UI didn't see) get rejected server-side by the `SubmitWorkflowAction` handler; the page surfaces a generic error.
+**Error recovery for simple actions is a follow-on.** A simple action can land in `error` via a pre-hook `error` cascade ([state-machine](../state-machine/design.md)), but no simple page ships an `error` surface today. How recovery is surfaced — a `simple-error` page vs. a `resolve_error` button on `simple-view` — is open (see Open Questions); v1 ships no `simple-error` page.
+
+Buttons hidden at render time still get FSM-checked server-side: a submission the FSM doesn't accept (e.g. a concurrent stage push from another user the local UI didn't see) resolves to an undefined cell and no-ops; the page reflects the engine's resolved state.
 
 ## Decision 8 — `workflow-overview` page (module-shipped, read-only)
 
@@ -569,6 +572,7 @@ Tracker actions render as a single row with status badge + message + a link butt
 1. **`makeActionsForm` recursion across module boundaries** — flagged in [action-authoring](../action-authoring/design.md). The form-action templates `_ref` the form resolver to build the form block tree; if the resolver can't recurse from inside a template the form builder falls back to a flat emitter. Templates accommodate either shape during the spike.
 2. **`completed-workflow` collapsed-tile UX detail and the workflow-header milestone label.** v1 ships sensible defaults; iteration after first consumer adoption.
 3. **Comment timeline shape on `simple-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references are spread to event-doc root by the events module's `new-event` routine, so the query path is `action_ids`, not `references.action_ids`). Refinement based on real-app patterns.
+4. **Simple-action error recovery surface.** A simple action can be pushed to `error` via a pre-hook `error` cascade ([state-machine](../state-machine/design.md) "Simple kind"), but the shared simple pages ship no `error` surface today. Decide between a dedicated `simple-error` page and a `resolve_error` button conditionally rendered on `simple-view`. v1 ships neither; flagged for the first consumer that cascades `error` onto a simple action.
 
 ## Next Step
 
