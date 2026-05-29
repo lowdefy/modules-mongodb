@@ -66,9 +66,22 @@ _ref:
         layout:
           flex: 0 1 auto
         visible:
-          _eq:
-            - _request: get_activity.0.current_stage
-            - open
+          _and:
+            - _eq:
+                - _request: get_activity.0.current_stage
+                - open
+            - _eq:
+                - _get:
+                    from:
+                      _build.object.assign:
+                        - _ref: enums/activity_types.yaml
+                        - _module.var: activity_types
+                    key:
+                      _string.concat:
+                        - _request: get_activity.0.type
+                        - .type
+                    default: complex
+                - complex
         properties:
           title: Mark done
           icon: AiOutlineCheckCircle
@@ -108,13 +121,26 @@ _ref:
         layout:
           flex: 0 1 auto
         visible:
-          _or:
+          _and:
+            - _or:
+                - _eq:
+                    - _request: get_activity.0.current_stage
+                    - done
+                - _eq:
+                    - _request: get_activity.0.current_stage
+                    - cancelled
             - _eq:
-                - _request: get_activity.0.current_stage
-                - done
-            - _eq:
-                - _request: get_activity.0.current_stage
-                - cancelled
+                - _get:
+                    from:
+                      _build.object.assign:
+                        - _ref: enums/activity_types.yaml
+                        - _module.var: activity_types
+                    key:
+                      _string.concat:
+                        - _request: get_activity.0.type
+                        - .type
+                    default: complex
+                - complex
         properties:
           title: Reopen
           icon: AiOutlineReload
@@ -154,13 +180,26 @@ _ref:
         layout:
           flex: 0 1 auto
         visible:
-          _or:
+          _and:
+            - _or:
+                - _eq:
+                    - _request: get_activity.0.current_stage
+                    - open
+                - _eq:
+                    - _request: get_activity.0.current_stage
+                    - done
             - _eq:
-                - _request: get_activity.0.current_stage
-                - open
-            - _eq:
-                - _request: get_activity.0.current_stage
-                - done
+                - _get:
+                    from:
+                      _build.object.assign:
+                        - _ref: enums/activity_types.yaml
+                        - _module.var: activity_types
+                    key:
+                      _string.concat:
+                        - _request: get_activity.0.type
+                        - .type
+                    default: complex
+                - complex
         properties:
           title: Cancel
           icon: AiOutlineStop

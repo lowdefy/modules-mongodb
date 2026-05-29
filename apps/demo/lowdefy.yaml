@@ -1,4 +1,4 @@
-lowdefy: 0.0.0-experimental-20260429140004
+lowdefy: 0.0.0-experimental-20260526123919
 name: Module Demo App
 
 cli:
@@ -15,7 +15,7 @@ config:
 
 plugins:
   - name: "@lowdefy/community-plugin-mongodb"
-    version: 2.4.1
+    version: 3.0.0
   - name: "@lowdefy/community-plugin-xlsx"
     version: 1.1.0
   - name: "@lowdefy/community-plugin-nodemailer"

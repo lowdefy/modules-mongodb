@@ -163,15 +163,6 @@ properties:
               - _ref: requests/stages/add_derived_fields.yaml
               - _ref: requests/stages/lookup_contacts.yaml
               - _ref: requests/stages/lookup_companies.yaml
-              - $addFields:
-                  updated_at:
-                    $dateToString:
-                      date: $updated.timestamp
-                      format: "%Y-%m-%d"
-                  created_at:
-                    $dateToString:
-                      date: $created.timestamp
-                      format: "%Y-%m-%d"
             - _module.var: request_stages.get_all_activities
     - $unwind:
         path: $count

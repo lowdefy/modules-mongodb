@@ -55,6 +55,18 @@ _ref:
     doc:
       _request: get_contact.0
     events:
+      onInit:
+        - id: init_state
+          type: SetState
+          params:
+            # company-selector (used by any sidebar slot that includes
+            # activities' tile_activities → capture modal → form_activity)
+            # reads _state.cycle_check_* via get_companies_for_selector.
+            # Init to null/[] here so the build's _state validator doesn't
+            # warn on this page. Runtime unchanged — the request's _if_none
+            # defaults already cover null/empty.
+            cycle_check_self_id: null
+            cycle_check_ids: []
       onMount:
         - id: fetch
           type: Request

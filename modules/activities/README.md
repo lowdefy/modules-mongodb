@@ -27,12 +27,21 @@ modules:
       label_plural: Activities
       activity_types:
         # Optional consumer-defined extensions to the built-in enum.
-        # Built-in types: call, meeting, email.
+        # Built-in types: call (basic), meeting (complex), email (basic).
+        # Schema per entry:
+        #   title          — display label (string)
+        #   color          — hex colour for chips and timeline dots
+        #   icon           — AiOutline* icon name
+        #   default_stage  — stage assigned on create (open | done | cancelled)
+        #   type           — basic | complex; basic activities cannot transition
+        #                    stage (created and locked in default_stage); complex
+        #                    activities surface Mark done / Reopen / Cancel UI.
         quote:
           title: Quote
           color: "#fa8c16"
           icon: AiOutlineFileText
           default_stage: open
+          type: complex
 ```
 
 Defaults work out of the box. To point the module at a different MongoDB collection, remap `activities-collection` via the entry's `connections` mapping.
