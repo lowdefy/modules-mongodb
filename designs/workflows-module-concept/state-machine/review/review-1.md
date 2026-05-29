@@ -19,6 +19,8 @@ This matters: the engine `blocked_by` re-evaluation is documented to fire `block
 
 ### 2. The "task" (now `simple`) FSM table is not tabulated, only described in prose
 
+> **Resolved.** Simple kind is now stated as **identical to the form-kind table** — and that's literally true, because the `submit_edit → blocked/error` special case is gone (see #6: the status selector / `target_status` is removed). The Simple kind section enumerates the signals it listens to and points at the form table as its source of truth, rather than re-tabulating. The `task` → `simple` rename was already applied across the design (the only remaining "task" is the English word in the Risks section). Decision also drove a model fix: `error` is reachable for every kind via a new author-cascade `error` signal (the inventory had no path into `error` at all — a dropped v0 regression).
+
 Lines 132–136 say:
 
 > Same as form kind, with one specialization on `submit_edit`: … `target_status ∈ { done, blocked, error, not-required }`.
@@ -64,6 +66,8 @@ Add `block` to the tracker table, mirroring the form table's coverage. If tracke
 
 ### 6. `submit_edit` is the only parameterized signal — breaks the uniform model
 
+> **Resolved.** Removed the parameter entirely rather than documenting it. Simple actions no longer carry a status selector or `target_status` / `current_status` payload — they emit the same **nullary** signals as form actions (`submit`, `progress`, `not_required`, `approve`, `request_changes`, plus cascade signals). The simple FSM table is now literally the form table. Pushing a simple action straight to `blocked` / `error` is a pre-hook `block` / `error` cascade, not a self-set. Also renamed `submit_edit` → `submit` throughout (pure verb, pairs with `progress`, reads correctly as re-submit from `changes-required` / `done`) and `save_draft` → `progress` (unifies form "save draft" + simple "mark started"). Removal of the selector is recorded in Supersedes (submit-pipeline D3, ui `simple-edit`) and the Next-step list re-specs the ui page. Note: `submit` still resolves `in-review` vs `done` from the action's *static* review verb — that's a build-time branch, not a runtime payload parameter, so the nullary framing holds.
+
 Lines 132–134 introduce `target_status` as a payload field on the `submit_edit` signal for simple/task kind. Every other signal in the inventory is nullary (signal name fully determines the transition). The design calls this out as "the one piece of FSM dynamism in v1" — but presenting it as a parameter on a single signal in a single kind, hidden inside prose, is the kind of one-off that creates ongoing confusion.
 
 Two cleaner shapes:
@@ -75,6 +79,8 @@ Picking either is fine; the current shape (nullary everywhere except one undocum
 
 ### 7. `request_changes` on the view template is a user-facing change beyond the FSM scope
 
+> **Deferred to ui sub-design.** The decision is the recommended option 2: surface `request_changes` on the view template but gate it on the `review` verb so plain viewers don't see it. But the authoritative per-template button-bar spec + access gating belongs to ui (Next-step item 3 / Supersedes), not the state-machine model — the model's only stake is that `done → request_changes → changes-required` is a valid transition. To avoid this doc preempting ui, the "Templates and buttons" table is now marked illustrative, and the `view` row's `request_changes` is tagged "(gated on `review` verb — ui sub-design)."
+
 Line 210, the templates table: `view` template surfaces `request_changes (modal for comment)`. Today's submit-pipeline (Decision 3, line 145) only surfaces `request_changes` on the `review` template. Adding it to `view` means any user who can see a `done` action can demand changes from it — a new UX surface, not just a model change. The FSM table technically supports it (`done → request_changes → changes-required`), but the page-template change should be called out explicitly in "What gets added" (line 226) and probably gated on access verbs (presumably only reviewers should see the button on the view page).
 
 The design's framing is "page templates declare which signals surface as buttons" (line 11), so this is in scope — but the leap from "the FSM permits it" to "the default view template ships the button" is silent. Either drop it from the default view button bar and add it as an opt-in per app, or document the access gate explicitly.
@@ -83,17 +89,23 @@ The design's framing is "page templates declare which signals surface as buttons
 
 ### 8. Unknown signal names silently no-op — combined with the build-time validator gap, typos leak
 
+> **Resolved.** Adopted the recommendation. Added a "Unknown signal names throw; unlisted transitions no-op" subsection: the engine throws at handler entry on any signal outside the locked v1 vocabulary (matching Open Question 2's "missing target throws"), while a *valid* signal against a state that doesn't list it still no-ops (the structurally meaningful case that re-fire safety depends on). Reframed the build-time-validator risk from "only safety net, deferred" to a nice-to-have, since typos now hard-fail at runtime.
+
 Risks section line 308 says runtime treats unknown signal names as no-ops (same as unlisted transitions). Combined with the build-time validator being deferred (also flagged as a risk), a pre-hook returning `{ signal: notrequired }` (missing underscore) or `{ signal: requestChanges }` (camelCase typo) silently produces no transition. Open question 2 (line 302) resolves the missing-target case as "throw" but punts on missing-signal-name as no-op.
 
 Recommendation: treat unknown signal names the same as missing targets — throw. The vocabulary is engine-locked in v1 (Non-goals line 294), so the engine has a complete known-signal list at handler entry and can validate cheaply. Soft no-op for *unlisted transitions* (signal valid, state doesn't accept it) is structurally meaningful — it's what makes re-fire safety work. Soft no-op for *typo'd signal names* is just losing programmer errors.
 
 ### 9. The engine D3 pseudo-code contradiction is noted in "Next step" but not in the migration audit
 
+> **Resolved.** Largely already addressed in engine/design.md: D3 has been rewritten to the signal model — `pushWorkflowStatus` recurses into `emitSignal(tracker, internal_mirror_child_*)` calling the same handler (engine:296 / :370), and the 2-level nested auto-complete worked example is already in signal terms (engine:386+). The recursion shape is unchanged from the priority-rule version, which is exactly the confirmation this finding asked for. Updated state-machine Next-step item 1 to note D3 is already done (recursion preserved) rather than listing it as pending, so the concrete pseudo-code spot isn't mistaken for outstanding work.
+
 Lines 314–319 list four follow-ups (update engine D4, submit-pipeline D1/D3, ui design, pre-hook validator). The engine D3 pseudo-code (engine/design.md:240–296 — `pushWorkflowStatus`, `updateAction(..., force: true)`) is the concrete spot where the change happens. Worth calling out specifically in the next-step list so it doesn't get missed when engine D3's tracker subscription is rewritten to emit `internal_mirror_child_*` signals.
 
 Also worth confirming in this design: the recursion shape stays the same. Today's `pushWorkflowStatus` recurses into `updateAction`; under the new model it should recurse into `emitSignal(tracker, internal_mirror_child_*)` which calls the same handler. The 2-level nested auto-complete worked example in engine D3 should keep producing the same end state — worth a one-paragraph confirmation.
 
 ### 10. Pre-hook root-level `{ signal }` redirect: how does it compose with the engine default?
+
+> **Resolved by removing the feature.** Investigating this finding surfaced that the root-level `{ signal }` current-action redirect was unjustified: it's a v0 carry-forward, flagged as unproven by the design's own Open Question 1, redundant with `actions[]` self-targeting except for status-history cleanliness, and sidestepped by the canonical conditional-landing pattern (a separate thin action — worked example 4). The redirect has been **removed** across state-machine, submit-pipeline (D2/D4 + lifecycle diagram + audit-log note), engine (D4/D5), and action-authoring. The current action now always lands per the signal the user fired; all pre-hook signal emission is cross-action via `actions[]`; failing the current submission uses `:reject` / `throw`. Open Question 1 was deleted (the redirect it concerned is gone). The composition/audit questions this finding raised are therefore moot — with no redirect, the recorded event `signal` and `status_after` always reconcile against the FSM table.
 
 Open question 1 (line 300) asks whether `{ signal }` at the root is concrete enough. One follow-on the design doesn't address: if the user clicked `submit_edit` and the pre-hook returns `{ signal: not_required }`, does the engine fire *only* `not_required`, or does it fire both? Submit-pipeline Decision 3's interaction-to-target-status table had three-layer precedence (engine default → action-YAML `interactions[interaction].status` → pre-hook `status`); under the new model that collapses to one signal-firing event. The design implies "replace" (line 186: "replaces the user-clicked interaction for the current action") but doesn't say what happens to the original signal's audit trail. Worth one sentence — does the events-log entry record `submit_edit` (what the user clicked) or `not_required` (what the engine fired)?
 
