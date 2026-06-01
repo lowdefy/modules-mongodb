@@ -13,7 +13,7 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
 **Define phase contract types** (extend `shared/types.js` or add `shared/phases/types.js`):
 
 - `LoadedState` — `{ workflow, actions[], workflowConfig, actionConfig (Submit only), targetAction (Submit only) }`.
-- `PreHookResult` — `{ actions: [{ target, signal }], event_overrides, form_overrides }`.
+- `PreHookResult` — `{ actions: [{ target, signal, upsert? }], event_overrides, form_overrides }`. An `actions[]` entry may carry `upsert: true` to spawn a missing keyed target (D4 / D13 (2)); `target` then identifies a not-yet-existing `(type, key)`.
 - `Plan` — exactly the D3 shape:
   ```ts
   type Plan = {
@@ -31,7 +31,7 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
 - Reads via the task-1 `findDocs` helper: the workflow doc, all action docs for that workflow; for Submit, identify the target action by `payload.action_id`.
 - Resolves `workflowConfig` and (Submit) the `actionConfig` for the target action.
 - Reads `workflow.updated.timestamp` (the CAS anchor for task 13).
-- **Invariant checks — throw if:** workflow not found; action not found; workflow stage doesn't accept submissions.
+- **Invariant checks — throw if:** workflow not found; action not found; workflow stage doesn't accept submissions. The stage check preserves the current `handleSubmit.js` carve-out: a `completed`/`cancelled` workflow rejects the submit **unless** `actionConfig.required_after_close === true` (the post-close required-action path).
 - **Per-verb access gate (Submit only, D16 / Part 34 D6):** resolve the signal's required verb via the Part 34 D6 table:
   - `submit` / `progress` / `not_required` → `edit`
   - `resolve_error` → `error`
@@ -43,7 +43,7 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
 ## Acceptance Criteria
 
 - `LoadedState`, `PreHookResult`, `Plan` types defined and exported.
-- `loadWorkflowState` reads workflow + actions in the load phase only; throws on missing workflow/action and on a stage that doesn't accept submissions.
+- `loadWorkflowState` reads workflow + actions in the load phase only; throws on missing workflow/action and on a stage that doesn't accept submissions — including a `completed`/`cancelled` workflow, which is rejected unless `actionConfig.required_after_close === true` (a test covers the allowed post-close case, mirroring the current `handleSubmit.test.js`).
 - The submit access gate resolves verb via the Part 34 D6 table and rejects unauthorized submits **before** the pre-hook, with a structured error.
 - The JS gate passes the shared `gates.fixtures.js` cases.
 - Start/Cancel/Close load the whole workflow (no `actionConfig`/`targetAction`).

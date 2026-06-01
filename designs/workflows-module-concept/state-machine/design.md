@@ -95,7 +95,7 @@ The exception is `unblock`: it stays narrow (`blocked` only) precisely because b
 
 | Signal              | Source states (form kind)                                       | Target            | Notes                                                                                                  |
 | ------------------- | --------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
-| `submit`       | `action-required`, `in-progress`, `changes-required`, `done`    | `in-review` or `done` | Lands `in-review` if the action declares the `review` verb in its `access.{app_name}` map; else `done`. Source `done` covers re-submit of a completed action. Nullary — the target is resolved from the action's static review verb, not from any runtime payload (same rule for form and simple kinds). |
+| `submit`       | `action-required`, `in-progress`, `changes-required`, `done`    | `in-review` or `done` | Lands `in-review` if **any** app's `access` block declares the `review` verb for the action; else `done`. This is an **action-global** property — one action doc is shared across every app, so the split is the action's, not the submitting app's. Source `done` covers re-submit of a completed action. Nullary — the target is resolved from the action's static review verb, not from any runtime payload (same rule for form and simple kinds). |
 | `progress`        | `action-required`, `in-progress`                                | `in-progress`     | Persists current edits without advancing. Form kind: saves `form_data` (a draft). Simple kind: records that work has started. Restores v0 `save_draft` (critique § 5). |
 | `not_required`      | `action-required`, `in-progress`, `changes-required`, `blocked`, `in-review`, `error` | `not-required`    | Broad source list — pre-hook cascades like `mark-quote-not-required` shouldn't drop on whichever current-state outcomes the author didn't anticipate. User-side gating is the page template's job (only the edit template shows this button).               |
 | `approve`           | `in-review`                                                     | `done`            | Reviewer button on the review template.                                                                |
@@ -130,6 +130,7 @@ The `internal_*` prefix is convention, not enforcement. Authors reading the tabl
 
 | Current ↓ / Signal →   | `submit`           | `progress`     | `not_required`   | `approve` | `request_changes`  | `resolve_error` | `error`   | `unblock`        | `activate`          | `block`   | `internal_cancel_action` |
 | ---------------------- | ----------------------- | ---------------- | ---------------- | --------- | ------------------ | --------------- | --------- | ---------------- | ---------------- | --------- | -------------- |
+| `none` (creation)      | —                       | —                | —                | —         | `changes-required` | —               | `error`   | —                | `action-required`| `blocked` | —              |
 | `blocked`              | —                       | —                | `not-required`   | —         | —                  | —               | `error`   | `action-required`| `action-required`| —         | `not-required` |
 | `action-required`      | `in-review` or `done`   | `in-progress`    | `not-required`   | —         | —                  | —               | `error`   | —                | —                | `blocked` | `not-required` |
 | `in-progress`          | `in-review` or `done`   | `in-progress`    | `not-required`   | —         | —                  | —               | `error`   | —                | `action-required`| `blocked` | `not-required` |
@@ -164,6 +165,15 @@ Tracker actions never receive user interactions or pre-hook signals. Their FSM h
 
 No `submit`, `approve`, `request_changes`, `error`, `activate`, or `block` — tracker actions don't expose these paths.
 
+### Creation — the `none` source state
+
+A pre-hook can spawn a new keyed action instance mid-submit (e.g. "if a site visit is required, create a `site-visit-report` action"). Creation is modelled as **one more FSM transition**, not a special-cased status seed: the absent doc's current stage is the sentinel `none`, and the spawning signal resolves through the `none` row to the new doc's birth stage.
+
+- **`none` is a transient resolution-time sentinel, never a stored status.** The eight-status enum is unchanged; `none` only ever appears as the `currentStatus` fed to the FSM lookup when no doc exists for a `(type, key)`. The created doc lands directly at the resolved birth stage — `none` is never persisted, never counted in summaries, never displayed.
+- **The `none` row lives in the form table (inherited by simple via the table alias).** It is **not** added to the tracker table — tracker actions are engine-created by `StartWorkflow`/the tracker subscription, never spawned by a pre-hook. Each birth signal lands exactly where it lands from a real state, so the meaning is consistent: `activate → action-required`, `block → blocked`, `request_changes → changes-required`, `error → error`. (The audit of the reference project found spawns seeded only at `action-required`, `blocked`, and `changes-required`; the `none` row covers those plus `error`.)
+- **Extensible by adding edges.** If a real case to spawn straight into another stage appears (e.g. `none → submit → done` for an already-satisfied audit action), it's a one-cell addition to the `none` row — same as growing any other row. Birth stays expressed *as a signal*, so creation states remain explicit and engine-locked rather than free-form author-seeded.
+- **Authorized by `upsert: true`.** Only a pre-hook `actions[]` entry carrying `upsert: true` may resolve against `none` (see Path 3). A missing target *without* `upsert: true` is a programming error and throws (Open question 1) — so a typo'd target never silently spawns.
+
 ## How signals get emitted
 
 Three paths into the FSM. Identical resolution.
@@ -192,6 +202,7 @@ Pre-hooks return a structured response that the engine treats as a signal manife
     - { type: <action_type>, signal: <name> }
     - { workflow_id: <id>, type: <action_type>, signal: <name> }
     - { action_id: <id>, signal: <name> }       # by primary key
+    - { type: <action_type>, key: <key>, signal: <name>, upsert: true }  # spawn a missing keyed instance
   event_overrides: { ... }
   form_overrides: { ... }
 ```
@@ -200,6 +211,7 @@ Pre-hooks return a structured response that the engine treats as a signal manife
 
 - **The current action lands per the signal the user fired.** A pre-hook cannot re-signal the current action — there is no root-level signal override. It influences the current action only through `event_overrides` (log event) and `form_overrides` (written form data); where the action *lands* is fixed by the fired signal and the FSM. Conditional landing (e.g. "this submission should be marked not-required") is modelled as a separate thin action with its own button, not a redirect of the current submit (see worked example 4).
 - `actions[]` — auxiliary signals against **other** actions. Each entry identifies a target (by `type` + workflow context, or by `action_id`) and the signal to fire. Engine fires each against the target's FSM; non-listening targets no-op silently.
+- `upsert: true` on an `actions[]` entry **authorizes spawning** a missing target. When no doc matches the entry's `(type, key)`, the engine resolves the signal against the `none` creation row (the absent doc's current stage is `none`) and inserts a new action at the resolved birth stage. This is the rebuilt home of today's `{ type, key, status, upsert: true }` spawn — the `status` seed is gone; the birth stage now comes from the signal via the `none` row. Without `upsert: true`, a missing target throws (Open question 1).
 
 The shape change from today's `{ type, status }` to `{ type, signal }` is the one author-visible YAML break. Migration is mechanical:
 
@@ -213,6 +225,14 @@ The shape change from today's `{ type, status }` to `{ type, signal }` is the on
 | `{ type: send-quote, status: action-required, force: true }`  | `{ type: send-quote, signal: activate }` |
 
 Pre-hooks lose `force: true`. They gain expressive signal names. The engine's resolution is now deterministic from the table.
+
+`upsert: true` survives the migration unchanged — it still authorizes creating a missing target. What changes is that the `status` seed it used to carry is dropped; the birth stage is now expressed by the signal, resolved through the `none` row:
+
+| Today                                                          | After                                                 |
+| -------------------------------------------------------------- | ----------------------------------------------------- |
+| `{ type: x, key: k, status: action-required, upsert: true }`   | `{ type: x, key: k, signal: activate, upsert: true }` |
+| `{ type: x, key: k, status: blocked, upsert: true }`           | `{ type: x, key: k, signal: block, upsert: true }`    |
+| `{ type: x, key: k, status: changes-required, force: true, upsert: true }` | `{ type: x, key: k, signal: request_changes, upsert: true }` |
 
 ### Unknown signal names throw; unlisted transitions no-op
 
@@ -252,6 +272,7 @@ Per-action overrides happen at the template level (apps that customize templates
 ## What gets added
 
 - **The FSM tables themselves** — three small lookup tables (form, simple, tracker), engine-internal data.
+- **The `none` creation row** (form + simple) — folds pre-hook action *spawning* into the FSM. Replaces today's `{ type, key, status, upsert: true }` status-seed branch (`handleSubmit` step 4 + `utils/shouldCreate.js`): the birth stage is now resolved from the signal via the `none` row, with `upsert: true` as the create-authorization guard. `none` is a transient sentinel, not a ninth status.
 - **The `progress` signal and `in-progress`-landing transition** — restoration of v0 `save_draft` capability, now covering simple kind ("mark started") as well as form kind ("save draft").
 - **The `error` signal** — explicit name for author-deliberate downstream errors, replacing the v0 pre-hook `actions: [{ status: error }]` return. The engine itself never sets `error` (thrown hooks surface as API-level reject/error toasts, not action statuses).
 - **`activate` and `block` signals** — explicit names for cascade patterns previously written as `force: true`. `activate` complements the narrow `unblock` for cases where the cascade is deliberate across multiple source states.
@@ -324,7 +345,7 @@ Per-action overrides happen at the template level (apps that customize templates
 
 ## Open questions
 
-1. **Should the engine validate signal targets at fire time?** A pre-hook emitting `{ type: nonexistent, signal: unblock }` could either throw or no-op. Today's `actions[]` throws on missing targets. Recommend keeping that behaviour — missing target is a programming error, not a soft no-op like unlisted transitions.
+1. **Should the engine validate signal targets at fire time?** A pre-hook emitting `{ type: nonexistent, signal: unblock }` could either throw or no-op. **Resolved:** a missing target throws **unless** the entry carries `upsert: true`, in which case it is an intentional spawn — the engine creates the target via the `none` creation row (resolving the signal from `none`). So a missing target without `upsert` is a programming error (throw, like an unknown signal name), while a missing target with `upsert` is a declared creation (insert). This is the rebuilt home of today's `actions[]` upsert path.
 2. **`block` signal source states.** The table lists `block` from every non-terminal state. Should `block` also be valid from `done` (e.g. to undo a completed action and re-evaluate)? The audit doesn't show a clear case. Defer — if needed, additive to the table.
 
 ## Risks

@@ -39,7 +39,7 @@ The remaining three plan-phase planners build the event payload (rendered agains
 - `type` reflects the logical op: `MongoDBUpdateOne` for action/workflow update, `MongoDBInsertOne` for an action insert.
 - `before` = loaded doc (null for inserts); `after` = planned doc.
 - `meta` resolved from `connection.changeLog.meta` (e.g. current user via `_user`).
-- Request-context fields shared across all entries from one invocation.
+- Request-context fields shared across all entries from one invocation. These come from `lowdefyContext` — Lowdefy's `callRequestResolver` passes `{ blockId, connectionId, pageId, requestId, endpointId }` to every connection resolver, so the entry-point handler (`SubmitWorkflowAction.js` et al.) threads them into the engine context. Parity with the community plugin is exact (it reads the same source); when an invocation lacks a page/block, `pageId`/`blockId` are `undefined` for both.
 - **Opt-out:** when `changeLog` is not configured, produce **no** entries (same as the community plugin).
 - Do **not** double-log events (the events module's own `changeLog` logs the `new-event` write) or notifications. No engine-specific fields (`commit_id` etc. — Non-goal).
 

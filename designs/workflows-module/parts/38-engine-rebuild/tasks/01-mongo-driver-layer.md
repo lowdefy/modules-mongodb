@@ -10,6 +10,8 @@ App-side YAML `CallApi` requests continue to use the community plugin unchanged.
 
 ## Task
 
+**Declare the `mongodb` dependency.** `getMongoDb.js` is the first engine code to `import { MongoClient } from "mongodb"` directly (today the community plugin owns the driver privately). The plugin's `package.json` declares no `mongodb` — it resolves today only by pnpm-hoist accident (`mongodb@6.21.0` at the workspace root). Add `mongodb` to **`peerDependencies`** with range `^6` (matching the community plugin's major, so a consuming app dedupes to one v6 driver build rather than bundling a second copy). Not `dependencies` — the engine wants to share the app's single driver build; bundling would lock in the doubled-driver coexistence D8 only tolerates as a quirk. (The community plugin pins an exact `mongodb@6.3.0` of its own; that's an external choice we can't change, and D8 already accepts the two clients coexisting — both are v6, so `findOneAndUpdate` returns the doc/`null` directly as the helpers assume.)
+
 Create `plugins/modules-mongodb-plugins/src/connections/mongo/` with these helpers (all accept an optional `session` for transaction participation):
 
 - `getMongoDb.js` — constructs a `MongoClient` from the connection's `databaseUri` (already in `WorkflowAPI/schema.js`), **caches it at module scope keyed by `databaseUri`**, and reuses it across handler invocations. Exposes both:
@@ -31,9 +33,11 @@ Add a `*.test.js` per helper. For `getMongoDb`, test that repeated calls with th
 - Topology detection logs the chosen commit mode at startup and respects a config override.
 - Tests run against `mongodb-memory-server` (use `MongoMemoryReplSet` where the transaction path matters; standalone is fine for the basic helpers).
 - `findOneAndUpdateDoc` returns `null` on a zero-match filter (this is what the CAS gate in task 13 relies on).
+- `mongodb` is declared in the plugin's `peerDependencies` (`^6`); the direct `import` from `mongodb` no longer resolves by hoist accident.
 
 ## Files
 
+- `plugins/modules-mongodb-plugins/package.json` — modify — add `mongodb: "^6"` to `peerDependencies`
 - `plugins/modules-mongodb-plugins/src/connections/mongo/getMongoDb.js` — create
 - `plugins/modules-mongodb-plugins/src/connections/mongo/findOneAndUpdateDoc.js` — create
 - `plugins/modules-mongodb-plugins/src/connections/mongo/bulkWriteActions.js` — create

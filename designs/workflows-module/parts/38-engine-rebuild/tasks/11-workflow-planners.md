@@ -11,7 +11,7 @@ These pure planners compose the planned post-commit **workflow** doc from the lo
 **Create `shared/phases/planners/planWorkflowRecompute.js`:**
 
 - Compose the planned post-commit workflow doc (whole doc, per Q1) from `loadedState.workflow` + planned action states:
-  - Recompute `groups` against planned action states.
+  - Recompute `groups` against planned action states. **This recompute participates in the interleaved auto-unblock fixpoint (task 10 / D4):** `planAutoUnblock` reads the recomputed group status to resolve group-id `blocked_by` deps, so group recompute runs *before each* unblock pass and a **final** time after the last pass (an `unblock` flips a group label `blocked → in-progress`). Expose the group recompute so the fixpoint can call it between passes; the whole-workflow-doc composition is the final step.
   - Recompute `summary` (`{ done, not_required, total }`) against planned action states.
   - Check auto-complete: push `completed` onto workflow status iff `total === done + not_required`. `completed` and `cancelled` are mutually exclusive.
 - Pure: derives everything from `loadedState` + planned actions; no reads.
