@@ -6,7 +6,7 @@
 
 **Supersedes** [Part 30 — Engine-managed display](../_rejected/30-status-map-rendering/design.md). Part 30 is moved to `_rejected/` with a README pointing here. The on-disk contract Part 30 established (top-level per-app keys on action docs, sticky display, engine-computed links for built-in kinds, engine-rendered event display) is the right contract — Part 30's mistake was layering it onto the existing handleSubmit shape, which couples render context to mutable handler state and produces a class of staleness bugs that surface review after review (see Part 30 reviews 5 + 6). This part keeps Part 30's contract and rebuilds the API beneath it.
 
-**Implements [Part 34 — Action access model](../34-action-access-model/design.md).** Part 34 is a design-only contract with no standalone implementation; its engine/resolver/display-touching decisions land here. Part 38 is the implementation vehicle for: (1) the per-app per-verb `access` shape and its resolver validation; (2) the per-verb `links` map on action docs (Part 34 D7), which **supersedes** Part 30's single `action[slug].link`; (3) signal→verb submit-time gating (Part 34 D6); (4) the `visible_verbs` query response replacing the binary `access_filter` (Part 34 D12); and (5) the `workflow-` endpoint-id prefix on emitted pages and Apis (Part 34 D10). Wherever this design previously carried a Part 30 surface that Part 34 changed (single link, the `access`-verb shorthand array), the Part 34 shape wins. See D16 for the consolidated list of surfaces touched.
+**Implements [Part 34 — Action access model](../34-action-access-model/design.md).** Part 34 is a design-only contract with no standalone implementation; its engine/resolver/display-touching decisions land here. Part 38 is the implementation vehicle for: (1) the per-app per-verb `access` shape and its resolver validation; (2) the per-verb `links` map on action docs (Part 34 D7), which **supersedes** Part 30's single `action[slug].link`; (3) signal→verb submit-time gating (Part 34 D6); (4) the `visible_verbs` query response replacing the binary `access_filter` (Part 34 D12); and (5) the emitted-id naming for central-auth globs (Part 34 D10) — derived per-workflow endpoints stay entry-scoped with no literal prefix, the `workflow-` prefix instead marking the module's fixed pages. Wherever this design previously carried a Part 30 surface that Part 34 changed (single link, the `access`-verb shorthand array), the Part 34 shape wins. See D16 for the consolidated list of surfaces touched.
 
 ## Why this rebuild
 
@@ -33,11 +33,11 @@ Sequencing them is more churn than combining them. Combined, they collapse the r
 7. **Pre-hooks are read-only with respect to the engine's atomicity boundary.** Pre-hooks may do their own callApi/MongoDB work for external coordination, but the engine's plan-then-commit treats pre-hook returns purely as input. Writes the pre-hook performs are independent of the engine's commit; this is a deliberate contract, documented for authors.
 8. **Tracker recursion is its own load-plan-commit cycle per level.** `fireTrackerSubscription` becomes a loop that, for each parent workflow up the chain, runs the same four phases on that parent workflow. No shared in-memory state between levels; each level is independently atomic.
 9. **`shared/` reorganizes around the phase model.** `createAction.js` / `updateAction.js` go away as primary call sites. Replaced by: `loadWorkflowState.js` (read phase), planners (`planActionTransition.js`, `planWorkflowRecompute.js`, `planEventDispatch.js`), `commitPlan.js` (write phase), and Mongo-driver helpers (`mongo/findOneAndUpdateDoc.js`, `mongo/bulkWriteActions.js`, `mongo/insertOneDoc.js`).
-10. **Salvaged from Part 30 unchanged:** the on-disk action-doc shape (per-app cells spread at top level, sticky display, `status_title`, `metadata`); engine-computed links for built-in kinds with the `entry_id`-scoped pageId mechanic, now emitted as a **per-verb `links` map** (kind × stage × **verb**) per Part 34 D7 rather than Part 30's single `link`; the resolver shape-validator for status_map cells; engine-rendered event display with the fixed render context; display-surface fixes (group-overview reads `actions_list.$.message` / `.links`); the engine-default event template rewrite to plain Nunjucks strings; the workflow-api connection `entry_id` wiring; the resolver `app_name` var description update.
+10. **Salvaged from Part 30 unchanged:** the on-disk action-doc shape (per-app cells spread at top level, sticky display, `status_title`, `metadata`); engine-computed links for built-in kinds with the `entry_id`-scoped pageId mechanic, now emitted as a **per-verb `links` map** (kind × stage × **verb**) per Part 34 D7 rather than Part 30's single `link`; the resolver shape-validator for status_map cells; engine-rendered event display with the fixed render context; display-surface fixes (`workflow-group-overview` reads `actions_list.$.message` / `.links`); the engine-default event template rewrite to plain Nunjucks strings; the workflow-api connection `entry_id` wiring; the resolver `app_name` var description update.
 11. **Start, Cancel, and Close each emit a log event** in addition to action-level events. Today only Submit dispatches log events; under this rebuild, every engine handler invocation produces exactly one `event_id` and a corresponding entry in the `events` timeline (`workflow-started`, `workflow-cancelled`, `workflow-closed`). One `event_id` per invocation anchors that invocation's events-timeline entry; the `log-changes` audit (D7) follows the community plugin's schema and is keyed/grouped the same way the plugin keys it (no engine-specific `commit_id` field).
 12. **Concurrency: Compare-And-Swap on `workflow.updated`.** Each handler reads `workflow.updated` at load; the commit's workflow `findOneAndUpdate` filter pins that value. Concurrent writes between our load and commit make the filter miss; the engine throws a retryable error. No version field, no transactions required. See D15.
 13. **Demo migration ships with this part.** The demo app's `workflow_config/` migrates to the new payload + pre-hook return shapes (signals, no `force`) as part of this part's task list. The demo is the only in-tree end-to-end exercise of the engine; without migrating it together, there is no integration test of the rebuild until app-side migrations run.
-14. **Part 34's access model is absorbed here.** The resolver validates the per-app per-verb `access` shape (verb-key whitelist, gate values `true | [roles]`; reject the empty-list / shorthand-array / action-wide `access.roles` / unknown top-level forms; lint-warn on `edit`/`review`/`error` without `view`). The submit handler runs the signal→verb access check against `access.{current_app}.{verb}` and `_user.apps.{current_app}.roles` before any write. `get-entity-workflows` (and its `get-workflow-overview` / `get-action-group-overview` `_ref` callers) replace `access_filter.yaml` with `visible_verbs_filter.yaml`, projecting a four-key `visible_verbs` bag per action and dropping actions with no true verb. Emitted page ids (`makeActionPages`) and Api ids (`makeWorkflowApis`) gain the literal `workflow-` prefix. See D16 and Part 34 for full rationale.
+14. **Part 34's access model is absorbed here.** The resolver validates the per-app per-verb `access` shape (verb-key whitelist, gate values `true | [roles]`; reject the empty-list / shorthand-array / action-wide `access.roles` / unknown top-level forms; lint-warn on `edit`/`review`/`error` without `view`). The submit handler runs the signal→verb access check against `access.{current_app}.{verb}` and `_user.apps.{current_app}.roles` before any write. `get-entity-workflows` (and its `get-workflow-overview` / `get-action-group-overview` `_ref` callers) replace `access_filter.yaml` with `visible_verbs_filter.yaml`, projecting a four-key `visible_verbs` bag per action and dropping actions with no true verb. Derived page ids (`makeActionPages`) and Api ids (`makeWorkflowApis`) stay `{workflow_type}-{action_type}-…` with no literal prefix (entry scoping namespaces them); the `workflow-` prefix is instead added to the module's fixed pages (`workflow-simple-*`, `workflow-group-overview`, `workflow-overview`). See D16 and Part 34 D10 for full rationale.
 
 ## Key decisions
 
@@ -59,7 +59,7 @@ The pattern is standard industry practice. Names: DDD aggregate + unit-of-work; 
 
 The four phases are not just labels — each has an explicit input/output contract that the code structure enforces.
 
-**Load phase.** Input: handler context (params, user, connection). Output: a `LoadedState` object containing the workflow doc, all action docs, the workflowConfig, the actionConfig for the target action (Submit only — Start/Cancel/Close operate on the whole workflow). Performs N reads (workflow + actions for the target workflow; for Submit, also the target action; hooks haven't run yet). Throws if state is missing or invalid (workflow not found, action not found, **per-verb access check fails**, workflow stage doesn't accept submissions). The access check (Submit only) resolves the signal's required verb (Part 34 D6: `submit`/`progress`/`not_required`→`edit`, `resolve_error`→`error`, `approve`/`request_changes`→`review`) and rejects unless `access.{current_app}.{verb}` is `true` or intersects `_user.apps.{current_app}.roles` (D16). After load returns, no further reads happen until the next load (the tracker-recursion next-level load).
+**Load phase.** Input: handler context (params, user, connection). Output: a `LoadedState` object containing the workflow doc, all action docs, the workflowConfig, the actionConfig for the target action (Submit only — Start/Cancel/Close operate on the whole workflow). Performs N reads (workflow + actions for the target workflow; for Submit, also the target action; hooks haven't run yet). Throws if state is missing or invalid (workflow not found, action not found, **per-verb access check fails**, workflow stage doesn't accept submissions). The access check (Submit only) resolves the signal's required verb (Part 34 D6: `submit`/`progress`/`not_required`→`edit`, `resolve_error`→`error`, `approve`/`request_changes`→`review`) and rejects unless `access.{current_app}.{verb}` is `true` or intersects `_user.apps.{current_app}.roles` (D16). **The check living in the load phase — ahead of the pre-hook — is intentional: an unauthorized submit is rejected before any pre-hook fires, so unauthorized users never trigger pre-hook external side effects (callApi, third-party writes). Do not move the check after the pre-hook.** After load returns, no further reads happen until the next load (the tracker-recursion next-level load).
 
 **Pre-hook phase.** Input: `LoadedState` + caller payload. Output: `PreHookResult` containing auxiliary signals (against *other* actions), form_overrides, event_overrides. A pre-hook **cannot** re-signal the current action — there is no root-level signal redirect (state-machine.md, "How signals get emitted"); the current action lands per the signal the user fired. Single `callApi` to the hook routine. Pure consumer of the result — the engine doesn't trust the hook to have done writes that affect engine state; if a hook does writes for external reasons (e.g. updating a third-party system), those are out-of-band by contract.
 
@@ -119,9 +119,20 @@ function resolveSignal({ action, signal, actionConfig }) {
   const entry = table[currentStage]?.[signal];
   if (entry === undefined) return null; // no-op signal — non-listening state
   if (typeof entry === "string") return entry; // direct target
-  return entry({ action, actionConfig }); // function — e.g. `submit` picks in-review vs done from the action's static `access.{app_name}` review verb (nullary — no payload input)
+  return entry({ action, actionConfig }); // function — e.g. `submit` picks in-review vs done via `hasReview(actionConfig)` (see below); reads static config, app-agnostic, no payload input
 }
 ```
+
+**The `submit` → in-review/done split is an action-global property.** The function cell resolving `submit` from `action-required` chooses `in-review` vs `done` by whether the action declares a review stage in its design — computed app-global, not scoped to the submitting app:
+
+```js
+// does any app block in the action's access declare a review verb?
+const hasReview = (actionConfig) =>
+  Object.values(actionConfig.access ?? {})
+    .some((appBlock) => appBlock != null && "review" in appBlock);
+```
+
+One action doc is shared across every app (all read the same `status[0].stage`), so whether a review step exists is a property of the action, not the submitter — otherwise a `team-app` submit would land `in-review` while a `support-app` submit on the same action lands `done`. `resolveSignal` takes no current-app argument for exactly this reason. (Equivalent to "a review page is emitted," since Part 34 D5 emits it iff some app declares `review` — same input.) Read live from the static `actionConfig`; the module ships no in-flight migration, so editing `access` to add/remove a review stage on a live workflow is the author's migration responsibility — see D16. Per Part 34 D6.
 
 Three signal sources, identical resolution:
 
@@ -348,7 +359,7 @@ Parts of Part 30 that carry over with no architectural change, just rewired to f
 - **Engine-computed links for built-in kinds.** Now a **per-verb `links` map** per [Part 34 D7](../34-action-access-model/design.md) — `computeEngineLinks` builds `links: { view, edit, review, error }` per slug from the per-verb-isolated **kind × stage × verb** table, which supersedes Part 30 D4's compound (kind × stage × access-verbs) cells. Each cell is `null` where the slug doesn't declare the verb or the stage has no meaningful page. Per-verb *role gates* don't enter the computation — they filter which verbs the user is in (`visible_verbs`), which the UI applies on read via the static priority `edit > review > error > view`. Build-time `_module.pageId` scoping via the `entry_id` connection field. `urlQuery` carries `action_id` for simple/form, `workflow_id` for tracker.
 - **Resolver shape-validation.** Status_map cell shape rules from Part 30 D9 (built-in kinds reject `link:`, custom accepts `{message?, link?}`, no coverage requirement).
 - **Engine-rendered event display.** Three source layers (engine default → YAML override → pre-hook return) merged via `mergeEventOverrides`, all plain Nunjucks template strings, rendered during the plan phase. D14 of Part 30 carries.
-- **Display surface fixes.** `group-overview.yaml` reads `actions_list.$.message` / `.links` (the UI applies the per-verb selection rule). Other surfaces' aggregation projections light up automatically once the engine writes the top-level fields.
+- **Display surface fixes.** `workflow-group-overview.yaml` (renamed from `group-overview.yaml`, D16 / Part 34 D10) reads `actions_list.$.message` / `.links` (the UI applies the per-verb selection rule). Other surfaces' aggregation projections light up automatically once the engine writes the top-level fields.
 - **`workflow-api.yaml` `entry_id: { _module.id: true }` wiring.** Connection schema gains `entry_id` field.
 - **Engine-default event template rewrite** to plain Nunjucks string (`"{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"`).
 
@@ -390,15 +401,19 @@ Without transactions, concurrent submits on the same workflow could each read th
 
 **Access shape + resolver validation.** `access.{app_name}` is a verb→gate map (`view`/`edit`/`review`/`error` → `true | [roles]`). `makeWorkflowsConfig` validates it (`validateActionAccess`): unknown verb keys, the empty-list `[]`, the old shorthand list (`access.{app}: [view, edit]`), the removed action-wide `access.roles`, and unknown top-level `access` keys all hard-error; an app block declaring `edit`/`review`/`error` without `view` lint-warns (Part 34 D4). `notification_roles` lives at the action root, not under `access`.
 
-**Submit-time gating.** The load phase resolves the signal's required verb (Part 34 D6 table) and rejects the submit unless `access.{current_app}.{verb}` is `true` or intersects `_user.apps.{current_app}.roles`. This is the authoritative inner gate; the central `api.roles` glob (`workflow-{type}-{action}-submit`) is the coarse outer fence (Part 34 D11).
+**Submit-time gating.** The load phase resolves the signal's required verb (Part 34 D6 table) and rejects the submit unless `access.{current_app}.{verb}` is `true` or intersects `_user.apps.{current_app}.roles`. This is the authoritative inner gate; the central `api.roles` glob (`{entry_id}/{type}-{action}-submit`) is the coarse outer fence (Part 34 D11).
 
 **Per-verb links.** `computeEngineLinks` writes `action.<slug>.links: { view, edit, review, error }` — per-verb-isolated cells from the kind × stage × verb table (Part 34 D7), each `null` where the slug doesn't declare the verb or the stage has no meaningful page. Per-verb *role gates* don't enter the computation; they filter which verbs the user is in, which the UI applies on read. UI selection is the static priority `edit > review > error > view`.
 
 **`visible_verbs` query response.** `visible_verbs_filter.yaml` replaces `access_filter.yaml`: per-verb `$let`/`$or` resolution against `_user.apps.{app_name}.roles` → `$addFields visible_verbs: { view, edit, review, error }` → `$match $anyElementTrue` (drop actions with no true verb). Concrete pipeline in Part 34 D12. The same `_ref` is consumed by `get-entity-workflows`, `get-workflow-overview`, and `get-action-group-overview`.
 
-**`workflow-` endpoint prefix.** Emitted page ids become `workflow-{workflow_type}-{action_type}-{verb}` (`makeActionPages`) and Api ids `workflow-{workflow_type}-{action_type}-{...}` (`makeWorkflowApis`), so app-level role globs (`workflow-{type}-*`) cleanly scope to workflow endpoints (Part 34 D10).
+**Emitted-id naming.** Derived per-workflow endpoints stay `{workflow_type}-{action_type}-{verb}` (pages, `makeActionPages`) and `{workflow_type}-{action_type}-{...}` (Apis, `makeWorkflowApis`) — no literal prefix; the Lowdefy build's entry-id scoping (`{entry_id}/…`) namespaces them, so `{entry_id}/{type}-*` slices a workflow type's endpoints. The `workflow-` prefix is instead carried by the module's **fixed** pages — `workflow-overview`, `workflow-group-overview`, and the shared simple-kind pages `workflow-simple-{verb}` — reserving the `workflow-*` glob space for module infrastructure, disjoint from the per-type derived endpoints (Part 34 D10). `workflow` is a reserved workflow-type name (its derived ids would collide with the fixed-page space).
 
 **Client mirror.** Part 18's `action_role_check` populates per-verb `_state.action_allowed: { view, edit, review, error }` (Part 34 D8); page templates read the verb-specific bool. This rides along with the demo's page-template migration (Proposed change #13).
+
+**Access drives FSM reachability (known V1 limitation).** The *presence* of the `review` verb decides whether `submit` lands `in-review` vs `done` (D4, `hasReview`), and verb presence also gates page/link emission (Part 34 D5/D7). So `access` is not a pure gate over a fixed state graph — editing it reshapes which stages are reachable. Removing a verb from a deployed action while actions sit at the stage it gates strands them (e.g. drop `review` while an action is at `in-review`: no review page, no gate, `links.review = null`, no engine remediation). The module ships no version actions or in-flight migration; consistent with the module's V1 migration stance, an author editing access on a live workflow owns any required data migration. Documented in [Part 34 D6](../34-action-access-model/design.md).
+
+**Tasking note — the access-model work is its own task cluster.** Most of the Part 34 absorption is orthogonal to the load-plan-commit write path and should be tasked (and reviewed) as an independent block, sequenced alongside — not interleaved with — the engine rebuild. Three surfaces touch neither the FSM nor load-plan-commit and are fully independent: `visible_verbs_filter.yaml` (read-path aggregation), `validateActionAccess` (build-time resolver validation), and the `action_role_check` client component (which **implements** Part 18's amend-via-note — Part 38 is where that completed-part amendment actually lands). The write-path-coupled pieces — the submit-time access gate (load phase) and the per-verb `links` map (`computeEngineLinks`, plan phase) — stay with the rebuild because they share its surface. `r:design-task` should split these accordingly so the engine-independent surfaces don't gate on the rebuild core.
 
 ## Current state recap
 
@@ -540,7 +555,7 @@ Phase functions, one file per phase, with sub-files for planners.
 - `invokePostHook.js` — wraps `callApi` to the post-hook routine. Receives `LoadedState` + `Plan` + `CommitResult`.
 - `commitPlan.js` — single commit-phase entry point; sequences the writes per D9.
 - `planners/` — pure planning functions:
-  - `planActionTransition.js` — given an action + signal + payload + context, returns the planned post-commit action doc + change-log delta.
+  - `planActionTransition.js` — given an action + signal + payload + context, returns the planned post-commit action doc + change-log delta. **Field write — generic passthrough.** This planner is the home of today's `updateAction` `...fields` spread: it sets `payload.fields` onto the planned action doc (the rebuilt equivalent of `$set: { ...fields }`). It is **kind-agnostic** and does not name `assignees` / `due_date` / `description` — it passes the `fields` bag through verbatim, exactly as today. This is the behavior-preserving baseline; the universal-fields surface ([Part 24](../24-universal-fields/design.md)) layers a kind-based rule on top (write the universal fields only for `kind: simple`; `kind: form` owns them via its own operation). Part 38 itself stays ignorant of universal fields — it only carries the generic passthrough forward so no submit (notably `kind: simple`, whose submission content *is* those fields) regresses before Part 24 lands.
   - `planAutoUnblock.js` — fixpoint loop over the in-progress action plan; emits `unblock` signals via the FSM (engine cascades are unblock-only; pre-hook `block` entries are planned by `planActionTransition` from `preHookResult.actions[]`, not here).
   - `planWorkflowRecompute.js` — composes the planned post-commit workflow doc (summary, groups, completed push).
   - `planFormDataMerge.js` — merges form + form_review + form_overrides into the planned workflow's form_data.
@@ -587,21 +602,22 @@ Phase functions, one file per phase, with sub-files for planners.
 
 ### Modified — display surfaces (carried from Part 30)
 
-- `modules/workflows/pages/group-overview.yaml` — switch to reading `actions_list.$.message` / `.links` (UI applies the per-verb selection rule).
+- `modules/workflows/pages/group-overview.yaml` → **renamed** `workflow-group-overview.yaml` (page `id` `group-overview` → `workflow-group-overview`; D16 / Part 34 D10), and switch to reading `actions_list.$.message` / `.links` (UI applies the per-verb selection rule).
 - `modules/workflows/api/stages/access_filter.yaml` → **replaced by** `visible_verbs_filter.yaml` (per-verb `$let`/`$or` resolution → `$addFields visible_verbs` → `$match $anyElementTrue`; D16 / Part 34 D12).
 - `modules/workflows/api/get-entity-workflows.yaml`, `api/get-workflow-overview.yaml`, `api/get-action-group-overview.yaml` — swap the access-stage `_ref` from `access_filter.yaml` to `visible_verbs_filter.yaml`; their `message` / `links` projections light up automatically once the engine writes the top-level fields.
+- `modules/workflows/pages/simple-view.yaml` / `simple-edit.yaml` / `simple-review.yaml` → **renamed** `workflow-simple-view/edit/review.yaml` (page `id` gains the `workflow-` prefix; D16 / Part 34 D10). Update every `_module.pageId: simple-*` reference (inside `simple-edit`/`simple-review`, and in `computeEngineLinks`'s simple-kind link table) and the `pages:` `_ref` paths in `module.lowdefy.yaml`. `workflow-overview.yaml` is already conformant (no rename).
 
 ### Modified — resolver + manifest (carried from Part 30)
 
 - `modules/workflows/resolvers/makeWorkflowsConfig.js` — add `validateStatusMapCells` per Part 30 D9, and `validateActionAccess` per Part 34 (verb-key whitelist; gate `true | [roles]`; reject empty-list, shorthand array, action-wide `access.roles`, unknown top-level `access` keys; lint-warn on `edit`/`review`/`error` without `view`).
-- `modules/workflows/resolvers/makeActionPages.js` — read declared verbs from the `access.{app}` **map keys** (not the old verb array); prefix emitted page ids with `workflow-` → `workflow-{workflow_type}-{action_type}-{verb}` (D16 / Part 34 D10).
+- `modules/workflows/resolvers/makeActionPages.js` — read declared verbs from the `access.{app}` **map keys** (not the old verb array); emitted page ids stay `{workflow_type}-{action_type}-{verb}` (no `workflow-` prefix; entry scoping handles glob slicing — D16 / Part 34 D10).
 - `modules/workflows/connections/workflow-api.yaml` — add `entry_id: { _module.id: true }`.
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` — add `entry_id` field; rewrite the now-false `actionsEnum[].priority` description (display-only, no longer the priority-rule check) and the `changeLog` description (consumed natively by the engine, not forwarded to the community plugin) — see "Connection schema" above.
 - `modules/workflows/module.lowdefy.yaml` — update `app_name` description.
 
 ### Modified — API + payload surfaces
 
-- `modules/workflows/resolvers/makeWorkflowApis.js` — emitted-api payload mapping passes `signal`, `metadata`, `form`, `form_review`, `event_overrides`, hooks. Drops `force`. Also prefixes emitted Api ids with `workflow-` → `workflow-{workflow_type}-{action_type}-{...}` (D16 / Part 34 D10).
+- `modules/workflows/resolvers/makeWorkflowApis.js` — emitted-api payload mapping passes `signal`, `metadata`, `form`, `form_review`, `event_overrides`, hooks. Drops `force`. Emitted Api ids stay `{workflow_type}-{action_type}-{...}` (no `workflow-` prefix; entry-scoped — D16 / Part 34 D10).
 - `modules/workflows/api/start-workflow.yaml` — add `metadata` to payload (Part 30 carry-over). Document `signal` as the replacement for the implicit "what status do we start in" path.
 - Pre-hook payload shape (`buildHookPayload.js`) — unchanged. Pre-hook **return** shape changes: `{ type, status }` → `{ type, signal }` per state-machine.md.
 
@@ -636,7 +652,7 @@ State before submit:
 - `install-cleanup`: `blocked` (blocked_by install-step)
 - Workflow summary: `{ done: 0, not_required: 0, total: 3 }`
 
-**Caller submits:** `signal: submit` against `install-step` with `metadata: { physical_id: "D-42" }`. `install-step` declares no `review` verb in `access.{app_name}`, so `submit` lands `done` (the nullary review-verb rule, identical for form and simple kinds). No `target_status` — the v0 simple selector is gone (state-machine.md review #6).
+**Caller submits:** `signal: submit` against `install-step` with `metadata: { physical_id: "D-42" }`. `install-step` declares no `review` verb in `access` (no app declares it), so `submit` lands `done` (the action-global `hasReview` rule from D4, identical for form and simple kinds). No `target_status` — the v0 simple selector is gone (state-machine.md review #6).
 
 **Load phase:**
 
@@ -662,7 +678,7 @@ loadedState = {
 
 **Plan phase:**
 
-1. Resolve current-action signal: `FSM["simple"]["action-required"]["submit"]` → "in-review or done"; `install-step` has no `review` verb → `done`.
+1. Resolve current-action signal: `FSM["simple"]["action-required"]["submit"]` → "in-review or done"; `hasReview(actionConfig)` is false (no app declares `review`) → `done`.
 2. Initial planned transitions: `[ { action: a-step, target: "done", fields: {...}, metadata: { physical_id: "D-42" } } ]`.
 3. Auto-unblock fixpoint over planned actions:
    - a-verify.blocked_by = ["install-step"]; planned install-step is "done" → terminal → emit `unblock` against a-verify.
@@ -670,9 +686,9 @@ loadedState = {
    - a-cleanup.blocked_by = ["install-step"]; same → `unblock` → `action-required`.
    - Next iteration: planned transitions are a-step→done, a-verify→action-required, a-cleanup→action-required. No further unblocks (verify/cleanup don't accept unblock from action-required).
 4. Compose planned action docs:
-   - a-step planned doc: status prepended with `{ stage: "done", event_id: e1, created: now }`, metadata: `{ physical_id: "D-42" }`, rendered cell for `done` stage (e.g. `demo.message: "Installed D-42."`), per-verb links map `demo.links: { view: <simple-view>, edit: null, review: null, error: null }` (the `done` stage exposes only `view`; D16 / Part 34 D7).
-   - a-verify planned doc: status prepended with `{ stage: "action-required", event_id: e1, created: now }`, sticky message from prior stage (none — was blocked, no cell), per-verb links map `demo.links: { view: <form-view>, edit: <form-edit>, review: null, error: null }`.
-   - a-cleanup planned doc: status prepended, per-verb links map `demo.links: { view: <simple-view>, edit: <simple-edit>, review: null, error: null }`.
+   - a-step planned doc: status prepended with `{ stage: "done", event_id: e1, created: now }`, metadata: `{ physical_id: "D-42" }`, rendered cell for `done` stage (e.g. `demo.message: "Installed D-42."`), per-verb links map `demo.links: { view: <workflow-simple-view>, edit: null, review: null, error: null }` (the `done` stage exposes only `view`; D16 / Part 34 D7).
+   - a-verify planned doc (kind `form` → derived pages): status prepended with `{ stage: "action-required", event_id: e1, created: now }`, sticky message from prior stage (none — was blocked, no cell), per-verb links map `demo.links: { view: <installation-install-verify-view>, edit: <installation-install-verify-edit>, review: null, error: null }`.
+   - a-cleanup planned doc (kind `simple` → fixed pages): status prepended, per-verb links map `demo.links: { view: <workflow-simple-view>, edit: <workflow-simple-edit>, review: null, error: null }`.
 5. Recompute groups: install group has 1 done + 2 action-required → "in-progress" (unchanged).
 6. Recompute summary: `{ done: 1, not_required: 0, total: 3 }`.
 7. Check auto-complete: no — `total !== done + not_required`. No completed push.
@@ -710,7 +726,7 @@ Renders all happened in step 4 + step 10 of planning, against the planned post-c
 
 ## Test strategy
 
-Test coverage falls into four bands. If the section grows beyond what fits comfortably below, split into `test-strategy.md` alongside this design.
+Test coverage falls into several bands. If the section grows beyond what fits comfortably below, split into `test-strategy.md` alongside this design.
 
 **Unit tests — pure phase / planner functions.** Every file under `shared/phases/planners/` is pure. Inputs are JS objects, outputs are JS objects. One test file per planner:
 
@@ -725,6 +741,8 @@ Test coverage falls into four bands. If the section grows beyond what fits comfo
 
 **Unit tests — Mongo helpers.** `mongo/*.test.js` against a test Mongo instance (or `mongodb-memory-server`). Cover happy path + CAS-miss path for `findOneAndUpdateDoc`. (Re-running the *same* `$set`-whole-doc bulk is trivially idempotent and is not the retry hazard worth testing — the real retry path re-runs load+plan and produces *different* operations from the advanced state. That hazard belongs in the integration band below, not here.)
 
+**Shared role-gate oracle — one fixture set, three implementations.** The `(gate, user-roles) → bool` semantic is evaluated in three runtimes that can't share code: query-time (`visible_verbs_filter.yaml` aggregation), submit-time (load-phase JS), and client (`action_role_check`). To stop the three from drifting (a future `*` wildcard or deny-list would otherwise need three lockstep edits), a single shared fixture table — `gates.fixtures.js` — enumerates the cases (`true` gate → always pass; array gate intersecting user roles → pass; empty intersection → fail; undeclared/missing verb → fail; empty user-roles vs non-`true` gate → fail) and **all three implementations are tested against it**, so divergence fails CI. The aggregation case runs the fixtures through a `mongodb-memory-server` `$match`; the JS and client cases assert the helper directly. This is the mechanism standing in for the code-sharing the runtimes preclude (CLAUDE.md "One correct way").
+
 **Integration tests — full handler invocations.** Per entry point: `StartWorkflow.test.js`, `SubmitWorkflowAction.test.js`, `CancelWorkflow.test.js`, `CloseWorkflow.test.js`, `fireTrackerSubscription.test.js`. Each runs the full load-plan-commit cycle against a test Mongo, asserts on-disk shape (action docs, workflow doc, events collection, `log-changes` collection) post-commit. Includes:
 
 - The Part 30 worked-example assertions (rendered cells at top level of action doc; sticky display across transitions; engine links per stage × verb; status_title persistence).
@@ -735,10 +753,11 @@ Test coverage falls into four bands. If the section grows beyond what fits comfo
 - Pre-hook returns auxiliary signals that cascade through auto-unblock.
 - Cancel preserves `done` actions (their status stays `done`; cancelled workflow status pushes to workflow doc).
 - **Submit-time per-verb gate (D16 / Part 34 D5):** a user whose roles don't satisfy `access.{current_app}.{signal-verb}` is rejected with a structured error; a satisfying user (or `true` gate) passes. Covers `submit`↔`edit`, `approve`/`request_changes`↔`review`, `resolve_error`↔`error`.
+- **Action-global review-stage resolution (D4 / `hasReview`):** a multi-app action with `review` declared in one app and absent in another — a `submit` from the review-declaring app and a `submit` from the other app land the **same** stage (`in-review`), confirming the split reads `hasReview` app-global, not the submitting app's access.
 - **Per-verb `links` map (Part 34 D7):** each transition writes `<slug>.links: { view, edit, review, error }` with `null` for undeclared verbs / stages with no page; the UI priority `edit > review > error > view` lands the right page given the user's `visible_verbs`.
 - **`visible_verbs` filter (Part 34 D12):** `get-entity-workflows` returns the four-key bag per action; an action with no true verb for the user drops out of the response.
 
-**Resolver validation (build-time).** `makeWorkflowsConfig.test.js` — `validateActionAccess` accepts the verb→gate map, and rejects the empty-list, shorthand array, action-wide `access.roles`, and unknown top-level keys with clear messages; lint-warns on `edit`/`review`/`error` without `view`. `makeActionPages.test.js` / `makeWorkflowApis.test.js` — emitted ids carry the `workflow-` prefix and pages are emitted from the `access.{app}` map keys.
+**Resolver validation (build-time).** `makeWorkflowsConfig.test.js` — `validateActionAccess` accepts the verb→gate map, and rejects the empty-list, shorthand array, action-wide `access.roles`, and unknown top-level keys with clear messages; lint-warns on `edit`/`review`/`error` without `view`. `makeActionPages.test.js` / `makeWorkflowApis.test.js` — emitted derived ids are `{workflow_type}-{action_type}-…` (unprefixed, entry-scoped), pages are emitted from the `access.{app}` map keys, and a workflow type named `workflow` is rejected (reserved — Part 34 D10).
 
 **End-to-end — demo app.** The migrated demo's workflows exercise the engine via real Lowdefy YAML CallApi flows. One Playwright-style smoke test per demo workflow: start the workflow, transition through all states, verify display surfaces render the expected messages. This is the integration test that catches things unit + integration tests miss (resolver wiring, build-time validation, callApi boundaries, page rendering of action.{appName}.message).
 
@@ -776,6 +795,8 @@ Verified evidence is in this design's review-2 #2 discussion; no further code ar
 
 ## Non-goals
 
+- **In-flight action-doc backfill.** The rebuilt engine reads the per-verb `<slug>.links` map (Part 34 D7) and the renamed fixed-page ids (D16 / Part 34 D10); pre-rebuild action docs carry the old singular `<slug>.link` and stale `pageId`s. No migration backfills existing action docs — an action already at a terminal stage keeps its old shape and renders no link affordance. This is acceptable because there are **no shipped workflows** (greenfield), and is consistent with the module's V1 migration stance (no version actions; an author with live action docs writes their own data migration — see D16 / Part 34 D6). The demo ships no seeded action docs (it carries no seed/fixture files — action docs are created at runtime by starting a workflow), so there is nothing to backfill; a developer with stale local action docs from a prior build just re-runs the workflow.
+- **`notification_roles` consumer wiring / role-based fan-out.** `notification_roles` is authored config at the action root (Part 34 D9) but is consumed nowhere in current code, and the engine does **not** propagate it onto the event. This part does not wire it: `planEventDispatch` builds the event from the references/metadata it already composes, and recipient fan-out stays the notifications module's concern via `send_routine`. The whole model is a rethink — deferred to [Part 41 — Notification-roles model](../41-notification-roles-model/design.md).
 - **Threading the engine transaction into callApi'd subroutines** (so `new-event` / notification writes can join the workflow+action transaction). v1 scopes the transaction to workflow + action writes only (D9/D11); extending it across the callApi boundary is a larger, separately-tracked change.
 - **Field-diff storage for change-log.** The engine writes whole before/after docs (the community plugin's behaviour); field-diff is a future optimization for the `log-changes` collection owner, not this part.
 - **Rollback API.** Out of scope; the `log-changes` before/after shape supports a future inverse-apply tool, but nothing engine-specific is built here.
@@ -788,7 +809,7 @@ Verified evidence is in this design's review-2 #2 discussion; no further code ar
 
 ## Related
 
-- [Part 34 — Action access model](../34-action-access-model/design.md) — the per-app per-verb access contract this part implements (per-verb `links` map, `visible_verbs`, signal→verb submit gating, `workflow-` endpoint prefix, resolver validation). Design-only; Part 38 is its implementation vehicle.
+- [Part 34 — Action access model](../34-action-access-model/design.md) — the per-app per-verb access contract this part implements (per-verb `links` map, `visible_verbs`, signal→verb submit gating, emitted-id naming + fixed-page `workflow-` prefix, resolver validation). Design-only; Part 38 is its implementation vehicle.
 - [Part 30 — Engine-managed display (rejected)](../_rejected/30-status-map-rendering/design.md) — the rejected predecessor. On-disk contract carries over; the rest is rebuilt.
 - [state-machine.md](../../../workflows-module-concept/state-machine/design.md) — concept-level FSM model.
 - [engine/design.md](../../../workflows-module-concept/engine/design.md) — concept-level engine surface (Decision 4 updated separately).

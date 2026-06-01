@@ -145,6 +145,10 @@ The current model checks at three points (action-authoring spec § "Where the ch
 
 **On `submit`, `progress`, and `not_required` all sharing the `edit` verb.** These are semantically distinct — `submit` / `progress` are "do the work," `not_required` is "declare this action doesn't apply." In some domains skipping is a manager call even when editing is open to the team, which the shared-verb mapping rules out by schema. We considered a separate `skip` verb and chose not to in v1: no concrete app has asked for separately-gated skip rights, and adding the verb now expands the verb whitelist and the design surface every author reasons about. When the need surfaces, `not_required` maps to a new `skip` verb and `skip` joins the whitelist — no schema churn for existing actions because today nobody declares a `skip` gate to migrate.
 
+**The `review` verb's *presence* is also read app-global by the engine FSM.** Separately from the access *gate* above, the engine reads whether the action declares a `review` verb *at all* — across every app block, ignoring the role values — to decide whether `submit` lands `in-review` or `done` (the FSM split implemented in [Part 38 D4](../38-engine-rebuild/design.md)). This is an **action-global structural property, not scoped to the submitting app**: a single action doc is shared across every app (all read the same `status[0].stage`), so whether a review stage exists can't depend on who submits — otherwise a submit from a review-declaring app would land `in-review` while a submit from another app on the *same* action lands `done`. Equivalently it is "a review page is emitted for this action" (D5 emits the page iff some app declares `review` — the same input).
+
+**Editing `access` can reshape reachable states (known V1 limitation).** Because verb *presence* drives both the FSM split and page/link emission, removing a verb from a deployed action's `access` while actions are mid-flight at the stage that verb gates strands them — e.g. drop `review` while an action sits at `in-review` and there is no review page, gate, or `links.review` to advance it, and no engine remediation. The module ships no version actions or in-flight migration; per its V1 migration stance, an author who edits access on a live workflow owns any required data migration.
+
 ### D7. Per-verb links on action docs
 
 Where a single engine-computed `link` per slug used to be written, this part writes a **per-verb link map** `action[slug].links` and the UI selects from it. The map is a function of `(kind, stage, slug's declared verbs)`; per-verb *role gates* don't enter the computation — they filter which verbs the user is in, which the UI applies on read via `visible_verbs`.
@@ -159,8 +163,8 @@ The action-doc shape becomes:
   demo: {
     message: 'Install D-42.',
     links: {
-      view:   { pageId: 'simple-view',   urlQuery: { action_id: 'a3f2-uuid' } },
-      edit:   { pageId: 'simple-edit',   urlQuery: { action_id: 'a3f2-uuid' } },
+      view:   { pageId: 'workflow-simple-view',   urlQuery: { action_id: 'a3f2-uuid' } },
+      edit:   { pageId: 'workflow-simple-edit',   urlQuery: { action_id: 'a3f2-uuid' } },
       review: null,                    // demo has no review verb declared
       error:  null,
     },
@@ -168,7 +172,7 @@ The action-doc shape becomes:
   customer: {
     message: 'Installation pending.',
     links: {
-      view: { pageId: 'simple-view', urlQuery: { action_id: 'a3f2-uuid' } },
+      view: { pageId: 'workflow-simple-view', urlQuery: { action_id: 'a3f2-uuid' } },
       edit: null,                      // customer doesn't have edit
       review: null,
       error: null,
@@ -180,20 +184,20 @@ The action-doc shape becomes:
 
 For each slug, the engine builds the map by iterating the four verbs and asking "if a user had **only** this verb on this slug, where would they usefully go from `(kind, stage)`?" — per-verb-isolated computation, no cross-verb conditionals. Verbs the slug doesn't declare at all in `access.{slug}` get `null`. Verbs where the stage has no meaningful page (e.g. `edit` at `in-review`, `review` outside `in-review`) also get `null`. Per-verb role gates don't enter the engine's link computation — the gates filter which verbs the user is in, which the UI applies on read via `visible_verbs`.
 
-The per-verb table (kind: simple; form follows the same shape with form-emitted page IDs `{workflow_type}-{action_type}-{verb}`; tracker links every non-null cell to the child's `workflow-overview`):
+The per-verb table (kind: simple; the simple-kind pages are the module's **fixed shared pages**, which carry the `workflow-` prefix — see D10; form follows the same shape with **derived** per-action page IDs `{workflow_type}-{action_type}-{verb}` (no prefix); tracker links every non-null cell to the child's `workflow-overview`):
 
 | Stage              | `view`      | `edit`      | `review`      | `error`      |
 | ------------------ | ----------- | ----------- | ------------- | ------------ |
-| `action-required`  | `simple-view` | `simple-edit` | `null`        | `null`       |
-| `in-progress`      | `simple-view` | `simple-edit` | `null`        | `null`       |
-| `changes-required` | `simple-view` | `simple-edit` | `null`        | `null`       |
-| `in-review`        | `simple-view` | `null`      | `simple-review` | `null`       |
-| `done`             | `simple-view` | `null`      | `null`        | `null`       |
-| `error`            | `simple-view` | `null`      | `null`        | `simple-error` |
+| `action-required`  | `workflow-simple-view` | `workflow-simple-edit` | `null`        | `null`       |
+| `in-progress`      | `workflow-simple-view` | `workflow-simple-edit` | `null`        | `null`       |
+| `changes-required` | `workflow-simple-view` | `workflow-simple-edit` | `null`        | `null`       |
+| `in-review`        | `workflow-simple-view` | `null`      | `workflow-simple-review` | `null`       |
+| `done`             | `workflow-simple-view` | `null`      | `null`        | `null`       |
+| `error`            | `workflow-simple-view` | `null`      | `null`        | `workflow-simple-error` |
 | `blocked`          | `null`      | `null`      | `null`        | `null`       |
 | `not-required`     | `null`      | `null`      | `null`        | `null`       |
 
-This per-verb-isolated table is the contract Part 38 implements, replacing the **compound-cell table** from the rejected Part 30 — that table had cells like "`simple-review` if review verb, else `simple-view`" which conflated "which verb the user has" with "which page is meaningful at this stage." Per-verb-isolated cells separate the two concerns: each column is independent, and the UI's selection logic (below) handles user verb composition via fall-through.
+This per-verb-isolated table is the contract Part 38 implements, replacing the **compound-cell table** from the rejected Part 30 — that table had cells like "`workflow-simple-review` if review verb, else `workflow-simple-view`" which conflated "which verb the user has" with "which page is meaningful at this stage." Per-verb-isolated cells separate the two concerns: each column is independent, and the UI's selection logic (below) handles user verb composition via fall-through.
 
 **UI selection rule.** The UI picks the link to render for a user on the entity-page action card using a static priority over the link map and the user's `visible_verbs`:
 
@@ -204,7 +208,7 @@ for verb in [edit, review, error, view]:
 return null  // no link affordance for this user at this stage
 ```
 
-Static priority `edit > review > error > view` works for the table above because the engine nulls the irrelevant cell at every stage that has a single user-facing affordance (e.g. `edit` is null at `in-review`; `review` is null outside `in-review`). At those stages the priority falls through correctly — an editor lands on `simple-view` at `in-review` because `links.edit` is null there; a reviewer with edit + review at `in-review` lands on `simple-review` for the same reason. The composition is **not** universal: at stages with multiple non-null cells (none in the current table, but possible for future kinds), a user with both `edit` and `review` would always land on `edit` regardless of intent. If such a stage is introduced, that kind needs a stage-keyed priority override. The static priority is correct for the table you have, not by general construction.
+Static priority `edit > review > error > view` works for the table above because the engine nulls the irrelevant cell at every stage that has a single user-facing affordance (e.g. `edit` is null at `in-review`; `review` is null outside `in-review`). At those stages the priority falls through correctly — an editor lands on `workflow-simple-view` at `in-review` because `links.edit` is null there; a reviewer with edit + review at `in-review` lands on `workflow-simple-review` for the same reason. The composition is **not** universal: at stages with multiple non-null cells (none in the current table, but possible for future kinds), a user with both `edit` and `review` would always land on `edit` regardless of intent. If such a stage is introduced, that kind needs a stage-keyed priority override. The static priority is correct for the table you have, not by general construction.
 
 Because Part 30 is rejected and superseded by [Part 38](../38-engine-rebuild/design.md), this is not an amendment to a live design — it is the link contract Part 38 builds. There is no separate "land Part 30's amendment first" prerequisite; the table and shape above are inputs to the Part 38 rebuild.
 
@@ -223,41 +227,49 @@ Two reasons:
 
 Practically: removing it from `access:` lets the `access:` block have one well-defined shape (`{app_name}` → verb-gate map; no carve-out keys). The notification system reads `action.notification_roles` directly at the root.
 
-### D10. Glob-friendly emitted ids for central auth config
+### D10. Emitted-id naming for central auth config
 
-Lowdefy's auth lives in the app's central `api.roles` / `pages.roles` config — endpoints don't carry their own role lists. Role rules are written as globs against endpoint ids:
+Lowdefy's auth lives in the app's central `api.roles` / `pages.roles` config — endpoints don't carry their own role lists. Role rules are written as globs against endpoint ids. The Lowdefy build **prepends the module entry id** to every emitted page and Api id (`buildModules.js`: `page.id = \`${entry.id}/${page.id}\``, and the same for endpoint ids), so every workflow id is already namespaced under the entry — `{entry_id}/…`. The entry id is the author's choice when wiring the module: typically `workflows`, or `onboarding-workflows` / `support-workflows` if unrelated workflows are split into separate module entries.
+
+Entry scoping already delivers what an explicit per-endpoint prefix would — globs slice cleanly without a redundant literal:
 
 ```yaml
 api:
   roles:
     sales-rep:
-      - workflow-qualification-*           # any endpoint for this workflow
+      - workflows/qualification-*           # any endpoint for this workflow type
     sales-manager:
-      - workflow-qualification-approve-*   # just the approve action
+      - workflows/qualification-approve-*   # just the approve action
 ```
 
-For globs to work, every resolver-emitted endpoint id needs to be prefixed with a stable literal (`workflow-`) and the workflow type, so the prefix space is unambiguous and per-workflow slicing is just `workflow-{type}-*`.
+(`workflows` is the module entry id.)
 
-Naming convention (resolver-emitted ids):
+**Derived (per-workflow) endpoints carry no literal prefix** — the entry id namespaces them and the `{workflow_type}` segment slices them:
 
-| Emitter | Id pattern |
+| Emitter | Id pattern (under `{entry_id}/`) |
 | --- | --- |
-| Page (per verb) — Part 12 | `workflow-{workflow_type}-{action_type}-{verb}` |
-| Submit Api — Part 13 | `workflow-{workflow_type}-{action_type}-submit` |
-| Hook Api (pre/post) — Part 13 | `workflow-{workflow_type}-{action_type}-{signal}-{pre|post}` (internal-only; not glob-targeted but follows convention) |
-| Group on-complete Api — Part 13 | `workflow-{workflow_type}-group-{group_id}-on-complete` (already conformant) |
+| Page (per verb) — Part 12 | `{workflow_type}-{action_type}-{verb}` |
+| Submit Api — Part 13 | `{workflow_type}-{action_type}-submit` |
+| Hook Api (pre/post) — Part 13 | `{workflow_type}-{action_type}-{signal}-{pre\|post}` (internal-only; not glob-targeted) |
+| Group on-complete Api — Part 13 | `{workflow_type}-group-{group_id}-on-complete` |
 
-The `workflow-` literal prefix is added to **page** ids too (previously they were `{workflow_type}-{action_type}-{verb}` with no literal prefix) so a single role rule against `workflow-*` cleanly scopes to workflow endpoints across both Apis and pages, and per-workflow globs don't accidentally match unrelated app pages that happen to share the workflow type name.
+**Fixed (module-shipped) pages carry the `workflow-` prefix** — `workflow-overview`, `workflow-group-overview`, and the shared simple-kind pages `workflow-simple-{verb}`. Prefixing the *fixed* pages rather than the *derived* endpoints reserves the `workflow-*` space for the module's own infrastructure and keeps it disjoint from the per-type derived endpoints. The three useful globs are then:
 
-Hook Apis follow the same shape for consistency, but since they're **internal Apis** (callable only from `context.callApi`, no HTTP entry), no glob in `api.roles` needs to target them. The submit endpoint's role rule is the gate for the entire interaction including its hooks.
+- `{entry_id}/*` — every workflow endpoint (coarse fence).
+- `{entry_id}/{workflow_type}-*` — one workflow type's derived action endpoints (pages + Apis).
+- `{entry_id}/workflow-*` — the module's fixed pages. Coarse by nature: the shared simple pages aren't per-type (one set serves every simple action), so simple-action page-level auth is necessarily broad — the precise per-action gate is the submit-time check (D11).
+
+The one collision to avoid is a workflow *type* literally named `workflow` (its derived ids `workflow-{action}-{verb}` would land in the fixed-page space). `workflow` is therefore a reserved workflow-type name, rejected by the resolver's config validation. (An earlier draft of this design prefixed the *derived* endpoints with `workflow-`; that was redundant with entry scoping — `workflows/workflow-…` doubles the word — and is dropped. See review-3 #1.)
+
+Hook Apis are **internal Apis** (callable only from `context.callApi`, no HTTP entry), so no glob in `api.roles` needs to target them. The submit endpoint's role rule is the gate for the entire interaction including its hooks.
 
 ### D11. Submit-time access enforcement layers
 
 With the central-auth model and the internal-only hook stance from the Part 13 ripple, the three checkpoints from D5 land on concrete Lowdefy surfaces:
 
 - **Build-time** — `makeActionPages` (Part 12) and `makeWorkflowApis` (Part 13) emit pages/Apis only for declared verb keys. No user check; presence-of-key gating.
-- **Page-level (request-time)** — Central `pages.roles` config grants role globs over page ids. Authors writing `workflow-qualification-edit` in a role's page glob list controls who can land on the action's edit page. Hard to express **per-app** at this layer (page is one id across apps); Part 18's `action_role_check` (D8) is the per-app refinement that hides the form when the user lacks the verb in the current app.
-- **Submit-time** — Central `api.roles` config grants role globs over the Api id (`workflow-{workflow_type}-{action_type}-submit`). The submit handler additionally runs the precise per-app+per-verb check from D5 against `_user.apps.{current_app}.roles` and `access.{current_app}.{signal-required-verb}`, rejecting with a structured error if it fails. This is the authoritative gate — the central `api.roles` glob is a coarse outer fence, the handler check is the precise inner fence.
+- **Page-level (request-time)** — Central `pages.roles` config grants role globs over page ids. Authors writing `{entry_id}/qualification-edit` in a role's page glob list control who can land on the action's edit page. Hard to express **per-app** at this layer (page is one id across apps); Part 18's `action_role_check` (D8) is the per-app refinement that hides the form when the user lacks the verb in the current app.
+- **Submit-time** — Central `api.roles` config grants role globs over the Api id (`{entry_id}/{workflow_type}-{action_type}-submit`). The submit handler additionally runs the precise per-app+per-verb check from D5 against `_user.apps.{current_app}.roles` and `access.{current_app}.{signal-required-verb}`, rejecting with a structured error if it fails. This is the authoritative gate — the central `api.roles` glob is a coarse outer fence, the handler check is the precise inner fence.
 
 Hooks have no separate gate: they're internal Apis invoked by `update-action-*`'s routine after the submit-time check has passed.
 
@@ -398,9 +410,10 @@ The change is foundational and ripples to several parts. Each ripple is small in
 | [engine/spec.md § Access enforcement](../../../workflows-module-concept/engine/spec.md)                                                          | Submit-time check switches to per-verb; replace the role-intersection check with `(verb-required-by-signal, app, user-roles)` per D6.                                                                                                                                                      |
 | [submit-pipeline/spec.md](../../../workflows-module-concept/submit-pipeline/spec.md)                                                             | Document the signal → required verb table (D6) explicitly (signal vocabulary per state-machine.md).                                                                                                                                                                                                                                 |
 | [Part 4 (workflow config schema)](../_completed/04-workflow-config-schema/design.md) — already completed; treat as historical, amend via note    | Add a "Superseded by Part 34" note pointing here. The resolver-validated shape changes; the closed Part 4 documents the original shape.                                                                                                                                                          |
-| [Part 12 (resolver pages)](../_completed/12-resolver-pages/design.md) — already completed; amend via note                                        | Two changes. (1) `makeActionPages` build-time filter reads the verb keys from the map. (2) **Rename emitted page ids** from `{workflow_type}-{action_type}-{verb}` to `workflow-{workflow_type}-{action_type}-{verb}` (literal `workflow-` prefix) so app-level role globs like `workflow-qualification-*` work in Lowdefy's central auth config. See D10. |
-| [Part 13 (resolver APIs)](../_completed/13-resolver-apis/design.md) — already completed; amend via note                                          | Two changes. (1) **Hook auth synthesis is dissolved.** Lowdefy's central auth doesn't carry per-endpoint role lists; hooks become **internal-only Apis** (no HTTP entry point, only callable via `context.callApi` from `update-action-*`). The submit endpoint's role check (per Lowdefy's central `api.roles` config) is the sole gate; there is no hook-side role synthesis. The "Auth by construction" section of Part 13 needs rewriting against this model. (2) **Rename emitted Api ids** for glob-friendly auth config — see D10. |
+| [Part 12 (resolver pages)](../_completed/12-resolver-pages/design.md) — already completed; amend via note                                        | Two changes. (1) `makeActionPages` build-time filter reads the verb keys from the map. (2) **Emitted page ids are unchanged** — derived per-action pages keep `{workflow_type}-{action_type}-{verb}` (no literal prefix); entry scoping namespaces them for central-auth globs. The `workflow-` prefix is added to the module's **fixed** pages instead — see D10. |
+| [Part 13 (resolver APIs)](../_completed/13-resolver-apis/design.md) — already completed; amend via note                                          | Two changes. (1) **Hook auth synthesis is dissolved.** Lowdefy's central auth doesn't carry per-endpoint role lists; hooks become **internal-only Apis** (no HTTP entry point, only callable via `context.callApi` from `update-action-*`). The submit endpoint's role check (per Lowdefy's central `api.roles` config) is the sole gate; there is no hook-side role synthesis. The "Auth by construction" section of Part 13 needs rewriting against this model. (2) **Emitted Api ids are unchanged** — `{workflow_type}-{action_type}-…` with no literal prefix; entry scoping handles glob slicing — see D10. |
 | [Part 18 (entity-components) § `action_role_check`](../_completed/18-entity-components/design.md)                                                | `_state.action_allowed` becomes per-verb (D8). Update consumers in Part 16 / 17 / 24 to read the verb-specific bool.                                                                                                                                                                             |
+| [Part 17 (shared-pages)](../_completed/17-shared-pages/design.md) and [Part 25 (group-overview)](../_completed/25-group-overview/design.md) — already completed; amend via note | The module's **fixed** pages gain the `workflow-` prefix (D10): `simple-view`/`simple-edit`/`simple-review` → `workflow-simple-*`, `group-overview` → `workflow-group-overview` (`workflow-overview` already conformant). Update each page's `id`, every `_module.pageId` reference, and the engine link table (D7). Implemented by Part 38. |
 | [Part 38 — Engine rebuild](../38-engine-rebuild/design.md) (supersedes the rejected Part 30 § D4)                                                    | Engine writes `action[slug].links` (per-verb map, D7) instead of a single `action[slug].link`. Part 38 composes this in the plan phase (`computeEngineLinks.js`) and writes the whole action doc in one `$set` — there is **no** `$mergeObjects` pipeline to rewrite (Part 30's `buildActionStageUpdate` is deleted by Part 38). The per-verb link table and action-doc shape in D7 are the inputs Part 38 builds against. |
 | [Part 24 (universal-fields)](../24-universal-fields/design.md)                                                                                   | Open question on "who can edit metadata" resolves through this part's per-verb shape (a future `update_metadata` signal maps to its own required verb if needed). Re-open under Part 24 once this lands.                                                                                  |
 | [ui/spec.md](../../../workflows-module-concept/ui/spec.md)                                                                                       | Update the verb table (lines 17-18) and the page-emission rule to read the map's keys. Update `actions-on-entity` rendering to read `visible_verbs` and select per-verb links.                                                                                                                  |
@@ -430,7 +443,7 @@ Points that were open during design and are now resolved; kept here as a decisio
 
 - **Q1. Should `view` default to `true` when other verbs are declared but `view` is omitted? — Resolved.** No defaulting. Every verb declared explicitly; lint-warn (don't hard-error) on `edit` / `review` / `error` declared without `view`. Captured in D4 and in the per-verb shape rules.
 - **Q2. Should granting `edit` (or `review`) also grant `view`? — Resolved: no.** Verbs are independent at gate-check time — granting one verb never grants another. The lint warning from Q1 catches the common "I forgot view for my editors" case without baking an automatic view grant into the schema. Authors write the audience for each verb explicitly.
-- **Q3. Where should `notification_roles` live? — Resolved: action root.** D9 captures the decision. The `access:` block now holds only `{app_name}` keys; `notification_roles` lives at the action root. The previous draft's nesting under `access:` was incidental — `getActionFields.js:14` already reads `config.access?.notification_roles` directly, so the extractor change is one line. The broader "should `notification_roles` be reconsidered as a concept" question is deferred to a future design — out of scope for this part.
+- **Q3. Where should `notification_roles` live? — Resolved (placement only): action root.** D9 captures the placement decision. The `access:` block now holds only `{app_name}` keys; `notification_roles` lives at the action root. (An earlier draft claimed `getActionFields.js:14` already reads `config.access?.notification_roles` so the consumer change "is one line" — that was **factually wrong**: `getActionFields.js` is a fixed field projection and reads no such thing, and `notification_roles` is in fact consumed nowhere in current code.) The **consumer model** — who reads `notification_roles`, from where, and whether role-based fan-out is the right primitive at all — is a full rethink, deferred to [Part 41 — Notification-roles model](../41-notification-roles-model/design.md). Part 38 scopes the wiring out.
 - **Q4. Verb priority for UI link selection — Resolved.** Static priority `edit > review > error > view`. Composes correctly with the engine's per-verb null values at every stage via fall-through — no stage-keyed priority table needed. Per-verb null pattern in the engine table (e.g. `edit = null` at `in-review`, `review = null` outside `in-review`) encodes the "which verb is meaningful here" semantics so the static priority always lands the user on the right page. Captured in D7 including the per-verb (kind, stage, verb) → page table and the selection rule.
 
 ## Depends on
@@ -441,7 +454,7 @@ Points that were open during design and are now resolved; kept here as a decisio
 ## Consumers
 
 - **[Part 12 (resolver pages)](../_completed/12-resolver-pages/design.md)** — build-time verb filter.
-- **[Part 13 (resolver APIs)](../_completed/13-resolver-apis/design.md)** — build-time verb-presence check for submit/hook Api emission; emitted Api ids follow D10's `workflow-{workflow_type}-{action_type}-...` convention. Hook Apis are internal-only and carry no auth gate of their own (D11).
+- **[Part 13 (resolver APIs)](../_completed/13-resolver-apis/design.md)** — build-time verb-presence check for submit/hook Api emission; emitted Api ids follow D10's `{workflow_type}-{action_type}-...` convention (no literal prefix; entry-scoped). Hook Apis are internal-only and carry no auth gate of their own (D11).
 - **[Part 16 (page-templates)](../_completed/16-page-templates/design.md) / [Part 17 (shared-pages)](../_completed/17-shared-pages/design.md)** — read `_state.action_allowed.{verb}` for the page's verb.
 - **[Part 18 (entity-components)](../_completed/18-entity-components/design.md)** — `action_role_check` populates per-verb `_state.action_allowed`.
 - **[Part 24 (universal-fields)](../24-universal-fields/design.md)** — write-surface decision depends on this part's shape.
