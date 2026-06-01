@@ -24,7 +24,7 @@ const config = {
   // in the realpath (e.g. `@lowdefy+community-plugin-mongodb@3.0.0`), so we
   // match by package name anywhere on the path.
   transformIgnorePatterns: [
-    "/node_modules/(?!.*(@lowdefy|@swc/helpers)).+\\.js$",
+    "/node_modules/(?!.*(@lowdefy|@swc/helpers|@formatjs|intl-messageformat)).+\\.js$",
   ],
   testTimeout: 60000,
 };
