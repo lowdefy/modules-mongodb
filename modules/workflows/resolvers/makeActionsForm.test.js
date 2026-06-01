@@ -18,6 +18,7 @@ test("makeActionsForm: flat form composes — text_input substituted to _ref wit
     {
       _ref: {
         path: `${FIELDS_DIR}/text_input.yaml`,
+        key: "config",
         vars: {
           key: "contact_name",
           required: true,
@@ -57,6 +58,7 @@ test("makeActionsForm: nested controlled_list — author form: renamed to blocks
     {
       _ref: {
         path: `${FIELDS_DIR}/label_value.yaml`,
+        key: "config",
         vars: {
           key: "form.devices.$._id",
           title: "Device Number",
