@@ -3,7 +3,7 @@ import makeWorkflowApis from "./makeWorkflowApis.js";
 const qualifyAction = {
   type: "qualify",
   kind: "form",
-  access: { "my-team-app": ["view", "edit"], roles: ["account-manager"] },
+  access: { "my-team-app": { view: true, edit: ["account-manager"] } },
   action_group: "phase-1",
   form: [{ id: "contact_name", type: "TextInput" }],
   hooks: {
@@ -28,8 +28,11 @@ const sendQuoteAction = {
   type: "send-quote",
   kind: "form",
   access: {
-    "my-team-app": ["view", "edit", "review"],
-    roles: ["account-manager", "ops-lead"],
+    "my-team-app": {
+      view: true,
+      edit: ["account-manager", "ops-lead"],
+      review: ["account-manager", "ops-lead"],
+    },
   },
   action_group: "phase-1",
   blocked_by: ["qualify"],
@@ -39,14 +42,14 @@ const sendQuoteAction = {
 const scheduleFollowupAction = {
   type: "schedule-followup",
   kind: "simple",
-  access: { "my-team-app": ["view", "edit"], roles: ["ops-lead"] },
+  access: { "my-team-app": { view: true, edit: ["ops-lead"] } },
   action_group: "phase-2",
 };
 
 const trackInstallationAction = {
   type: "track-installation",
   kind: "tracker",
-  access: { "my-team-app": ["view"], roles: ["ops-lead"] },
+  access: { "my-team-app": { view: ["ops-lead"] } },
   action_group: "phase-3",
   tracker: { workflow_type: "installation" },
 };
@@ -83,20 +86,20 @@ function propsOf(api) {
   return api.routine[0].properties;
 }
 
-test("makeWorkflowApis: worked example emits the expected update-action-* set, no tracker", () => {
+test("makeWorkflowApis: worked example emits the expected {type}-{action}-submit set, no tracker", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const ids = apis.map((a) => a.id).sort();
-  expect(ids).toContain("update-action-qualify");
-  expect(ids).toContain("update-action-send-quote");
-  expect(ids).toContain("update-action-schedule-followup");
-  expect(ids).not.toContain("update-action-track-installation");
+  expect(ids).toContain("onboarding-qualify-submit");
+  expect(ids).toContain("onboarding-send-quote-submit");
+  expect(ids).toContain("onboarding-schedule-followup-submit");
+  expect(ids).not.toContain("onboarding-track-installation-submit");
 });
 
 test("makeWorkflowApis: simple endpoint includes current_status; form endpoints do not", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const simpleApi = findApi(apis, "update-action-schedule-followup");
-  const form = findApi(apis, "update-action-qualify");
-  const sendQuote = findApi(apis, "update-action-send-quote");
+  const simpleApi = findApi(apis, "onboarding-schedule-followup-submit");
+  const form = findApi(apis, "onboarding-qualify-submit");
+  const sendQuote = findApi(apis, "onboarding-send-quote-submit");
 
   expect(propsOf(simpleApi).current_status).toEqual({ _payload: "current_status" });
   expect(propsOf(form)).not.toHaveProperty("current_status");
@@ -105,9 +108,9 @@ test("makeWorkflowApis: simple endpoint includes current_status; form endpoints 
 
 test("makeWorkflowApis: every form/simple endpoint passes runtime comment through to the handler", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const simpleApi = findApi(apis, "update-action-schedule-followup");
-  const form = findApi(apis, "update-action-qualify");
-  const sendQuote = findApi(apis, "update-action-send-quote");
+  const simpleApi = findApi(apis, "onboarding-schedule-followup-submit");
+  const form = findApi(apis, "onboarding-qualify-submit");
+  const sendQuote = findApi(apis, "onboarding-send-quote-submit");
 
   expect(propsOf(simpleApi).comment).toEqual({ _payload: "comment" });
   expect(propsOf(form).comment).toEqual({ _payload: "comment" });
@@ -116,11 +119,11 @@ test("makeWorkflowApis: every form/simple endpoint passes runtime comment throug
 
 test("makeWorkflowApis: sparse hooks, event_overrides maps", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const qualify = findApi(apis, "update-action-qualify");
-  const sendQuote = findApi(apis, "update-action-send-quote");
+  const qualify = findApi(apis, "onboarding-qualify-submit");
+  const sendQuote = findApi(apis, "onboarding-send-quote-submit");
 
   expect(propsOf(qualify).hooks).toEqual({
-    submit_edit: { pre: "update-action-qualify-submit_edit-pre" },
+    submit_edit: { pre: "onboarding-qualify-submit_edit-pre" },
   });
   expect(propsOf(qualify).hooks).not.toHaveProperty("post");
   expect(propsOf(qualify).hooks.submit_edit).not.toHaveProperty("post");
@@ -132,7 +135,7 @@ test("makeWorkflowApis: sparse hooks, event_overrides maps", () => {
 
 test("makeWorkflowApis: hook Api emission", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const hook = findApi(apis, "update-action-qualify-submit_edit-pre");
+  const hook = findApi(apis, "onboarding-qualify-submit_edit-pre");
   expect(hook).toBeDefined();
   expect(hook.type).toBe("Api");
   expect(hook.routine).toEqual([{ id: "x", type: "MongoDBFindOne" }]);
@@ -142,7 +145,7 @@ test("makeWorkflowApis: group on_complete Api emission", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const onComplete = findApi(
     apis,
-    "workflow-onboarding-group-phase-1-on-complete"
+    "onboarding-group-phase-1-on-complete"
   );
   expect(onComplete).toBeDefined();
   expect(onComplete.type).toBe("Api");
@@ -151,7 +154,7 @@ test("makeWorkflowApis: group on_complete Api emission", () => {
 
 test("makeWorkflowApis: event_overrides carries the four-tuple", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const qualify = findApi(apis, "update-action-qualify");
+  const qualify = findApi(apis, "onboarding-qualify-submit");
   expect(propsOf(qualify).event_overrides).toEqual({
     submit_edit: {
       type: "qualified",
@@ -164,7 +167,7 @@ test("makeWorkflowApis: event_overrides carries the four-tuple", () => {
 
 test("makeWorkflowApis: stale interactions: YAML field is not baked into the endpoint payload", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const qualify = findApi(apis, "update-action-qualify");
+  const qualify = findApi(apis, "onboarding-qualify-submit");
   // qualifyAction fixture declares `interactions: { submit_edit: { status: "done" } }`
   // — the resolver silently drops it (Part 32 collapse).
   expect(propsOf(qualify)).not.toHaveProperty("interactions");
@@ -172,12 +175,34 @@ test("makeWorkflowApis: stale interactions: YAML field is not baked into the end
 
 test("makeWorkflowApis: emitted endpoint properties contain no force slot", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  for (const api of apis.filter((a) => a.id.startsWith("update-action-"))) {
+  for (const api of apis.filter((a) => a.id.endsWith("-submit"))) {
     // Only action endpoints have routine[0].properties.
     if (api.routine?.[0]?.properties) {
       expect(api.routine[0].properties).not.toHaveProperty("force");
     }
   }
+});
+
+test("makeWorkflowApis: emitted ids are entry-scoped {workflow_type}-{action_type}-… with no workflow- prefix", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  for (const api of apis) {
+    expect(api.id.startsWith("workflow-")).toBe(false);
+    expect(api.id.startsWith("update-action-")).toBe(false);
+    expect(api.id.startsWith("onboarding-")).toBe(true);
+  }
+});
+
+test("makeWorkflowApis: a workflow type named `workflow` is rejected (reserved — Part 34 D10)", () => {
+  const reserved = {
+    type: "workflow",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "do-it", status: "action-required" }],
+    actions: [{ type: "do-it", kind: "simple" }],
+  };
+  expect(() => makeWorkflowApis(null, { workflows: [reserved] })).toThrow(
+    /reserved workflow type name/,
+  );
 });
 
 test("makeWorkflowApis: tracker-only workflow emits zero Apis", () => {
@@ -190,7 +215,7 @@ test("makeWorkflowApis: tracker-only workflow emits zero Apis", () => {
       {
         type: "track-installation",
         kind: "tracker",
-        access: { roles: ["ops-lead"] },
+        access: { "my-team-app": { view: ["ops-lead"] } },
         tracker: { workflow_type: "installation" },
       },
     ],

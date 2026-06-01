@@ -278,3 +278,148 @@ test("makeWorkflowsConfig: legacy string on_complete fails with migration messag
     /legacy shape/,
   );
 });
+
+// --- validateActionAccess (Part 34 D4) -------------------------------------
+
+function workflowWithAccess(access) {
+  return {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [{ type: "qualify", kind: "form", form: [], access }],
+  };
+}
+
+test("validateActionAccess: accepts the verb→gate map (true and array gates)", () => {
+  const wf = workflowWithAccess({
+    demo: { view: true, edit: ["account-manager"], review: ["account-manager"] },
+    support: { view: ["support-rep"] },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+});
+
+test("validateActionAccess: rejects the empty-list gate []", () => {
+  const wf = workflowWithAccess({ demo: { view: true, edit: [] } });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /empty list \[\] — invalid/,
+  );
+});
+
+test("validateActionAccess: rejects the shorthand list form access.{app}: [verbs]", () => {
+  const wf = workflowWithAccess({ demo: ["view", "edit"] });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /removed shorthand list form/,
+  );
+});
+
+test("validateActionAccess: rejects the removed action-wide access.roles", () => {
+  const wf = workflowWithAccess({ demo: { view: true }, roles: ["admin"] });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /access\.roles .* is removed/,
+  );
+});
+
+test("validateActionAccess: rejects notification_roles nested under access", () => {
+  const wf = workflowWithAccess({
+    demo: { view: true },
+    notification_roles: ["admin"],
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /notification_roles lives at the action root/,
+  );
+});
+
+test("validateActionAccess: rejects an unknown verb key", () => {
+  const wf = workflowWithAccess({ demo: { view: true, delete: true } });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /unknown verb key "delete"/,
+  );
+});
+
+test("validateActionAccess: rejects a gate that is neither true nor a role array", () => {
+  const wf = workflowWithAccess({ demo: { view: "admin" } });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /gate must be true or a non-empty array of role strings/,
+  );
+});
+
+test("validateActionAccess: notification_roles at the action root is valid", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        form: [],
+        access: { demo: { view: true } },
+        notification_roles: ["admin"],
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+});
+
+test("validateActionAccess: lint-warns (does not throw) on edit/review/error without view", () => {
+  const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+  const wf = workflowWithAccess({ demo: { edit: ["account-manager"] } });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+  expect(warn).toHaveBeenCalledWith(
+    expect.stringMatching(/declares edit\/review\/error without view/),
+  );
+  warn.mockRestore();
+});
+
+// --- validateStatusMapCells (Part 30 D9) -----------------------------------
+
+function workflowWithStatusMap(status_map) {
+  return {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        form: [],
+        access: { demo: { view: true } },
+        status_map,
+      },
+    ],
+  };
+}
+
+test("validateStatusMapCells: accepts a message-only cell and a status_title", () => {
+  const wf = workflowWithStatusMap({
+    "action-required": { demo: { message: "Qualify the lead." }, status_title: "Qualifying" },
+    done: { status_title: null },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+});
+
+test("validateStatusMapCells: rejects link: on a built-in kind", () => {
+  const wf = workflowWithStatusMap({
+    done: { demo: { message: "Done.", link: { pageId: "x" } } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /link is engine-managed for kind: form/,
+  );
+});
+
+test("validateStatusMapCells: rejects an invalid stage key", () => {
+  const wf = workflowWithStatusMap({ "not-a-stage": { demo: { message: "x" } } });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /is not a member of action_statuses/,
+  );
+});
+
+test("validateStatusMapCells: rejects a non-string/null status_title", () => {
+  const wf = workflowWithStatusMap({ done: { status_title: 42 } });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /status_title must be a string or null/,
+  );
+});

@@ -40,8 +40,11 @@ function fail(message) {
 function emitForAction(workflow, action, appName) {
   if (action.kind !== "form") return [];
 
-  const accessVerbs = action.access?.[appName] ?? [];
-  const emittedVerbs = VERBS.filter((v) => accessVerbs.includes(v));
+  // Part 34 D5: emit a verb page iff the verb key is present in the app's
+  // verb→gate map. Role gates don't matter at build time — presence of the key
+  // alone gates page generation. Reads the map keys, not the old verb array.
+  const accessMap = action.access?.[appName] ?? {};
+  const emittedVerbs = VERBS.filter((v) => v in accessMap);
   if (emittedVerbs.length === 0) return [];
 
   const pageIds = Object.fromEntries(

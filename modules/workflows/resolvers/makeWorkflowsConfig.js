@@ -46,6 +46,9 @@ const HOOK_INTERACTIONS = [
 
 const HOOK_PHASES = ['pre', 'post'];
 
+// Part 34 access verbs. Vocabulary is closed in v1 (Part 34 D4 / per-app block).
+const ACCESS_VERBS = ['view', 'edit', 'review', 'error'];
+
 function pick(source, fields) {
   const picked = {};
   for (const field of fields) {
@@ -125,6 +128,138 @@ function validateGroupOnComplete(workflow, group) {
   }
 }
 
+// Part 34 D4: per-app per-verb access map. `access.{app}` is a verb→gate map
+// ({ view|edit|review|error }: true | [roles]). The removed action-wide
+// `access.roles`, the shorthand list form (`access.{app}: [verbs]`), the empty
+// list `[]`, unknown verb keys, and `notification_roles` under `access` all
+// hard-error; an app block declaring edit/review/error without view lint-warns.
+function validateActionAccess(workflow, action) {
+  if (!action.access) return;
+  const where = `action "${action.type}"`;
+  const access = action.access;
+
+  if (access === null || typeof access !== 'object' || Array.isArray(access)) {
+    fail(
+      workflow.type,
+      `${where} access must be a map of {app_name}: { verb: gate } (got: ${JSON.stringify(access)}).`
+    );
+  }
+
+  for (const [appName, block] of Object.entries(access)) {
+    if (appName === 'roles') {
+      fail(
+        workflow.type,
+        `${where} access.roles (the action-wide role gate) is removed (Part 34 D4). Every gate is per-app per-verb — move it under access.{app}.{verb}.`
+      );
+    }
+    if (appName === 'notification_roles') {
+      fail(
+        workflow.type,
+        `${where} notification_roles lives at the action root, not under access (Part 34 D9).`
+      );
+    }
+    if (Array.isArray(block)) {
+      fail(
+        workflow.type,
+        `${where} access.${appName} is the removed shorthand list form (Part 34 D1). Use the verb→gate map: access.${appName}.{verb}: true | [roles].`
+      );
+    }
+    if (block === null || typeof block !== 'object') {
+      fail(
+        workflow.type,
+        `${where} access.${appName} must be a verb→gate map object (got: ${JSON.stringify(block)}).`
+      );
+    }
+
+    for (const [verb, gate] of Object.entries(block)) {
+      if (!ACCESS_VERBS.includes(verb)) {
+        fail(
+          workflow.type,
+          `${where} access.${appName} has unknown verb key "${verb}" (expected one of: ${ACCESS_VERBS.join(', ')}).`
+        );
+      }
+      if (Array.isArray(gate) && gate.length === 0) {
+        fail(
+          workflow.type,
+          `${where} access.${appName}.${verb} is the empty list [] — invalid. Omit the verb key to deny access instead (Part 34).`
+        );
+      }
+      const gateOk =
+        gate === true ||
+        (Array.isArray(gate) && gate.every((r) => typeof r === 'string'));
+      if (!gateOk) {
+        fail(
+          workflow.type,
+          `${where} access.${appName}.${verb} gate must be true or a non-empty array of role strings (got: ${JSON.stringify(gate)}).`
+        );
+      }
+    }
+
+    const declaresPrivileged =
+      'edit' in block || 'review' in block || 'error' in block;
+    if (!('view' in block) && declaresPrivileged) {
+      console.warn(
+        `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${appName} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`
+      );
+    }
+  }
+}
+
+// Part 30 D9: status_map cell shape. Each `status_map[stage]` is a cell of
+// per-slug `{ message? }` objects plus a reserved `status_title` (string|null).
+// Built-in kinds reject `link:` (engine-managed); `kind: custom` (Part 28, not
+// yet a valid kind) would accept `{ message?, link? }`. No coverage requirement.
+function validateStatusMapCells(workflow, action) {
+  if (!action.status_map) return;
+  const where = `action "${action.type}"`;
+  const isCustom = action.kind === 'custom';
+
+  for (const [stage, cell] of Object.entries(action.status_map)) {
+    if (!ACTION_STATUSES.includes(stage)) {
+      fail(
+        workflow.type,
+        `${where} status_map key "${stage}" is not a member of action_statuses.`
+      );
+    }
+    if (cell === null || typeof cell !== 'object' || Array.isArray(cell)) {
+      fail(
+        workflow.type,
+        `${where} status_map.${stage} must be an object of {slug}: { message? } cells (got: ${JSON.stringify(cell)}).`
+      );
+    }
+
+    for (const [key, value] of Object.entries(cell)) {
+      if (key === 'status_title') {
+        if (!(value === null || typeof value === 'string')) {
+          fail(
+            workflow.type,
+            `${where} status_map.${stage}.status_title must be a string or null (got: ${JSON.stringify(value)}).`
+          );
+        }
+        continue;
+      }
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+        fail(
+          workflow.type,
+          `${where} status_map.${stage}.${key} must be a cell object (got: ${JSON.stringify(value)}).`
+        );
+      }
+      if ('link' in value && !isCustom) {
+        fail(
+          workflow.type,
+          `${where} status_map.${stage}.${key}: link is engine-managed for kind: ${action.kind}; remove it from status_map.${stage}.${key}. To restrict navigation per slug, edit access.${key} verbs instead.`
+        );
+      }
+      if ('message' in value && typeof value.message !== 'string') {
+        fail(
+          workflow.type,
+          `${where} status_map.${stage}.${key}.message must be a string (got: ${JSON.stringify(value.message)}).`
+        );
+      }
+    }
+  }
+}
+
 function validateAction(workflow, action) {
   const where = `action "${action.type}"`;
 
@@ -151,17 +286,8 @@ function validateAction(workflow, action) {
     fail(workflow.type, `${where} cannot define both form: and tracker:.`);
   }
 
-  if (action.status_map) {
-    for (const status of Object.keys(action.status_map)) {
-      if (!ACTION_STATUSES.includes(status)) {
-        fail(
-          workflow.type,
-          `${where} status_map key "${status}" is not a member of action_statuses.`
-        );
-      }
-    }
-  }
-
+  validateActionAccess(workflow, action);
+  validateStatusMapCells(workflow, action);
   validateHooks(workflow, action);
 }
 

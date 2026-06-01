@@ -8,15 +8,15 @@ const HOOK_INTERACTIONS = [
 const HOOK_PHASES = ['pre', 'post'];
 const EVENT_OVERRIDE_FIELDS = ['type', 'display', 'references', 'metadata'];
 
-function emitHookApi(action, interaction, phase, body) {
+function emitHookApi(workflow, action, interaction, phase, body) {
   return {
-    id: `update-action-${action.type}-${interaction}-${phase}`,
+    id: `${workflow.type}-${action.type}-${interaction}-${phase}`,
     type: 'Api',
     routine: body.routine,
   };
 }
 
-function emitHooks(action) {
+function emitHooks(workflow, action) {
   const apis = [];
   const map = {};
   if (!action.hooks) return { apis, map: undefined };
@@ -27,7 +27,7 @@ function emitHooks(action) {
     for (const phase of HOOK_PHASES) {
       const body = phases[phase];
       if (!body) continue;
-      const api = emitHookApi(action, interaction, phase, body);
+      const api = emitHookApi(workflow, action, interaction, phase, body);
       slot[phase] = api.id;
       apis.push(api);
     }
@@ -69,7 +69,7 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
   };
 
   return {
-    id: `update-action-${action.type}`,
+    id: `${workflow.type}-${action.type}-submit`,
     type: 'Api',
     routine: [
       {
@@ -95,18 +95,27 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
 function emitGroupOnCompleteApi(workflow, group) {
   if (!group.on_complete) return null;
   return {
-    id: `workflow-${workflow.type}-group-${group.id}-on-complete`,
+    id: `${workflow.type}-group-${group.id}-on-complete`,
     type: 'Api',
     routine: group.on_complete.routine,
   };
 }
 
 function emitForWorkflow(workflow) {
+  // `workflow` is reserved (Part 34 D10): a type named `workflow` would emit
+  // derived ids (`workflow-{action}-…`) that collide with the module's fixed
+  // `workflow-*` page space.
+  if (workflow.type === 'workflow') {
+    throw new Error(
+      'makeWorkflowApis: "workflow" is a reserved workflow type name — its derived ids would collide with the module\'s fixed workflow-* page space (Part 34 D10). Rename the workflow type.'
+    );
+  }
+
   const apis = [];
 
   for (const action of workflow.actions ?? []) {
     if (action.kind === 'tracker') continue;
-    const { apis: hookApis, map: hooksMap } = emitHooks(action);
+    const { apis: hookApis, map: hooksMap } = emitHooks(workflow, action);
     apis.push(...hookApis);
     const eventMap = emitEventOverrides(action);
     apis.push(emitActionEndpoint(workflow, action, hooksMap, eventMap));

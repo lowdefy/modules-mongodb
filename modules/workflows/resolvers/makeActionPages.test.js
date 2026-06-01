@@ -5,7 +5,7 @@ const APP = "my-team-app";
 const qualifyAction = {
   type: "qualify",
   kind: "form",
-  access: { "my-team-app": ["view", "edit"], roles: ["account-manager"] },
+  access: { "my-team-app": { view: true, edit: ["account-manager"] } },
   status_map: {
     "action-required": { "my-team-app": { message: "Qualify the lead." } },
   },
@@ -24,8 +24,7 @@ const sendQuoteAction = {
   type: "send-quote",
   kind: "form",
   access: {
-    "my-team-app": ["view", "edit", "review"],
-    roles: ["account-manager"],
+    "my-team-app": { view: true, edit: ["account-manager"], review: ["account-manager"] },
   },
   blocked_by: ["qualify"],
   status_map: {
@@ -38,7 +37,7 @@ const sendQuoteAction = {
 const scheduleFollowupAction = {
   type: "schedule-followup",
   kind: "simple",
-  access: { "my-team-app": ["view", "edit"], roles: ["account-manager"] },
+  access: { "my-team-app": { view: true, edit: ["account-manager"] } },
   blocked_by: ["send-quote"],
 };
 
@@ -46,8 +45,7 @@ const trackInstallationAction = {
   type: "track-installation",
   kind: "tracker",
   access: {
-    "my-team-app": ["view", "edit", "review"],
-    roles: ["account-manager"],
+    "my-team-app": { view: true, edit: ["account-manager"], review: ["account-manager"] },
   },
   tracker: { workflow_type: "device-installation" },
 };
@@ -74,8 +72,7 @@ test("makeActionPages: adding error to access list emits -error; removing it doe
   const withError = {
     ...qualifyAction,
     access: {
-      "my-team-app": ["view", "edit", "error"],
-      roles: ["account-manager"],
+      "my-team-app": { view: true, edit: ["account-manager"], error: true },
     },
   };
 
