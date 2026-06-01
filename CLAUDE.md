@@ -39,7 +39,7 @@ Consumer-facing documentation for this repo follows a fixed layout. When adding 
 
 - `README.md` — Central landing page: module list, dependency graph, "what to use when", consumer basics, and pointers into the rest of the docs.
 - `docs/idioms.md` — Single page covering every cross-cutting idiom (`change_stamp`, `event_display`, `fields`/`components`/`request_stages` slots, `app_name`, `avatar_colors`, secrets). Per-module READMEs link to anchors here instead of repeating explanations. Anchors: `#change-stamps`, `#event-display`, `#slots`, `#app-name`, `#avatar-colors`, `#secrets`.
-- `modules/{name}/README.md` — Per-module reference. Fixed template: Description, Dependencies, How to Use, Exports (Pages / Components / API Endpoints / Connections / Menus), Vars, Secrets, Plugins, Notes.
+- `modules/{name}/README.md` — Per-module reference. Fixed template: Description, Dependencies, How to Use, Exports (Pages / Components / API Endpoints / Connections / Menus), Indexes, Vars, Secrets, Plugins, Notes.
 - `plugins/modules-mongodb-plugins/README.md` — Plugin package overview (blocks + actions, peer deps, install).
 - `plugins/modules-mongodb-plugins/src/blocks/{Block}/README.md` — Per-block doc (props, events, slots, examples).
 

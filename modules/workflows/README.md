@@ -143,6 +143,40 @@ The build emits:
 
 None in v1. Menu exports land alongside per-app navigation work.
 
+## Indexes
+
+The module's shipped queries assume two indexes exist on the collections behind the `actions-collection` and `workflows-collection` connections. The module does **not** create them — index creation is a host-app concern (consumer apps declare indexes via the `splice-actions` pattern). Host apps must add the following.
+
+### `actions`
+
+`{ workflow_id: 1 }` — **non-partial.**
+
+Serves every workflow-stream read:
+
+- [`api/get-workflow-overview.yaml`](api/get-workflow-overview.yaml) — `$lookup foreignField: workflow_id`, on every workflow overview load.
+- [`api/get-action-group-overview.yaml`](api/get-action-group-overview.yaml) — `$lookup foreignField: workflow_id` (with a sub-pipeline filter on `action_group`), on every group overview load.
+- [`api/get-entity-workflows.yaml`](api/get-entity-workflows.yaml) — `$lookup foreignField: workflow_id`, once per workflow on every entity page render.
+- [`getActions.js`](../../plugins/modules-mongodb-plugins/src/connections/shared/getActions.js) — `find({ workflow_id })`, invoked by `recomputeWorkflowAfterActionWrite` after every action submit.
+- `CancelWorkflow` / `CloseWorkflow` — `find` / `updateMany` scoped by `workflow_id` (admin actions).
+
+Equality on `workflow_id` is the only useful key. The per-workflow `$sort` keys inside the `$lookup` sub-pipelines mix pipeline-computed fields (`groupIndex`, `required_sort`, `sort`) and stored fields (`created.timestamp`, `_id`); none are indexable here, and the per-workflow result set is small (typically <30 actions), so Mongo sorts it in memory.
+
+**Keep it non-partial.** Future `kind: task` adhoc docs in this collection carry `workflow_id: null`. A non-partial index includes those null entries, costs nothing for the workflow-stream queries (they all filter by a concrete workflow `_id`), and stays usable for future tasks-module queries that join on `workflow_id`. Do **not** "optimise" it into a partial index filtered on `workflow_id` existing — that would silently break tasks-module queries that share this index path.
+
+### `workflows`
+
+`{ entity_collection: 1, entity_id: 1 }` — **non-partial.**
+
+Serves the entity workflow list:
+
+- [`api/get-entity-workflows.yaml`](api/get-entity-workflows.yaml) — `$match: { entity_collection, entity_id }` then `$sort: { display_order: 1, created.timestamp: -1 }`, on every entity page render.
+
+The compound index matches the equality prefix exactly. Per-entity workflow counts are small (single-digit rows in shipped apps), so the post-match in-memory sort on `display_order` + `created.timestamp` is cheap; extending the index with `display_order` is a future-proofing knob, not a hot-path need.
+
+### Schema-shape constraint
+
+The `actions` collection must remain free of any collection-level required-field **validator** beyond the always-present `_id`, `kind`, `status`, `change_stamp`. The shipped `connections/actions-collection.yaml` carries no `validator:` block — keep it that way. The future tasks module writes `kind: task` adhoc docs with `workflow_id: null` and no `type`; a Mongo collection validator enforcing workflow-shaped fields would block that write path. Field-level invariants, if ever needed, belong in the write APIs, not a collection validator.
+
 ## Vars
 
 ### `workflows_config` (required)
