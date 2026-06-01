@@ -480,9 +480,11 @@ form_data: {
 
 ### Write semantics
 
-`SubmitWorkflowAction` writes form fields via per-field Mongo `$set` on dot-notation paths. Field-level granularity (not a wholesale `form_data.{action} = { ... }` overwrite) so concurrent edits on different fields of the same action don't clobber each other.
+`form_data.{action}` must accumulate across **multiple submits of different shapes** within one action namespace (submit → approve, draft → draft → submit, changes-required → resubmit): a later write must not wipe a sibling sub-key an earlier write set. This is a *sequential* requirement — concurrency (two writers, different fields, same workflow) is handled separately by CAS on `workflow.updated` ([Part 38 D15](../../workflows-module/parts/38-engine-rebuild/design.md)), not by the write shape.
 
-The per-action endpoint payload (submit-pipeline) carries form data as a flat map under `form` / `form_review`; the handler merges them into one payload bag and builds the dot-notation `$set` paths. Submitter (`form:`) and reviewer (`form_review:`) blocks share the flat `form_data.{action_type}.{field}` tree — the engine doesn't disambiguate between them.
+The per-action endpoint payload (submit-pipeline) carries form data as a flat map under `form` / `form_review`; the handler merges them into one payload bag. Submitter (`form:`) and reviewer (`form_review:`) blocks share the flat `form_data.{action_type}.{field}` tree under one **uniform merge rule** — the engine doesn't disambiguate between them.
+
+Part 38 implements this as a **whole-doc `$set`** of the planned workflow doc (no per-field dot-path `$set`), where `planFormDataMerge` **deep-merges the submitted fields onto the loaded `form_data.{action}` sub-object** (deep-merge objects; replace arrays/scalars/`null` whole). Sibling sub-keys survive because they're already in the loaded base; clearing is explicit (`field: null`), not by omission. See [Part 38 Q6](../../workflows-module/parts/38-engine-rebuild/design.md) for the full rationale and the per-channel-vs-uniform decision.
 
 ### No reserved sub-keys
 
