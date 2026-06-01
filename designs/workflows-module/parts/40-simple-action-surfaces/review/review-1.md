@@ -38,7 +38,7 @@ The clean resolution is Finding 3 (adopt Part 34's per-verb `visible_verbs`). Ab
 
 > **Resolved.** Adopted Part 34's per-verb model throughout. Added Part 34 as a dependency (with a sequencing callout: it must land before/with this part, and siblings 24/39 migrate too — cross-wave work flagged to the parent design, which doesn't yet list Part 34 in its dependency graph). Role gates are now `action_allowed.{verb}` (D2), navigation uses `action.links.{verb}` (engine-link section), and the parent-design row + Related section name Part 34.
 
-[Part 34 — Action access model](../../34-action-access-model/design.md) is foundational and upstream of Part 24 (which Part 34 says it "unblocks", 34:9) — and Part 40 depends on Part 24. Part 34 replaces exactly the two mechanisms Part 40 leans on:
+[Part 34 — Action access model](../../_completed/34-action-access-model/design.md) is foundational and upstream of Part 24 (which Part 34 says it "unblocks", 34:9) — and Part 40 depends on Part 24. Part 34 replaces exactly the two mechanisms Part 40 leans on:
 
 - **D8:** the binary `action_allowed` becomes a per-verb `visible_verbs: { view, edit, review, error }` map returned by `get-entity-workflows` (34:20, 81).
 - **D9:** the engine-written `action[slug].link` becomes `action[slug].links` keyed by verb; "the UI picks the user-appropriate link at render time" (34:21).

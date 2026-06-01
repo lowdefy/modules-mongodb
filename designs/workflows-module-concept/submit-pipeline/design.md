@@ -203,7 +203,7 @@ Hooks are emitted as **internal-only Apis** — no HTTP entry point, callable on
 
 This replaces the earlier `hook.auth.roles ⊇ action.access.roles` rule, which existed because the old flat `action.access.roles` was a single build-time literal a hook's `auth.roles` could be statically compared against. Under per-app, per-verb gates there is no single action-wide role list to be a superset of, and — more fundamentally — Lowdefy's central auth model doesn't carry per-endpoint role lists. The access model resolves cleanly without the gate:
 
-- **The submit endpoint is the sole gate.** Its handler runs the precise per-app + per-verb check (`access.{current_app}.{interaction-required-verb}` against `_user.apps.{current_app}.roles`); Lowdefy's central `api.roles` glob over the submit endpoint id is the coarse outer fence ([Part 34 § D10–D11](../../workflows-module/parts/34-action-access-model/design.md)).
+- **The submit endpoint is the sole gate.** Its handler runs the precise per-app + per-verb check (`access.{current_app}.{interaction-required-verb}` against `_user.apps.{current_app}.roles`); Lowdefy's central `api.roles` glob over the submit endpoint id is the coarse outer fence ([Part 34 § D10–D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)).
 - **Hooks inherit that gate by construction.** Being internal-only, a hook can't be reached except through the submit endpoint that already gated the caller — so "if you can submit the action, you can run its hooks" holds without a separate auth declaration.
 - **Finer-grained branching** still lives inside the hook routine via `_user.roles` checks.
 

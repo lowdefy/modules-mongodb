@@ -1,7 +1,7 @@
 # Review 3 — Part 34 access-model absorption
 
 Scope: review run after reconciling Part 38 with the finalized
-[Part 34 — Action access model](../../34-action-access-model/design.md). Part 38
+[Part 34 — Action access model](../../_completed/34-action-access-model/design.md). Part 38
 now declares itself Part 34's implementation vehicle (new "Implements Part 34" top
 block, Proposed-change item 14, D16) for the five delegated decisions: the per-app
 per-verb `access` shape + resolver validation, the per-verb `links` map (supersedes

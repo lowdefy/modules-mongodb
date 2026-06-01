@@ -105,7 +105,7 @@ Per action:
 - `blocked_by` entries (if present) must resolve to either another `actions[].type` OR an `action_groups[].id` in the same workflow. Mixed lists valid; engine resolves by group-id-first precedence (action-groups spec).
 - `access.<app_name>` entries (if present) must be arrays of valid verbs (`view`, `edit`, `review`; unknown verbs flagged at build time, silently ignored at runtime).
 - Static `references:` blocks (if present) are checked for reserved-key collisions; runtime references go through the engine's merge-order silencing.
-- `hooks.{signal}.{pre,post}` (if present) — keyed by the button-surfaced signal names (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`). Each value must be an **object** carrying an inline `routine:` array (Lowdefy Api routine shape). String values (the legacy form referencing an external Api id) are rejected with a migration message. The resolver emits each hook as an **internal-only Api** (no HTTP entry point; callable only via `context.callApi` from the submit endpoint's routine) — it carries no `auth:` block of its own. There is no hook auth gate: the submit endpoint's access check is the sole gate for the interaction including its hooks ([Part 34 § D11](../../workflows-module/parts/34-action-access-model/design.md)).
+- `hooks.{signal}.{pre,post}` (if present) — keyed by the button-surfaced signal names (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`). Each value must be an **object** carrying an inline `routine:` array (Lowdefy Api routine shape). String values (the legacy form referencing an external Api id) are rejected with a migration message. The resolver emits each hook as an **internal-only Api** (no HTTP entry point; callable only via `context.callApi` from the submit endpoint's routine) — it carries no `auth:` block of its own. There is no hook auth gate: the submit endpoint's access check is the sole gate for the interaction including its hooks ([Part 34 § D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)).
 
 Errors fail the app build with a path to the offending workflow / action.
 
@@ -117,7 +117,7 @@ The kind drives:
 
 ## Access
 
-Every action declares an `access:` block — **one canonical shape**: a map of `{app_name}` → verb → role-gate. No action-wide role list, no shorthand verb-list form. `notification_roles` lives at the action root, not under `access:`. Full model in [Part 34 — Action access model](../../workflows-module/parts/34-action-access-model/design.md).
+Every action declares an `access:` block — **one canonical shape**: a map of `{app_name}` → verb → role-gate. No action-wide role list, no shorthand verb-list form. `notification_roles` lives at the action root, not under `access:`. Full model in [Part 34 — Action access model](../../workflows-module/parts/_completed/34-action-access-model/design.md).
 
 ```yaml
 access:
@@ -150,7 +150,7 @@ Per-verb check for a present gate: `gate === true OR size(setIntersection(_user.
 
 - **Build-time** (`makeActionPages`): emits a verb page iff the verb key is present in `access.{host_app_name}`. Presence-of-key only; role gates aren't evaluated at build time.
 - **Query-time** (`get-entity-workflows`): evaluates each declared verb's gate against the caller's per-app roles and returns `visible_verbs: { view, edit, review, error }` (four bools, `false` for undeclared verbs) per action. All-false → action dropped from the response (preserves "no role intersection → invisible").
-- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's required verb (table below), checks `access.{current_app}.{required_verb}` against `_user.apps.{current_app}.roles`, rejects with a structured error on failure. Authoritative gate; the central `api.roles` glob over the submit endpoint id is the coarse outer fence ([Part 34 § D10–D11](../../workflows-module/parts/34-action-access-model/design.md)).
+- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's required verb (table below), checks `access.{current_app}.{required_verb}` against `_user.apps.{current_app}.roles`, rejects with a structured error on failure. Authoritative gate; the central `api.roles` glob over the submit endpoint id is the coarse outer fence ([Part 34 § D10–D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)).
 
 ### Interaction → required verb
 

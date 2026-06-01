@@ -183,7 +183,7 @@ notification_roles:                         # action-root, app-agnostic (see Dec
   - account-manager
 ```
 
-> **This shape supersedes the previous two-axis model** (a per-app verb *list* plus a single action-wide `access.roles`). The full rationale and decision log are owned by [Part 34 — Action access model](../../workflows-module/parts/34-action-access-model/design.md); this section restates the committed model.
+> **This shape supersedes the previous two-axis model** (a per-app verb *list* plus a single action-wide `access.roles`). The full rationale and decision log are owned by [Part 34 — Action access model](../../workflows-module/parts/_completed/34-action-access-model/design.md); this section restates the committed model.
 
 ### Per-app verb-gate map
 
@@ -223,7 +223,7 @@ The build-time validator **lint-warns (does not hard-error)** when an app block 
 
 - **Build-time** (`makeActionPages`): emits a verb page iff the verb key is present in `access.{host_app_name}`. Role gates don't matter at build time — presence of the key alone gates page generation. Applies uniformly to all four verbs including `error`.
 - **Query-time** (`get-entity-workflows`): for each action visible to the host app, evaluates every declared verb's gate against `_user.apps.{app_name}.roles` and returns `visible_verbs: { view, edit, review, error }` (four bools, defaulting to `false` for any undeclared verb) on the action payload. If every bool is `false`, the action drops from the response (preserves the old "no role intersection → invisible" outcome).
-- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's required verb (table below), checks `access.{current_app}.{required_verb}` against `_user.apps.{current_app}.roles`, rejects with a structured error if the gate fails. Rechecked after the action-doc lookup, before any writes. This is the authoritative gate; the central `api.roles` glob over the submit endpoint id (Decision 6, [Part 34 § D10–D11](../../workflows-module/parts/34-action-access-model/design.md)) is the coarse outer fence.
+- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's required verb (table below), checks `access.{current_app}.{required_verb}` against `_user.apps.{current_app}.roles`, rejects with a structured error if the gate fails. Rechecked after the action-doc lookup, before any writes. This is the authoritative gate; the central `api.roles` glob over the submit endpoint id (Decision 6, [Part 34 § D10–D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)) is the coarse outer fence.
 
 ### Interaction → required verb
 
@@ -524,7 +524,7 @@ The resolver walks the workflows config and emits, per form / simple action, one
 
 ### Build-time validation: pre-hook return shape
 
-There is **no hook auth gate.** Hooks are emitted as **internal-only Apis** (no HTTP entry point — callable only via `context.callApi` from the submit endpoint's routine); they carry no `auth:` block of their own, so there is no `hook.auth.roles ⊇ action.access.roles` rule to validate. The submit endpoint's access check is the sole gate for the whole interaction including its hooks (engine submit-time check + the central `api.roles` glob over the submit endpoint id; see Decision 3 "Three checkpoints" and [Part 34 § D11](../../workflows-module/parts/34-action-access-model/design.md)).
+There is **no hook auth gate.** Hooks are emitted as **internal-only Apis** (no HTTP entry point — callable only via `context.callApi` from the submit endpoint's routine); they carry no `auth:` block of their own, so there is no `hook.auth.roles ⊇ action.access.roles` rule to validate. The submit endpoint's access check is the sole gate for the whole interaction including its hooks (engine submit-time check + the central `api.roles` glob over the submit endpoint id; see Decision 3 "Three checkpoints" and [Part 34 § D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)).
 
 Per [state-machine](../state-machine/design.md) "Next step", the resolver adds a build-time validator that flags any `status:` key in a pre-hook routine's `:return:` (the superseded `{ type, status }` / `{ status }` shape) with a clear "use `signal:` instead" error pointing at the migration mapping. This catches pre-hooks not yet migrated to the signal model.
 
@@ -834,7 +834,7 @@ The recovery form schema **reuses** the action's `form:` block — the user sees
 
 **Buttons.** The error template ships with a single primary "Submit" button wired to `pages.error.events.onSubmit`. Authors can override the button title and add a confirm modal via `pages.error.buttons.submit.{title,modal}`. Multi-button error pages can use `formFooter:` to add additional buttons with their own routines.
 
-**`access` interaction.** The `-error` page is gated identically to the other three verbs (Decision 3): the resolver emits it iff `error` is in the action's `access.{host_app_name}` map. Actions without `error` declared for an app have no recovery surface in that app — an author-driven `error` push still lands on the action, but there is no reachable `-error` page there. The stuck-state visibility concern is addressed by authors declaring `error` explicitly in the relevant app's verb map (this supersedes the earlier draft that emitted `-error` for every form action regardless of access — see [Part 34 § D5](../../workflows-module/parts/34-action-access-model/design.md)). Per-app suppression of the recovery *link* from other pages is additionally controlled at the status-map level (omit `status_map.error.{app_name}`).
+**`access` interaction.** The `-error` page is gated identically to the other three verbs (Decision 3): the resolver emits it iff `error` is in the action's `access.{host_app_name}` map. Actions without `error` declared for an app have no recovery surface in that app — an author-driven `error` push still lands on the action, but there is no reachable `-error` page there. The stuck-state visibility concern is addressed by authors declaring `error` explicitly in the relevant app's verb map (this supersedes the earlier draft that emitted `-error` for every form action regardless of access — see [Part 34 § D5](../../workflows-module/parts/_completed/34-action-access-model/design.md)). Per-app suppression of the recovery *link* from other pages is additionally controlled at the status-map level (omit `status_map.error.{app_name}`).
 
 ## Decision 9 — Instanced actions (`key:`)
 

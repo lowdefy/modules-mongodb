@@ -152,7 +152,7 @@ Each signal may declare `pre:`, `post:`, both, or neither. Values are Lowdefy Ap
 
 ### Hooks are internal-only — no separate auth gate
 
-Hooks are emitted as **internal-only Apis** — no HTTP entry point, callable only via `context.callApi` from the submit endpoint's routine after the submit-time access check has passed. They carry **no `auth:` block of their own**, so there is no `hook.auth.roles ⊇ action.access.roles` rule and no build-time auth validation. The submit endpoint's per-verb access check (plus Lowdefy's central `api.roles` glob over the endpoint id) is the sole gate for the entire interaction including its hooks ([Part 34 § D11](../../workflows-module/parts/34-action-access-model/design.md)). Hooks that want finer-grained branching add per-routine `_user.roles` checks inside the routine.
+Hooks are emitted as **internal-only Apis** — no HTTP entry point, callable only via `context.callApi` from the submit endpoint's routine after the submit-time access check has passed. They carry **no `auth:` block of their own**, so there is no `hook.auth.roles ⊇ action.access.roles` rule and no build-time auth validation. The submit endpoint's per-verb access check (plus Lowdefy's central `api.roles` glob over the endpoint id) is the sole gate for the entire interaction including its hooks ([Part 34 § D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)). Hooks that want finer-grained branching add per-routine `_user.roles` checks inside the routine.
 
 ### Pre-hook payload
 
