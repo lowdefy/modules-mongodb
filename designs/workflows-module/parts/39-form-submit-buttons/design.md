@@ -66,6 +66,8 @@ A form button's job shrinks: name the signal, send the payload, let the engine's
 
 `submit` is **nullary** — it sends no `target_status`. The engine derives `in-review` vs `done` from `access.{app_name}` containing `review` ([state-machine](../../../workflows-module-concept/state-machine/design.md) form FSM), for both form and simple kinds. The v0 simple-edit status selector and its `target_status`/`current_status` payload are gone (state-machine §"What disappears").
 
+**Why `fields` drops but `form` stays.** The `fields`-drop hygiene (Part 24 dependency, above) removes a key submit no longer owns: Part 24 relocated universal-field writes to `update-action-fields-{action_type}`, so a `fields` bag on a form submit is genuinely dead — a different op owns those writes and the kind-based guard ignores it. `form` is the opposite and stays on **every** writable payload, including the display surfaces (`review`'s `approve` / `request_changes`, `view`'s `request_changes`). Two reasons: (1) `form` is **editable in place** on the review surface — a reviewer may amend the submitted form, not only `form_review` — so `payload.form` can carry real edits; and (2) even unchanged, the engine consumes `payload.form` **signal-agnostically** — Part 38's `planFormDataMerge` merges `params.form → params.form_review → form_overrides` (uniform deep-merge per Part 38 Q6) into `workflow.form_data.{action}` and exposes the result as `submitted_form`, the event-render binding. So `form` is a live input on every signal, not primed-then-resent dead state; the `fields`-vs-`form` asymmetry is principled, not accidental.
+
 The signals each template fires:
 
 | Template | Buttons (signals) | Notes |

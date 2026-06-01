@@ -103,6 +103,8 @@ be. **Fix:** Drop "and the user has edit access" from `design.md:185`, or clarif
 
 ### 4. Consistency question: `fields` is dropped as dead state, but `form` is kept on the same display-only surfaces
 
+> **Resolved.** `form` is deliberately kept — it is **not** dead state. Verified against Part 38: `planFormDataMerge` (38 design.md:328, task 11) consumes `params.form` **signal-agnostically** (merge order `params.form → params.form_review → form_overrides`, uniform deep-merge per the now-resolved Q6) to accumulate `workflow.form_data.{action}` and produce the `submitted_form` event-render binding. Additionally, the review surface allows **in-place edits to `form`** (not only `form_review`), so `payload.form` can carry real reviewer edits. The `fields`-vs-`form` asymmetry is therefore principled: `fields` was relocated to its own op by Part 24 (genuinely dead on submit), while `form` stays live on every signal. Documented the rule explicitly in D1 ("Why `fields` drops but `form` stays").
+
 The hygiene rule drops `fields` from `review`/`error`/`view` because those templates render the
 universal fields in `display` mode, so `_state.fields` is primed-then-resent dead state. But the
 **main `form`** is equally display-only on `review` and `view`: `review.yaml.njk:134–143` renders
