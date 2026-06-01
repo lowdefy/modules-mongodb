@@ -17,10 +17,10 @@ description: >
 exports:
   pages:
     # Form-action pages — generated per (workflow_type, action_type, verb)
-    - id: action-edit # generated when `edit` in app verb list
-    - id: action-view # generated when `view` in app verb list
-    - id: action-review # generated when `review` in app verb list
-    - id: action-error # generated when `error` in app verb list
+    - id: action-edit # generated when `edit` verb key present in app `access` map
+    - id: action-view # generated when `view` verb key present in app `access` map
+    - id: action-review # generated when `review` verb key present in app `access` map
+    - id: action-error # generated when `error` verb key present in app `access` map
     # Shared simple-action pages
     - id: simple-edit
     - id: simple-view
@@ -37,7 +37,7 @@ exports:
     - id: close-workflow
     - id: get-entity-workflows
     - id: get-workflow-overview
-    # Per-action update-action-{action_type} endpoints are resolver-emitted
+    # Per-action workflow-{workflow_type}-{action_type}-submit endpoints are resolver-emitted
     # via makeWorkflowApis (submit-pipeline Decision 2); not statically listed.
   components:
     - id: actions-on-entity
@@ -85,7 +85,7 @@ api:
   - _ref: api/close-workflow.yaml
   - _ref: api/get-entity-workflows.yaml
   - _ref: api/get-workflow-overview.yaml
-  # Per-action submit endpoints (update-action-{action_type}) — emitted by
+  # Per-action submit endpoints (workflow-{workflow_type}-{action_type}-submit) — emitted by
   # makeWorkflowApis resolver per submit-pipeline Decision 2.
   - _ref:
       resolver: resolvers/makeWorkflowApis.js
@@ -149,10 +149,10 @@ Three separate connections are exported by design:
 | `start-workflow`        | Instantiate a workflow on an entity. Optional `parent_action_id` writes parent/child link atomically.                                                                                                                                                                                         |
 | `cancel-workflow`       | Push `cancelled` to workflow status; emit `internal_cancel_action` against every open action (FSM resolves to `not-required`).                                                                                                                                                                 |
 | `close-workflow`        | Push `completed` to workflow status (user-initiated normal termination); sweep non-terminal actions to `not-required` while honoring `required_after_close: true`. Owned by [parts 19 + 23](../../workflows-module/parts/23-close-workflow-handler/design.md).                                |
-| `get-entity-workflows`  | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Filters by access (per-app verb map + role gate, action-authoring spec "Access"). Returned workflow docs carry persisted `groups[]` array (engine-written).                                               |
+| `get-entity-workflows`  | Return workflows + grouped actions for one entity. Consumed by `actions-on-entity`. Projects per-verb `visible_verbs: { view, edit, review, error }` per action (per-app, per-verb gates vs caller's per-app roles; action-authoring spec "Access"); actions with all four `false` are dropped. Returned workflow docs carry persisted `groups[]` array (engine-written).                                               |
 | `get-workflow-overview` | Return one workflow doc + its actions ordered for display. Consumed by the shipped `workflow-overview` page. Filters actions by access (same rules as `get-entity-workflows`). Returns one row per action (one per instance for keyed actions), ordered by `display_order` then `sort_order`. |
 
-**Submit endpoints.** Per-action `update-action-{action_type}` endpoints are emitted by the `makeWorkflowApis` resolver — owned by [submit-pipeline](../submit-pipeline/spec.md). The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks (both keyed by signal) baked in as build-time literals. (The v0 `interactions:` block — per-interaction status overrides — is dropped; the FSM determines the target.) Template-shipped buttons on per-action pages call the endpoint with a `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves the transition via the action's FSM ([state-machine](../state-machine/design.md), engine "Signal-driven FSM transitions").
+**Submit endpoints.** Per-action `workflow-{workflow_type}-{action_type}-submit` endpoints are emitted by the `makeWorkflowApis` resolver — owned by [submit-pipeline](../submit-pipeline/spec.md). The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks (both keyed by signal) baked in as build-time literals. (The v0 `interactions:` block — per-interaction status overrides — is dropped; the FSM determines the target.) Template-shipped buttons on per-action pages call the endpoint with a `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves the transition via the action's FSM ([state-machine](../state-machine/design.md), engine "Signal-driven FSM transitions").
 
 There is no `force: true`. Migrations and admin overrides that need to bypass the FSM stay out-of-band (direct DB writes), same as today.
 
@@ -226,14 +226,14 @@ Returns:
 }
 ```
 
-**Access filter.** Actions whose `access.{app_name}` doesn't include `view` (or whose role gate fails for the caller) are excluded from the `actions` array. If the workflow itself has zero visible actions for this caller, the API returns `{ workflow: null, actions: [] }` and the page redirects back.
+**Access filter.** Actions that don't declare `view` for the app (or whose `view` gate fails the caller's per-app roles) are excluded from the `actions` array. If the workflow itself has zero visible actions for this caller, the API returns `{ workflow: null, actions: [] }` and the page redirects back.
 
 **Ordering.** Actions are returned in display order: primary sort `action_group` declaration order (workflow's `action_groups[]` index), secondary sort `sort_order` ASC, tertiary tie-break on `actions[]` declaration order. Keyed actions surface as N rows, one per instance, kept together within their parent action's sort slot.
 
 ## Submit endpoints
 
-Per-action `update-action-{action_type}` endpoints are resolver-emitted by `makeWorkflowApis`; the endpoint payload + `SubmitWorkflowAction` plugin handler lifecycle (validate → pre-hook → writes → side effects → post-hook), the pre/post hook return contracts, log-event override paths, notifications dispatch, and tracker-fired return signal all live in [submit-pipeline spec](../submit-pipeline/spec.md). Universal action fields (`assignees`, `due_date`, `description`) flow through the per-action endpoint's `fields:` payload block; form / form_review fields land at `form_data.{action_type}[.{key}].{field}` per engine D5 (no reserved sub-keys).
+Per-action `workflow-{workflow_type}-{action_type}-submit` endpoints are resolver-emitted by `makeWorkflowApis`; the endpoint payload + `SubmitWorkflowAction` plugin handler lifecycle (validate → pre-hook → writes → side effects → post-hook), the pre/post hook return contracts, log-event override paths, notifications dispatch, and tracker-fired return signal all live in [submit-pipeline spec](../submit-pipeline/spec.md). Universal action fields (`assignees`, `due_date`, `description`) flow through the per-action endpoint's `fields:` payload block; form / form_review fields land at `form_data.{action_type}[.{key}].{field}` per engine D5 (no reserved sub-keys).
 
 ## Risk
 
-- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`update-action-{action_type}`) plus four operational APIs. If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Current shape stays extensible (optional fields default to no-op).
+- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`workflow-{workflow_type}-{action_type}-submit`) plus four operational APIs. If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Current shape stays extensible (optional fields default to no-op).

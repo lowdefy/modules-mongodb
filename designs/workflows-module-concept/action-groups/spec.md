@@ -140,7 +140,7 @@ Groups without `on_complete` declared have no hook to fire; they appear in `comp
 
 ## Worked example — phase transition
 
-User submits `send-quote` (last open action in phase-1) via `update-action-send-quote` (submit-pipeline). `SubmitWorkflowAction` runs the lifecycle:
+User submits `send-quote` (last open action in phase-1) via `workflow-onboarding-send-quote-submit` (submit-pipeline). `SubmitWorkflowAction` runs the lifecycle:
 
 1. Write `send-quote.status = done`.
 2. Recompute affected groups: phase-1 all-terminal → `groups[0].status = done`. Write `groups[]`.

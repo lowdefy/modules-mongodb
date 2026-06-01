@@ -62,7 +62,7 @@ Every `context.callApi` invocation increments a request-scoped `_depth` counter.
 
 ```
 CallApiDepthError: depth limit (10) exceeded in chain:
-  SubmitWorkflowAction → pre-hook(qualify-pre-submit) → update-action-qualify → SubmitWorkflowAction → ...
+  SubmitWorkflowAction → pre-hook(qualify-pre-submit) → workflow-onboarding-qualify-submit → SubmitWorkflowAction → ...
 ```
 
 Counter rides on the request-scoped context object handlers can't accidentally drop. Per-handler override possible if a real use case surfaces.

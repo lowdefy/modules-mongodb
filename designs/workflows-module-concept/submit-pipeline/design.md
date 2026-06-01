@@ -1,6 +1,6 @@
 # Workflows Submit Pipeline
 
-Replace the routine-orchestrated submit-action flow with an engine-orchestrated one. A new plugin request `SubmitWorkflowAction` owns the full submit lifecycle (pre-hook → engine writes → side effects → post-hook); a resolver emits one `update-action-{action_type}` Lowdefy API per form/simple action; page templates declare per-template button bars that call those APIs with a `signal` value naming what the user fired.
+Replace the routine-orchestrated submit-action flow with an engine-orchestrated one. A new plugin request `SubmitWorkflowAction` owns the full submit lifecycle (pre-hook → engine writes → side effects → post-hook); a resolver emits one `workflow-{workflow_type}-{action_type}-submit` Lowdefy API per form/simple action; page templates declare per-template button bars that call those APIs with a `signal` value naming what the user fired.
 
 > **Transition model: see [state-machine](../state-machine/design.md).** Two pieces of this sub-design were superseded by the [state-machine](../state-machine/design.md) sub-design: Decision 3's "interaction → target status" resolution table (replaced by per-kind FSM resolution against named signals) and the original "fixed five-button vocabulary" (replaced by per-template button bars over the unified signal namespace). The buttons now fire **signals**; the engine resolves each signal through the FSM. Decisions 3 and 4 below are rewritten to the signal model; the canonical signal inventory and FSM tables live in [state-machine](../state-machine/design.md). The wire field that was `interaction:` is now `signal:` — "interaction" survives only as the word for *a signal a page template surfaces as a button* (the subset of signals that have hook-dispatch points).
 
@@ -8,7 +8,7 @@ This sub-design supersedes parts of:
 
 - [engine](../engine/design.md) Decision 1 — `UpdateWorkflowActions` becomes `SubmitWorkflowAction` (broader handler).
 - [module-surface](../module-surface/design.md) Decisions 4 & 5 — the single `submit-action` Api is replaced by resolver-generated per-action APIs.
-- [action-authoring](../action-authoring/design.md) Decision 6's `makeWorkflowApis` resolver — generates `update-action-{action_type}` per action, not `{workflow}-{action}-submit`.
+- [action-authoring](../action-authoring/design.md) Decision 6's `makeWorkflowApis` resolver — generates `workflow-{workflow_type}-{action_type}-submit` per action, not `{workflow}-{action}-submit`.
 
 Depends on a new Lowdefy primitive: invoking a Lowdefy API from inside a plugin connection. That work is split out into a sibling sub-design at [../call-api/design.md](../call-api/design.md).
 
@@ -42,7 +42,7 @@ Invert control flow. **The engine becomes the orchestrator**; user hooks become 
 
 ```
 Page button (template-declared button bar)
-  → workflows/update-action-{action_type}   ← resolver-generated per action
+  → workflows/workflow-{workflow_type}-{action_type}-submit   ← resolver-generated per action
       └─ SubmitWorkflowAction (plugin connection — owns the full submit lifecycle)
             1. Validate payload + permissions; resolve signal against the FSM
             2. Pre-hook (if declared for this signal)
@@ -66,7 +66,7 @@ The `WorkflowAPI` plugin's request handler is renamed and broadened. Same connec
 
 **What it owns**, in order, single in-process call:
 
-1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, role gate passes for the signal, signal name is known (unknown names throw — engine Decision 4).
+1. **Validate.** Payload shape, action exists, action belongs to caller's accessible workflows, the per-verb access gate passes (`access.{current_app}.{interaction-required-verb}` intersects `_user.apps.{current_app}.roles` or is `true`), signal name is known (unknown names throw — engine Decision 4).
 2. **Execute pre-hook** (if `action.hooks.{signal}.pre` is declared): engine invokes the named Lowdefy Api via the new CallApi primitive. Pre-hook receives the full submit payload + computed action context; returns optional `{ actions: [...], event_overrides: {...}, form_overrides: {...} }` — `actions[]` entries fire signals against other actions; the current action lands per the signal the user fired (no current-action redirect). Aborts via `throw` (infra failure) or Lowdefy's `:reject` control (user-facing rejection — propagates as `UserError(isReject: true)`, classified by the wrapping endpoint's `runRoutine`). Full contract in Decision 4; soft-reject rationale in [Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently).
 3. **Stage auto-unblocks.** Walk the workflow's `blocked_by` graph; for each action whose dependencies are now terminal, stage an `unblock` signal.
 4. **Merge pre-hook `actions[]` signals with auto-unblocks.** Pre-hook entries take precedence; auto-unblocks fill in the rest.
@@ -83,13 +83,13 @@ The `WorkflowAPI` plugin's request handler is renamed and broadened. Same connec
 
 **Why broaden the engine.** Pulling steps 2/9/10/11/13 inside the handler means the engine sees the whole pipeline and can apply cross-cutting concerns (error capture, retries, transactional bracketing in v2) in one place. The routine layer outside the engine becomes the thin per-action endpoint Lowdefy Api — only operator-evaluation responsibility, no orchestration.
 
-## Decision 2 — Per-action `update-action-{action_type}` resolver
+## Decision 2 — Per-action `workflow-{workflow_type}-{action_type}-submit` resolver
 
 A resolver (the renamed `makeWorkflowApis` from action-authoring Decision 6) emits one Lowdefy Api per form/simple action:
 
 ```yaml
 # Generated by makeWorkflowApis — one per (workflow, action) for kind: form|simple
-id: update-action-{action_type}
+id: workflow-{workflow_type}-{action_type}-submit
 type: Api
 routine:
   - id: submit
@@ -141,7 +141,7 @@ The historical "generic engine endpoints" alternative (single `workflows-submit-
 
 > Replaces the original "fixed five-button vocabulary" + three-layer "interaction → target status" resolution. The canonical button bars and FSM resolution are owned by the [state-machine](../state-machine/design.md) sub-design ("Templates and buttons", "Signal inventory"); this section covers how those buttons wire into the per-action endpoint.
 
-Each page template declares which signals it surfaces as buttons. A button click calls `update-action-{action_type}` with `signal: <name>`; the engine resolves the transition through the action's FSM. There is no longer a submit-pipeline-side "interaction → target status" table — the target is whatever `transitions[kind][currentStatus][signal]` yields.
+Each page template declares which signals it surfaces as buttons. A button click calls `workflow-{workflow_type}-{action_type}-submit` with `signal: <name>`; the engine resolves the transition through the action's FSM. There is no longer a submit-pipeline-side "interaction → target status" table — the target is whatever `transitions[kind][currentStatus][signal]` yields.
 
 **Default v1 button bars** (from [state-machine](../state-machine/design.md) "Templates and buttons"):
 
@@ -157,13 +157,13 @@ Apps that customize a template pick the button bar they want; the FSM is unchang
 Each button is a template-shipped block. Clicking it:
 
 1. Fires the matching `pages.{verb}.events.{onSubmit|onApprove|onRequestChanges}` author-supplied event handler (lifecycle / state-setup work).
-2. Calls `update-action-{action_type}` with `signal: <name>` + payload.
+2. Calls `workflow-{workflow_type}-{action_type}-submit` with `signal: <name>` + payload.
 
 ### How the target status is determined (FSM, not a table)
 
 The engine no longer carries a three-layer resolution table. The target status is the FSM cell:
 
-- **`submit`** lands `in-review` if the action's `access.{app_name}` lists `review`, else `done` — baked into the FSM's `submit` resolution rule, **identical for form and simple kinds** ([state-machine](../state-machine/design.md)). `submit` is nullary: the target is resolved from the action's static `review` verb, not from any runtime payload. The simple kind has **no status selector and no `target_status` payload** (the v0 selector is removed — review #6); a simple action advances through the same lifecycle as a form action, driven by the same buttons. The old author-side `interactions:` override is also removed — the FSM is engine-locked and not author-overridable in v1, so the review-or-done split is governed solely by whether the action lists the `review` verb. An action that wants no review step simply doesn't list `review`.
+- **`submit`** lands `in-review` if the action declares the `review` verb in its `access.{app_name}` map, else `done` — baked into the FSM's `submit` resolution rule, **identical for form and simple kinds** ([state-machine](../state-machine/design.md)). `submit` is nullary: the target is resolved from the action's static `review` verb, not from any runtime payload. The simple kind has **no status selector and no `target_status` payload** (the v0 selector is removed — review #6); a simple action advances through the same lifecycle as a form action, driven by the same buttons. The old author-side `interactions:` override is also removed — the FSM is engine-locked and not author-overridable in v1, so the review-or-done split is governed solely by whether the action declares the `review` verb. An action that wants no review step simply omits `review`.
 - **`approve` / `request_changes` / `not_required` / `resolve_error` / `progress`** are nullary — the signal name fully determines the transition via the FSM.
 - **`error`** is a pre-hook/cascade signal (no button) that lands an action in `error` from any non-terminal state — the author-deliberate "this downstream action failed" signal, replacing the v0 `{ status: 'error' }` return. It applies to both form and simple kinds. Recovery is `resolve_error`. See engine Decision 5 and [state-machine](../state-machine/design.md).
 - **No current-action redirect.** The current action lands per the signal the user fired — a pre-hook cannot re-signal it. Pre-hooks influence the current action only via `event_overrides` / `form_overrides`; all signal emission is cross-action via `actions[]` (which may target any *other* action by `type` or `action_id`). Conditional landing for the current submit is modelled as a separate thin action with its own button, not a redirect (see [state-machine](../state-machine/design.md) worked example 4). See Decision 4.
@@ -175,7 +175,7 @@ Buttons and event verbs are **separate concerns** and coexist on the action YAML
 - **Event verbs** (`onMount`, `onSubmit`, `onApprove`, `onRequestChanges`) — author-supplied Lowdefy action arrays that fire at page lifecycle points. Used for page-side work: set state, fire requests, build payloads, validate. No engine call. These are unchanged from action-authoring Decision 8.
 - **Buttons** — template-shipped blocks that fire a signal when the user clicks. Each button calls (a) the matching event verb's handler (if the author wrote one), then (b) the engine via the per-action API with `signal: <name>`.
 
-This means a `submit` button click triggers `pages.edit.events.onSubmit` (author-supplied page logic) **and** posts to `update-action-{action_type}` with `signal: submit` (engine pipeline). The author never has to wire the CallApi step — the template button handles it. Authors who need pre-write logic register a pre-hook (Decision 4); authors who just need page-state work register an `onSubmit` event.
+This means a `submit` button click triggers `pages.edit.events.onSubmit` (author-supplied page logic) **and** posts to `workflow-{workflow_type}-{action_type}-submit` with `signal: submit` (engine pipeline). The author never has to wire the CallApi step — the template button handles it. Authors who need pre-write logic register a pre-hook (Decision 4); authors who just need page-state work register an `onSubmit` event.
 
 ## Decision 4 — Pre and post hooks at action root
 
@@ -197,35 +197,27 @@ hooks:
 
 Both `pre:` and `post:` are optional per signal. Both fields together are optional per signal. Hooks are author-supplied Lowdefy Apis (one per file under `workflow_config/{workflow}/api/`). Only button-surfaced signals can carry hooks — engine cascades (`unblock`, `internal_*`) have no hook-dispatch point.
 
-### Hook auth gate
+### Hooks are internal-only — no separate auth gate
 
-Hook APIs are real Lowdefy Apis and go through their own `auth:` block on every invocation, including when the engine fires them via `context.callApi`. To keep the user-facing access model coherent — "if you can submit the action, you can run its hooks" — hook APIs **must declare `auth.roles` as a superset of (or equal to) the action's `access.roles`**.
+Hooks are emitted as **internal-only Apis** — no HTTP entry point, callable only via `context.callApi` from the submit endpoint's routine, fired *after* the submit-time access check has passed. They carry **no `auth:` block of their own**, so there is no "hook auth gate" and nothing for `makeWorkflowApis` to validate against the action's access.
+
+This replaces the earlier `hook.auth.roles ⊇ action.access.roles` rule, which existed because the old flat `action.access.roles` was a single build-time literal a hook's `auth.roles` could be statically compared against. Under per-app, per-verb gates there is no single action-wide role list to be a superset of, and — more fundamentally — Lowdefy's central auth model doesn't carry per-endpoint role lists. The access model resolves cleanly without the gate:
+
+- **The submit endpoint is the sole gate.** Its handler runs the precise per-app + per-verb check (`access.{current_app}.{interaction-required-verb}` against `_user.apps.{current_app}.roles`); Lowdefy's central `api.roles` glob over the submit endpoint id is the coarse outer fence ([Part 34 § D10–D11](../../workflows-module/parts/34-action-access-model/design.md)).
+- **Hooks inherit that gate by construction.** Being internal-only, a hook can't be reached except through the submit endpoint that already gated the caller — so "if you can submit the action, you can run its hooks" holds without a separate auth declaration.
+- **Finer-grained branching** still lives inside the hook routine via `_user.roles` checks.
 
 ```yaml
-# action: lead-onboarding/qualify.yaml
+# action: lead-onboarding/qualify.yaml — per-app, per-verb gates; no action-wide roles
 access:
-  roles: [account-manager, ops-lead]
+  my-team-app:
+    view: true
+    edit: [account-manager, ops-lead]
 hooks:
   submit:
-    pre: lead-onboarding-qualify-pre-submit
+    pre: # inline routine; resolver emits it as an internal-only Api
+      routine: [...]
 ```
-
-```yaml
-# hook API: lead-onboarding-qualify-pre-submit.yaml
-id: lead-onboarding-qualify-pre-submit
-type: Api
-auth:
-  public: false
-  roles: [account-manager, ops-lead] # must include every role in action.access.roles
-```
-
-The relationship is statically inspectable — both `action.access.roles` and `hook.auth.roles` are build-time literals. `makeWorkflowApis` validates the relationship per (action, hook) pair and fails the build with a clear error when the hook is more restrictive than the action (would cause hard-failing submits for callers who pass the action gate but not the hook gate). Hooks that need to be authenticated-only or app-internal can either:
-
-- Set `auth.roles` equal to the action's `access.roles` (default recommendation).
-- Set `auth.roles` to a wider superset if the hook also serves other internal callers.
-- Add per-routine role checks inside the hook for finer-grained branching (e.g. "admins get the full path; everyone else takes a reduced branch") — orthogonal to the `auth:` block.
-
-`auth.public: true` on a hook API is rejected at build — public hooks would let anyone with the endpoint id bypass the engine's role gate by hitting the hook directly.
 
 ### Pre-hook contract
 
@@ -422,12 +414,12 @@ Submit-pipeline is gated on call-api landing first.
 This sub-design layers against the existing tree; affected surfaces:
 
 - **[engine](../engine/design.md)** — `UpdateWorkflowActions` → `SubmitWorkflowAction`. Same connection; broader handler. Tracker subscription and references contract unchanged. Engine Decision 4 is the signal-driven FSM (no priority rule, no `force: true`) per [state-machine](../state-machine/design.md); pre-hook `actions[]` entries carry `signal`, not `status` + `force`. Engine D5 restructured: `form_data` is one flat tree per action (no `.review` / `.error` sub-keys); error context lives on the action doc's status entry, not `form_data`. Decision 1's pseudo-code grows steps for built-in side effects + hook dispatch.
-- **[module-surface](../module-surface/design.md)** — Drops `submit-action` Api. Replaced by resolver-generated `update-action-{action_type}` per action. The module-level APIs become four: `start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview` (the per-action APIs replace `submit-action`).
+- **[module-surface](../module-surface/design.md)** — Drops `submit-action` Api. Replaced by resolver-generated `workflow-{workflow_type}-{action_type}-submit` per action. The module-level APIs become four: `start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview` (the per-action APIs replace `submit-action`).
 - **[action-authoring](../action-authoring/design.md)** —
   - `submit_hook:` field on action YAML is **removed** (replaced by `hooks:` map per Decision 4, keyed by signal).
   - The previously-proposed `interactions:` block (per-interaction `status:` overrides) is **dropped** — the FSM determines the target; the review-or-done split is governed by the `review` access verb ([state-machine](../state-machine/design.md), Decision 3).
   - New `event:` block on the action YAML for per-signal log-event overrides (Decision 5).
-  - `makeWorkflowApis` resolver now emits `update-action-{action_type}` shape (Decision 2), validates the hook auth rule (`hook.auth.roles ⊇ action.access.roles`; `auth.public: true` rejected) at build time, and (per state-machine "Next step") adds a build-time validator flagging `status:` keys in pre-hook returns with a "use `signal:` instead" error.
+  - `makeWorkflowApis` resolver now emits the `workflow-{workflow_type}-{action_type}-submit` endpoint (Decision 2; Part 34 D10) and the internal-only hook Apis. There is no hook auth gate to validate (Part 34 D11 — hooks are internal-only, the submit endpoint is the sole gate). Per state-machine "Next step" it still adds a build-time validator flagging `status:` keys in pre-hook returns with a "use `signal:` instead" error.
   - Decision 8 (page events) and the 4-event-verb vocabulary **stay** — buttons and event verbs are separate concerns per Decision 3.
 - **[ui](../ui/design.md)** — Templates declare per-template button bars over the signal namespace (state-machine "Templates and buttons"). Buttons fire signals against the per-action API; event verbs handle page lifecycle. Page templates simplify (no per-page submit-payload construction; the button block handles it).
 - **[state-machine](../state-machine/design.md)** — Owns the transition model this sub-design's Decisions 3 + 4 now defer to: the signal inventory, the per-kind FSM tables, and the pre-hook signal-return shape.

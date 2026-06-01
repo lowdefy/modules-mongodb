@@ -162,66 +162,86 @@ The validations run inside `makeWorkflowsConfig` (resolver pipeline, Decision 6)
 
 The kind drives three things downstream:
 
-1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb is in the action's `access.{app_name}` list; all four verbs gated identically). Simple actions don't get per-action pages — they use shared module-level `simple-edit` / `simple-view` / `simple-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
-2. **Submit API surface.** Form and simple actions each get a resolver-emitted `update-action-{action_type}` endpoint (submit-pipeline). Template-shipped buttons call it with a `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves each signal through the action's FSM ([engine](../engine/design.md) Decision 4, [state-machine](../state-machine/design.md)). Simple and form kinds share **one FSM table** — `submit` is nullary for both (the `review` verb selects `in-review` vs `done`); the v0 simple status selector and its `target_status` payload are removed. Tracker actions don't submit at all — the engine writes their status via the tracker subscription's `internal_mirror_child_*` signals.
+1. **Page generation.** Form actions emit per-action `edit` / `view` / `review` / `error` pages (per-verb page emitted only when the verb key is present in the action's `access.{app_name}` map; all four verbs gated identically). Simple actions don't get per-action pages — they use shared module-level `simple-edit` / `simple-view` / `simple-review` pages, addressed by `?action_id=<id>`. Tracker actions emit no pages. See [ui](../ui/design.md) for page-generation rules.
+2. **Submit API surface.** Form and simple actions each get a resolver-emitted `workflow-{workflow_type}-{action_type}-submit` endpoint (submit-pipeline). Template-shipped buttons call it with a `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`); the engine resolves each signal through the action's FSM ([engine](../engine/design.md) Decision 4, [state-machine](../state-machine/design.md)). Simple and form kinds share **one FSM table** — `submit` is nullary for both (the `review` verb selects `in-review` vs `done`); the v0 simple status selector and its `target_status` payload are removed. Tracker actions don't submit at all — the engine writes their status via the tracker subscription's `internal_mirror_child_*` signals.
 3. **Resolver invocation.** `makeActionsForm` and `makeActionFormConfigs` run only for form actions; simple and tracker actions skip both. `makeActionPages` skips per-action emission for simple and tracker kinds.
 
-## Decision 3 — Action access semantics
+## Decision 3 — Action access semantics (per-app, per-verb role gates)
 
-Every action declares an `access:` block with two parts that do different jobs:
+Every action declares an `access:` block that is **one canonical shape**: a map of `{app_name}` → verb → role-gate. There is no separate action-wide role list, and no shorthand verb-list form — every verb in every app declares its own role gate.
 
 ```yaml
 access:
-  # Per-app verb maps — UI affordance control per app deployment.
-  my-team-app: [view, edit, review]
-  my-customer-app: [view]
-  # Role gate — applied across all apps; resolved at query and submit time.
-  roles: [account-manager, ops-lead]
+  my-team-app:
+    view: true                              # any my-team-app user
+    edit: [account-manager, account-rep]    # role-gated
+    review: [account-manager]               # narrower gate
+  my-customer-app:
+    view: [customer-lead]                   # also role-gated
+  # no other app key → action invisible in any other app
+notification_roles:                         # action-root, app-agnostic (see Decision 9 below)
+  - account-manager
 ```
 
-### Per-app verb maps
+> **This shape supersedes the previous two-axis model** (a per-app verb *list* plus a single action-wide `access.roles`). The full rationale and decision log are owned by [Part 34 — Action access model](../../workflows-module/parts/34-action-access-model/design.md); this section restates the committed model.
 
-Keys are app deployment names (matching `vars.app_name` on each module composition). Each value is a verb list controlling which UI affordances the generated action surfaces render in that app:
+### Per-app verb-gate map
 
-| Verb     | Effect                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows the action in `actions-on-entity` on the entity page and renders read-only detail pages (form-action `-view`, simple-action `simple-view`).                                                                                                                                                                                                                                                                                                                                                                          |
-| `edit`   | Renders the submit form — form-action `-edit` pages, simple-action `simple-edit`. Implies `view`.                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| `review` | Renders a dedicated review page — form actions get `{workflow_type}-{action_type}-review` (generated alongside `-edit` / `-view` / `-error` when present in the verb list); simple actions use the shared `simple-review` page. Approve and Request Changes are template-shipped buttons calling `update-action-{action_type}` with `signal: approve` and `signal: request_changes`; the FSM resolves target status (`done` and `changes-required` respectively, [state-machine](../state-machine/design.md)). Implies `view`. |
+`access.{app_name}` is an object whose keys are verbs and whose values are role gates:
 
-Apps without a key for a given app deployment **hide the action entirely** in that app — no `actions-on-entity` row, no edit page generated, no link reachable. The resolver's `makeActionPages` reads the host app's `app_name` and filters per-action page emission based on that app's verb list (form actions only emit `-edit` when `edit` is in the list, etc.). The runtime UI affordances on entity pages read the same map to decide what to render.
+| Field        | Type                            | Allowed values                                                                                                                                                                            |
+| ------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| verb (key)   | string                          | `view`, `edit`, `review`, `error`. Vocabulary is closed in v1; unknown verb keys fail build-time validation.                                                                              |
+| gate (value) | `true` \| array of role strings | `true` — no role gate, any user of this app passes. A non-empty array — the user's roles for **this app** must intersect the list. Empty array `[]` is invalid; omit the verb key instead. |
 
-Vocabulary is module-defined. v1 ships `view`, `edit`, `review`; the module can grow additional verbs in v1.x without breaking apps (unknown verbs are silently ignored).
+The four verbs drive the UI affordances:
 
-### Role gate
+| Verb     | Effect                                                                                                                                                            |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`   | Shows the action in `actions-on-entity` and renders read-only detail pages (form-action `-view`, simple-action `simple-view`).                                   |
+| `edit`   | Renders the submit form — form-action `-edit`, simple-action `simple-edit`. Does **not** imply `view` (verbs are independent — D4 below).                         |
+| `review` | Renders a dedicated review page (form actions get a per-action `-review`; simple actions use the shared `simple-review`). Ships Approve / Request Changes buttons. |
+| `error`  | Renders the recovery page (form-action `-error`). Author-driven error entry lands here only where the app declares the verb.                                      |
 
-`access.roles` controls **who** can interact with the action regardless of which app they're in. Empty or missing means "no role gate" (any user with verb access can interact). Non-empty means the user's roles must intersect with this list.
+**Presence/absence is the first gate.** A missing app key means the action has **no access in that app** (no `actions-on-entity` row, no page, no link). A missing verb key under a present app means **no access to that verb** in that app. This removes the old `app-name: []` ceremony — omitting the key is the canonical "no access" expression. Build-time page emission, query-time filtering, and submit-time checks all read the verb's presence first; only present verbs are then evaluated against their role gate.
 
-Roles are resolved from `_user: roles` — the user's effective roles for the current app, sourced from `apps.{app_name}.roles` on the `user_contacts` doc (the same source the user-admin module manages).
+**Roles are scoped to apps by construction.** `access.{app_name}.{verb}: [account-manager]` is checked against `_user.apps.{app_name}.roles` — that app's roles, never another app's. There is no global role list to interpret "across apps," so the cross-app role-name clash the old flat `access.roles` could leak through cannot occur: if two apps both name a role `manager`, each `access.{app_name}.{verb}` gate reads only its own app's list. Per-verb check for a present gate: `gate === true OR size(setIntersection(_user.apps.{app_name}.roles, gate)) > 0`.
 
-Check semantics: `(access.roles is empty) OR (size(setIntersection(user.roles, access.roles)) > 0)`.
+### D4. Verbs are independent
 
-The engine enforces the role gate at two points:
+Granting one verb never grants another. `edit: [manager]` does not also grant `view` — an author who wants "anyone can view, only managers edit" writes both gates:
 
-- **At query time** in `get-entity-workflows`: actions where the user's roles don't satisfy the gate are filtered out of the response. Same effect as the user not having app-level access — the action is invisible to that user.
-- **At submit time** inside the `SubmitWorkflowAction` handler: the engine re-checks the role gate against the action's `access.roles` before performing any writes. Rejects with a structured error if the user's roles no longer match (e.g. role revoked between page render and submit).
+```yaml
+my-team-app:
+  view: true
+  edit: [manager]
+```
 
-### Composition: verb gate AND role gate
+The build-time validator **lint-warns (does not hard-error)** when an app block declares `edit`, `review`, or `error` without also declaring `view`: the common case is a forgotten `view` for editors, but a role-only-edits-no-read workflow is legitimate, so the schema surfaces the mistake without rejecting it.
 
-The verb map and the role gate compose with AND semantics:
+### Three checkpoints, all per-verb
 
-- App-level filter runs first (build-time + query-time): if `access.{current_app_name}` is missing or doesn't contain the relevant verb, the action / verb is not visible in this app.
-- Role gate runs second (query-time + submit-time): if the user's roles don't intersect with `access.roles`, the action is invisible / submission is rejected.
+- **Build-time** (`makeActionPages`): emits a verb page iff the verb key is present in `access.{host_app_name}`. Role gates don't matter at build time — presence of the key alone gates page generation. Applies uniformly to all four verbs including `error`.
+- **Query-time** (`get-entity-workflows`): for each action visible to the host app, evaluates every declared verb's gate against `_user.apps.{app_name}.roles` and returns `visible_verbs: { view, edit, review, error }` (four bools, defaulting to `false` for any undeclared verb) on the action payload. If every bool is `false`, the action drops from the response (preserves the old "no role intersection → invisible" outcome).
+- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's required verb (table below), checks `access.{current_app}.{required_verb}` against `_user.apps.{current_app}.roles`, rejects with a structured error if the gate fails. Rechecked after the action-doc lookup, before any writes. This is the authoritative gate; the central `api.roles` glob over the submit endpoint id (Decision 6, [Part 34 § D10–D11](../../workflows-module/parts/34-action-access-model/design.md)) is the coarse outer fence.
 
-A user with `account-manager` role visiting from an app without an `access.<that-app>` key sees nothing — app-scoping is intentional. An app with `access.my-team-app: [view, edit]` but missing `roles:` lets any my-team-app user interact (no role gate).
+### Interaction → required verb
 
-### Where the checks live
+| Interaction       | Required verb |
+| ----------------- | ------------- |
+| `submit_edit`     | `edit`        |
+| `not_required`    | `edit`        |
+| `resolve_error`   | `error`       |
+| `approve`         | `review`      |
+| `request_changes` | `review`      |
 
-- **Build-time** (`makeActionPages`): per-app verb filter. Form actions emit only the page verbs the host app has access to.
-- **Query-time** (`get-entity-workflows`): per-app verb filter + role gate. Both must pass for an action to appear in the response.
-- **Submit-time** (the `SubmitWorkflowAction` handler): role gate re-check (the verb filter is implicit — the page wouldn't have been generated if the verb wasn't allowed in the current app, but a hostile caller hitting `update-action-{action_type}` directly is rejected by the engine's role check).
+`view` has no interaction — it's the read affordance, gated only on read paths. Any future interaction (e.g. an `update_metadata` interaction from Part 24) adds a row here.
 
-The `action_role_check` component (ui sub-design) is a thin client-side wrapper over the same check used at query time — apps can read it on entity pages to conditionally render verb buttons without re-implementing the logic.
+The `action_role_check` component (ui sub-design) is a thin client-side mirror of the query-time check — it populates a per-verb `_state.action_allowed: { view, edit, review, error }` so entity pages can render verb affordances without re-implementing the logic. It is defence in depth; the server-side query/submit checks are the real gate.
+
+### D9. `notification_roles` is action-root, app-agnostic
+
+`notification_roles` is **not** under `access:` — it lives at the action root. It's a fan-out config (who gets notified), not an access decision: recipients need not have any access to the action. Keeping it out of `access:` lets the `access:` block hold one well-defined shape (`{app_name}` → verb-gate map, no carve-out keys). v1 keeps it a flat list; per-app fan-out is a v1.x change if a concrete need surfaces.
 
 ## Decision 4 — Universal action fields
 
@@ -239,7 +259,7 @@ The fields are **uniformly user-editable** on the action's edit page, regardless
 - On a **simple action's** edit page they're the primary content, with the signal buttons (`submit` / `progress` / `not_required`) and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
-Updates flow through the per-action endpoint (`update-action-{action_type}`) like any other action change: the payload includes the new field values in `fields`, the engine writes them to the action doc atomically with the status transition, and a log event is emitted. Comments live on the events module — the comment is part of the `event.metadata.comment` payload that the engine forwards to `events.new-event`.
+Updates flow through the per-action endpoint (`workflow-{workflow_type}-{action_type}-submit`) like any other action change: the payload includes the new field values in `fields`, the engine writes them to the action doc atomically with the status transition, and a log event is emitted. Comments live on the events module — the comment is part of the `event.metadata.comment` payload that the engine forwards to `events.new-event`.
 
 The fields are added to the actions schema and to the reserved-keys list (engine sub-design "References write contract") — apps' `references` payloads can't claim `assignees`, `due_date`, or `description`.
 
@@ -267,8 +287,8 @@ Engine effect: the `SubmitWorkflowAction` handler rejects writes on actions whos
 The v0 corpus carried fields the team chose not to bring forward:
 
 - **`responsibility`** — display-only label (e.g. `client`, `technician`). v1 leaves this to app-side UI; if a deployment wants the label, it derives it from `assignees` or attaches its own metadata.
-- **`access.notification_roles`** — moved to the notifications sub-design / config; not part of the action grammar.
-- **`roles` on the action** (separate from `access.roles`) — v0 had both; v1 keeps only `access.roles` as the role gate (Decision 3).
+- **`access.notification_roles`** — `notification_roles` is no longer nested under `access:`; it lives at the action root (Decision 3 D9). The `access:` block holds only `{app_name}` verb-gate maps.
+- **Action-wide `access.roles`** — gone. v0 (and the earlier v1 draft) had a single flat action-wide role list; v1 gates every verb per-app independently (Decision 3). There is no global role list on an action.
 - **`workflow.ticket_category`** — v0 categorization for ticket-shaped workflows. v1 workflows are entity-agnostic; categorization, if needed, lives on the entity doc.
 
 ## Decision 5 — Tracker action YAML
@@ -415,7 +435,7 @@ The module exports five JS resolvers that consume authored YAML at build time:
 | Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                          | Used in                                                                              |
 | ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML (one per (workflow, action, verb))                                                                                                                                                                                                          | `module.lowdefy.yaml` `pages:`                                                       |
-| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `update-action-{action_type}` entry per form / simple action (bakes in the action's `hooks:` + `event:` blocks as signal-keyed build-time literals; validates `hook.auth.roles ⊇ action.access.roles` and flags `status:` keys in pre-hook returns); skipped for tracker actions | `module.lowdefy.yaml` `api:`                                                         |
+| `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `workflow-{workflow_type}-{action_type}-submit` entry per form / simple action (bakes in the action's `hooks:` + `event:` blocks as signal-keyed build-time literals; flags `status:` keys in pre-hook returns), plus the resolver-derived internal hook Apis; skipped for tracker actions | `module.lowdefy.yaml` `api:`                                                         |
 | `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection                                                                                                                                                                                                   | `module.lowdefy.yaml` `connections:` (the connection's `properties.workflowsConfig`) |
 | `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name (used inside the page templates)                                                                                                                                                          | Inside templates, called recursively per action (form actions only)                  |
 | `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, default values, field types)                                                                                                                                                                                         | `global.action_form_configs` — read by templates and the workflow-overview page      |
@@ -451,18 +471,19 @@ Validation rules:
 - `status_map` keys (if present) must be members of `action_statuses`. Display-config under each key must be keyed by `app_name`. (Same app-keyed-display family as the events module's `event_display.{app_name}.{event_type}` pattern — see [docs/idioms.md "Event display"](../../../../docs/idioms.md#event-display); the workflows nesting is `status_map.{stage}.{app_name}` so per-stage display lives together.)
 - `action_group` (if present) must reference a declared `action_groups[].id` in the same workflow.
 - `blocked_by` entries (if present) must resolve to either another `actions[].type` value in the same workflow OR an `action_groups[].id`. Mixed lists are valid. Engine resolves by group-id-first precedence (see [action-groups](../action-groups/design.md) Decision 2). Unresolvable entries fail the build.
-- `access.<app_name>` entries (if present) must be arrays of valid verbs (`view`, `edit`, `review` — see Decision 3 "Action access semantics" for the canonical verb vocabulary; unknown verbs are silently ignored at runtime but flagged at build time).
+- `access.{app_name}` entries (if present) must be verb-gate **maps** (Decision 3): keys are verbs from the closed set `view` / `edit` / `review` / `error` (unknown verb keys hard-error), values are `true` or non-empty role-string arrays (empty array `[]`, the shorthand verb-list form, and any non-`{app_name}` top-level key under `access:` are all rejected). Lint-warn when `edit` / `review` / `error` is declared without `view`.
+- `notification_roles` (if present) lives at the action root, not under `access:`; it is a flat role-string array.
 - Reference-key collisions: any key in `references:` payloads that collides with a reserved key (see engine sub-design "References write contract") is flagged. (Note: this is a _warning_ at build time only when the workflow YAML literally contains a `references:` block; runtime references go through the engine's merge-order silencing per the engine sub-design.)
 
 The validations run inside `makeWorkflowsConfig`. Decision 2's per-kind invariants (form / simple / tracker validation rules) are the same rules expressed from the action-kind perspective; this section restates them in resolver-implementation terms alongside the broader workflow-level invariants.
 
 ### `makeWorkflowApis` — the per-action endpoint generator
 
-The resolver walks the workflows config and emits, per form / simple action, one `update-action-{action_type}` `Api` entry. The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks baked in as signal-keyed build-time literals (see submit-pipeline Decision 2 for the canonical shape):
+The resolver walks the workflows config and emits, per form / simple action, one `workflow-{workflow_type}-{action_type}-submit` `Api` entry. The endpoint's routine is a single call to the `SubmitWorkflowAction` plugin handler with the action's `hooks:` and `event:` blocks baked in as signal-keyed build-time literals (see submit-pipeline Decision 2 for the canonical shape):
 
 ```yaml
 # Generated request — one per form / simple action.
-- id: update-action-{action_type}
+- id: workflow-{workflow_type}-{action_type}-submit
   type: Api
   routine:
     - id: submit
@@ -501,11 +522,11 @@ The resolver walks the workflows config and emits, per form / simple action, one
 
 **One endpoint per action, all signals multiplexed.** Every button on every page for this action calls the same endpoint with a different `signal` value (`submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`). The handler resolves `hooks[signal]` and `event_overrides[signal]` once on entry and treats them as scalar bags for the rest of the lifecycle. The target status is the FSM cell `transitions[kind][currentStatus][signal]` ([engine](../engine/design.md) Decision 4, [state-machine](../state-machine/design.md)) — there is no author-side per-signal status override (the former `interactions:` block is dropped; the FSM is engine-locked in v1).
 
-### Build-time validation: hook auth gate + pre-hook return shape
+### Build-time validation: pre-hook return shape
 
-`makeWorkflowApis` validates that each hook API referenced from `action.hooks.{signal}.{pre,post}` satisfies the auth rule from submit-pipeline Decision 4: `hook.auth.roles ⊇ action.access.roles`, and `hook.auth.public` must not be `true`. The build fails with a path to the offending hook + action when the relationship doesn't hold. This catches the "user passes the action's role gate but the hook hard-fails on auth" mismatch at build, not at submit time.
+There is **no hook auth gate.** Hooks are emitted as **internal-only Apis** (no HTTP entry point — callable only via `context.callApi` from the submit endpoint's routine); they carry no `auth:` block of their own, so there is no `hook.auth.roles ⊇ action.access.roles` rule to validate. The submit endpoint's access check is the sole gate for the whole interaction including its hooks (engine submit-time check + the central `api.roles` glob over the submit endpoint id; see Decision 3 "Three checkpoints" and [Part 34 § D11](../../workflows-module/parts/34-action-access-model/design.md)).
 
-Per [state-machine](../state-machine/design.md) "Next step", the resolver also adds a build-time validator that flags any `status:` key in a pre-hook routine's `:return:` (the superseded `{ type, status }` / `{ status }` shape) with a clear "use `signal:` instead" error pointing at the migration mapping. This catches pre-hooks not yet migrated to the signal model.
+Per [state-machine](../state-machine/design.md) "Next step", the resolver adds a build-time validator that flags any `status:` key in a pre-hook routine's `:return:` (the superseded `{ type, status }` / `{ status }` shape) with a clear "use `signal:` instead" error pointing at the migration mapping. This catches pre-hooks not yet migrated to the signal model.
 
 An action YAML's submit-side authoring surface is the `hooks:` / `event:` blocks (action-authoring Decision 4 grammar), all optional:
 
@@ -691,7 +712,7 @@ status_map:
 
 ### `form_review` — separate schema for review pages
 
-Actions whose access list includes `review` may declare a second form block under `form_review:`:
+Actions that declare the `review` verb (in any app's `access` map) may declare a second form block under `form_review:`:
 
 ```yaml
 form: # the submitter's schema (edit page)
@@ -748,7 +769,7 @@ pages:
       onRequestChanges: [...]
 ```
 
-The per-action endpoint (`update-action-{action_type}`) is what each template-shipped button calls; the action's `hooks:` block declares which pre/post Lowdefy Apis the engine fires per signal. See submit-pipeline for the endpoint resolution detail.
+The per-action endpoint (`workflow-{workflow_type}-{action_type}-submit`) is what each template-shipped button calls; the action's `hooks:` block declares which pre/post Lowdefy Apis the engine fires per signal. See submit-pipeline for the endpoint resolution detail.
 
 ### Per-page chrome: `formHeader`, `formFooter`, `requests`, `modals`
 
@@ -776,14 +797,14 @@ These fields belong to the action's authored YAML — they ride into the generat
 
 ### Error pages and the `error` status
 
-The fourth verb the page-emission resolver handles is `error`, gated identically to the other three: the resolver emits the `-error` page when `error` is in the action's `access.{app_name}` verb list. Actions without `error` in the list have no `-error` page in that app deployment — an author-driven `error` push still lands on the action, but there is no reachable recovery surface in the UI for that action there. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent.
+The fourth verb the page-emission resolver handles is `error`, gated identically to the other three: the resolver emits the `-error` page when the `error` verb key is present in the action's `access.{app_name}` map. Actions without `error` declared have no `-error` page in that app deployment — an author-driven `error` push still lands on the action, but there is no reachable recovery surface in the UI for that action there. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent.
 
 **When an action enters `error`:** `error` is purely author-driven ([Part 29 § D1–D2](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md)). The engine never writes `error` itself — engine sub-step failures throw and surface as an API-level reject/error toast, not an action-status transition. Entry paths under the signal model (both form and simple kind):
 
 - **Pre-hook `error` signal.** A pre-hook fires the `error` signal against another action — `actions: [{ type, signal: error }]`. The FSM accepts `error` from every non-terminal state → `error`. This replaces the v0 pre-hook `actions: [{ ..., status: 'error' }]` return ([state-machine](../state-machine/design.md) inventory; engine Decision 5). (To fail the current submission, `:reject` / `throw` instead.) Failure context rides on the events-log entry via `event_overrides.metadata`.
 - **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly (direct DB write).
 
-Either way, the action's `status[0].stage` becomes `error` and the page resolver's `link.pageId` slot in `status_map.error.{app_name}` is expected to target `{workflow_type}-{action_type}-error?action_id=<id>`. (Simple actions have no `-error` page in v1 — recovery surface is a [ui](../ui/design.md) follow-on.)
+Either way, the action's `status[0].stage` becomes `error` and the page resolver's `link.pageId` slot in `status_map.error.{app_name}` is expected to target `workflow-{workflow_type}-{action_type}-error?action_id=<id>`. (Simple actions have no `-error` page in v1 — recovery surface is a [ui](../ui/design.md) follow-on.)
 
 **Authoring the recovery form:**
 
@@ -796,7 +817,7 @@ pages:
     requests: [...]
     events:
       onMount: [...] # typically: fetch action, redirect-to-view if status is no longer 'error'
-      onSubmit: [...] # author-supplied page-state work before the template-shipped resolve_error button fires (the button itself calls update-action-{action_type})
+      onSubmit: [...] # author-supplied page-state work before the template-shipped resolve_error button fires (the button itself calls workflow-{workflow_type}-{action_type}-submit)
     formHeader: [...]
     formFooter: [...]
     buttons: # optional; defaults to a single primary "Submit" button
@@ -813,7 +834,7 @@ The recovery form schema **reuses** the action's `form:` block — the user sees
 
 **Buttons.** The error template ships with a single primary "Submit" button wired to `pages.error.events.onSubmit`. Authors can override the button title and add a confirm modal via `pages.error.buttons.submit.{title,modal}`. Multi-button error pages can use `formFooter:` to add additional buttons with their own routines.
 
-**`access` interaction.** The `-error` page is emitted for every form action regardless of the action's `access.{app_name}` verb list. The rationale is operational: an action in `error` is a stuck state; restricting visibility per app would strand users in apps that don't include the verb. Apps that don't want users from app X to see the error page filter at the status-map level (omit `status_map.error.{app_name}` to suppress the recovery link for that app), not at the page-emission level.
+**`access` interaction.** The `-error` page is gated identically to the other three verbs (Decision 3): the resolver emits it iff `error` is in the action's `access.{host_app_name}` map. Actions without `error` declared for an app have no recovery surface in that app — an author-driven `error` push still lands on the action, but there is no reachable `-error` page there. The stuck-state visibility concern is addressed by authors declaring `error` explicitly in the relevant app's verb map (this supersedes the earlier draft that emitted `-error` for every form action regardless of access — see [Part 34 § D5](../../workflows-module/parts/34-action-access-model/design.md)). Per-app suppression of the recovery *link* from other pages is additionally controlled at the status-map level (omit `status_map.error.{app_name}`).
 
 ## Decision 9 — Instanced actions (`key:`)
 

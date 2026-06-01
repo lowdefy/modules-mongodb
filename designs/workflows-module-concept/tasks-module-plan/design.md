@@ -125,7 +125,7 @@ Active follow-on parts (designs not yet implemented or amending shipped code):
 
 - `workflows-module/parts/24-universal-fields/` — `kind: form | task` comment becomes `form | simple`
 - `workflows-module/parts/28-custom-action-kind/` — references task semantics
-- `workflows-module/parts/30-status-map-rendering/` — `kind: task | form | tracker` everywhere
+- `workflows-module/parts/38-engine-rebuild/` — `kind: form | simple | tracker` everywhere (this part supersedes the rejected Part 30 — `_rejected/30-status-map-rendering/` — and carries forward Part 30's display contract and link table)
 - `workflows-module/parts/34-action-access-model/` — `kind: task` in per-verb table example
 - Parts under `_completed/` that reference `kind: task` in the historical record stay as-is (history); new amendments use the new name.
 
@@ -133,7 +133,7 @@ The rename is mechanical — no behavioural change, no migration of existing dat
 
 ### Migration of the page IDs
 
-The three shared pages (`task-edit`, `task-view`, `task-review` in `modules/workflows/pages/`) become `simple-edit`, `simple-view`, `simple-review`. Action `status_map.{stage}.{slug}.link.pageId` references these via `_module.pageId: { id: task-edit, module: workflows }` — all such references in concept docs, shipped templates, and the demo app's `workflow_config/**` flip to `simple-edit`. The link table in `parts/30-status-map-rendering/design.md` updates accordingly.
+The three shared pages (`task-edit`, `task-view`, `task-review` in `modules/workflows/pages/`) become `simple-edit`, `simple-view`, `simple-review`. Action `status_map.{stage}.{slug}.link.pageId` references these via `_module.pageId: { id: task-edit, module: workflows }` — all such references in concept docs, shipped templates, and the demo app's `workflow_config/**` flip to `simple-edit`. The engine-computed link table in `parts/38-engine-rebuild/design.md` (which supersedes the rejected Part 30) updates accordingly.
 
 ## Status enum subset for adhoc tasks
 
@@ -169,7 +169,7 @@ These handlers do **not** invoke the workflow engine. They share the `actions` c
 
 The workflows engine must not assume every doc in `actions` was written by it. Specifically:
 
-- The tracker subscription queries the `actions` collection looking for `child_workflow_id` matches — tasks never set this field, so they're transparent to the subscription.
+- The tracker subscription joins via `workflow.parent_action_id → action._id` (it looks up the child workflow by `_id`, reads its `parent_action_id`, then fetches that action) — it never queries `actions` by `child_workflow_id`, and tasks have no parent workflow linkage, so they're transparent to the subscription.
 - The group recomputation reads `actions` filtered by `workflow_id` — tasks have `workflow_id: null` and are excluded by the filter naturally.
 - The `references` write contract assumes the doc was inserted in a workflow flow; tasks will write references the same way but never trigger workflow-engine logic from a reference update.
 
@@ -183,7 +183,7 @@ A single timeline component can render events filtered by `action_id` for both s
 
 ## Access model — different shapes, no overlap
 
-Workflow actions have a config-driven access model: `access.{app_name}: [verb, ...]`, `access.roles: [...]`. The workflows engine enforces it at submit time.
+Workflow actions have a config-driven access model: `access.{app_name}` is a per-app map of verb → role-gate (`access.{app_name}.{verb}: true | [roles]`, verbs `view` / `edit` / `review` / `error`; no action-wide role list). The workflows engine enforces it per-verb at submit time (Part 34).
 
 Adhoc tasks have a doc-driven access model: creator can edit/delete, assignees can edit + change status + comment, optional team scope for view. The tasks module will define this in its own design; nothing about it touches the workflows engine.
 
@@ -206,7 +206,7 @@ These belong to the tasks module's own design(s), not this one:
 
 ## Decisions
 
-1. **Display title on adhoc tasks.** Part 30 standardises action display under top-level `<app-slug>.message` fields, written from `status_map` cells for workflow actions. Tasks write `<app-slug>.message` directly from user input — same field, same read path, no `kind`-branching in renderers. How user input maps to per-app values (single shared title fanned out vs per-app variants) is for the tasks-module design to decide.
+1. **Display title on adhoc tasks.** Part 38 (superseding the rejected Part 30) standardises action display under top-level `<app-slug>.message` fields, written from `status_map` cells for workflow actions. Tasks write `<app-slug>.message` directly from user input — same field, same read path, no `kind`-branching in renderers. How user input maps to per-app values (single shared title fanned out vs per-app variants) is for the tasks-module design to decide.
 
 ## Related
 

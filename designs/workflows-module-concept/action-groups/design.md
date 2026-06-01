@@ -278,9 +278,9 @@ actions:
 
 **Runtime sequence when the user submits `send-quote` (last open action in phase-1):**
 
-1. App page's template-shipped `submit` button on the `onboarding-send-quote-edit` page calls `workflows/update-action-send-quote` (resolver-generated per submit-pipeline Decision 2) with `signal: submit`.
+1. App page's template-shipped `submit` button on the `workflow-onboarding-send-quote-edit` page calls `workflows/workflow-onboarding-send-quote-submit` (resolver-generated per submit-pipeline Decision 2) with `signal: submit`.
 2. The endpoint's routine fires `SubmitWorkflowAction`, which runs the lifecycle:
-   1. Validate payload + role gate.
+   1. Validate payload + the per-verb access gate (`submit_edit` → `edit`).
    2. Pre-hook (if declared on `send-quote`).
    3. Stage auto-unblocks (`unblock` signals); merge with pre-hook `actions[]` signals.
    4. Resolve the `submit` signal via the form FSM → `done` (no review verb).

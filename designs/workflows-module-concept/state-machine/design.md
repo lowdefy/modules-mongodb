@@ -95,7 +95,7 @@ The exception is `unblock`: it stays narrow (`blocked` only) precisely because b
 
 | Signal              | Source states (form kind)                                       | Target            | Notes                                                                                                  |
 | ------------------- | --------------------------------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
-| `submit`       | `action-required`, `in-progress`, `changes-required`, `done`    | `in-review` or `done` | Lands `in-review` if the action's `access.{app_name}` lists `review`; else `done`. Source `done` covers re-submit of a completed action. Nullary — the target is resolved from the action's static review verb, not from any runtime payload (same rule for form and simple kinds). |
+| `submit`       | `action-required`, `in-progress`, `changes-required`, `done`    | `in-review` or `done` | Lands `in-review` if the action declares the `review` verb in its `access.{app_name}` map; else `done`. Source `done` covers re-submit of a completed action. Nullary — the target is resolved from the action's static review verb, not from any runtime payload (same rule for form and simple kinds). |
 | `progress`        | `action-required`, `in-progress`                                | `in-progress`     | Persists current edits without advancing. Form kind: saves `form_data` (a draft). Simple kind: records that work has started. Restores v0 `save_draft` (critique § 5). |
 | `not_required`      | `action-required`, `in-progress`, `changes-required`, `blocked`, `in-review`, `error` | `not-required`    | Broad source list — pre-hook cascades like `mark-quote-not-required` shouldn't drop on whichever current-state outcomes the author didn't anticipate. User-side gating is the page template's job (only the edit template shows this button).               |
 | `approve`           | `in-review`                                                     | `done`            | Reviewer button on the review template.                                                                |
@@ -170,7 +170,7 @@ Three paths into the FSM. Identical resolution.
 
 ### Path 1 — User clicks a button
 
-Pages render button bars (see "Templates and buttons" below). A button click hits the `update-action-{action_type}` endpoint with `signal: <name>` in the payload. Engine resolves `transitions[action.status][signal]`; transitions or no-ops.
+Pages render button bars (see "Templates and buttons" below). A button click hits the `workflow-{workflow_type}-{action_type}-submit` endpoint with `signal: <name>` in the payload. Engine resolves `transitions[action.status][signal]`; transitions or no-ops.
 
 ### Path 2 — Engine cascade
 
@@ -225,7 +225,7 @@ So the only silent no-op is `transitions[currentStatus][signal]` being undefined
 
 ## Templates and buttons
 
-Page templates each declare which signals to surface as buttons. The button click hits `update-action-{action_type}` with `signal: <name>` and the rest of the payload (`form_data` for form kind; universal fields + comment for simple kind).
+Page templates each declare which signals to surface as buttons. The button click hits `workflow-{workflow_type}-{action_type}-submit` with `signal: <name>` and the rest of the payload (`form_data` for form kind; universal fields + comment for simple kind).
 
 **Default v1 button bars** (illustrative — the [ui](../ui/design.md) sub-design owns the authoritative button-bar spec and the access-verb gating of each button; the FSM model only constrains which `(status, signal)` transitions are *valid*):
 

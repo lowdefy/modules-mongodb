@@ -8,11 +8,11 @@ The design splits into eight sub-designs by concern. This parent doc carries the
 | ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | [engine](engine/design.md)                     | Server-side workflow engine — `WorkflowAPI` plugin, references write contract, tracker subscription, signal-driven FSM transition resolution.                                                                                                                                                                                                                               |
 | [state-machine](state-machine/design.md)       | The transition model — a named-**signal** primitive resolved against per-kind FSM tables (form / simple / tracker) mapping `(currentStatus, signal) → newStatus`. Replaces the priority rule + `force: true` and the interaction → target-status table. Owns the signal inventory, the FSM tables, the per-template button bars, and the pre-hook signal-return shape.        |
-| [module-surface](module-surface/design.md)     | `module.lowdefy.yaml` manifest (exports, vars, dependencies) and the four module APIs (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`) that apps call. The submit endpoint is per-action and resolver-emitted (`update-action-{action_type}`) per submit-pipeline.                                                                    |
+| [module-surface](module-surface/design.md)     | `module.lowdefy.yaml` manifest (exports, vars, dependencies) and the four module APIs (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`) that apps call. The submit endpoint is per-action and resolver-emitted (`workflow-{workflow_type}-{action_type}-submit`) per submit-pipeline.                                                                    |
 | [action-authoring](action-authoring/design.md) | YAML surface for workflows and actions — three action kinds (form / simple / tracker) declared via required `kind:` field, universal fields (`assignees`, `due_date`, `description`), tracker `tracker:` block, resolver pipeline, form components library, module-shipped status enum.                                                                                       |
 | [ui](ui/design.md)                             | Per-action page generation strategy, form-action templates (`edit` / `view` / `review` / `error`), static `simple-edit` / `simple-view` / `simple-review` pages, and the three entity-page UI components (`actions-on-entity`, `workflow-header`, `action_role_check`).                                                                                                           |
 | [action-groups](action-groups/design.md)       | Elevates `action_group` from UI label to engine concept — workflow-level `action_groups:` declaration, persisted three-value group status on the workflow doc, `blocked_by` accepting group IDs, engine-driven `blocked_by` re-evaluation, optional per-group `on_complete` hook (mechanism TBD).                                                                           |
-| [submit-pipeline](submit-pipeline/design.md)   | Engine-orchestrated submit lifecycle — `SubmitWorkflowAction` plugin request replacing `UpdateWorkflowActions`, per-action `update-action-{action_type}` resolver-emitted APIs, per-template button bars over the signal namespace, pre/post hooks per signal, default log event shape. Supersedes the routine-orchestrated `submit-action` shape in module-surface Decisions 4 & 5; its transition model defers to [state-machine](state-machine/design.md). |
+| [submit-pipeline](submit-pipeline/design.md)   | Engine-orchestrated submit lifecycle — `SubmitWorkflowAction` plugin request replacing `UpdateWorkflowActions`, per-action `workflow-{workflow_type}-{action_type}-submit` resolver-emitted APIs, per-template button bars over the signal namespace, pre/post hooks per signal, default log event shape. Supersedes the routine-orchestrated `submit-action` shape in module-surface Decisions 4 & 5; its transition model defers to [state-machine](state-machine/design.md). |
 | [call-api](call-api/design.md)                 | Upstream-Lowdefy primitive that submit-pipeline depends on — `context.callApi(endpointId, payload)` capability on plugin connections, auth-context inheritance, depth-limit guard, error propagation. First-time work in `@lowdefy/api`.                                                                                                                                    |
 
 ## Problem
@@ -20,7 +20,7 @@ The design splits into eight sub-designs by concern. This parent doc carries the
 The module exists to give apps a uniform way to run multi-step business processes on any entity. Apps drop the module into their `modules.yaml`, supply a `workflows_config` describing their workflows and actions, and get:
 
 - A persistent workflow + action data model with signal-driven FSM status transitions, eager summary writeback, and auto-complete semantics.
-- A small server API surface — four module-level operational APIs (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`) plus one resolver-generated per-action submit endpoint (`update-action-{action_type}`) per form / simple action.
+- A small server API surface — four module-level operational APIs (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`) plus one resolver-generated per-action submit endpoint (`workflow-{workflow_type}-{action_type}-submit`) per form / simple action.
 - Page generation per action — form-action pages emitted per `(workflow_type, action_type, verb)`; simple-action shared pages addressed by `?action_id=<id>`; tracker actions rendered inline.
 - An entity-page block (`actions-on-entity`) that renders an entity's workflows + grouped action lists end-to-end.
 - A small form components library that lets authors compose action `form:` blocks from reusable building blocks.
@@ -30,7 +30,7 @@ The eight sub-designs commit:
 - The transition model — named signals resolved against per-kind FSM tables (form / simple / tracker), the signal inventory, per-template button bars, and the pre-hook signal-return shape — [state-machine](state-machine/design.md).
 - The shape of the module's `module.lowdefy.yaml` and the API consuming apps see — [module-surface](module-surface/design.md).
 - **Where per-action pages live**, and what page kinds exist for form / simple / tracker actions — [ui](ui/design.md).
-- The submit-time API surface — resolver-emitted per-action `update-action-{action_type}` endpoints (one per form / simple action; tracker actions get none); engine-orchestrated lifecycle with pre/post hooks per signal; per-template button bars over the signal namespace — [submit-pipeline](submit-pipeline/design.md) and [state-machine](state-machine/design.md).
+- The submit-time API surface — resolver-emitted per-action `workflow-{workflow_type}-{action_type}-submit` endpoints (one per form / simple action; tracker actions get none); engine-orchestrated lifecycle with pre/post hooks per signal; per-template button bars over the signal namespace — [submit-pipeline](submit-pipeline/design.md) and [state-machine](state-machine/design.md).
 - The plugin mechanics for the server-side `WorkflowAPI` connection in `@lowdefy/modules-mongodb-plugins`, the references write contract, and the synchronous in-process tracker subscription — [engine](engine/design.md).
 - The shape of the default Nunjucks page templates the module ships, plus the form components library — [ui](ui/design.md) for templates, [action-authoring](action-authoring/design.md) for the components library.
 - The YAML grammar for tracker actions (`tracker:` block on the action), the universal action fields, the action-kind taxonomy (`form` / `simple` / `tracker`), the status enum, and the resolver pipeline — [action-authoring](action-authoring/design.md).
@@ -105,7 +105,7 @@ actions:
 
 ### `workflow_config/onboarding/qualify.yaml` — form action
 
-Form actions declare `kind: form` and carry a `form:` block. The [ui](ui/design.md) sub-design's resolver emits per-action `edit` / `view` / `review` / `error` pages with each template's button bar wired in; the [submit-pipeline](submit-pipeline/design.md) sub-design's resolver emits one `update-action-{action_type}` endpoint per action that the buttons call with a `signal` value (resolved against the action's FSM — [state-machine](state-machine/design.md)).
+Form actions declare `kind: form` and carry a `form:` block. The [ui](ui/design.md) sub-design's resolver emits per-action `edit` / `view` / `review` / `error` pages with each template's button bar wired in; the [submit-pipeline](submit-pipeline/design.md) sub-design's resolver emits one `workflow-{workflow_type}-{action_type}-submit` endpoint per action that the buttons call with a `signal` value (resolved against the action's FSM — [state-machine](state-machine/design.md)).
 
 ```yaml
 type: qualify
@@ -114,8 +114,9 @@ action_group: discovery
 sort_order: 10
 description: Confirm the lead's contact details and capture qualification notes.
 access:
-  my-team-app: [view, edit]
-  roles: [account-manager]
+  my-team-app:
+    view: true
+    edit: [account-manager]
 hooks:
   submit:
     pre: qualify-pre-submit # author-supplied Lowdefy Api id
@@ -128,7 +129,7 @@ status_map:
       message: Qualify the lead
       link:
         pageId:
-          _module.pageId: { id: onboarding-qualify-edit, module: workflows }
+          _module.pageId: { id: workflow-onboarding-qualify-edit, module: workflows }
         urlQuery: { action_id: true }
   done:
     my-team-app: { message: Lead qualified }
@@ -140,14 +141,11 @@ There's no author-side target override — the form FSM resolves `submit` to `do
 
 ### `workflow_config/onboarding/api/qualify-pre-submit.yaml` — pre-hook
 
-The pre-hook is a Lowdefy Api invoked by the engine via the [call-api](call-api/design.md) primitive before any engine writes. It returns optional `actions[]` (merged with the engine's auto-unblocks), `event_overrides`, and `form_overrides`. Aborting the submit is done by throwing — `:reject` for user-facing rejections, `throw` for infrastructure failures ([Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)).
+The pre-hook is an internal-only Lowdefy Api invoked by the engine via the [call-api](call-api/design.md) primitive before any engine writes — no HTTP entry point, no `auth:` block of its own (the submit endpoint's per-verb access check is the sole gate; Part 34 D11). It returns optional `actions[]` (merged with the engine's auto-unblocks), `event_overrides`, and `form_overrides`. Aborting the submit is done by throwing — `:reject` for user-facing rejections, `throw` for infrastructure failures ([Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently)).
 
 ```yaml
 id: qualify-pre-submit
-type: Api
-auth:
-  public: false
-  roles: [account-manager] # ⊇ action.access.roles per submit-pipeline Decision 4
+type: Api # internal-only; no auth block — gated by the submit endpoint
 routine:
   - :return:
       actions:
@@ -177,8 +175,9 @@ sort_order: 30
 description: Schedule a follow-up call with the lead within a week of qualification.
 blocked_by: [send-quote]
 access:
-  my-team-app: [view, edit]
-  roles: [account-manager]
+  my-team-app:
+    view: true
+    edit: [account-manager]
 status_map:
   blocked:
     my-team-app: { message: Awaiting quote acceptance. }
@@ -193,7 +192,7 @@ status_map:
     my-team-app: { message: Follow-up scheduled. }
 ```
 
-No `hooks:` declared — simple-action transitions go through the default engine path with no pre/post extension. The shared `simple-edit` page composes the payload from its universal-fields inputs + comment field and calls `update-action-schedule-followup` with `signal: submit` (nullary — simple actions use the same signal buttons as form actions; the FSM resolves `done` vs `in-review` from the `review` verb, no status selector — see [state-machine](state-machine/design.md) "Simple kind"). Apps that need extra logic on simple-action transitions add a form action instead — simple actions intentionally share one experience.
+No `hooks:` declared — simple-action transitions go through the default engine path with no pre/post extension. The shared `simple-edit` page composes the payload from its universal-fields inputs + comment field and calls `workflow-onboarding-schedule-followup-submit` with `signal: submit` (nullary — simple actions use the same signal buttons as form actions; the FSM resolves `done` vs `in-review` from the `review` verb, no status selector — see [state-machine](state-machine/design.md) "Simple kind"). Apps that need extra logic on simple-action transitions add a form action instead — simple actions intentionally share one experience.
 
 ### `workflow_config/onboarding/track-installation.yaml` — tracker action
 
@@ -207,8 +206,8 @@ sort_order: 40
 description: Tracks the device-installation workflow on the linked installation ticket.
 blocked_by: [schedule-followup]
 access:
-  my-team-app: [view] # display-only — no edit / submit page
-  roles: [account-manager]
+  my-team-app:
+    view: [account-manager] # display-only — no edit / submit page
 tracker:
   workflow_type: device-installation # the only field on tracker:
 status_map: # display copy per parent stage; mapping itself is hard-coded
@@ -243,8 +242,8 @@ No `entity_relationships` — the engine doesn't need to know how leads and tick
 
 The build composes the workflows module into the app, runs the resolvers, and the action-kind inference branches per action:
 
-- **Per-action pages generated** (`makeActionPages`): only for form actions. Each form action gets up to four pages (`-edit` / `-view` / `-review` / `-error`) scoped under `workflows/` — e.g. `workflows/onboarding-qualify-edit`. All four verbs are gated identically: a `-{verb}` page is emitted only when the verb is present in the action's `access.{app_name}` list (`qualify` doesn't list `error`, so no `-error` is generated for it in this example). Each template declares its button bar over the signal namespace (`edit`: `submit` / `progress` / `not_required`; `review`: `approve` / `request_changes`; `error`: `resolve_error`; see [state-machine](state-machine/design.md)) — each button block calls the per-action endpoint with the right `signal` value. `schedule-followup` (simple) and `track-installation` (tracker) get **no per-action pages**; simple actions use the module's shared `workflows/simple-edit` / `simple-view` / `simple-review` pages, tracker actions render inline.
-- **Per-action submit endpoints generated** (`makeWorkflowApis`): one Lowdefy Api per form / simple action — `workflows/update-action-qualify`, `workflows/update-action-send-quote`, `workflows/update-action-schedule-followup`. Each endpoint bakes in the action's `hooks:` and `event:` maps as signal-keyed build-time literals; its routine is a thin call to the `SubmitWorkflowAction` plugin handler. `track-installation` (tracker action) gets no endpoint — the engine writes its status via the tracker subscription. `makeWorkflowApis` also validates `hook.auth.roles ⊇ action.access.roles` at build time (submit-pipeline Decision 4 "Hook auth gate"); the build fails if `qualify-pre-submit`'s auth doesn't include every role in `qualify`'s `access.roles`.
+- **Per-action pages generated** (`makeActionPages`): only for form actions. Each form action gets up to four pages (`-edit` / `-view` / `-review` / `-error`) scoped under `workflows/` — e.g. `workflows/workflow-onboarding-qualify-edit`. All four verbs are gated identically: a `-{verb}` page is emitted only when the verb key is present in the action's `access.{app_name}` map (`qualify` doesn't declare `error`, so no `-error` is generated for it in this example). Each template declares its button bar over the signal namespace (`edit`: `submit` / `progress` / `not_required`; `review`: `approve` / `request_changes`; `error`: `resolve_error`; see [state-machine](state-machine/design.md)) — each button block calls the per-action endpoint with the right `signal` value. `schedule-followup` (simple) and `track-installation` (tracker) get **no per-action pages**; simple actions use the module's shared `workflows/simple-edit` / `simple-view` / `simple-review` pages, tracker actions render inline.
+- **Per-action submit endpoints generated** (`makeWorkflowApis`): one Lowdefy Api per form / simple action — `workflows/workflow-onboarding-qualify-submit`, `workflows/workflow-onboarding-send-quote-submit`, `workflows/workflow-onboarding-schedule-followup-submit`. Each endpoint bakes in the action's `hooks:` and `event:` maps as signal-keyed build-time literals; its routine is a thin call to the `SubmitWorkflowAction` plugin handler. `track-installation` (tracker action) gets no endpoint — the engine writes its status via the tracker subscription. Hooks are emitted as internal-only Apis with no auth gate of their own; the submit endpoint's per-verb access check is the sole gate (Part 34 D11 — no `hook.auth.roles ⊇ action.access.roles` validation). The build still flags `status:` keys in pre-hook returns with a "use `signal:` instead" error.
 - **Runtime config generated** (`makeWorkflowsConfig`): one global object the `workflow-api` connection reads. Wired via `connections/workflow-api.yaml`.
 - **Status enums** (`global.action_statuses`, `global.workflow_lifecycle_stages`): static module-shipped files, available to templates and the WorkflowAPI plugin without any per-app generation.
 
@@ -254,10 +253,10 @@ The build composes the workflows module into the app, runs the resolvers, and th
 2. **Module's `start-workflow`** routes to the WorkflowAPI plugin's `StartWorkflow`. Plugin writes a workflow doc + four action docs (one form action waiting on user, three blocked), returns `workflow_id` and `action_ids`.
 3. **User opens the lead page.** App-side page calls the module's `get-entity-workflows` API with `entity_collection=leads-collection`, `entity_id=<lead_id>`. Module returns workflow docs + grouped actions.
 4. **App page renders** using the module's `actions-on-entity` component, which iterates workflows by `display_order`, renders each `workflow-header` followed by grouped action lists.
-5. **User clicks the qualify action** — navigates to `workflows/onboarding-qualify-edit` (form action; per-action page). Page reads action + entity, renders form via `makeActionsForm`. The edit template ships a `submit` button block already wired to `workflows/update-action-qualify`.
-6. **User clicks "Submit"** — the button block first fires the author's `pages.edit.events.onSubmit` (if declared, for page-state work), then calls `workflows/update-action-qualify` with `signal: submit` + `form` / `form_review` / `fields` payloads. The endpoint's routine is one step that invokes the `SubmitWorkflowAction` plugin handler.
+5. **User clicks the qualify action** — navigates to `workflows/workflow-onboarding-qualify-edit` (form action; per-action page). Page reads action + entity, renders form via `makeActionsForm`. The edit template ships a `submit` button block already wired to `workflows/workflow-onboarding-qualify-submit`.
+6. **User clicks "Submit"** — the button block first fires the author's `pages.edit.events.onSubmit` (if declared, for page-state work), then calls `workflows/workflow-onboarding-qualify-submit` with `signal: submit` + `form` / `form_review` / `fields` payloads. The endpoint's routine is one step that invokes the `SubmitWorkflowAction` plugin handler.
 7. **`SubmitWorkflowAction` runs the lifecycle in one in-process call** (see submit-pipeline Decision 1):
-   1. Validates payload + role gate (account-manager); confirms `submit` is a known signal.
+   1. Validates payload + the per-verb access gate (`submit_edit` → `edit` verb → `account-manager`); confirms `submit` is a known signal.
    2. Resolves `hooks[submit].pre = qualify-pre-submit`; engine invokes it via `context.callApi`. Pre-hook returns `{ actions: [{ type: send-quote, signal: unblock }], event_overrides: { type: lead-qualified, ... } }`.
    3. Engine stages auto-unblocks from `blocked_by` (`unblock` signals); merges with pre-hook `actions[]` signals (pre-hook entries take precedence).
    4. Resolves the `submit` signal via the form FSM → `done` (since `qualify` has no `review` verb).
@@ -269,7 +268,7 @@ The build composes the workflows module into the app, runs the resolvers, and th
    10. No `hooks[submit].post` declared, so post-hook step skipped.
    11. Returns `{ action_ids, completed_groups: [], event_id, tracker_fired: null }`.
 8. **Lead page re-renders** — `qualify` shows as `done`, `send-quote` shows as `action-required`, `schedule-followup` and `track-installation` remain `blocked`.
-9. **Later: user clicks schedule-followup** (simple action) — navigates to `workflows/simple-edit?action_id=<id>` (the module's shared simple-action page). Page renders assignees / due-date inputs + comment field + the `submit` / `progress` / `not_required` buttons. User sets a `due_date`, types a comment, clicks Submit. The page calls `update-action-schedule-followup` with `signal: submit` + `fields` block + a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment`). `schedule-followup` has no `review` verb, so the FSM resolves `submit` → `done`; the engine writes the transition, then fires `unblock` against `track-installation` during `blocked_by` re-evaluation (`schedule-followup` is now terminal) — `blocked → unblock → action-required`.
+9. **Later: user clicks schedule-followup** (simple action) — navigates to `workflows/simple-edit?action_id=<id>` (the module's shared simple-action page). Page renders assignees / due-date inputs + comment field + the `submit` / `progress` / `not_required` buttons. User sets a `due_date`, types a comment, clicks Submit. The page calls `workflow-onboarding-schedule-followup-submit` with `signal: submit` + `fields` block + a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment`). `schedule-followup` has no `review` verb, so the FSM resolves `submit` → `done`; the engine writes the transition, then fires `unblock` against `track-installation` during `blocked_by` re-evaluation (`schedule-followup` is now terminal) — `blocked → unblock → action-required`.
 10. **Sometime later: an installation ticket is created** for this lead. The flow that creates it (often a pre-hook on a separate "create installation" form action, or an app-side page action) calls `start-workflow` with `workflow_type: device-installation`, `entity_id: <new_ticket_id>`, `entity_collection: tickets-collection`, and `parent_action_id: <track-installation._id>`. The engine writes the new child workflow doc (recording `parent_action_id`, `parent_entity_id`, `parent_entity_collection`), the N starting action docs for the child, and the parent `track-installation` action's `child_workflow_id` + `child_entity_id` + `child_entity_collection` + `in-progress` transition — all in one server-side call, one `eventId`. Whenever the child transitions (active → completed → cancelled), the engine's synchronous in-process subscription reads the child's `parent_action_id`, fetches the tracker action by primary key, and fires the matching `internal_mirror_child_*` signal against it (the tracker FSM maps the signal to the parent status) — no further app-side glue. When the child workflow completes, the parent submit response (or any post-hook reading `result.tracker_fired`) sees `{ parent_action_id: <track-installation._id>, parent_workflow_id: <onboarding._id>, new_status: done }`.
 
 The whole thing — from app YAML to runtime behaviour — exercises form actions, simple actions, tracker actions, the universal-fields update channel, and the engine-orchestrated submit pipeline in one example. Every sub-design is load-bearing: engine + submit-pipeline drive the runtime; module-surface and ui shape what the app and user see; action-authoring defines the YAML; action-groups feeds engine writes via `action_group`; call-api gives the engine its hook-invocation primitive.
@@ -296,7 +295,7 @@ Sub-design-specific open questions are owned by each sub-design. The items below
 - **Workflow-doc write contention** under highly-parallel workflows. Mitigation: provide a `summary_dirty: true` lazy-writeback fallback as an opt-in mode (set per workflow YAML), so apps with high parallelism can defer the recompute. Default stays eager.
 - **Resolver path resolution from templates.** Module-loader path resolution for resolvers invoked from inside Nunjucks templates (e.g. `makeActionsForm` calling itself) is a known sharp edge. Mitigation: verify with a working spike before relying on the recursive pattern.
 - **Cross-module API invocation from the engine.** The `SubmitWorkflowAction` plugin handler calls into the events module (`new-event`), the notifications module (`send-notification`), pre/post hook APIs declared on actions, and group `on_complete` endpoints — all via the `context.callApi` primitive ([call-api](call-api/design.md)). Cross-module reference works from inside another module's API routine (verified — the contacts module already does this pattern in `update-contact`); the new piece is doing it from JS inside a plugin handler. The call-api sub-design carves out the primitive; submit-pipeline is its first consumer.
-- **Submit-pipeline API surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`update-action-{action_type}`), all signals multiplexed via the `signal:` payload field. Authors declare pre/post hooks per signal at the action root. If real apps surface complex submit flows that don't fit the hook contract, apps add additional pre-hook returns (extra `actions[]` signals, `event_overrides`, `form_overrides`) or post-hook follow-up writes; the module adds extension fields additively if patterns emerge across multiple apps.
+- **Submit-pipeline API surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`workflow-{workflow_type}-{action_type}-submit`), all signals multiplexed via the `signal:` payload field. Authors declare pre/post hooks per signal at the action root. If real apps surface complex submit flows that don't fit the hook contract, apps add additional pre-hook returns (extra `actions[]` signals, `event_overrides`, `form_overrides`) or post-hook follow-up writes; the module adds extension fields additively if patterns emerge across multiple apps.
 - **FSM is engine-locked in v1.** The per-kind FSM tables aren't author-overridable ([state-machine](state-machine/design.md) Non-goals), so the review-or-done split for `submit` is governed solely by the `review` access verb. The form and simple kinds share one table (the v0 simple status selector is gone), and `error` entry is an explicit pre-hook/cascade signal. If real apps need author-tunable transitions, the additive fix is an opened table in a later version.
 
 ## Next Step
