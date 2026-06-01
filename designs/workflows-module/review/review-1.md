@@ -13,7 +13,7 @@ Focus: the design tree references unit tests across ~10 parts but never names th
 - [Part 6 design.md:120–126](../parts/06-submit-action-writes/design.md) — "Unit tests on `handleSubmit`: priority rule honored; per-entry `force: true` bypasses…"
 - [Part 7 design.md:63](../parts/07-group-state-machine/design.md) — "Unit tests on `deriveGroupStatus`: table-driven over every status combination."
 - [Part 13 design.md:50–55](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md) — "Unit tests: Worked-example onboarding workflow produces `update-action-qualify`…"
-- [Part 22 design.md:9](../parts/22-workflows-e2e-suite/design.md) — "The unit-test verification in each engine / resolver / UI part continues to live there. This part is the *integration* layer."
+- [Part 22 design.md:9](../parts/_next/22-workflows-e2e-suite/design.md) — "The unit-test verification in each engine / resolver / UI part continues to live there. This part is the *integration* layer."
 
 But nowhere in the design tree is it recorded that:
 
@@ -78,7 +78,7 @@ Avoid putting this into part 22 — part 22 is the e2e (integration) layer; mixi
 
 > **Resolved.** Added a grandfathered-parts bullet to the new Testing conventions subsection ("Parts 3, 4, 5, 14 are grandfathered…") and updated part 22's out-of-scope bullet to name all four parts (3, 4, 5, 14) and link back to the top-level convention.
 
-[Part 22 design.md:83](../parts/22-workflows-e2e-suite/design.md):
+[Part 22 design.md:83](../parts/_next/22-workflows-e2e-suite/design.md):
 
 > **Unit-test backfill for already-implemented parts 3, 4, 14.** Those parts shipped without unit tests by design; their e2e coverage flows naturally from the engine specs that depend on them (parts 5+).
 
@@ -96,4 +96,4 @@ This is correct for parts 3, 4, 14 — they shipped pre-convention. But part 5 a
 
 - Choosing between Jest and other runners. Jest is the recommendation because it matches established org-wide convention and Lowdefy's own posture; the one existing `node:test` file in this repo is a holdover, not a precedent.
 - Updating already-shipped parts (3, 4, 5, 14) to add unit tests. The convention applies forward from part 6.
-- Choosing between the per-part spec file layout and a worked-example-driven layout in part 22 — already an open question in [part 22 design.md:100](../parts/22-workflows-e2e-suite/design.md).
+- Choosing between the per-part spec file layout and a worked-example-driven layout in part 22 — already an open question in [part 22 design.md:100](../parts/_next/22-workflows-e2e-suite/design.md).

@@ -17,10 +17,10 @@ no longer matches the data this part receives.
 
 Two facts on disk:
 
-- [`handleSubmit.js:336`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
+- [`handleSubmit.js:336`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
   populates `completed_groups[].on_complete` with `cfg?.on_complete ?? null`
   — the raw value from `workflowConfig.action_groups[].on_complete`.
-- [`makeWorkflowsConfig.js:106–126`](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js)
+- [`makeWorkflowsConfig.js:106–126`](../../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js)
   rejects the string-id shape and requires
   `on_complete: { routine: [ ... ] }`. The "legacy shape pointing at a YAML
   path" error message makes the migration explicit. So the field in
@@ -65,7 +65,7 @@ The actual primitive's signature for own-app Apis (the case here — the
 `on_complete` Api is authored inline on the workflow and lives in the
 consuming app) accepts either a string endpoint id or an
 `{ id, module }` object. See
-[`dispatchNotifications.js:17–21`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchNotifications.js):
+[`dispatchNotifications.js:17–21`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchNotifications.js):
 
 ```js
 await context.callApi(
@@ -93,7 +93,7 @@ own-Api namespace.
 (previously no-op'd in part 6) … runs after step 7 (log event) and step 8
 (notifications) but before step 10 (tracker subscription)".
 
-That ordering matches [`handleSubmit.js:420–424`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
+That ordering matches [`handleSubmit.js:420–424`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
 exactly — step 9 stub between dispatchNotifications and the tracker
 subscription TODO. It also matches Part 10's
 ["Contract to neighbours"](../../10-tracker-subscription/design.md:79).
@@ -143,7 +143,7 @@ inside `fireGroupOnComplete.js`, log with structured context (workflow
 id, group id, on_complete api id, error), continue with the next entry.
 Match Part 8's `result.success` check shape but invert the policy on
 failure — log instead of throw. Don't reach the outer
-[`handleSubmit.js:370–401`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
+[`handleSubmit.js:370–401`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
 catch, because that path writes `action.status: error` on the user's
 submitted action which is wrong (the action _did_ transition; only the
 post-write hook failed).
@@ -190,7 +190,7 @@ return a `completed_groups` list (or returns an empty one)".
 
 The "or returns an empty one" disjunction is dead. Looking at the
 on-disk implementation
-([`CancelWorkflow.js:132`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js)):
+([`CancelWorkflow.js:132`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js)):
 
 ```js
 return { action_ids: actionIds, event_id: null, tracker_fired: null };

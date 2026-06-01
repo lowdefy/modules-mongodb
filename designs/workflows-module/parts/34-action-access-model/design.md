@@ -422,7 +422,7 @@ The change is foundational and ripples to several parts. Each ripple is small in
   - UI picks the highest-priority verb the user has access to and renders that link.
 - **Demo app:**
   - Demo updates at least one action to use per-verb gating (e.g. one role can `edit`, another can `review`) and the page surfaces respect the gate.
-- End-to-end coverage lands in [Part 22](../22-workflows-e2e-suite/design.md).
+- End-to-end coverage lands in [Part 22](../_next/22-workflows-e2e-suite/design.md).
 
 ## Open questions
 

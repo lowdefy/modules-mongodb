@@ -40,8 +40,8 @@ Targeted grep across all design + task files for: `unit test`, `jest`, `node:tes
 
 1. **Jest is the unit-test framework.** Files colocate as `*.test.js` next to source under `modules/workflows/` and `plugins/modules-mongodb-plugins/src/`. (review-1 #1 → resolved → landed in [design.md § Testing conventions](../design.md#testing-conventions).)
 2. **Handler functions use `mongodb-memory-server`** booted per test file. (review-1 #1 → resolved.)
-3. **`apps/demo/` gets no unit tests** — Lowdefy app, e2e only via [part 22](../parts/22-workflows-e2e-suite/design.md). (review-1 #1 → resolved.)
-4. **Parts 3, 4, 5, 14 are grandfathered.** Convention applies forward from part 6. (review-1 #3 → resolved → landed in `design.md § Testing conventions` and [part 22 § Out of scope](../parts/22-workflows-e2e-suite/design.md#out-of-scope--deferred).)
+3. **`apps/demo/` gets no unit tests** — Lowdefy app, e2e only via [part 22](../parts/_next/22-workflows-e2e-suite/design.md). (review-1 #1 → resolved.)
+4. **Parts 3, 4, 5, 14 are grandfathered.** Convention applies forward from part 6. (review-1 #3 → resolved → landed in `design.md § Testing conventions` and [part 22 § Out of scope](../parts/_next/22-workflows-e2e-suite/design.md#out-of-scope--deferred).)
 5. **Harness setup lands as part 6's first task** — not a separate Part 24. Includes devDeps (`jest`, `@swc/jest`, `mongodb-memory-server`), `jest.config.js`, `inMemoryMongo.js` helper, `test` scripts, and the `makeWorkflowsConfig.test.js` rewrite from `node:test` to Jest. (review-1 #2 → resolved.)
 
 ## Inconsistencies Found

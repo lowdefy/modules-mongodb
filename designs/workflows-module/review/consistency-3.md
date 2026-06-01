@@ -51,7 +51,7 @@ Top-level sweep following the [part 6 review-1](../parts/06-submit-action-writes
 ### 2. Part 22 matrix missing a row for part 23 (close-workflow)
 
 **Type:** Internal contradiction (part 22's contract sentence promised every shipping part has a row; part 23 had none)
-**Source of truth:** [part 23 design § Verification](../parts/23-close-workflow-handler/design.md) and the contract sentence in [part 22](../parts/22-workflows-e2e-suite/design.md).
+**Source of truth:** [part 23 design § Verification](../parts/23-close-workflow-handler/design.md) and the contract sentence in [part 22](../parts/_next/22-workflows-e2e-suite/design.md).
 **Files affected:** `parts/22-workflows-e2e-suite/design.md` (matrix + contract sentence).
 **Resolution:** Added a part-23 row to the matrix with the load-bearing assertions (`completed` push, sweep honors `required_after_close`, blocked exception, idempotent re-close, cancel rejection, tracker fan-up). Updated the contract sentence from "(5–20)" to "(5–20, 23)". Also added the `close-workflow` end-to-end assertion to part 19's row.
 

@@ -259,4 +259,4 @@ Add a Part 39 row to [`designs/workflows-module/design.md`](../../design.md)'s f
 - [Part 24 — Universal fields](../24-universal-fields/design.md) — decouples form-kind universal-field writes into `update-action-fields-{action_type}`; this part drops `fields` from the submit/progress payloads so submit no longer clobbers them. This part depends on its no-clobber guard.
 - [Part 36 — Extra action buttons](../36-extra-action-buttons/design.md) — author-extras bar; rebase notes above.
 - [`ui`](../../../workflows-module-concept/ui/design.md), [`submit-pipeline`](../../../workflows-module-concept/submit-pipeline/design.md) — the concept docs this part reconciles.
-- [Part 22 — Workflows e2e suite](../22-workflows-e2e-suite/design.md) — e2e coverage home.
+- [Part 22 — Workflows e2e suite](../_next/22-workflows-e2e-suite/design.md) — e2e coverage home.

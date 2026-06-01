@@ -127,7 +127,7 @@ The hardest churn is **rewriting cross-referencing design documents** (parts 4, 
 - **Form schemas** (`form:`, `form_review:`, `form_error:`) stay. They define the action's data contract, not overrides of it.
 - **`access:` block** stays. Same reason — it's the source of truth for access, not an override.
 - **`hooks:` itself** stays — it's the proposal's replacement channel.
-- **Group-level `on_complete:`** stays. Already a pre-hook-shaped routine surface per [part 11](../../11-group-on-complete-fanout/design.md); no Layer 2 to drop.
+- **Group-level `on_complete:`** stays. Already a pre-hook-shaped routine surface per [part 11](../../_next/11-group-on-complete-fanout/design.md); no Layer 2 to drop.
 
 ## Depends on
 
@@ -141,7 +141,7 @@ The hardest churn is **rewriting cross-referencing design documents** (parts 4, 
 - `makeWorkflowApis` emits no `interactions:` keys in `properties:` on any per-action endpoint (snapshot the worked-example demo output).
 - `resolveTargetStatus` resolves to engine default unless a pre-hook returns `status`.
 - `resolveTargetStatus` throws a `UserError(isReject: false)` on a pre-hook `status` return that is not a member of `action_statuses`. Test that no writes have landed when the throw fires (action's `status[0]` unchanged from pre-submit), and that the wrapping endpoint classifies it as `'error'` (not `'reject'`).
-- Worked-example smoke (in [part 22](../../22-workflows-e2e-suite/design.md)): every action with a non-default target status still produces the same submit-time behaviour after any YAML overrides have been ported to pre-hook routines.
+- Worked-example smoke (in [part 22](../../_next/22-workflows-e2e-suite/design.md)): every action with a non-default target status still produces the same submit-time behaviour after any YAML overrides have been ported to pre-hook routines.
 
 ## Contract to neighbours
 

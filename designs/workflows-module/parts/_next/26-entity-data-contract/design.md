@@ -125,7 +125,7 @@ Part 17 already requires every `entity_collection` in `workflows_config` to have
 ## Depends on
 
 - [Part 4](../04-workflow-config-schema/design.md) — extends the `vars.entities` validator to check that `get_entity_endpoint`, if declared, names a registered Api.
-- [Part 16 form-action page templates](../_completed/16-page-templates/design.md) — receives the template-fetch refactor (replaces `get_entity.yaml.njk` usage with `CallApi` when the endpoint is declared). Part 16 has shipped — this part edits the shipped templates directly.
+- [Part 16 form-action page templates](../../_completed/16-page-templates/design.md) — receives the template-fetch refactor (replaces `get_entity.yaml.njk` usage with `CallApi` when the endpoint is declared). Part 16 has shipped — this part edits the shipped templates directly.
 - [Part 17 shared pages](../17-shared-pages/design.md) — introduces the `entities` enum that this part extends.
 - [Part 20a module-manifest-static](modules-mongodb/designs/workflows-module/parts/_completed/20a-module-manifest-static/design.md) — documents `get_entity_endpoint` in the `vars.entities` manifest description (the `vars.entities` field itself lands in 20a; `get_entity_endpoint` is an additive field on each entry).
 

@@ -14,9 +14,9 @@ doesn't address, plus new gaps surfaced against `handleSubmit.js`,
 Review-1 finding #5 was not marked resolved and the revised design is
 silent on it. The gap is now demonstrably real:
 
-- [`fireTrackerSubscription.js:73–75`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js)
+- [`fireTrackerSubscription.js:73–75`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js)
   calls `recomputeWorkflowAfterActionWrite` on the parent workflow.
-- [`recomputeWorkflowAfterActionWrite.js:36–141`](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/recomputeWorkflowAfterActionWrite.js)
+- [`recomputeWorkflowAfterActionWrite.js:36–141`](../../../../../../plugins/modules-mongodb-plugins/src/connections/shared/recomputeWorkflowAfterActionWrite.js)
   returns `groupsBefore` / `groupsAfter` (lines 132–140) — the exact
   diff Part 11 needs to detect parent-group completions — but
   `fireTrackerSubscription.js:73–93` discards both and returns only
@@ -101,7 +101,7 @@ Design line 21:
 > `group_id` (required; part 4 validates non-empty).
 
 Looking at the actual validator
-[`makeWorkflowsConfig.js:106–126`](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js)
+[`makeWorkflowsConfig.js:106–126`](../../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js)
 and the broader `validateAction`/`validateGroup` paths: nothing
 enforces that `action_groups[].title` exists or is a non-empty string.
 The Part 4 design only commits to `title` on the top-level workflow
@@ -184,7 +184,7 @@ Design line 35:
 > `CancelWorkflow.js:132` — committed in [part 7 § CancelWorkflow integration]
 
 The actual return is now at
-[`CancelWorkflow.js:143`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js)
+[`CancelWorkflow.js:143`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js)
 and reads
 `return { action_ids: actionIds, event_id: null, tracker_fired: trackerFired };`
 — note `tracker_fired: trackerFired`, not `tracker_fired: null` as the

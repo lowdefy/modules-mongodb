@@ -35,7 +35,7 @@ Each part has its own folder under [parts/](parts/) with a `design.md` containin
 | 8   | [side-effect-dispatch](parts/08-side-effect-dispatch/design.md)         | [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)                                                                            | M    |
 | 9   | [hook-invocation](parts/_completed/09-hook-invocation/design.md)                   | [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)                                                                            | M    |
 | 10  | [tracker-subscription](parts/_completed/10-tracker-subscription/design.md) | [engine](../workflows-module-concept/engine/spec.md)                                                                                              | S    |
-| 11  | [group-on-complete-fanout](parts/11-group-on-complete-fanout/design.md) | [action-groups](../workflows-module-concept/action-groups/spec.md) + [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)       | S    |
+| 11  | [group-on-complete-fanout](parts/_next/11-group-on-complete-fanout/design.md) | [action-groups](../workflows-module-concept/action-groups/spec.md) + [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md)       | S    |
 | 12  | [resolver-pages](modules-mongodb/designs/workflows-module/parts/_completed/12-resolver-pages/design.md)                     | [action-authoring](../workflows-module-concept/action-authoring/spec.md) + [ui](../workflows-module-concept/ui/spec.md)                           | M    |
 | 13  | [resolver-apis](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md)                       | [action-authoring](../workflows-module-concept/action-authoring/spec.md) + [submit-pipeline](../workflows-module-concept/submit-pipeline/spec.md) | M    |
 | 14  | [form-components-library](parts/14-form-components-library/design.md)   | [action-authoring](../workflows-module-concept/action-authoring/spec.md)                                                                          | M    |
@@ -54,11 +54,11 @@ Added after the original 20 were cut. See [Follow-on parts](#follow-on-parts) fo
 | #   | Part                                                                      | Source                                                                                            | Size |
 | --- | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---- |
 | 21  | [entity-type-to-collection](parts/21-entity-type-to-collection/design.md) | [part 12 review-1 #1](modules-mongodb/designs/workflows-module/parts/_completed/12-resolver-pages/review/review-1.md)                                 | M    |
-| 22  | [workflows-e2e-suite](parts/22-workflows-e2e-suite/design.md)             | [concept § Worked example](../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) | M    |
+| 22  | [workflows-e2e-suite](parts/_next/22-workflows-e2e-suite/design.md)             | [concept § Worked example](../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) | M    |
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | [part 6 review-1 #7](parts/_completed/06-submit-action-writes/review/review-1.md)                | M    |
 | 24  | [universal-fields](parts/24-universal-fields/design.md)                   | [ui spec § Page-level rendering of universal fields](../workflows-module-concept/ui/spec.md#page-level-rendering-of-universal-fields) | M    |
 | 25  | [group-overview-page](parts/_completed/25-group-overview-page/design.md)             | [action-groups spec](../workflows-module-concept/action-groups/spec.md) + [ui spec § Workflow overview page](../workflows-module-concept/ui/spec.md) | S    |
-| 28  | [custom-action-kind](parts/28-custom-action-kind/design.md)               | [action-authoring spec § Action kinds](../workflows-module-concept/action-authoring/spec.md) + [submit-pipeline spec](../workflows-module-concept/submit-pipeline/spec.md) | S    |
+| 28  | [custom-action-kind](parts/_next/28-custom-action-kind/design.md)               | [action-authoring spec § Action kinds](../workflows-module-concept/action-authoring/spec.md) + [submit-pipeline spec](../workflows-module-concept/submit-pipeline/spec.md) | S    |
 
 S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-split).
 
@@ -134,7 +134,7 @@ Parts 21, 22, 23, 24, and 25 were not in the original cut. They were added once 
 - **Unit tests use Jest.** Files colocate as `*.test.js` next to source under `modules/workflows/` and `plugins/modules-mongodb-plugins/src/`. Mirrors Lowdefy's own convention (`packages/operators/src/evaluateOperators.test.js` in lowdefy/lowdefy) and the established Jest posture elsewhere in the org.
 - **Pure functions test without Mongo.** State-machine reducer (part 7), resolver transforms (parts 12/13/15), and payload validators (part 6) are table-driven where the input space is enumerable.
 - **Handler functions use `mongodb-memory-server`** booted per test file. Same dependency that backs Playwright's `mdb` fixture (`@lowdefy/community-plugin-e2e-mdb`), so unit and e2e share the underlying Mongo posture.
-- **No unit tests in `apps/demo/`.** The Lowdefy app is YAML consumed by the runtime; coverage is Playwright e2e via [part 22](parts/22-workflows-e2e-suite/design.md).
+- **No unit tests in `apps/demo/`.** The Lowdefy app is YAML consumed by the runtime; coverage is Playwright e2e via [part 22](parts/_next/22-workflows-e2e-suite/design.md).
 - **E2E vs. unit split.** A bug that could exist in the plugin JS without the Lowdefy runtime needs a unit test; a bug that only manifests through page → action → endpoint → DB → re-render needs an e2e spec.
 - **Part 5's opt-out** ([part 5 design.md § Verification](parts/05-start-cancel-handlers/design.md#verification)) stands. The dispatcher-mock surface drift rationale is part-specific, not a precedent for other parts.
 - **Parts 3, 4, 5, 14 are grandfathered.** They shipped before this convention; their existing posture stands. The convention applies forward from part 6.

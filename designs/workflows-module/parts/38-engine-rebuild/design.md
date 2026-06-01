@@ -793,7 +793,7 @@ Verified evidence is in this design's review-2 #2 discussion; no further code ar
 - [state-machine.md](../../../workflows-module-concept/state-machine/design.md) — concept-level FSM model.
 - [engine/design.md](../../../workflows-module-concept/engine/design.md) — concept-level engine surface (Decision 4 updated separately).
 - [submit-pipeline/design.md](../../../workflows-module-concept/submit-pipeline/design.md) — concept-level submit lifecycle (Decision 3 updated separately).
-- [Part 28 — Custom action kind](../28-custom-action-kind/design.md) — `kind: custom` author-driven link authoring; the planner handles it via Part 30's carried-over sentinel-substitution rule.
+- [Part 28 — Custom action kind](../_next/28-custom-action-kind/design.md) — `kind: custom` author-driven link authoring; the planner handles it via Part 30's carried-over sentinel-substitution rule.
 - [Part 32 — Drop static interactions overrides](../_completed/32-drop-static-overrides/design.md) — adjacent topic on event_overrides channel; no shared edits.
 - [Part 37 — Actions collection indexes](../_completed/37-actions-collection-indexes/design.md) — index migration pattern (the engine adds no new collection, so no change-log index work here).
 - [`docs/idioms.md` § Event display](../../../../docs/idioms.md#event-display) — the cross-repo event_display idiom the engine path conforms to (plain Nunjucks strings).

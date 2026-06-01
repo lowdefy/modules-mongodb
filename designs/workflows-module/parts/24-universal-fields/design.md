@@ -255,7 +255,7 @@ Consumers (Parts 16 / 17 / 39, template-only) are enumerated under "Consumed by"
   - A `done` form action's universal fields are still editable via the sidebar.
   - Simple edit page writes universal fields on `submit` as primary content.
   - `_state.action_allowed === false` hides the Update button and renders inputs read-only.
-- End-to-end coverage lands in [Part 22](../22-workflows-e2e-suite/design.md).
+- End-to-end coverage lands in [Part 22](../_next/22-workflows-e2e-suite/design.md).
 
 ## Open questions
 

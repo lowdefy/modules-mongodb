@@ -61,7 +61,7 @@ Hook invocation needs parts 7 (groups) and 8 (side-effects). Fan-out needs 7 + 9
 | #   | Part                                                                    | Size | Repo                                                                                | Status |
 | --- | ----------------------------------------------------------------------- | ---- | ----------------------------------------------------------------------------------- | ------ |
 | 9   | [hook-invocation](parts/_completed/09-hook-invocation/design.md)                   | M    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` | ✅ shipped |
-| 11  | [group-on-complete-fanout](parts/11-group-on-complete-fanout/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |        |
+| 11  | [group-on-complete-fanout](parts/_next/11-group-on-complete-fanout/design.md) | S    | `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/` |        |
 | 19  | [operational-apis](parts/_completed/19-operational-apis/design.md)       | M    | `modules/workflows/api/`                                                            | ✅ shipped |
 
 ## Wave 6 — UI delivery (parallel; need resolvers + ops APIs)
@@ -89,7 +89,7 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | #   | Part                                                                  | Size | Repo                                                           | Status     |
 | --- | --------------------------------------------------------------------- | ---- | -------------------------------------------------------------- | ---------- |
 | 21  | [entity-type-to-collection](parts/21-entity-type-to-collection/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/`      | ✅ shipped |
-| 22  | [workflows-e2e-suite](parts/22-workflows-e2e-suite/design.md)         | M    | `apps/demo/` (e2e harness)                                     |            |
+| 22  | [workflows-e2e-suite](parts/_next/22-workflows-e2e-suite/design.md)         | M    | `apps/demo/` (e2e harness)                                     |            |
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md) | M    | `plugins/modules-mongodb-plugins/` + `modules/workflows/api/` | ✅ shipped |
 | 25  | [group-overview-page](parts/_completed/25-group-overview-page/design.md) | S    | `modules/workflows/pages/` + `modules/workflows/api/`          | ✅ shipped |
 | 29  | [error-model-cleanup](parts/_completed/29-error-model-cleanup/design.md)         | M    | `plugins/modules-mongodb-plugins/` + concept specs             | ✅ shipped |
