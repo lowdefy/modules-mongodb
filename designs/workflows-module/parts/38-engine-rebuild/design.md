@@ -58,7 +58,7 @@ The four phases are not just labels — each has an explicit input/output contra
 
 **Load phase.** Input: handler context (params, user, connection). Output: a `LoadedState` object containing the workflow doc, all action docs, the workflowConfig, the actionConfig for the target action (Submit only — Start/Cancel/Close operate on the whole workflow). Performs N reads (workflow + actions for the target workflow; for Submit, also the target action; hooks haven't run yet). Throws if state is missing or invalid (workflow not found, action not found, role check fails, workflow stage doesn't accept submissions). After load returns, no further reads happen until the next load (the tracker-recursion next-level load).
 
-**Pre-hook phase.** Input: `LoadedState` + caller payload. Output: `PreHookResult` containing signal redirects, auxiliary signals, form_overrides, event_overrides. Single `callApi` to the hook routine. Pure consumer of the result — the engine doesn't trust the hook to have done writes that affect engine state; if a hook does writes for external reasons (e.g. updating a third-party system), those are out-of-band by contract.
+**Pre-hook phase.** Input: `LoadedState` + caller payload. Output: `PreHookResult` containing auxiliary signals (against *other* actions), form_overrides, event_overrides. A pre-hook **cannot** re-signal the current action — there is no root-level signal redirect (state-machine.md, "How signals get emitted"); the current action lands per the signal the user fired. Single `callApi` to the hook routine. Pure consumer of the result — the engine doesn't trust the hook to have done writes that affect engine state; if a hook does writes for external reasons (e.g. updating a third-party system), those are out-of-band by contract.
 
 **Plan phase.** Input: `LoadedState` + `PreHookResult`. Output: a `Plan` object (see D3). Pure functions only. No I/O. Computes every consequence of the submit: per-action transitions via FSM resolution, per-action rendered cells + engine links + merged metadata, workflow summary/groups/form_data updates, workflow auto-complete push, event payload (rendered against planned post-state), notification payloads, change-log entries. The plan phase can throw — invalid signal target, invalid status transition that the FSM doesn't allow but the author asked for explicitly (depending on whether we want noisy or silent rejection — see D14), shape-validation errors caught at plan time rather than at commit time.
 
@@ -103,20 +103,20 @@ Notes:
 - `changeLog` deltas (D7) capture before vs after for audit. Built during planning, alongside the planned doc shape.
 - `trackerFires` records what tracker subscriptions should fire after the current workflow's commit completes — the tracker recursion loop runs the next-level load-plan-commit per entry.
 
-The Plan is immutable once handed to commit. The planner can return early with an empty-actions Plan; commit on an empty Plan is a no-op write of just the workflow's `updated` stamp if anything else changed, or a complete no-op if nothing changed. Empty plans arise only from **engine cascade / pre-hook auxiliary signals** that no-op against their targets — a user-driven current-action signal with no FSM entry *throws* (D13 (3) / Q3), so the user path never produces a silent empty-plan no-op.
+The Plan is immutable once handed to commit. The planner can return early with an empty-actions Plan; commit on an empty Plan is a no-op write of just the workflow's `updated` stamp if anything else changed, or a complete no-op if nothing changed. Empty plans arise only from **engine cascade / pre-hook auxiliary signals** that no-op against their targets — a user-driven current-action signal with no FSM entry *throws* (D13 (3) / Q2), so the user path never produces a silent empty-plan no-op.
 
 ### D4. FSM resolution at the plan phase
 
 State-machine.md defines the FSM tables per kind. The planner resolves signals through them:
 
 ```js
-function resolveSignal({ action, signal, payload, actionConfig }) {
+function resolveSignal({ action, signal, actionConfig }) {
   const table = FSM_TABLES[action.kind];
   const currentStage = action.status[0].stage;
   const entry = table[currentStage]?.[signal];
   if (entry === undefined) return null; // no-op signal — non-listening state
   if (typeof entry === "string") return entry; // direct target
-  return entry({ action, payload, actionConfig }); // function — e.g. submit_edit picks in-review vs done based on access.review
+  return entry({ action, actionConfig }); // function — e.g. `submit` picks in-review vs done from the action's static `access.{app_name}` review verb (nullary — no payload input)
 }
 ```
 
@@ -124,16 +124,16 @@ Three signal sources, identical resolution:
 
 1. **User signal** — `payload.signal` from the API endpoint. Submit applies this to the target action identified by `payload.action_id`.
 2. **Pre-hook auxiliary signals** — `preHookResult.actions[]` carries `{ target, signal }` entries; each resolves through the FSM against its target action.
-3. **Engine cascade signals** — auto-unblock/auto-block re-evaluation, tracker subscriptions, cancel/close cascades. Emit `unblock`/`block`/`internal_mirror_child_*`/`internal_cancel_action` signals against affected actions. All resolved through the same FSM call.
+3. **Engine cascade signals** — auto-unblock re-evaluation, tracker subscriptions, cancel/close cascades. Emit `unblock`/`internal_mirror_child_*`/`internal_cancel_action` signals against affected actions. All resolved through the same FSM call. The engine never auto-emits `block`: per state-machine.md, engine cascades are monotonic (unblock-only), and `block` is a **pre-hook-only** auxiliary signal that arrives via `preHookResult.actions[]` (source 2) and resolves through the same FSM call.
 
-Auto-unblock/auto-block is itself a fixpoint over the Plan: an action's `blocked_by` references other actions; if a planned transition makes those references terminal, the dependent action gains `unblock`. The planner iterates until no further unblocks/blocks fire. The fixpoint is bounded: each action transitions at most once per submit because the FSM tables ensure no signal can flip an action back to a state it has previously held this submit (e.g. `unblock` from `blocked` goes to `action-required`, which doesn't accept `unblock`; `block` from `action-required` goes to `blocked`, which only accepts `unblock`/`activate` from this submit's cascade signals). Worst case: N iterations for N actions in the workflow. In practice 1-2.
+Auto-unblock is itself a fixpoint over the Plan: an action's `blocked_by` references other actions; if a planned transition makes those references terminal, the dependent action gains `unblock`. The planner iterates until no further unblocks fire. The unblock-only cascade makes the bound trivial: each action unblocks at most once, and `unblock` no-ops from every non-`blocked` state per the FSM (`unblock` from `blocked` goes to `action-required`, which doesn't itself accept `unblock`). The engine does **not** auto-emit `block` on dep regression — once unblocked, an action stays unblocked unless an author explicitly re-blocks it via a pre-hook (state-machine.md). Worst case: N iterations for N actions in the workflow. In practice 1-2.
 
 ### D5. Pre-hook contract: read-only relative to engine atomicity
 
 A pre-hook returns intent (signals + overrides) and may have done external work (callApi, third-party integration). The engine treats pre-hook returns as plan input. Two consequences:
 
 - **Pre-hook writes don't participate in the engine's transaction (if transactions are adopted — D11).** Authors writing pre-hooks that do their own Mongo writes must accept that their writes commit independently of the engine's atomicity boundary. Documented in module README.
-- **Pre-hook returns are the only channel into the Plan.** A pre-hook that wants to influence action transitions returns `{ actions: [...] }`. A pre-hook that wants to redirect the user's signal returns `{ signal: ... }`. A pre-hook that wants to override event display returns `{ event_overrides: {...} }`. There is no "the pre-hook quietly mutated context" path because there is no shared mutable context across phases.
+- **Pre-hook returns are the only channel into the Plan.** A pre-hook that wants to influence *other* actions returns `{ actions: [...] }` (auxiliary signals). A pre-hook that wants to override event display returns `{ event_overrides: {...} }`; written form data, `{ form_overrides: {...} }`. There is no current-action signal redirect — where the current action lands is fixed by the signal the user fired and the FSM (state-machine.md). Conditional landing ("this submission should be marked not-required") is modelled as a separate thin action with its own button, not a redirect of the current submit. There is no "the pre-hook quietly mutated context" path because there is no shared mutable context across phases.
 
 This contract is the same as today's pre-hooks structurally — today's hooks already return a structured response that handleSubmit consumes. What changes: the response shape (Part 30 + state-machine signal mapping), and the explicit "writes are out-of-band" framing.
 
@@ -295,7 +295,7 @@ const renderCtx = {
 };
 ```
 
-`plannedActionDoc` is the **after** version — the doc with the new status entry prepended, fields set, metadata merged. Templates can reference fields the current transition is setting (e.g. a simple action whose `submit_edit` lands `done` and whose cell quotes `{{ assignees[0].name }}` where assignees was set in the same submit). The pre-write doc is no longer the render context — it's "the doc as it will look after the commit" because we have the plan.
+`plannedActionDoc` is the **after** version — the doc with the new status entry prepended, fields set, metadata merged. Templates can reference fields the current transition is setting (e.g. a simple action whose `submit` lands `done` and whose cell quotes `{{ assignees[0].name }}` where assignees was set in the same submit). The pre-write doc is no longer the render context — it's "the doc as it will look after the commit" because we have the plan.
 
 Sticky display still works: `plannedActionDoc.<slug>.message` is the prior value carried through unless the new cell sets it. The `$mergeObjects` clobber bug I flagged in the previous turn doesn't apply here — the planner composes the full post-commit doc in JS, where deep merging is unambiguous, and commit writes it as one `$set` of the whole subtree.
 
@@ -306,7 +306,7 @@ const renderCtx = {
   user: context.user,
   action: plannedActionDoc,         // post-commit shape
   workflow: plannedWorkflowDoc,     // post-commit shape including form_data, summary, groups
-  interaction: signal,              // or "submit_edit" / etc. — the user-facing name
+  interaction: signal,              // or "submit" / etc. — the user-facing name
   status_before: loadedActionDoc.status[0].stage,
   status_after: plannedActionDoc.status[0].stage,
   submitted_form: planInputs.mergedFormData, // pre-merged from params.form + params.form_review + preHookResult.form_overrides
@@ -314,6 +314,18 @@ const renderCtx = {
 ```
 
 `submitted_form` replaces `workflow.form_data` as the primary "what was just submitted" binding. `workflow.form_data` remains exposed for templates that need cross-action form data, and it's fresh because the plannedWorkflowDoc already has it merged. Two paths to the same data; the explicit `submitted_form` is clearer for templates that just want the current submission.
+
+**Workflow-lifecycle event render context.** The context above is the **action-event** context (`SubmitWorkflowAction` and the tracker-mirror commit, which both have a single target action). `StartWorkflow` / `CancelWorkflow` / `CloseWorkflow` operate on the whole workflow — there is no single target action (Cancel/Close sweep many actions per Q5), no `status_before`/`status_after` for one action, and no `submitted_form`. They render against a smaller context:
+
+```js
+const renderCtx = {
+  user: context.user,
+  workflow: plannedWorkflowDoc,     // post-commit shape (status pushed: started/cancelled/closed)
+  interaction: signal,              // user-facing lifecycle name (started / cancelled / closed)
+};
+```
+
+This matches what the lifecycle engine-default templates reference (`user.profile.name`, `workflow.workflow_type` — see "Engine entry points emit events"); nothing more is bound until a concrete template needs it. `planEventDispatch` **branches on handler/event type**: action events (`action-{interaction}`, `action-internal-mirror-{state}`) get the full action-event context; lifecycle events (`workflow-started` / `workflow-cancelled` / `workflow-closed`) get the workflow-only context. The tracker-mirror event is an action event (it has a single mirrored target action), so it uses the action-event context.
 
 ### D13. Signal validation and error model
 
@@ -398,16 +410,16 @@ LOAD phase
    │
    ▼
 PRE-HOOK phase
-   ├─ if no pre-hook declared → PreHookResult = { signal: payload.signal, actions: [], overrides: {} }
-   ├─ else → callApi(hook); validate response shape
-   └─ output: PreHookResult { signal, actions[], event_overrides, form_overrides }
+   ├─ if no pre-hook declared → PreHookResult = { actions: [], overrides: {} }
+   ├─ else → callApi(hook); validate response shape (no current-action signal redirect)
+   └─ output: PreHookResult { actions[], event_overrides, form_overrides }   // current action lands per payload.signal
    │
    ▼
 PLAN phase  (pure, no I/O)
    ├─ resolve current-action signal → target stage via FSM
    ├─ resolve auxiliary signals (preHookResult.actions[]) → target stages via FSM
    ├─ initial planned action transitions (current + auxiliary)
-   ├─ auto-unblock/auto-block fixpoint over the in-progress Plan
+   ├─ auto-unblock fixpoint over the in-progress Plan (unblock-only; pre-hook `block` already resolved above)
    ├─ recompute groups + summary against planned actions
    ├─ check auto-complete → optional 'completed' push on workflow
    ├─ merge form_data (params.form + form_review + preHookResult.form_overrides)
@@ -479,7 +491,8 @@ No additions beyond what Part 30 already specified (see § D14 Salvaged). The on
 ### Connection schema (`WorkflowAPI/schema.js`)
 
 - `entry_id` (string, required) — per Part 30. Wired from `_module.id: true` in `workflow-api.yaml`.
-- `changeLog: { collection, meta }` — **kept** (already present). Previously forwarded to the community plugin so its auto-changeLog logged engine writes; now consumed by the engine's native `log-changes` writer (D7), since engine writes bypass the plugin. Same shape, same behaviour from the app's perspective.
+- `changeLog: { collection, meta }` — **kept** (already present). Previously forwarded to the community plugin so its auto-changeLog logged engine writes; now consumed by the engine's native `log-changes` writer (D7), since engine writes bypass the plugin. Same shape, same behaviour from the app's perspective. **The field description is rewritten**: the current "forwarded to the community-plugin MongoDBCollection handlers … automatically" text is now false (engine writes bypass the plugin — D8), so it's updated to describe native engine consumption.
+- `actionsEnum[].priority` **description rewrite** — the current "load-bearing — the engine compares priorities in the priority-rule check in SubmitWorkflowAction" is made false by this part (the priority-rule check is removed; engine D4 makes priority display-only). Rewrite to: "display-only (ordering in pickers / visualizations); the engine no longer consults it for transition legality." The field itself stays required.
 
 ### Module manifest (`modules/workflows/module.lowdefy.yaml`)
 
@@ -509,7 +522,7 @@ Phase functions, one file per phase, with sub-files for planners.
 - `commitPlan.js` — single commit-phase entry point; sequences the writes per D9.
 - `planners/` — pure planning functions:
   - `planActionTransition.js` — given an action + signal + payload + context, returns the planned post-commit action doc + change-log delta.
-  - `planAutoUnblock.js` — fixpoint loop over the in-progress action plan; emits unblock/block signals via the FSM.
+  - `planAutoUnblock.js` — fixpoint loop over the in-progress action plan; emits `unblock` signals via the FSM (engine cascades are unblock-only; pre-hook `block` entries are planned by `planActionTransition` from `preHookResult.actions[]`, not here).
   - `planWorkflowRecompute.js` — composes the planned post-commit workflow doc (summary, groups, completed push).
   - `planFormDataMerge.js` — merges form + form_review + form_overrides into the planned workflow's form_data.
   - `planEventDispatch.js` — composes + renders the event payload(s) for a submit.
@@ -519,9 +532,9 @@ Phase functions, one file per phase, with sub-files for planners.
 
 ### New — `plugins/modules-mongodb-plugins/src/connections/shared/fsm/`
 
-- `tables.js` — exports the three FSM tables (form, simple, tracker) per state-machine.md.
+- `tables.js` — exports the FSM tables per state-machine.md. Two distinct tables — `form` and `tracker` — plus `simple` **aliased** to the form table (`FSM_TABLES.simple = FSM_TABLES.form`), never a hand-maintained copy: state-machine.md says simple is "Identical to the form-kind table above." Aliasing makes the identity mechanical (CLAUDE.md "One correct way"), so a future edit to the form table can't silently diverge from simple.
 - `resolveSignal.js` — the `(action, signal, payload, actionConfig) → targetStage | null` function.
-- `tables.test.js` — exhaustive coverage of every cell in every kind's table.
+- `tables.test.js` — exhaustive coverage of every cell in the `form` and `tracker` tables, plus an assertion that `FSM_TABLES.simple === FSM_TABLES.form` (the alias identity, not a re-test of every simple cell).
 
 ### New — `plugins/modules-mongodb-plugins/src/connections/shared/render/`
 
@@ -562,7 +575,7 @@ Phase functions, one file per phase, with sub-files for planners.
 
 - `modules/workflows/resolvers/makeWorkflowsConfig.js` — add `validateStatusMapCells` per Part 30 D9.
 - `modules/workflows/connections/workflow-api.yaml` — add `entry_id: { _module.id: true }`.
-- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` — add `entry_id` field.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` — add `entry_id` field; rewrite the now-false `actionsEnum[].priority` description (display-only, no longer the priority-rule check) and the `changeLog` description (consumed natively by the engine, not forwarded to the community plugin) — see "Connection schema" above.
 - `modules/workflows/module.lowdefy.yaml` — update `app_name` description.
 
 ### Modified — API + payload surfaces
@@ -601,7 +614,7 @@ State before submit:
 - `install-cleanup`: `blocked` (blocked_by install-step)
 - Workflow summary: `{ done: 0, not_required: 0, total: 3 }`
 
-**Caller submits:** `signal: submit_edit` against `install-step` with `target_status: done`, `metadata: { physical_id: "D-42" }`.
+**Caller submits:** `signal: submit` against `install-step` with `metadata: { physical_id: "D-42" }`. `install-step` declares no `review` verb in `access.{app_name}`, so `submit` lands `done` (the nullary review-verb rule, identical for form and simple kinds). No `target_status` — the v0 simple selector is gone (state-machine.md review #6).
 
 **Load phase:**
 
@@ -623,11 +636,11 @@ loadedState = {
 };
 ```
 
-**Pre-hook phase:** no pre-hook declared. `PreHookResult = { signal: "submit_edit", actions: [], overrides: {} }`.
+**Pre-hook phase:** no pre-hook declared. `PreHookResult = { actions: [], overrides: {} }`. The current-action signal is `payload.signal` (`submit`), not a pre-hook output.
 
 **Plan phase:**
 
-1. Resolve current-action signal: `FSM["simple"]["action-required"]["submit_edit"]` with `target_status: done` → `done`.
+1. Resolve current-action signal: `FSM["simple"]["action-required"]["submit"]` → "in-review or done"; `install-step` has no `review` verb → `done`.
 2. Initial planned transitions: `[ { action: a-step, target: "done", fields: {...}, metadata: { physical_id: "D-42" } } ]`.
 3. Auto-unblock fixpoint over planned actions:
    - a-verify.blocked_by = ["install-step"]; planned install-step is "done" → terminal → emit `unblock` against a-verify.
@@ -643,7 +656,7 @@ loadedState = {
 7. Check auto-complete: no — `total !== done + not_required`. No completed push.
 8. Merge form_data: `submitted_form = { physical_id: "D-42" }`. Planned workflow.form_data = `{ "install-step": { physical_id: "D-42" } }`.
 9. Compose planned workflow doc with summary, groups, form_data.
-10. Build event payload: render `display.{appName}.title` against `{ user, action: a-step-planned-doc, workflow: planned-workflow-doc, interaction: "submit_edit", status_before: "action-required", status_after: "done", submitted_form }`. Engine default renders to e.g. `"Sam marked install-step as done"`.
+10. Build event payload: render `display.{appName}.title` against `{ user, action: a-step-planned-doc, workflow: planned-workflow-doc, interaction: "submit", status_before: "action-required", status_after: "done", submitted_form }`. Engine default renders to e.g. `"Sam marked install-step as done"`.
 11. Build notification payloads (per Part 8 / notifications module).
 12. Build log-changes entries (community schema, D7): one per mutated doc — a-step, a-verify, a-cleanup, workflow — each with before (loaded) / after (planned). The event write logs itself via the events module's own changeLog config; the engine doesn't double-log it.
 
@@ -680,10 +693,10 @@ Test coverage falls into four bands. If the section grows beyond what fits comfo
 **Unit tests — pure phase / planner functions.** Every file under `shared/phases/planners/` is pure. Inputs are JS objects, outputs are JS objects. One test file per planner:
 
 - `planActionTransition.test.js` — input `{ action, signal, payload, actionConfig, plannedWorkflowDoc }`; verify output planned-action doc shape (status push, fields set, rendered cell spread, engine links computed, metadata merged, change-log delta). Per-kind variants. Sticky display assertions. FSM no-op signal returns null entry.
-- `planAutoUnblock.test.js` — fixpoint termination (linear actions terminate in 1 iter; chained unblocks terminate; cycles don't deadlock thanks to FSM structural safety); unblock + block emission against the right targets; the empty case.
+- `planAutoUnblock.test.js` — fixpoint termination (linear actions terminate in 1 iter; chained unblocks terminate; cycles don't deadlock thanks to FSM structural safety); `unblock` emission against the right targets; asserts the engine never auto-emits `block` on dep regression (unblock-only cascade); the empty case.
 - `planWorkflowRecompute.test.js` — summary/groups recompute correctness; `shouldPushCompleted` trigger conditions; `cancelled`/`completed` mutually exclusive.
 - `planFormDataMerge.test.js` — keyed vs unkeyed; merge order (params.form → params.form_review → preHookResult.form_overrides); shape preservation.
-- `planEventDispatch.test.js` — engine default rendering; YAML override layering; pre-hook override layering; three-source merge order; render context bindings (`user`, `action`, `workflow`, `interaction`, `status_before`, `status_after`, `submitted_form`); per-event-type defaults (`workflow-started` / `action-{interaction}` / `workflow-cancelled` / `workflow-closed`).
+- `planEventDispatch.test.js` — engine default rendering; YAML override layering; pre-hook override layering; three-source merge order; **two render-context shapes asserted separately** — the action-event context (`user`, `action`, `workflow`, `interaction`, `status_before`, `status_after`, `submitted_form`) for `action-{interaction}` + tracker-mirror, and the workflow-lifecycle context (`user`, `workflow`, `interaction` only) for `workflow-started` / `workflow-cancelled` / `workflow-closed`; per-event-type defaults; assert `planEventDispatch` branches on handler/event type to pick the context.
 - `planChangeLog.test.js` — one `log-changes` entry per affected doc, community schema (`type`, `before`, `after`, `meta`, request-context fields); before from loaded doc, after from planned doc; `meta` resolved from `changeLog.meta`; opt-out when `changeLog` unconfigured.
 
 **Unit tests — FSM tables.** `tables.test.js` asserts every cell in every kind's table exhaustively. One assertion per (kind, currentStage, signal) tuple. Catches typos and structural mistakes (e.g. accidentally allowing `unblock` from `action-required`, which would re-fire). State-machine.md is the source of truth for expected values.
@@ -708,15 +721,31 @@ Resolve before tasking (or accept-and-defer with a tracking note in the relevant
 
 **Q1. Plan shape: whole doc vs delta.** D3 notes the planner can either compose the whole post-commit doc (planner does the work; commit `$set`s the whole thing) or compose a delta (planner identifies changed fields; commit `$set`s only those). Same on-disk effect for the workflow case (one update). Different testability: whole-doc tests assert against complete shapes; delta tests assert against the set of changed paths. Whole-doc is easier to reason about for renders (templates see one cohesive object); delta is closer to MongoDB's `$set` idiom and produces smaller writes. **Lean: whole-doc** for workflow + actions; revisit if write size becomes an issue.
 
-**Q2. `target_status` validation for simple `submit_edit`.** State-machine.md's simple FSM accepts `submit_edit` with `target_status ∈ { done, blocked, error, not-required }`. Validation can live at: (a) the API boundary — `update-action-{type}` YAML schema rejects unknown values per the action's `kind` configuration; (b) the planner — throws if the value isn't in the allowed set for this kind. Likely both — schema validates the enum exists, planner validates against the runtime context. Worth deciding the exact split before implementing.
+**Q2. Should the planner throw on FSM no-op for user-driven current-action signal, or return a `no-op` plan result that the API turns into a 200-with-noop response?** D13 says throw. Throw is simpler and surfaces real bugs (user clicked a button the page shouldn't have surfaced). Soft no-op is friendlier to race conditions where the action transitioned in another tab between page load and click. Lean: throw, with a 200-with-noop response only if real user-experience pain emerges.
 
-**Q3. Should the planner throw on FSM no-op for user-driven current-action signal, or return a `no-op` plan result that the API turns into a 200-with-noop response?** D13 says throw. Throw is simpler and surfaces real bugs (user clicked a button the page shouldn't have surfaced). Soft no-op is friendlier to race conditions where the action transitioned in another tab between page load and click. Lean: throw, with a 200-with-noop response only if real user-experience pain emerges.
+**Q3. Sticky display for slugs leaving `access`.** Confirmed in conversation: slugs that leave an action's `access` block don't get their existing `.message` / `.link` cleared. The doc carries stale values; display surfaces don't project them (they only read `actions_list.$.{app_name}.message` / `.link` for the current app's slug). If the slug re-enters `access` later, its stale message reappears unless a new cell writes over it. Acceptable for v1 — document the behaviour, don't add cleanup.
 
-**Q4. Sticky display for slugs leaving `access`.** Confirmed in conversation: slugs that leave an action's `access` block don't get their existing `.message` / `.link` cleared. The doc carries stale values; display surfaces don't project them (they only read `actions_list.$.{app_name}.message` / `.link` for the current app's slug). If the slug re-enters `access` later, its stale message reappears unless a new cell writes over it. Acceptable for v1 — document the behaviour, don't add cleanup.
+**Q4. Recursive submits via pre-hooks.** A pre-hook can call back into the engine (`submit-workflow-action` for a different action). The inner submit is its own load-plan-commit cycle. If it writes to a workflow the outer planner has already loaded, the outer's plan is stale by commit time. Two options: (a) detect and throw (pre-hook callbacks blocked); (b) document the constraint and let CAS catch real conflicts (outer commit will fail with ConcurrentSubmitError, caller retries). Lean: (b) — CAS already covers it; explicit detection adds plumbing. Document the gotcha.
 
-**Q5. Recursive submits via pre-hooks.** A pre-hook can call back into the engine (`submit-workflow-action` for a different action). The inner submit is its own load-plan-commit cycle. If it writes to a workflow the outer planner has already loaded, the outer's plan is stale by commit time. Two options: (a) detect and throw (pre-hook callbacks blocked); (b) document the constraint and let CAS catch real conflicts (outer commit will fail with ConcurrentSubmitError, caller retries). Lean: (b) — CAS already covers it; explicit detection adds plumbing. Document the gotcha.
+**Q5. Event emission for Cancel/Close — workflow-level only, or also per-action?** Cancel sweeps every non-terminal action to `not-required`. Today (no events at all) it's silent. Under the rebuild, Cancel emits one `workflow-cancelled` event for the workflow lifecycle change. Should each swept action also emit an `action-internal-cancel-action` event? Pro: complete audit trail of every state change. Con: a workflow with 50 actions emits 51 events per cancel. Lean: workflow-level only for v1; the change-log captures per-action mechanics for forensic audit. Author of a notification config wanting per-action visibility can derive from change-log if needed.
 
-**Q6. Event emission for Cancel/Close — workflow-level only, or also per-action?** Cancel sweeps every non-terminal action to `not-required`. Today (no events at all) it's silent. Under the rebuild, Cancel emits one `workflow-cancelled` event for the workflow lifecycle change. Should each swept action also emit an `action-internal-cancel-action` event? Pro: complete audit trail of every state change. Con: a workflow with 50 actions emits 51 events per cancel. Lean: workflow-level only for v1; the change-log captures per-action mechanics for forensic audit. Author of a notification config wanting per-action visibility can derive from change-log if needed.
+**Q6. `form_data` write semantics on the workflow doc — what merge rule replaces the imperative per-handler writes?** (Raised by review-2 #2; the supersession of engine D5 is real but the underlying question is bigger than D5's stated rationale.)
+
+D3/D9/Q1 commit the workflow as a **whole-doc `$set`** of `plan.workflow.doc`. Engine D5 instead specs form_data as **per-field `$set` on dot-notation paths**, justified there by *concurrency* ("so concurrent edits on different fields of the same action don't clobber each other"). That concurrency framing is at least partly a mis-attribution. The real, load-bearing requirement is visible in the reference project (`apps/shared/workflow_config/device-installation`, prod stores form_data as `ticket.workflows.{action}`):
+
+- **Submitter** (`devices/api/routines/client_save_site_check_changes.yaml`) writes the *whole* action namespace: `$set { "workflows.site-check": _object.assign(form, {site_details}) }`.
+- **Reviewer** (`device-installation-site-check-approve.yaml`) writes *only one sub-key*, deliberately scoped: `$set { "workflows.site-check.validation": _object.assign(form.validation, {created}) }`.
+
+So one action's form_data accumulates across **multiple submits of different shapes** (submit → approve, draft → draft → submit, changes-required → resubmit), and a later write must not wipe a sibling sub-key an earlier write set. This is a *sequential* requirement, independent of concurrency. The imperative model met it by letting each handler choose its own write shape per context — a flexibility a single declarative merge rule struggles to cover.
+
+Whole-doc `$set` *can* satisfy the sequential requirement **iff** `planFormDataMerge` deep-merges submitted fields onto the **loaded** `form_data.{action}` sub-object (not replacing it), since the loaded sibling sub-keys are already in the Plan's base. The concurrency case (two writers, different fields of the same workflow) genuinely changes — it's now CAS-serialized (one wins, one retries, D15), which is **accepted**. The open parts are the merge rule itself and its edge cases:
+
+1. **Merge vs replace granularity.** Candidate rule: deep-merge nested objects, replace arrays + scalars whole. Arrays *must* replace (`form.access_control[]` is an array; element-wise merge of differing-length arrays is garbage). But a single global rule may not fit every handler — prod's submitter intentionally *replaces* its namespace while the reviewer *merges* one sub-key. A blanket deep-merge changes the submitter's semantics.
+2. **Removal-by-omission.** prod's submitter (whole-namespace overwrite) drops a field when the payload omits it; deep-merge keeps stale values until overwritten. Concretely diverges in `changes-required → resubmit → re-review`, where deep-merge preserves the prior `validation` block that prod's overwrite would wipe. Decide whether v1 supports clearing, or documents "set-only, persists until overwritten."
+3. **Per-channel shapes.** Whether submitter (`form`) and reviewer (`form_review`) should follow *different* write semantics (replace vs scoped-merge) to mirror the imperative handlers, or whether one uniform rule is acceptable for v1.
+4. **Bookkeeping.** Once decided: reframe engine D5's "Write semantics" justification from concurrency to "multi-stage/multi-shape accumulation within an action namespace," and annotate that Part 38 implements it via whole-doc `$set` + the chosen merge + CAS. (review-2 #2's suggested fix, now subordinate to the merge-rule decision.)
+
+Verified evidence is in this design's review-2 #2 discussion; no further code archaeology needed to decide — it's a design-judgement call on which behaviors to preserve.
 
 ## Non-goals
 
