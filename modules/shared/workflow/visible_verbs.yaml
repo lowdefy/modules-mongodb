@@ -12,13 +12,11 @@
 # `_module.var: app_name` resolves to the consuming module's app at build time,
 # so each emitted instance carries its own app baked in. Factored out so the
 # dependency-free events timeline (Part 42 D5) can reuse the compute without the
-# `$match` drop. The drop half lives in `api/stages/visible_verbs_filter.yaml`.
+# `$match` drop.
 #
-# This is the COMPUTE half only — it must be followed by the filter stage (or an
-# equivalent `$match`) to actually drop actions with no true verb. It is kept a
-# single stage object (not bundled with the `$match`) because Lowdefy `_ref`
-# substitutes a node in place and does not splice a list into a pipeline — a
-# two-stage list `_ref`'d mid-pipeline would nest, not flatten.
+# This is the COMPUTE half only — it adds the `visible_verbs` bag but does not
+# drop anything. `api/stages/visible_verbs_filter.yaml` bundles this stage with
+# the `$match` drop for the read-path APIs.
 $addFields:
   visible_verbs:
     view:

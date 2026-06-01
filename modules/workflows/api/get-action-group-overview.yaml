@@ -14,52 +14,55 @@ routine:
             from: actions
             localField: _id
             foreignField: workflow_id
+            # Per-verb access projection + drop (Part 34 D12) spliced via
+            # _build.array.concat — the visible_verbs_filter ref resolves to a
+            # two-stage list (compute + $match drop) that concat flattens in,
+            # before the whitelist $project carries visible_verbs through. Same
+            # idiom as module.lowdefy.yaml's api:/pages:.
             pipeline:
-              - $match:
-                  action_group:
-                    _payload: group_id
-              - $addFields:
-                  status:
-                    $arrayElemAt:
-                      - $status.stage
-                      - 0
-              # Per-verb access projection + drop (Part 34 D12). Compute then
-              # filter, before the whitelist $project below carries visible_verbs.
-              - _ref: ../shared/workflow/visible_verbs.yaml
-              - _ref: api/stages/visible_verbs_filter.yaml
-              - $addFields:
-                  required_sort:
-                    $cond:
-                      - $eq:
-                          - $status
-                          - 'not-required'
-                      - 1
-                      - 0
-                  sort:
-                    $cond:
-                      - $eq:
-                          - $status
-                          - 'not-required'
-                      - 1
-                      - $sort_order
-              - $sort:
-                  required_sort: 1
-                  sort: 1
-                  created.timestamp: 1
-              - $project:
-                  type: $type
-                  status: $status
-                  visible_verbs: $visible_verbs
-                  message:
-                    _string.concat:
-                      - $
-                      - _module.var: app_name
-                      - .message
-                  link:
-                    _string.concat:
-                      - $
-                      - _module.var: app_name
-                      - .link
+              _build.array.concat:
+                - - $match:
+                      action_group:
+                        _payload: group_id
+                  - $addFields:
+                      status:
+                        $arrayElemAt:
+                          - $status.stage
+                          - 0
+                - _ref: api/stages/visible_verbs_filter.yaml
+                - - $addFields:
+                      required_sort:
+                        $cond:
+                          - $eq:
+                              - $status
+                              - 'not-required'
+                          - 1
+                          - 0
+                      sort:
+                        $cond:
+                          - $eq:
+                              - $status
+                              - 'not-required'
+                          - 1
+                          - $sort_order
+                  - $sort:
+                      required_sort: 1
+                      sort: 1
+                      created.timestamp: 1
+                  - $project:
+                      type: $type
+                      status: $status
+                      visible_verbs: $visible_verbs
+                      message:
+                        _string.concat:
+                          - $
+                          - _module.var: app_name
+                          - .message
+                      link:
+                        _string.concat:
+                          - $
+                          - _module.var: app_name
+                          - .link
             as: actions
 
   - :set_state:

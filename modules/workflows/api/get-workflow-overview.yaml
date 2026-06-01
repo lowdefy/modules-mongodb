@@ -26,37 +26,40 @@ routine:
                       - []
                   as: g
                   in: $$g.id
+            # Per-verb access projection + drop (Part 34 D12) spliced via
+            # _build.array.concat — the visible_verbs_filter ref resolves to a
+            # two-stage list (compute + $match drop) that concat flattens in.
+            # visible_verbs stays on the doc (the $project only removes
+            # groupIndex). Same idiom as module.lowdefy.yaml's api:/pages:.
             pipeline:
-              - $addFields:
-                  groupIndex:
-                    $indexOfArray:
-                      - $$groupIds
-                      - $action_group
-                  type: $type
-                  status:
-                    $arrayElemAt:
-                      - $status.stage
-                      - 0
-                  message:
-                    _string.concat:
-                      - $
-                      - _module.var: app_name
-                      - .message
-                  link:
-                    _string.concat:
-                      - $
-                      - _module.var: app_name
-                      - .link
-              # Per-verb access projection + drop (Part 34 D12). visible_verbs
-              # stays on the doc (the $project below only removes groupIndex).
-              - _ref: ../shared/workflow/visible_verbs.yaml
-              - _ref: api/stages/visible_verbs_filter.yaml
-              - $sort:
-                  groupIndex: 1
-                  sort_order: 1
-                  _id: 1
-              - $project:
-                  groupIndex: 0
+              _build.array.concat:
+                - - $addFields:
+                      groupIndex:
+                        $indexOfArray:
+                          - $$groupIds
+                          - $action_group
+                      type: $type
+                      status:
+                        $arrayElemAt:
+                          - $status.stage
+                          - 0
+                      message:
+                        _string.concat:
+                          - $
+                          - _module.var: app_name
+                          - .message
+                      link:
+                        _string.concat:
+                          - $
+                          - _module.var: app_name
+                          - .link
+                - _ref: api/stages/visible_verbs_filter.yaml
+                - - $sort:
+                      groupIndex: 1
+                      sort_order: 1
+                      _id: 1
+                  - $project:
+                      groupIndex: 0
             as: actions
 
   - :return:
