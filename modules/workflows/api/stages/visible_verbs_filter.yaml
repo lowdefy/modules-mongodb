@@ -1,0 +1,19 @@
+# `visible_verbs` drop stage (Part 38 / Part 34 D12). Replaces the binary
+# `access_filter.yaml`.
+#
+# Drops actions where all four `visible_verbs` are false — the "no role
+# intersection on any verb → invisible" outcome. MUST run AFTER the compute
+# stage (`../shared/workflow/visible_verbs.yaml`) that projects `visible_verbs`.
+#
+# The compute + drop are two separate single-stage `_ref`s (not one bundled
+# list) because Lowdefy `_ref` substitutes a node in place and does not splice a
+# list into a pipeline — a two-stage list `_ref`'d mid-pipeline would nest. Each
+# consuming API references the shared compute stage then this drop stage, back
+# to back.
+$match:
+  $expr:
+    $anyElementTrue:
+      - - $visible_verbs.view
+        - $visible_verbs.edit
+        - $visible_verbs.review
+        - $visible_verbs.error

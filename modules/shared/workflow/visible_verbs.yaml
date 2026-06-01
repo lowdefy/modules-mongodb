@@ -1,0 +1,159 @@
+# Shared `visible_verbs` compute stage (Part 38 / Part 34 D12).
+#
+# A single `$addFields` aggregation stage that projects a four-key
+# `visible_verbs: { view, edit, review, error }` bag onto each action doc by
+# resolving the doc's denormalised `access.{app_name}.{verb}` gate against the
+# user's per-app roles (`_user.apps.{app_name}.roles`):
+#   - gate `true`      → always true.
+#   - gate `[roles]`   → true iff it intersects the user's app roles.
+#   - verb absent / [] → false (the outer `$ifNull` defaults a missing verb to
+#                        [], which intersects to empty → false).
+#
+# `_module.var: app_name` resolves to the consuming module's app at build time,
+# so each emitted instance carries its own app baked in. Factored out so the
+# dependency-free events timeline (Part 42 D5) can reuse the compute without the
+# `$match` drop. The drop half lives in `api/stages/visible_verbs_filter.yaml`.
+#
+# This is the COMPUTE half only — it must be followed by the filter stage (or an
+# equivalent `$match`) to actually drop actions with no true verb. It is kept a
+# single stage object (not bundled with the `$match`) because Lowdefy `_ref`
+# substitutes a node in place and does not splice a list into a pipeline — a
+# two-stage list `_ref`'d mid-pipeline would nest, not flatten.
+$addFields:
+  visible_verbs:
+    view:
+      $let:
+        vars:
+          gate:
+            $ifNull:
+              - $getField:
+                  field: view
+                  input:
+                    $ifNull:
+                      - $getField:
+                          field:
+                            _module.var: app_name
+                          input: $access
+                      - {}
+              - []
+          user_roles:
+            $ifNull:
+              - _user:
+                  _string.concat:
+                    - 'apps.'
+                    - _module.var: app_name
+                    - '.roles'
+              - []
+        in:
+          $or:
+            - $eq:
+                - $$gate
+                - true
+            - $gt:
+                - $size:
+                    $setIntersection:
+                      - $$gate
+                      - $$user_roles
+                - 0
+    edit:
+      $let:
+        vars:
+          gate:
+            $ifNull:
+              - $getField:
+                  field: edit
+                  input:
+                    $ifNull:
+                      - $getField:
+                          field:
+                            _module.var: app_name
+                          input: $access
+                      - {}
+              - []
+          user_roles:
+            $ifNull:
+              - _user:
+                  _string.concat:
+                    - 'apps.'
+                    - _module.var: app_name
+                    - '.roles'
+              - []
+        in:
+          $or:
+            - $eq:
+                - $$gate
+                - true
+            - $gt:
+                - $size:
+                    $setIntersection:
+                      - $$gate
+                      - $$user_roles
+                - 0
+    review:
+      $let:
+        vars:
+          gate:
+            $ifNull:
+              - $getField:
+                  field: review
+                  input:
+                    $ifNull:
+                      - $getField:
+                          field:
+                            _module.var: app_name
+                          input: $access
+                      - {}
+              - []
+          user_roles:
+            $ifNull:
+              - _user:
+                  _string.concat:
+                    - 'apps.'
+                    - _module.var: app_name
+                    - '.roles'
+              - []
+        in:
+          $or:
+            - $eq:
+                - $$gate
+                - true
+            - $gt:
+                - $size:
+                    $setIntersection:
+                      - $$gate
+                      - $$user_roles
+                - 0
+    error:
+      $let:
+        vars:
+          gate:
+            $ifNull:
+              - $getField:
+                  field: error
+                  input:
+                    $ifNull:
+                      - $getField:
+                          field:
+                            _module.var: app_name
+                          input: $access
+                      - {}
+              - []
+          user_roles:
+            $ifNull:
+              - _user:
+                  _string.concat:
+                    - 'apps.'
+                    - _module.var: app_name
+                    - '.roles'
+              - []
+        in:
+          $or:
+            - $eq:
+                - $$gate
+                - true
+            - $gt:
+                - $size:
+                    $setIntersection:
+                      - $$gate
+                      - $$user_roles
+                - 0

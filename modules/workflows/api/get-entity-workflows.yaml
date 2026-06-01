@@ -28,6 +28,11 @@ routine:
                     $arrayElemAt:
                       - $status.stage
                       - 0
+              # Per-verb access projection + drop (Part 34 D12). Compute then
+              # filter — two single-stage refs (Lowdefy _ref does not splice a
+              # list into a pipeline). Runs per action doc, before the $group.
+              - _ref: ../shared/workflow/visible_verbs.yaml
+              - _ref: api/stages/visible_verbs_filter.yaml
               - $addFields:
                   required_sort:
                     $cond:
@@ -59,6 +64,7 @@ routine:
                     $push:
                       type: $type
                       status: $status
+                      visible_verbs: $visible_verbs
                       message:
                         _string.concat:
                           - $
