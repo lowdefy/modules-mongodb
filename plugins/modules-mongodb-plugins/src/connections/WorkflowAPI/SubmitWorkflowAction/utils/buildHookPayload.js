@@ -11,7 +11,7 @@
  *
  *   workflow_id, workflow_type, action_id, action_type, current_key, interaction
  *   form, form_review, fields
- *   current_status — pass-through `params.current_status` (task submit_edit) or null
+ *   current_status — pass-through `params.current_status` (simple submit_edit) or null
  *   comment — pass-through `params.comment ?? null`
  *   user: { id, profile, roles }
  *   context: { workflow, action }

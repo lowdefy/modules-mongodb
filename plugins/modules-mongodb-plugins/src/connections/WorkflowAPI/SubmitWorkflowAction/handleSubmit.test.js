@@ -75,7 +75,7 @@ const onboardingWorkflowConfig = {
     },
     {
       type: "schedule-followup",
-      kind: "task",
+      kind: "simple",
       access: {
         "my-team-app": ["view", "edit"],
         roles: ["account-manager"],
@@ -83,7 +83,7 @@ const onboardingWorkflowConfig = {
     },
     {
       type: "post-close-cleanup",
-      kind: "task",
+      kind: "simple",
       required_after_close: true,
       access: {
         "my-team-app": ["view", "edit"],
@@ -302,7 +302,7 @@ test("handleSubmit: cancelled workflow + action without required_after_close thr
 
 test("handleSubmit: completed workflow + action with required_after_close:true does not throw on step 1", async () => {
   await seedWorkflow({ stage: "completed" });
-  await seedAction({ _id: "a1", type: "post-close-cleanup", kind: "task" });
+  await seedAction({ _id: "a1", type: "post-close-cleanup", kind: "simple" });
 
   await expect(
     handleSubmit(
@@ -375,9 +375,9 @@ test("handleSubmit: not_required interaction does not throw (resolves regardless
   ).resolves.toBeDefined();
 });
 
-test("handleSubmit: task submit_edit without current_status throws", async () => {
+test("handleSubmit: simple submit_edit without current_status throws", async () => {
   await seedWorkflow();
-  await seedAction({ _id: "a1", type: "schedule-followup", kind: "task" });
+  await seedAction({ _id: "a1", type: "schedule-followup", kind: "simple" });
 
   await expect(
     handleSubmit(
@@ -386,12 +386,12 @@ test("handleSubmit: task submit_edit without current_status throws", async () =>
         params: { action_id: "a1", interaction: "submit_edit" },
       }),
     ),
-  ).rejects.toThrow(/task submit_edit requires caller-supplied current_status/);
+  ).rejects.toThrow(/simple submit_edit requires caller-supplied current_status/);
 });
 
-test("handleSubmit: task submit_edit with current_status passes (no throw)", async () => {
+test("handleSubmit: simple submit_edit with current_status passes (no throw)", async () => {
   await seedWorkflow();
-  await seedAction({ _id: "a1", type: "schedule-followup", kind: "task" });
+  await seedAction({ _id: "a1", type: "schedule-followup", kind: "simple" });
 
   await expect(
     handleSubmit(
@@ -720,7 +720,7 @@ test("handleSubmit step 5: 3 action-required actions, user submits one to done �
   await seedWorkflow();
   await seedAction({ _id: "a-qualify", type: "qualify", stage: "action-required" });
   await seedAction({ _id: "a-quote", type: "send-quote", stage: "action-required" });
-  await seedAction({ _id: "a-followup", type: "schedule-followup", kind: "task", stage: "action-required" });
+  await seedAction({ _id: "a-followup", type: "schedule-followup", kind: "simple", stage: "action-required" });
 
   await handleSubmit(
     makeContext({
@@ -753,8 +753,8 @@ test("handleSubmit step 5: 4 actions, one already done + one already not-require
   await seedWorkflow();
   await seedAction({ _id: "a-qualify", type: "qualify", stage: "done" });
   await seedAction({ _id: "a-quote", type: "send-quote", stage: "not-required" });
-  await seedAction({ _id: "a-followup", type: "schedule-followup", kind: "task", stage: "action-required" });
-  await seedAction({ _id: "a-cleanup", type: "post-close-cleanup", kind: "task", stage: "action-required" });
+  await seedAction({ _id: "a-followup", type: "schedule-followup", kind: "simple", stage: "action-required" });
+  await seedAction({ _id: "a-cleanup", type: "post-close-cleanup", kind: "simple", stage: "action-required" });
 
   await handleSubmit(
     makeContext({
@@ -921,7 +921,7 @@ const groupsWorkflowConfig = {
     },
     {
       type: "kickoff",
-      kind: "task",
+      kind: "simple",
       action_group: "phase-2",
       blocked_by: ["phase-1"],
       access: { roles: ["account-manager"] },
@@ -959,7 +959,7 @@ test("part 7: completing the last non-terminal action in a group surfaces it in 
   });
   await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1", stage: "done" });
   await seedAction({ _id: "a2", type: "send-quote", action_group: "phase-1" });
-  await seedAction({ _id: "a3", type: "kickoff", kind: "task", action_group: "phase-2", stage: "blocked" });
+  await seedAction({ _id: "a3", type: "kickoff", kind: "simple", action_group: "phase-2", stage: "blocked" });
 
   const result = await handleSubmit(
     makeContext({
@@ -994,7 +994,7 @@ test("part 7: workflow doc groups[] reflects post-submit state in declaration or
   });
   await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
   await seedAction({ _id: "a2", type: "send-quote", action_group: "phase-1" });
-  await seedAction({ _id: "a3", type: "kickoff", kind: "task", action_group: "phase-2", stage: "blocked" });
+  await seedAction({ _id: "a3", type: "kickoff", kind: "simple", action_group: "phase-2", stage: "blocked" });
 
   await handleSubmit(
     makeContext({
@@ -1035,7 +1035,7 @@ test("part 7: completed_groups entry carries on_complete null when group has non
   });
   // phase-1 is empty (already done). phase-2 has one action; completing it
   // transitions phase-2 to done. phase-2 has no on_complete declared.
-  await seedAction({ _id: "a3", type: "kickoff", kind: "task", action_group: "phase-2", stage: "action-required" });
+  await seedAction({ _id: "a3", type: "kickoff", kind: "simple", action_group: "phase-2", stage: "action-required" });
 
   const result = await handleSubmit(
     makeContext({
@@ -1137,7 +1137,7 @@ test("part 7: blocked_by re-evaluation — action flips from blocked to action-r
   await seedAction({
     _id: "kickoff-1",
     type: "kickoff",
-    kind: "task",
+    kind: "simple",
     action_group: "phase-2",
     stage: "blocked",
   });
@@ -1173,8 +1173,8 @@ test("part 7: mixed blocked_by — downstream stays blocked while one dep unreso
   // qualify (phase-1) + a separate action 'finalize' that depends on both phase-1
   // group AND on another action-type 'verify' that is still in-progress.
   await seedAction({ _id: "qualify-1", type: "qualify", action_group: "phase-1" });
-  await seedAction({ _id: "verify-1", type: "verify", kind: "task", stage: "in-progress" });
-  await seedAction({ _id: "finalize-1", type: "finalize", kind: "task", stage: "blocked" });
+  await seedAction({ _id: "verify-1", type: "verify", kind: "simple", stage: "in-progress" });
+  await seedAction({ _id: "finalize-1", type: "finalize", kind: "simple", stage: "blocked" });
 
   await handleSubmit(
     makeContext({
@@ -1188,10 +1188,10 @@ test("part 7: mixed blocked_by — downstream stays blocked while one dep unreso
               action_group: "phase-1",
               access: { roles: ["account-manager"] },
             },
-            { type: "verify", kind: "task", access: { roles: ["account-manager"] } },
+            { type: "verify", kind: "simple", access: { roles: ["account-manager"] } },
             {
               type: "finalize",
-              kind: "task",
+              kind: "simple",
               blocked_by: ["phase-1", "verify"],
               access: { roles: ["account-manager"] },
             },

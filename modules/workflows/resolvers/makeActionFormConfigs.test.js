@@ -49,7 +49,7 @@ const proofOfInstallAction = {
 
 const scheduleFollowupAction = {
   type: "schedule-followup",
-  kind: "task",
+  kind: "simple",
 };
 
 const trackInstallationAction = {

@@ -56,9 +56,9 @@ const baseWorkflowConfig = {
     { id: "phase-3" },
   ],
   actions: [
-    { type: "a", kind: "task", action_group: "phase-1" },
-    { type: "b", kind: "task", action_group: "phase-1" },
-    { type: "c", kind: "task", action_group: "phase-2" },
+    { type: "a", kind: "simple", action_group: "phase-1" },
+    { type: "b", kind: "simple", action_group: "phase-1" },
+    { type: "c", kind: "simple", action_group: "phase-2" },
   ],
   starting_actions: [
     { type: "a", status: "action-required" },
@@ -111,7 +111,7 @@ test("StartWorkflow: workflow with no action_groups declared gets groups: []", a
         {
           type: "onboarding",
           entity_collection: "leads-collection",
-          actions: [{ type: "a", kind: "task" }],
+          actions: [{ type: "a", kind: "simple" }],
           starting_actions: [{ type: "a", status: "action-required" }],
         },
       ],
@@ -134,7 +134,7 @@ test("StartWorkflow: declared groups but no actions reference them → all empty
           type: "onboarding",
           entity_collection: "leads-collection",
           action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
-          actions: [{ type: "a", kind: "task" }],
+          actions: [{ type: "a", kind: "simple" }],
           starting_actions: [{ type: "a", status: "action-required" }],
         },
       ],

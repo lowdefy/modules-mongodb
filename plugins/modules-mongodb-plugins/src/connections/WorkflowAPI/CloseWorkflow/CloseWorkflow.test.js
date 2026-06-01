@@ -74,7 +74,7 @@ async function seedAction({
   action_group = null,
   stage = "action-required",
   workflow_id = "wf-1",
-  kind = "task",
+  kind = "simple",
   key = null,
 }) {
   await mongo.db.collection("actions").insertOne({
@@ -93,8 +93,8 @@ const baseConfig = {
   entity_collection: "leads-collection",
   action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
   actions: [
-    { type: "qualify", kind: "task", action_group: "phase-1" },
-    { type: "kickoff", kind: "task", action_group: "phase-2" },
+    { type: "qualify", kind: "simple", action_group: "phase-1" },
+    { type: "kickoff", kind: "simple", action_group: "phase-2" },
   ],
 };
 
@@ -326,11 +326,11 @@ test("Task 4: required_after_close: true action survives close when non-blocked"
     actions: [
       {
         type: "qualify",
-        kind: "task",
+        kind: "simple",
         action_group: "phase-1",
         required_after_close: true,
       },
-      { type: "kickoff", kind: "task", action_group: "phase-2" },
+      { type: "kickoff", kind: "simple", action_group: "phase-2" },
     ],
   };
 
@@ -360,7 +360,7 @@ test("Task 4: required_after_close: true + blocked → still swept (blocked-acti
     actions: [
       {
         type: "qualify",
-        kind: "task",
+        kind: "simple",
         action_group: "phase-1",
         required_after_close: true,
       },
@@ -388,8 +388,8 @@ test("Task 4: mixed (no-flag, flag, flag+blocked, done) — only no-flag and fla
   const configWithFlag = {
     ...baseConfig,
     actions: [
-      { type: "qualify", kind: "task", required_after_close: true },
-      { type: "kickoff", kind: "task" },
+      { type: "qualify", kind: "simple", required_after_close: true },
+      { type: "kickoff", kind: "simple" },
     ],
   };
 
@@ -504,11 +504,11 @@ test("Task 5: summary asymmetry — required_after_close survivor counts in tota
     actions: [
       {
         type: "qualify",
-        kind: "task",
+        kind: "simple",
         action_group: "phase-1",
         required_after_close: true,
       },
-      { type: "kickoff", kind: "task", action_group: "phase-2" },
+      { type: "kickoff", kind: "simple", action_group: "phase-2" },
     ],
   };
 
@@ -554,7 +554,7 @@ test("Task 5: surviving non-blocked required_after_close action → group lands 
     actions: [
       {
         type: "qualify",
-        kind: "task",
+        kind: "simple",
         action_group: "phase-1",
         required_after_close: true,
       },
@@ -587,7 +587,7 @@ test("Task 5: blocked required_after_close action gets swept → group lands don
     actions: [
       {
         type: "qualify",
-        kind: "task",
+        kind: "simple",
         action_group: "phase-1",
         required_after_close: true,
       },

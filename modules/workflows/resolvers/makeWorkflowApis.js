@@ -52,7 +52,7 @@ function emitEventOverrides(action) {
 }
 
 function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
-  const isTask = action.kind === 'task';
+  const isSimple = action.kind === 'simple';
   const properties = {
     action_id: { _payload: 'action_id' },
     action_type: action.type,
@@ -63,7 +63,7 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
     form_review: { _payload: 'form_review' },
     fields: { _payload: 'fields' },
     comment: { _payload: 'comment' },
-    ...(isTask ? { current_status: { _payload: 'current_status' } } : {}),
+    ...(isSimple ? { current_status: { _payload: 'current_status' } } : {}),
     ...(hooksMap ? { hooks: hooksMap } : {}),
     ...(eventMap ? { event_overrides: eventMap } : {}),
   };

@@ -40,7 +40,7 @@
  */
 
 /**
- * @typedef {'form' | 'task' | 'tracker'} ActionKind
+ * @typedef {'form' | 'simple' | 'tracker'} ActionKind
  */
 
 /**

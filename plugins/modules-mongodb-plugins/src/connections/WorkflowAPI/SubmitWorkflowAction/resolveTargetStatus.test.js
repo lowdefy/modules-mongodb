@@ -13,8 +13,8 @@ const reviewableFormAction = {
   },
 };
 
-const taskAction = {
-  kind: "task",
+const simpleAction = {
+  kind: "simple",
   access: { "my-app": ["view", "edit"], roles: ["account-manager"] },
 };
 
@@ -39,24 +39,24 @@ describe("resolveTargetStatus — engine default layer", () => {
     ).toBe("in-review");
   });
 
-  test("submit_edit on task uses caller-supplied current_status", () => {
+  test("submit_edit on simple uses caller-supplied current_status", () => {
     expect(
       resolveTargetStatus({
         interaction: "submit_edit",
-        actionConfig: taskAction,
+        actionConfig: simpleAction,
         params: { current_status: "in-progress" },
       }),
     ).toBe("in-progress");
   });
 
-  test("submit_edit on task throws when current_status is missing", () => {
+  test("submit_edit on simple throws when current_status is missing", () => {
     expect(() =>
       resolveTargetStatus({
         interaction: "submit_edit",
-        actionConfig: taskAction,
+        actionConfig: simpleAction,
         params: {},
       }),
-    ).toThrow(/task submit_edit requires caller-supplied current_status/);
+    ).toThrow(/simple submit_edit requires caller-supplied current_status/);
   });
 
   test("not_required → not-required", () => {
@@ -143,21 +143,21 @@ describe("resolveTargetStatus — pre-hook override layer (last wins)", () => {
     ).toBe("done");
   });
 
-  test("task submit_edit still requires current_status when pre-hook status absent", () => {
+  test("simple submit_edit still requires current_status when pre-hook status absent", () => {
     expect(() =>
       resolveTargetStatus({
         interaction: "submit_edit",
-        actionConfig: taskAction,
+        actionConfig: simpleAction,
         params: {},
       }),
-    ).toThrow(/task submit_edit requires caller-supplied current_status/);
+    ).toThrow(/simple submit_edit requires caller-supplied current_status/);
   });
 
-  test("task submit_edit pre-hook status overrides current_status engine resolution", () => {
+  test("simple submit_edit pre-hook status overrides current_status engine resolution", () => {
     expect(
       resolveTargetStatus({
         interaction: "submit_edit",
-        actionConfig: taskAction,
+        actionConfig: simpleAction,
         params: { current_status: "in-progress" },
         preHookStatus: "done",
       }),

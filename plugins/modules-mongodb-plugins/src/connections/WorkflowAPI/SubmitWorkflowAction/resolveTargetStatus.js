@@ -51,10 +51,10 @@ function resolveTargetStatus({
   let engineDefault;
   switch (interaction) {
     case "submit_edit":
-      if (actionConfig.kind === "task") {
+      if (actionConfig.kind === "simple") {
         if (typeof params.current_status !== "string") {
           throw new Error(
-            "SubmitWorkflowAction: task submit_edit requires caller-supplied current_status",
+            "SubmitWorkflowAction: simple submit_edit requires caller-supplied current_status",
           );
         }
         engineDefault = params.current_status;

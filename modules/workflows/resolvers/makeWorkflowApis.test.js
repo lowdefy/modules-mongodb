@@ -38,7 +38,7 @@ const sendQuoteAction = {
 
 const scheduleFollowupAction = {
   type: "schedule-followup",
-  kind: "task",
+  kind: "simple",
   access: { "my-team-app": ["view", "edit"], roles: ["ops-lead"] },
   action_group: "phase-2",
 };
@@ -92,24 +92,24 @@ test("makeWorkflowApis: worked example emits the expected update-action-* set, n
   expect(ids).not.toContain("update-action-track-installation");
 });
 
-test("makeWorkflowApis: task endpoint includes current_status; form endpoints do not", () => {
+test("makeWorkflowApis: simple endpoint includes current_status; form endpoints do not", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const task = findApi(apis, "update-action-schedule-followup");
+  const simpleApi = findApi(apis, "update-action-schedule-followup");
   const form = findApi(apis, "update-action-qualify");
   const sendQuote = findApi(apis, "update-action-send-quote");
 
-  expect(propsOf(task).current_status).toEqual({ _payload: "current_status" });
+  expect(propsOf(simpleApi).current_status).toEqual({ _payload: "current_status" });
   expect(propsOf(form)).not.toHaveProperty("current_status");
   expect(propsOf(sendQuote)).not.toHaveProperty("current_status");
 });
 
-test("makeWorkflowApis: every form/task endpoint passes runtime comment through to the handler", () => {
+test("makeWorkflowApis: every form/simple endpoint passes runtime comment through to the handler", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const task = findApi(apis, "update-action-schedule-followup");
+  const simpleApi = findApi(apis, "update-action-schedule-followup");
   const form = findApi(apis, "update-action-qualify");
   const sendQuote = findApi(apis, "update-action-send-quote");
 
-  expect(propsOf(task).comment).toEqual({ _payload: "comment" });
+  expect(propsOf(simpleApi).comment).toEqual({ _payload: "comment" });
   expect(propsOf(form).comment).toEqual({ _payload: "comment" });
   expect(propsOf(sendQuote).comment).toEqual({ _payload: "comment" });
 });

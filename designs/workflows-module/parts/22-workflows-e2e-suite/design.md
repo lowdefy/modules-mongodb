@@ -29,7 +29,7 @@ apps/demo/e2e/workflows/
   resolver-apis.spec.js             # part 13 (per-action endpoints; hook auth gate)
   resolver-form-builder.spec.js     # part 15 (form rendering + read-only review/error variants)
   page-templates.spec.js            # part 16 (edit / review / error template flows)
-  shared-pages.spec.js              # part 17 (task-edit / task-view / task-review / workflow-overview)
+  shared-pages.spec.js              # part 17 (simple-edit / simple-view / simple-review / workflow-overview)
   entity-components.spec.js         # part 18 (actions-on-entity, workflow-header)
   operational-apis.spec.js          # part 19 (start / cancel / close / get-entity-workflows / get-workflow-overview)
 ```
@@ -46,7 +46,7 @@ apps/demo/e2e/workflows/
 
 ### Worked example as the spine
 
-The concept design's [worked example](../../../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) is the canonical end-to-end fixture: `lead` entity, onboarding workflow with four actions (one per kind: form `qualify`, task `verify`, tracker `track-installation`, form `proof-of-installation` instanced by device), plus a child `device-installation` workflow on a `ticket` entity. Part 20 wires this workflow into `apps/demo/workflow_config/onboarding/`; part 22 exercises it.
+The concept design's [worked example](../../../workflows-module-concept/design.md#worked-example--end-to-end-across-all-seven-sub-designs) is the canonical end-to-end fixture: `lead` entity, onboarding workflow with four actions (one per kind: form `qualify`, simple `verify`, tracker `track-installation`, form `proof-of-installation` instanced by device), plus a child `device-installation` workflow on a `ticket` entity. Part 20 wires this workflow into `apps/demo/workflow_config/onboarding/`; part 22 exercises it.
 
 Specs prefer the worked example over invented fixtures so the suite doubles as live documentation of the module's expected behaviour.
 
@@ -67,7 +67,7 @@ For each shipping part, the matrix below names the file and the load-bearing ass
 | 13   | `resolver-apis.spec.js`            | Per-action endpoint reachable; hook auth gate rejects when caller roles miss; payload shape matches `SubmitWorkflowAction` contract. |
 | 15   | `resolver-form-builder.spec.js`    | Form renders from `form:` block; review form layers `form_review:` writable below read-only `form:`; error page renders `form_error:`. |
 | 16   | `page-templates.spec.js`           | Edit template submit drives status forward; review template submit emits approve / request-changes interactions; error template's `resolve_error` button recovers to `submit_edit`'s target. |
-| 17   | `shared-pages.spec.js`             | Task-edit / task-view / task-review render against an action without per-type pages; workflow-overview shows summary + groups. |
+| 17   | `shared-pages.spec.js`             | Simple-edit / simple-view / simple-review render against an action without per-type pages; workflow-overview shows summary + groups. |
 | 18   | `entity-components.spec.js`        | `actions-on-entity` renders the right actions per app's verb map; `workflow-header` shows summary state; `action_role_check` hides actions where roles don't intersect. |
 | 19   | `operational-apis.spec.js`         | `start-workflow` end-to-end; `cancel-workflow` end-to-end; `get-entity-workflows` filtering by app verb map; `get-workflow-overview` returns aggregated shape; `close-workflow` end-to-end (from part 23). |
 | 23   | `close-workflow.spec.js`           | Workflow `active` → close → `completed` push; sweep skips `required_after_close: true` actions; blocked actions get swept even when `required_after_close: true`; already-`completed` close is a no-op; already-`cancelled` close rejects; tracker fan-up fires `done` on parent when child closes. |
@@ -85,7 +85,7 @@ Spec files prefer descriptive `test()` titles matching the concept-doc language 
 
 ## Depends on
 
-[Part 20a](modules-mongodb/designs/workflows-module/parts/_completed/20a-module-manifest-static/design.md) — manifest static exports + tracker-only demo wiring. Required for the static-surface spec slices (`start-cancel.spec.js`, `tracker-subscription.spec.js`, `operational-apis.spec.js`, the `shared-pages.spec.js` read-only paths, `entity-components.spec.js`, `group-overview` spec). [Part 20b](modules-mongodb/designs/workflows-module/parts/_completed/20b-module-manifest-dynamic/design.md) — manifest resolver-channel entries + form/task worked-example demo. Required for the form/task spec slices (`submit-action.spec.js`, `hooks.spec.js`, `side-effects.spec.js`, `group-on-complete.spec.js`, `resolver-pages.spec.js`, `resolver-apis.spec.js`, `shared-pages.spec.js` task-edit save paths).
+[Part 20a](modules-mongodb/designs/workflows-module/parts/_completed/20a-module-manifest-static/design.md) — manifest static exports + tracker-only demo wiring. Required for the static-surface spec slices (`start-cancel.spec.js`, `tracker-subscription.spec.js`, `operational-apis.spec.js`, the `shared-pages.spec.js` read-only paths, `entity-components.spec.js`, `group-overview` spec). [Part 20b](modules-mongodb/designs/workflows-module/parts/_completed/20b-module-manifest-dynamic/design.md) — manifest resolver-channel entries + form/simple worked-example demo. Required for the form/simple spec slices (`submit-action.spec.js`, `hooks.spec.js`, `side-effects.spec.js`, `group-on-complete.spec.js`, `resolver-pages.spec.js`, `resolver-apis.spec.js`, `shared-pages.spec.js` simple-edit save paths).
 
 Soft dependencies on every earlier part: a spec for part N can only land once part N has shipped. Implementation order within this part follows the engine waves — `start-cancel.spec.js` first (depends only on parts 5 + 19 + 20a), then `submit-action.spec.js` (depends on part 20b), then the side-effect / hook / tracker / fan-out specs, then resolvers and UI.
 

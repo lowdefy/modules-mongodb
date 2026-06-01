@@ -1,6 +1,6 @@
 # Workflows
 
-Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Ships shared task-action pages (`task-edit`, `task-view`, `task-review`), a `workflow-overview` page, a `group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/task action (`update-action-{action_type}`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp` so every workflow + action mutation is auditable.
+Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Ships shared simple-action pages (`simple-edit`, `simple-view`, `simple-review`), a `workflow-overview` page, a `group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/simple action (`update-action-{action_type}`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp` so every workflow + action mutation is auditable.
 
 ## Dependencies
 
@@ -95,13 +95,13 @@ The build emits:
 
 | ID | Description | Path |
 |---|---|---|
-| `task-edit` | Shared task-action edit page (status selector + universal fields + Save). Addressed by `?action_id=<id>` | `/{entryId}/task-edit` |
-| `task-view` | Shared task-action view page (read-only fields + status timeline + comment timeline) | `/{entryId}/task-view` |
-| `task-review` | Shared task-action review page (read-only fields + approve / request_changes buttons) | `/{entryId}/task-review` |
+| `simple-edit` | Shared simple-action edit page (status selector + universal fields + Save). Addressed by `?action_id=<id>` | `/{entryId}/simple-edit` |
+| `simple-view` | Shared simple-action view page (read-only fields + status timeline + comment timeline) | `/{entryId}/simple-view` |
+| `simple-review` | Shared simple-action review page (read-only fields + approve / request_changes buttons) | `/{entryId}/simple-review` |
 | `workflow-overview` | Workflow detail page (header + action cards with form_data DataView). Addressed by `?workflow_id=<id>` | `/{entryId}/workflow-overview` |
 | `group-overview` | Group detail page (header + progress bar + group-status badge + action cards). Addressed by `?workflow_id=<id>&group_id=<id>` | `/{entryId}/group-overview` |
 
-**Per-action form pages** (resolver-emitted by `makeActionPages`): one page per `(workflow_type, action_type, verb)` tuple, where `verb` is the intersection of `action.access.{app_name}.verbs` and the supported set `[edit, view, review, error]`. Only `kind: form` actions emit pages — task and tracker actions emit none. Page ID format: `{workflow_type}-{action_type}-{verb}`. Path: `/{entryId}/{workflow_type}-{action_type}-{verb}`. Example: a `qualify` form action in the `onboarding` workflow with `access.demo.verbs: [edit, view]` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
+**Per-action form pages** (resolver-emitted by `makeActionPages`): one page per `(workflow_type, action_type, verb)` tuple, where `verb` is the intersection of `action.access.{app_name}.verbs` and the supported set `[edit, view, review, error]`. Only `kind: form` actions emit pages — simple and tracker actions emit none. Page ID format: `{workflow_type}-{action_type}-{verb}`. Path: `/{entryId}/{workflow_type}-{action_type}-{verb}`. Example: a `qualify` form action in the `onboarding` workflow with `access.demo.verbs: [edit, view]` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
 
 ### Components
 
@@ -127,7 +127,7 @@ The build emits:
 
 **Per-action submit endpoints** (resolver-emitted by `makeWorkflowApis`):
 
-- `update-action-{action_type}` — one per `kind: form` or `kind: task` action (tracker actions emit none). Bakes the action's `hooks:` / `event:` / `interactions:` blocks in as build-time literals; routes the submitted payload through `SubmitWorkflowAction` on the `workflow-api` connection.
+- `update-action-{action_type}` — one per `kind: form` or `kind: simple` action (tracker actions emit none). Bakes the action's `hooks:` / `event:` / `interactions:` blocks in as build-time literals; routes the submitted payload through `SubmitWorkflowAction` on the `workflow-api` connection.
 - `update-action-{action_type}-{interaction}-{phase}` — one per declared inline hook routine (`hooks.{interaction}.{phase}.routine` on the action). Phases: `pre`, `post`. Interactions: `submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`.
 - `workflow-{workflow_type}-group-{group_id}-on-complete` — one per declared `action_groups[*].on_complete.routine`. Fired by the group state machine when the group reaches a terminal status.
 

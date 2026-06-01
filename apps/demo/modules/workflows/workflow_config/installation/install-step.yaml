@@ -1,5 +1,5 @@
 type: install-step
-kind: task
+kind: simple
 action_group: g1
 sort_order: 1
 description: Installation step.

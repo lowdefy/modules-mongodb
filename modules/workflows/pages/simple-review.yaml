@@ -1,4 +1,4 @@
-# Shared task-action review page (part 17).
+# Shared simple-action review page (part 17).
 #
 # Addressed by ?action_id=<id>. Mirrors part 16's review.yaml.njk adapted for
 # static (non-Nunjucks) emission. Reviewers approve or request changes; no
@@ -11,7 +11,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: task-review
+    id: simple-review
     hide_title: true
     content_width: 750
     requests:
@@ -43,14 +43,14 @@ _ref:
               - _request: get_action.status.0.stage
           params:
             pageId:
-              _module.pageId: task-view
+              _module.pageId: simple-view
             urlQuery:
               _url_query: true
         # Step 4: load workflow — needed for required_after_close gate.
         - id: get_workflow
           type: Request
           params: get_workflow
-        # Step 5 (get_entity) — intentionally omitted on all task pages (v1).
+        # Step 5 (get_entity) — intentionally omitted on all simple pages (v1).
         # Step 6: role check — sets _state.action_allowed.
         - _ref:
             path: components/action_role_check.yaml
@@ -64,7 +64,7 @@ _ref:
           params:
             comment: null
         # Step 8 (author-supplied pages.review.events.onMount) — omitted on
-        # shared task pages; same gap as task-view / task-edit.
+        # shared simple pages; same gap as simple-view / simple-edit.
     blocks:
       - id: action_card
         type: Card
@@ -129,7 +129,7 @@ _ref:
               path: components/universal-fields/universal-fields.yaml
               vars:
                 mode: display
-                kind: task
+                kind: simple
                 action_data:
                   assignees:
                     _request: get_action.assignees

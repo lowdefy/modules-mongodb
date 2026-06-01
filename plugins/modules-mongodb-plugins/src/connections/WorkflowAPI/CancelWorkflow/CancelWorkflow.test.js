@@ -65,7 +65,7 @@ async function seedAction({ _id, type, action_group = null, stage = "action-requ
     _id,
     workflow_id,
     type,
-    kind: "task",
+    kind: "simple",
     key: null,
     action_group,
     status: [{ stage, created: new Date("2026-05-19T00:00:00Z") }],
@@ -77,8 +77,8 @@ const baseConfig = {
   entity_collection: "leads-collection",
   action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
   actions: [
-    { type: "qualify", kind: "task", action_group: "phase-1" },
-    { type: "kickoff", kind: "task", action_group: "phase-2" },
+    { type: "qualify", kind: "simple", action_group: "phase-1" },
+    { type: "kickoff", kind: "simple", action_group: "phase-2" },
   ],
 };
 

@@ -45,7 +45,7 @@ async function seedAction({ _id, type, stage, key = null, action_group = null })
     _id,
     workflow_id: "wf-1",
     type,
-    kind: "task",
+    kind: "simple",
     key,
     action_group,
     status: [{ stage, created: new Date("2026-05-19T00:00:00Z") }],

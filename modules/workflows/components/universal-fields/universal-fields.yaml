@@ -1,6 +1,6 @@
 # Stub component. Part 24 ships the real universal-fields renderer.
 #
-# This stub renders nothing — the task-edit / task-view / task-review pages
+# This stub renders nothing — the simple-edit / simple-view / simple-review pages
 # that depend on it are declared in the manifest but never navigated to in
 # part 20a's tracker-only demo flow. The stub lets the static build resolve
 # the `_ref: { path: components/universal-fields/universal-fields.yaml }`

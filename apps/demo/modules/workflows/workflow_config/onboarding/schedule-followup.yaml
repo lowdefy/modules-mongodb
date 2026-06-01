@@ -1,5 +1,5 @@
 type: schedule-followup
-kind: task
+kind: simple
 action_group: g2
 sort_order: 20
 description: Schedule a follow-up call with the lead within a week of qualification.
@@ -19,7 +19,7 @@ status_map:
       link:
         pageId:
           _module.pageId:
-            id: task-edit
+            id: simple-edit
             module: workflows
         title: Schedule Follow-up
         urlQuery:
@@ -30,7 +30,7 @@ status_map:
       link:
         pageId:
           _module.pageId:
-            id: task-edit
+            id: simple-edit
             module: workflows
         title: Schedule Follow-up
         urlQuery:

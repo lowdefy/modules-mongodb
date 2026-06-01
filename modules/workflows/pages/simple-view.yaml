@@ -1,6 +1,6 @@
-# Shared read-only task-action page (part 17).
+# Shared read-only simple-action page (part 17).
 #
-# Addressed by ?action_id=<id>. Static page — one experience for every task
+# Addressed by ?action_id=<id>. Static page — one experience for every simple
 # action. Mirrors the 8-step onMount sequence from part 16's view.yaml.njk,
 # adapted for plain YAML (no Nunjucks render-time vars).
 #
@@ -11,7 +11,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: task-view
+    id: simple-view
     hide_title: true
     content_width: 750
     requests:
@@ -40,7 +40,7 @@ _ref:
               _request: get_action.status
         # Step 3 (stale-URL guard) — intentionally omitted on view.
         # Step 4 (get_workflow) — intentionally omitted on view (no form-state to prime).
-        # Step 5 (get_entity) — intentionally omitted on all task pages (v1).
+        # Step 5 (get_entity) — intentionally omitted on all simple pages (v1).
         # Step 6: role check — sets _state.action_allowed.
         - _ref:
             path: components/action_role_check.yaml
@@ -52,7 +52,7 @@ _ref:
           type: SetState
           params: {}
         # Step 8 (author-supplied pages.view.events.onMount) — omitted on shared
-        # task pages because static pages have no per-action page_config var.
+        # simple pages because static pages have no per-action page_config var.
         # Wiring requires a different mechanism (resolver-driven or runtime
         # action_config lookup); tracked in part 27 / follow-up.
     blocks:
@@ -121,7 +121,7 @@ _ref:
               path: components/universal-fields/universal-fields.yaml
               vars:
                 mode: display
-                kind: task
+                kind: simple
                 action_data:
                   assignees:
                     _request: get_action.assignees

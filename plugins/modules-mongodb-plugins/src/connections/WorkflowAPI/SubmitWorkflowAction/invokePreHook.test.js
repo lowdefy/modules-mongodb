@@ -101,7 +101,7 @@ describe("invokePreHook — dispatch", () => {
     expect(callApi.mock.calls[0][1].current_status).toBeNull();
   });
 
-  test("payload current_status passes through for task submit_edit", async () => {
+  test("payload current_status passes through for simple submit_edit", async () => {
     const callApi = jest.fn(async () => ({}));
     const ctx = makeContext({
       params: {

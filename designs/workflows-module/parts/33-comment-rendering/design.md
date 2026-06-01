@@ -4,7 +4,7 @@
 
 ## The question
 
-A workflow submit captures an optional free-text `comment` from the end user. Today the engine writes that comment to **`event.metadata.comment`**, and the workflows module renders it via a **dedicated comments tile** (`modules/workflows/pages/task-view.yaml:215-285`) that runs its own events query filtered by `metadata.comment: { $exists: true }`. The main events timeline (the `EventsTimeline` block, fed by `modules/events/components/events-timeline.yaml`) does not surface the comment at all.
+A workflow submit captures an optional free-text `comment` from the end user. Today the engine writes that comment to **`event.metadata.comment`**, and the workflows module renders it via a **dedicated comments tile** (`modules/workflows/pages/simple-view.yaml:215-285`) that runs its own events query filtered by `metadata.comment: { $exists: true }`. The main events timeline (the `EventsTimeline` block, fed by `modules/events/components/events-timeline.yaml`) does not surface the comment at all.
 
 Meanwhile the events module already supports a secondary-text channel: the timeline aggregation projects `display.{app_name}.description` as `description`, and `EventsTimeline.js:284-287` renders it as smaller HTML text directly under the event title. The workflow engine's default event payload does not populate `display.{app_name}.description`.
 
@@ -21,9 +21,9 @@ A workflow author who wants the comment to appear inline (under the title, as se
 
 ## What we know
 
-- **Where the comment is captured.** `Input` block with `id: comment` on the workflow review/edit pages (e.g. `modules/workflows/pages/task-review.yaml:139`, `modules/workflows/templates/review.yaml.njk:166`). Mandatory on `request_changes`, optional elsewhere. State at `_state: comment`, sent as `payload.comment` to the action endpoint.
+- **Where the comment is captured.** `Input` block with `id: comment` on the workflow review/edit pages (e.g. `modules/workflows/pages/simple-review.yaml:139`, `modules/workflows/templates/review.yaml.njk:166`). Mandatory on `request_changes`, optional elsewhere. State at `_state: comment`, sent as `payload.comment` to the action endpoint.
 - **Where the comment is stored.** `event.metadata.comment`, written by `buildDefaultLogEventPayload` in `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js:66-68`. Only written when non-empty.
-- **Where the comment is rendered today.** Separate "Comments" tile on `task-view.yaml`, querying events by `metadata.comment: { $exists: true }`, rendering author + timestamp + raw HTML comment in its own list.
+- **Where the comment is rendered today.** Separate "Comments" tile on `simple-view.yaml`, querying events by `metadata.comment: { $exists: true }`, rendering author + timestamp + raw HTML comment in its own list.
 - **The unused channel.** `display.{app_name}.description` projected by `modules/events/components/events-timeline.yaml:43-50` and rendered by `EventsTimeline.js:284-287` — not populated by any workflow-engine code path.
 - **Render path is sanitised HTML.** Both title and description go through `sanitize()` and support inline HTML.
 
