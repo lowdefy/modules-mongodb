@@ -72,7 +72,7 @@ They share the `icon: UserOutlined` fallback by coincidence of using the same Av
 id: user_avatar
 type: Box
 layout:
-  contentGap: 8
+  gap: 8
   contentAlign: center
 blocks:
   - id: avatar

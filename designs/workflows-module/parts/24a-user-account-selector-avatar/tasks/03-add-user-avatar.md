@@ -40,7 +40,7 @@ intentionally **not** replicated here.
 id: user_avatar
 type: Box
 layout:
-  contentGap: 8
+  gap: 8
   contentAlign: center
 blocks:
   - id: avatar

@@ -124,6 +124,7 @@ api:
 pages:
   - _ref: pages/router.yaml
   - _ref: pages/avatar.yaml
+  - _ref: pages/user-components-demo.yaml
   - _ref: pages/404.yaml
   - _ref: pages/home.yaml
   - _ref: pages/leads/lead-list.yaml

@@ -47,18 +47,6 @@ modules:
 | `new` | Invite a new user with profile and access | `/{entryId}/new` |
 | `check` | Verify email availability before sending an invite | `/{entryId}/check` |
 
-### Components
-
-- **`user-selector`** — Autocomplete selector returning all active users for the current app. Use in other modules that need a user picker.
-
-  ```yaml
-  _ref:
-    module: user-admin
-    component: user-selector
-    vars:
-      label: Assigned To
-  ```
-
 ### API Endpoints
 
 | ID | Description |

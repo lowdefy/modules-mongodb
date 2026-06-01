@@ -96,6 +96,12 @@ exports:
   components:
     - id: profile-avatar
       description: Avatar config for PageHeaderMenu profile — user picture with first-letter fallback
+    - id: user-selector
+      description: Single-select autocomplete for picking one app user
+    - id: user-multi-selector
+      description: Multi-select picker for an array of app users
+    - id: user-avatar
+      description: Inline avatar + name chip rendered from a user-contacts doc
   menus:
     - id: default
       description: User account navigation links
@@ -109,6 +115,15 @@ components:
   - id: profile-avatar
     component:
       _ref: components/profile-avatar.yaml
+  - id: user-selector
+    component:
+      _ref: components/user-selector.yaml
+  - id: user-multi-selector
+    component:
+      _ref: components/user-multi-selector.yaml
+  - id: user-avatar
+    component:
+      _ref: components/user-avatar.yaml
 menus:
   - _ref: menu.yaml
   - _ref: menus/profile-default.yaml

@@ -52,6 +52,37 @@ See `apps/demo/modules/user-account/vars.yaml` for a worked example.
 ### Components
 
 - **`profile-avatar`** — Avatar config consumed by the layout module's profile dropdown. Renders the user's picture with a first-letter fallback.
+- **`user-selector`** — Single-select autocomplete returning all active (`is_user: true`) users for the current app. Use in other modules that need a user picker; writes the selected user's `_id` to its bound state path.
+
+  ```yaml
+  _ref:
+    module: user-account
+    component: user-selector
+    vars:
+      label: Assigned To
+  ```
+
+- **`user-multi-selector`** — Multi-select sibling of `user-selector` (same `is_user: true` options request). Writes an **array** of user ids to its bound state path. Use for assignee-style fields.
+
+  ```yaml
+  _ref:
+    module: user-account
+    component: user-multi-selector
+    vars:
+      label: Assignees
+  ```
+
+- **`user-avatar`** — Inline avatar + name chip rendered from a user-contacts doc (pass the doc as the `user` var; needs `profile.picture` and `profile.name`). Block-level surfaces only — for table cells use AG Grid's `cell: { type: avatar, nameField, srcField, idField }` renderer instead. Set `show_name: false` for an avatar-only display.
+
+  ```yaml
+  _ref:
+    module: user-account
+    component: user-avatar
+    vars:
+      user:
+        _state: some.user.doc
+      show_name: true
+  ```
 
 ### API Endpoints
 

@@ -130,9 +130,6 @@ exports:
       description: Update existing user profile and access settings
     - id: resend-invite
       description: Resend pending user invitation email
-  components:
-    - id: user-selector
-      description: Autocomplete selector for picking users
   menus:
     - id: default
       description: User admin navigation link
@@ -151,11 +148,6 @@ pages:
   - _ref: pages/edit.yaml
   - _ref: pages/new.yaml
   - _ref: pages/check.yaml
-
-components:
-  - id: user-selector
-    component:
-      _ref: components/user-selector.yaml
 
 menus:
   - _ref: menu.yaml
