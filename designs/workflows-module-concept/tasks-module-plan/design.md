@@ -7,7 +7,7 @@ This design is **not** the tasks module's implementation design. It's the bounda
 ## Proposed change
 
 1. Treat the `actions` collection as shared between the `workflows` module (already implemented) and a future `tasks` module — every doc has the same base shape; workflow-only fields are optional, task-only fields are optional, no doc is required to set both kinds of fields.
-2. Rename the current `kind: task` workflow-action kind to `kind: simple`, freeing the word "task" for the adhoc concept. The rename amends the action-authoring grammar, the shipped resolvers/handlers, the three module-shipped pages (`task-edit` / `task-view` / `task-review` → `simple-edit` / `simple-view` / `simple-review`), and the active follow-on parts that reference the kind.
+2. Rename the workflow-action kind that means "user does a real-world thing and marks it off" so the word "task" is free for the adhoc concept. This landed in two steps: `task → simple` shipped as [Part 35](../../workflows-module/parts/_completed/35-rename-task-kind-to-simple/design.md), and `simple → check` (a better name — see [the rename section](#the-kind-rename-and-the-action-page-decouple) below) plus a decouple of the shared pages to `action-edit` / `action-view` / `action-review` is the deferred [Part 43](../../workflows-module/parts/43-rename-simple-kind-to-check/design.md).
 3. Introduce adhoc-task semantics on the `actions` doc — `workflow_id: null`, user-supplied `title`, user-supplied `description`, optional entity link, no `blocked_by`, no `hooks:` / `interactions:` evaluation, transitions driven directly by user submit not by the workflow engine.
 4. Reuse the existing `global.action_statuses` enum as a strict superset; adhoc tasks use a fixed subset (`action-required` / `in-progress` / `done` / `not-required`). No new status enum, no parallel state machine.
 5. Reuse the events-as-comments pattern (`events` module already shipped) so comments on adhoc tasks render through the same timeline component as workflow-action events.
@@ -33,7 +33,7 @@ Workflow vs adhoc maps cleanly onto "in a project" vs "no project". Splitting in
 **Stream 1 — workflow actions** (already designed).
 
 - Created by `start-workflow` when the workflow is initiated; the set of actions is fixed by the workflow's `starting_actions` and `action_groups`.
-- `workflow_id`, `action_group`, `type` (from workflow config), `kind` (form / simple / tracker / custom / external), `blocked_by` all set from the YAML config.
+- `workflow_id`, `action_group`, `type` (from workflow config), `kind` (form / check / tracker / custom / external), `blocked_by` all set from the YAML config.
 - `title` / `description` come from the workflow YAML config (action authoring spec); they're config-derived, not user-supplied per instance.
 - Status transitions flow through `SubmitWorkflowAction` — validation, pre-hook, writes, side effects, post-hook, group recomputation. Engine-orchestrated.
 - Access is role-based + verb-based, declared per action in YAML.
@@ -54,7 +54,7 @@ The shared `actions` collection holds both streams. Field categories:
 ### Common (every doc)
 
 - `_id`, `change_stamp`
-- `kind` — discriminator. Workflows: `form` / `simple` / `tracker` / `custom` / `external`. Tasks: `task`. `custom` is in-design (Part 28); `external` is a planned future kind for system-driven actions with no user-facing surface — listed here so the taxonomy and the rename discussion below are forward-looking, but no dedicated part exists yet.
+- `kind` — discriminator. Workflows: `form` / `check` / `tracker` / `custom` / `external`. Tasks: `task`. `custom` is in-design (Part 28); `external` is a planned future kind for system-driven actions with no user-facing surface — listed here so the taxonomy and the rename discussion below are forward-looking, but no dedicated part exists yet.
 - `status` (current) and the status-history array — both streams use the same shape.
 - `assignees` — universal-fields component, already shipped.
 - `due_date` — universal-fields component.
@@ -76,7 +76,7 @@ The shared `actions` collection holds both streams. Field categories:
 
 No task-only fields. Tasks share the Common fields with workflow actions, may set the Shared-but-conditional fields, and leave the Workflow-only fields null/absent. Creator is captured by `change_stamp.created.user.id` on insert (the `events`-module idiom — see `docs/idioms.md` "Change stamps"), the same as for workflow actions; no separate `created_by` field.
 
-Two discriminators, at different layers: `kind` discriminates the action's **user-facing surface** (`form` / `simple` / `tracker` / `custom` / `external` for workflow actions, `task` for adhoc); `workflow_id` discriminates the **stream** — set means a workflow engine wrote it, null means a tasks module wrote it. The tasks module ignores `kind` on read; the workflows engine ignores any doc with `workflow_id: null`.
+Two discriminators, at different layers: `kind` discriminates the action's **user-facing surface** (`form` / `check` / `tracker` / `custom` / `external` for workflow actions, `task` for adhoc); `workflow_id` discriminates the **stream** — set means a workflow engine wrote it, null means a tasks module wrote it. The tasks module ignores `kind` on read; the workflows engine ignores any doc with `workflow_id: null`.
 
 ### Constraints this places on the workflows module
 
@@ -87,53 +87,22 @@ These are the things the workflows module ships must respect so the tasks module
 - **`type` is not required.** Workflow actions always have a `type`; tasks may not. If the field exists on a task, it's a free-form tag, not a workflow-config slug.
 - **The status enum stays a strict superset** of what adhoc tasks need. The shipped enum (`action_statuses`) already includes `action-required`, `in-progress`, `done`, `not-required` — the four states adhoc tasks need. No engine work assumes a workflow action will *never* sit in just those four states either.
 
-## The `kind: task` → `kind: simple` rename
+## The kind rename and the action-page decouple
 
-Current `kind: task` is a workflow-action kind for "user does a real-world thing, marks it done, no input form". It's parallel to `form` / `tracker` / `custom` / `external` in that it describes the action's surface. Renaming frees the word "task" for the adhoc concept and ends the collision.
+The workflow-action kind for "user does a real-world thing, marks it off, no input form" sits parallel to `form` / `tracker` / `custom` / `external` — it describes the action's surface. Freeing the word "task" for the adhoc concept needed a rename, and the right name took two passes:
 
-**New name: `simple`.** Reads alongside the existing kinds — `form` captures input, `simple` captures nothing, `tracker` subscribes, `custom` delegates to the app, `external` lets a system drive it. Rejected alternatives:
+1. **`task → simple`** — shipped as [Part 35](../../workflows-module/parts/_completed/35-rename-task-kind-to-simple/design.md). This freed "task" and ended the collision.
+2. **`simple → check`** — the deferred [Part 43](../../workflows-module/parts/43-rename-simple-kind-to-check/design.md). "Simple" describes the implementation, not the thing, and carries a faint "trivial" connotation that undersells an action with assignees, a deadline, dependencies, and downstream effects.
 
-- `manual` — misleading. `form` actions are also human-driven; the differentiator is "has input surface" vs "no input surface", not human-vs-automated.
-- `step` — undifferentiated. Every workflow action is a step.
-- `user_task` (BPMN's term) — verbose, and we already have `external` filling BPMN's "Service Task" slot.
+**New name: `check`.** It pairs against `form` — you *fill in* a form, you *check off* a check — naming the input-surface vs no-input-surface contrast the taxonomy hinges on. The single best word is *task*, deliberately spent on the adhoc concept; `check` is the strongest remaining word that names the *surface* rather than the implementation. Rejected this round: `simple` (incumbent — implementation-flavoured, faintly trivial), `job` (collides with the background-job sense), `checkbox` (implies binary; the kind has four states), `check-off` / `checkoff` (breaks the one-word `kind:` pattern), plus the Part 35 rejections (`manual`, `step`, `status`, `user_task`, `mark`) that still hold.
 
-### Files that change with the rename
+**The shared pages decouple from the kind name.** Part 43 also renames the three shared pages `simple-edit` / `simple-view` / `simple-review` → **`action-edit` / `action-view` / `action-review`** — anchoring the route on the domain noun, not the kind. Three reasons: (a) the *view* shape (header, universal fields, status history, comments) is kind-agnostic and renders any kind, so `action-view` is honest where `check-view` would not be; (b) it survives future kind renames untouched — the kind never appears in a route again; (c) form actions use the verbose generated `workflow-{type}-{action_type}-{verb}` namespace, so `action-*` is free, and the `workflows` module prefix scopes it correctly (`/workflows/action-view` = "view a workflow action"). A useful consequence for the kind choice: `check` lives purely as an internal discriminator (`kind:` data, engine branches, authoring grammar) and never reaches a URL — so its faint verify/cheque ambiguity never surfaces to users.
 
-Concept-level (designs, not shipped — small edits):
+The mechanical sweep — kind value, FSM tables, `_module.pageId` references, demo config, tests, concept terminology — is enumerated in [Part 43](../../workflows-module/parts/43-rename-simple-kind-to-check/design.md). It is sequenced **after [Part 40](../../workflows-module/parts/40-simple-action-surfaces/design.md)** (the part that rewrites these page surfaces) so it runs once against a stable tree, and must land before the first real app onboards a workflow config.
 
-- `workflows-module-concept/design.md` (worked example: `schedule-followup` → `kind: simple`, references to "task action")
-- `workflows-module-concept/action-authoring/spec.md` (taxonomy table, validation rules)
-- `workflows-module-concept/action-authoring/design.md` (decision 2, sample YAML, mutual-exclusion list)
-- `workflows-module-concept/submit-pipeline/spec.md` (resolver scope: "Emitted for `kind: form` and `kind: simple` actions")
-- `workflows-module-concept/ui/spec.md` (shared-page naming)
-- `workflows-module-concept/action-groups/spec.md` (where it references `task`)
+### Tasks-module pages reuse the detail surface as a component, not a shared page
 
-Shipped code (already in `modules/workflows/` and `plugins/`):
-
-- `modules/workflows/resolvers/makeWorkflowApis.js` — `isTask = action.kind === 'task'` → `'simple'`
-- `modules/workflows/resolvers/makeWorkflowsConfig.js` — `ACTION_KINDS` constant and validation branch
-- `modules/workflows/pages/task-edit.yaml` / `task-view.yaml` / `task-review.yaml` — file rename to `simple-*` + internal `kind: task` references → `simple`. Page IDs (`task-edit` etc.) referenced via `_module.pageId` in worked examples + YAML status_map links also flip.
-- `plugins/modules-mongodb-plugins/src/connections/shared/types.js` — `ActionKind` typedef
-- `modules/workflows/README.md` — wording
-
-Demo app (the repo's only `workflows_config` consumer — runs through the same `makeWorkflowsConfig` validator):
-
-- `apps/demo/modules/workflows/workflow_config/installation/install-step.yaml` — `kind: task` → `kind: simple`
-- `apps/demo/modules/workflows/workflow_config/onboarding/schedule-followup.yaml` — `kind: task` → `kind: simple`; two `_module.pageId: { id: task-edit, module: workflows }` link references → `simple-edit`
-
-Active follow-on parts (designs not yet implemented or amending shipped code):
-
-- `workflows-module/parts/24-universal-fields/` — `kind: form | task` comment becomes `form | simple`
-- `workflows-module/parts/28-custom-action-kind/` — references task semantics
-- `workflows-module/parts/38-engine-rebuild/` — `kind: form | simple | tracker` everywhere (this part supersedes the rejected Part 30 — `_rejected/30-status-map-rendering/` — and carries forward Part 30's display contract and link table)
-- `workflows-module/parts/34-action-access-model/` — `kind: task` in per-verb table example
-- Parts under `_completed/` that reference `kind: task` in the historical record stay as-is (history); new amendments use the new name.
-
-The rename is mechanical — no behavioural change, no migration of existing data because the workflows module hasn't shipped to production. It's purely a vocabulary swap, but it has to happen before the first real app onboards or the renames-on-shipped-customers conversation gets expensive.
-
-### Migration of the page IDs
-
-The three shared pages (`task-edit`, `task-view`, `task-review` in `modules/workflows/pages/`) become `simple-edit`, `simple-view`, `simple-review`. Action `status_map.{stage}.{slug}.link.pageId` references these via `_module.pageId: { id: task-edit, module: workflows }` — all such references in concept docs, shipped templates, and the demo app's `workflow_config/**` flip to `simple-edit`. The engine-computed link table in `parts/38-engine-rebuild/design.md` (which supersedes the rejected Part 30) updates accordingly.
+Adhoc tasks get their own view/edit pages in the future tasks module (`/tasks/view`, `/tasks/edit`), scoped separately from `/workflows/action-*`. Separate page sets is correct, not duplication: the write models genuinely differ — workflow `check` actions edit via nullary signal buttons through the engine resolver API (the FSM resolves the target status); tasks edit via direct status writes through `update-task`. The read-only detail shape, however, is identical across both streams, so the reuse is a `_ref`'d **component** (the way `action-view` renders the shipped `universal-fields` component), never a cross-module shared page. Shared collection → shared rendering, without coupling the two modules. External actions (`kind: external`) have no user-facing surface at all; if one ever needs a read view, the generic `action-view` renders it — the argument for the generic page name over a kind-specific one.
 
 ## Status enum subset for adhoc tasks
 
@@ -212,5 +181,6 @@ These belong to the tasks module's own design(s), not this one:
 
 - Parent concept: [workflows-module-concept/design.md](../design.md) — the seven-sub-design overview this plan sits next to.
 - Action authoring (current taxonomy): [action-authoring/spec.md](../action-authoring/spec.md) — the YAML grammar this plan asks to rename one kind in.
-- Submit pipeline: [submit-pipeline/spec.md](../submit-pipeline/spec.md) — references `kind: form` / `kind: task` for endpoint emission scope.
-- Implementation: [workflows-module/design.md](../../workflows-module/design.md) — the parts-based implementation plan. The rename touches active parts 24, 28, 30, 34 and shipped code in `modules/workflows/` + `plugins/modules-mongodb-plugins/`.
+- Submit pipeline: [submit-pipeline/spec.md](../submit-pipeline/spec.md) — references `kind: form` / `kind: check` for endpoint emission scope.
+- The rename part: [workflows-module/parts/43-rename-simple-kind-to-check/design.md](../../workflows-module/parts/43-rename-simple-kind-to-check/design.md) — the `simple → check` + `simple-* → action-*` mechanical sweep, sequenced after Part 40.
+- Implementation tracker: [workflows-module/implementation-plan.md](../../workflows-module/implementation-plan.md) — the parts-based delivery plan.
