@@ -111,6 +111,16 @@ $addFields:
           default: null
 ```
 
+### D6 — A timeline keyed to a reference never renders that reference's own action card
+
+[Part 33](../33-comment-rendering/design.md) adds the standard `events-timeline` component to the action view page (`simple-view.yaml`), filtered to the action (`reference_field: action_ids`, `reference_value: get_action._id`). Because this part splices the lookup fragment into `events-timeline` **unconditionally** (D2), that page's timeline would otherwise attach a live status card for the very action whose page you're on — a card whose resolved `link` points back to the current page, sitting beside the action header and the `status_history_list` Part 33 leaves in place. That self-referential card is noise.
+
+**Decision: the `events-timeline` component drops the action whose `_id` equals the timeline's own `reference_value`.** The component already carries `reference_value` as a request payload (`events-timeline.yaml:18-20`) — the id the whole timeline is keyed on. A single `$filter` stage spliced **after** the fragment removes that action from each event's `actions[]` array. The event row still renders (title + comment-as-description); only its own card is stripped, and an emptied `actions: []` renders no card (`EventsTimeline.js:357`).
+
+- **The filter lives in `events-timeline.yaml`, not the shared fragment.** The fragment is re-exported for custom pipelines (D1) that do their own `$match` and may carry no `reference_value` payload; referencing it inside the fragment would couple the generic fragment to this component's wiring. The "don't card-link to the page you're on" rule belongs in the component that owns `reference_value`.
+- **After the de-dup, not before.** The fragment has already attached each action to its latest event; one `$filter` on the output strips the self-action. Simpler than threading an exclusion through the `$lookup`/window stages.
+- **Unconditional is safe and needs no new config.** On an entity-page timeline `reference_value` is an entity id, and no `action._id` will ever equal it, so the stage is a no-op there. It only bites when the timeline is keyed on an action id — preserving D2's always-on, zero-author-config stance. (This relies on action and entity id spaces being disjoint, which they are; the rule reads as "a timeline keyed on X hides X's own action card.")
+
 ## Proposed shape
 
 ### `modules/shared/workflow/timeline_action_lookup.yaml` (new)
@@ -137,6 +147,12 @@ requests:
             vars:
               app_name:
                 _var: { key: display_key, default: { _module.var: display_key } }
+        - $addFields:                           # NEW — drop the timeline's own action card (D6)
+            actions:
+              $filter:
+                input: $actions
+                as: a
+                cond: { $ne: [$$a._id, { _payload: reference_value }] }
         - $sort: { date: -1 }                   # unchanged
         - $addFields: { title, description, info }   # unchanged
 blocks:
@@ -185,7 +201,7 @@ App developer, custom history pipeline:
 | `designs/workflows-module/parts/38-engine-rebuild/design.md` | Drop the read-side "UI applies the per-verb selection rule" prose (D14 display-surface note, D16, test strategy, Files-changed display row); engine keeps writing the per-verb `links` map (D5). **Part 38's generated tasks 7 + 18 also carried the UI-selection prose — repointed to this part's server-side resolution.** |
 | `modules/shared/enums/action_statuses.yaml` | **New (moved)** from `modules/workflows/enums/action_statuses.yaml` (D3). |
 | `modules/workflows/enums/action_statuses.yaml` | **Removed**; `modules/workflows/components/action_statuses.yaml` ref repointed to `../shared/enums/action_statuses.yaml`. |
-| `modules/events/components/events-timeline.yaml` | Splice fragment into `get-events`; pass `actionStatusConfig` as base enum ⊕ `action_statuses_display` override (D2, D3). |
+| `modules/events/components/events-timeline.yaml` | Splice fragment into `get-events`; add the `$filter` stage that drops the timeline's own `reference_value` action card (D6); pass `actionStatusConfig` as base enum ⊕ `action_statuses_display` override (D2, D3). |
 | `modules/events/module.lowdefy.yaml` | Add `action_statuses_display` var (object, default `{}`), mirroring `event_types`; doc the "point both module entries at one app file" wiring (D3). |
 | `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js` | Reconcile `EventAction` colour keys to the enum (D3). |
 | `modules/workflows/module.lowdefy.yaml` | Add `timeline-action-lookup` component export (D1). |
@@ -209,5 +225,5 @@ None. (The earlier "is the link render-ready / does it need `action_id` substitu
 
 ## Related
 
-- [Part 33 — Comment rendering on the events timeline](../33-comment-rendering/design.md) — sibling timeline-enrichment concern.
+- [Part 33 — Comment rendering on the events timeline](../33-comment-rendering/design.md) — sibling timeline-enrichment concern; it adds the standard timeline to the action view page, where D6 governs the combined surface (this part's card + Part 33's inline comment) by suppressing the action's own self-referential card.
 - [Part 18 — Entity-page components](../_completed/18-entity-components/design.md) — `actions-on-entity` (the always-on widget, distinct surface).
