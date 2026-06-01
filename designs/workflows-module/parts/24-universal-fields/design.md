@@ -169,7 +169,7 @@ Authoring-contract amendment: add `universal_fields` to the [action-authoring sp
 
 - **Empty-state** — `null` / `[]` shows a dimmed placeholder in display mode (`Not assigned`, `No due date`, `No description`); edit mode shows the empty input.
 - **Date formatting** — `due_date` via `_dayjs.format`; component accepts a `date_format` var (default `MMM D, YYYY`).
-- **Assignees** — display renders one `_ref: { module: user-account, component: user-avatar }` per assignee (picture + name); edit uses `_ref: { module: user-account, component: user-selector }` (multi-select, filtered to `apps.{app_name}.is_user: true`) bound to `_state.fields.assignees`. Both ship from [Part 24a](../24a-user-account-selector-avatar/design.md).
+- **Assignees** — display renders one `_ref: { module: user-account, component: user-avatar }` per assignee (picture + name); edit uses `_ref: { module: user-account, component: user-selector }` (multi-select, filtered to `apps.{app_name}.is_user: true`) bound to `_state.fields.assignees`. Both ship from [Part 24a](../_completed/24a-user-account-selector-avatar/design.md).
 - **Description** — edit renders a `TiptapInput` (rich text); display renders an `Html` block reading `description.html`. Stored as `{ text: string, html: string } | null`, mirroring the `comment` field. The `text` shadow stays for plain-text search / length checks. No truncation in v1.
 
 Engine spec amendment: [`engine/spec.md:132`](../../../workflows-module-concept/engine/spec.md) lists `description` as `string | null` — update to `{ text: string, html: string } | null` to match shipped behaviour (the `comment` field already carries this shape). Carry this amendment under Part 24.
@@ -237,7 +237,7 @@ These parts hold no API/plugin/resolver work for this surface — they compose t
 - **[Part 38 (engine rebuild)](../38-engine-rebuild/design.md)** — supplies the load-plan-commit + render helpers the `UpdateActionFields` handler reuses; this part adds the handler to it.
 - **[Part 5 (start/cancel handlers)](../_completed/05-start-cancel-handlers/design.md)** — the action doc shape these fields live on (seeded at `StartWorkflow`).
 - **[Part 18 (entity-components)](../18-entity-components/design.md)** — `action_role_check` populates `_state.action_allowed` gating the component's edit affordances.
-- **[Part 24a (user-account selector + avatar)](../24a-user-account-selector-avatar/design.md)** — `user-selector` + `user-avatar`.
+- **[Part 24a (user-account selector + avatar)](../_completed/24a-user-account-selector-avatar/design.md)** — `user-selector` + `user-avatar`.
 - **[Part 35 (rename `task` → `simple`)](../_completed/35-rename-task-kind-to-simple/design.md)** — the `kind: task` → `kind: simple` rename has landed, so the resolver keys on `kind: simple` and every `kind: simple` reference in this design (the component table, the simple-page consumption row) is coherent. The `form`-emission path is unaffected by the rename.
 
 Consumers (Parts 16 / 17 / 39, template-only) are enumerated under "Consumed by" above.
