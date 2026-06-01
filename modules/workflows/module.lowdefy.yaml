@@ -40,9 +40,12 @@ vars:
     type: string
     required: true
     description: >
-      The host app's deployment name. Filters action access via `access.{app_name}`
-      per action, and is consumed by the engine to key the default log event's
-      display block (matching the events module's display_key projection).
+      The host app's deployment name. Serves three roles: (1) filters action
+      access via `access.{app_name}` per action; (2) keys the engine's default
+      log event display block (matching the events module's display_key
+      projection); and (3) keys the per-app action display the engine writes
+      onto each action doc — display surfaces read `action.{app_name}.message`
+      and `action.{app_name}.links` for the current app's slug.
   user_schema:
     type: object
     default:

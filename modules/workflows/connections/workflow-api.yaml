@@ -3,6 +3,8 @@ type: WorkflowAPI
 properties:
   databaseUri:
     _secret: MONGODB_URI
+  entry_id:
+    _module.id: true
   write: true
   workflowsCollection: workflows
   actionsCollection: actions

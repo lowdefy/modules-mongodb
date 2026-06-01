@@ -1,12 +1,21 @@
 const schema = {
   type: 'object',
-  required: ['databaseUri'],
+  required: ['databaseUri', 'entry_id'],
   additionalProperties: false,
   properties: {
     databaseUri: {
       type: 'string',
       description:
         'MongoDB connection URI; typically resolved via _secret in app YAML.',
+    },
+    entry_id: {
+      type: 'string',
+      description:
+        'The workflows module entry id, wired from `_module.id: true` in ' +
+        'connections/workflow-api.yaml. The engine uses it to build ' +
+        'entry-scoped page ids (`${entry_id}/${pageId}`) when computing the ' +
+        'per-verb engine links written onto action docs, matching Lowdefy\'s ' +
+        'build-time _module.pageId scoping.',
     },
     read: {
       type: 'boolean',
@@ -36,7 +45,7 @@ const schema = {
     changeLog: {
       type: 'object',
       description:
-        'Optional changeLog config forwarded to the community-plugin MongoDBCollection handlers. Mirrors the events module pattern: `{ collection, meta }` writes every workflow + action mutation into the consumer app\'s log-changes collection automatically.',
+        'Optional changeLog config consumed natively by the engine. Same `{ collection, meta }` shape and same opt-in as the community-plugin / events-module pattern: when set, the engine writes one log-changes entry per workflow + action mutation into the consumer app\'s log-changes collection. Engine writes bypass the community plugin (they go through the native Mongo driver), so the engine populates each entry\'s before/after from the Plan rather than via the plugin\'s per-op double-reads. When unset, no audit entries are written.',
     },
     workflowsConfig: {
       type: 'array',
@@ -80,8 +89,9 @@ const schema = {
       description:
         'Action status enum keyed by status name (e.g. "done", "blocked"). ' +
         'Typically loaded from enums/action_statuses.yaml. ' +
-        'Each entry MUST carry priority (load-bearing — the engine compares priorities ' +
-        'in the priority-rule check in SubmitWorkflowAction). ' +
+        'Each entry MUST carry priority — display-only (ordering in pickers / ' +
+        'visualizations); the engine no longer consults it for transition ' +
+        'legality (transitions are resolved by the per-kind FSM tables). ' +
         'Display fields (title, color, borderColor, titleColor) are optional in the schema ' +
         'but present on every shipped status; apps providing their own actionsEnum ' +
         'should populate them too for consistent UI rendering.',
