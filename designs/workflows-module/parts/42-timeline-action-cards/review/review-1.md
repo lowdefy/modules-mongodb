@@ -73,6 +73,8 @@ The fragment de-dups by partitioning on the action and sorting by `created.times
 
 ### 7. `blocked` is filtered twice
 
+> **Accepted.** The redundancy is intentional and harmless. The fragment's inner-pipeline filter is the real gate for the timeline; the block's `status === "blocked"` early-return stays as defense-in-depth, since the shipped block shouldn't assume every consumer pre-filters. No design change.
+
 The fragment filters blocked actions in the `$lookup` inner pipeline (§ Proposed shape step 1, "blocked actions filtered"), and `EventAction` also early-returns on `action.status === "blocked"` ([EventsTimeline.js:362-363](../../../../plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js)). Harmless redundancy, but note that with data-layer filtering the block's blocked guard becomes dead code for this consumer, and the enum's `blocked` entry (priority 7) exists only for the workflow pages. No action needed beyond awareness.
 
 ### 8. Open Question 1 — resolve it in the design
