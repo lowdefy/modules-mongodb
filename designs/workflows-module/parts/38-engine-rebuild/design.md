@@ -543,7 +543,7 @@ The Mongo driver layer. Engine-internal write paths only.
 - `insertOneDoc.js` — wraps native `insertOne`.
 - `insertManyDocs.js` — wraps native `insertMany`.
 - `findDocs.js` — wraps native `find().toArray()`.
-- `getMongoDb.js` — extracts the raw `Db` reference from the plugin context.
+- `getMongoDb.js` — constructs and owns the engine's own `MongoClient` from the connection's `databaseUri`, caches it at module scope keyed by `databaseUri`, and exposes both `context.mongoDb` (the `Db`, for the helpers above) and `context.mongoClient` (for `startSession`, D11). The community plugin exposes no client/`Db` and creates a fresh one per request, so there is nothing to extract or reuse (D8).
 - `*.test.js` for each — small unit tests against an in-memory or test Mongo.
 
 ### New — `plugins/modules-mongodb-plugins/src/connections/shared/phases/`
