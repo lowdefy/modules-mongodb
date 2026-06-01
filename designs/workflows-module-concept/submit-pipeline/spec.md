@@ -55,7 +55,7 @@ routine:
       form: { _payload: form }
       form_review: { _payload: form_review }
       fields: { _payload: fields }
-      comment: { _payload: comment }             # user-supplied comment; handler maps to event.metadata.comment
+      comment: { _payload: comment }             # user-supplied comment; handler folds into display.{app_name}.description (Part 33)
       hooks:                                     # build-time literal map keyed by signal (only button-surfaced signals carry hooks)
         submit: { pre: <api-id-or-null>, post: <api-id-or-null> }
         progress: { pre, post }
@@ -268,6 +268,9 @@ The audit entry records the signal the user **fired** and the `status_after` it 
 1. Engine defaults (above).
 2. Action YAML `event.{signal}.{type|display|metadata}` — resolver bakes the whole `event:` block into the endpoint payload's keyed `event_overrides` map; handler resolves `event_overrides[signal]` once on entry.
 3. Pre-hook return `event_overrides` — unkeyed runtime bag, merges on top of (2).
+4. Runtime `comment` — folded **last** into `display.{app_name}.description` (the submitting app), winning the description slot over any static/author/pre-hook description. See [Part 33 — comment rendering](../../workflows-module/parts/33-comment-rendering/design.md).
+
+**Multi-app display.** `display` is app-keyed (`display.{app}.{title,description,info}`) so a single event renders differently per app — a team app shows an exact, user-named title; a customer portal shows a generic one — and an event surfaces in an app's timeline only when `display.{that-app}` exists. Authors write per-app overrides under `event.{signal}.display.{app}.{title,description}` as **plain Nunjucks template strings rendered by the engine** at plan time (the same model as the engine-default title; not `_nunjucks` operators, not read-time templating — per [Part 38](../../workflows-module/parts/38-engine-rebuild/design.md)). The `display` merge therefore **deep-merges under the app key** (`display → {app} → {title,description}`) so the engine title, an author override, and the comment coexist within one app bucket instead of clobbering.
 
 Action YAML shape:
 
@@ -275,7 +278,11 @@ Action YAML shape:
 event:
   submit:
     type: lead-qualified
-    display: { ... }
+    display:
+      team-app:
+        title: "{{ user.profile.name }} qualified {{ action_type }}"
+      customer-portal:
+        title: "Your application was reviewed"
     metadata: { ... }
   approve:
     type: lead-approved
@@ -317,7 +324,7 @@ The button block (template-shipped) calls the per-action API with a fixed payloa
             form: { _state: form }
             form_review: { _state: form_review }
             fields: { _state: fields }
-            comment: { _state: comment } # optional; handler maps to event.metadata.comment
+            comment: { _state: comment } # optional; handler folds into display.{app_name}.description (Part 33)
 ```
 
 The page never builds this manually — the template ships the button and the wiring.
