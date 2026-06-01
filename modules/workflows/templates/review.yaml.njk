@@ -160,7 +160,7 @@ _ref:
                                 - _state: action.status.0.stage
                                 - in-review
                             - _eq:
-                                - _state: action_allowed
+                                - _state: action_allowed.review
                                 - true
                         blocks:
                           _build.array.concat:
@@ -230,7 +230,7 @@ _ref:
                             key: page_config.buttons.request_changes.visible
                             default: true
                         - _eq:
-                            - _state: action_allowed
+                            - _state: action_allowed.review
                             - true
                     properties:
                       title: Request Changes
@@ -256,7 +256,7 @@ _ref:
                             key: page_config.buttons.approve.visible
                             default: true
                         - _eq:
-                            - _state: action_allowed
+                            - _state: action_allowed.review
                             - true
                     properties:
                       title: Approve

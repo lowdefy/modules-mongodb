@@ -1,29 +1,44 @@
+# Client-side per-verb role gate (Part 34 D8 / Part 38 task 8). Composed into a
+# page's onMount; writes `_state.action_allowed: { view, edit, review, error }`.
+# Page templates read the verb-specific bool (e.g. `_state: action_allowed.edit`)
+# to decide which controls to show. Defence in depth only — the server-side
+# query/submit-time checks are the authoritative gate.
+#
+# Each verb's bool evaluates the action's `access.{current_app}.{verb}` gate
+# against `_user.apps.{current_app}.roles` with the same `(gate, roles) → bool`
+# semantics as the query-time (visible_verbs_filter.yaml) and submit-time
+# runtimes. The `_js` body mirrors `evaluateVerbGate.js` (the oracle-tested
+# helper) — Lowdefy `_js` can't import, so the logic is inlined here.
 id: set_roles_flag
 type: SetState
 params:
   action_allowed:
-    _or:
-      - _eq:
-          - _array.length:
-              _var:
-                key: action_config.access.roles
-                default: []
-          - 0
-      - _if_none:
-          - _mql.expr:
-              on:
-                user_roles:
-                  _user:
-                    _module.var: user_schema.roles_path
-                action_roles:
-                  _var:
-                    key: action_config.access.roles
-                    default: []
-              expr:
-                $gt:
-                  - $size:
-                      $setIntersection:
-                        - $user_roles
-                        - $action_roles
-                  - 0
-          - false
+    _js:
+      args:
+        access:
+          _var:
+            key: action_config.access
+            default: {}
+        appName:
+          _module.var: app_name
+        userRoles:
+          _user:
+            _string.concat:
+              - 'apps.'
+              - _module.var: app_name
+              - '.roles'
+      fn: |
+        const { access, appName, userRoles } = args;
+        const appAccess = (access && access[appName]) || {};
+        const roles = Array.isArray(userRoles) ? userRoles : [];
+        const gate = (g) => {
+          if (g === true) return true;
+          if (Array.isArray(g)) return g.some((r) => roles.includes(r));
+          return false;
+        };
+        return {
+          view: gate(appAccess.view),
+          edit: gate(appAccess.edit),
+          review: gate(appAccess.review),
+          error: gate(appAccess.error),
+        };
