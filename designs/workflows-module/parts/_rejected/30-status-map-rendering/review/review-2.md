@@ -14,9 +14,9 @@ The design's "Current state → Display layer" section ([design.md:326-329](../d
 
 Only the third is accurate.
 
-- [`components/actions-on-entity.yaml:66-99`](../../../../../modules/workflows/components/actions-on-entity.yaml) renders an `ActionSteps` block with `items: _state: entity_workflows.$.actions`. The component never references `status_map`. The `ActionSteps` block plugin ([`ActionSteps.js:171-180`](../../../../../plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js)) reads top-level `action.link.pageId` / `action.message` off each item — exactly the target shape this part wants.
-- [`pages/workflow-overview.yaml:147-168`](../../../../../modules/workflows/pages/workflow-overview.yaml) already reads `_state: actions_list.$.message` and `_state: actions_list.$.link` directly off the per-action row. Lines 158/177/196 cited by the design are unrelated chrome (`actions_list.$.link` visibility check, then form-data viewability tests).
-- The three read APIs ([`get-entity-workflows.yaml:62-71`](../../../../../modules/workflows/api/get-entity-workflows.yaml), [`get-workflow-overview.yaml:40-49`](../../../../../modules/workflows/api/get-workflow-overview.yaml), [`get-action-group-overview.yaml:48-57`](../../../../../modules/workflows/api/get-action-group-overview.yaml)) already project `message`/`link` from `$<app_name>.message` / `$<app_name>.link` in the `$lookup` pipeline. Surfaces read those projected fields, not `status_map`.
+- [`components/actions-on-entity.yaml:66-99`](../../../../../../modules/workflows/components/actions-on-entity.yaml) renders an `ActionSteps` block with `items: _state: entity_workflows.$.actions`. The component never references `status_map`. The `ActionSteps` block plugin ([`ActionSteps.js:171-180`](../../../../../../plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js)) reads top-level `action.link.pageId` / `action.message` off each item — exactly the target shape this part wants.
+- [`pages/workflow-overview.yaml:147-168`](../../../../../../modules/workflows/pages/workflow-overview.yaml) already reads `_state: actions_list.$.message` and `_state: actions_list.$.link` directly off the per-action row. Lines 158/177/196 cited by the design are unrelated chrome (`actions_list.$.link` visibility check, then form-data viewability tests).
+- The three read APIs ([`get-entity-workflows.yaml:62-71`](../../../../../../modules/workflows/api/get-entity-workflows.yaml), [`get-workflow-overview.yaml:40-49`](../../../../../../modules/workflows/api/get-workflow-overview.yaml), [`get-action-group-overview.yaml:48-57`](../../../../../../modules/workflows/api/get-action-group-overview.yaml)) already project `message`/`link` from `$<app_name>.message` / `$<app_name>.link` in the `$lookup` pipeline. Surfaces read those projected fields, not `status_map`.
 
 What's actually broken today: those aggregations dot-into a top-level `${appName}` subdoc on the action that the engine never writes — so every projected `message`/`link` resolves to `undefined` and surfaces render blank. The fix is the same (engine writes the cell), but the proposed-change item 8 framing is wrong: only `group-overview.yaml` needs the page-side switch from `status_map[stage][appName]` to `[appName]`. The other two are already in the target shape; they just need the engine to start producing the data the aggregation already projects.
 
@@ -35,7 +35,7 @@ D11 ([design.md:190-228](../design.md)) and the "New files" entry specify `compu
 
 Neither works with the proposed signature:
 
-- Form page IDs are `${workflow.type}-${action.type}-${verb}` ([`makeActionPages.js:48`](../../../../../modules/workflows/resolvers/makeActionPages.js)). To produce them, `computeEngineLinks` needs `workflow.type` — not on `actionConfig`. Either pass the workflow doc, or extend `actionConfig` upstream to include the workflow type.
+- Form page IDs are `${workflow.type}-${action.type}-${verb}` ([`makeActionPages.js:48`](../../../../../../modules/workflows/resolvers/makeActionPages.js)). To produce them, `computeEngineLinks` needs `workflow.type` — not on `actionConfig`. Either pass the workflow doc, or extend `actionConfig` upstream to include the workflow type.
 - Tracker link target requires `child_workflow_id`, which lives on the action doc, not the config. And on `StartWorkflow.js:117-128` the same call that sets `child_workflow_id` is also the one that pushes `in-progress` — so the link must be computed against `{ ...actionDocBeforeWrite, ...fields }`, not the raw pre-write doc. Otherwise the tracker's `in-progress` cell gets a link with `child_workflow_id: null`.
 
 **Fix:**
@@ -52,7 +52,7 @@ Neither works with the proposed signature:
 
 > **Resolved.** Dropped the top-level `metadata` alias from the event-display render context. Templates reach action metadata via `action.metadata.*` (the action doc carries the merged metadata post-write — events fire after the write). Updated: proposed-change item 9 list, D14's render-context table, the D14 "convenience" paragraph (replaced with an explicit "no top-level `metadata` binding" note explaining the collision), the `renderEventDisplay.js` "New files" entry inputs/list, and `dispatchLogEvent.js` "Modified" entry. The `renderEventDisplay.test.js` `action.metadata.*` assertion stays — that's the surviving path. Note this collision applies only to event display (D14); action-display context (D10) spreads metadata flat for short references on cell templates and isn't affected.
 
-D14's render context binds `metadata` to the action's accumulated metadata ([design.md:269](../design.md)). The existing engine event payload also has a `metadata` field — [`dispatchLogEvent.js:58-65`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js) builds it with `action_type, workflow_type, interaction, current_key, status_before, status_after, comment`. That object lands on the event doc as `metadata: { ... }`.
+D14's render context binds `metadata` to the action's accumulated metadata ([design.md:269](../design.md)). The existing engine event payload also has a `metadata` field — [`dispatchLogEvent.js:58-65`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js) builds it with `action_type, workflow_type, interaction, current_key, status_before, status_after, comment`. That object lands on the event doc as `metadata: { ... }`.
 
 So `{{ metadata.X }}` in an event-display template is ambiguous: is `X` an action-metadata key (e.g. `physical_id`) or an event-metadata key (e.g. `status_before`)? The design picks the action-metadata reading, but every existing template ergonomics around `dispatchLogEvent` (built-in + tests + four-layer merge) treats `metadata` as the event-payload field.
 
@@ -65,7 +65,7 @@ So `{{ metadata.X }}` in an event-display template is ambiguous: is `X` an actio
 
 > **Resolved.** "Files changed → Engine event-default templates" now spells out the rename (`{{ action_type }}` → `{{ action.type }}`), gives the new default title verbatim (`"{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"`), and calls out the two `dispatchLogEvent.test.js` expectations that need to be updated alongside the template change.
 
-[`dispatchLogEvent.js:3-4`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js):
+[`dispatchLogEvent.js:3-4`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js):
 
 ```js
 const DEFAULT_TITLE_TEMPLATE =
@@ -74,7 +74,7 @@ const DEFAULT_TITLE_TEMPLATE =
 
 The new render context (D14, [design.md:262-272](../design.md)) binds `user`, `action`, `workflow`, `interaction`, `metadata`, `status_before`, `status_after` — but **not** `action_type`. The "Files changed → engine event-default templates source" bullet says "change to plain Nunjucks template strings, matching `event_display`", but doesn't enumerate the binding renames. After the switch, the existing default would render `marked  as done` (empty `action_type`).
 
-**Fix:** rewrite the default explicitly in the design — e.g. `"{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"`. Also list the two existing test expectations that need updating ([`dispatchLogEvent.test.js`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.test.js)) so the implementer doesn't discover the rename via failing tests with no clear "correct" replacement.
+**Fix:** rewrite the default explicitly in the design — e.g. `"{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"`. Also list the two existing test expectations that need updating ([`dispatchLogEvent.test.js`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.test.js)) so the implementer doesn't discover the rename via failing tests with no clear "correct" replacement.
 
 ### 5. `renderTree` walker has no home in "New files"
 
@@ -92,7 +92,7 @@ Per the "One correct way" principle, the walker should live in one place — lik
 
 > **Resolved.** D11's "Engine-link merge rule" paragraph spells out that all three call sites compute `mergedActionDoc = { ...actionDocBeforeWrite, ...callerFields }` and pass it into both `renderStatusMap` and `computeEngineLinks`. The `updateAction` bullet under D11 explicitly notes the `StartWorkflow.js:117-128` parent-tracker path: the same `updateAction` call that sets `child_workflow_id` now produces an `in-progress` tracker link that references it. The `computeEngineLinks.test.js` plan asserts this case.
 
-[`StartWorkflow.js:117-128`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js) calls `updateAction({ actionId: parent_action_id, newStage: 'in-progress', fields: { child_workflow_id, child_entity_id, child_entity_collection } })` to advance the parent tracker. With render moved inside `updateAction`, this path inherits — but per finding #2, tracker link computation needs `child_workflow_id`, which is being set by this very call.
+[`StartWorkflow.js:117-128`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js) calls `updateAction({ actionId: parent_action_id, newStage: 'in-progress', fields: { child_workflow_id, child_entity_id, child_entity_collection } })` to advance the parent tracker. With render moved inside `updateAction`, this path inherits — but per finding #2, tracker link computation needs `child_workflow_id`, which is being set by this very call.
 
 The design's D11 pipeline puts `...fields` (caller-supplied $set) and `...engineLinks` into the same `$set`. If `engineLinks` is computed pre-pipeline using `actionDocBeforeWrite` only, the parent's `in-progress` cell gets `link: { workflow_id: null }` because the fetched doc still has `child_workflow_id: null`.
 
@@ -102,7 +102,7 @@ The design's D11 pipeline puts `...fields` (caller-supplied $set) and `...engine
 
 > **Resolved.** Added a Cancel/Close ordering paragraph at the end of D11: post-sweep summary recompute runs after `bulkWrite` completes, preserving today's read-after-write structure. The switch to `bulkWrite` is mechanical and doesn't alter the two-write shape.
 
-The design's D11 ([design.md:186-228](../design.md)) replaces the cascade's `MongoDBUpdateMany` with `bulkWrite`. [`CancelWorkflow.js:98-129`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js) then does a `MongoDBFind` over all actions to recompute the workflow summary and groups. CloseWorkflow has the same shape. The design doesn't say whether the post-sweep summary read happens before or after the bulkWrite — it must be after (the swept actions need to land on disk first), but the existing two-write structure is preserved either way.
+The design's D11 ([design.md:186-228](../design.md)) replaces the cascade's `MongoDBUpdateMany` with `bulkWrite`. [`CancelWorkflow.js:98-129`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js) then does a `MongoDBFind` over all actions to recompute the workflow summary and groups. CloseWorkflow has the same shape. The design doesn't say whether the post-sweep summary read happens before or after the bulkWrite — it must be after (the swept actions need to land on disk first), but the existing two-write structure is preserved either way.
 
 **Fix:** add a one-liner under D11 confirming the post-sweep summary read runs after `bulkWrite` completes (no structural change from today — just confirming the bulkWrite preserves the read-after-write invariant).
 
@@ -110,7 +110,7 @@ The design's D11 ([design.md:186-228](../design.md)) replaces the cascade's `Mon
 
 > **Resolved.** Extended the `createAction.js` "Modified" bullet to spell out the ordering: assign `draft._id = randomUUID()` first (today's behaviour at line 31), then call `renderStatusMap` with `actionId = draft._id` so sentinel substitution can swap `{ action_id: true }` against the just-assigned id.
 
-For `kind: custom`, sentinel substitution swaps `{ action_id: true }` → UUID ([design.md:91-96](../design.md), D5). [`createAction.js:31`](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/createAction.js) generates `_id = randomUUID()` inline. The "Modified" bullet for `createAction.js` doesn't specify the order: substitute against `draft._id` before the doc is returned.
+For `kind: custom`, sentinel substitution swaps `{ action_id: true }` → UUID ([design.md:91-96](../design.md), D5). [`createAction.js:31`](../../../../../../plugins/modules-mongodb-plugins/src/connections/shared/createAction.js) generates `_id = randomUUID()` inline. The "Modified" bullet for `createAction.js` doesn't specify the order: substitute against `draft._id` before the doc is returned.
 
 **Fix:** add to the `createAction.js` "Modified" bullet: "sentinel substitution runs after `_id` is assigned on the draft; pass `draft._id` into the renderer."
 
@@ -118,7 +118,7 @@ For `kind: custom`, sentinel substitution swaps `{ action_id: true }` → UUID (
 
 > **Resolved.** Renamed the action-cell override payload field from `display` to `action_display`. The new name pairs naturally with `action.metadata`, clearly signals "the action's per-app cell" (not the event doc's display block), and keeps the established `event_overrides.{interaction}.display.{app}` channel — used across modules and tests — untouched. Updated: D8 code example + mechanics paragraph (plus an explicit disambiguation note on the field names), the data-flow diagram step, the `renderStatusMap.js` "New files" entry signature (`payloadDisplay` → `actionDisplay`), the `start-workflow.yaml` / `makeWorkflowApis.js` / `README.md` "Modified" bullets, and the override-path test in the Demo + tests section.
 
-D8 introduces caller-supplied `payload.display` ([design.md:136-149](../design.md)) for per-call cell override. The submit pipeline already has `params.event_overrides.{interaction}.display.{app}` (Part 9's four-layer merge — see [`dispatchLogEvent.test.js:174`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.test.js) and `mergeEventOverrides`). Two completely different "display" payloads with the same name on the same endpoint:
+D8 introduces caller-supplied `payload.display` ([design.md:136-149](../design.md)) for per-call cell override. The submit pipeline already has `params.event_overrides.{interaction}.display.{app}` (Part 9's four-layer merge — see [`dispatchLogEvent.test.js:174`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.test.js) and `mergeEventOverrides`). Two completely different "display" payloads with the same name on the same endpoint:
 
 - `payload.display.{slug}` — action-cell override, written to action doc top-level.
 - `params.event_overrides.{interaction}.display.{slug}.title` — event-payload override, written to event doc.
@@ -133,7 +133,7 @@ A caller passing `display: { demo: { message: 'X' } }` at the top level of Submi
 
 > **Resolved.** D4's blanket "`urlQuery` is always `{ action_id }`" claim is gone. Replaced with a per-kind table: task/form use `{ action_id: action_doc._id }`, tracker uses `{ workflow_id: action_doc.child_workflow_id }` (with `link: null` when `child_workflow_id` is null). A note explicitly says "URL carries identity, page fetches the rest server-side" so the underlying principle — minimal URL surface — is still spelled out, just not as a false universal.
 
-[design.md:87](../design.md) — "`urlQuery` is always `{ action_id }`." For `kind: tracker`, the link targets the child workflow's overview page, which is keyed by `workflow_id`, not `action_id` (see [`actions-on-entity.yaml:64-65`](../../../../../modules/workflows/components/actions-on-entity.yaml) for the existing convention). Tied to finding #2 — fix together.
+[design.md:87](../design.md) — "`urlQuery` is always `{ action_id }`." For `kind: tracker`, the link targets the child workflow's overview page, which is keyed by `workflow_id`, not `action_id` (see [`actions-on-entity.yaml:64-65`](../../../../../../modules/workflows/components/actions-on-entity.yaml) for the existing convention). Tied to finding #2 — fix together.
 
 ### 11. Worked example's `'Awaiting installation of {{ form_data.physical_id }}'` template never resolves on Start
 

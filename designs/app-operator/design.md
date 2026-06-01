@@ -224,4 +224,4 @@ Requirements for the Lowdefy team are drafted in [lowdefy-requirements.md](./low
 
 - Operator reference: [`lowdefy/packages/docs/operators/_app.yaml`](../../../lowdefy/packages/docs/operators/_app.yaml).
 - Existing idiom: [docs/idioms.md §App name](../../docs/idioms.md#app-name).
-- Forward note that motivated this design: [designs/workflows-module/parts/30-status-map-rendering/design.md line 144](../workflows-module/parts/30-status-map-rendering/design.md).
+- Forward note that motivated this design: [designs/workflows-module/parts/30-status-map-rendering/design.md line 144](../workflows-module/parts/_rejected/30-status-map-rendering/design.md).

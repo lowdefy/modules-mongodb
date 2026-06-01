@@ -27,7 +27,7 @@ Part 39 owns the four **generated** form `.yaml.njk` templates; this part owns t
 
 ## Surfaces, the engine link, and where the modal fits
 
-Every surface that renders an action reads the **engine-written per-verb link map `action[app_name].links`** ([Part 34 D7/D9](../34-action-access-model/design.md), amending [Part 30 D4](../30-status-map-rendering/design.md): the engine writes `action[app_name].links = { view, edit, review, error }` — one `{ pageId, urlQuery }` per verb, `null` where the stage has no page for that verb — on every transition, and "display is dumb"). The display picks the user-appropriate link at render time via the static priority `edit > review > error > view` against the user's `visible_verbs` ([Part 34 D7](../34-action-access-model/design.md) selection rule). The page is therefore the **canonical, addressable target** and ships regardless — a notification can only deep-link to a module-owned page (the engine never learns the host app's entity-page URL), so it always navigates.
+Every surface that renders an action reads the **engine-written per-verb link map `action[app_name].links`** ([Part 34 D7/D9](../34-action-access-model/design.md), amending [Part 30 D4](../_rejected/30-status-map-rendering/design.md): the engine writes `action[app_name].links = { view, edit, review, error }` — one `{ pageId, urlQuery }` per verb, `null` where the stage has no page for that verb — on every transition, and "display is dumb"). The display picks the user-appropriate link at render time via the static priority `edit > review > error > view` against the user's `visible_verbs` ([Part 34 D7](../34-action-access-model/design.md) selection rule). The page is therefore the **canonical, addressable target** and ships regardless — a notification can only deep-link to a module-owned page (the engine never learns the host app's entity-page URL), so it always navigates.
 
 The modal is an **in-app shortcut layered on the live working surfaces**, never a replacement for the page:
 
@@ -124,7 +124,7 @@ A simple action reaches `error` only via a pre-hook `error` cascade ([state-mach
 Rationale:
 
 - A fourth static page for a rare cascade is heavier than the case warrants, and `simple-view` already loads the full action — it's the natural recovery context.
-- The engine's `linkDefaults` for `kind: simple` **already** routes the `error` stage to `simple-view` ([Part 30 D4 table](../30-status-map-rendering/design.md): `error` → `task-view`, renamed `simple-view` by Part 35). **No Part 30 change is needed** — the button lands exactly where the engine already points.
+- The engine's `linkDefaults` for `kind: simple` **already** routes the `error` stage to `simple-view` ([Part 30 D4 table](../_rejected/30-status-map-rendering/design.md): `error` → `task-view`, renamed `simple-view` by Part 35). **No Part 30 change is needed** — the button lands exactly where the engine already points.
 - Visibility falls out of D2's map (`resolve_error` source = `[error]`).
 
 `resolve_error` reuses the comment field (recovery note) and fires the standard payload. There is **no `simple-error` page** in v1.
@@ -242,6 +242,6 @@ Add a Part 40 row to [`designs/workflows-module/design.md`](../../design.md) fol
 - [state-machine](../../../workflows-module-concept/state-machine/design.md) — signal inventory, FSM tables, "Simple kind" (identical to form), "Default v1 button bars".
 - [Part 38 — Engine rebuild](../38-engine-rebuild/design.md) — the `signal` contract; user-driven unlisted signals throw (D2 rationale).
 - [Part 34 — Action access model](../34-action-access-model/design.md) — the per-verb access model this part builds on: `visible_verbs` / per-verb `action_allowed` (D8) gate the mixed-verb surface, and `action.links.{verb}` (D7/D9) drive navigation.
-- [Part 30 — Status-map rendering](../30-status-map-rendering/design.md) — the engine-written link consumed by every display surface (single `link` per D4, superseded by Part 34 D7's per-verb `links`); makes the page the canonical target.
+- [Part 30 — Status-map rendering](../_rejected/30-status-map-rendering/design.md) — the engine-written link consumed by every display surface (single `link` per D4, superseded by Part 34 D7's per-verb `links`); makes the page the canonical target.
 - [Part 35](../35-rename-task-kind-to-simple/design.md), [Part 24](../24-universal-fields/design.md) — upstream renames + the real universal-fields renderer.
 - [ui](../../../workflows-module-concept/ui/design.md) Decisions 3 + 7, Open Question 4 — the simple-action UX this part implements and resolves.
