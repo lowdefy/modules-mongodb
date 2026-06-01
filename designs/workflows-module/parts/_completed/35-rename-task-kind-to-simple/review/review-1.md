@@ -8,11 +8,11 @@ The design is mechanically correct in intent but the file list and sequencing no
 
 > **Resolved.** Verified: `handleSubmit.js` contains no `kind`/`task` references; the `actionConfig.kind === "task"` check is at `resolveTargetStatus.js:54`. Updated the Files-changed note and Open question 1 to point at `resolveTargetStatus.js`, and added a parenthetical flagging the same mis-naming in Part 28's design for its next review.
 
-Section "Files changed — shipped code and templates" (note after the table, line 48) and Open question 1 both describe Part 28 as amending `handleSubmit.js` (`kind === "task" → "task" || "custom"`). Part 28's own design.md repeats the claim at [line 66](../../28-custom-action-kind/design.md) and [line 179](../../28-custom-action-kind/design.md) (`handleSubmit.js:32`).
+Section "Files changed — shipped code and templates" (note after the table, line 48) and Open question 1 both describe Part 28 as amending `handleSubmit.js` (`kind === "task" → "task" || "custom"`). Part 28's own design.md repeats the claim at [line 66](../../../28-custom-action-kind/design.md) and [line 179](../../../28-custom-action-kind/design.md) (`handleSubmit.js:32`).
 
 The shipped `handleSubmit.js` contains **no** reference to `kind` or `"task"` — `grep -n "kind\|task" plugins/.../SubmitWorkflowAction/handleSubmit.js` is empty. The site that actually has `actionConfig.kind === "task"` is:
 
-- [`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/resolveTargetStatus.js:54`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/resolveTargetStatus.js)
+- [`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/resolveTargetStatus.js:54`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/resolveTargetStatus.js)
 
 This part's table already lists `resolveTargetStatus.js` correctly for the rename. The sequencing prose just has the file name wrong. Fix: in the Part 28 note and Open question 1, change every "handleSubmit.js" mention to `resolveTargetStatus.js`. Part 28's design will need the same correction — flag it for that part's next review rather than fixing it here (review files in this part should not edit Part 28's design).
 
@@ -48,8 +48,8 @@ The "Files changed — active follow-on parts" table lists six Part 30 task file
 - `06-extend-api-contract-metadata-action-display.md` ✓
 - `08-wire-updateAction.md` ✓
 - `11-resolver-cell-shape-validation.md` ✓
-- `04-add-renderStatusMap.md` — one hit ([line 55](../../_rejected/30-status-map-rendering/tasks/04-add-renderStatusMap.md)) but it says "a `{ action_id: true }` in a `task` cell would not be swapped" — uses the word `task` as a built-in-kind label in prose; flipping it to `simple` is the right swap, so keep it in the list.
-- `10-strip-link-from-demo-configs.md` — four hits ([lines 5, 9, 28, 41](../../_rejected/30-status-map-rendering/tasks/10-strip-link-from-demo-configs.md)); three are `(task, form, tracker)` enumerations and one is `track-step-*.yaml`. The `task` mentions in the kind enumerations should flip; the `track-step-*` filename is unrelated.
+- `04-add-renderStatusMap.md` — one hit ([line 55](../../../_rejected/30-status-map-rendering/tasks/04-add-renderStatusMap.md)) but it says "a `{ action_id: true }` in a `task` cell would not be swapped" — uses the word `task` as a built-in-kind label in prose; flipping it to `simple` is the right swap, so keep it in the list.
+- `10-strip-link-from-demo-configs.md` — four hits ([lines 5, 9, 28, 41](../../../_rejected/30-status-map-rendering/tasks/10-strip-link-from-demo-configs.md)); three are `(task, form, tracker)` enumerations and one is `track-step-*.yaml`. The `task` mentions in the kind enumerations should flip; the `track-step-*` filename is unrelated.
 
 Net: the list is correct, but the implementer should be told what they're looking for in `04` and `10` is `task` as a kind name in prose, not `kind: task` literally — otherwise they may miss it on a literal-string sweep.
 

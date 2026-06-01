@@ -2,7 +2,7 @@
 
 ## Summary
 
-Checked Part 35 (`rename-task-kind-to-simple`) for internal drift and cross-design consistency against the two designs the reviewer named — [Part 38 (engine-rebuild)](../../38-engine-rebuild/design.md) and [state-machine](../../../../workflows-module-concept/state-machine/design.md). Part 35 is internally consistent (review-1 fully resolved and propagated). One substantive cross-design inconsistency was found — Part 35's largest rename target (Part 30) is marked for rejection by Part 38 — and resolved by user decision (drop Part 30 from scope). Five files were edited.
+Checked Part 35 (`rename-task-kind-to-simple`) for internal drift and cross-design consistency against the two designs the reviewer named — [Part 38 (engine-rebuild)](../../../38-engine-rebuild/design.md) and [state-machine](../../../../../workflows-module-concept/state-machine/design.md). Part 35 is internally consistent (review-1 fully resolved and propagated). One substantive cross-design inconsistency was found — Part 35's largest rename target (Part 30) is marked for rejection by Part 38 — and resolved by user decision (drop Part 30 from scope). Five files were edited.
 
 ## Files Reviewed
 
