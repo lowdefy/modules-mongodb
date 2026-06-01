@@ -2,7 +2,7 @@
 
 ## Context
 
-Part 34 D12 replaces the binary `access_filter.yaml` (which dropped actions a user couldn't see) with a per-verb `visible_verbs` projection: each returned action carries a four-key `visible_verbs: { view, edit, review, error }` bag computed against the user's roles, and actions with no true verb drop out. The UI then applies the static priority `edit > review > error > view` on read.
+Part 34 D12 replaces the binary `access_filter.yaml` (which dropped actions a user couldn't see) with a per-verb `visible_verbs` projection: each returned action carries a four-key `visible_verbs: { view, edit, review, error }` bag computed against the user's roles, and actions with no true verb drop out. (Collapsing the per-verb `links` map to the single link a surface renders is a separate server-side concern owned by Part 42 D5's `resolve_action_link.yaml` stage, not the UI.)
 
 This is a **read-path aggregation**, fully independent of the load-plan-commit write path (per D16). It must agree with the shared role-gate oracle (task 5).
 
@@ -24,7 +24,7 @@ Use the concrete pipeline from Part 34 D12 as the reference.
 - `modules/workflows/api/get-workflow-overview.yaml`
 - `modules/workflows/api/get-action-group-overview.yaml`
 
-Their existing `message` / `links` projections light up automatically once the engine writes the top-level per-app fields (no change needed to those projections here).
+Their existing `message` projection lights up automatically once the engine writes the top-level per-app fields (no change needed here). Their singular `link: $<app_name>.link` projection, however, references a field Part 38 deletes (replaced by the per-verb `.links` map) — replacing it with the server-side `resolve_action_link.yaml` pick is owned by [Part 42 D5](../../42-timeline-action-cards/design.md), not this task.
 
 **Add a test** that runs the shared `gates.fixtures.js` (task 5) through this aggregation via `mongodb-memory-server` `$match`, asserting the gate semantics match the oracle.
 
@@ -46,5 +46,5 @@ Their existing `message` / `links` projections light up automatically once the e
 
 ## Notes
 
-- The `message` / `links` projections in the get-\* APIs read `actions_list.$.{app_name}.message` / `.links`; the UI applies the per-verb selection rule. The renamed `workflow-group-overview` page is handled in task 18.
+- The `message` / `links` projections in the get-\* APIs read `actions_list.$.{app_name}.message` / `.links` (the per-verb map); the single rendered link is resolved server-side by the shared `resolve_action_link.yaml` stage (Part 42 D5), not in the UI. The renamed `workflow-group-overview` page is handled in task 18.
 - Follow the snake_case request-id and kebab-case API-id conventions already in these files.

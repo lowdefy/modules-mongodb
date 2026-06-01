@@ -8,7 +8,7 @@ Part 34 D10 reserves the `workflow-*` glob space for the module's **fixed** page
 
 **Rename fixed module pages** (page `id` gains `workflow-` prefix):
 
-- `modules/workflows/pages/group-overview.yaml` → `workflow-group-overview.yaml` (id `group-overview` → `workflow-group-overview`). Switch it to read `actions_list.$.message` / `.links` (the UI applies the per-verb selection rule `edit > review > error > view`).
+- `modules/workflows/pages/group-overview.yaml` → `workflow-group-overview.yaml` (id `group-overview` → `workflow-group-overview`). Switch it to read `actions_list.$.message` / `.links` (the per-verb map). The single rendered link is resolved server-side by the shared `resolve_action_link.yaml` stage (Part 42 D5), not in the UI.
 - `modules/workflows/pages/simple-view.yaml` → `workflow-simple-view.yaml`
 - `modules/workflows/pages/simple-edit.yaml` → `workflow-simple-edit.yaml`
 - `modules/workflows/pages/simple-review.yaml` → `workflow-simple-review.yaml`
