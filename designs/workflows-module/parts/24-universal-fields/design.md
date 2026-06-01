@@ -219,7 +219,7 @@ These parts hold no API/plugin/resolver work for this surface — they compose t
 
 - **[Part 16 (page-templates)](../_completed/16-page-templates/design.md)** — form templates lay content out as a two-column row (form card + universal-fields sidebar card) instead of a header band, gated on `universal_fields` being non-empty.
 - **[Part 39 (form-submit buttons)](../39-form-submit-buttons/design.md)** — **should** drop the `fields` key from the `submit` / `progress` button payloads and narrow the submit `Validate` regex from `[^form\., ^fields\.]` to `[^form\.]`. This is hygiene, not a correctness precondition: the kind-based guard means `planActionTransition.js` never writes the universal fields for `kind: form`, so a stray `fields` payload is ignored either way. Dropping it just stops form submit validating sidebar inputs it no longer owns and posting dead `_state.fields`. The two parts are therefore independent and can land in any order.
-- **[Part 17 (shared-pages)](../_completed/17-shared-pages/design.md)** — simple pages keep universal fields as primary content on `submit` (no behavioural change; the `kind: task` → `kind: simple` rename landed in [Part 35](../35-rename-task-kind-to-simple/design.md)).
+- **[Part 17 (shared-pages)](../_completed/17-shared-pages/design.md)** — simple pages keep universal fields as primary content on `submit` (no behavioural change; the `kind: task` → `kind: simple` rename landed in [Part 35](../_completed/35-rename-task-kind-to-simple/design.md)).
 
 > Parts 16 and 17 live in `_completed/`. Their template edits are deviations from already-implemented designs — handle as a follow-on task, not by reopening those folders.
 
@@ -238,7 +238,7 @@ These parts hold no API/plugin/resolver work for this surface — they compose t
 - **[Part 5 (start/cancel handlers)](../_completed/05-start-cancel-handlers/design.md)** — the action doc shape these fields live on (seeded at `StartWorkflow`).
 - **[Part 18 (entity-components)](../18-entity-components/design.md)** — `action_role_check` populates `_state.action_allowed` gating the component's edit affordances.
 - **[Part 24a (user-account selector + avatar)](../24a-user-account-selector-avatar/design.md)** — `user-selector` + `user-avatar`.
-- **[Part 35 (rename `task` → `simple`)](../35-rename-task-kind-to-simple/design.md)** — the `kind: task` → `kind: simple` rename has landed, so the resolver keys on `kind: simple` and every `kind: simple` reference in this design (the component table, the simple-page consumption row) is coherent. The `form`-emission path is unaffected by the rename.
+- **[Part 35 (rename `task` → `simple`)](../_completed/35-rename-task-kind-to-simple/design.md)** — the `kind: task` → `kind: simple` rename has landed, so the resolver keys on `kind: simple` and every `kind: simple` reference in this design (the component table, the simple-page consumption row) is coherent. The `form`-emission path is unaffected by the rename.
 
 Consumers (Parts 16 / 17 / 39, template-only) are enumerated under "Consumed by" above.
 
