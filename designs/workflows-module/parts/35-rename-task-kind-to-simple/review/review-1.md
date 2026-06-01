@@ -48,8 +48,8 @@ The "Files changed — active follow-on parts" table lists six Part 30 task file
 - `06-extend-api-contract-metadata-action-display.md` ✓
 - `08-wire-updateAction.md` ✓
 - `11-resolver-cell-shape-validation.md` ✓
-- `04-add-renderStatusMap.md` — one hit ([line 55](../../30-status-map-rendering/tasks/04-add-renderStatusMap.md)) but it says "a `{ action_id: true }` in a `task` cell would not be swapped" — uses the word `task` as a built-in-kind label in prose; flipping it to `simple` is the right swap, so keep it in the list.
-- `10-strip-link-from-demo-configs.md` — four hits ([lines 5, 9, 28, 41](../../30-status-map-rendering/tasks/10-strip-link-from-demo-configs.md)); three are `(task, form, tracker)` enumerations and one is `track-step-*.yaml`. The `task` mentions in the kind enumerations should flip; the `track-step-*` filename is unrelated.
+- `04-add-renderStatusMap.md` — one hit ([line 55](../../_rejected/30-status-map-rendering/tasks/04-add-renderStatusMap.md)) but it says "a `{ action_id: true }` in a `task` cell would not be swapped" — uses the word `task` as a built-in-kind label in prose; flipping it to `simple` is the right swap, so keep it in the list.
+- `10-strip-link-from-demo-configs.md` — four hits ([lines 5, 9, 28, 41](../../_rejected/30-status-map-rendering/tasks/10-strip-link-from-demo-configs.md)); three are `(task, form, tracker)` enumerations and one is `track-step-*.yaml`. The `task` mentions in the kind enumerations should flip; the `track-step-*` filename is unrelated.
 
 Net: the list is correct, but the implementer should be told what they're looking for in `04` and `10` is `task` as a kind name in prose, not `kind: task` literally — otherwise they may miss it on a literal-string sweep.
 

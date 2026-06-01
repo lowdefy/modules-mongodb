@@ -1,24 +1,24 @@
 # Part 34 — Action access model (per-app, per-verb, per-role)
 
-**Source rationale:** [workflows-module-concept/action-authoring/design.md § Decision 3](../../../workflows-module-concept/action-authoring/design.md) (current access semantics), [engine/spec.md](../../../workflows-module-concept/engine/spec.md) (submit-time gate, query-time filter), [part 30 § D4](../30-status-map-rendering/design.md) (link computation reads `access.{slug}` verbs). **Layer:** action grammar + engine + resolver + display. **Size:** L. **Repo:** `modules/workflows/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`.
+**Source rationale:** [workflows-module-concept/action-authoring/design.md § Decision 3](../../../workflows-module-concept/action-authoring/design.md) (current access semantics), [engine/spec.md](../../../workflows-module-concept/engine/spec.md) (submit-time gate, query-time filter), [part 30 § D4](../_rejected/30-status-map-rendering/design.md) (link computation reads `access.{slug}` verbs). **Layer:** action grammar + engine + resolver + display. **Size:** L. **Repo:** `modules/workflows/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`.
 
 ## Goal
 
 Rework the `access:` block on action YAML so role-based gates are scoped to the app they belong to, and so different verbs within the same app can be gated to different roles. Today the model has a per-app verb map plus one flat action-wide `roles:` list — that flat list cuts across apps (role names work only if they don't clash between apps, by convention not by schema) and gates the entire action (no way to say "anyone can view but only managers can review"). This part replaces the two-axis-but-not-really model with one canonical shape: every verb in every app declares its own role gate.
 
-The change is foundational. It touches the action grammar (concept spec), the engine's submit gate, the resolver's build-time page filter, the query-time filter on `get-entity-workflows`, the link computation in [Part 30](../30-status-map-rendering/design.md) (which today reads "slug's verbs" as a flat list), and the client-side `action_role_check` from [Part 18](../_completed/18-entity-components/design.md). It also unblocks downstream work in Part 24 (universal-fields surface) where the question "can a triage user update metadata without form-submit rights" needs an answer that the current binary role gate can't give.
+The change is foundational. It touches the action grammar (concept spec), the engine's submit gate, the resolver's build-time page filter, the query-time filter on `get-entity-workflows`, the link computation in [Part 30](../_rejected/30-status-map-rendering/design.md) (which today reads "slug's verbs" as a flat list), and the client-side `action_role_check` from [Part 18](../_completed/18-entity-components/design.md). It also unblocks downstream work in Part 24 (universal-fields surface) where the question "can a triage user update metadata without form-submit rights" needs an answer that the current binary role gate can't give.
 
 ## Proposed change
 
 1. **`access.{app_name}` is always a map of verb → role-gate.** Verb keys are `view` / `edit` / `review` / `error`. Gate values are either `true` (any user of the app passes) or a non-empty list of role strings. There is one canonical shape; the existing shorthand list (`access.{app_name}: [view, edit]`) is removed.
 2. **Action-wide `access.roles` is removed.** Every role gate is per-app per-verb. Apps that need a uniform "manager-only" gate spell it out on each verb under each app they care about.
 3. **Missing app key → no access in that app. Missing verb under an app key → no access to that verb in that app.** This eliminates the `prp-support: []` ceremony — omitting the key is the canonical "this app has no access" expression.
-4. **No implicit verb-implication.** `edit` no longer implies `view`; every verb stands on its own. Authors who want a viewer-everyone / editor-manager pattern write both gates explicitly.
+4. **Verbs are independent — granting one never grants another.** Having `edit` does not grant `view`; every verb is gated on its own. Authors who want a viewer-everyone / editor-manager pattern write both gates explicitly.
 5. **Roles are resolved per app from `user_contacts.apps.{app_name}.roles`.** Same source as today. The cross-app clash question disappears because the action-side gate is also app-scoped — `roles` in `access.{app-a}.edit` are checked against `apps.{app-a}.roles`, never against `apps.{app-b}.roles`.
 6. **Engine submit-time check reads `access.{current_app}.{interaction-verb}`.** Interaction → verb map: `submit_edit` / `not_required` require `edit`; `resolve_error` requires `error`; `approve` / `request_changes` require `review`. `view` has no interaction (read-only).
 7. **Build-time page filter (`makeActionPages`) reads `access.{host_app_name}` keys.** A verb page is emitted iff the verb key exists in the host app's map. The verb's role gate is checked at query/submit time, not at build time.
 8. **Query-time filter (`get-entity-workflows`) returns a per-verb visibility map per action.** Each action's payload carries `visible_verbs: { view: bool, edit: bool, review: bool, error: bool }` — one bool per verb the action declares for the host app, true iff the user's roles satisfy that verb's gate. Replaces today's binary "action visible / hidden." `view: false` on every verb hides the action from the entity page entirely (matches today's "no role intersection" outcome).
-9. **Action-doc link writes become per-verb.** [Part 30 § D4](../30-status-map-rendering/design.md)'s engine-computed `action[slug].link` (one link per slug) is replaced by `action[slug].links` (a map keyed by verb). The UI picks the user-appropriate link at render time using the user's `visible_verbs`.
+9. **Action-doc link writes become per-verb.** [Part 30 § D4](../_rejected/30-status-map-rendering/design.md)'s engine-computed `action[slug].link` (one link per slug) is replaced by `action[slug].links` (a map keyed by verb). The UI picks the user-appropriate link at render time using the user's `visible_verbs`.
 10. **`notification_roles` stays at action root, unchanged.** It's a fan-out config, not an access decision, and v1 has no real reason to scope it per-app.
 
 Out of scope (handled separately): the universal-fields write-surface decision (Part 24) which depends on this part's outcome; any change to how `_user.roles` is sourced (continues to come from `apps.{app_name}.roles` on `user_contacts`).
@@ -100,11 +100,11 @@ Per-action gating (today) can't express "triage user can reassign but not submit
 
 This mirrors how `_user.roles` is already sourced per-app from `user_contacts.apps.{app_name}.roles`. The action's gate now aligns with the source.
 
-### D4. No verb implication
+### D4. Verbs are independent
 
-Today `edit` implies `view` and `review` implies `view`. The implication was a convenience under the binary role gate — if you could edit, you could obviously also view, so the spec said so for ergonomics. Under per-verb gates, implication becomes ambiguous: if `edit: [manager]` is the only declared verb, does the action imply `view: true` (anyone, since `view` wasn't constrained) or `view: [manager]` (same as the highest declared verb)? Either choice surprises somebody.
+Today granting `edit` automatically grants `view`, and granting `review` automatically grants `view`. That automatic grant was a convenience under the binary role gate — if you could edit, you could obviously also view, so the spec said so for ergonomics. Under per-verb gates the automatic grant becomes ambiguous: if `edit: [manager]` is the only declared verb, does the user also get `view: true` (anyone, since `view` wasn't constrained) or `view: [manager]` (same as the highest declared verb)? Either choice surprises somebody.
 
-Drop implication entirely. Every verb the action exposes must be declared. Authors writing `edit: [manager]` and wanting "anyone can view" write both:
+Drop the automatic grant entirely. Granting one verb never grants another, and every verb the action exposes must be declared. Authors writing `edit: [manager]` and wanting "anyone can view" write both:
 
 ```yaml
 prp-team:
@@ -112,7 +112,7 @@ prp-team:
   edit: [manager]
 ```
 
-This is more lines but readable in five seconds. Implicit defaulting is the kind of thing that bites people when they're surprised by it; the cost of the extra line is well-spent.
+This is more lines but readable in five seconds. Automatic defaulting is the kind of thing that bites people when they're surprised by it; the cost of the extra line is well-spent.
 
 The resolver build-time validator **lint-warns (does not hard-error)** when an app block declares `edit`, `review`, or `error` without also declaring `view`. The author may have intended the omission (a role-only-edits-no-read workflow), so the schema doesn't reject it — but the common case is "I forgot to also write `view` for my editors," and a warning surfaces that mistake without forcing a workaround for the legitimate case.
 
@@ -142,7 +142,7 @@ Already stable in submit-pipeline/spec.md's button table; just spelled out here 
 
 ### D7. Per-verb links on action docs (Part 30 amendment)
 
-[Part 30 § D4](../30-status-map-rendering/design.md) writes one engine-computed `link` per slug per transition. The link is a function of `(kind, stage, slug's access verbs)` — today, "slug's access verbs" is the flat list `access.{slug}`. Under this part's per-verb gating, "slug's verbs" is no longer a per-action property: which verbs a user actually has depends on their roles.
+[Part 30 § D4](../_rejected/30-status-map-rendering/design.md) writes one engine-computed `link` per slug per transition. The link is a function of `(kind, stage, slug's access verbs)` — today, "slug's access verbs" is the flat list `access.{slug}`. Under this part's per-verb gating, "slug's verbs" is no longer a per-action property: which verbs a user actually has depends on their roles.
 
 There are two coherent responses:
 
@@ -405,7 +405,7 @@ The change is foundational and ripples to several parts. Each ripple is small in
 | [Part 12 (resolver pages)](../_completed/12-resolver-pages/design.md) — already completed; amend via note                                        | Two changes. (1) `makeActionPages` build-time filter reads the verb keys from the map. (2) **Rename emitted page ids** from `{workflow_type}-{action_type}-{verb}` to `workflow-{workflow_type}-{action_type}-{verb}` (literal `workflow-` prefix) so app-level role globs like `workflow-qualification-*` work in Lowdefy's central auth config. See D10. |
 | [Part 13 (resolver APIs)](../_completed/13-resolver-apis/design.md) — already completed; amend via note                                          | Two changes. (1) **Hook auth synthesis is dissolved.** Lowdefy's central auth doesn't carry per-endpoint role lists; hooks become **internal-only Apis** (no HTTP entry point, only callable via `context.callApi` from `update-action-*`). The submit endpoint's role check (per Lowdefy's central `api.roles` config) is the sole gate; there is no hook-side role synthesis. The "Auth by construction" section of Part 13 needs rewriting against this model. (2) **Rename emitted Api ids** for glob-friendly auth config — see D10. |
 | [Part 18 (entity-components) § `action_role_check`](../_completed/18-entity-components/design.md)                                                | `_state.action_allowed` becomes per-verb (D8). Update consumers in Part 16 / 17 / 24 to read the verb-specific bool.                                                                                                                                                                             |
-| [Part 30 § D4 (engine-driven links for built-in kinds)](../30-status-map-rendering/design.md)                                                    | Replace `action[slug].link` (single) with `action[slug].links` (per-verb map, D7). Update the data-flow diagram in "Read path" and the worked example. Update the action-doc schema table in "Schema additions." **Also update Part 30 § D11's `buildActionStageUpdate` pipeline code** — the `$mergeObjects: [$<slug>, { link: <computed> }]` shape becomes `$mergeObjects: [$<slug>, { links: { view, edit, review, error } }]`. That's a pipeline rewrite, not a docs-only edit. |
+| [Part 30 § D4 (engine-driven links for built-in kinds)](../_rejected/30-status-map-rendering/design.md)                                                    | Replace `action[slug].link` (single) with `action[slug].links` (per-verb map, D7). Update the data-flow diagram in "Read path" and the worked example. Update the action-doc schema table in "Schema additions." **Also update Part 30 § D11's `buildActionStageUpdate` pipeline code** — the `$mergeObjects: [$<slug>, { link: <computed> }]` shape becomes `$mergeObjects: [$<slug>, { links: { view, edit, review, error } }]`. That's a pipeline rewrite, not a docs-only edit. |
 | [Part 24 (universal-fields)](../24-universal-fields/design.md)                                                                                   | Open question on "who can edit metadata" resolves through this part's per-verb shape (a future `update_metadata` interaction maps to its own required verb if needed). Re-open under Part 24 once this lands.                                                                                  |
 | [ui/spec.md](../../../workflows-module-concept/ui/spec.md)                                                                                       | Update the verb table (lines 17-18) and the page-emission rule to read the map's keys. Update `actions-on-entity` rendering to read `visible_verbs` and select per-verb links.                                                                                                                  |
 | `get-entity-workflows` aggregation                                                                                                               | Replace `access_filter.yaml` with `visible_verbs_filter.yaml`: per-verb `$let`/`$or` resolution → `$addFields visible_verbs` → `$match $anyElementTrue`. Concrete pipeline shape in D12. Same `_ref` callers (`get-workflow-overview`, `get-action-group-overview`).                              |
@@ -433,14 +433,14 @@ The change is foundational and ripples to several parts. Each ripple is small in
 Points where the design carries a working answer pending further confirmation.
 
 - **Q1. Should `view` default to `true` when other verbs are declared but `view` is omitted? — Resolved.** No defaulting. Every verb declared explicitly; lint-warn (don't hard-error) on `edit` / `review` / `error` declared without `view`. Captured in D4 and in the per-verb shape rules.
-- **Q2. Should `edit` (or `review`) implicitly grant `view`? — Working answer pending team review.** No implication: verbs are independent at gate-check time. The same lint warning from Q1 catches the common "I forgot view for my editors" case without baking implicit union into the schema. Author writes the audience for each verb explicitly. Left open in this section so the team can sanity-check before the design ships.
+- **Q2. Should granting `edit` (or `review`) also grant `view`? — Resolved: no.** Verbs are independent at gate-check time — granting one verb never grants another. The lint warning from Q1 catches the common "I forgot view for my editors" case without baking an automatic view grant into the schema. Authors write the audience for each verb explicitly.
 - **Q3. Where should `notification_roles` live? — Resolved: action root.** D9 captures the decision. The `access:` block now holds only `{app_name}` keys; `notification_roles` lives at the action root. The previous draft's nesting under `access:` was incidental — `getActionFields.js:14` already reads `config.access?.notification_roles` directly, so the extractor change is one line. The broader "should `notification_roles` be reconsidered as a concept" question is deferred to a future design — out of scope for this part.
 - **Q4. Verb priority for UI link selection — Resolved.** Static priority `edit > review > error > view`. Composes correctly with the engine's per-verb null values at every stage via fall-through — no stage-keyed priority table needed. Per-verb null pattern in the engine table (e.g. `edit = null` at `in-review`, `review = null` outside `in-review`) encodes the "which verb is meaningful here" semantics so the static priority always lands the user on the right page. Captured in D7 including the per-verb (kind, stage, verb) → page table and the selection rule.
 
 ## Depends on
 
 - **[Part 4 (workflow config schema)](../_completed/04-workflow-config-schema/design.md)** — original access shape; amended by this part.
-- **[Part 30 (engine-managed display)](../30-status-map-rendering/design.md)** — link computation table; amended by D7.
+- **[Part 30 (engine-managed display)](../_rejected/30-status-map-rendering/design.md)** — link computation table; amended by D7.
 
 ## Consumers
 
