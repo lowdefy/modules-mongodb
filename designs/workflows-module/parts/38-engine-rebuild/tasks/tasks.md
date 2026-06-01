@@ -29,23 +29,56 @@ These tasks implement Part 38, which rebuilds the workflow engine around two com
 | 19  | `19-emitted-payload-surfaces.md`            | `makeWorkflowApis` payload mapping (drop `force`, add `signal`) + `start-workflow`    | 6              |
 | 20  | `20-demo-migration.md`                      | Migrate demo `workflow_config` to signals/access map + notification config            | 7,8,15,17,18,19 |
 
-## Ordering Rationale
+## Implementation Bands
 
-The work decomposes into five bands:
+The 20 tasks group into five dependency bands. **A band is the unit of work** — point an agent at this file and a band number ("implement Band 3 of `38-engine-rebuild`"); it implements every task in the band, in the listed internal order, then runs the band's gate before stopping.
 
-1. **Foundations (1–4)** — the bottom of the dependency stack: the native Mongo driver layer, the FSM tables, the render helpers, and the connection-schema wiring (`entry_id`). These share no state and can be built in parallel, except the render layer (3) consumes the `entry_id` mechanic from (4) for link computation.
+**Rules for an agent working a band:**
 
-2. **Access-model cluster (5–8)** — Part 34's absorption. Per the design's D16 tasking note, the three engine-independent surfaces (`visible_verbs_filter.yaml`, `validateActionAccess`, `action_role_check`) are sequenced **alongside, not interleaved with** the rebuild core so they don't gate on it. They all sit on the shared role-gate oracle fixtures (5), which is the single source of `(gate, roles)→bool` truth across the three runtimes that can't share code.
+- Implement tasks in the **internal order** shown. Where tasks are marked **parallel-safe**, they touch disjoint files and may be done in any order (or concurrently) — but a single agent should still do them one at a time and commit between them.
+- Do **not** start a band until its **Depends on bands** are committed and green. The cross-task dependencies inside `## Tasks` are the source of truth for finer-grained ordering.
+- Each task's own file is authoritative for scope, file list, and acceptance criteria. This section only sequences them.
+- **Gate** = run the new + existing unit tests for the touched files and ensure they pass before considering the band done. Commit per task.
 
-3. **Phases (9–14)** — the load-plan-commit machinery. The phase types + load phase (9) anchor the contracts; planners (10–12) are pure functions consuming FSM/render; commit (13) and hook wrappers (14) round out the cycle. The write-path-coupled Part 34 pieces — the submit-time access gate (in load, 9) and per-verb `computeEngineLinks` (in render, 3) — live here with the rebuild because they share its surface.
+### Band 1 — Foundations
 
-4. **Handler rewrites (15–17)** — compose the phases. Submit (15) is the reference handler; the tracker cascade (16) reuses 100% of the Submit planner machinery and so follows it; Start/Cancel/Close (17) compose the same phases independently of Submit and can run parallel to 15/16.
+- **Tasks:** 1, 2, 4 (parallel-safe) → 3 (after 4)
+- **Depends on bands:** none
+- **Notes:** Driver layer (1), FSM tables (2), and connection-schema wiring (4) share no state. Render layer (3) consumes the `entry_id` mechanic from (4) for link computation, so it follows 4.
+- **Gate:** unit tests for the mongo helpers, FSM tables, and render walker pass.
 
-5. **Surfaces + demo (18–20)** — the display renames + payload mapping, capped by the demo migration (20), which is the only in-tree end-to-end exercise of the rebuild and therefore depends on nearly everything.
+### Band 2 — Access-model cluster
 
-**Parallelism:** bands 1 and 2 are largely independent of each other and can proceed concurrently. Within band 1, tasks 1/2/4 are independent. Task 17 can run parallel to 15/16.
+- **Tasks:** 5 → 6, 7, 8 (6/7/8 parallel-safe after 5)
+- **Depends on bands:** none (runs concurrently with Band 1)
+- **Notes:** Part 34's absorption. The role-gate oracle fixtures (5) are the single `(gate, roles)→bool` source of truth across the three runtimes that can't share code; the three engine-independent surfaces (6 `validateActionAccess`, 7 `visible_verbs_filter.yaml`, 8 `action_role_check`) all sit on it and are sequenced **alongside, not interleaved with**, the rebuild core (per design D16) so they don't gate on it.
+- **Gate:** fixture table + validator/filter/client-check tests pass.
 
-**Open questions:** Q1–Q5 have firm "leans" in the design and are baked into the relevant tasks as decisions. **Q6 (form_data merge rule) is genuinely unresolved** — task 11 must settle it (merge-vs-replace granularity, removal-by-omission, per-channel shapes) before `planFormDataMerge` is implemented; the design's analysis is embedded in that task.
+### Band 3 — Phases (load · plan · commit)
+
+- **Tasks:** 9 → 10, 11, 12 (parallel-safe after 9) → 13, 14
+- **Depends on bands:** 1, 2
+- **⚠ Blocking decision:** task 11 requires **Q6 (form_data merge rule)** to be settled first. Do not implement `planFormDataMerge` until Q6 is resolved.
+- **Notes:** Phase types + load phase (9) anchor the contracts. Planners (10–12) are pure functions over FSM/render. Commit (13) and hook wrappers (14) close the cycle. The write-path-coupled Part 34 pieces — the submit-time access gate (in load, 9) and per-verb `computeEngineLinks` (in render, 3) — live here because they share the rebuild's surface.
+- **Gate:** planner unit tests pass; commit phase tested on both transaction and standalone paths incl. the CAS-miss gate.
+
+### Band 4 — Handler rewrites
+
+- **Tasks:** 15 → 16; 17 (parallel-safe with 15/16)
+- **Depends on bands:** 3
+- **Notes:** Submit (15) is the reference handler. The tracker cascade (16) reuses 100% of the Submit planner machinery and so follows it. Start/Cancel/Close (17) compose the same phases independently and can run parallel to 15/16.
+- **Gate:** handler-level tests pass; obsolete files deleted per task 15.
+
+### Band 5 — Surfaces + demo
+
+- **Tasks:** 18, 19 (parallel-safe) → 20
+- **Depends on bands:** 4 (and 1–3 transitively)
+- **Notes:** Display renames (18) + payload mapping (19), capped by the demo migration (20) — the only in-tree end-to-end exercise of the rebuild, which is why it depends on nearly everything.
+- **Gate:** demo `workflow_config` migrated; end-to-end run exercises the rebuilt engine.
+
+**Cross-band parallelism:** Bands 1 and 2 are independent and can run concurrently. All other bands are sequential on the band(s) listed.
+
+**Open questions:** Q1–Q5 have firm "leans" in the design and are baked into the relevant tasks as decisions. **Q6 (form_data merge rule) is genuinely unresolved** — it blocks task 11 in Band 3 (merge-vs-replace granularity, removal-by-omission, per-channel shapes); the design's analysis is embedded in that task.
 
 ## Scope
 
