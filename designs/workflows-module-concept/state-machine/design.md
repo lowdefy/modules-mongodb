@@ -153,24 +153,26 @@ The `error` row is reachable for simple kind only via cascade (no simple page su
 
 ### Tracker kind
 
-Tracker actions never receive user interactions or pre-hook signals. Their FSM has one source — the engine's tracker subscription firing `internal_mirror_child_*` signals — plus `unblock` for the standard `blocked_by` flow.
+Tracker actions never receive user interactions. Their FSM has one live source — the engine's tracker subscription firing `internal_mirror_child_*` signals, plus `unblock` for the standard `blocked_by` flow — and a creation-only `none` row (`activate` / `block`) so a pre-hook can conditionally spawn a tracker (see "Creation" below).
 
-| Current ↓ / Signal →   | `unblock`         | `internal_mirror_child_active` | `internal_mirror_child_completed` | `internal_mirror_child_cancelled` | `internal_cancel_action` |
-| ---------------------- | ----------------- | ------------------------------ | --------------------------------- | --------------------------------- | -------------- |
-| `blocked`              | `action-required` | `in-progress`                  | `done`                            | `not-required`                    | `not-required` |
-| `action-required`      | —                 | `in-progress`                  | `done`                            | `not-required`                    | `not-required` |
-| `in-progress`          | —                 | —                              | `done`                            | `not-required`                    | `not-required` |
-| `done`                 | —                 | `in-progress`                  | —                                 | `not-required`                    | —              |
-| `not-required`         | —                 | `in-progress`                  | `done`                            | —                                 | —              |
+| Current ↓ / Signal →   | `unblock`         | `activate`        | `block`   | `internal_mirror_child_active` | `internal_mirror_child_completed` | `internal_mirror_child_cancelled` | `internal_cancel_action` |
+| ---------------------- | ----------------- | ----------------- | --------- | ------------------------------ | --------------------------------- | --------------------------------- | -------------- |
+| `none` (creation)      | —                 | `action-required` | `blocked` | —                              | —                                 | —                                 | —              |
+| `blocked`              | `action-required` | —                 | —         | `in-progress`                  | `done`                            | `not-required`                    | `not-required` |
+| `action-required`      | —                 | —                 | —         | `in-progress`                  | `done`                            | `not-required`                    | `not-required` |
+| `in-progress`          | —                 | —                 | —         | —                              | `done`                            | `not-required`                    | `not-required` |
+| `done`                 | —                 | —                 | —         | `in-progress`                  | —                                 | `not-required`                    | —              |
+| `not-required`         | —                 | —                 | —         | `in-progress`                  | `done`                            | —                                 | —              |
 
-No `submit`, `approve`, `request_changes`, `error`, `activate`, or `block` — tracker actions don't expose these paths.
+No `submit`, `approve`, `request_changes`, or `error` — tracker actions don't expose these paths. `activate` and `block` resolve **only from `none`**: they are birth signals for conditional pre-hook spawns, not transitions on a live tracker.
 
 ### Creation — the `none` source state
 
 A pre-hook can spawn a new keyed action instance mid-submit (e.g. "if a site visit is required, create a `site-visit-report` action"). Creation is modelled as **one more FSM transition**, not a special-cased status seed: the absent doc's current stage is the sentinel `none`, and the spawning signal resolves through the `none` row to the new doc's birth stage.
 
 - **`none` is a transient resolution-time sentinel, never a stored status.** The eight-status enum is unchanged; `none` only ever appears as the `currentStatus` fed to the FSM lookup when no doc exists for a `(type, key)`. The created doc lands directly at the resolved birth stage — `none` is never persisted, never counted in summaries, never displayed.
-- **The `none` row lives in the form table (inherited by simple via the table alias).** It is **not** added to the tracker table — tracker actions are engine-created by `StartWorkflow`/the tracker subscription, never spawned by a pre-hook. Each birth signal lands exactly where it lands from a real state, so the meaning is consistent: `activate → action-required`, `block → blocked`, `request_changes → changes-required`, `error → error`. (The audit of the reference project found spawns seeded only at `action-required`, `blocked`, and `changes-required`; the `none` row covers those plus `error`.)
+- **The `none` row lives in every kind's table** — the form table (inherited by simple via the table alias) with the full birth-signal set, and the tracker table with only `activate` / `block`, so a pre-hook can conditionally spawn a tracker (e.g. an action that only tracks a child workflow when an earlier answer flags the need). A hook-spawned tracker behaves like a seeded one: it sits at its birth stage until a child is started against it (Part 44 start link, or `start-workflow` with `parent_action_id`). Each birth signal lands exactly where it lands from a real state, so the meaning is consistent: `activate → action-required`, `block → blocked`, `request_changes → changes-required`, `error → error` (form/simple; tracker births only via `activate`/`block`). (The audit of the reference project found spawns seeded only at `action-required`, `blocked`, and `changes-required`; the `none` row covers those plus `error`.)
+- **`StartWorkflow` does not use the `none` row.** `starting_actions` (and the `start-workflow` payload's `actions:` override) keep the `{ type, status }` grammar; the Start planner seeds drafts **directly at the declared status** (legal seeds: `action-required`, `blocked`). Creation at workflow start is declarative config validated at build time, not a transition — the FSM governs transitions, and the `none` row exists solely for pre-hook upsert spawns. (Decided in Part 45 review 1 #2.)
 - **Extensible by adding edges.** If a real case to spawn straight into another stage appears (e.g. `none → submit → done` for an already-satisfied audit action), it's a one-cell addition to the `none` row — same as growing any other row. Birth stays expressed *as a signal*, so creation states remain explicit and engine-locked rather than free-form author-seeded.
 - **Authorized by `upsert: true`.** Only a pre-hook `actions[]` entry carrying `upsert: true` may resolve against `none` (see Path 3). A missing target *without* `upsert: true` is a programming error and throws (Open question 1) — so a typo'd target never silently spawns.
 
@@ -272,7 +274,7 @@ Per-action overrides happen at the template level (apps that customize templates
 ## What gets added
 
 - **The FSM tables themselves** — three small lookup tables (form, simple, tracker), engine-internal data.
-- **The `none` creation row** (form + simple) — folds pre-hook action *spawning* into the FSM. Replaces today's `{ type, key, status, upsert: true }` status-seed branch (`handleSubmit` step 4 + `utils/shouldCreate.js`): the birth stage is now resolved from the signal via the `none` row, with `upsert: true` as the create-authorization guard. `none` is a transient sentinel, not a ninth status.
+- **The `none` creation row** (form + simple with the full birth-signal set; tracker with `activate`/`block` only) — folds pre-hook action *spawning* into the FSM. Replaces today's `{ type, key, status, upsert: true }` status-seed branch (`handleSubmit` step 4 + `utils/shouldCreate.js`): the birth stage is now resolved from the signal via the `none` row, with `upsert: true` as the create-authorization guard. `none` is a transient sentinel, not a ninth status.
 - **The `progress` signal and `in-progress`-landing transition** — restoration of v0 `save_draft` capability, now covering simple kind ("mark started") as well as form kind ("save draft").
 - **The `error` signal** — explicit name for author-deliberate downstream errors, replacing the v0 pre-hook `actions: [{ status: error }]` return. The engine itself never sets `error` (thrown hooks surface as API-level reject/error toasts, not action statuses).
 - **`activate` and `block` signals** — explicit names for cascade patterns previously written as `force: true`. `activate` complements the narrow `unblock` for cases where the cascade is deliberate across multiple source states.
