@@ -21,6 +21,8 @@ The other three engine entry points restructure into the same load-plan-commit s
 
 **`WorkflowAPI/CloseWorkflow/CloseWorkflow.js`** — same shape as Cancel; event = `workflow-closed`.
 
+**Lifecycle preconditions live here, not in `loadWorkflowState`** (task 9's stage check is Submit-specific). Preserve today's actual semantics, no new guards: Close on a `completed` workflow is an **idempotent no-op** (returns the empty result, `CloseWorkflow.js:52–54`); Close on a `cancelled` workflow **throws** — now `WorkflowEngineError` with `code: "stage_rejects_close"` (D13). Cancel deliberately has **no stage guard** today (cancelling a completed workflow is unguarded) — keep it that way per "build for what exists". Start inserts a fresh workflow doc, so it has no started-already check; its config-shaped preconditions (unknown `workflow_type`, keyed `starting_actions`, tracker-parent checks) carry over from the current handler.
+
 **Event emission (per the "Engine entry points emit events" table):** one `event_id` per invocation, used as the dispatched event doc's `_id`. Workflow-lifecycle context only (`{ user, workflow, interaction }`) — `planEventDispatch` already branches on type (task 12).
 
 ## Acceptance Criteria

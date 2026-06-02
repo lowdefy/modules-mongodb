@@ -20,6 +20,8 @@ load (loadWorkflowState — incl. per-verb access gate)
   → return handler payload
 ```
 
+**Mint the per-invocation id/clock at handler entry.** Before `load`, the handler mints `{ event_id, now, newId }` **once per invocation** — `event_id` (`randomUUID()`), `now` (the change stamp), and `newId` (an id source for insert `_id`s) — mirroring today's `context.eventId` / `context.changeStamp`, and threads them into the plan inputs. These are nondeterministic, so they are generated here (an impure boundary) and **injected** into the pure planners (task 10), never generated inside them; `event_id` is reused on every action `status[]` entry and as the dispatched event doc's `_id` (task 12). Mint via a small shared invocation-setup step so Start/Cancel/Close (task 17) do it identically — one correct way.
+
 `planSubmit` composes the plan phase (a new orchestrator, e.g. `shared/phases/planSubmit.js`, or inline in the handler — prefer a named planner orchestrator for testability):
 
 1. Resolve current-action signal → target stage (FSM).
@@ -29,9 +31,8 @@ load (loadWorkflowState — incl. per-verb access gate)
 5. `planWorkflowRecompute` + `planFormDataMerge` → planned workflow doc.
 6. Per planned action: compose doc, render cell, compute per-verb links (already inside `planActionTransition`).
 7. `planEventDispatch` (action-event context).
-8. `planNotifications`.
-9. `planChangeLog`.
-10. Assemble the `Plan` object.
+8. `planChangeLog`.
+9. Assemble the `Plan` object. (No notification planning — notifications dispatch post-commit in the commit phase, task 13 step 4.)
 
 **Delete the obsolete files:**
 
@@ -45,7 +46,7 @@ load (loadWorkflowState — incl. per-verb access gate)
 - `SubmitWorkflowAction/utils/getCurrentAction.js` (load reads all actions in one call)
 - `SubmitWorkflowAction/dispatchLogEvent.js` (dispatch → commit; template constants → `planEventDispatch`)
 
-Also remove their `.test.js` files and any now-dangling imports/helpers (`mergeEventOverrides`, `mergeFormOverrides`, `mergePreHookActions`, `recomputeGroups`, `deriveGroupStatus`, `shouldCreate`) — audit each: keep and relocate the ones the planners reuse (e.g. `mergeEventOverrides` for `planEventDispatch`, group-status derivation for `planWorkflowRecompute`), delete the ones fully superseded.
+Also remove their `.test.js` files and any now-dangling imports/helpers (`mergeEventOverrides`, `mergeFormOverrides`, `mergePreHookActions`, `shouldCreate`) — audit each: keep and relocate the ones the planners reuse (e.g. `mergeEventOverrides` for `planEventDispatch`), delete the ones fully superseded. (`recomputeGroups` / `deriveGroupStatus` are already relocated to `shared/phases/planners/` by task 9 — verify no stale copies or imports remain under `SubmitWorkflowAction/`.)
 
 ## Acceptance Criteria
 

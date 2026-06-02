@@ -11,7 +11,7 @@ Pre-hooks are read-only relative to the engine's atomicity boundary (D5): a hook
 **Move + adapt `shared/phases/invokePreHook.js`** (from `SubmitWorkflowAction/invokePreHook.js`):
 
 - Input: `LoadedState` + caller payload. Single `callApi` to the hook routine.
-- Output: `PreHookResult { actions: [{ target, signal }], event_overrides, form_overrides }`.
+- Output: `PreHookResult { actions: [{ target, signal, upsert? }], event_overrides, form_overrides }` (the task-9 type). An entry may carry `upsert: true` to spawn a missing keyed target (D4 / D13 (2)) — the response validator must accept and pass it through, not strip or reject it; the spawn itself is planned in task 10.
 - **Pre-hook return shape changes `{ type, status }` → `{ type, signal }`** (per state-machine.md). Auxiliary signals target *other* actions; they resolve through the FSM in the plan phase.
 - Validate the response shape: **no current-action signal redirect** — a pre-hook cannot re-signal the current action (the current action lands per the signal the user fired; state-machine.md "How signals get emitted"). Reject a return that attempts to redirect the root/current action.
 - If no pre-hook declared → `PreHookResult = { actions: [], event_overrides: {}, form_overrides: {} }`.
@@ -25,7 +25,7 @@ Update import sites in the Submit handler (task 15 wires these in).
 
 ## Acceptance Criteria
 
-- `invokePreHook` returns `PreHookResult` with `{ type, signal }` auxiliary entries; rejects a current-action signal redirect with a clear error.
+- `invokePreHook` returns `PreHookResult` with `{ type, signal }` auxiliary entries (optional `upsert: true` preserved through validation); rejects a current-action signal redirect with a clear error.
 - No-pre-hook case returns the empty result.
 - `invokePostHook` receives `LoadedState` + `Plan` + `CommitResult` and surfaces its return.
 - `buildHookPayload.js` (pre-hook *payload*) is unchanged.

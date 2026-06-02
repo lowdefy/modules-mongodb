@@ -1,8 +1,10 @@
-# Task 12: Event / notification / change-log planners
+# Task 12: Event + change-log planners
 
 ## Context
 
-The remaining three plan-phase planners build the event payload (rendered against planned post-state), notification payloads, and the change-log deltas. They consume the render layer (task 3) and phase types (task 9). `planEventDispatch` absorbs the template constants from the deleted `dispatchLogEvent.js` (the dispatch action itself moves to commit).
+The remaining two plan-phase planners build the event payload (rendered against planned post-state) and the change-log deltas. They consume the render layer (task 3) and phase types (task 9). `planEventDispatch` absorbs the template constants from the deleted `dispatchLogEvent.js` (the dispatch action itself moves to commit).
+
+**No `planNotifications`.** The engine builds no notification doc — nothing in the repo produces a `NotificationDoc`. Notifications are dispatched post-commit by `dispatchNotifications.js` via `callApi("send-notification", { event_ids })`, keyed on the committed event ids (commit step 4, task 13). Composing a notification payload here would be speculative surface (CLAUDE.md "Build for what exists, not what might").
 
 ## Task
 
@@ -26,15 +28,11 @@ The remaining three plan-phase planners build the event payload (rendered agains
   - `CancelWorkflow` → `workflow-cancelled` → `{{ user.profile.name }} cancelled {{ workflow.workflow_type }}`
   - `CloseWorkflow` → `workflow-closed` → `{{ user.profile.name }} closed {{ workflow.workflow_type }}`
   - Tracker-mirror → `action-internal-mirror-{state}` → `Tracker mirrored child {{ status_after }}` (system event, lower prominence)
-- One `event_id` per handler invocation, used as the dispatched event doc's `_id`.
-
-**Create `shared/phases/planners/planNotifications.js`:**
-
-- Compose notification payloads (per Part 8 / notifications module) from references/metadata already in the Plan. Does **not** propagate `notification_roles` onto the event (Non-goal — deferred to Part 41); recipient fan-out stays the notifications module's concern.
+- `planEventDispatch` **receives** the per-invocation `event_id` (minted up front at the handler entry — task 15, finding-1 model — not produced here) and uses it as the dispatched event doc's `_id`. It is the same `event_id` already stamped onto every action `status[]` entry by `planActionTransition` (task 10), so the event doc and the action status entries share one id.
 
 **Create `shared/phases/planners/planChangeLog.js`:**
 
-- Build `log-changes` entries from before/after pairs accumulated during planning (D7).
+- Build `log-changes` entries from the per-doc `{ before, after }` deltas accumulated during planning (D7) — `plan.actions[i].changeLog` (from `planActionTransition`, task 10) and `plan.workflow.changeLog` (from `planWorkflowRecompute`, task 11). Those planners emit **only** the raw delta; `planChangeLog` is the single owner of the community-schema transform. The finished entries are collected onto the top-level `plan.changeLog[]`, which the commit phase (task 13 step 5) inserts via `insertManyDocs`.
 - One entry per affected doc (N action transitions + 1 workflow update → N+1 entries), in the **community-plugin schema**: `{ type, args, before, after, response, timestamp, meta, blockId, connectionId, pageId, requestId, ... }`.
 - `type` reflects the logical op: `MongoDBUpdateOne` for action/workflow update, `MongoDBInsertOne` for an action insert.
 - `before` = loaded doc (null for inserts); `after` = planned doc.
@@ -48,16 +46,14 @@ The remaining three plan-phase planners build the event payload (rendered agains
 - `planEventDispatch` selects the correct context per event type (action-event vs workflow-lifecycle), asserted **separately** in tests; tracker-mirror uses the action-event context.
 - Three-source override merge order correct; per-event-type defaults render as specified.
 - `planChangeLog` emits N+1 community-schema entries with correct before/after and `meta`; emits **nothing** when `changeLog` is unconfigured.
-- `planNotifications` builds payloads without propagating `notification_roles`.
-- Tests: `planEventDispatch.test.js` (both contexts asserted separately, override layering, per-type defaults, branch assertion), `planChangeLog.test.js` (entry-per-doc, community schema, before/after sourcing, meta resolution, opt-out), notification payload tests.
+- No `planNotifications` file is created; the Plan carries no `notifications` field.
+- Tests: `planEventDispatch.test.js` (both contexts asserted separately, override layering, per-type defaults, branch assertion), `planChangeLog.test.js` (entry-per-doc, community schema, before/after sourcing, meta resolution, opt-out).
 
 ## Files
 
 - `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/planEventDispatch.js` — create
-- `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/planNotifications.js` — create
 - `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/planChangeLog.js` — create
 - `…/planners/planEventDispatch.test.js` — create
-- `…/planners/planNotifications.test.js` — create
 - `…/planners/planChangeLog.test.js` — create
 
 ## Notes

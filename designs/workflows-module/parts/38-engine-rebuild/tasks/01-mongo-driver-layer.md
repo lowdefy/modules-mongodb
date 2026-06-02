@@ -21,7 +21,7 @@ Create `plugins/modules-mongodb-plugins/src/connections/mongo/` with these helpe
 - `findOneAndUpdateDoc({ collection, filter, update, session? })` — wraps `findOneAndUpdate({ returnDocument: "after" })`. Returns the post-write doc (or `null` when the filter matches zero docs — the CAS-miss signal).
 - `bulkWriteActions({ operations, session? })` — wraps `bulkWrite` against the actions collection. `operations` is an array of `{ updateOne: {...} }` / `{ insertOne: {...} }`. Returns acknowledged counts only (no per-op post-write docs — the Plan already holds them).
 - `insertOneDoc({ collection, doc, session? })` — wraps `insertOne`. Returns inserted ID.
-- `insertManyDocs({ collection, docs, session? })` — wraps `insertMany`. Used for change-log entries and notifications.
+- `insertManyDocs({ collection, docs, session? })` — wraps `insertMany`. Used for change-log entries. (Not notifications — those dispatch via `callApi("send-notification")`, task 13 step 4.)
 - `findDocs({ collection, query, options?, session? })` — wraps `find().toArray()`. Used by the load phase.
 
 Add a `*.test.js` per helper. For `getMongoDb`, test that repeated calls with the same `databaseUri` return the cached client and that topology detection sets `useTransactions` correctly. For `findOneAndUpdateDoc`, test both the happy path and the **CAS-miss path** (filter matches zero docs → returns null).

@@ -24,7 +24,7 @@ async function runTrackerCascade(initialFires, baseContext) {
 ```
 
 - **`MAX_DEPTH = 10` guard tracks chain depth, not loop iterations.** Each fire carries a `depth` field seeded at 1, incremented per level. A wide-but-shallow cascade (one workflow with many tracker parents) must **not** trip the guard; a genuinely deep cycle must. A single dequeue counter on the BFS loop would measure total fan-out (breadth), not depth — do **not** use that.
-- Define `TrackerCascadeDepthError`.
+- Define `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`) in `shared/errors.js` — engine throws share the D13 error model (base class created by task 9); it keeps a named class like `ConcurrentSubmitError`, but callers/tests discriminate on `code`.
 
 **Create `shared/phases/planners/planTrackerLevel.js`:**
 
@@ -44,7 +44,7 @@ async function runTrackerCascade(initialFires, baseContext) {
 
 - `WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js` — rewrite into `runTrackerCascade` (rename file if appropriate)
 - `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/planTrackerLevel.js` — create
-- `TrackerCascadeDepthError` — create
+- `plugins/modules-mongodb-plugins/src/connections/shared/errors.js` — modify — add `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`)
 - tracker cascade integration test — create/rewrite
 
 ## Notes
