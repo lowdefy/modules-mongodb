@@ -14,6 +14,8 @@ UserError reservation), review-4 #1 (upsert spawn preserved), review-3 #9
 
 ### 1. "`buildHookPayload.js` is unchanged" is false — it reads two params the rebuild removes, and the hook-resolution key breaks
 
+> **Resolved.** `interaction` renamed to `signal` everywhere (user decision — completes the D12 one-concept-one-name rename; greenfield, no compat shim): the hook payload field becomes `signal` (populated from `params.signal`), `current_status` is dropped, and hook resolution reads `params.hooks?.[params.signal]`. Task 14 + design.md "API + payload surfaces" reword the "unchanged" claim to "envelope unchanged except `interaction`→`signal` and `current_status` removed", with envelope-shape tests. The resolver re-key is added to task 19's scope: `HOOK_INTERACTIONS` becomes the signal list (`submit`/`progress` added, `submit_edit` gone), feeding both `emitHooks` and `emitEventOverrides`, with emitted hook Api ids following; AC asserts a `hooks.submit` block emits and a legacy `hooks.submit_edit` block doesn't. Task 20 additionally migrates demo hook routine bodies (`_payload: interaction` → `_payload: signal`).
+
 Task 14's Context and AC (and task 19's "confirm it still builds the same
 payload") assert `buildHookPayload.js` is unchanged. It can't be:
 
@@ -53,6 +55,8 @@ signal-keyed `hooks:` block is silently skipped by the emitter loop. Add the
 re-key (and `progress`) to task 19's scope.
 
 ### 2. Post-hook payload is unspecified — and three sources disagree on it; "fresh state via the Plan" is unimplementable with a moved-verbatim `buildHookPayload`
+
+> **Resolved.** As proposed: the author-facing post-hook payload keeps the `buildHookPayload` envelope (with finding-1's field fixes), but `context` is populated from the **planned** docs (`{ workflow: plan.workflow.doc, action: <planned target-action doc> }`) — the concrete mechanism behind D6's fresh-state promise — and `result` is pinned to today's bag `{ action_ids, completed_groups, event_id, tracker_fired }` (`completed_groups` from the planned group recompute; `tracker_fired` the cascade's per-level `[{ parent_action_id, parent_workflow_id, new_status }]`). `dispatchErrors` is deliberately not exposed (the handler's `post_commit_dispatch_failed` throw is the surfacing mechanism). Task 14's input gains the cascade fire list; its AC asserts plan-visible freshness and the exact `result` shape; design.md's data-flow lines and D6 now match.
 
 Task 14 specs only the *function input* (`LoadedState` + committed `Plan` +
 `CommitResult`) and promises "Authors see fresh state via the Plan — no
@@ -118,6 +122,8 @@ Resolve now (CLAUDE.md: don't defer verifiable questions): either
 
 ### 4. "Reject a current-action signal redirect" has no matching rule
 
+> **Resolved (auto).** Task 14 now specs the resolves-to-current rule: an entry redirects iff `action_id` equals the target's `_id`, or its key-normalised `(type, key)` (absent → `null`, today's `normalisePreHook` rule) equals the target's `(type, current_key-normalised)`. Sibling keyed instances (`{ type: currentType, key: <other> }`) explicitly pass; AC + test list cover both rejection forms and the sibling-passes case.
+
 State-machine.md (lines 200-205) gives four target forms: `{ type }`,
 `{ workflow_id, type }`, `{ action_id }`, `{ type, key }`. Task 14 says
 "reject a return that attempts to redirect the root/current action" without
@@ -174,6 +180,8 @@ hook's *own* `:reject`.
 
 ### 7. The `:reject`/UserError propagation contract points at task 14 but isn't in it
 
+> **Resolved (auto).** Task 14 gains an "Error propagation" block carrying the load-bearing contract D13 already decided: no try/catch in either wrapper; `:reject` (`UserError(isReject: true)`) and generic crashes propagate transparently to the endpoint's `runRoutine`; no re-wrap in `WorkflowEngineError`; pre-hook rejects propagate pre-plan (no writes), post-hook throws propagate after writes (idempotency obligation per D6). AC + tests assert the unwrapped `UserError` surfaces.
+
 D13 reserves `UserError` "for surfacing pre-hook rejects (D5 / task 14)" —
 task 14 is named as the home of that behaviour, yet never mentions it. The
 current wrapper's load-bearing contract (`invokePreHook.js:12-15`): **no
@@ -190,6 +198,8 @@ documented posture (`invokePostHook.js:10-13`): throws propagate after writes
 landed; authors keep the idempotency obligation (D6's README note).
 
 ### 8. `buildHookPayload.js` has no destination — `shared/phases/` would import from a handler directory
+
+> **Resolved (auto).** Task 14's Files list now relocates `buildHookPayload.js` (+ test) to `shared/phases/` and deletes the `SubmitWorkflowAction/utils/` original after task 15 rewires; task 15's dangling-helper audit list gains `utils/buildHookPayload` with a no-stale-copy check. Contents of the file are finding 1's subject, handled there.
 
 Task 14 moves the two wrappers to `shared/phases/` but lists no disposition
 for `buildHookPayload.js` (+ its test), which both wrappers import. Left in

@@ -10,7 +10,7 @@ This is one of the three engine-independent access surfaces (per D16), and it is
 
 Update the `action_role_check` component (from Part 18) to populate `_state.action_allowed` as a **per-verb** bag `{ view, edit, review, error }` instead of a single boolean. Each verb's bool is computed by evaluating the action's `access.{current_app}.{verb}` gate against `_user.apps.{current_app}.roles`, using the same `(gate, roles) → bool` semantics as the query-time and submit-time runtimes.
 
-Page templates that previously read a single `action_allowed` boolean must be updated to read the verb-specific bool (`_state.action_allowed.edit`, etc.). Audit and update those references — but note the demo page-template migration (the bulk of template consumers) rides along in task 20; this task owns the component itself + the module's own fixed-page templates if any consume it.
+Page templates that previously read a single `action_allowed` boolean must be updated to read the verb-specific bool (`_state.action_allowed.edit`, etc.). Audit and update those references — but note the demo's template consumers (the bulk of them) land with the Part 45 demo rebuild; this task owns the component itself + the module's own fixed-page templates if any consume it.
 
 **Add a test** that runs the shared `gates.fixtures.js` (task 5) through the client gate helper, asserting it matches the oracle.
 
@@ -29,4 +29,4 @@ Page templates that previously read a single `action_allowed` boolean must be up
 ## Notes
 
 - Locate the existing `action_role_check` definition before editing (search for `action_role_check` and `action_allowed` across `modules/workflows/` and `apps/demo/`).
-- The demo's page-template consumers are migrated in task 20 (Proposed change #13's page-template migration) — keep this task scoped to the component + module-owned consumers.
+- The demo's page-template consumers land with the Part 45 demo rebuild (Proposed change #13) — keep this task scoped to the component + module-owned consumers.

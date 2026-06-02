@@ -28,7 +28,7 @@ Part 34 D10 reserves the `workflow-*` glob space for the module's **fixed** page
 - `module.lowdefy.yaml` `pages:` `_ref` paths + export ids point at the renamed files.
 - `workflow-group-overview` reads `actions_list.$.message` / `.links`.
 - `computeEngineLinks`' fixed-page link targets use `workflow-simple-{verb}`.
-- The module builds; the demo (task 20) resolves these pages.
+- The module builds; the demo (rebuilt by Part 45) resolves these pages.
 
 ## Files
 

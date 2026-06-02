@@ -48,7 +48,7 @@ load (loadWorkflowState — incl. per-verb access gate)
 - `SubmitWorkflowAction/utils/getCurrentAction.js` (load reads all actions in one call)
 - `SubmitWorkflowAction/dispatchLogEvent.js` (dispatch → commit; template constants → `planEventDispatch`)
 
-Also remove their `.test.js` files and any now-dangling imports/helpers (`mergeEventOverrides`, `mergeFormOverrides`, `mergePreHookActions`, `shouldCreate`) — audit each: keep and relocate the ones the planners reuse (e.g. `mergeEventOverrides` for `planEventDispatch`), delete the ones fully superseded. (`recomputeGroups` / `deriveGroupStatus` are already relocated to `shared/phases/planners/` by task 9 — verify no stale copies or imports remain under `SubmitWorkflowAction/`.)
+Also remove their `.test.js` files and any now-dangling imports/helpers (`mergeEventOverrides`, `mergeFormOverrides`, `mergePreHookActions`, `shouldCreate`, `utils/buildHookPayload` — the latter relocated to `shared/phases/` by task 14; verify no stale copy remains under `SubmitWorkflowAction/utils/`) — audit each: keep and relocate the ones the planners reuse (e.g. `mergeEventOverrides` for `planEventDispatch`), delete the ones fully superseded. (`recomputeGroups` / `deriveGroupStatus` are already relocated to `shared/phases/planners/` by task 9 — verify no stale copies or imports remain under `SubmitWorkflowAction/`.)
 
 ## Acceptance Criteria
 
