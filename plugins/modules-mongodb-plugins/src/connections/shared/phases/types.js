@@ -59,22 +59,29 @@
  * writes the Plan and nothing else.
  *
  * No `notifications` field: the engine builds no notification doc. After
- * commit it fires `callApi("send-notification", { event_ids })` keyed on the
- * committed events (design D9 step 4).
+ * commit it fires `callApi("send-notification", { event_ids: [event_id] })`
+ * keyed on the committed event (design D9 step 4).
  *
  * @typedef {Object} Plan
  * @property {{
  *   doc: import('../types.js').WorkflowDoc,
+ *   operation: 'insert' | 'update',
  *   changeLog: ChangeLogDelta,
- * }} workflow — whole post-commit workflow doc + its raw before/after delta.
+ * }} workflow — whole post-commit workflow doc + its raw before/after delta
+ *   (`before` is null for insert). `operation` is `update` (the default) for
+ *   Submit/Cancel/Close/tracker, `insert` for Start; commit step 1 dispatches
+ *   accordingly — update → CAS findOneAndUpdate (design D15), insert →
+ *   insertOneDoc with no CAS filter (a fresh _id can't race).
  * @property {Array<{
  *   doc: import('../types.js').ActionDoc,
  *   operation: 'insert' | 'update',
  *   changeLog: ChangeLogDelta,
  * }>} actions — whole post-commit action docs (rendered cell, engine links,
  *   metadata included); commit dispatches per `operation`.
- * @property {Array<{ doc: Object }>} events — fully rendered event docs, one
- *   per dispatched log event.
+ * @property {{ doc: Object }} event — the fully rendered event doc, exactly
+ *   one per invocation: the doc's _id IS the per-invocation event_id (a second
+ *   entry would collide on _id), so the singular type enforces the invariant
+ *   (design D3).
  * @property {Object[]} changeLog — finished community-schema log-changes
  *   entries built by `planChangeLog` (task 12) from the per-doc deltas above;
  *   commit step 5 inserts these. Empty when `changeLog` is unconfigured on

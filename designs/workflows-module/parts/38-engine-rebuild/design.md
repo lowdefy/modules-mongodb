@@ -77,22 +77,25 @@ The contract is enforced by the file layout (D8: `shared/` reorg). Phase functio
 type Plan = {
   workflow: {
     doc: WorkflowDoc;              // post-commit shape — what commit phase writes
-    changeLog: ChangeLogDelta;     // before-after for audit
+    operation: "insert" | "update"; // update (default) for Submit/Cancel/Close/tracker; insert for Start.
+                                   // Commit step 1 dispatches accordingly: update → CAS findOneAndUpdate (D15);
+                                   // insert → insertOneDoc, no CAS filter (a fresh _id can't race — nothing to claim).
+    changeLog: ChangeLogDelta;     // before-after for audit; null `before` for insert
   };
   actions: Array<{
     doc: ActionDoc;                // post-commit shape (including rendered cell, engine links, metadata)
     operation: "insert" | "update"; // commit phase dispatches accordingly
     changeLog: ChangeLogDelta;     // before-after for audit; null `before` for inserts
   }>;
-  events: Array<{                  // one entry per dispatched log event
-    doc: EventDoc;                 // fully rendered display, references, metadata
-  }>;
+  event: {                         // exactly one per invocation — the doc's _id IS the per-invocation
+    doc: EventDoc;                 // event_id (a second entry would collide on _id), so the type
+  };                               // enforces the invariant. Fully rendered display, references, metadata.
   changeLog: ChangeLogEntry[];     // finished community-schema log-changes entries; commit step 5 inserts these.
                                    // Built by planChangeLog (D7) from the per-doc `changeLog` deltas above —
                                    // those deltas are the raw { before, after } pairs; this is the transformed output.
                                    // Empty when `changeLog` is not configured on the connection.
   // No `notifications` field: the engine builds no notification doc. After commit it
-  // fires callApi("send-notification", { event_ids }) keyed on the committed events;
+  // fires callApi("send-notification", { event_ids: [event_id] }) keyed on the committed event;
   // the app's send_routine owns recipient fan-out and any notification-doc write (D9 step 4).
   trackerFires: Array<{            // recursion handled per-level outside this plan
     parentWorkflowId: string;
@@ -106,11 +109,11 @@ Notes:
 
 - `workflow.doc` is the **whole** post-commit workflow doc, not a delta. The planner composes it from `loadedState.workflow` + each accumulated change (summary recompute, groups recompute, form_data merge, optional `completed` status push). The commit phase does `findOneAndUpdate` with a `$set` of the whole doc minus `_id`. (Open question: should commit phase set whole doc or computed delta — see "Open questions" below.)
 - `actions[].doc` is the whole post-commit action doc. For inserts, that's the full draft. For updates, that's the loaded action with planned changes layered on (new status entry prepended, fields set, rendered cell spread, engine links computed, metadata merged).
-- Renders run during planning: `actions[].doc.<app-slug>.message`, `actions[].doc.status_title`, and `events[].doc.display.<app-slug>.{title,description}` are rendered Nunjucks strings at plan time, against the planned post-commit shape of the doc the template references. The per-verb `actions[].doc.<app-slug>.links` map (Part 34 D7) is **computed** in the same pass by `computeEngineLinks` (not a Nunjucks render) — one `{ view, edit, review, error }` map per slug.
+- Renders run during planning: `actions[].doc.<app-slug>.message`, `actions[].doc.status_title`, and `event.doc.display.<app-slug>.{title,description}` are rendered Nunjucks strings at plan time, against the planned post-commit shape of the doc the template references. The per-verb `actions[].doc.<app-slug>.links` map (Part 34 D7) is **computed** in the same pass by `computeEngineLinks` (not a Nunjucks render) — one `{ view, edit, review, error }` map per slug.
 - `changeLog` deltas (D7) capture before vs after for audit. Built during planning, alongside the planned doc shape.
 - `trackerFires` records what tracker subscriptions should fire after the current workflow's commit completes — the tracker recursion loop runs the next-level load-plan-commit per entry.
 
-The Plan is immutable once handed to commit. The planner can return early with an empty-actions Plan; commit on an empty Plan is a no-op write of just the workflow's `updated` stamp if anything else changed, or a complete no-op if nothing changed. Empty plans arise only from **engine cascade / pre-hook auxiliary signals** that no-op against their targets — a user-driven current-action signal with no FSM entry *throws* (D13 (3) / Q2), so the user path never produces a silent empty-plan no-op.
+The Plan is immutable once handed to commit. **Empty plans never reach commit — the caller short-circuits.** A user-driven current-action signal with no FSM entry *throws* (D13 (3) / Q2), so Submit always plans at least one transition; the only real producer of an empty plan is a tracker cascade level whose mirror signal FSM-no-ops against the parent's target action. In that case nothing changed (no transitions → recomputed groups/summary equal the loaded ones), so `planTrackerLevel` returns an empty plan and the cascade loop skips `commitPlan` for that level entirely (task 16) — no workflow write (no `updated` stamp advance, which would otherwise claim the parent and create spurious CAS pressure on concurrent real submits), no mirror event, no change-log entries, no further fires from that level. `commitPlan` itself stays logic-free: it executes whatever it's given; the mongo helpers' empty-batch no-ops are a backstop, not the mechanism.
 
 ### D4. FSM resolution at the plan phase
 
@@ -169,7 +172,7 @@ Today engine writes go through the community plugin's `MongoDBUpdateOne` / `Mong
 
 **Configuration — unchanged.** The existing `changeLog: { collection, meta }` property on the WorkflowAPI connection is **kept and now honored by the engine natively**. Opt-in exactly like the community plugin and the events module (`{ collection: log-changes, meta: { user: { _user: true } } }`). When `changeLog` is not configured, the engine writes no audit entries — same behaviour as the community plugin.
 
-**Schema — identical to the community plugin's `log-changes` entry.** Per affected doc the engine writes one entry with the community shape: `{ type, args, before, after, response, timestamp, meta, ... }` (plus the request-context fields `blockId` / `connectionId` / `pageId` / `requestId`, populated from the engine handler's request context, shared across all entries from one invocation). These fields are reliably available with **exact parity** to the community plugin: Lowdefy's `callRequestResolver` passes `{ blockId, connectionId, pageId, requestId, endpointId }` to *every* connection request resolver, so the WorkflowAPI handler receives them on the same `lowdefyContext` object the community plugin reads — `SubmitWorkflowAction.js` just threads them into the engine context. When an invocation lacks a page/block (e.g. a server-side endpoint step), `pageId`/`blockId` are `undefined` — but that is identical for the community plugin, so an engine-written entry is never *less* populated than a plugin-written one. `type` reflects the logical operation (`MongoDBUpdateOne` for an action/workflow update, `MongoDBInsertOne` for an action insert). `meta` is resolved from `connection.changeLog.meta` (e.g. the current user via `_user`). No engine-specific fields are added — a `log-changes` reader can't tell an engine-written entry from a community-plugin-written one except by `type`/content.
+**Schema — identical to the community plugin's `log-changes` entry, which is per-type** (verified against the `@lowdefy/community-plugin-mongodb@3.0.0` dist source). Per affected doc the engine writes one entry: **update entries** (`type: "MongoDBUpdateOne"`) carry `{ type, args: { filter: { _id }, update: { $set: <planned doc> } }, before, after, payload, timestamp, meta }` — no `response` (the plugin logs none on updates, and the engine's bulk writes return counts only anyway); **insert entries** (`type: "MongoDBInsertOne"`) carry `{ type, args: { doc: <planned doc> }, response: { acknowledged: true, insertedId }, payload, timestamp, meta }` — no `before`/`after` (the plugin logs none on inserts; the doc is in `args.doc`; `insertedId` is the plan-time minted `_id`, so the entry is truthful at plan time). `payload` (the request payload) appears on every entry, exactly as the plugin logs it. All entries also carry the request-context fields `blockId` / `connectionId` / `pageId` / `requestId`, populated from the engine handler's request context, shared across all entries from one invocation. These fields are reliably available with **exact parity** to the community plugin: Lowdefy's `callRequestResolver` passes `{ blockId, connectionId, pageId, requestId, endpointId }` to *every* connection request resolver, so the WorkflowAPI handler receives them on the same `lowdefyContext` object the community plugin reads — `SubmitWorkflowAction.js` just threads them into the engine context. When an invocation lacks a page/block (e.g. a server-side endpoint step), `pageId`/`blockId` are `undefined` — but that is identical for the community plugin, so an engine-written entry is never *less* populated than a plugin-written one. `type` reflects the logical operation (`MongoDBUpdateOne` for an action/workflow update, `MongoDBInsertOne` for an action insert). `meta` is a **verbatim copy** of `connection.changeLog.meta` — the plugin does no resolution (Lowdefy already evaluated operators like `_user` when building connection properties), and neither does the engine. No engine-specific fields are added — a `log-changes` reader can't tell an engine-written entry from a community-plugin-written one except by `type`/content.
 
 **How before/after are obtained — from the Plan, no extra reads.** The community plugin captures `before`/`after` with extra reads (`findOneAndUpdate` + `findOne`) because it is stateless per op. The engine doesn't need to: `before` is the doc the load phase already read (`loadedState.action` / `loadedState.workflow`), and `after` is the doc the plan phase already composed (`plan.actions[i].doc` / `plan.workflow.doc`). The entries are built from the Plan and inserted with one `insertManyDocs`.
 
@@ -225,8 +228,8 @@ Commit writes are ordered **workflow-first**:
 
 1. **Workflow** — `findOneAndUpdateDoc` on the workflows collection with the planned post-commit workflow doc, carrying the CAS filter (`updated.timestamp`, D15). **This is the claim step:** if the filter misses (a concurrent submit moved the workflow between our load and commit), `findOneAndUpdate` matches zero docs, writes nothing, and the engine throws `ConcurrentSubmitError` **before any action write happens**.
 2. **Actions** — `bulkWriteActions` with all inserts + updates from `plan.actions`.
-3. **Events** — `insertOneDoc` per entry in `plan.events`.
-4. **Notifications** — `callApi("send-notification", { event_ids })`, a single call carrying the `_id`s of the events just written in step 3. **The engine builds no notification doc and inserts nothing into a notifications collection.** This preserves today's mechanic (`dispatchNotifications.js`): the notifications module's `send-notification` endpoint runs the app-provided `send_routine`, which re-fetches each event doc to read its references/metadata and owns recipient fan-out + any notification-doc write. There is no engine-side `NotificationDoc` anywhere in the repo to build, so composing one would be speculative surface (CLAUDE.md "Build for what exists, not what might") — and it must run *after* step 3 because the routine reads the committed event. Like events (and for the same reason — it crosses the `callApi` boundary onto the community-plugin client), it is outside the transaction. Silent no-op when the app wired no `send_routine`.
+3. **Events** — the single per-invocation `new-event` dispatch of `plan.event` via `callApi` (the doc's `_id` is the per-invocation `event_id`; see "Events go through `callApi`" below).
+4. **Notifications** — `callApi("send-notification", { event_ids: [event_id] })`, one call carrying the `_id` of the event just written in step 3 (the wire field stays the batch-shaped `event_ids` — the notifications endpoint's existing contract — even though the engine always sends exactly one). **The engine builds no notification doc and inserts nothing into a notifications collection.** This preserves today's mechanic (`dispatchNotifications.js`): the notifications module's `send-notification` endpoint runs the app-provided `send_routine`, which re-fetches each event doc to read its references/metadata and owns recipient fan-out + any notification-doc write. There is no engine-side `NotificationDoc` anywhere in the repo to build, so composing one would be speculative surface (CLAUDE.md "Build for what exists, not what might") — and it must run *after* step 3 because the routine reads the committed event. Like events (and for the same reason — it crosses the `callApi` boundary onto the community-plugin client), it is outside the transaction. Silent no-op when the app wired no `send_routine`.
 5. **Change-log** — `insertManyDocs` (single call) of all `log-changes` entries (D7), built from the Plan. Last step (outside the txn) so an earlier failure prevents an audit entry claiming a write that didn't happen.
 
 **Invariant: no action write is durable until the workflow claim succeeds.** Workflow-first is what makes the CAS gate meaningful — the common failure (concurrent submit) is detected and thrown with *zero* writes, so a retry re-loads and re-plans from un-advanced state and never double-transitions. (Actions-first would commit the action transitions before the CAS check, so a CAS miss would leave orphaned action writes and a retry would re-apply the transition against the already-advanced action — a double `status[]` push. See review-1 finding #1.) Events after the workflow+actions because event docs reference workflow + action IDs. Change-log last so any earlier step failing prevents an audit entry claiming a write that didn't happen.
@@ -237,11 +240,11 @@ The denormalised summary/groups on the planned workflow doc are computed from th
 
 **Events go through `callApi("new-event")` and are outside the transaction boundary regardless.** The events module owns event-doc validation, type-keying, and the `display_key` projection — bypassing `new-event` and writing directly into `events` would duplicate that logic across modules. The event write also uses the community-plugin's MongoClient, not the engine's (D8/finding #2 root cause: two clients), so it *cannot* join the engine's session. Trade-off: an event write isn't rolled back if a later step (notifications, change-log) fails. The window is one step and events failing is more visible than events succeeding without notifications; acceptable for v1. Future work: thread the engine session into subroutine calls so callApi'd module endpoints can participate — a larger change tracked separately.
 
-Partial-failure outcomes if a step throws mid-commit (the **standalone fallback** path; the transaction path rolls steps 1–2 back together):
+**Partial-failure semantics.** Steps 1–2 throw (the atomicity gate). Steps 3–5 never throw out of `commitPlan`: each is caught and recorded on `CommitResult.dispatchErrors[]`, so a committed submit's tracker cascade and post-hook always run — then the **handler** throws `post_commit_dispatch_failed` (D13) at the very end of the invocation, so the failure still surfaces through Lowdefy's error reporting (the infra that actually exists — no engine side-channel logging) without stranding `trackerFires` or skipping the post-hook. Outcomes per step:
 
-- Workflow claim succeeds, action write fails: workflow summary/groups claim transitions the actions didn't get. Recoverable — a future submit's load reads the un-advanced actions and `planWorkflowRecompute` corrects the summary; not silently broken. On a retry of the *same* submit, the action write is re-attempted (it didn't land), so no double-transition.
-- Workflow + actions succeed, events fail: the submit happened but didn't log to the timeline. Operationally bad — flag in monitoring. Authors can re-fire via a manual operational API.
-- Events succeed, change-log fails: audit gap. Log loudly; the change-log insert is the last step specifically so this is the smallest possible failure mode.
+- Workflow claim succeeds, action write fails (standalone fallback only; the transaction path rolls steps 1–2 back together): workflow summary/groups claim transitions the actions didn't get. Recoverable — a future submit's load reads the un-advanced actions and `planWorkflowRecompute` corrects the summary; not silently broken. On a retry of the *same* submit, the action write is re-attempted (it didn't land), so no double-transition.
+- Workflow + actions succeed, events fail: the submit happened but didn't log to the timeline. Recorded on `dispatchErrors[]`; step 4 is skipped (no committed event ids to dispatch); cascade + post-hook still run; the end-of-handler throw surfaces it. Authors can re-fire via a manual operational API.
+- Events succeed, notifications or change-log fail: missed notification / audit gap. Recorded on `dispatchErrors[]` and surfaced by the same end-of-handler throw; the change-log insert is the last step specifically so its failure is the smallest possible mode.
 
 ### D10. Tracker recursion
 
@@ -273,26 +276,39 @@ This restructure is the only viable shape with load-plan-commit — recursion ac
 Mongo multi-document transactions wrap the two writes that must be atomic — **the workflow claim + the action transitions (D9 steps 1–2)** — and nothing more. The seam is clean: every Mongo helper accepts an optional `session`, and `commitPlan` is the only function that touches multiple collections.
 
 What stays outside, and why:
-- **Events and notifications** — *must* be outside: both go through `callApi` (`new-event` / `send-notification`) on the community plugin's client, which can't join the engine's session (D9, finding #2). A notification failure shouldn't roll back a committed submit anyway, so best-effort downstream dispatch is the right semantics regardless.
+- **Events and notifications** — *must* be outside: both go through `callApi` (`new-event` / `send-notification`) on the community plugin's client, which can't join the engine's session (D9, finding #2). A notification failure shouldn't roll back a committed submit anyway — it's recorded on `CommitResult.dispatchErrors[]` and surfaced after the cascade + post-hook via the handler's `post_commit_dispatch_failed` throw (D9 partial-failure semantics), rather than aborting them.
 - **Change-log** — uses the engine's own client (`insertManyDocs`), so it *could* technically join, but v1 keeps the transaction minimal at the workflow+action aggregate. It runs last so its only failure mode is a missing audit entry (D7/D9), never a phantom one.
 
 Transactions require a replica set (or mongos); a standalone `mongod` can't run them. This module is open source — we control our own deployments (all replica sets) but not external consumers', who may run standalone. So v1 **detects topology and adapts**, rather than hard-requiring a replica set or deferring transactions entirely:
 
 ```js
 async function commitPlan(context, plan) {
-  if (!context.useTransactions) {
+  if (context.useTransactions) {
+    const session = context.mongoClient.startSession();
+    try {
+      // steps 1–2 only — the txn body must contain nothing else: withTransaction
+      // auto-retries transient/write-conflict errors by re-running its whole callback,
+      // and a retried step 3/4/5 would double-fire events/notifications/change-log
+      // (their writes are on other clients / outside the txn — our abort doesn't
+      // roll them back). A CAS miss inside surfaces as a null findOneAndUpdate →
+      // throw ConcurrentSubmitError → clean abort.
+      await session.withTransaction(() => commitWorkflowAndActions(context, plan, session));
+    } finally {
+      await session.endSession();
+    }
+  } else {
     // standalone fallback: workflow-first ordered writes (D9). Correct on its own —
     // the CAS gate (D15) throws before any action write on a concurrency miss.
-    return commitWithoutTransaction(plan);
+    await commitWorkflowAndActions(context, plan);
   }
-  const session = context.mongoClient.startSession();
-  try {
-    // withTransaction auto-retries transient/write-conflict errors; a CAS miss inside
-    // surfaces as a null findOneAndUpdate → we throw ConcurrentSubmitError → clean abort.
-    return await session.withTransaction(() => commitWithSession(plan, session));
-  } finally {
-    await session.endSession();
-  }
+  // steps 3–5 — once, both paths, never inside the driver's retry loop.
+  // Each is caught + recorded on CommitResult.dispatchErrors (step 4 skipped when
+  // step 3 failed) — the handler throws post_commit_dispatch_failed after the
+  // cascade + post-hook (D9 partial-failure semantics).
+  const event_id = await dispatchEvent(context, plan);     // step 3
+  await dispatchNotifications(context, event_id);          // step 4
+  await writeChangeLog(context, plan);                     // step 5
+  return buildCommitResult(plan);
 }
 ```
 
@@ -326,7 +342,7 @@ const renderCtx = {
   user: context.user,
   action: plannedActionDoc,         // post-commit shape
   workflow: plannedWorkflowDoc,     // post-commit shape including form_data, summary, groups
-  interaction: signal,              // or "submit" / etc. — the user-facing name
+  signal,                           // e.g. "submit" — the resolved signal name (the legacy `interaction` key is renamed; one concept, one name)
   status_before: loadedActionDoc.status[0].stage,
   status_after: plannedActionDoc.status[0].stage,
   submitted_form: planInputs.mergedFormData, // pre-merged from params.form + params.form_review + preHookResult.form_overrides
@@ -341,11 +357,11 @@ const renderCtx = {
 const renderCtx = {
   user: context.user,
   workflow: plannedWorkflowDoc,     // post-commit shape (status pushed: started/cancelled/closed)
-  interaction: signal,              // user-facing lifecycle name (started / cancelled / closed)
+  signal,                           // lifecycle name (started / cancelled / closed)
 };
 ```
 
-This matches what the lifecycle engine-default templates reference (`user.profile.name`, `workflow.workflow_type` — see "Engine entry points emit events"); nothing more is bound until a concrete template needs it. `planEventDispatch` **branches on handler/event type**: action events (`action-{interaction}`, `action-internal-mirror-{state}`) get the full action-event context; lifecycle events (`workflow-started` / `workflow-cancelled` / `workflow-closed`) get the workflow-only context. The tracker-mirror event is an action event (it has a single mirrored target action), so it uses the action-event context.
+This matches what the lifecycle engine-default templates reference (`user.profile.name`, `workflow.workflow_type` — see "Engine entry points emit events"); nothing more is bound until a concrete template needs it. `planEventDispatch` **branches on handler/event type**: action events (`action-{signal}`, `action-internal-mirror-{state}`) get the full action-event context; lifecycle events (`workflow-started` / `workflow-cancelled` / `workflow-closed`) get the workflow-only context. The tracker-mirror event is an action event (it has a single mirrored target action), so it uses the action-event context.
 
 ### D13. Signal validation and error model
 
@@ -357,7 +373,7 @@ Three places where signals can be invalid:
 
 The distinction is intentional: user-driven signals indicate an explicit intent that should not silently fail, while cascade signals are deliberately permissive so engine re-evaluation can fire broadly without regressing siblings.
 
-**Engine error model.** Engine throws share one base class in `shared/errors.js`: `WorkflowEngineError extends Error`, constructor `(message, { code, cause })`. Callers and tests discriminate on `code`, never on message text. Load-phase invariant codes: `workflow_not_found`, `action_not_found`, `stage_rejects_submit`, `access_denied`. Plan-phase signal-validation codes (the throws in cases 1–3 above): `unknown_signal`, `missing_target`, `signal_not_allowed`. Lifecycle-handler code: `stage_rejects_close` (Close on a cancelled workflow, task 17). `ConcurrentSubmitError extends WorkflowEngineError` (`code: "concurrent_submit"`, D15) keeps its named class because callers catch it by name as the retryable case; `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`, D10) likewise. The engine does **not** reuse `SubmitWorkflowAction/UserError.js` for these: `UserError` is Lowdefy's routine-reject vehicle (discriminated by `runRoutine` on `name === "UserError"`) and stays reserved for surfacing pre-hook rejects (D5 / task 14) — engine invariants are defensive gates, not author-defined user messaging, so they intentionally surface as server-shaped errors. **Cause chains:** a rethrow that adds engine context (phase, workflow id) must pass `{ cause }` so the original error is preserved; the default is not to wrap at all — driver and downstream errors bubble as-is unless the wrap genuinely adds context.
+**Engine error model.** Engine throws share one base class in `shared/errors.js`: `WorkflowEngineError extends Error`, constructor `(message, { code, cause })`. Callers and tests discriminate on `code`, never on message text. Load-phase invariant codes: `workflow_not_found`, `action_not_found`, `stage_rejects_submit`, `access_denied`. Plan-phase signal-validation codes (the throws in cases 1–3 above): `unknown_signal`, `missing_target`, `signal_not_allowed`. Lifecycle-handler code: `stage_rejects_close` (Close on a cancelled workflow, task 17). Post-commit dispatch code: `post_commit_dispatch_failed` — thrown by the handler at the very end of an invocation (after the tracker cascade + post-hook) when commit steps 3–5 recorded failures on `CommitResult.dispatchErrors[]` (D9); its message states the commit succeeded and names the failed steps, `{ cause }` chaining the first recorded error. `ConcurrentSubmitError extends WorkflowEngineError` (`code: "concurrent_submit"`, D15) keeps its named class because callers catch it by name as the retryable case; `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`, D10) likewise. The engine does **not** reuse `SubmitWorkflowAction/UserError.js` for these: `UserError` is Lowdefy's routine-reject vehicle (discriminated by `runRoutine` on `name === "UserError"`) and stays reserved for surfacing pre-hook rejects (D5 / task 14) — engine invariants are defensive gates, not author-defined user messaging, so they intentionally surface as server-shaped errors. **Cause chains:** a rethrow that adds engine context (phase, workflow id) must pass `{ cause }` so the original error is preserved; the default is not to wrap at all — driver and downstream errors bubble as-is unless the wrap genuinely adds context.
 
 ### D14. Salvaged from Part 30
 
@@ -474,17 +490,17 @@ PLAN phase  (pure, no I/O)
    │     - spread rendered cell + links map into planned action doc
    ├─ build event payload (default + YAML override + pre-hook override; render against engine render context)
    ├─ build log-changes entries (before vs after for every doc touched; D7)
-   └─ output: Plan { workflow, actions[], events[], trackerFires[], changeLog[] }   // no notifications — dispatched post-commit (D9 step 4)
+   └─ output: Plan { workflow, actions[], event, trackerFires[], changeLog[] }   // no notifications — dispatched post-commit (D9 step 4)
    │
    ▼
 COMMIT phase   (steps 1–2 wrapped in one transaction on a replica set; ordered fallback on standalone — D9/D11)
    ├─ 1. findOneAndUpdateDoc(workflows, { _id, "updated.timestamp": loadedState.workflow.updated.timestamp }, $set: plan.workflow.doc)
    │        └─ CAS claim: null return → throw ConcurrentSubmitError before any action write (D15)
    ├─ 2. bulkWriteActions(plan.actions)
-   ├─ 3. for each event in plan.events: callApi('new-event', module: 'events', { _id: event_id, display, references, type, metadata })   [outside txn; community client]
-   ├─ 4. callApi('send-notification', module: 'notifications', { event_ids })   [outside txn; community client; engine builds no notification doc — D9 step 4]
+   ├─ 3. callApi('new-event', module: 'events', { _id: event_id, ...plan.event.doc })   [single per-invocation dispatch; outside txn; community client]
+   ├─ 4. callApi('send-notification', module: 'notifications', { event_ids: [event_id] })   [outside txn; community client; engine builds no notification doc — D9 step 4]
    ├─ 5. insertManyDocs(<changeLog.collection, e.g. log-changes>, plan.changeLog)   [outside txn, last]
-   └─ output: CommitResult { action_ids, event_ids, ... }
+   └─ output: CommitResult { workflow_id, action_ids, event_id, dispatchErrors }
    │
    ▼
 TRACKER cascade (loop, not recursion)
@@ -510,12 +526,18 @@ Today only `SubmitWorkflowAction` dispatches a log event. This rebuild extends e
 | Handler | Event `type` | Engine-default title (plain Nunjucks string) |
 |---|---|---|
 | `StartWorkflow` | `workflow-started` | `{{ user.profile.name }} started {{ workflow.workflow_type }}` |
-| `SubmitWorkflowAction` | `action-{interaction}` (unchanged) | `{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}` |
+| `SubmitWorkflowAction` | `action-{signal}` (type strings unchanged — e.g. `action-submit`) | `{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}` |
 | `CancelWorkflow` | `workflow-cancelled` | `{{ user.profile.name }} cancelled {{ workflow.workflow_type }}` |
 | `CloseWorkflow` | `workflow-closed` | `{{ user.profile.name }} closed {{ workflow.workflow_type }}` |
 | Tracker-mirror commit (per cascade level) | `action-internal-mirror-{state}` | `Tracker mirrored child {{ status_after }}` (system event; lower-prominence in the timeline) |
 
 One `event_id` per invocation, used as the dispatched event doc's `_id`. (Tracker-mirror commits per cascade level each generate their own `event_id`.) The `log-changes` audit (D7) follows the community plugin's schema and is not keyed by `event_id`.
+
+**Event references — uniform all-touched-actions rule.** Every event carries `references: { workflow_ids: [workflow._id], action_ids: [...], [refKey]: [workflow.entity_id] }`, where `refKey` is **`workflow.entity_ref_key` — new required authored config** — and **`action_ids` lists every action doc the invocation's plan touches** — one rule for all event types.
+
+**`entity_ref_key` replaces the derivation.** Today's `deriveEntityRefKey(workflow.entity_collection)` mechanically appends `_ids` to the collection name (`leads-collection` → `leads_ids`) — but the repo-wide reference convention is singular (`lead_ids`, `contact_ids`, `company_ids`, `activity_ids`), and the demo already exhibits the break: engine events carry `leads_ids` while the lead page timeline and the demo's own hooks/routines use `lead_ids`, so engine-written events never surface there. Singularizing a collection name needs English heuristics that fail silently, so the key becomes explicit: workflow config gains a **required** `entity_ref_key` field beside `entity_collection` (demo: `entity_ref_key: lead_ids`), validated by the resolver (task 6), copied onto the workflow doc by `StartWorkflow` exactly like `entity_collection` (task 17), and read by `planEventDispatch` (task 12). `deriveEntityRefKey.js` is **deleted** (with its tests); the demo configs gain the field in the migration (task 20).
+
+For Submit, `action_ids` is the submitted action plus auxiliary and auto-unblocked transitions; for tracker-mirror, the one mirrored tracker action; for `workflow-started`, all initially created actions; for Cancel/Close, the actions marked `not-required` (untouched done actions are not referenced). This widens today's single `action_ids: [action._id]` (v0's reference implementation already did this) and is load-bearing for [Part 42](../42-timeline-action-cards/design.md)'s timeline action cards: each action's live card attaches to the *latest event referencing it*, so referencing every touched action is what makes a newly-unblocked or newly-created action appear in the timeline at all, and what makes its card migrate as later events touch it. Event `metadata`: action events carry `{ action_type, workflow_type, signal, current_key, status_before, status_after }` (today's composition, minus the `metadata.comment` fold — Part 33 owns the comment); lifecycle events carry `{ workflow_type, signal }`. The legacy `metadata.interaction` key is renamed to `metadata.signal`, matching the render-context rename (D12) — greenfield, no compat shim; one concept, one name. Full composition is specced in task 12.
 
 Apps that subscribe to events (notifications, external syncs) will start seeing the new event types. App-side handling: either explicitly route the new types or ignore them. The notifications module's subscription config is the primary integration point — Part 8's contract is unaffected, but apps will want to opt into (or out of) the new types. Demo's notification config gets the necessary update as part of this part's demo migration.
 
@@ -639,7 +661,7 @@ Plus, one level up at `shared/`:
 ### Modified — API + payload surfaces
 
 - `modules/workflows/resolvers/makeWorkflowApis.js` — emitted-api payload mapping passes `signal`, `metadata`, `form`, `form_review`, `event_overrides`, hooks. Drops `force`. Emitted Api ids stay `{workflow_type}-{action_type}-{...}` (no `workflow-` prefix; entry-scoped — D16 / Part 34 D10).
-- `modules/workflows/api/start-workflow.yaml` — add `metadata` to payload (Part 30 carry-over). Document `signal` as the replacement for the implicit "what status do we start in" path.
+- `modules/workflows/api/start-workflow.yaml` — add `metadata` to payload (Part 30 carry-over). The `actions:` payload override keeps the `{ type, status }` grammar — the Start planner seeds drafts directly at the declared status (legal seeds: `action-required`, `blocked`); creation at workflow start is not an FSM transition, and the `none` row is the pre-hook spawn path only (Part 45 review 1 #2; state-machine.md "Creation").
 - Pre-hook payload shape (`buildHookPayload.js`) — unchanged. Pre-hook **return** shape changes: `{ type, status }` → `{ type, signal }` per state-machine.md.
 
 ### Modified — demo app (in scope; see Proposed change item 13)
@@ -715,7 +737,7 @@ loadedState = {
 7. Check auto-complete: no — `total !== done + not_required` (the full trigger is `total > 0 && total === done + not_required` with the current workflow stage not already `completed`/`cancelled` — preserves the old `recomputeWorkflowAfterActionWrite` guards). No completed push.
 8. Merge form_data: `submitted_form = { physical_id: "D-42" }`. Planned workflow.form_data = `{ "install-step": { physical_id: "D-42" } }`.
 9. Compose planned workflow doc with summary, groups, form_data.
-10. Build event payload: render `display.{appName}.title` against `{ user, action: a-step-planned-doc, workflow: planned-workflow-doc, interaction: "submit", status_before: "action-required", status_after: "done", submitted_form }`. Engine default renders to e.g. `"Sam marked install-step as done"`.
+10. Build event payload: render `display.{appName}.title` against `{ user, action: a-step-planned-doc, workflow: planned-workflow-doc, signal: "submit", status_before: "action-required", status_after: "done", submitted_form }`. Engine default renders to e.g. `"Sam marked install-step as done"`.
 11. Build log-changes entries (community schema, D7): one per mutated doc — a-step, a-verify, a-cleanup, workflow — each with before (loaded) / after (planned). The event write logs itself via the events module's own changeLog config; the engine doesn't double-log it. (No notification payload is built — notifications dispatch post-commit from the committed `event_id`, D9 step 4.)
 
 **Commit phase:**
@@ -754,8 +776,8 @@ Test coverage falls into several bands. If the section grows beyond what fits co
 - `planAutoUnblock.test.js` — fixpoint termination (linear actions terminate in 1 iter; chained unblocks terminate; cycles don't deadlock thanks to FSM structural safety); `unblock` emission against the right targets; asserts the engine never auto-emits `block` on dep regression (unblock-only cascade); the empty case.
 - `planWorkflowRecompute.test.js` — summary/groups recompute correctness; `shouldPushCompleted` trigger conditions (`total > 0`, all terminal, current stage not already `completed`/`cancelled` — empty-workflow and already-completed/already-cancelled cases carried over from the old `recomputeWorkflowAfterActionWrite` tests); `cancelled`/`completed` mutually exclusive; no `loadedState` mutation.
 - `planFormDataMerge.test.js` — keyed vs unkeyed; merge order (params.form → params.form_review → preHookResult.form_overrides); shape preservation.
-- `planEventDispatch.test.js` — engine default rendering; YAML override layering; pre-hook override layering; three-source merge order; **two render-context shapes asserted separately** — the action-event context (`user`, `action`, `workflow`, `interaction`, `status_before`, `status_after`, `submitted_form`) for `action-{interaction}` + tracker-mirror, and the workflow-lifecycle context (`user`, `workflow`, `interaction` only) for `workflow-started` / `workflow-cancelled` / `workflow-closed`; per-event-type defaults; assert `planEventDispatch` branches on handler/event type to pick the context.
-- `planChangeLog.test.js` — one `log-changes` entry per affected doc, community schema (`type`, `before`, `after`, `meta`, request-context fields); before from loaded doc, after from planned doc; `meta` resolved from `changeLog.meta`; opt-out when `changeLog` unconfigured.
+- `planEventDispatch.test.js` — engine default rendering; YAML override layering; pre-hook override layering; three-source merge order; **two render-context shapes asserted separately** — the action-event context (`user`, `action`, `workflow`, `signal`, `status_before`, `status_after`, `submitted_form`) for `action-{signal}` + tracker-mirror, and the workflow-lifecycle context (`user`, `workflow`, `signal` only) for `workflow-started` / `workflow-cancelled` / `workflow-closed`; per-event-type defaults; assert `planEventDispatch` branches on handler/event type to pick the context.
+- `planChangeLog.test.js` — one `log-changes` entry per affected doc, per-type community schema (update: `args.filter`/`args.update`, `before`/`after`, no `response`; insert: `args.doc`, `response`, no `before`/`after`; both: `payload`, `meta`, request-context fields); update before from loaded doc, after from planned doc; `meta` copied verbatim from `changeLog.meta`; opt-out when `changeLog` unconfigured.
 
 **Unit tests — FSM tables.** `tables.test.js` asserts every cell in every kind's table exhaustively. One assertion per (kind, currentStage, signal) tuple. Catches typos and structural mistakes (e.g. accidentally allowing `unblock` from `action-required`, which would re-fire). State-machine.md is the source of truth for expected values.
 

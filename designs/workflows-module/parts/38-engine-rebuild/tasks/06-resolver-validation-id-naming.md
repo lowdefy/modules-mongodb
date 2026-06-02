@@ -8,7 +8,9 @@ The `access.{app_name}` shape is a verb→gate map: `view`/`edit`/`review`/`erro
 
 ## Task
 
-**`modules/workflows/resolvers/makeWorkflowsConfig.js`** — add two validators:
+**`modules/workflows/resolvers/makeWorkflowsConfig.js`** — add validators:
+
+- `entity_ref_key` is **required** on every workflow config (sibling of `entity_collection`; non-empty string, e.g. `lead_ids`) — hard-error when absent. It names the event-references key for the workflow's entity (design "Event references"; it replaces the deleted `deriveEntityRefKey` derivation, whose collection-name-plural output contradicted the repo's singular `lead_ids`/`contact_ids` convention).
 
 - `validateActionAccess` (Part 34 D4):
   - Accept the verb→gate map: keys in `{ view, edit, review, error }`, gate values `true | [roles]`.

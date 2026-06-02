@@ -54,10 +54,11 @@ The 20 tasks group into five dependency bands. **A band is the unit of work** �
 - **Notes:** Part 34's absorption. The role-gate oracle fixtures (5) are the single `(gate, roles)→bool` source of truth across the three runtimes that can't share code; the three engine-independent surfaces (6 `validateActionAccess`, 7 `visible_verbs_filter.yaml`, 8 `action_role_check`) all sit on it and are sequenced **alongside, not interleaved with**, the rebuild core (per design D16) so they don't gate on it.
 - **Gate:** fixture table + validator/filter/client-check tests pass.
 
-### Band 3 — Phases (load · plan · commit)
+### Band 3 — Phases (load · plan · commit) — in progress
 
-- **Tasks:** 9 → 10, 11, 12 (parallel-safe after 9) → 13, 14
+- **Tasks:** 9 ✅ → 10 ✅, 11 ✅, 12 (parallel-safe after 9) → 13, 14
 - **Depends on bands:** 1, 2
+- **Progress:** Tasks 9, 10, 11 done. Remaining: 12, 13, 14.
 - **Q6 (form_data merge rule) — RESOLVED:** uniform deep-merge (objects deep-merge; arrays/scalars/`null` replace whole) onto the loaded `form_data.{action}` sub-object. The resolved rule is baked into task 11; no decision remains before implementing `planFormDataMerge`.
 - **Notes:** Phase types + load phase (9) anchor the contracts. Planners (10–12) are pure functions over FSM/render. Commit (13) and hook wrappers (14) close the cycle. The write-path-coupled Part 34 pieces — the submit-time access gate (in load, 9) and per-verb `computeEngineLinks` (in render, 3) — live here because they share the rebuild's surface.
 - **Gate:** planner unit tests pass; commit phase tested on both transaction and standalone paths incl. the CAS-miss gate.

@@ -9,9 +9,9 @@ The other three engine entry points restructure into the same load-plan-commit s
 **`WorkflowAPI/StartWorkflow/StartWorkflow.js`** — restructure:
 
 - Load: `workflowConfig` + parent action (if started as a tracker child).
-- Plan: workflow doc + initial action docs (drafts via `planActionTransition` with `operation: "insert"`) + optional parent-tracker transition; event = `workflow-started` (workflow-lifecycle context).
-- Commit; optional tracker cascade (the parent-tracker push → `runTrackerCascade`).
-- `start-workflow.yaml` payload gains `metadata` (handled in task 19); document `signal` as the replacement for the implicit "what status do we start in" path.
+- Plan: workflow doc (`Plan.workflow.operation: "insert"` — D3/task 13: commit step 1 dispatches to `insertOneDoc`, no CAS filter) + initial action docs **seeded directly at the declared status** — `starting_actions` / payload `actions:` entries keep the `{ type, status }` grammar (legal seeds: `action-required`, `blocked`), and the Start planner builds insert drafts at that status without `planActionTransition`'s signal resolution. Creation at workflow start is not an FSM transition; the `none` row is the pre-hook spawn path only (Part 45 review 1 #2; state-machine.md "Creation"). The planned workflow doc carries **`entity_ref_key`** from the workflow config alongside `entity_collection` (same copy-onto-doc mechanic) — `planEventDispatch` reads it for the event's entity reference key (task 12; design "Event references"). Plus optional parent-tracker transition; event = `workflow-started` (workflow-lifecycle context).
+- Commit through `commitPlan` like every other handler; optional tracker cascade (the parent-tracker push → `runTrackerCascade`).
+- `start-workflow.yaml` payload gains `metadata` (handled in task 19); the `actions:` override stays on `{ type, status }` — no signal grammar at start.
 
 **`WorkflowAPI/CancelWorkflow/CancelWorkflow.js`** — restructure:
 
@@ -23,7 +23,7 @@ The other three engine entry points restructure into the same load-plan-commit s
 
 **Lifecycle preconditions live here, not in `loadWorkflowState`** (task 9's stage check is Submit-specific). Preserve today's actual semantics, no new guards: Close on a `completed` workflow is an **idempotent no-op** (returns the empty result, `CloseWorkflow.js:52–54`); Close on a `cancelled` workflow **throws** — now `WorkflowEngineError` with `code: "stage_rejects_close"` (D13). Cancel deliberately has **no stage guard** today (cancelling a completed workflow is unguarded) — keep it that way per "build for what exists". Start inserts a fresh workflow doc, so it has no started-already check; its config-shaped preconditions (unknown `workflow_type`, keyed `starting_actions`, tracker-parent checks) carry over from the current handler.
 
-**Event emission (per the "Engine entry points emit events" table):** one `event_id` per invocation, used as the dispatched event doc's `_id`. Workflow-lifecycle context only (`{ user, workflow, interaction }`) — `planEventDispatch` already branches on type (task 12).
+**Event emission (per the "Engine entry points emit events" table):** one `event_id` per invocation, used as the dispatched event doc's `_id`. Workflow-lifecycle context only (`{ user, workflow, signal }`) — `planEventDispatch` already branches on type (task 12).
 
 ## Acceptance Criteria
 
@@ -39,6 +39,7 @@ The other three engine entry points restructure into the same load-plan-commit s
 - `WorkflowAPI/CancelWorkflow/CancelWorkflow.js` — rewrite
 - `WorkflowAPI/CloseWorkflow/CloseWorkflow.js` — rewrite
 - `StartWorkflow.test.js`, `CancelWorkflow.test.js`, `CloseWorkflow.test.js` — create/rewrite
+- `shared/fsm/tables.js` + `tables.test.js` — add the tracker `none` row (`activate → action-required`, `block → blocked`) per the updated state-machine.md "Creation" section (Part 45 review 1 #2 reversed the tracker exclusion so pre-hooks can conditionally spawn trackers); the test currently asserts the tracker has no `none` row — flip it.
 
 ## Notes
 

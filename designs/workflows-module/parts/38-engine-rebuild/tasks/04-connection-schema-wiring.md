@@ -9,6 +9,7 @@ The engine needs the module entry id at runtime (for `entry_id`-scoped pageId co
 **`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js`:**
 
 - Add an `entry_id` field — `string`, required (per Part 30). Wired from `_module.id: true` in the connection YAML (below).
+- Add **`entity_ref_key`** to the workflow shape's required fields (beside `entity_collection` — the workflow-shape description at `schema.js:56–61`): `string`, the event-references key for the workflow's entity (e.g. `lead_ids`). Resolver-side validation lands in task 6; design "Event references" owns the rationale (replaces the deleted `deriveEntityRefKey` derivation).
 - **Rewrite the `changeLog: { collection, meta }` field description.** The current text says it is "forwarded to the community-plugin MongoDBCollection handlers … automatically." That is now false — engine writes bypass the plugin (D8) and the engine consumes `changeLog` natively (D7). Rewrite to describe native engine consumption (same shape, same opt-in, same app-facing behaviour; engine populates before/after from the Plan). Keep the field.
 - **Rewrite the `actionsEnum[].priority` field description.** The current "load-bearing — the engine compares priorities in the priority-rule check in SubmitWorkflowAction" is made false (the priority-rule check is removed; D4 makes priority display-only). Rewrite to: "display-only (ordering in pickers / visualizations); the engine no longer consults it for transition legality." The field itself stays required.
 

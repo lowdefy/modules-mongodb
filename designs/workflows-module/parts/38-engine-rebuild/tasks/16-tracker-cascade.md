@@ -25,11 +25,13 @@ async function runTrackerCascade(initialFires, baseContext) {
 
 - **`MAX_DEPTH = 10` guard tracks chain depth, not loop iterations.** Each fire carries a `depth` field seeded at 1, incremented per level. A wide-but-shallow cascade (one workflow with many tracker parents) must **not** trip the guard; a genuinely deep cycle must. A single dequeue counter on the BFS loop would measure total fan-out (breadth), not depth — do **not** use that.
 - Define `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`) in `shared/errors.js` — engine throws share the D13 error model (base class created by task 9); it keeps a named class like `ConcurrentSubmitError`, but callers/tests discriminate on `code`.
+- **Collect per-level dispatch errors; don't stop the cascade for them.** Each level's `commitPlan` may record post-commit dispatch failures on its `CommitResult.dispatchErrors[]` (task 13 failure policy). `runTrackerCascade` accumulates these across levels and returns them, so the handler folds them into its single end-of-invocation `post_commit_dispatch_failed` throw (task 15). A level's dispatch failure never prevents the remaining fires from running — only a steps-1–2 throw (e.g. `ConcurrentSubmitError`) propagates.
 
 **Create `shared/phases/planners/planTrackerLevel.js`:**
 
 - Emits the mirror signal (`internal_mirror_child_active` / `_completed` / `_cancelled`) against the parent's target action, then delegates to the same `planActionTransition` / `planAutoUnblock` / `planWorkflowRecompute` machinery as Submit.
 - Emits an `action-internal-mirror-{state}` event (action-event context, per task 12) — the mirror has a single target action.
+- **No-op levels short-circuit before commit (D3).** When the mirror signal FSM-no-ops against the parent's target action (`resolveSignal` returns null — cascade signals no-op silently, task 10), the level changed nothing: no transitions, so recomputed groups/summary equal the loaded ones. `planTrackerLevel` returns an empty plan and the loop **skips `commitPlan` for that level entirely** — no parent workflow write (no `updated` stamp advance, which would create spurious CAS pressure on concurrent real submits against the parent), no mirror event, no change-log entries, no further `trackerFires` from that level. `commitPlan` is never asked to detect emptiness; the caller owns the skip.
 
 **Wire `runTrackerCascade` into the Submit handler** (task 15's call site) and any other handler that produces `trackerFires` (Start's parent-tracker push, Cancel/Close cascades — task 17).
 
@@ -38,6 +40,7 @@ async function runTrackerCascade(initialFires, baseContext) {
 - Tracker recursion is a loop; each level is its own independently-atomic load-plan-commit cycle with no shared in-memory state.
 - The depth guard tracks **chain depth** per fire (seeded 1, +1 per level) — a wide shallow cascade does not trip it; a deep cycle does.
 - `planTrackerLevel` reuses the Submit planner machinery and emits the `action-internal-mirror-{state}` event.
+- A mirror signal that FSM-no-ops against the parent's target action skips the level's commit entirely: the parent workflow is unwritten (its `updated.timestamp` unchanged), no `action-internal-mirror-*` event, no change-log entries, no follow-on fires.
 - Integration test `fireTrackerSubscription.test.js` (or renamed) covers a 3-level-deep multi-workflow cascade.
 
 ## Files

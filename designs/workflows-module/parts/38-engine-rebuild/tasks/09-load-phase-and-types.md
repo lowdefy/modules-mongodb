@@ -17,9 +17,9 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
 - `Plan` — exactly the D3 shape:
   ```ts
   type Plan = {
-    workflow: { doc: WorkflowDoc; changeLog: ChangeLogDelta };  // per-doc changeLog = raw { before, after } delta
+    workflow: { doc: WorkflowDoc; operation: "insert" | "update"; changeLog: ChangeLogDelta };  // per-doc changeLog = raw { before, after } delta (null before for insert); operation: update (default) for Submit/Cancel/Close/tracker, insert for Start (D3 — commit step 1 dispatches accordingly)
     actions: Array<{ doc: ActionDoc; operation: "insert" | "update"; changeLog: ChangeLogDelta }>;
-    events: Array<{ doc: EventDoc }>;
+    event: { doc: EventDoc };  // exactly one per invocation — the doc's _id IS the per-invocation event_id (a second entry would collide on _id); the type enforces the invariant (D3)
     changeLog: ChangeLogEntry[];  // finished community-schema log-changes entries built by planChangeLog (task 12) from the per-doc deltas; commit step 5 inserts these. Empty when changeLog is unconfigured.
     // No `notifications` field: the engine builds no notification doc. After commit it
     // fires callApi("send-notification", { event_ids }) keyed on the committed events (D9 step 4).

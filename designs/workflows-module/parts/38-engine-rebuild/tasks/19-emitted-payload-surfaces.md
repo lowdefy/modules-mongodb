@@ -8,20 +8,20 @@ The emitted per-workflow API payloads must carry the new signal model instead of
 
 **`modules/workflows/resolvers/makeWorkflowApis.js`:**
 
-- The emitted-Api payload mapping passes: `signal`, `metadata`, `form`, `form_review`, `event_overrides`, hooks.
+- The emitted-Api payload mapping passes: `signal`, `comment`, `metadata`, `form`, `form_review`, `event_overrides`, hooks. (`comment` stays on the wire for [Part 33](../../33-comment-rendering/design.md)'s `foldCommentIntoEvent` — its D5 wire contract; the rebuilt engine itself writes no `metadata.comment`, see task 12.)
 - **Drops `force`** (the priority-rule/force model is gone — D4).
 - (Emitted Api ids already unprefixed from task 6 — don't re-touch the id naming.)
 
 **`modules/workflows/api/start-workflow.yaml`:**
 
 - Add `metadata` to the payload (Part 30 carry-over).
-- Document `signal` as the replacement for the implicit "what status do we start in" path.
+- The `actions:` override keeps the `{ type, status }` grammar — Start seeds drafts directly at the declared status (Part 45 review 1 #2; task 17). No signal grammar at start.
 
 **Pre-hook payload (`buildHookPayload.js`):** unchanged — confirm it still builds the same payload (the pre-hook *return* shape changed in task 14, not the payload).
 
 ## Acceptance Criteria
 
-- Emitted Api payloads pass `signal`/`metadata`/`form`/`form_review`/`event_overrides`/hooks and no longer pass `force`.
+- Emitted Api payloads pass `signal`/`comment`/`metadata`/`form`/`form_review`/`event_overrides`/hooks and no longer pass `force`.
 - `start-workflow.yaml` payload includes `metadata`; `signal` is documented.
 - `buildHookPayload.js` is unchanged.
 - `makeWorkflowApis.test.js` asserts the payload mapping (signal present, force absent) in addition to the id-naming assertions from task 6.
