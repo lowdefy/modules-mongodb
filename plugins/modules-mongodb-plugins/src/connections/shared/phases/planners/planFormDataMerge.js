@@ -1,3 +1,5 @@
+import mergeDeep, { cloneContainers, isPlainObject } from "./deepMerge.js";
+
 /**
  * Plan the workflow's `form_data` for a submit. Replaces the old
  * `mergeFormOverrides.js` top-level spread + per-field `$set` sidewrite: the
@@ -5,8 +7,9 @@
  * form_data behaviour is determined entirely by how this planner composes the
  * planned `form_data.{action}` from the loaded base (design Q6 — resolved).
  *
- * One uniform merge rule for every channel and for the merge onto the loaded
- * base (no per-channel replace/merge semantics — one correct way):
+ * One uniform merge rule (the shared `deepMerge` helper) for every channel
+ * and for the merge onto the loaded base (no per-channel replace/merge
+ * semantics — one correct way):
  *
  *   - plain objects deep-merge (nested sibling keys survive);
  *   - arrays, scalars, and `null` replace whole (element-wise merge of
@@ -19,53 +22,6 @@
  * never mutates its inputs — merges happen onto fresh containers, never onto
  * `loadedState.workflow.form_data` itself.
  */
-
-/**
- * A merge-rule "plain object" — deep-merged rather than replaced whole.
- * Excludes arrays and class instances (Date, ObjectId), which replace whole.
- */
-function isPlainObject(value) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return false;
-  }
-  const proto = Object.getPrototypeOf(value);
-  return proto === Object.prototype || proto === null;
-}
-
-/**
- * Recursive clone of plain objects + arrays; leaves (scalars, Date, ObjectId)
- * copied by reference. Container isolation is all the no-input-mutation
- * guarantee needs.
- */
-function cloneContainers(value) {
-  if (Array.isArray(value)) return value.map(cloneContainers);
-  if (isPlainObject(value)) {
-    const out = {};
-    for (const [key, entry] of Object.entries(value)) {
-      out[key] = cloneContainers(entry);
-    }
-    return out;
-  }
-  return value;
-}
-
-/**
- * The uniform deep-merge: both sides plain objects → recurse per-key;
- * anything else → `patch` replaces whole. Returns fresh containers; mutates
- * neither input (the lodash `mergeWith(cloneDeep(base), patch, customizer)`
- * equivalent, without the dependency).
- */
-function mergeDeep(base, patch) {
-  if (isPlainObject(base) && isPlainObject(patch)) {
-    const out = cloneContainers(base);
-    for (const [key, entry] of Object.entries(patch)) {
-      out[key] =
-        key in out ? mergeDeep(out[key], entry) : cloneContainers(entry);
-    }
-    return out;
-  }
-  return cloneContainers(patch);
-}
 
 /**
  * @param {Object} args
