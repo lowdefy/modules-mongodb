@@ -21,6 +21,23 @@ Custom Lowdefy blocks and actions used by the [modules-mongodb](../../README.md)
 |---|---|
 | `FetchRequest` | Auto-paginate a paginated request and return the concatenated results. See below. |
 
+### Connections
+
+| Connection | Purpose |
+|---|---|
+| `WorkflowAPI` | Server-side engine connection backing the [`workflows`](../../modules/workflows/README.md) module. Owns FSM-driven status transitions, the tracker subscription, workflow-summary writeback, side-effect dispatch (log events, notifications), and pre/post hook invocation via `context.callApi`. |
+
+`WorkflowAPI` exposes four request handlers — the `workflows` module's APIs route to them through its `workflow-api` connection:
+
+| Request | Purpose |
+|---|---|
+| `StartWorkflow` | Instantiate a workflow + its starting action docs on an entity; optionally link as a child of a tracker action. |
+| `SubmitWorkflowAction` | Run one action submission end to end — validate + access gate, pre-hook, FSM transition, writes, side effects, post-hook. |
+| `CancelWorkflow` | Push `cancelled`; flip remaining open actions to `not-required`. |
+| `CloseWorkflow` | User-initiated normal termination — push `completed`; sweep non-terminal actions honoring `required_after_close`. |
+
+This is the package's only server-side connection; everything else ships React blocks and a client action.
+
 ## Install
 
 `lowdefy.yaml`:
@@ -117,7 +134,7 @@ pnpm install
 pnpm --filter @lowdefy/modules-mongodb-plugins build
 ```
 
-The build uses SWC (`pnpm build` script) and writes the package to `dist/`. Module entry points are exposed via the `exports` field in `package.json` (`./blocks`, `./actions`, `./metas`, `./types`).
+The build uses SWC (`pnpm build` script) and writes the package to `dist/`. Module entry points are exposed via the `exports` field in `package.json` (`./blocks`, `./actions`, `./connections`, `./metas`, `./types`).
 
 ## License
 

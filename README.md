@@ -18,6 +18,8 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 | [user-admin](modules/user-admin/README.md) | User administration — list, edit, invite |
 | [contacts](modules/contacts/README.md) | Contact management — list, detail, edit, create, selector |
 | [companies](modules/companies/README.md) | Company management — list, detail, edit, create, selector |
+| [activities](modules/activities/README.md) | CRM activities — calls, meetings, emails logged against contacts and companies |
+| [workflows](modules/workflows/README.md) | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions |
 | [release-notes](modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page |
 
 ## Dependency graph
@@ -42,6 +44,11 @@ graph TD
   companies --> files
   files --> layout
   files --> events
+  activities --> layout
+  activities --> events
+  activities --> contacts
+  workflows --> layout
+  workflows --> events
   release-notes --> layout
   events
 ```
@@ -62,6 +69,8 @@ A few notes on the shape:
 | A bell and inbox for in-app messages | + `notifications` |
 | Contact management with company links | + `contacts`, `companies`, `files` |
 | File attachments on any entity | + `files` |
+| To log calls, meetings, and emails against contacts/companies | + `activities`, `contacts` |
+| Multi-step business processes (lifecycle, actions, approvals) on any entity | + `workflows` |
 | An audit log on writes anywhere in the app | + `events` (most other modules already log) |
 | A release-notes page from `CHANGELOG.md` | + `release-notes` |
 
@@ -104,7 +113,7 @@ Per-module READMEs cover the vars, exports, and a worked example for each module
 
 ## Plugins
 
-Some modules require [`@lowdefy/modules-mongodb-plugins`](plugins/modules-mongodb-plugins/README.md), a peer plugin package shipped from this repo with custom blocks (ContactSelector, DataDescriptions, EventsTimeline, FileManager, SmartDescriptions) and a `FetchRequest` action.
+Some modules require [`@lowdefy/modules-mongodb-plugins`](plugins/modules-mongodb-plugins/README.md), a peer plugin package shipped from this repo with custom blocks (ActionSteps, ContactSelector, DataDescriptions, EventsTimeline, FileManager, SmartDescriptions), a `FetchRequest` action, and the server-side `WorkflowAPI` connection that powers the `workflows` module engine.
 
 ## Versioning
 

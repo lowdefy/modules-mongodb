@@ -1,6 +1,6 @@
 # Workflows
 
-Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Ships shared simple-action pages (`simple-edit`, `simple-view`, `simple-review`), a `workflow-overview` page, a `group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/simple action (`update-action-{action_type}`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp` so every workflow + action mutation is auditable.
+Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine (see [Transition model](#transition-model-signals)) — authors do not hand-write status transitions. Ships shared simple-action pages (`simple-edit`, `simple-view`, `simple-review`), a `workflow-overview` page, a `group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/simple action (`{workflow_type}-{action_type}-submit`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp` so every workflow + action mutation is auditable.
 
 ## Dependencies
 
@@ -61,31 +61,77 @@ actions:
     kind: form
     action_group: discovery
     access:
-      my-app: [edit, view]
-      roles: [account-manager]
+      my-app:
+        view: true
+        edit: [account-manager]
     form:
       - { key: contact_name, component: text_input, title: Contact name, required: true }
       - { key: notes, component: text_area, title: Qualification notes }
-    interactions:
-      submit_edit: { status: done }
     status_map:
       action-required:
-        my-app:
-          message: Qualify the lead.
-          link:
-            pageId: { _module.pageId: { id: lead-pipeline-qualify-edit, module: workflows } }
-            urlQuery: { action_id: true }
+        my-app: { message: Qualify the lead. }
       done:
-        my-app:
-          message: Lead qualified.
+        my-app: { message: Lead qualified. }
 ```
 
 The build emits:
 
-- Pages at `/{workflows-entry}/lead-pipeline-qualify-edit` and `/{workflows-entry}/lead-pipeline-qualify-view`.
-- An endpoint at `/api/{workflows-entry}/update-action-qualify` that pipes the submitted payload through the engine via the `workflow-api` connection.
+- Pages at `/{workflows-entry}/lead-pipeline-qualify-edit` and `/{workflows-entry}/lead-pipeline-qualify-view` — one per verb declared in `access.my-app`.
+- An endpoint at `/api/{workflows-entry}/lead-pipeline-qualify-submit` that pipes the submitted payload — including the resolved signal — through the engine via the `workflow-api` connection.
 
-`actions-on-entity` reads the per-status `link:` block off each action and renders it as a clickable row.
+At runtime the engine resolves each submission as a **signal** against the action's FSM (see [Transition model](#transition-model-signals)). `actions-on-entity` renders each action row with an engine-derived link to the right per-verb page — authors do **not** write `link:` blocks in `status_map` (the validator rejects them; navigation is gated by `access:` verbs instead).
+
+## Authoring actions
+
+Every action declares a `kind:` — `form`, `simple`, or `tracker` — and an `access:` block. The action-level fields the engine reads at runtime are `type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `sort_order`, `required_after_close`, `access`, and `status_map`. Build-time-only fields (`form`, `hooks`, `event`, `pages`) are consumed by the resolvers. Schema source of truth: [`makeWorkflowsConfig.js`](resolvers/makeWorkflowsConfig.js) and [`action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md).
+
+### Access (`access:`)
+
+One canonical shape — a per-app, per-verb map. Verbs are `view`, `edit`, `review`, `error`; each gate is `true` (any authenticated user) or a non-empty `[roles]` list. Omit a verb to deny it.
+
+```yaml
+access:
+  my-app:
+    view: true
+    edit: [account-manager]
+    review: [sales-manager] # presence of `review` flips the submit signal — see below
+```
+
+The action-wide `roles:` key and the `access.{app}: [verbs]` shorthand are **removed** (Part 34 D4) — the validator hard-errors on both. `notification_roles` lives at the action root, not under `access:`.
+
+### Status copy (`status_map:`)
+
+`status_map` supplies per-stage display copy only — `{ message?, status_title? }` per app. It carries **no** `link:` (the engine derives navigation from `access:` verbs and the emitted per-verb pages; the validator rejects authored links on built-in kinds).
+
+```yaml
+status_map:
+  action-required:
+    my-app: { message: Qualify the lead. }
+  done:
+    my-app: { message: Lead qualified. }
+```
+
+### Transition model (signals)
+
+Actions don't declare their own status transitions. Each submission carries a **signal**, and the engine resolves `(current_stage, signal) → new_stage` against a per-kind finite-state machine (`form`, `simple`, `tracker`). The FSM tables are engine-owned and not author-overridable in v1 ([`shared/fsm/tables.js`](../../plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js)).
+
+The buttons each page template ships emit fixed signals:
+
+| Template | Buttons → signals |
+|---|---|
+| `edit` | Submit → `submit`, Save draft → `progress`, Mark not required → `not_required` |
+| `review` | Approve → `approve`, Request changes → `request_changes` |
+| `error` | Resolve → `resolve_error` |
+
+The only author-controlled branch is the `submit` split: `submit` resolves to **`in-review`** when the action grants a `review` verb to any app in its `access:` block (someone must approve), and to **`done`** otherwise. The engine also fires internal signals authors never send directly — `unblock` (from `blocked_by` re-evaluation) and `internal_mirror_child_*` (tracker subscription).
+
+To run custom logic around a transition, declare a **hook** rather than overriding the transition:
+
+```yaml
+hooks:
+  submit_edit: # interaction key: submit_edit | not_required | resolve_error | approve | request_changes
+    pre: { routine: [ ... ] } # inline Lowdefy routine; phases: pre | post
+```
 
 ## Exports
 
@@ -127,9 +173,9 @@ The build emits:
 
 **Per-action submit endpoints** (resolver-emitted by `makeWorkflowApis`):
 
-- `update-action-{action_type}` — one per `kind: form` or `kind: simple` action (tracker actions emit none). Bakes the action's `hooks:` / `event:` / `interactions:` blocks in as build-time literals; routes the submitted payload through `SubmitWorkflowAction` on the `workflow-api` connection.
-- `update-action-{action_type}-{interaction}-{phase}` — one per declared inline hook routine (`hooks.{interaction}.{phase}.routine` on the action). Phases: `pre`, `post`. Interactions: `submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`.
-- `workflow-{workflow_type}-group-{group_id}-on-complete` — one per declared `action_groups[*].on_complete.routine`. Fired by the group state machine when the group reaches a terminal status.
+- `{workflow_type}-{action_type}-submit` — one per `kind: form` or `kind: simple` action (tracker actions emit none). Bakes the action's `hooks:` / `event:` maps in as build-time literals; routes the submitted payload — including the resolved signal — through `SubmitWorkflowAction` on the `workflow-api` connection.
+- `{workflow_type}-{action_type}-{interaction}-{phase}` — one per declared inline hook routine (`hooks.{interaction}.{phase}.routine` on the action). Phases: `pre`, `post`. Interactions: `submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`.
+- `{workflow_type}-group-{group_id}-on-complete` — one per declared `action_groups[*].on_complete.routine`. Fired by the group state machine when the group reaches a terminal status.
 
 ### Connections
 
@@ -216,5 +262,5 @@ The `actions` collection must remain free of any collection-level required-field
 ## Notes
 
 - **Prerelease (0.x).** Pin to an exact version or commit SHA in production.
-- **Runtime dependencies.** Hook invocation, group `on_complete` fan-out, and per-status runtime-field projection (`status_map.{status}.{app_name}` → action root) ship behind separate engine work; until those land, declared hook routines, group callbacks, and `{ pageId, urlQuery }` links are authored but inert.
+- **Runtime dependencies.** Per-signal pre/post hooks are invoked by the engine. Navigation links are engine-derived from each action's `access:` verbs and emitted pages — authors don't write `link:` blocks. Group `on_complete` fan-out is the remaining unlanded engine piece (Part 11): declared `on_complete` routines are authored but inert until it ships.
 - **Cross-cutting idioms.** See [`docs/idioms.md`](../../docs/idioms.md) anchors `#change-stamps`, `#event-display`, `#slots`, `#app-name`, `#secrets`.
