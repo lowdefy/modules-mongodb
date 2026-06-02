@@ -4,7 +4,7 @@ import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
 import createAction from '../../shared/createAction.js';
 import getActionFields from '../../shared/getActionFields.js';
 import updateAction from '../../shared/updateAction.js';
-import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
+import recomputeGroups from '../../shared/phases/planners/recomputeGroups.js';
 
 async function StartWorkflow(lowdefyContext) {
   const { request: payload = {}, connection } = lowdefyContext;

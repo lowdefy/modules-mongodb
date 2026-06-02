@@ -1,4 +1,4 @@
-import recomputeGroups from "../WorkflowAPI/SubmitWorkflowAction/recomputeGroups.js";
+import recomputeGroups from "./phases/planners/recomputeGroups.js";
 import reevaluateBlockedActions from "../WorkflowAPI/SubmitWorkflowAction/reevaluateBlockedActions.js";
 import getActions from "./getActions.js";
 

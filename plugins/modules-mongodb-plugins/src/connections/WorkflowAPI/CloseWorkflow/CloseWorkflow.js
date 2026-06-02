@@ -1,6 +1,6 @@
 import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
 import fireTrackerSubscription from '../SubmitWorkflowAction/fireTrackerSubscription.js';
-import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
+import recomputeGroups from '../../shared/phases/planners/recomputeGroups.js';
 
 const RESERVED_WORKFLOW_KEYS = [
   '_id',
