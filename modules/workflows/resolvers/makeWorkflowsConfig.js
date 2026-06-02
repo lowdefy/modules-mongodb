@@ -18,6 +18,7 @@ const ACTION_FIELDS = [
 const WORKFLOW_FIELDS = [
   'type',
   'entity_collection',
+  'entity_ref_key',
   'display_order',
   'starting_actions',
   'action_groups',
@@ -296,6 +297,16 @@ function validateWorkflow(workflow) {
     fail(
       workflow.type,
       'legacy "entity_type" field is no longer supported; rename to "entity_collection" (a MongoDB collection connection id like "leads-collection").'
+    );
+  }
+
+  if (
+    typeof workflow.entity_ref_key !== 'string' ||
+    workflow.entity_ref_key === ''
+  ) {
+    fail(
+      workflow.type,
+      'missing required "entity_ref_key" — the event-references key for the workflow\'s entity (e.g. "lead_ids"), written into event docs so events surface on the entity.'
     );
   }
 

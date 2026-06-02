@@ -51,7 +51,8 @@ import deepMerge from './deepMerge.js';
  * @param {string | null} [args.key] — key for a spawned doc.
  * @param {string} args.event_id — per-invocation event id (status[] entries).
  * @param {{ timestamp: Date, user: Object }} args.now — per-invocation change
- *   stamp (status[].created; created/updated on inserts).
+ *   stamp; written to status[].created and to the doc's `updated` on both
+ *   operations, plus `created` for inserts.
  * @param {() => string} [args.newId] — injected id source for insert `_id`s.
  * @returns {{ doc: Object, operation: 'insert' | 'update',
  *   changeLog: { before: Object | null, after: Object } } | null}

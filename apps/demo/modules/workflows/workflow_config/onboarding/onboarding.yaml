@@ -1,6 +1,7 @@
 type: onboarding
 title: Onboarding
 entity_collection: leads-collection
+entity_ref_key: lead_ids
 display_order: 1
 
 starting_actions:

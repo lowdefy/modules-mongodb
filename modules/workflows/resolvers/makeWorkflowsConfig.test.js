@@ -3,6 +3,7 @@ import makeWorkflowsConfig from "./makeWorkflowsConfig.js";
 const validWorkflow = {
   type: "onboarding",
   entity_collection: "leads-collection",
+  entity_ref_key: "lead_ids",
   display_order: 1,
   starting_actions: [{ type: "do-it", status: "action-required" }],
   actions: [{ type: "do-it", kind: "simple" }],
@@ -41,10 +42,36 @@ test("makeWorkflowsConfig: rejects when both entity_type and entity_collection a
   );
 });
 
+test("makeWorkflowsConfig: entity_ref_key flows through to the normalized output", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect(out.entity_ref_key).toBe("lead_ids");
+});
+
+test("makeWorkflowsConfig: rejects a workflow missing entity_ref_key", () => {
+  const workflow = { ...validWorkflow };
+  delete workflow.entity_ref_key;
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /missing required "entity_ref_key" — the event-references key/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /onboarding/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects an empty-string entity_ref_key", () => {
+  const workflow = { ...validWorkflow, entity_ref_key: "" };
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /missing required "entity_ref_key"/,
+  );
+});
+
 test("makeWorkflowsConfig: blocked_by referencing a declared action type passes", () => {
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -61,6 +88,7 @@ test("makeWorkflowsConfig: blocked_by referencing a declared group id passes", (
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
     starting_actions: [{ type: "qualify", status: "action-required" }],
@@ -78,6 +106,7 @@ test("makeWorkflowsConfig: blocked_by with mixed group id + action type passes",
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     action_groups: [{ id: "phase-1" }],
     starting_actions: [{ type: "qualify", status: "action-required" }],
@@ -99,6 +128,7 @@ test("makeWorkflowsConfig: no blocked_by field on any action passes", () => {
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -115,6 +145,7 @@ test("makeWorkflowsConfig: blocked_by entry that resolves to nothing throws with
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -137,6 +168,7 @@ test("makeWorkflowsConfig: blocked_by walk doesn't short-circuit on the first va
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -157,6 +189,7 @@ test("makeWorkflowsConfig: inline hook routine validates cleanly", () => {
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -180,6 +213,7 @@ test("makeWorkflowsConfig: legacy string hook fails with migration message", () 
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -202,6 +236,7 @@ test("makeWorkflowsConfig: hook value missing routine: array fails", () => {
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -221,6 +256,7 @@ test("makeWorkflowsConfig: unknown hook interaction fails", () => {
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -240,6 +276,7 @@ test("makeWorkflowsConfig: inline on_complete routine validates cleanly", () => 
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     action_groups: [
       {
@@ -261,6 +298,7 @@ test("makeWorkflowsConfig: legacy string on_complete fails with migration messag
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     action_groups: [
       {
@@ -285,6 +323,7 @@ function workflowWithAccess(access) {
   return {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [{ type: "qualify", kind: "form", form: [], access }],
@@ -348,6 +387,7 @@ test("validateActionAccess: notification_roles at the action root is valid", () 
   const wf = {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -379,6 +419,7 @@ function workflowWithStatusMap(status_map) {
   return {
     type: "onboarding",
     entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [

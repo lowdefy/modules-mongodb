@@ -53,12 +53,19 @@ const schema = {
         'Normalized workflows config — output of the makeWorkflowsConfig resolver. ' +
         'Each entry is one workflow with its actions and action_groups. ' +
         'Consumed by the engine at runtime. ' +
-        'Workflow shape: { type, entity_collection, display_order?, starting_actions, actions, action_groups? }. ' +
+        'Workflow shape: { type, entity_collection, entity_ref_key, display_order?, starting_actions, actions, action_groups? }. ' +
+        'entity_ref_key is the event-references key for the workflow\'s entity (e.g. "lead_ids") — written into event docs so events surface on the entity. ' +
         'starting_actions entries: { type: string, status: string } where type matches an actions[].type and status is a key in actionsEnum.',
       items: {
         type: 'object',
         additionalProperties: true,
-        required: ['type', 'entity_collection', 'starting_actions', 'actions'],
+        required: [
+          'type',
+          'entity_collection',
+          'entity_ref_key',
+          'starting_actions',
+          'actions',
+        ],
         properties: {
           actions: {
             type: 'array',
