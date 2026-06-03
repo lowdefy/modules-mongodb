@@ -41,19 +41,34 @@ Sequencing them is more churn than combining them. Combined, they collapse the r
 
 ## Key decisions
 
+Index — one line per decision; details in the sections below.
+
+- **D1.** Load-plan-commit over render-on-write + re-fetch: renders consume the Plan, commit writes the Plan — staleness is structurally impossible.
+- **D2.** Phase contracts: load (all reads + access check) → pre-hook (intent only) → plan (pure, no I/O) → commit (writes only) → post-hook (against committed state).
+- **D3.** The Plan object: one in-memory object holding every consequence of an invocation — planned docs, event, change-log, completed groups, tracker fires. Empty plans never reach commit.
+- **D4.** FSM resolution at plan time: three signal sources, one resolver; the `submit` → in-review/done split (`hasReview`) is action-global; auto-unblock is an unblock-only fixpoint interleaved with group recompute.
+- **D5.** Pre-hook contract: returns intent (auxiliary signals + overrides); its own writes are outside the engine's atomicity boundary; no current-action redirect.
+- **D6.** Post-hook contract: fires after commit; sees fresh state via the Plan, no re-read.
+- **D7.** Change-log: reproduce the community plugin's `changeLog` contract natively — same collection, schema, config; before/after from the Plan, no extra reads.
+- **D8.** Mongo driver layer: engine-owned cached `MongoClient` + thin native-driver helpers; community plugin stays for app-side YAML.
+- **D9.** Commit ordering: workflow claim first (CAS gate), then actions, then event → notification → change-log dispatches; steps 3–5 never abort a committed submit (`dispatchErrors[]` + end-of-handler throw).
+- **D10.** Tracker recursion: a per-level load-plan-commit loop — chain-depth guard, bounded CAS retry, recorded (not thrown) per-fire failures.
+- **D11.** Transactions conditional on replica-set detection (steps 1–2 only); standalone falls back to D9's ordered writes, which are correct on their own.
+- **D12.** Render-against-planned-state: templates render against post-commit doc shapes; two render contexts (action events vs workflow-lifecycle events).
+- **D13.** Signal validation + error model: user signals throw, cascade signals no-op; one `WorkflowEngineError` base discriminated by `code`.
+- **D14.** Salvaged from Part 30: on-disk contract + display machinery carry over (inventory in [carried-surfaces.md](./carried-surfaces.md)).
+- **D15.** Concurrency: CAS on `workflow.updated.timestamp` pinned in the commit filter; tracker levels are the only auto-retry site.
+- **D16.** Part 34's access model lands here: submit-time gate, per-verb links, `visible_verbs`, resolver validation, id naming (surfaces in [carried-surfaces.md](./carried-surfaces.md)).
+
 ### D1. Why load-plan-commit (and not "render-on-write + re-fetch before event dispatch")
 
-The lightweight band-aid is: keep handleSubmit's current shape, add Part 30's render-on-write, and re-fetch action + workflow once before `dispatchLogEvent`. That works mechanically. It does not survive the next write site added between step 5 and step 7 — at which point a future reviewer files the same bug Part 30 review-6 #2 filed (workflow.form_data staleness), and the fix is "re-fetch again" or "mirror this write too."
-
-The load-plan-commit pattern makes render staleness structurally impossible:
+The lightweight alternative — keep handleSubmit's shape, add render-on-write, re-fetch before event dispatch — works mechanically but doesn't survive the next write site added to the flow: each one reopens the staleness bug class Part 30's reviews kept re-filing (e.g. review-6 #2). Load-plan-commit makes render staleness structurally impossible:
 
 - During the plan phase, every consequence of the submit is computed against the loaded state plus accumulating planned changes. The Plan is the post-commit shape of every doc.
 - Renders consume the Plan, not the loaded docs and not Mongo.
 - The commit phase writes the Plan and nothing else.
 
-There is no "in-memory copy vs Mongo" gap because the in-memory copy *is* the source of truth at render time, and the commit just persists it. New write sites added later don't introduce staleness — they extend the Plan, and renders that depend on what they wrote are already reading from the Plan.
-
-The pattern is standard industry practice. Names: DDD aggregate + unit-of-work; functional-core, imperative-shell; command → event → projection (event sourcing lite); Kubernetes controller reconciliation. The workflow doc is the aggregate root; actions are entities within it; a submit is one atomic mutation of the aggregate.
+New write sites extend the Plan; renders that depend on what they wrote are already reading from it. (Standard pattern — DDD aggregate + unit-of-work, functional-core / imperative-shell. The workflow doc is the aggregate root; a submit is one atomic mutation of the aggregate.)
 
 ### D2. Phase contracts
 
@@ -63,7 +78,7 @@ The four phases are not just labels — each has an explicit input/output contra
 
 **Pre-hook phase.** Input: `LoadedState` + caller payload. Output: `PreHookResult` containing auxiliary signals (against *other* actions), form_overrides, event_overrides. A pre-hook **cannot** re-signal the current action — there is no root-level signal redirect (state-machine.md, "How signals get emitted"); the current action lands per the signal the user fired. Single `callApi` to the hook routine. Pure consumer of the result — the engine doesn't trust the hook to have done writes that affect engine state; if a hook does writes for external reasons (e.g. updating a third-party system), those are out-of-band by contract.
 
-**Plan phase.** Input: `LoadedState` + `PreHookResult`. Output: a `Plan` object (see D3). Pure functions only. No I/O. Computes every consequence of the submit: per-action transitions via FSM resolution, per-action rendered cells + engine links + merged metadata, workflow summary/groups/form_data updates, workflow auto-complete push, event payload (rendered against planned post-state), change-log entries. (Notifications are not composed here — they are dispatched post-commit from the committed `event_id`; see D9 step 4.) The plan phase can throw — invalid signal target, invalid status transition that the FSM doesn't allow but the author asked for explicitly (depending on whether we want noisy or silent rejection — see D14), shape-validation errors caught at plan time rather than at commit time.
+**Plan phase.** Input: `LoadedState` + `PreHookResult`. Output: a `Plan` object (see D3). Pure functions only. No I/O. Computes every consequence of the submit: per-action transitions via FSM resolution, per-action rendered cells + engine links + merged metadata, workflow summary/groups/form_data updates, workflow auto-complete push, event payload (rendered against planned post-state), change-log entries. (Notifications are not composed here — they are dispatched post-commit from the committed `event_id`; see D9 step 4.) The plan phase can throw — invalid signal target, invalid status transition that the FSM doesn't allow but the author asked for explicitly (noisy for user signals, silent for cascade signals — see D13), shape-validation errors caught at plan time rather than at commit time.
 
 **Commit phase.** Input: `Plan`. Output: commit result (the doc IDs of what was written). Single ordered batch of writes through the new Mongo helpers. No reads. No renders. No logic that wasn't in the plan. If transactions are enabled (D11), the entire commit is one transaction; if not, writes are sequenced in a documented order with documented partial-failure semantics.
 
@@ -147,7 +162,7 @@ const hasReview = (actionConfig) =>
     .some((appBlock) => appBlock != null && "review" in appBlock);
 ```
 
-One action doc is shared across every app (all read the same `status[0].stage`), so whether a review step exists is a property of the action, not the submitter — otherwise a `team-app` submit would land `in-review` while a `support-app` submit on the same action lands `done`. `resolveSignal` takes no current-app argument for exactly this reason. (Equivalent to "a review page is emitted," since Part 34 D5 emits it iff some app declares `review` — same input.) Read live from the static `actionConfig`; the module ships no in-flight migration, so editing `access` to add/remove a review stage on a live workflow is the author's migration responsibility — see D16. Per Part 34 D6.
+One action doc is shared across every app (all read the same `status[0].stage`), so whether a review step exists is a property of the action, not the submitter — `resolveSignal` takes no current-app argument for exactly this reason. Read live from the static `actionConfig`; editing `access` to add/remove a review stage on a live workflow is the author's migration responsibility — see D16. Per Part 34 D6.
 
 Three signal sources, identical resolution:
 
@@ -155,7 +170,7 @@ Three signal sources, identical resolution:
 2. **Pre-hook auxiliary signals** — `preHookResult.actions[]` carries `{ target, signal }` entries; each resolves through the FSM against its target action. An entry may also carry `upsert: true` to **spawn a missing target**: when no doc matches `(type, key)`, the planner resolves the signal against the FSM's `none` creation row (the absent doc's current stage is `none`, per state-machine.md) and routes the result to `operation: "insert"`, creating the action at the resolved birth stage. This is the rebuilt home of today's `handleSubmit` `upsert: true` spawn (`utils/shouldCreate.js` + `createAction`); the old `status` seed is gone — the birth stage now comes from the signal. A missing target *without* `upsert: true` throws (D13 (2)). An entry may also carry optional `fields?` / `metadata?` — the data seeding channel (state-machine.md path 3): threaded into `planActionTransition`'s `payload.fields` / `payload.metadata` for that target, seeding spawned docs and applying to existing-target transitions alike (today's `entry.fields` behaviour in both `createAction` and `updateAction`).
 3. **Engine cascade signals** — auto-unblock re-evaluation, tracker subscriptions, cancel/close cascades. Emit `unblock`/`internal_mirror_child_*`/`internal_cancel_action` signals against affected actions. All resolved through the same FSM call. The engine never auto-emits `block`: per state-machine.md, engine cascades are monotonic (unblock-only), and `block` is a **pre-hook-only** auxiliary signal that arrives via `preHookResult.actions[]` (source 2) and resolves through the same FSM call.
 
-Auto-unblock is a fixpoint over the Plan, **interleaved with group recompute**. Each `blocked_by` entry resolves as **either** an **action type** — satisfied iff *every* doc of that type is terminal in the Plan (the keyed-action rule: a type isn't terminal until all its keyed instances are) — **or** a **group id** declared in `action_groups[]` — satisfied iff that group's *planned (recomputed)* status is `done`. Because the group test reads recomputed status, the fixpoint alternates: recompute planned groups from the current planned action states, fire `unblock` against every blocked action whose `blocked_by` is now fully satisfied, and repeat until no new unblock fires; a final recompute then feeds the workflow doc's `groups[]` / `summary`. An `unblock` lands `action-required` (non-terminal), so it never makes a *new* group `done` — but it does change a group's label (`blocked → in-progress`), which is exactly why the recompute must run *after* the unblocks, not only before. The unblock-only cascade keeps the bound trivial: each action unblocks at most once, and `unblock` no-ops from every non-`blocked` state per the FSM (`unblock` from `blocked` goes to `action-required`, which doesn't itself accept `unblock`). The engine does **not** auto-emit `block` on dep regression — once unblocked, an action stays unblocked unless an author explicitly re-blocks it via a pre-hook (state-machine.md). Worst case: N iterations for N actions in the workflow. In practice 1-2. (This restores `computeAutoUnblocks` + `reevaluateBlockedActions`, which together resolved both action-type and group-id deps across two passes bracketing the recompute; the rebuild unifies them into one interleaved fixpoint. The group recompute itself is the existing pure `recomputeGroups` / `deriveGroupStatus` helpers, relocated to `shared/phases/planners/` and imported by both `planAutoUnblock` and `planWorkflowRecompute` — one shared helper, not a `planWorkflowRecompute` export, so the two planners stay independent.)
+Auto-unblock is a fixpoint over the Plan, **interleaved with group recompute**. Each `blocked_by` entry resolves as **either** an **action type** — satisfied iff *every* doc of that type is terminal in the Plan (the keyed-action rule: a type isn't terminal until all its keyed instances are) — **or** a **group id** declared in `action_groups[]` — satisfied iff that group's *planned (recomputed)* status is `done`. Because the group test reads recomputed status, the fixpoint alternates: recompute planned groups from the current planned action states, fire `unblock` against every blocked action whose `blocked_by` is now fully satisfied, and repeat until no new unblock fires; a final recompute then feeds the workflow doc's `groups[]` / `summary`. An `unblock` lands `action-required` (non-terminal), so it never makes a *new* group `done` — but it does change a group's label (`blocked → in-progress`), which is exactly why the recompute must run *after* the unblocks, not only before. The unblock-only cascade keeps the bound trivial: each action unblocks at most once, and `unblock` no-ops from every non-`blocked` state per the FSM (`unblock` from `blocked` goes to `action-required`, which doesn't itself accept `unblock`). The engine does **not** auto-emit `block` on dep regression — once unblocked, an action stays unblocked unless an author explicitly re-blocks it via a pre-hook (state-machine.md). Worst case: N iterations for N actions in the workflow. In practice 1-2. (Unifies today's `computeAutoUnblocks` + `reevaluateBlockedActions` into one interleaved fixpoint; the group recompute is the existing pure `recomputeGroups` / `deriveGroupStatus` helpers, relocated to `shared/phases/planners/` and imported by both `planAutoUnblock` and `planWorkflowRecompute`.)
 
 ### D5. Pre-hook contract: read-only relative to engine atomicity
 
@@ -184,7 +199,7 @@ Today engine writes go through the community plugin's `MongoDBUpdateOne` / `Mong
 
 **How before/after are obtained — from the Plan, no extra reads.** The community plugin captures `before`/`after` with extra reads (`findOneAndUpdate` + `findOne`) because it is stateless per op. The engine doesn't need to: `before` is the doc the load phase already read (`loadedState.action` / `loadedState.workflow`), and `after` is the doc the plan phase already composed (`plan.actions[i].doc` / `plan.workflow.doc`). The entries are built from the Plan and inserted with one `insertManyDocs`.
 
-**Why bulkWrite is not a problem.** The engine commits action transitions via one `bulkWriteActions`, whose return value is counts only — no per-doc before/after. This is exactly the limitation that makes the community plugin omit before/after on `UpdateMany` and omit `bulkWrite` entirely. It does not affect us, because the engine never derives before/after *from* the write — both halves are in the Plan before `bulkWriteActions` runs. So bulk writes and full per-doc before/after audit coexist with zero extra reads (strictly cheaper than the community plugin's per-op double-read).
+**Why bulkWrite is not a problem.** `bulkWriteActions` returns counts only — but the engine never derives before/after *from* the write; both halves are in the Plan before it runs. Bulk writes and full per-doc audit coexist with zero extra reads (strictly cheaper than the community plugin's per-op double-read).
 
 **When written.** Commit phase, after the workflow + action writes, as one `insertManyDocs`. It's outside the transaction (the txn is scoped to workflow + actions — D11) and runs last, so a failure here is the smallest possible mode: a committed change with a missing audit entry, never an audit entry for a change that didn't commit. A commit of N action transitions + 1 workflow update produces N + 1 `log-changes` entries.
 
@@ -222,13 +237,7 @@ Engine code uses these; app-side and pre-hook code continue to use `context.mong
 
 **Dependency declaration + single-driver-version expectation.** `getMongoDb.js` is the first engine code to `import { MongoClient } from "mongodb"` directly — today the community plugin owns the driver privately, so the engine never imported it. The plugin's `package.json` declares no `mongodb` (it resolves today only by pnpm-hoist accident → `mongodb@6.21.0`). This part adds `mongodb` to the plugin's **`peerDependencies`** at `^6` (matching the community plugin's major), so a consuming app provides and dedupes to **one** v6 driver build rather than bundling a second copy (task 01 records the `package.json` edit). It's a peer, not a bundled `dependency`, because the engine wants to share the app's single driver build; the two coexisting clients above are still *one driver build* under this expectation. The community plugin's own exact pin (`mongodb@6.3.0`) is an external choice we can't change — but since both are v6, `findOneAndUpdate` returns the document (or `null`) directly by default, exactly as D15's CAS check assumes, so a temporary version skew is behaviourally benign.
 
-**Why not extend the community plugin.** Three reasons:
-
-1. The community plugin's `changeLog` does an internal before/after read per op (stateless), where the engine already holds before (load) and after (plan) — so the engine reproduces the same `log-changes` output (D7) without the extra reads. Routing engine writes through the plugin just to get its auto-changeLog would re-incur those reads.
-2. The plugin's API surface is YAML-CallApi-shaped (per-call `{ filter, update }` objects with serializable values); the engine's need is JS-shaped (sessions, raw driver methods, bulk ops).
-3. `MongoDBBulkWrite` is deliberately absent from the community plugin (per Part 30 D11's analysis); we need it.
-
-The community plugin stays in use for app-side code unchanged.
+**Why not extend the community plugin.** (1) Its `changeLog` does an internal before/after read per op — the engine already holds both halves (D7) and would re-incur those reads; (2) its API surface is YAML-CallApi-shaped, where the engine needs JS-shaped (sessions, raw driver methods, bulk ops); (3) `MongoDBBulkWrite` is deliberately absent from it (Part 30 D11), and we need it. The community plugin stays in use for app-side code unchanged.
 
 ### D9. Commit ordering and partial-failure semantics
 
@@ -240,7 +249,7 @@ Commit writes are ordered **workflow-first**:
 4. **Notifications** — `callApi("send-notification", { event_ids: [event_id] })`, one call carrying the `_id` of the event just written in step 3 (the wire field stays the batch-shaped `event_ids` — the notifications endpoint's existing contract — even though the engine always sends exactly one). **The engine builds no notification doc and inserts nothing into a notifications collection.** This preserves today's mechanic (`dispatchNotifications.js`): the notifications module's `send-notification` endpoint runs the app-provided `send_routine`, which re-fetches each event doc to read its references/metadata and owns recipient fan-out + any notification-doc write. There is no engine-side `NotificationDoc` anywhere in the repo to build, so composing one would be speculative surface (CLAUDE.md "Build for what exists, not what might") — and it must run *after* step 3 because the routine reads the committed event. Like events (and for the same reason — it crosses the `callApi` boundary onto the community-plugin client), it is outside the transaction. Silent no-op when the app wired no `send_routine`.
 5. **Change-log** — `insertManyDocs` (single call) of all `log-changes` entries (D7), built from the Plan. Last step (outside the txn) so an earlier failure prevents an audit entry claiming a write that didn't happen.
 
-**Invariant: no action write is durable until the workflow claim succeeds.** Workflow-first is what makes the CAS gate meaningful — the common failure (concurrent submit) is detected and thrown with *zero* writes, so a retry re-loads and re-plans from un-advanced state and never double-transitions. (Actions-first would commit the action transitions before the CAS check, so a CAS miss would leave orphaned action writes and a retry would re-apply the transition against the already-advanced action — a double `status[]` push. See review-1 finding #1.) Events after the workflow+actions because event docs reference workflow + action IDs. Change-log last so any earlier step failing prevents an audit entry claiming a write that didn't happen.
+**Invariant: no action write is durable until the workflow claim succeeds.** Workflow-first is what makes the CAS gate meaningful — a concurrent submit is detected and thrown with *zero* writes, so a retry re-loads and re-plans from un-advanced state and never double-transitions (actions-first would leave orphaned action writes on a CAS miss and double-push `status[]` on retry — settled in review-1 #1). Events come after workflow+actions because event docs reference their IDs. Change-log last so an earlier failure can't leave an audit entry claiming a write that didn't happen.
 
 The denormalised summary/groups on the planned workflow doc are computed from the *planned* action states, so writing the workflow before the actions is internally consistent — both come from the same Plan.
 
@@ -317,9 +326,9 @@ async function runTrackerCascade(initialFires, baseContext) {
 
 Each level is its own load-plan-commit cycle on its own workflow. No shared in-memory state between levels. Each level's commit is independently atomic (or transactional). **Each level is also its own invocation for the mint:** a fresh `event_id` per level (the event doc `_id` — reuse would duplicate-key; see "Engine entry points emit events"), while `now` (the per-request `connection.changeStamp` — one user action, one timestamp, app-overridable) and the `newId` factory pass through from the base context to every level.
 
-**Mid-cascade CAS policy (task 16).** A cascade level's `ConcurrentSubmitError` never propagates. The parent is a live workflow other users submit against — a CAS miss there is the expected concurrency event — and the caller cannot recover it by retrying the original submit (the child's commit already landed, so the retry FSM-no-ops and throws `signal_not_allowed`; D15's "retryable" framing doesn't hold post-commit). Instead the loop retries the level, bounded at 3 attempts, each a full fresh load → plan → commit — nothing stale is ever re-issued, and the level's `event_id` is safely reused since a CAS miss writes nothing (D9). Tracker levels are the one engine site where auto-retry is safe by construction: no pre-hook, deterministic planner — D15's non-idempotence argument doesn't apply. On exhaustion the fire records `{ fire, error }` on the cascade's error accumulation and the cascade continues; `TrackerCascadeDepthError` and unclassified errors propagate immediately (a depth cycle is a structural config bug — a D13 defensive gate — not a per-fire data state).
+**Mid-cascade CAS policy (task 16).** A cascade level's `ConcurrentSubmitError` never propagates — the caller can't recover it by retrying the original submit (the child's commit already landed; D15's "retryable" framing doesn't hold post-commit). The loop retries the level, bounded at 3 attempts, each a full fresh load → plan → commit; the level's `event_id` is safely reused since a CAS miss writes nothing (D9). Tracker levels are the one engine site where auto-retry is safe by construction: no pre-hook, deterministic planner. On exhaustion the fire records `{ fire, error }` and the cascade continues; `TrackerCascadeDepthError` and unclassified errors propagate immediately (a depth cycle is a structural config bug, not a per-fire data state).
 
-**Gone-parent policy (task 16).** A fire whose parent is gone — `workflow_not_found` on the level's load, no action doc matching `fire.parentActionId`, or an action type no longer in the workflow config — is a dangling parent reference with no legitimate producing flow (a parent closed early still *has* its tracker action; that case FSM-no-ops and skips silently per D3). The cascade records `{ fire, error }` on its error accumulation, skips the level, and continues with the remaining fires; the failure surfaces through the handler's end-of-invocation `post_commit_dispatch_failed` throw. This deliberately deviates from today's silent `if (!tracker) return []` — the committed submit is never aborted for it, but broken mirror chains become visible instead of quietly stopping. The `MAX_DEPTH = 10` cycle guard from today's recursive `fireTrackerSubscription` carries over, but it must track **chain depth, not loop iterations**: each fire carries a `depth` field seeded at 1 and incremented per level, so a wide-but-shallow cascade (one workflow with many tracker parents) doesn't trip the guard while a genuinely deep cycle still does. A single dequeue counter on the BFS loop would measure total fan-out (breadth), not depth, and would mis-fire on legitimate wide cascades — hence the per-fire `depth`.
+**Gone-parent policy (task 16).** A fire whose parent is gone — `workflow_not_found` on the level's load, no action doc matching `fire.parentActionId`, or an action type no longer in the workflow config — is a dangling reference with no legitimate producing flow (a parent closed early still *has* its tracker action; that case FSM-no-ops and skips silently per D3). The cascade records `{ fire, error }`, skips the level, and continues; the failure surfaces through the handler's end-of-invocation `post_commit_dispatch_failed` throw. This deliberately deviates from today's silent `if (!tracker) return []` — broken mirror chains become visible instead of quietly stopping. The `MAX_DEPTH = 10` guard carries over but tracks **chain depth, not loop iterations**: each fire carries a `depth` seeded at 1 and incremented per level, so a wide-but-shallow cascade doesn't trip the guard while a genuinely deep cycle does (a dequeue counter would measure fan-out, not depth).
 
 This restructure is the only viable shape with load-plan-commit — recursion across workflows can't share a Plan because the Plan is per-aggregate. The good news is the per-level Plan reuses 100% of the per-Submit planner machinery; the only new piece is `planTrackerLevel`, which is a thin wrapper that emits the signal and then delegates to the same auto-unblock/recompute logic.
 
@@ -366,7 +375,7 @@ async function commitPlan(context, plan) {
 
 **Detecting the topology.** At connection init, run the `hello` command and set `context.useTransactions = true` when the result carries `setName` (replica set) or `msg: "isdbgrid"` (mongos); `false` otherwise. **Log the detected mode at startup** — never silent — so an operator debugging consistency knows which commit path is live. (`useTransactions` can also be forced off via connection config for consumers who want the ordered-writes path explicitly.)
 
-**Why both paths stay correct, not just present.** The standalone fallback (D9 workflow-first + CAS) is fully correct on its own — finding #1's reorder is the baseline. Transactions are an *additive* atomicity upgrade on top: on a replica set, steps 1–2 commit atomically, so even the rare "workflow claim succeeds, action write fails" partial-failure (D9) can't happen. The two paths converge on the same observable outcome; the transaction path just removes the partial-failure window.
+**Why both paths stay correct, not just present.** The standalone fallback (D9 workflow-first + CAS) is fully correct on its own; transactions are an *additive* upgrade that removes the rare "workflow claim succeeds, action write fails" partial-failure window (D9). The two paths converge on the same observable outcome.
 
 **Testing both paths.** CI runs the engine integration suite against a **single-node replica set** (`MongoMemoryReplSet`), so the transaction path — the one our deployments run — is the path the tests exercise. A smaller standalone-mode pass covers the fallback ordering + CAS so it doesn't rot.
 
@@ -385,7 +394,7 @@ const renderCtx = {
 
 `plannedActionDoc` is the **after** version — the doc with the new status entry prepended, fields set, metadata merged. Templates can reference fields the current transition is setting (e.g. a simple action whose `submit` lands `done` and whose cell quotes `{{ assignees[0].name }}` where assignees was set in the same submit). The pre-write doc is no longer the render context — it's "the doc as it will look after the commit" because we have the plan.
 
-Sticky display still works: `plannedActionDoc.<slug>.message` is the prior value carried through unless the new cell sets it. The `$mergeObjects` clobber bug I flagged in the previous turn doesn't apply here — the planner composes the full post-commit doc in JS, where deep merging is unambiguous, and commit writes it as one `$set` of the whole subtree.
+Sticky display still works: `plannedActionDoc.<slug>.message` is the prior value carried through unless the new cell sets it. The `$mergeObjects` clobber hazard doesn't apply — the planner composes the full post-commit doc in JS, where deep merging is unambiguous, and commit writes one `$set` of the whole subtree.
 
 Event display render context, per dispatched event:
 
@@ -429,24 +438,7 @@ The distinction is intentional: user-driven signals indicate an explicit intent 
 
 ### D14. Salvaged from Part 30
 
-Parts of Part 30 that carry over with no architectural change, just rewired to fit the new phase model:
-
-- **Action-doc on-disk shape.** Per-app cells spread at top level (`action.demo`, `action['app-a']`). Sticky display across transitions. `status_title` top-level. `metadata` accumulated object. New denormalised `workflow_type` and renamed `tracker.child_workflow_type` per Part 30's schema additions.
-- **Engine-computed links for built-in kinds.** Now a **per-verb `links` map** per [Part 34 D7](../_completed/34-action-access-model/design.md) — `computeEngineLinks` builds `links: { view, edit, review, error }` per slug from the per-verb-isolated **kind × stage × verb** table, which supersedes Part 30 D4's compound (kind × stage × access-verbs) cells. Each cell is `null` where the slug doesn't declare the verb or the stage has no meaningful page. Per-verb *role gates* don't enter the computation — they filter which verbs the user is in (`visible_verbs`). Collapsing the map + `visible_verbs` to the single link a surface renders is a read-side display concern, owned by the display layer ([Part 42 D5](../42-timeline-action-cards/design.md)), not the engine. Build-time `_module.pageId` scoping via the `entry_id` connection field. `urlQuery` carries `action_id` for simple/form, `workflow_id` for tracker.
-- **Resolver shape-validation.** Status_map cell shape rules from Part 30 D9 (built-in kinds reject `link:`, custom accepts `{message?, link?}`, no coverage requirement).
-- **Engine-rendered event display.** Three source layers (engine default → YAML override → pre-hook return) merged via `mergeEventOverrides`, all plain Nunjucks template strings, rendered during the plan phase. D14 of Part 30 carries.
-- **Display surface fixes.** `workflow-group-overview.yaml` (renamed from `group-overview.yaml`, D16 / Part 34 D10) reads `actions_list.$.message` / `.links`; the single rendered link is resolved server-side by the shared display-layer stage ([Part 42 D5](../42-timeline-action-cards/design.md)), not picked in the UI. Other surfaces' aggregation projections light up automatically once the engine writes the top-level fields.
-- **`workflow-api.yaml` `entry_id: { _module.id: true }` wiring.** Connection schema gains `entry_id` field.
-- **Engine-default event template rewrite** to plain Nunjucks string (`"{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"`).
-
-Discarded from Part 30:
-
-- `createAction.js` / `updateAction.js` as primary call sites — replaced by planners + commit helpers.
-- In-memory mirroring (handleSubmit edits 2/3/4 from Part 30) — unnecessary in the new architecture.
-- The `recomputeWorkflowAfterActionWrite.js` post-write-shape composition — replaced by `planWorkflowRecompute.js`.
-- Force/fetch unification in `updateAction` — `updateAction` itself goes away.
-- The `$mergeObjects` engine-link composition — replaced by JS-side deep merge during planning, written as one whole-subtree `$set` at commit.
-- **`action_display` payload override channel.** Authors set per-stage messages via `status_map` in YAML; that's the primary channel and it's preserved. The per-call payload override `action_display` was a speculative escape hatch with no in-repo consumer; dropped per "Build for what exists, not what might." Re-addable as a payload field + 2-line planner branch if a real use case appears.
+Part 30's on-disk contract and display machinery carry over with no architectural change, rewired to fit the phase model: the action-doc shape (per-app top-level cells, sticky display, `status_title`, `metadata`), engine-computed links (now the per-verb `links` map per Part 34 D7), resolver shape-validation, engine-rendered event display, display-surface fixes, the `entry_id` connection wiring, and the engine-default template rewrite. Discarded: the old write helpers as primary call sites, in-memory mirroring, the `$mergeObjects` link composition, and the speculative `action_display` payload override. Full item-by-item inventory: [carried-surfaces.md § D14](./carried-surfaces.md#d14-salvaged-from-part-30).
 
 ### D15. Concurrency: CAS on `workflow.updated`
 
@@ -467,29 +459,13 @@ Without transactions, concurrent submits on the same workflow could each read th
 
 **Action writes.** Actions are bulk-written without per-doc CAS in v1. The race here is narrower than the workflow case (per-action concurrency is rare — same user submitting same action twice typically lands in same-stage no-ops via the FSM), and adding per-action CAS would force the bulk write into a loop. If contention proves real, add per-action `_id` + `updated` filters to the bulkWrite operations as a follow-up.
 
-**Why not version field.** A monotonic `version` integer is the textbook OCC mechanism. `updated` is already on every workflow doc, already updated on every write, and serves the same role. Adding a parallel `version` doubles the per-write bookkeeping for no benefit.
+**Why not version field.** `updated` is already on every workflow doc and advanced on every write — a parallel `version` integer would double the per-write bookkeeping for no benefit.
 
 **Relationship to transactions (D11).** CAS is not replaced by transactions — it works *with* them. On the transaction path, two concurrent submits writing the same workflow produce a MongoDB write conflict; `withTransaction` auto-retries, but the retry re-issues the *same planned writes* without re-planning, so the CAS filter (now stale) misses, `findOneAndUpdate` returns null, and the engine throws cleanly rather than committing stale writes. On the standalone fallback path, CAS is the sole concurrency guard. Either way the CAS filter is what converts a race into a clean `ConcurrentSubmitError`.
 
 ### D16. Access model (Part 34) — what this part implements
 
-[Part 34](../_completed/34-action-access-model/design.md) is design-only; its engine/resolver/display changes land here. Part 34 owns the full rationale; this section records the concrete surfaces Part 38 touches.
-
-**Access shape + resolver validation.** `access.{app_name}` is a verb→gate map (`view`/`edit`/`review`/`error` → `true | [roles]`). `makeWorkflowsConfig` validates it (`validateActionAccess`): unknown verb keys, the empty-list `[]`, the old shorthand list (`access.{app}: [view, edit]`), the removed action-wide `access.roles`, and unknown top-level `access` keys all hard-error; an app block declaring `edit`/`review`/`error` without `view` lint-warns (Part 34 D4). `notification_roles` lives at the action root, not under `access`.
-
-**Submit-time gating.** The load phase resolves the signal's required verb (Part 34 D6 table) and rejects the submit unless `access.{current_app}.{verb}` is `true` or intersects `_user.apps.{current_app}.roles`. This is the authoritative inner gate; the central `api.roles` glob (`{entry_id}/{type}-{action}-submit`) is the coarse outer fence (Part 34 D11).
-
-**Per-verb links.** `computeEngineLinks` writes `action.<slug>.links: { view, edit, review, error }` — per-verb-isolated cells from the kind × stage × verb table (Part 34 D7), each `null` where the slug doesn't declare the verb or the stage has no meaningful page. Per-verb *role gates* don't enter the computation; they filter which verbs the user is in (`visible_verbs`). Resolving the map + `visible_verbs` to the single link a surface renders is a read-side display concern owned by [Part 42 D5](../42-timeline-action-cards/design.md) (shared `resolve_action_link.yaml` stage, priority `edit > review > error > view` over non-`null` ∩ visible cells) — not the engine.
-
-**`visible_verbs` query response.** `visible_verbs_filter.yaml` replaces `access_filter.yaml`: per-verb `$let`/`$or` resolution against `_user.apps.{app_name}.roles` → `$addFields visible_verbs: { view, edit, review, error }` → `$match $anyElementTrue` (drop actions with no true verb). Concrete pipeline in Part 34 D12. The same `_ref` is consumed by `get-entity-workflows`, `get-workflow-overview`, and `get-action-group-overview`. The `$addFields` *compute* half is factored into a shared stage `modules/shared/workflow/visible_verbs.yaml` so the dependency-free events timeline can reuse it ([Part 42 D5](../42-timeline-action-cards/design.md)); `visible_verbs_filter.yaml` is then that shared stage + the `$match` drop.
-
-**Emitted-id naming.** Derived per-workflow endpoints stay `{workflow_type}-{action_type}-{verb}` (pages, `makeActionPages`) and `{workflow_type}-{action_type}-{...}` (Apis, `makeWorkflowApis`) — no literal prefix; the Lowdefy build's entry-id scoping (`{entry_id}/…`) namespaces them, so `{entry_id}/{type}-*` slices a workflow type's endpoints. The `workflow-` prefix is instead carried by the module's **fixed** pages — `workflow-overview`, `workflow-group-overview`, and the shared simple-kind pages `workflow-simple-{verb}` — reserving the `workflow-*` glob space for module infrastructure, disjoint from the per-type derived endpoints (Part 34 D10). `workflow` is a reserved workflow-type name (its derived ids would collide with the fixed-page space).
-
-**Client mirror.** Part 18's `action_role_check` populates per-verb `_state.action_allowed: { view, edit, review, error }` (Part 34 D8); page templates read the verb-specific bool. This rides along with the demo rebuild ([Part 45](../45-demo-rebuild/design.md) — Proposed change #13).
-
-**Access drives FSM reachability (known V1 limitation).** The *presence* of the `review` verb decides whether `submit` lands `in-review` vs `done` (D4, `hasReview`), and verb presence also gates page/link emission (Part 34 D5/D7). So `access` is not a pure gate over a fixed state graph — editing it reshapes which stages are reachable. Removing a verb from a deployed action while actions sit at the stage it gates strands them (e.g. drop `review` while an action is at `in-review`: no review page, no gate, `links.review = null`, no engine remediation). The module ships no version actions or in-flight migration; consistent with the module's V1 migration stance, an author editing access on a live workflow owns any required data migration. Documented in [Part 34 D6](../_completed/34-action-access-model/design.md).
-
-**Tasking note — the access-model work is its own task cluster.** Most of the Part 34 absorption is orthogonal to the load-plan-commit write path and should be tasked (and reviewed) as an independent block, sequenced alongside — not interleaved with — the engine rebuild. Three surfaces touch neither the FSM nor load-plan-commit and are fully independent: `visible_verbs_filter.yaml` (read-path aggregation), `validateActionAccess` (build-time resolver validation), and the `action_role_check` client component (which **implements** Part 18's amend-via-note — Part 38 is where that completed-part amendment actually lands). The write-path-coupled pieces — the submit-time access gate (load phase) and the per-verb `links` map (`computeEngineLinks`, plan phase) — stay with the rebuild because they share its surface. `r:design-task` should split these accordingly so the engine-independent surfaces don't gate on the rebuild core.
+[Part 34](../_completed/34-action-access-model/design.md) is design-only; its engine/resolver/display changes land here: the per-app per-verb `access` shape + resolver validation (`validateActionAccess`), the submit-time signal→verb gate (load phase, against `access.{current_app}.{verb}` ∩ user roles), the per-verb `links` map (`computeEngineLinks`), the `visible_verbs` query response replacing `access_filter`, the emitted-id naming (`workflow-` prefix on fixed pages only; derived ids unprefixed, entry-scoped), and the client `action_allowed` mirror. Known v1 limitation: access drives FSM reachability (D4 `hasReview`), so editing `access` on a live workflow is an author-owned migration. Surface-by-surface detail + tasking note: [carried-surfaces.md § D16](./carried-surfaces.md#d16-access-model-part-34).
 
 ## Current state recap
 
@@ -751,95 +727,7 @@ The demo `workflow_config` is **not migrated in place** — [Part 45](../45-demo
 
 ## Worked example
 
-**Workflow:** an installation workflow with three actions in one group:
-
-```yaml
-type: installation
-action_groups:
-  - id: install
-    actions:
-      - { type: install-step, kind: simple, action_group: install }
-      - { type: install-verify, kind: form, action_group: install, blocked_by: [install-step] }
-      - { type: install-cleanup, kind: simple, action_group: install, blocked_by: [install-step] }
-```
-
-State before submit:
-
-- `install-step`: `action-required`
-- `install-verify`: `blocked` (blocked_by install-step)
-- `install-cleanup`: `blocked` (blocked_by install-step)
-- Workflow summary: `{ done: 0, not_required: 0, total: 3 }`
-
-**Caller submits:** `signal: submit` against `install-step` with `metadata: { physical_id: "D-42" }`. `install-step` declares no `review` verb in `access` (no app declares it), so `submit` lands `done` (the action-global `hasReview` rule from D4, identical for form and simple kinds). No `target_status` — the v0 simple selector is gone (state-machine.md review #6).
-
-**Load phase:**
-
-```js
-loadedState = {
-  workflow: {
-    _id: "w1",
-    summary: { done: 0, not_required: 0, total: 3 },
-    groups: [{ id: "install", status: "in-progress" }],
-    form_data: {},
-    /* ... */
-  },
-  actions: [
-    { _id: "a-step", type: "install-step", kind: "simple", status: [{ stage: "action-required" }], blocked_by: [] },
-    { _id: "a-verify", type: "install-verify", kind: "form", status: [{ stage: "blocked" }], blocked_by: ["install-step"] },
-    { _id: "a-cleanup", type: "install-cleanup", kind: "simple", status: [{ stage: "blocked" }], blocked_by: ["install-step"] },
-  ],
-  targetAction: <ref to a-step>,
-};
-```
-
-**Pre-hook phase:** no pre-hook declared. `PreHookResult = { actions: [], event_overrides: {}, form_overrides: {} }`. The current-action signal is `payload.signal` (`submit`), not a pre-hook output.
-
-**Plan phase:**
-
-1. Resolve current-action signal: `FSM["simple"]["action-required"]["submit"]` → "in-review or done"; `hasReview(actionConfig)` is false (no app declares `review`) → `done`.
-2. Initial planned transitions: `[ { action: a-step, target: "done", fields: {...}, metadata: { physical_id: "D-42" } } ]`.
-3. Auto-unblock fixpoint over planned actions:
-   - a-verify.blocked_by = ["install-step"]; planned install-step is "done" → terminal → emit `unblock` against a-verify.
-   - FSM["form"]["blocked"]["unblock"] → `action-required`. Add to planned transitions.
-   - a-cleanup.blocked_by = ["install-step"]; same → `unblock` → `action-required`.
-   - Next iteration: planned transitions are a-step→done, a-verify→action-required, a-cleanup→action-required. No further unblocks (verify/cleanup don't accept unblock from action-required).
-4. Compose planned action docs:
-   - a-step planned doc: status prepended with `{ stage: "done", event_id: e1, created: now }`, metadata: `{ physical_id: "D-42" }`, rendered cell for `done` stage (e.g. `demo.message: "Installed D-42."`), per-verb links map `demo.links: { view: <workflow-simple-view>, edit: null, review: null, error: null }` (the `done` stage exposes only `view`; D16 / Part 34 D7).
-   - a-verify planned doc (kind `form` → derived pages): status prepended with `{ stage: "action-required", event_id: e1, created: now }`, sticky message from prior stage (none — was blocked, no cell), per-verb links map `demo.links: { view: <installation-install-verify-view>, edit: <installation-install-verify-edit>, review: null, error: null }`.
-   - a-cleanup planned doc (kind `simple` → fixed pages): status prepended, per-verb links map `demo.links: { view: <workflow-simple-view>, edit: <workflow-simple-edit>, review: null, error: null }`.
-5. Recompute groups: install group has 1 done + 2 action-required → "in-progress" (unchanged).
-6. Recompute summary: `{ done: 1, not_required: 0, total: 3 }`.
-7. Check auto-complete: no — `total !== done + not_required` (the full trigger is `total > 0 && total === done + not_required` with the current workflow stage not already `completed`/`cancelled` — preserves the old `recomputeWorkflowAfterActionWrite` guards). No completed push.
-8. Merge form_data: `submitted_form = { physical_id: "D-42" }`. Planned workflow.form_data = `{ "install-step": { physical_id: "D-42" } }`.
-9. Compose planned workflow doc with summary, groups, form_data.
-10. Build event payload: render `display.{appName}.title` against `{ user, action: a-step-planned-doc, workflow: planned-workflow-doc, signal: "submit", status_before: "action-required", status_after: "done", submitted_form }`. Engine default renders to e.g. `"Sam marked install-step as done"`.
-11. Build log-changes entries (community schema, D7): one per mutated doc — a-step, a-verify, a-cleanup, workflow — each with before (loaded) / after (planned). The event write logs itself via the events module's own changeLog config; the engine doesn't double-log it. (No notification payload is built — notifications dispatch post-commit from the committed `event_id`, D9 step 4.)
-
-**Commit phase:**
-
-```
-// steps 1–2 in one transaction on a replica set; ordered fallback on standalone (D9/D11)
-// 1. workflow claim first — CAS gate throws before any action write on a concurrency miss
-findOneAndUpdateDoc(workflows,
-  { _id: "w1", "updated.timestamp": <loaded w1 updated.timestamp> },
-  { $set: <workflow-planned-doc minus _id> })   // null return → throw ConcurrentSubmitError
-// 2. actions
-bulkWriteActions([
-  { updateOne: { filter: {_id: "a-step"}, update: {$set: <a-step-planned-doc minus _id>} } },
-  { updateOne: { filter: {_id: "a-verify"}, update: {$set: <a-verify-planned-doc minus _id>} } },
-  { updateOne: { filter: {_id: "a-cleanup"}, update: {$set: <a-cleanup-planned-doc minus _id>} } },
-])
-// 3–5. outside the transaction
-callApi({ endpointId: connection.endpoints.new_event, payload: { _id: e1, ...eventPayload } })
-callApi({ endpointId: connection.endpoints.send_notification, payload: { event_ids: ["e1"] } })   // engine builds no notification doc; send_routine fans out
-insertManyDocs("log-changes", [...])   // community-schema entries built from the Plan
-```
-
-**Tracker cascade:** none (workflow didn't push `completed`).
-
-**Post-hook:** none declared. Handler returns `{ action_ids: ["a-step", "a-verify", "a-cleanup"], event_id: e1, ... }`.
-
-Renders all happened in step 4 + step 10 of planning, against the planned post-commit shape. No re-fetch. No in-memory mirroring. Adding a sixth or seventh write to the commit phase later doesn't reopen any staleness window — render context is the Plan.
+A full Submit walked through all five phases — three-action installation workflow, FSM resolution, auto-unblock fixpoint, planned docs with rendered cells + per-verb links, CAS-gated commit, log-changes entries — lives in [worked-example.md](./worked-example.md). It demonstrates the core claim: renders all happen during planning against the planned post-commit shape, so no re-fetch, no in-memory mirroring, and later write sites reopen no staleness window.
 
 ## Test strategy
 
