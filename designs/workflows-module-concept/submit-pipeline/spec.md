@@ -2,7 +2,7 @@
 
 Engine-orchestrated submit lifecycle. Full rationale in [design.md](designs/workflows-module-concept/submit-pipeline/design.md); this file carries only the committed decisions.
 
-**Status:** Supersedes [module-surface](../module-surface/design.md) Decisions 4 & 5 (`submit-action` Api), [engine](../engine/design.md) Decision 1's `UpdateWorkflowActions` (renamed to `SubmitWorkflowAction`), and [action-authoring](../action-authoring/design.md) Decision 6's `makeWorkflowApis` (now emits `workflow-{workflow_type}-{action_type}-submit`).
+**Status:** Supersedes [module-surface](../module-surface/design.md) Decisions 4 & 5 (`submit-action` Api), [engine](../engine/design.md) Decision 1's `UpdateWorkflowActions` (renamed to `SubmitWorkflowAction`), and [action-authoring](../action-authoring/design.md) Decision 6's `makeWorkflowApis` (now emits `{workflow_type}-{action_type}-submit`).
 
 **Depends on:** [../call-api/design.md](../call-api/design.md) — gates implementation.
 
@@ -10,7 +10,7 @@ Engine-orchestrated submit lifecycle. Full rationale in [design.md](designs/work
 
 ```
 Page button (template-shipped button bar)
-  → workflows/workflow-{workflow_type}-{action_type}-submit        (resolver-generated Lowdefy Api per action)
+  → workflows/{workflow_type}-{action_type}-submit        (resolver-generated Lowdefy Api per action)
       └─ SubmitWorkflowAction (plugin handler — single in-process invocation)
             1. Validate payload + permissions; signal name known (unknown signal throws — engine D4)
             2. Pre-hook for signal (if declared) — returns optional actions[] (signals against OTHER actions) + event_overrides + form_overrides; aborts via `throw` / `:reject`
@@ -34,12 +34,12 @@ Replaces `UpdateWorkflowActions` (engine Decision 1). Same `WorkflowAPI` connect
 
 Connection structure: see [engine spec](../engine/spec.md) for the canonical `src/connections/WorkflowAPI/` layout. Submit-pipeline adds the files under `SubmitWorkflowAction/` (handler, pre/post hook invokers, auto-unblock computation, log-event dispatch, notification dispatch, group `on_complete` fan-out).
 
-## Per-action `workflow-{workflow_type}-{action_type}-submit` Api (resolver-emitted)
+## Per-action `{workflow_type}-{action_type}-submit` Api (resolver-emitted)
 
 `makeWorkflowApis` (action-authoring Decision 6) emits one Lowdefy Api per form / simple action. Shape:
 
 ```yaml
-id: workflow-{workflow_type}-{action_type}-submit
+id: {workflow_type}-{action_type}-submit
 type: Api
 routine:
   - id: submit
@@ -95,12 +95,12 @@ routine:
 
 ## Per-template button bars over the signal namespace
 
-Each page template declares which signals it surfaces as buttons. A button click calls `workflow-{workflow_type}-{action_type}-submit` with `signal: <name>`; the engine resolves the transition through the action's FSM (`transitions[kind][currentStatus][signal]`). There is no submit-pipeline-side "interaction → target status" table — the canonical button bars and FSM tables live in [state-machine](../state-machine/design.md) ("Templates and buttons", "Signal inventory").
+Each page template declares which signals it surfaces as buttons. A button click calls `{workflow_type}-{action_type}-submit` with `signal: <name>`; the engine resolves the transition through the action's FSM (`transitions[kind][currentStatus][signal]`). There is no submit-pipeline-side "interaction → target status" table — the canonical button bars and FSM tables live in [state-machine](../state-machine/design.md) ("Templates and buttons", "Signal inventory").
 
 Each button is a template-shipped block that, on click:
 
 1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event (if declared).
-2. Calls `workflow-{workflow_type}-{action_type}-submit` with `signal: <name>` + payload.
+2. Calls `{workflow_type}-{action_type}-submit` with `signal: <name>` + payload.
 
 **Default v1 button bars** (from [state-machine](../state-machine/design.md) "Templates and buttons"):
 
@@ -315,7 +315,7 @@ The button block (template-shipped) calls the per-action API with a fixed payloa
         params:
           endpointId:
             _module.endpointId:
-              id: workflow-{workflow_type}-{action_type}-submit
+              id: {workflow_type}-{action_type}-submit
               module: workflows
           payload:
             action_id: { _request: get_action._id }
@@ -331,14 +331,14 @@ The page never builds this manually — the template ships the button and the wi
 
 ## Dropped from module-surface
 
-- **`submit-action` Api** — removed. Replaced by per-action `workflow-{workflow_type}-{action_type}-submit`.
+- **`submit-action` Api** — removed. Replaced by per-action `{workflow_type}-{action_type}-submit`.
 - **`submit-action` payload's `entity_update` field** — apps use pre/post hooks for entity writes.
 - **`submit-action` routine** — engine owns the lifecycle.
 
 ## Renamed
 
 - `UpdateWorkflowActions` → `SubmitWorkflowAction` (engine Decision 1).
-- `makeWorkflowApis` resolver output: the per-action submit endpoint id is `workflow-{workflow_type}-{action_type}-submit` (Part 34 D10 — the `workflow-` literal prefix and `{workflow_type}` segment make app-level `api.roles` globs like `workflow-{workflow_type}-*` work). This supersedes both the v0 `{workflow_type}-{action_type}-submit` and the interim `workflow-{workflow_type}-{action_type}-submit` names.
+- `makeWorkflowApis` resolver output: the per-action submit endpoint id is `{workflow_type}-{action_type}-submit` (Part 34 D10 — the `workflow-` literal prefix and `{workflow_type}` segment make app-level `api.roles` globs like `{workflow_type}-*` work). This supersedes both the v0 `{workflow_type}-{action_type}-submit` and the interim `{workflow_type}-{action_type}-submit` names.
 - Action YAML field: `submit_hook:` → `hooks:` (per-signal map).
 - Wire field: `interaction:` → `signal:` ("interaction" survives only as the word for a signal a page template surfaces as a button).
 
@@ -347,7 +347,7 @@ The page never builds this manually — the template ships the button and the wi
 1. **Per-template button bars.** The default bars are settled in [state-machine](../state-machine/design.md) "Templates and buttons" (`edit`: `submit` / `progress` / `not_required`; `view`: Edit link; `review`: `approve` / `request_changes`; `error`: `resolve_error`). Remaining edge cases to confirm during review:
    - `request_changes` on the `view` template — should default to reviewer-gated (state-machine review-1 finding 7).
    - A `cancel` button for workflow-level cancellation from an action context (out of scope for the v1 signal inventory).
-   - How the shared simple pages surface `error` recovery — a `simple-error` page vs. a `resolve_error` button on `simple-view` (ui follow-on).
+   - How the shared simple pages surface `error` recovery — a `simple-error` page vs. a `resolve_error` button on `workflow-action-view` (ui follow-on).
 2. **Group `on_complete` mechanism.** Engine fans out one `context.callApi` per completed group's declared `on_complete` endpoint. Confirm during review.
 3. **Event-types config var.** Should the module expose `event_types` as a manifest var (like events module's `event_display`) so apps can register canonical types per app? Steph flagged.
 4. **Pre-hook actions[] merge precedence on collisions.** Pre-hook entries take precedence over auto-unblocks on `(type, key)` collisions. Confirm during review.
@@ -358,5 +358,5 @@ The page never builds this manually — the template ships the button and the wi
 1. Land [call-api](../call-api/design.md) — gates this sub-design.
 2. Confirm the per-template button bars (Open Question 1) during review.
 3. Implement `SubmitWorkflowAction` plugin handler, resolving signals against the FSM tables in [state-machine](../state-machine/design.md).
-4. Rewrite `makeWorkflowApis` to emit `workflow-{workflow_type}-{action_type}-submit` (signal-keyed `hooks` / `event_overrides`).
+4. Rewrite `makeWorkflowApis` to emit `{workflow_type}-{action_type}-submit` (signal-keyed `hooks` / `event_overrides`).
 5. Update templates to declare the per-template button bars, wired to the per-action APIs with `signal:` payloads.

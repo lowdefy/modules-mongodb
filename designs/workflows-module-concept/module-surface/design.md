@@ -1,6 +1,6 @@
 # Workflows Module Surface
 
-The module's outward-facing surface — `module.lowdefy.yaml` manifest (exports, vars, dependencies, plugins), the four operational module APIs that apps call (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`), and how consuming apps wire the module into their `modules.yaml`. The submit-time API surface is per-action and resolver-emitted (`workflow-{workflow_type}-{action_type}-submit`) — owned by [submit-pipeline](../submit-pipeline/design.md).
+The module's outward-facing surface — `module.lowdefy.yaml` manifest (exports, vars, dependencies, plugins), the four operational module APIs that apps call (`start-workflow`, `cancel-workflow`, `get-entity-workflows`, `get-workflow-overview`), and how consuming apps wire the module into their `modules.yaml`. The submit-time API surface is per-action and resolver-emitted (`{workflow_type}-{action_type}-submit`) — owned by [submit-pipeline](../submit-pipeline/design.md).
 
 This sub-design owns what apps see when they compose the module. The runtime that makes the APIs work comes from [engine](../engine/design.md); the YAML authors write comes from [action-authoring](../action-authoring/design.md); the pages the manifest exports come from [ui](../ui/design.md).
 
@@ -9,7 +9,7 @@ This sub-design owns what apps see when they compose the module. The runtime tha
 What this sub-design commits:
 
 - The shape of `module.lowdefy.yaml` — exports, vars, dependencies, plugins.
-- The submit-time API surface — resolver-emitted per-action `workflow-{workflow_type}-{action_type}-submit` endpoints owned by [submit-pipeline](../submit-pipeline/design.md). Apps don't compose routines; the engine drives the lifecycle.
+- The submit-time API surface — resolver-emitted per-action `{workflow_type}-{action_type}-submit` endpoints owned by [submit-pipeline](../submit-pipeline/design.md). Apps don't compose routines; the engine drives the lifecycle.
 - The connection wiring — how the module declares its MongoDB collections and the WorkflowAPI server connection.
 - The `cancel-workflow` payload contract.
 
@@ -39,11 +39,11 @@ exports:
     - id: action-error
       description: Form-action error recovery page. Generated per form action with the `error` verb key in its app `access` map (gated identically to the other verbs — Part 34 D5).
     # Module-level shared pages (simple actions — one of each, addressed by ?action_id=<id>)
-    - id: simple-edit
+    - id: workflow-action-edit
       description: Generic simple-action edit page (assignees + due_date + comment + the submit / progress / not_required signal buttons). Shared across all simple actions.
-    - id: simple-view
+    - id: workflow-action-view
       description: Generic simple-action read-only view (status timeline + comments). Shared across all simple actions.
-    - id: simple-review
+    - id: workflow-action-review
       description: Generic simple-action review page (read-only fields + approve / request-changes affordances). Shared across all simple actions.
     # Module-level shared page — read-only overview of one workflow
     - id: workflow-overview
@@ -64,7 +64,7 @@ exports:
       description: Returns workflows + grouped actions for one entity (for entity-page render)
     - id: get-workflow-overview
       description: Returns one workflow doc + its actions ordered for display (for the workflow-overview page). Filters actions by access just like get-entity-workflows.
-    # NOTE: Per-action submit endpoints (`workflow-{workflow_type}-{action_type}-submit`) are
+    # NOTE: Per-action submit endpoints (`{workflow_type}-{action_type}-submit`) are
     # emitted by the makeWorkflowApis resolver per submit-pipeline Decision 2;
     # not statically exported here.
   components:
@@ -136,7 +136,7 @@ api:
   - _ref: api/cancel-workflow.yaml
   - _ref: api/get-entity-workflows.yaml
   - _ref: api/get-workflow-overview.yaml
-  # Per-action submit endpoints (workflow-{workflow_type}-{action_type}-submit) are emitted by the
+  # Per-action submit endpoints ({workflow_type}-{action_type}-submit) are emitted by the
   # makeWorkflowApis resolver per submit-pipeline Decision 2.
   - _ref:
       resolver: resolvers/makeWorkflowApis.js
@@ -164,9 +164,9 @@ pages:
         workflows: { _module.var: workflows_config }
         app_name: { _module.var: app_name }
   # Static module-shipped pages
-  - _ref: pages/simple-edit.yaml
-  - _ref: pages/simple-view.yaml
-  - _ref: pages/simple-review.yaml
+  - _ref: pages/workflow-action-edit.yaml
+  - _ref: pages/workflow-action-view.yaml
+  - _ref: pages/workflow-action-review.yaml
   - _ref: pages/workflow-overview.yaml
 
 # Module-shipped enums (static — same shape across all consuming apps)
@@ -195,7 +195,7 @@ secrets:
 
 ### Notes on the surface
 
-**Submit-side composition lives in the `SubmitWorkflowAction` plugin handler** (submit-pipeline). The module exposes one resolver-generated `workflow-{workflow_type}-{action_type}-submit` endpoint per form / simple action; template-shipped buttons on each per-action page call those endpoints with a `signal` value. Authors don't write submit routines — they declare per-signal pre/post hooks on the action YAML and let the engine drive the lifecycle.
+**Submit-side composition lives in the `SubmitWorkflowAction` plugin handler** (submit-pipeline). The module exposes one resolver-generated `{workflow_type}-{action_type}-submit` endpoint per form / simple action; template-shipped buttons on each per-action page call those endpoints with a `signal` value. Authors don't write submit routines — they declare per-signal pre/post hooks on the action YAML and let the engine drive the lifecycle.
 
 **No `menus:` export.** Unlike `contacts` and `companies`, the workflows module doesn't ship a default navigation menu. Workflow pages are accessed via deep-links from the `actions-on-entity` component on each entity's view page, not via top-level navigation. Apps that want a "workflows inbox" or "my actions" view build it themselves as an app page that queries the actions collection directly.
 
@@ -205,13 +205,13 @@ secrets:
 
 **`vars.app_name`** is the host app's own deployment name — the perspective the module renders from for this build. The same workflow YAML can be shared across multiple host apps (each one declares its own `id: workflows` entry in its `modules.yaml` with a different `app_name`). The module emits one set of per-action pages per build, scoped to the host app's view.
 
-**`exports.pages`** lists three generic page kinds for form actions (`action-edit`, `action-view`, `action-error`), three shared simple-action pages (`simple-edit`, `simple-view`, `simple-review`), and one shared read-only workflow overview page (`workflow-overview`, addressed by `?workflow_id=<id>`). The actual per-action page IDs at runtime are scoped by the resolver: `{module-entry}/workflow-{workflow_type}-{action_type}-{verb}` (e.g. `workflows/workflow-lead-onboarding-qualify-edit`). The ui sub-design owns the page templates, the static simple-action pages, and the workflow-overview page.
+**`exports.pages`** lists the three shared simple-action pages (`workflow-action-edit`, `workflow-action-view`, `workflow-action-review`) and one shared read-only workflow overview page (`workflow-overview`, addressed by `?workflow_id=<id>`). Form actions get per-action derived pages emitted by the resolver — not generic exports — with runtime ids `{module-entry}/{workflow_type}-{action_type}-{verb}` (e.g. `workflows/lead-onboarding-qualify-edit`; no literal prefix, Part 34 D10). The ui sub-design owns the page templates, the static simple-action pages, and the workflow-overview page.
 
 **Dependencies on `events` and `notifications`** are explicit. The module declares them as hard dependencies because the `SubmitWorkflowAction` handler calls into their endpoints (`new-event`, `send-notification`) via the call-api primitive on every successful submit. The notifications module is required even if a consuming app never wires a `send_routine` — `send-notification` is a silent no-op in that case (submit-pipeline Decision 6). Same convention as `events`: every consuming module declares the dependency whether or not every code path logs events.
 
 ## Decision 2 — The four module APIs
 
-The module ships four operational Lowdefy `Api` endpoints, plus a resolver-generated submit endpoint per form / simple action (`workflow-{workflow_type}-{action_type}-submit`, owned by [submit-pipeline](../submit-pipeline/design.md)). Per modules-mongodb convention, the module exposes APIs rather than a routine helper library — consuming apps either call the operational APIs directly or hit the per-action endpoint via the template-shipped button on each per-action page.
+The module ships four operational Lowdefy `Api` endpoints, plus a resolver-generated submit endpoint per form / simple action (`{workflow_type}-{action_type}-submit`, owned by [submit-pipeline](../submit-pipeline/design.md)). Per modules-mongodb convention, the module exposes APIs rather than a routine helper library — consuming apps either call the operational APIs directly or hit the per-action endpoint via the template-shipped button on each per-action page.
 
 ### The operational APIs
 
@@ -224,7 +224,7 @@ The module ships four operational Lowdefy `Api` endpoints, plus a resolver-gener
 
 ### Submit endpoints (owned by submit-pipeline)
 
-The `workflow-{workflow_type}-{action_type}-submit` per-action endpoint, the `SubmitWorkflowAction` plugin handler that runs the engine-orchestrated lifecycle, the signal/FSM transition resolution, pre/post hook contracts, log-event override paths, notifications dispatch, and tracker-fired signal all live in submit-pipeline (transition model in [state-machine](../state-machine/design.md)). The first three operational APIs above are specified in Decision 3 / Decision 4 below; submit-related decisions belong in submit-pipeline.
+The `{workflow_type}-{action_type}-submit` per-action endpoint, the `SubmitWorkflowAction` plugin handler that runs the engine-orchestrated lifecycle, the signal/FSM transition resolution, pre/post hook contracts, log-event override paths, notifications dispatch, and tracker-fired signal all live in submit-pipeline (transition model in [state-machine](../state-machine/design.md)). The first three operational APIs above are specified in Decision 3 / Decision 4 below; submit-related decisions belong in submit-pipeline.
 
 ## Decision 3 — `start-workflow` payload contract
 
@@ -282,7 +282,7 @@ The handler pushes `{ stage: cancelled, created, reason? }` onto the workflow's 
 
 ## Decision 5 — Submit endpoints come from submit-pipeline
 
-The single `submit-action` API that earlier drafts of this sub-design exposed has been **superseded**. The submit-time API surface is now resolver-generated per action (`workflow-{workflow_type}-{action_type}-submit`) and the engine-orchestrated lifecycle lives inside the `SubmitWorkflowAction` plugin handler. Submit-pipeline owns the contracts; this sub-design lists the four operational APIs (Decision 2) and points at submit-pipeline for everything submit-related.
+The single `submit-action` API that earlier drafts of this sub-design exposed has been **superseded**. The submit-time API surface is now resolver-generated per action (`{workflow_type}-{action_type}-submit`) and the engine-orchestrated lifecycle lives inside the `SubmitWorkflowAction` plugin handler. Submit-pipeline owns the contracts; this sub-design lists the four operational APIs (Decision 2) and points at submit-pipeline for everything submit-related.
 
 **Per-action endpoint shape:** see [submit-pipeline Decision 2](../submit-pipeline/design.md#decision-2--per-action-workflow-workflow_type-action_type-submit-resolver) for the canonical YAML the resolver emits.
 
@@ -309,7 +309,7 @@ Apps wanting entity writes on submit do them from a pre/post hook (regular Lowde
 
 ## Risks
 
-- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`workflow-{workflow_type}-{action_type}-submit`, owned by submit-pipeline) plus four operational APIs (this sub-design). If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Mitigation: keep the hook return shape extensible from the start (optional fields default to no-op); document the extension pattern in README.
+- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`{workflow_type}-{action_type}-submit`, owned by submit-pipeline) plus four operational APIs (this sub-design). If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Mitigation: keep the hook return shape extensible from the start (optional fields default to no-op); document the extension pattern in README.
 
 ## Next Step
 

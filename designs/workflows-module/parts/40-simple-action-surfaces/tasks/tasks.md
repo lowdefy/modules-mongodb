@@ -2,7 +2,7 @@
 
 ## Overview
 
-These tasks rewrite the three shared simple-action pages (`simple-edit` / `simple-view` / `simple-review`) from the v0 interaction/selector model to the signals + FSM model, extract their body into one shared `simple-action-surface` component, add a standalone `simple-action-modal` so live working surfaces can open a simple action in place, give the `ActionSteps` block a generic `onActionClick` event, resolve simple-action error recovery (`resolve_error` on `simple-view`), and reconcile the concept docs. Derived from `designs/workflows-module/parts/40-simple-action-surfaces/design.md`.
+These tasks rewrite the three shared simple-action pages (`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`) from the v0 interaction/selector model to the signals + FSM model, extract their body into one shared `simple-action-surface` component, add a standalone `simple-action-modal` so live working surfaces can open a simple action in place, give the `ActionSteps` block a generic `onActionClick` event, resolve simple-action error recovery (`resolve_error` on `workflow-action-view`), and reconcile the concept docs. Derived from `designs/workflows-module/parts/40-simple-action-surfaces/design.md`.
 
 ## Tasks
 

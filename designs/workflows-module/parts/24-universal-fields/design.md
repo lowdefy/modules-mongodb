@@ -85,8 +85,8 @@ Block-id convention follows the CLAUDE.md "Input block IDs match data paths" rul
 | Form action `view` (Part 16)                  | `display` | Right sidebar card, read-only.                                                                     |
 | Form action `review` (Part 16)                | `display` | Right sidebar card, read-only. Reviewers who need to change metadata use the `edit` page sidebar.  |
 | Form action `error` (Part 16)                 | `display` | Right sidebar card, read-only. Recovery flow doesn't edit metadata.                                |
-| Simple action `simple-edit` (Part 17)         | `edit`    | Primary content (status buttons + comment below). Written on `submit`.                             |
-| Simple action `simple-view` / `simple-review` | `display` | Primary content, read-only.                                                                        |
+| Simple action `workflow-action-edit` (Part 17)         | `edit`    | Primary content (status buttons + comment below). Written on `submit`.                             |
+| Simple action `workflow-action-view` / `workflow-action-review` | `display` | Primary content, read-only.                                                                        |
 
 The template renders the form-kind sidebar column **iff `show` is non-empty**; when an action declares `universal_fields: false` / `[]` the column is omitted and the form body spans full width.
 

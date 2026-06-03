@@ -55,9 +55,9 @@ loadedState = {
    - a-cleanup.blocked_by = ["install-step"]; same → `unblock` → `action-required`.
    - Next iteration: planned transitions are a-step→done, a-verify→action-required, a-cleanup→action-required. No further unblocks (verify/cleanup don't accept unblock from action-required).
 4. Compose planned action docs:
-   - a-step planned doc: status prepended with `{ stage: "done", event_id: e1, created: now }`, metadata: `{ physical_id: "D-42" }`, rendered cell for `done` stage (e.g. `demo.message: "Installed D-42."`), per-verb links map `demo.links: { view: <workflow-simple-view>, edit: null, review: null, error: null }` (the `done` stage exposes only `view`; D16 / Part 34 D7).
+   - a-step planned doc: status prepended with `{ stage: "done", event_id: e1, created: now }`, metadata: `{ physical_id: "D-42" }`, rendered cell for `done` stage (e.g. `demo.message: "Installed D-42."`), per-verb links map `demo.links: { view: <workflow-action-view>, edit: null, review: null, error: null }` (the `done` stage exposes only `view`; D16 / Part 34 D7).
    - a-verify planned doc (kind `form` → derived pages): status prepended with `{ stage: "action-required", event_id: e1, created: now }`, sticky message from prior stage (none — was blocked, no cell), per-verb links map `demo.links: { view: <installation-install-verify-view>, edit: <installation-install-verify-edit>, review: null, error: null }`.
-   - a-cleanup planned doc (kind `simple` → fixed pages): status prepended, per-verb links map `demo.links: { view: <workflow-simple-view>, edit: <workflow-simple-edit>, review: null, error: null }`.
+   - a-cleanup planned doc (kind `simple` → fixed pages): status prepended, per-verb links map `demo.links: { view: <workflow-action-view>, edit: <workflow-action-edit>, review: null, error: null }`.
 5. Recompute groups: install group has 1 done + 2 action-required → "in-progress" (unchanged).
 6. Recompute summary: `{ done: 1, not_required: 0, total: 3 }`.
 7. Check auto-complete: no — `total !== done + not_required` (the full trigger is `total > 0 && total === done + not_required` with the current workflow stage not already `completed`/`cancelled` — preserves the old `recomputeWorkflowAfterActionWrite` guards). No completed push.

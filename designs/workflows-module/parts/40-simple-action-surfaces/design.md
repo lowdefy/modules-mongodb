@@ -2,17 +2,17 @@
 
 **Layer:** module shared pages + two new module components (surface + modal) + a generic `ActionSteps` block event + resolver (per-action button config) + concept-doc reconciliation. **Size:** M. **Repo:** `modules/workflows/pages/`, `modules/workflows/components/`, `plugins/.../blocks/ActionSteps/`, `modules/workflows/resolvers/`, concept docs.
 
-The three shared simple-action pages (`simple-edit` / `simple-view` / `simple-review`, renamed from `task-*.yaml` by [Part 35](../_completed/35-rename-task-kind-to-simple/design.md)) still run the **old interaction model**: `simple-edit` carries a status **selector** with a `_js` priority filter (`simple-edit.yaml:135`) and a `current_status` payload, and all three pages fire `interaction:` rather than `signal:`. The engine moved to **signals + FSM** ([state-machine](../../../workflows-module-concept/state-machine/design.md), [Part 38](../38-engine-rebuild/design.md)), and the form templates were migrated by [Part 39](../39-form-submit-buttons/design.md), which shipped the `enums/button_signal_sources.yaml` build-time visibility enum (read via `_ref`) and **explicitly handed the simple surfaces to this sibling** ([Part 39 § Simple actions are separate](../39-form-submit-buttons/design.md)).
+The three shared simple-action pages (`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`, renamed `task-*` → `simple-*` by [Part 35](../_completed/35-rename-task-kind-to-simple/design.md), then `simple-*` → `workflow-action-*` by [Part 38 task 18](../38-engine-rebuild/tasks/18-display-surface-renames.md) per review-14 #1) still run the **old interaction model**: `workflow-action-edit` carries a status **selector** with a `_js` priority filter (`workflow-action-edit.yaml:135`) and a `current_status` payload, and all three pages fire `interaction:` rather than `signal:`. The engine moved to **signals + FSM** ([state-machine](../../../workflows-module-concept/state-machine/design.md), [Part 38](../38-engine-rebuild/design.md)), and the form templates were migrated by [Part 39](../39-form-submit-buttons/design.md), which shipped the `enums/button_signal_sources.yaml` build-time visibility enum (read via `_ref`) and **explicitly handed the simple surfaces to this sibling** ([Part 39 § Simple actions are separate](../39-form-submit-buttons/design.md)).
 
 This part rewrites the three shared pages to the signal model, deletes the status selector, resolves the simple-action **error-recovery** question, and adds an **in-context modal** so the live working surfaces (`actions-on-entity` and the event-timeline action items) can open a simple action without a full page navigation. Because the form and simple FSM tables are now **identical** ([state-machine "Simple kind"](../../../workflows-module-concept/state-machine/design.md)), it reuses Part 39's visibility map verbatim.
 
 ## Proposed change
 
-1. **Delete the `simple-edit` status selector** and its `current_status` / `target_status` payload (`simple-edit.yaml:121–156, 210–211`). Replace with the same nullary signal button bar as the form edit template — `submit`, `progress`, `not_required`. `submit` carries no target; the engine resolves `in-review` vs `done` from the action's `review` verb.
+1. **Delete the `workflow-action-edit` status selector** and its `current_status` / `target_status` payload (`workflow-action-edit.yaml:121–156, 210–211`). Replace with the same nullary signal button bar as the form edit template — `submit`, `progress`, `not_required`. `submit` carries no target; the engine resolves `in-review` vs `done` from the action's `review` verb.
 2. **`interaction:` → `signal:` on all three pages** (`submit_edit` → `submit`; `approve` / `request_changes` keep their names), dropping `current_status`. No interaction→status logic on the page — the engine's FSM owns it.
 3. **Reuse Part 39's `enums/button_signal_sources.yaml` enum for visibility** (read at build time via `_ref`; three-way AND: FSM source-stage, role gate, author opt-out). No new enum — the FSMs are identical.
-4. **Add the `progress` button to `simple-edit`** (titled "Mark Started"): `signal: progress`, persists the universal fields without advancing, lands `in-progress`.
-5. **Resolve error recovery: a `resolve_error` button on `simple-view`**, rendered only when stage is `error` (FSM `error → resolve_error → in-review`). **No `simple-error` page.** Closes [ui Open Question 4](../../../workflows-module-concept/ui/design.md).
+4. **Add the `progress` button to `workflow-action-edit`** (titled "Mark Started"): `signal: progress`, persists the universal fields without advancing, lands `in-progress`.
+5. **Resolve error recovery: a `resolve_error` button on `workflow-action-view`**, rendered only when stage is `error` (FSM `error → resolve_error → in-review`). **No `simple-error` page.** Closes [ui Open Question 4](../../../workflows-module-concept/ui/design.md).
 6. **Author button config matches form** — `not_required` opt-in, others default-shown — read at runtime from a resolver-emitted per-action global ([D3](#d3--author-button-config-match-form-read-at-runtime)).
 7. **Extract the body into a shared `simple-action-surface` component** (universal fields + comment + signal buttons, `mode: edit|view|review`). The three pages and the modal both `_ref` it — one body, two containers.
 8. **Ship a standalone `simple-action-modal` component** and a generic `onActionClick` event on the `ActionSteps` block. `actions-on-entity` bundles the modal and wires the event; any page hosting the event timeline can drop the modal and wire it independently ([D5](#d5--in-context-modal-standalone-component--generic-onactionclick)).
@@ -44,9 +44,9 @@ The modal is an **in-app shortcut layered on the live working surfaces**, never 
 
 Verified against the shipped pages (`modules/workflows/pages/simple-*.yaml`):
 
-- **`simple-edit.yaml`** — 8-step `onMount` (action_id guard → `get_action` → stale-URL guard allowlisting `[action-required, in-progress, changes-required]` → `get_workflow` → `action_role_check` → prime `fields.*` + `status` state). Body: workflow-closed banner, universal-fields (`mode: edit`), **status `Selector`** with a `_js` priority filter (`:135–156`) plus a "No transitions available" Alert when stage is `not-required`, comment `TiptapInput`, and a single **Save** button firing `interaction: submit_edit` + `current_status: {_state: status}` (`:196–215`).
-- **`simple-view.yaml`** — read-only: action header (title + status badge), universal-fields (`mode: display`), **Status History** card (List over `status`), **Comments** card (aggregation over `events` where `action_ids` ∋ this action and `metadata.comment` exists). No button bar, no stale-URL guard.
-- **`simple-review.yaml`** — workflow-closed banner, header, universal-fields (`mode: display`), comment field, a **floating-actions** bar with **Request Changes** (opens a comment `Modal`) + **Approve** (fires `interaction: approve`), and a `request_changes_modal` firing `interaction: request_changes`. Stale-URL guard allowlists `[in-review, error]`.
+- **`workflow-action-edit.yaml`** — 8-step `onMount` (action_id guard → `get_action` → stale-URL guard allowlisting `[action-required, in-progress, changes-required]` → `get_workflow` → `action_role_check` → prime `fields.*` + `status` state). Body: workflow-closed banner, universal-fields (`mode: edit`), **status `Selector`** with a `_js` priority filter (`:135–156`) plus a "No transitions available" Alert when stage is `not-required`, comment `TiptapInput`, and a single **Save** button firing `interaction: submit_edit` + `current_status: {_state: status}` (`:196–215`).
+- **`workflow-action-view.yaml`** — read-only: action header (title + status badge), universal-fields (`mode: display`), **Status History** card (List over `status`), **Comments** card (aggregation over `events` where `action_ids` ∋ this action and `metadata.comment` exists). No button bar, no stale-URL guard.
+- **`workflow-action-review.yaml`** — workflow-closed banner, header, universal-fields (`mode: display`), comment field, a **floating-actions** bar with **Request Changes** (opens a comment `Modal`) + **Approve** (fires `interaction: approve`), and a `request_changes_modal` firing `interaction: request_changes`. Stale-URL guard allowlists `[in-review, error]`.
 - **`ActionSteps.js`** — renders each action row as a hard `Link` to `action.link.pageId`/`urlQuery` (`:162–171`). No click event today.
 
 Stale concept prose is already mostly reconciled: [ui Decision 7](../../../workflows-module-concept/ui/design.md) is current (signal buttons, no selector) and Part 39 reconciled `ui` D2/D4 and `submit-pipeline` D3. The remaining open item is [ui Open Question 4](../../../workflows-module-concept/ui/design.md) (simple-action error recovery), which this part resolves.
@@ -104,7 +104,7 @@ visible:
 
 This is what lets **one shared surface** gate a mixed-verb button bar correctly — the `edit` buttons and the `review`/`error` buttons each read their own verb bool, so the same surface renders right for an editor, a reviewer, or an error-recoverer (a single boolean could not — it can't tell edit access from review access).
 
-This deletes the `_js` priority lookup on the selector (`simple-edit.yaml:144–156`) outright. A button shows exactly when its signal is coherent from the action's current stage — and [Part 38 D13(3)](../38-engine-rebuild/design.md) makes that matter: a **user-driven** signal with no FSM entry **throws**, so a button shown from an incoherent stage would surface a user error. Buttons hidden client-side are still FSM-checked server-side (a concurrent stage push the local UI didn't see resolves to an undefined cell and no-ops). The `resolve_error` button on `simple-view` falls straight out (its source list is `[error]`, gated on `action_allowed.error`).
+This deletes the `_js` priority lookup on the selector (`workflow-action-edit.yaml:144–156`) outright. A button shows exactly when its signal is coherent from the action's current stage — and [Part 38 D13(3)](../38-engine-rebuild/design.md) makes that matter: a **user-driven** signal with no FSM entry **throws**, so a button shown from an incoherent stage would surface a user error. Buttons hidden client-side are still FSM-checked server-side (a concurrent stage push the local UI didn't see resolves to an undefined cell and no-ops). The `resolve_error` button on `workflow-action-view` falls straight out (its source list is `[error]`, gated on `action_allowed.error`).
 
 ### D3 — Author button config: match form (`not_required` opt-in), read at runtime
 
@@ -117,14 +117,14 @@ The `makeWorkflowsConfig` resolver emits a per-simple-action button map into `gl
 
 The author can *hide* a button but never *show* one the FSM rejects — the source-stage AND always applies. Per [CLAUDE.md "build for what exists"], this ships only the `visible` opt-out; full per-action *custom button sets* are out of scope until a concrete case appears.
 
-### D4 — Error recovery: `resolve_error` on `simple-view`
+### D4 — Error recovery: `resolve_error` on `workflow-action-view`
 
-A simple action reaches `error` only via a pre-hook `error` cascade ([state-machine "Simple kind"](../../../workflows-module-concept/state-machine/design.md)) — no simple page surfaces an `error` button (the engine never self-sets `error`). [ui Open Question 4](../../../workflows-module-concept/ui/design.md) left the recovery surface open. **This part resolves it as the lighter option: a `resolve_error` button on `simple-view`, rendered only when stage is `error`** (FSM `error → resolve_error → in-review`).
+A simple action reaches `error` only via a pre-hook `error` cascade ([state-machine "Simple kind"](../../../workflows-module-concept/state-machine/design.md)) — no simple page surfaces an `error` button (the engine never self-sets `error`). [ui Open Question 4](../../../workflows-module-concept/ui/design.md) left the recovery surface open. **This part resolves it as the lighter option: a `resolve_error` button on `workflow-action-view`, rendered only when stage is `error`** (FSM `error → resolve_error → in-review`).
 
 Rationale:
 
-- A fourth static page for a rare cascade is heavier than the case warrants, and `simple-view` already loads the full action — it's the natural recovery context.
-- The engine's `linkDefaults` for `kind: simple` **already** routes the `error` stage to `simple-view` ([Part 30 D4 table](../_rejected/30-status-map-rendering/design.md): `error` → `task-view`, renamed `simple-view` by Part 35). **No Part 30 change is needed** — the button lands exactly where the engine already points.
+- A fourth static page for a rare cascade is heavier than the case warrants, and `workflow-action-view` already loads the full action — it's the natural recovery context.
+- The Part 38 engine's per-verb link table needs one matching special case (Part 38 review-14 #4): for `kind: simple`, the `error` verb links to the **view** page (`workflow-action-view`) — there is no error page to link to — so an error-verb-only user still gets a working link from timeline cards and overviews. (The old engine's `linkDefaults` already routed the `error` stage to the view page, per the [Part 30 D4 table](../_rejected/30-status-map-rendering/design.md); the rebuilt table initially pointed the error verb at a nonexistent `simple-error` page — fixed via Part 38 task 18's link-table coordination.) Form kind is unaffected: generated `{workflow_type}-{action_type}-error` pages exist per verb.
 - Visibility falls out of D2's map (`resolve_error` source = `[error]`).
 
 `resolve_error` reuses the comment field (recovery note) and fires the standard payload. There is **no `simple-error` page** in v1.
@@ -153,7 +153,7 @@ On open the modal runs the **same gating sequence the page's `onMount` runs**, f
 2. `get_workflow` → drives the workflow-closed banner and the `required_after_close` gate on the submit buttons.
 3. `action_role_check` → populates the per-verb `surface.action_allowed: { view, edit, review, error }` (Part 34 D8) that D2's role gates and the mode derivation read.
 
-Then it renders. On a successful signal call it runs the host-supplied `onComplete` refetch (passed as a `_var`) and closes. `simple-view`-style timelines (status history, comments) are shown in the modal for `mode: view`; for `edit`/`review` the `Drawer` renders just the actionable surface.
+Then it renders. On a successful signal call it runs the host-supplied `onComplete` refetch (passed as a `_var`) and closes. `workflow-action-view`-style timelines (status history, comments) are shown in the modal for `mode: view`; for `edit`/`review` the `Drawer` renders just the actionable surface.
 
 **`ActionSteps` block — generic `onActionClick` event.** When the host wires `onActionClick`, the block fires it with the clicked action as event data **instead of** navigating; when not wired, it navigates via the user-selected per-verb link (`action.links.{verb}`, the selection [Part 34 D7](../_completed/34-action-access-model/design.md) adds to the block) — default behaviour, unchanged by this part, so notifications/overviews/deep-links are preserved and it is backward-compatible. The event is **generic** (carries the action object); the block gains no workflow-surface knowledge.
 
@@ -168,7 +168,7 @@ A developer never drops the standalone modal on a page that already has `actions
 
 ### D6 — What carries over unchanged
 
-The shared-page scaffolding stays: the `action_id` presence guard, `get_action` / `get_workflow` requests, `action_role_check` (now sets the per-verb `action_allowed: { view, edit, review, error }`, per [Part 34 D8](../_completed/34-action-access-model/design.md)), the workflow-closed banner + `required_after_close` gate on the submit buttons, the stale-URL guard on `simple-edit` (`[action-required, in-progress, changes-required]`) and `simple-review` (`[in-review, error]`), and `simple-view`'s status-history + comments cards (now inside the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
+The shared-page scaffolding stays: the `action_id` presence guard, `get_action` / `get_workflow` requests, `action_role_check` (now sets the per-verb `action_allowed: { view, edit, review, error }`, per [Part 34 D8](../_completed/34-action-access-model/design.md)), the workflow-closed banner + `required_after_close` gate on the submit buttons, the stale-URL guard on `workflow-action-edit` (`[action-required, in-progress, changes-required]`) and `workflow-action-review` (`[in-review, error]`), and `workflow-action-view`'s status-history + comments cards (now inside the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
 
 ## Discovered gap — action items in the event timeline (Part 41)
 
@@ -183,7 +183,7 @@ Part 41 wires this and adds the generic `EventsTimeline.onActionClick` event, th
 
 | File | Change |
 | ---- | ------ |
-| [`ui/design.md`](../../../workflows-module-concept/ui/design.md) Open Question 4 | **Resolve:** simple-action error recovery is a `resolve_error` button on `simple-view` (D4), no `simple-error` page. Move from Open Questions into Decision 7's body. |
+| [`ui/design.md`](../../../workflows-module-concept/ui/design.md) Open Question 4 | **Resolve:** simple-action error recovery is a `resolve_error` button on `workflow-action-view` (D4), no `simple-error` page. Move from Open Questions into Decision 7's body. |
 | [`ui/design.md`](../../../workflows-module-concept/ui/design.md) Decision 7 | Already signal-based — add the D3 note (button `visible` opt-outs read at runtime from `global.simple_action_buttons`, `not_required` opt-in), the resolved error-recovery line, and the in-context modal (D5) as the in-app open path alongside the page. |
 | [`ui/design.md`](../../../workflows-module-concept/ui/design.md) Decision 3 (`actions-on-entity`) | Note the bundled `simple-action-modal` + `ActionSteps.onActionClick` wiring. |
 | [state-machine `Next step` item 3](../../../workflows-module-concept/state-machine/design.md) | Mark the remaining sub-question (how simple pages surface `error` recovery) as resolved by this part. |
@@ -196,9 +196,9 @@ No change to `submit-pipeline` D3 or `ui` D2/D4 — Part 39 already reconciled t
 
 | File | Change |
 | ---- | ------ |
-| `modules/workflows/pages/simple-edit.yaml` | Delete the status `Selector`, the "No transitions available" Alert, and the `current_status` payload. Body moves to the shared surface (`mode: edit`). `interaction: submit_edit` → `signal: submit`. Align endpoint to `_module.endpointId`. |
-| `modules/workflows/pages/simple-view.yaml` | Body moves to the shared surface (`mode: view`); add the conditional `resolve_error` button (D4). |
-| `modules/workflows/pages/simple-review.yaml` | Body moves to the shared surface (`mode: review`); keep `request_changes_modal`. `interaction:` → `signal:`. Align endpoint. |
+| `modules/workflows/pages/workflow-action-edit.yaml` | Delete the status `Selector`, the "No transitions available" Alert, and the `current_status` payload. Body moves to the shared surface (`mode: edit`). `interaction: submit_edit` → `signal: submit`. Align endpoint to `_module.endpointId`. |
+| `modules/workflows/pages/workflow-action-view.yaml` | Body moves to the shared surface (`mode: view`); add the conditional `resolve_error` button (D4). |
+| `modules/workflows/pages/workflow-action-review.yaml` | Body moves to the shared surface (`mode: review`); keep `request_changes_modal`. `interaction:` → `signal:`. Align endpoint. |
 | `modules/workflows/components/simple-action-surface.yaml` (new) | The shared body — header + universal fields + comment + signal button bar, `mode` param. Reads `_state.surface.*`, `_ref` of `enums/button_signal_sources.yaml` (build-time FSM source-stages), `_global: simple_action_buttons`. |
 | `modules/workflows/components/simple-action-modal.yaml` (new) | Standalone modal (fixed blockId, open contract, `onComplete` var) wrapping the surface (D5). |
 | `modules/workflows/components/actions-on-entity.yaml` | Bundle `simple-action-modal`; wire `ActionSteps.onActionClick` → open it with `entity-workflows-refetch` as `onComplete`. |
@@ -215,7 +215,7 @@ No change to `submit-pipeline` D3 or `ui` D2/D4 — Part 39 already reconciled t
 
 ### Tests
 
-- **E2E (Part 22 supplements)** on the demo's `schedule-followup` simple action: (a) Mark Started (`progress`) on `action-required` lands `in-progress`, persists due-date without advancing; (b) `submit` resolves `in-review` vs `done` per the `review` verb (nullary); (c) a button absent from a stage's source list is not rendered; (d) error recovery: a cascaded `error` shows `resolve_error` on `simple-view`/modal and recovers to `in-review`; (e) clicking a simple action in `actions-on-entity` opens the modal and submits without navigation, then the list refetches.
+- **E2E (Part 22 supplements)** on the demo's `schedule-followup` simple action: (a) Mark Started (`progress`) on `action-required` lands `in-progress`, persists due-date without advancing; (b) `submit` resolves `in-review` vs `done` per the `review` verb (nullary); (c) a button absent from a stage's source list is not rendered; (d) error recovery: a cascaded `error` shows `resolve_error` on `workflow-action-view`/modal and recovers to `in-review`; (e) clicking a simple action in `actions-on-entity` opens the modal and submits without navigation, then the list refetches.
 - **Resolver unit** — `makeWorkflowsConfig` emits `simple_action_buttons` with `not_required` default `false`, others `true`; author override respected.
 
 ### Concept docs

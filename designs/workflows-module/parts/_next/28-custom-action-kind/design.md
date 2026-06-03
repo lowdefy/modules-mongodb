@@ -2,7 +2,7 @@
 
 Adds a fourth action `kind:` to the workflows module — `custom` — for workflows whose action has the same status-transition semantics as `simple` but whose entire submit surface lives in app-supplied pages and APIs rather than the module. The module ships no pages, no submit endpoint, and no hook surface for `custom` actions; apps wire `status_map.link` to their own pages, and those pages call the `SubmitWorkflowAction` plugin handler directly inside an app-authored Lowdefy Api.
 
-This unblocks workflows where the per-action UX is dictated by an existing app page (e.g. a domain document editor, a multi-screen wizard, an external system mirror) that doesn't fit the shared `simple-edit` shape and shouldn't be forced into a `form:` block.
+This unblocks workflows where the per-action UX is dictated by an existing app page (e.g. a domain document editor, a multi-screen wizard, an external system mirror) that doesn't fit the shared `workflow-action-edit` shape and shouldn't be forced into a `form:` block.
 
 ## Proposed change
 
@@ -19,7 +19,7 @@ The existing three kinds each occupy a distinct slot on two axes — *who owns t
 | Kind      | UI owner         | Submit endpoint                                  | Status source                                       |
 | --------- | ---------------- | ------------------------------------------------ | --------------------------------------------------- |
 | `form`    | Module (per-action pages, via `form:`)  | Resolver-emitted `update-action-{action_type}` | Engine default / `interactions:` / pre-hook         |
-| `simple`    | Module (shared `simple-edit/view/review`) | Resolver-emitted `update-action-{action_type}` | Caller-supplied (`current_status`) on `submit_edit` |
+| `simple`    | Module (shared `workflow-action-edit/view/review`) | Resolver-emitted `update-action-{action_type}` | Caller-supplied (`current_status`) on `submit_edit` |
 | `tracker` | Module (inline in `actions-on-entity`)  | None (engine writes via subscription)            | Hard-coded child-stage map                          |
 | `custom`  | **App** (custom pages)                  | **None** (app-authored Lowdefy Api)              | Caller-supplied (`current_status`) on `submit_edit` |
 
@@ -28,7 +28,7 @@ The existing three kinds each occupy a distinct slot on two axes — *who owns t
 The alternatives considered:
 
 - **A `form` action with an empty `form:` block and `status_map.link` pointing at an app page.** Rejected: still emits four per-action pages (none of which the app uses), still emits `update-action-{action_type}` with a `form:` payload contract the app doesn't honour, and forces the action through `form`'s priority-rule status path (no caller-supplied `current_status`).
-- **A `simple` action with `status_map.link` pointing at the app page instead of `simple-edit`.** Rejected: still ships the three shared simple pages (which appear in the build's page-id index even when unreferenced), still emits `update-action-{action_type}` (which the app's custom page may or may not use depending on whether it routes through the shared simple pages), and forces the action through the simple page's status-selector UX semantics. Authors who pick `custom` are stating "the shared simple page is not the surface" — encoding that choice in the kind is cleaner than encoding it in `status_map.link`.
+- **A `simple` action with `status_map.link` pointing at the app page instead of `workflow-action-edit`.** Rejected: still ships the three shared simple pages (which appear in the build's page-id index even when unreferenced), still emits `update-action-{action_type}` (which the app's custom page may or may not use depending on whether it routes through the shared simple pages), and forces the action through the simple page's status-selector UX semantics. Authors who pick `custom` are stating "the shared simple page is not the surface" — encoding that choice in the kind is cleaner than encoding it in `status_map.link`.
 - **An extension knob on `simple` (e.g. `simple.shared_pages: false`).** Rejected: same encoding-choice-as-a-flag problem; downstream resolvers all need a `simple && !shared_pages` branch which is just `custom` spelled awkwardly. Kinds are the discriminator the resolvers already key on.
 
 ## What the kind means at each layer

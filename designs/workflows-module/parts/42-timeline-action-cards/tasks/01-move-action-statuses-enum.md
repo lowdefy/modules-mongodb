@@ -35,9 +35,9 @@ from any workflows-module file the new path is `../shared/enums/action_statuses.
    to `../shared/enums/action_statuses.yaml` in these files:
    - `modules/workflows/connections/workflow-api.yaml` (the `actionsEnum: { _ref: enums/action_statuses.yaml }` line — the engine reads the canonical enum here, so its priorities must keep resolving)
    - `modules/workflows/components/action_statuses.yaml`
-   - `modules/workflows/pages/simple-view.yaml` (6 occurrences)
-   - `modules/workflows/pages/simple-review.yaml` (2 occurrences)
-   - `modules/workflows/pages/simple-edit.yaml` (1 occurrence)
+   - `modules/workflows/pages/workflow-action-view.yaml` (6 occurrences)
+   - `modules/workflows/pages/workflow-action-review.yaml` (2 occurrences)
+   - `modules/workflows/pages/workflow-action-edit.yaml` (1 occurrence)
    - `modules/workflows/templates/edit.yaml.njk` (1 occurrence)
 
 3. **Update the manifest header comment** in
@@ -71,9 +71,9 @@ component file's own path is unchanged; only the enum it points to moved.
 - `modules/shared/enums/action_statuses.yaml` — **create (moved)** — verbatim copy.
 - `modules/workflows/connections/workflow-api.yaml` — modify — repoint `actionsEnum` ref.
 - `modules/workflows/components/action_statuses.yaml` — modify — repoint enum ref.
-- `modules/workflows/pages/simple-view.yaml` — modify — repoint 6 enum refs.
-- `modules/workflows/pages/simple-review.yaml` — modify — repoint 2 enum refs.
-- `modules/workflows/pages/simple-edit.yaml` — modify — repoint 1 enum ref.
+- `modules/workflows/pages/workflow-action-view.yaml` — modify — repoint 6 enum refs.
+- `modules/workflows/pages/workflow-action-review.yaml` — modify — repoint 2 enum refs.
+- `modules/workflows/pages/workflow-action-edit.yaml` — modify — repoint 1 enum ref.
 - `modules/workflows/templates/edit.yaml.njk` — modify — repoint 1 enum ref.
 - `modules/workflows/module.lowdefy.yaml` — modify — update header comment path.
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` — modify — update `actionsEnum` docstring path.

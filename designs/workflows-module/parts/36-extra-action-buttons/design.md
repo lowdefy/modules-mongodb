@@ -146,7 +146,7 @@ These three points were open during initial drafting; the v0 inventory in `/User
 
 `view.yaml.njk` is unchanged *by this part*. Part 39 (D4) added a `floating-actions` bar to view (carrying `request_changes` + an Edit-nav button), so the bar now exists — but offering `buttons.extra` on view is an additive choice deferred to a follow-on (see Out of scope). If a concrete need surfaces (e.g. a "Print" button on view), the follow-on extends the same `_build.array.concat` wiring to `view.yaml.njk` and adds `view` to the validator's bar-verb set.
 
-`pages/simple-edit.yaml`, `simple-view.yaml`, `simple-review.yaml` are unchanged. Simple-action pages intentionally share one experience per verb (`ui/design.md:167`); apps that need a custom button use a form action.
+`pages/workflow-action-edit.yaml`, `workflow-action-view.yaml`, `workflow-action-review.yaml` are unchanged. Simple-action pages intentionally share one experience per verb (`ui/design.md:167`); apps that need a custom button use a form action.
 
 ## Files changed — concept docs
 

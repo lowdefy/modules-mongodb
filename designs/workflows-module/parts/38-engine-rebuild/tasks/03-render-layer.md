@@ -24,7 +24,8 @@ Create `plugins/modules-mongodb-plugins/src/connections/shared/render/`:
 
 - `parseNunjucks` lives under `render/` and the old ContactSelector import path is updated (no dangling import).
 - `computeEngineLinks` returns a `{ view, edit, review, error }` map per slug, with `null` for undeclared verbs / page-less stages; it does **not** consult role gates.
-- The link table targets use the final Part 34 D10 page ids: fixed simple-kind pages `workflow-simple-{verb}`; derived per-type pages `{workflow_type}-{action_type}-{verb}` (unprefixed).
+- The link table targets use the final Part 34 D10 page ids: fixed simple-kind pages `workflow-action-{verb}` (final ids per review-14 #1; task 18 coordinates the flip); derived per-type pages `{workflow_type}-{action_type}-{verb}` (unprefixed).
+- Simple-kind special case (review-14 #4): the `error` verb targets the **view** page (`workflow-action-view`) — the simple kind has no error page (Part 40 D4); form kind's `error` verb targets its generated `-error` page as normal.
 - `renderStatusMap` produces a cell that, when spread, yields sticky `<slug>.message` (prior value carried unless overwritten).
 - Built-in kinds reject author `link:` (validation lives in task 6); custom kinds run through `substituteActionIdSentinel`.
 - All helpers are pure (no I/O).

@@ -42,7 +42,7 @@ Part 38 rebuilds every engine write entry point into load → pre-hook → plan 
 
 | #   | Part                                                          | Size | Depends on | Status |
 | --- | ------------------------------------------------------------- | ---- | ---------- | ------ |
-| 43  | [rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) | S | 40 (rewrites the pages 43 renames); 38 review-14 may pull the page-route half forward into 38 task 18 | 📐 design only |
+| 43  | [rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) | S | 40 (last part touching the simple-kind surfaces); page renames pulled forward into 38 task 18 as `workflow-action-*` (38 review-14 #1) — 43 is now kind-only | 📐 design only |
 | 44  | [tracker-start-link](parts/44-tracker-start-link/design.md)   | S–M  | 38 read side + 42's `resolve_action_link.yaml` | 📐 design + review |
 | 45  | [demo-rebuild](parts/45-demo-rebuild/design.md)               | M–L  | 38 tasks 1–19, 43, 44 — the from-scratch demo + happy-path e2e capstone | 📐 designed + tasked (8 tasks) |
 

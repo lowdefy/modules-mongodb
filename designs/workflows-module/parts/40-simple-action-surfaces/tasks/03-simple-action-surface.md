@@ -2,7 +2,7 @@
 
 ## Context
 
-The three simple-action pages (`simple-edit` / `simple-view` / `simple-review`) and the new in-context modal (Task 5) all render the **same body**: header + universal fields + comment + a signal button bar. This task extracts that body into one reusable component, `modules/workflows/components/simple-action-surface.yaml`, parameterised by a `mode` var (`edit` | `view` | `review`). One body, two containers — the DRY payoff is the reason it's extracted now.
+The three simple-action pages (`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`) and the new in-context modal (Task 5) all render the **same body**: header + universal fields + comment + a signal button bar. This task extracts that body into one reusable component, `modules/workflows/components/simple-action-surface.yaml`, parameterised by a `mode` var (`edit` | `view` | `review`). One body, two containers — the DRY payoff is the reason it's extracted now.
 
 This depends on **Task 1** (the `global.simple_action_buttons` map) and on Part 39's enum **`modules/workflows/enums/button_signal_sources.yaml`** (a build-time `_ref` source-stage map). Confirm that enum file exists before wiring (Part 39 ships it; this part consumes it verbatim). Its contents:
 
@@ -32,7 +32,7 @@ The current pages do **not** use this namespace (they prime top-level `fields.*`
 | `view`   | header + universal fields (read-only) + status-history + comments timeline  | `resolve_error` (only at stage `error`)             |
 | `review` | header + universal fields (read-only) + comment                             | `approve`, `request_changes` (comment modal)        |
 
-The header (title + status badge), status-history card, and comments card come from the current `simple-view.yaml` (`:64–286`). Universal fields render via `_ref: components/universal-fields/universal-fields.yaml` with `mode: edit` (editable, `edit` surface mode) or `mode: display` (read-only, `view`/`review`), `kind: simple`, `action_data` sourced from `surface.fields` (edit) or `surface.action` (display).
+The header (title + status badge), status-history card, and comments card come from the current `workflow-action-view.yaml` (`:64–286`). Universal fields render via `_ref: components/universal-fields/universal-fields.yaml` with `mode: edit` (editable, `edit` surface mode) or `mode: display` (read-only, `view`/`review`), `kind: simple`, `action_data` sourced from `surface.fields` (edit) or `surface.action` (display).
 
 ## Task
 
@@ -64,7 +64,7 @@ The membership check is **runtime** (`_array.includes`, not `_build.array.includ
 
 This mixed-verb gating is what lets **one** surface render correctly for an editor, a reviewer, or an error-recoverer. The `resolve_error` button (source list `[error]`, gated on `action_allowed.error`) falls out of the same map — it shows only when the stage is `error`.
 
-This **deletes** the old `_js` priority lookup that drove the selector (`simple-edit.yaml:144–156`) — no JS visibility logic remains.
+This **deletes** the old `_js` priority lookup that drove the selector (`workflow-action-edit.yaml:144–156`) — no JS visibility logic remains.
 
 ### Button payload (D1) — nullary on target
 
@@ -89,15 +89,15 @@ payload:
 
 `progress` has **no** `Validate` step (a draft is intentionally partial). Like the form template, `progress` fires its own author hook — `onProgress` — before the engine `CallAPI` (the engine-side `progress_saved` log + field persistence is Part 38, out of scope here).
 
-`request_changes` (review mode) opens a comment modal whose `onOk` validates the comment then fires the `request_changes` signal (mirror the current `simple-review.yaml:219–266` `request_changes_modal`, but inside the surface so it works in both containers).
+`request_changes` (review mode) opens a comment modal whose `onOk` validates the comment then fires the `request_changes` signal (mirror the current `workflow-action-review.yaml:219–266` `request_changes_modal`, but inside the surface so it works in both containers).
 
 ### Mode-specific bodies
 
-- **`edit`**: workflow-closed banner (carry over from `simple-edit.yaml:90–108`, gated on `surface.action` fields), editable universal fields, comment, button bar `submit` / `progress` / `not_required`. **No status selector, no "No transitions available" Alert** — both deleted.
-- **`view`**: header (title + status badge), read-only universal fields, status-history card, comments card (carry over from `simple-view.yaml`), button bar with only `resolve_error`.
+- **`edit`**: workflow-closed banner (carry over from `workflow-action-edit.yaml:90–108`, gated on `surface.action` fields), editable universal fields, comment, button bar `submit` / `progress` / `not_required`. **No status selector, no "No transitions available" Alert** — both deleted.
+- **`view`**: header (title + status badge), read-only universal fields, status-history card, comments card (carry over from `workflow-action-view.yaml`), button bar with only `resolve_error`.
 - **`review`**: workflow-closed banner, header, read-only universal fields, comment, button bar `approve` + `request_changes` (with its comment modal).
 
-The submit-style buttons keep the `disabled` workflow-closed gate (`required_after_close`) from the current pages (`simple-edit.yaml:176–187`).
+The submit-style buttons keep the `disabled` workflow-closed gate (`required_after_close`) from the current pages (`workflow-action-edit.yaml:176–187`).
 
 ## Acceptance Criteria
 

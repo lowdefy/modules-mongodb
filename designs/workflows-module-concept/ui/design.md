@@ -46,20 +46,20 @@ Why A wins:
 - **Cross-module references work.** A page in the workflows module can `_module.pageId: { id: profile, module: user-account }` to navigate to the user-account profile; an app page can `_module.pageId: { id: ..., module: workflows }` to deep-link to an action edit page.
 - **Module versioning works.** When an app pins `workflows@0.3.0` vs `workflows@0.4.0`, the page-generation behaviour is part of the module version. Option B would split the resolver (in the module) from the page list (in the app), making it harder to reason about which version of the resolver is producing which pages.
 
-Option B's appeal was that page IDs would be unprefixed (e.g. `workflow-lead-onboarding-qualify-edit` instead of `workflows/workflow-lead-onboarding-qualify-edit`). Real cost — URLs are slightly longer — but the auto-scoping benefit dominates. Option C adds a moving part for no clear gain.
+Option B's appeal was that page IDs would be unprefixed (e.g. `lead-onboarding-qualify-edit` instead of `workflows/lead-onboarding-qualify-edit`). Real cost — URLs are slightly longer — but the auto-scoping benefit dominates. Option C adds a moving part for no clear gain.
 
 ### What the resolver emits
 
 The resolver branches on action kind (see [action-authoring](../action-authoring/design.md) "Action kinds"):
 
-- **Form actions** — emits per-action pages (`workflow-{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`). Per-verb pages are emitted only when the verb key is present in the action's `access.{app_name}` map (per [action-authoring](../action-authoring/design.md) Decision 3). All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. One page doc per emitted (action, verb).
-- **Simple actions** — emits **no per-action pages**. The module ships three shared pages (`simple-edit`, `simple-view`, `simple-review` exposed in `exports.pages`) that handle every simple action across the build, addressed by `?action_id=<id>` in the URL.
+- **Form actions** — emits per-action pages (`{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`). Per-verb pages are emitted only when the verb key is present in the action's `access.{app_name}` map (per [action-authoring](../action-authoring/design.md) Decision 3). All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. One page doc per emitted (action, verb).
+- **Simple actions** — emits **no per-action pages**. The module ships three shared pages (`workflow-action-edit`, `workflow-action-view`, `workflow-action-review` exposed in `exports.pages`) that handle every simple action across the build, addressed by `?action_id=<id>` in the URL.
 - **Tracker actions** — emits no pages. The action renders inline inside `actions-on-entity`; clicking the link goes to the child entity's view page (the link target lives in the action's `status_map`).
 
 For form actions, the per-action page YAML the resolver outputs looks like:
 
 ```yaml
-- id: "workflow-{workflow_type}-{action_type}-edit"
+- id: "{workflow_type}-{action_type}-edit"
   type: PageHeaderMenu  # or whatever the layout module specifies
   events:
     onInit:
@@ -80,34 +80,34 @@ For form actions, the per-action page YAML the resolver outputs looks like:
           maxWidth: {...}
           workflow_type: {workflow_type}
           page_ids:
-            view: "workflow-{workflow_type}-{action_type}-view"
-            edit: "workflow-{workflow_type}-{action_type}-edit"
-            review: "workflow-{workflow_type}-{action_type}-review"
-            error: "workflow-{workflow_type}-{action_type}-error"
+            view: "{workflow_type}-{action_type}-view"
+            edit: "{workflow_type}-{action_type}-edit"
+            review: "{workflow_type}-{action_type}-review"
+            error: "{workflow_type}-{action_type}-error"
           entity_collection: {workflow.entity_collection}
           ...
 ```
 
-Simple actions don't go through this loop at all — the `simple-edit`, `simple-view`, and `simple-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (the `submit` / `progress` / `not_required` signal buttons + comment for edit; read-only display for view; approve/request-changes for review). No status selector — simple actions advance through the same nullary signal buttons as form actions (state-machine "Simple kind"). No per-action customisation; identical experience for every simple action across every workflow.
+Simple actions don't go through this loop at all — the `workflow-action-edit`, `workflow-action-view`, and `workflow-action-review` pages are statically defined in the module's `pages/` directory (one of each, not generated). They read `?action_id` from the URL, fetch the action doc, render the universal fields (`assignees`, `due_date`, `description`) plus the verb-appropriate affordances (the `submit` / `progress` / `not_required` signal buttons + comment for edit; read-only display for view; approve/request-changes for review). No status selector — simple actions advance through the same nullary signal buttons as form actions (state-machine "Simple kind"). No per-action customisation; identical experience for every simple action across every workflow.
 
 Notable shape choices the resolver commits to:
 
 1. **`app_name` is read, not iterated.** The resolver takes `app_name` and uses it to filter `access.{app_name}` per action — one app per build, no inner loop. Workflow YAML shared across host apps maps to multiple module compositions in `modules.yaml`, one per host app.
 2. **Module-relative template paths.** Templates live at `templates/{verb}.yaml.njk` in the module's own tree. Apps that need to override a per-action page supply a custom template via the action's YAML; the resolver checks for that override before falling back to the module default (see Decision 2 below).
 3. **`entity_id` / `entity_collection` (entity-agnostic).** The resolver passes scalar `entity_id` (the doc `_id`) and `entity_collection` (the MongoDB collection connection id, e.g. `leads-collection`) to templates. `entity_collection` is the sole entity-identity scalar — no separate named-kind field rides alongside it. Per-action templates read these to build the right query (using `entity_collection` as the `connectionId`) and the back-link to the entity page.
-4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — simple actions use the module-shipped `simple-edit` / `simple-view` / `simple-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on which verb keys are present in the action's `access.{app_name}` map: minimum one page (one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all four verb keys present).
+4. **Branches on action kind.** Per-action pages are emitted only for **form actions** — simple actions use the module-shipped `workflow-action-edit` / `workflow-action-view` / `workflow-action-review` shared pages, and tracker actions don't have pages at all. Per-form-action page count depends on which verb keys are present in the action's `access.{app_name}` map: minimum one page (one of `-view` / `-edit` / `-review` is required to be useful), maximum four pages (all four verb keys present).
 
 ## Decision 2 — Page templates (sketch)
 
 The module ships two sets of templates:
 
-**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. Each template declares its button bar over the signal namespace (see "Template-shipped button bars" below, and [state-machine](../state-machine/design.md) "Templates and buttons" for the canonical list); buttons call the action's resolver-generated `workflow-{workflow_type}-{action_type}-submit` endpoint with the appropriate `signal` value. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with the approve / request-changes button band added.
+**Form-action templates** — used by `makeActionPages` to build per-action pages. Four generic Nunjucks templates: `templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`. Each template declares its button bar over the signal namespace (see "Template-shipped button bars" below, and [state-machine](../state-machine/design.md) "Templates and buttons" for the canonical list); buttons call the action's resolver-generated `{workflow_type}-{action_type}-submit` endpoint with the appropriate `signal` value. The `review.yaml.njk` template renders the same form schema as `view.yaml.njk` (read-only field display) with the approve / request-changes button band added.
 
 **Error template (`error.yaml.njk`).** Renders the recovery surface for an action whose `status[0].stage` is `error`. Three template-shipped behaviours:
 
 1. **Stale-URL guard.** Template appends a redirect step to the page's `onMount`: if the loaded action's `status[0].stage !== 'error'`, the template emits `Link` to the action's `-view` page so users hitting a stale error URL are bounced out automatically.
 2. **Failure-context banner.** Template surfaces diagnostic context as a read-only banner above the form. Status entries are uniform `{ stage, created, event_id }` ([Part 29 § D2a](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)) — the banner reads from the `events` collection entry referenced by `status[0].event_id` (when an author-driven entry path attached metadata via `event_overrides.metadata`). Richer banner rendering is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
-3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` signal (form FSM `error → resolve_error → in-review`, [state-machine](../state-machine/design.md)) — wired to call `workflow-{workflow_type}-{action_type}-submit` with `signal: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
+3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` signal (form FSM `error → resolve_error → in-review`, [state-machine](../state-machine/design.md)) — wired to call `{workflow_type}-{action_type}-submit` with `signal: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
 
 The `-error` page is gated identically to the other verbs: emitted iff the `error` verb key is present in the action's `access.{app_name}` map. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent. Per-app visibility of the recovery link from other pages is additionally controlled at the status-map level — omitting `status_map.error.{app_name}` suppresses the link even when the page exists. See [action-authoring](../action-authoring/design.md) "Error pages and the `error` status" for the authoring shape.
 
@@ -116,7 +116,7 @@ The `-error` page is gated identically to the other verbs: emitted iff the `erro
 Each form-action template declares a button bar over the signal namespace ([state-machine](../state-machine/design.md) "Templates and buttons"). Each button is a template-shipped block that, on click:
 
 1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event handler (if declared), for page-state work — set state, fire requests, validate.
-2. Calls the action's `workflow-{workflow_type}-{action_type}-submit` endpoint with `signal: <name>` + the standard payload (`form`, `form_review`, `fields`, `current_key`).
+2. Calls the action's `{workflow_type}-{action_type}-submit` endpoint with `signal: <name>` + the standard payload (`form`, `form_review`, `fields`, `current_key`).
 
 | Button            | Rendered on template     | `signal` value    | Author event handler fired | FSM-resolved target (form kind)                                            |
 | ----------------- | ------------------------ | ----------------- | -------------------------- | -------------------------------------------------------------------------- |
@@ -147,7 +147,7 @@ The block-tree shape for each button looks roughly like:
         type: CallApi
         params:
           endpointId:
-            _module.endpointId: { id: workflow-{workflow_type}-{action_type}-submit, module: workflows }
+            _module.endpointId: { id: {workflow_type}-{action_type}-submit, module: workflows }
           payload:
             action_id: { _request: get_action._id }
             signal: submit
@@ -159,11 +159,11 @@ The block-tree shape for each button looks roughly like:
 
 Templates compose this via a small Nunjucks macro per button to keep the block trees terse and consistent. Authors don't write the CallApi step themselves; the template owns the wiring.
 
-**Simple-action pages** — `pages/simple-edit.yaml`, `pages/simple-view.yaml`, and `pages/simple-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
+**Simple-action pages** — `pages/workflow-action-edit.yaml`, `pages/workflow-action-view.yaml`, and `pages/workflow-action-review.yaml` in the module's own tree (statically defined, not generated). Each takes `?action_id=<id>` as a URL query, fetches the action doc, and renders a generic surface:
 
-- **`simple-edit`**: `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), and the template-shipped signal buttons (`submit`, `progress`, `not_required` — same bar as the form edit template; see Decision 7). The `submit` button calls `workflow-{workflow_type}-{action_type}-submit` with `signal: submit` (nullary — no `target_status`; the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions), `fields:` block, `form:` (empty for simple actions), and a top-level `comment` field (resolver-emitted API maps it to `event.metadata.comment`).
-- **`simple-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
-- **`simple-review`**: action header + universal-fields display (same shape as `simple-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `workflow-{workflow_type}-{action_type}-submit` with `signal: approve` / `signal: request_changes`; the simple FSM resolves target status to `done` / `changes-required` respectively ([state-machine](../state-machine/design.md)). The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
+- **`workflow-action-edit`**: `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), and the template-shipped signal buttons (`submit`, `progress`, `not_required` — same bar as the form edit template; see Decision 7). The `submit` button calls `{workflow_type}-{action_type}-submit` with `signal: submit` (nullary — no `target_status`; the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions), `fields:` block, `form:` (empty for simple actions), and a top-level `comment` field (resolver-emitted API maps it to `event.metadata.comment`).
+- **`workflow-action-view`**: action header (title from action YAML, current status badge), universal-fields display, status timeline (read from the action's `status` history), comments timeline (read from events with `metadata.comment` populated for this `action_id`).
+- **`workflow-action-review`**: action header + universal-fields display (same shape as `workflow-action-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `{workflow_type}-{action_type}-submit` with `signal: approve` / `signal: request_changes`; the simple FSM resolves target status to `done` / `changes-required` respectively ([state-machine](../state-machine/design.md)). The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
 
 All three simple-action pages are app-theme-agnostic and route their chrome through the layout module (the hard `layout` dependency declared in module-surface "Decision 1"). Apps don't override these pages — simple actions intentionally share one experience per verb. Apps that need different UX use form actions instead, with a minimal form that captures whatever extra data they need.
 
@@ -173,7 +173,7 @@ Detailed template content is implementation-time material — the exact block tr
 
 ### All module-shipped pages wrap content in `layout.page`
 
-Every page the workflows module ships — generated per-action pages (`templates/edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`, `error.yaml.njk`), shared simple-action pages (`pages/simple-edit.yaml`, `simple-view.yaml`, `simple-review.yaml`), and the shared workflow overview (`pages/workflow-overview.yaml`) — composes its top-level block tree by `_ref`ing the layout module's `page` component. Cards inside the page (action cards, info cards) `_ref` the layout module's `card` component.
+Every page the workflows module ships — generated per-action pages (`templates/edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`, `error.yaml.njk`), shared simple-action pages (`pages/workflow-action-edit.yaml`, `workflow-action-view.yaml`, `workflow-action-review.yaml`), and the shared workflow overview (`pages/workflow-overview.yaml`) — composes its top-level block tree by `_ref`ing the layout module's `page` component. Cards inside the page (action cards, info cards) `_ref` the layout module's `card` component.
 
 ```yaml
 # Canonical shape for every module-shipped page:
@@ -206,7 +206,7 @@ _ref:
 
 | Var            | Purpose                                                                                                                                                                       |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `id`           | Page id (auto-scoped under the module entry, e.g. `workflows/workflow-lead-onboarding-qualify-edit`)                                                                                   |
+| `id`           | Page id (auto-scoped under the module entry, e.g. `workflows/lead-onboarding-qualify-edit`)                                                                                   |
 | `title`        | Page header title — Nunjucks-templated against action / workflow state when needed                                                                                            |
 | `breadcrumbs`  | Optional. For per-action pages: `[Home, EntityList, EntityDetail, ActionTitle]`. For simple-action pages and workflow-overview: `[Home, EntityDetail]`.                       |
 | `page_actions` | Optional right-aligned buttons in the page header (e.g. a "View History" button on `-edit` pages, an "Edit" link on `-view` pages, "Approve / Request Changes" on `-review`). |
@@ -226,7 +226,7 @@ Universal action fields (`assignees`, `due_date`, `description` — see [action-
 - On a **simple action's** edit page they're the primary content, with the signal buttons (`submit` / `progress` / `not_required`) and a comment field below.
 - On a **tracker action's** inline display in `actions-on-entity` they show as small badges next to the link.
 
-Updates flow through `workflow-{workflow_type}-{action_type}-submit` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
+Updates flow through `{workflow_type}-{action_type}-submit` like any other action change. The template-shipped button composes the `fields:` block of the submit payload from form-state, plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
 
 ## Decision 3 — Module-level UI components
 
@@ -402,16 +402,16 @@ Entity-page link cells (rendered from `status_map`) build URLs with `urlQuery: {
 
 Instanced actions render as N rows (one per instance) within their `action_group`. Each row uses its own `status_map` entry — message templating injects per-instance context, so authors can write `Awaiting installation of device {{ physical_id }}.` and get one row per device with the right device id.
 
-## Decision 7 — Signal buttons on `simple-edit` (no status selector)
+## Decision 7 — Signal buttons on `workflow-action-edit` (no status selector)
 
-The v0 simple-edit **status selector is removed** ([state-machine](../state-machine/design.md) "Simple kind", review #6). A simple action is a form action with no `form:` body — its edit page surfaces the **same nullary signal buttons as the form edit template**, not a status dropdown:
+The v0 workflow-action-edit **status selector is removed** ([state-machine](../state-machine/design.md) "Simple kind", review #6). A simple action is a form action with no `form:` body — its edit page surfaces the **same nullary signal buttons as the form edit template**, not a status dropdown:
 
-- **`simple-edit` button bar:** `submit`, `progress`, `not_required` (the same bar `edit.yaml.njk` ships). `submit` is nullary — the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions; the caller supplies no target. `progress` ("mark started") re-saves in `in-progress` without advancing — the `schedule-followup` "set a due date now, complete later" flow. `not_required` lands `not-required`.
-- **`simple-review`** (when the action lists the `review` verb) ships `approve` / `request_changes`, same as the form review template.
+- **`workflow-action-edit` button bar:** `submit`, `progress`, `not_required` (the same bar `edit.yaml.njk` ships). `submit` is nullary — the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions; the caller supplies no target. `progress` ("mark started") re-saves in `in-progress` without advancing — the `schedule-followup` "set a due date now, complete later" flow. `not_required` lands `not-required`.
+- **`workflow-action-review`** (when the action lists the `review` verb) ships `approve` / `request_changes`, same as the form review template.
 - Each button only renders when the FSM lists an outgoing transition for it from the action's current state — a button whose signal the current state doesn't accept is hidden (same gating the form templates apply). No "pick any status" affordance exists.
 - There is no `force: true` escape hatch in the UI — migrations and admin overrides are out-of-band direct DB writes (engine Decision 4). Pushing a simple action straight to `blocked` or `error` is a pre-hook `block` / `error` cascade from elsewhere, not a self-set on its own edit page.
 
-**Error recovery for simple actions is a follow-on.** A simple action can land in `error` via a pre-hook `error` cascade ([state-machine](../state-machine/design.md)), but no simple page ships an `error` surface today. How recovery is surfaced — a `simple-error` page vs. a `resolve_error` button on `simple-view` — is open (see Open Questions); v1 ships no `simple-error` page.
+**Error recovery for simple actions is a follow-on.** A simple action can land in `error` via a pre-hook `error` cascade ([state-machine](../state-machine/design.md)), but no simple page ships an `error` surface today. How recovery is surfaced — a `simple-error` page vs. a `resolve_error` button on `workflow-action-view` — is open (see Open Questions); v1 ships no `simple-error` page.
 
 Buttons hidden at render time still get FSM-checked server-side: a submission the FSM doesn't accept (e.g. a concurrent stage push from another user the local UI didn't see) resolves to an undefined cell and no-ops; the page reflects the engine's resolved state.
 
@@ -429,7 +429,7 @@ Generating per-workflow overview pages was considered and rejected:
 
 - **No per-workflow customization needed.** The action cards already know how to render themselves from `action_form_configs` (the DataView reads form schemas from `global.action_form_configs`); the page just iterates.
 - **Easier deep-linking.** A single page id (`workflows/workflow-overview?workflow_id=<id>`) is a stable URL shape across workflow types. Per-workflow page ids (`workflows/{workflow_type}-overview`) would force callers to know the workflow type to build the URL — workflow_id alone is enough today.
-- **Matches `simple-view` precedent.** The same argument that put `simple-view` as a single module-level page rather than per-action pages applies here, one level up.
+- **Matches `workflow-action-view` precedent.** The same argument that put `workflow-action-view` as a single module-level page rather than per-action pages applies here, one level up.
 
 Apps with truly bespoke overview needs build a custom page; the module provides the default.
 
@@ -571,8 +571,8 @@ Tracker actions render as a single row with status badge + message + a link butt
 
 1. **`makeActionsForm` recursion across module boundaries** — flagged in [action-authoring](../action-authoring/design.md). The form-action templates `_ref` the form resolver to build the form block tree; if the resolver can't recurse from inside a template the form builder falls back to a flat emitter. Templates accommodate either shape during the spike.
 2. **`completed-workflow` collapsed-tile UX detail and the workflow-header milestone label.** v1 ships sensible defaults; iteration after first consumer adoption.
-3. **Comment timeline shape on `simple-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references are spread to event-doc root by the events module's `new-event` routine, so the query path is `action_ids`, not `references.action_ids`). Refinement based on real-app patterns.
-4. **Simple-action error recovery surface.** A simple action can be pushed to `error` via a pre-hook `error` cascade ([state-machine](../state-machine/design.md) "Simple kind"), but the shared simple pages ship no `error` surface today. Decide between a dedicated `simple-error` page and a `resolve_error` button conditionally rendered on `simple-view`. v1 ships neither; flagged for the first consumer that cascades `error` onto a simple action.
+3. **Comment timeline shape on `workflow-action-view`.** The events module's existing comment-timeline shape is the reference. v1 reads events where `action_ids` includes the current `action_id` and `metadata.comment` is populated (references are spread to event-doc root by the events module's `new-event` routine, so the query path is `action_ids`, not `references.action_ids`). Refinement based on real-app patterns.
+4. **Simple-action error recovery surface.** A simple action can be pushed to `error` via a pre-hook `error` cascade ([state-machine](../state-machine/design.md) "Simple kind"), but the shared simple pages ship no `error` surface today. Decide between a dedicated `simple-error` page and a `resolve_error` button conditionally rendered on `workflow-action-view`. v1 ships neither; flagged for the first consumer that cascades `error` onto a simple action.
 
 ## Next Step
 

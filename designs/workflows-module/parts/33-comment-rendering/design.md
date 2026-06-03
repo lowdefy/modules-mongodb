@@ -8,16 +8,16 @@ A workflow submit (and the Part 24 fields operation) captures an optional rich-t
 2. **`metadata.comment` is dropped.** The comment is no longer stored under `metadata`. The event carries it once, in `display.{app_name}.description`. No text shadow in v1.
 3. **A single shared helper folds the comment into the event** for both write paths — `SubmitWorkflowAction` (the default log event) and Part 24's `UpdateActionFields` (`action-fields-updated`) — so the two cannot drift.
 4. **Runtime comment wins over a static `display.description` override.** The comment is applied as the last layer, after the YAML `event_overrides` and pre-hook merges — so a typed comment always owns that event's description. This answers the Part 32 question (the static `event:` channel stays; comment takes precedence when present).
-5. **The bespoke Comments card is deleted, and the standard events timeline is added to the workflow view pages.** `simple-view.yaml`'s `comments_card` (and its `get_comment_events` query / `comment_events_list` state) is removed and replaced with the shared `events-timeline` component, filtered to the action. The action page now shows the full activity timeline — comments included inline — instead of a comment-only list.
+5. **The bespoke Comments card is deleted, and the standard events timeline is added to the workflow view pages.** `workflow-action-view.yaml`'s `comments_card` (and its `get_comment_events` query / `comment_events_list` state) is removed and replaced with the shared `events-timeline` component, filtered to the action. The action page now shows the full activity timeline — comments included inline — instead of a comment-only list.
 
 ## Background: what the code actually does
 
-- **Where the comment is captured.** A `TiptapInput` with `id: comment` on the review/edit surfaces (`simple-review.yaml:140`, `simple-edit.yaml`, `review.yaml.njk:178`). Mandatory on `request_changes`, optional elsewhere. `TiptapInput` writes `{ html, text, markdown, fileList }` to `_state.comment` (`@lowdefy/blocks-tiptap` `useTiptapState.js:49-52`).
+- **Where the comment is captured.** A `TiptapInput` with `id: comment` on the review/edit surfaces (`workflow-action-review.yaml:140`, `workflow-action-edit.yaml`, `review.yaml.njk:178`). Mandatory on `request_changes`, optional elsewhere. `TiptapInput` writes `{ html, text, markdown, fileList }` to `_state.comment` (`@lowdefy/blocks-tiptap` `useTiptapState.js:49-52`).
 - **Where the comment is sent.** The submit/request-changes actions post `comment: { _state: comment }` — the **whole TipTap object** — to the action endpoint.
 - **Where the comment is stored today (pre-Part-38).** The current `SubmitWorkflowAction` threads `params.comment` into `buildDefaultLogEventPayload`, which writes `metadata.comment` **only when `typeof comment === "string"`** (`dispatchLogEvent.js:66`). Because the page sends an object, the guard is `false` and the comment is dropped on the floor — a latent bug. [Part 38](../38-engine-rebuild/design.md) rebuilds these call sites into shared load→plan→commit planners; this part lands on that new structure, defining the comment's home (`display.{app_name}.description`) and pinning the wire contract there, so the bug doesn't carry forward.
 - **The render channel.** The events timeline renders exactly one secondary rich-text slot: `EventDescription` → `dangerouslySetInnerHTML={{ __html: sanitize(event.description) }}` (`EventsTimeline.js:284-287`). The aggregation maps `display.{app_name}.description → description` (`events-timeline.yaml:43-50`). So `event.description` must be an **HTML string**, sanitized at render.
 - **Title resolution is at write time, in the engine.** Per [Part 38](../38-engine-rebuild/design.md), the engine renders event display as plain Nunjucks **strings** during the plan phase — the engine-default title template plus any author/pre-hook overrides — so the timeline receives already-rendered plain strings. This supersedes the older "`display.{app}.title` is a `_nunjucks` operator resolved by `new-event` at read/write time" approach. The comment is raw HTML (not a template); it is folded into the rendered display with no read-time templating.
-- **The timeline isn't on the workflow pages.** `simple-view.yaml` renders a bespoke `comments_card` (querying `metadata.comment: { $exists: true }`) plus a `status_history_list`. It does **not** compose the shared `events-timeline` component. Workflow events already carry `references.{entity_ref}: [entity_id]`, so they surface on the **entity** page timeline — but the action's own page has no general timeline.
+- **The timeline isn't on the workflow pages.** `workflow-action-view.yaml` renders a bespoke `comments_card` (querying `metadata.comment: { $exists: true }`) plus a `status_history_list`. It does **not** compose the shared `events-timeline` component. Workflow events already carry `references.{entity_ref}: [entity_id]`, so they surface on the **entity** page timeline — but the action's own page has no general timeline.
 
 ## Key decisions
 
@@ -70,7 +70,7 @@ The pages keep sending `comment: { _state: comment }` (the TipTap value). The en
 
 Deleting `comments_card` without adding a timeline would leave the action's own view page with no comment surface (only the entity page would show it, via `references`). So this part:
 
-- **removes** `simple-view.yaml`'s `comments_card`, its `get_comment_events` request, the `metadata.comment: { $exists }` filter, and the `comment_events_list` state/list blocks;
+- **removes** `workflow-action-view.yaml`'s `comments_card`, its `get_comment_events` request, the `metadata.comment: { $exists }` filter, and the `comment_events_list` state/list blocks;
 - **adds** the shared `_ref: { module: events, component: events-timeline }`, filtered to the action (`reference_field: action_ids`, `reference_value: get_action._id`), so the page shows the full activity stream — submits, status changes, comments inline — in one standard surface.
 
 The `status_history_list` block is left as-is in v1 (it reads the action doc's `status[]`, a different source from events); folding status history into the timeline is a separate concern.
@@ -87,7 +87,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 
 ### Module — `modules/workflows/`
 
-- **`pages/simple-view.yaml`** (amend) — delete `comments_card` (+ `get_comment_events`, `comment_events_list`); add the shared `events-timeline` component filtered to the action.
+- **`pages/workflow-action-view.yaml`** (amend) — delete `comments_card` (+ `get_comment_events`, `comment_events_list`); add the shared `events-timeline` component filtered to the action.
 - **Form action `view` template (Part 16)** — same swap on the form-kind view surface, if/where a comments card exists there. Template-only; handled as a Part 16 follow-on (those files live in `_completed/`).
 
 ### Concept-spec amendments
@@ -134,6 +134,6 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 
 ## Contract to neighbours
 
-- **This part owns** `foldCommentIntoEvent`, the event-dispatch-planner amendments (deep-merge under the app key + the comment fold; pre-Part-38 this was `dispatchLogEvent.js` / `mergeEventOverrides.js`), dropping `metadata.comment`, and the `simple-view.yaml` tile swap.
+- **This part owns** `foldCommentIntoEvent`, the event-dispatch-planner amendments (deep-merge under the app key + the comment fold; pre-Part-38 this was `dispatchLogEvent.js` / `mergeEventOverrides.js`), dropping `metadata.comment`, and the `workflow-action-view.yaml` tile swap.
 - **Part 24** calls `foldCommentIntoEvent` from its `action-fields-updated` event builder. If Part 24 lands first, it writes the comment to `display.description` directly and this part factors out the shared helper; if this part lands first, Part 24 imports the helper. Either order works; the helper is the contract.
 - **Part 16** (form view template) does the same card-swap on the form-kind view surface as a template-only follow-on (its files are in `_completed/`).

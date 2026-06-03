@@ -87,7 +87,7 @@ Pre/post hooks and cross-module API calls happen inside an already-authenticated
 
 ## Decision 3 — Depth-limit guard
 
-A pre-hook calls back into another Api that calls back into a per-action endpoint (`workflow-{workflow_type}-{action_type}-submit`) that fires another pre-hook... pathological recursion is possible. Engine-driven recursion (tracker subscription cascading, group `on_complete` triggering another submit) is also possible.
+A pre-hook calls back into another Api that calls back into a per-action endpoint (`{workflow_type}-{action_type}-submit`) that fires another pre-hook... pathological recursion is possible. Engine-driven recursion (tracker subscription cascading, group `on_complete` triggering another submit) is also possible.
 
 **Mitigation:** `context.callApi` carries a hidden `_depth` counter on every invocation. Default limit 10. Exceeded → throws a structured error citing the call chain. Configurable per-handler if a real use case surfaces a need to go deeper.
 

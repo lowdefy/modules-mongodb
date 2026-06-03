@@ -13,7 +13,7 @@ Add E2E coverage for the five scenarios (design "Tests → E2E"):
 - **(a) Mark Started (`progress`)** on an `action-required` action lands `in-progress` and persists the due-date without advancing past `in-progress` (no `Validate`, partial draft allowed).
 - **(b) `submit`** resolves `in-review` vs `done` per the action's `review` verb — nullary payload, no `current_status`. (Pick the demo action's actual `review` setting and assert the resulting stage.)
 - **(c) Source-stage gating** — a button absent from a stage's source list is not rendered (e.g. `progress`, source `[action-required, in-progress]`, is gone once the action is `done`, while `submit` stays visible).
-- **(d) Error recovery** — a cascaded `error` shows `resolve_error` on `simple-view` (and in the modal `view` mode) and recovers to `in-review`.
+- **(d) Error recovery** — a cascaded `error` shows `resolve_error` on `workflow-action-view` (and in the modal `view` mode) and recovers to `in-review`.
 - **(e) In-context modal** — clicking a simple action in `actions-on-entity` opens the modal and submits **without navigation**, then the entity-workflows list refetches and reflects the new stage.
 
 ## Acceptance Criteria

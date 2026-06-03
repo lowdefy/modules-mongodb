@@ -6,11 +6,11 @@ The three shared simple-action pages still run the v0 interaction model and must
 
 Current files:
 
-- `modules/workflows/pages/simple-edit.yaml` — 8-step `onMount`; body has a workflow-closed banner, universal-fields (`mode: edit`), a **status `Selector`** with a `_js` priority filter (`:135–156`), a "No transitions available" Alert, a comment, and a single **Save** button firing `interaction: submit_edit` + `current_status` (`:196–215`).
-- `modules/workflows/pages/simple-view.yaml` — read-only header + universal-fields (`mode: display`) + status-history card + comments card. No button bar, no stale-URL guard.
-- `modules/workflows/pages/simple-review.yaml` — workflow-closed banner, header, universal-fields (`mode: display`), comment, **floating-actions** bar with Request Changes (opens a comment `Modal`) + Approve (`interaction: approve`), and a `request_changes_modal` (`interaction: request_changes`). Stale-URL guard allowlists `[in-review, error]`.
+- `modules/workflows/pages/workflow-action-edit.yaml` — 8-step `onMount`; body has a workflow-closed banner, universal-fields (`mode: edit`), a **status `Selector`** with a `_js` priority filter (`:135–156`), a "No transitions available" Alert, a comment, and a single **Save** button firing `interaction: submit_edit` + `current_status` (`:196–215`).
+- `modules/workflows/pages/workflow-action-view.yaml` — read-only header + universal-fields (`mode: display`) + status-history card + comments card. No button bar, no stale-URL guard.
+- `modules/workflows/pages/workflow-action-review.yaml` — workflow-closed banner, header, universal-fields (`mode: display`), comment, **floating-actions** bar with Request Changes (opens a comment `Modal`) + Approve (`interaction: approve`), and a `request_changes_modal` (`interaction: request_changes`). Stale-URL guard allowlists `[in-review, error]`.
 
-**What carries over unchanged (D6):** the `action_id` presence guard; `get_action` / `get_workflow` requests; `action_role_check`; the workflow-closed banner + `required_after_close` gate; the stale-URL guard on `simple-edit` (`[action-required, in-progress, changes-required]`) and `simple-review` (`[in-review, error]`); `simple-view`'s status-history + comments (now living **inside** the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
+**What carries over unchanged (D6):** the `action_id` presence guard; `get_action` / `get_workflow` requests; `action_role_check`; the workflow-closed banner + `required_after_close` gate; the stale-URL guard on `workflow-action-edit` (`[action-required, in-progress, changes-required]`) and `workflow-action-review` (`[in-review, error]`); `workflow-action-view`'s status-history + comments (now living **inside** the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
 
 ## Task
 
@@ -24,18 +24,18 @@ Current files:
    - `surface.action_allowed` ← the per-verb map produced by `action_role_check` (see Notes). The current top-level `action_allowed` key must move under `surface.action_allowed`.
 3. **`interaction:` → `signal:`** and **drop `current_status`** everywhere it appears — this is now entirely the surface's concern (the surface owns the button bar and payloads). After the body moves to the surface, no `interaction:`/`current_status` should remain on any page.
 
-### `simple-edit.yaml`
+### `workflow-action-edit.yaml`
 
 - Delete the status `Selector` (`:135–156`), the "No transitions available" Alert (`:124–134`), and the `current_status` payload — gone with the body move to `mode: edit`.
 - Keep the 8-step `onMount` structure (action_id guard → `get_action` → stale-URL guard `[action-required, in-progress, changes-required]` → `get_workflow` → `action_role_check` → prime `surface.*`).
 - The Save/`submit` button, `progress`, and `not_required` now come from the surface; remove the inline floating-actions Save button.
 
-### `simple-view.yaml`
+### `workflow-action-view.yaml`
 
-- Body → `mode: view`. The `resolve_error` button (D4) is rendered by the surface (source list `[error]`, gated `action_allowed.error`) — it appears only when the action's stage is `error`. **No `simple-error` page.** The engine's `linkDefaults` already routes `kind: simple` `error` → `simple-view`, so the button lands exactly where the engine points — no Part 30 change needed.
+- Body → `mode: view`. The `resolve_error` button (D4) is rendered by the surface (source list `[error]`, gated `action_allowed.error`) — it appears only when the action's stage is `error`. **No `simple-error` page.** The engine's `linkDefaults` already routes `kind: simple` `error` → `workflow-action-view`, so the button lands exactly where the engine points — no Part 30 change needed.
 - Keep the `set_status_history` seeding only if the surface still relies on a page-level state key; otherwise the surface's status-history card reads from `surface.action.status` directly — prefer reading from the `surface` namespace and drop the separate `status_history_list` seed if the surface handles it. (Resolve against the surface's actual implementation from Task 3.)
 
-### `simple-review.yaml`
+### `workflow-action-review.yaml`
 
 - Body → `mode: review`. The `approve` + `request_changes` buttons and the `request_changes` comment modal now live in the surface (so they work identically in the modal container). Remove the page-level floating-actions bar and the page-level `request_changes_modal` — the review flow is preserved **inside** the surface, not deleted.
 - Keep the stale-URL guard allowlist `[in-review, error]`.
@@ -47,14 +47,14 @@ Current files:
 - No `interaction:` or `current_status` / `target_status` payload keys remain on any page.
 - Each page's `onMount` populates `_state.surface.{action, fields?, comment, action_allowed}`; the surface's reads resolve.
 - Carried-over scaffolding (guards, `get_action`/`get_workflow`, `action_role_check`, workflow-closed banner + `required_after_close` gate, stale-URL guards) is intact.
-- `simple-view` surfaces `resolve_error` only at stage `error`; `simple-review` preserves the approve / request-changes flow via the surface.
+- `workflow-action-view` surfaces `resolve_error` only at stage `error`; `workflow-action-review` preserves the approve / request-changes flow via the surface.
 - The demo build succeeds and the pages render.
 
 ## Files
 
-- `modules/workflows/pages/simple-edit.yaml` — modify — delete selector/Alert/`current_status`; body → surface (`edit`); `onMount` primes `surface.*`; `interaction:`→`signal:` removed (now in surface).
-- `modules/workflows/pages/simple-view.yaml` — modify — body → surface (`view`); `resolve_error` via surface; reconcile status-history/comments seeding with the surface.
-- `modules/workflows/pages/simple-review.yaml` — modify — body → surface (`review`); move approve/request-changes flow into the surface; keep stale-URL guard.
+- `modules/workflows/pages/workflow-action-edit.yaml` — modify — delete selector/Alert/`current_status`; body → surface (`edit`); `onMount` primes `surface.*`; `interaction:`→`signal:` removed (now in surface).
+- `modules/workflows/pages/workflow-action-view.yaml` — modify — body → surface (`view`); `resolve_error` via surface; reconcile status-history/comments seeding with the surface.
+- `modules/workflows/pages/workflow-action-review.yaml` — modify — body → surface (`review`); move approve/request-changes flow into the surface; keep stale-URL guard.
 
 ## Notes
 

@@ -14,7 +14,7 @@ Part 39 already reconciled `submit-pipeline` D3 and `ui` D2/D4 — **do not touc
 
 Make these edits exactly (per the design's "Concept-doc reconciliation" table):
 
-1. **`ui/design.md` Open Question 4 → resolve.** Simple-action error recovery is a `resolve_error` button on `simple-view`, rendered only at stage `error` (FSM `error → resolve_error → in-review`); **no `simple-error` page**. Move this out of Open Questions and into Decision 7's body.
+1. **`ui/design.md` Open Question 4 → resolve.** Simple-action error recovery is a `resolve_error` button on `workflow-action-view`, rendered only at stage `error` (FSM `error → resolve_error → in-review`); **no `simple-error` page**. Move this out of Open Questions and into Decision 7's body.
 2. **`ui/design.md` Decision 7** (already signal-based) — add:
    - the D3 note: button `visible` opt-outs are read at runtime from `global.simple_action_buttons`, with `not_required` opt-in (default `false`), others default-shown;
    - the resolved error-recovery line (from item 1);

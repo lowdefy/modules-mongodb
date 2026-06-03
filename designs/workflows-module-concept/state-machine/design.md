@@ -20,7 +20,7 @@ This sub-design replaces parts of existing sub-designs:
 - **[engine](../engine/design.md) Decision 4** — the priority-order rule and `force: true` per-call/per-entry override. Replaced by FSM tables and signal-emission semantics.
 - **[submit-pipeline](../submit-pipeline/design.md) Decision 3** — the interaction → target status table, including the simple `submit_edit` + `current_status` selector path. Replaced by FSM resolution against named signals; simple actions use the same nullary signals as form actions (no `target_status` / `current_status`).
 - **[submit-pipeline](../submit-pipeline/design.md) "fixed five-button vocabulary"** — replaced by per-template button declarations over the unified signal namespace.
-- **[ui](../ui/design.md) `simple-edit` status selector** — the v0 selector that let a submitter pick the target status directly. The shared simple pages now surface the same signal buttons as form pages; the ui follow-on (see Next step) re-specs them.
+- **[ui](../ui/design.md) `workflow-action-edit` status selector** — the v0 selector that let a submitter pick the target status directly. The shared simple pages now surface the same signal buttons as form pages; the ui follow-on (see Next step) re-specs them.
 
 The other sub-designs ([action-authoring](../action-authoring/design.md), [module-surface](../module-surface/design.md), [action-groups](../action-groups/design.md), [call-api](../call-api/design.md)) are unaffected at the model level — their YAML grammar, page generation, and module API surfaces stay the same.
 
@@ -144,12 +144,12 @@ The `internal_*` prefix is convention, not enforcement. Authors reading the tabl
 
 **Identical to the form-kind table above** — no specialization, no parameterized signal. A simple action is a form action with no `form:` body and no author `hooks:`; its submit payload is the universal fields (`assignees`, `due_date`) plus a comment, not `form_data`. It therefore listens to exactly the same signals as a form action:
 
-- **Buttons** (shared `simple-edit` / `simple-review` pages): `submit`, `progress`, `not_required`, `approve`, `request_changes`. `progress` here means "mark started" — the `schedule-followup` "set a due date now, complete later" flow.
+- **Buttons** (shared `workflow-action-edit` / `workflow-action-review` pages): `submit`, `progress`, `not_required`, `approve`, `request_changes`. `progress` here means "mark started" — the `schedule-followup` "set a due date now, complete later" flow.
 - **Cascade / engine**: `error`, `resolve_error`, `unblock`, `activate`, `block`, `internal_cancel_action` — same as form. A pre-hook on another action can `error` a simple action; recovery is `resolve_error`.
 
-There is **no status selector** and **no `target_status` / `current_status` payload** — the v0 simple-edit selector is removed. `submit` is nullary like every other signal; a simple action advances through the same lifecycle as a form action, driven by the same buttons (review verb selects `in-review` vs `done`, same as form). An app that needs to push a simple action straight to `blocked` or `error` does so via a pre-hook `block` / `error` cascade from elsewhere, not a self-set selector.
+There is **no status selector** and **no `target_status` / `current_status` payload** — the v0 workflow-action-edit selector is removed. `submit` is nullary like every other signal; a simple action advances through the same lifecycle as a form action, driven by the same buttons (review verb selects `in-review` vs `done`, same as form). An app that needs to push a simple action straight to `blocked` or `error` does so via a pre-hook `block` / `error` cascade from elsewhere, not a self-set selector.
 
-The `error` row is reachable for simple kind only via cascade (no simple page surfaces an `error` button). How the shared simple pages surface *recovery* — a `simple-error` page vs. a `resolve_error` button on `simple-view` — is a [ui](../ui/design.md) follow-on (ui ships no `simple-error` page today).
+The `error` row is reachable for simple kind only via cascade (no simple page surfaces an `error` button). How the shared simple pages surface *recovery* — a `simple-error` page vs. a `resolve_error` button on `workflow-action-view` — is a [ui](../ui/design.md) follow-on (ui ships no `simple-error` page today).
 
 ### Tracker kind
 
@@ -182,7 +182,7 @@ Three paths into the FSM. Identical resolution.
 
 ### Path 1 — User clicks a button
 
-Pages render button bars (see "Templates and buttons" below). A button click hits the `workflow-{workflow_type}-{action_type}-submit` endpoint with `signal: <name>` in the payload. Engine resolves `transitions[action.status][signal]`; transitions or no-ops.
+Pages render button bars (see "Templates and buttons" below). A button click hits the `{workflow_type}-{action_type}-submit` endpoint with `signal: <name>` in the payload. Engine resolves `transitions[action.status][signal]`; transitions or no-ops.
 
 ### Path 2 — Engine cascade
 
@@ -248,7 +248,7 @@ So the only silent no-op is `transitions[currentStatus][signal]` being undefined
 
 ## Templates and buttons
 
-Page templates each declare which signals to surface as buttons. The button click hits `workflow-{workflow_type}-{action_type}-submit` with `signal: <name>` and the rest of the payload (`form_data` for form kind; universal fields + comment for simple kind).
+Page templates each declare which signals to surface as buttons. The button click hits `{workflow_type}-{action_type}-submit` with `signal: <name>` and the rest of the payload (`form_data` for form kind; universal fields + comment for simple kind).
 
 **Default v1 button bars** (illustrative — the [ui](../ui/design.md) sub-design owns the authoritative button-bar spec and the access-verb gating of each button; the FSM model only constrains which `(status, signal)` transitions are *valid*):
 
@@ -364,8 +364,8 @@ Once this design is reviewed and committed:
 
 1. Update [engine/design.md](../engine/design.md) Decision 4 to reference this FSM model rather than the priority rule. Decision 4's `error`-setting paths (D4 §503–504) become the `error` signal; the simple `submit_edit + current_status` error path (§504) is dropped. (Engine **D3** — the tracker subscription — is **already** on the signal model: `pushWorkflowStatus` recurses into `emitSignal(tracker, internal_mirror_child_*)` calling the same handler (engine:296 / :370), with the 2-level nested auto-complete worked example already in signal terms (engine:386+). The recursion shape is unchanged from the priority-rule version; no further D3 rewrite is needed.)
 2. Update [submit-pipeline/design.md](../submit-pipeline/design.md) Decisions 1 + 3 to remove `force: true` and the interaction → target status table (including the simple `current_status` selector path), replacing both with signal-based resolution.
-3. Update [ui/design.md](../ui/design.md) to declare per-template button bars over the signal namespace, and re-spec the `simple-edit` page to surface signal buttons (`submit`, `progress`, `not_required`, …) instead of a status selector. Decide how the simple pages surface `error` recovery (a `simple-error` page vs. a `resolve_error` button on `simple-view`).
+3. Update [ui/design.md](../ui/design.md) to declare per-template button bars over the signal namespace, and re-spec the `workflow-action-edit` page to surface signal buttons (`submit`, `progress`, `not_required`, …) instead of a status selector. Decide how the simple pages surface `error` recovery (a `simple-error` page vs. a `resolve_error` button on `workflow-action-view`).
 4. Add a build-time validator for pre-hook `status:` → `signal:` migration as part of action-authoring's resolver work.
-> **Note (2026-05):** Items 1–4 above have largely been carried out already — engine D3/D4, submit-pipeline D3/D4, ui `simple-edit`, action-authoring's validator, and the parent [design.md](../design.md) (simple-action description + worked-example step 9, now `signal: submit` with no selector) all reflect this model. The remaining genuinely-open piece is item 3's sub-question: how the simple pages surface `error` recovery (a `simple-error` page vs. a `resolve_error` button on `simple-view`).
+> **Note (2026-05):** Items 1–4 above have largely been carried out already — engine D3/D4, submit-pipeline D3/D4, ui `workflow-action-edit`, action-authoring's validator, and the parent [design.md](../design.md) (simple-action description + worked-example step 9, now `signal: submit` with no selector) all reflect this model. The remaining genuinely-open piece is item 3's sub-question: how the simple pages surface `error` recovery (a `simple-error` page vs. a `resolve_error` button on `workflow-action-view`).
 
 The parent [design.md](../design.md) "Sub-design" table includes state-machine. Its worked example reads in signal terms (priority rule → FSM, status writes → signals, `submit_edit` → `submit`).
