@@ -106,6 +106,11 @@
  *   completed in this plan (loaded-vs-planned groups diff + `on_complete` join,
  *   design D3 / task 15 planSubmit step 5). Surfaced to the post-hook author
  *   via `result.completed_groups`.
+ * @property {{ parent_action_id: string, parent_workflow_id: string, new_status: string }} [fired]
+ *   — tracker-cascade only (`planTrackerLevel`, task 16): the level's own fired
+ *   entry in today's shape (`new_status` the FSM-resolved parent stage). The
+ *   cascade loop reads it to accumulate `fires` without re-deriving the stage.
+ *   Absent on the Submit plan (`planSubmit`).
  */
 
 /**
