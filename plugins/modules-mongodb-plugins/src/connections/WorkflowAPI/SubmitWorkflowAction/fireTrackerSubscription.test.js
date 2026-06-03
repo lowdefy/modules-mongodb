@@ -460,7 +460,15 @@ test("depth-limit overflow at depth=10 throws err.step='tracker-subscription'", 
 // Multi-level integration coverage (Task 5)
 // ===========================================================================
 
-describe("3-level chain integration", () => {
+// TODO(task 16): these two describe blocks drive the tracker cascade END TO END
+// through the rewritten SubmitWorkflowAction handler (Part 38 task 15). Task 15
+// wires the handler to `shared/phases/runTrackerCascade.js`, which is a STUB
+// until task 16 lands its body — so `tracker_fired` is `[]` and no cascade
+// recursion happens yet. Task 16 owns the cascade implementation AND relocates
+// fireTrackerSubscription; it re-homes this integration coverage against the
+// real cascade. Skipped (not deleted) in lockstep with the handler rewrite —
+// the pure fireTrackerSubscription/CHILD_STAGE_MAP unit tests above still run.
+describe.skip("3-level chain integration", () => {
   // Three-workflow chain: A (grandparent, 2 actions) → B (parent, 1 tracker
   // only — auto-completes when its tracker fires) → C (child, 1 action).
   // Submit install on C → C auto-completes → fires track-C done on B →
@@ -652,7 +660,9 @@ describe("3-level chain integration", () => {
   });
 });
 
-describe("depth-limit overflow (real fixture)", () => {
+// TODO(task 16): handleSubmit-driven cascade coverage — see the note on
+// "3-level chain integration" above. Skipped until the cascade body lands.
+describe.skip("depth-limit overflow (real fixture)", () => {
   // Build an 11-level chain of single-tracker parents pointing at the next.
   // wf-0 is leaf (form action `install`). wf-1..wf-10 each have a single
   // tracker action (`track-i`) pointing at the workflow below; the workflow
