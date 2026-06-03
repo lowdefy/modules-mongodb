@@ -453,7 +453,7 @@ Validation rules:
 - `type` (string) — required, non-empty.
 - `entity_collection` (string) — required, non-empty. A MongoDB collection connection id (e.g. `leads-collection`); the sole entity-identity scalar.
 - `display_order` (number) — required.
-- `starting_actions` (array) — required; each entry must be `{ type, status }` where `type` resolves to one of the workflow's declared `actions[].type` values and `status` is a key in the module-shipped `action_statuses` enum.
+- `starting_actions` (array) — required; each entry must be `{ type, status }` where `type` resolves to one of the workflow's declared `actions[].type` values and `status` is one of the two **legal seeds**: `action-required` | `blocked`. Creation at workflow start is declarative seeding, not an FSM transition — any other status would create actions that skipped the lifecycle (no events, no hooks). `StartWorkflow` enforces the same rule at runtime on the `start-workflow` payload's `actions:` override, which build validation can't see (Part 38 task 17).
 - `actions` (array) — required, non-empty.
 - All `actions[].type` values within a workflow must be unique.
 - `action_groups` (array) — optional but if any action declares `action_group`, the field is required. Each entry must have a unique `id` (string) and a `title` (string); `on_complete` (optional) is a string path to a routine YAML.

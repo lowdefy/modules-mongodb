@@ -55,6 +55,7 @@ Happy-path narrative: a lead is created and onboarding appears on `lead-view` sh
 type: onboarding
 title: Onboarding
 entity_collection: leads-collection
+entity_ref_key: lead_ids # required — the event-references key for the entity
 display_order: 1
 
 starting_actions:
@@ -110,14 +111,18 @@ access:
     view: true
     edit: true
 form:
-  - key: contact_name
+  # Keys are full state paths including the form. prefix — field components
+  # bind block id verbatim from the key, and the edit template primes/submits
+  # the form state subtree. Hooks receive the values under the payload's
+  # form bag (without the prefix): _payload: form.site_visit_required.
+  - key: form.contact_name
     component: text_input
     title: Contact name
     required: true
-  - key: notes
+  - key: form.notes
     component: text_area
     title: Qualification notes
-  - key: site_visit_required
+  - key: form.site_visit_required
     component: yes_no_selector
     title: Site visit needed?
 hooks:
@@ -129,7 +134,7 @@ hooks:
               _if:
                 test:
                   _eq:
-                    - _payload: fields.site_visit_required
+                    - _payload: form.site_visit_required
                     - true
                 then:
                   - type: site-visit
@@ -187,7 +192,7 @@ status_map:
       message: Conversion skipped.
 ```
 
-`send-quote.yaml` keeps the review cycle (declaring the `review` verb makes `submit` land `in-review` — `hasReview`, `fsm/tables.js:26`) with `review: [admin]` as the demo's one role-gated verb; `upload-po.yaml` is a plain form with `po_number` (`text_input`, required) + `po_document` (`file_upload`); `schedule-followup`, `site-visit`, and the three child actions are `kind: check` rows served by the shared `action-*` pages — no per-action sketches needed, they're single-purpose.
+`send-quote.yaml` keeps the review cycle (declaring the `review` verb makes `submit` land `in-review` — `hasReview`, `fsm/tables.js:26`) with `review: [admin]` as the demo's one role-gated verb; `upload-po.yaml` is a plain form with `form.po_number` (`text_input`, required) + `form.po_document` (`file_upload`); `schedule-followup`, `site-visit`, and the three child actions are `kind: check` rows served by the shared `action-*` pages — no per-action sketches needed, they're single-purpose. (`billing-details` follows the same key grammar: `form.billing_email`, `form.vat_number`.) `company-setup.yaml` mirrors the workflow-config shape on `companies-collection` with `entity_ref_key: company_ids`.
 
 The injected subroutine (demo `modules/companies/vars.yaml`):
 

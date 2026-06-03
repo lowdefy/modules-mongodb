@@ -11,7 +11,7 @@ The other three engine entry points restructure into the same load-plan-commit s
 - Load: `workflowConfig` + parent action (if started as a tracker child).
 - Plan: workflow doc (`Plan.workflow.operation: "insert"` — D3/task 13: commit step 1 dispatches to `insertOneDoc`, no CAS filter) + initial action docs **seeded directly at the declared status** — `starting_actions` / payload `actions:` entries keep the `{ type, status }` grammar (legal seeds: `action-required`, `blocked`), and the Start planner builds insert drafts at that status without `planActionTransition`'s signal resolution. Creation at workflow start is not an FSM transition; the `none` row is the pre-hook spawn path only (Part 45 review 1 #2; state-machine.md "Creation"). The planned workflow doc carries **`entity_ref_key`** from the workflow config alongside `entity_collection` (same copy-onto-doc mechanic) — `planEventDispatch` reads it for the event's entity reference key (task 12; design "Event references"). Plus optional parent-tracker transition; event = `workflow-started` (workflow-lifecycle context).
 - Commit through `commitPlan` like every other handler; optional tracker cascade (the parent-tracker push → `runTrackerCascade`).
-- `start-workflow.yaml` payload gains `metadata` (handled in task 19); the `actions:` override stays on `{ type, status }` — no signal grammar at start.
+- `start-workflow.yaml` payload gains `metadata` (handled in task 19); the `actions:` override stays on `{ type, status }` — no signal grammar at start. **StartWorkflow enforces the legal-seed rule at runtime**: any `actions:` entry (and any `starting_actions` entry, defense-in-depth) with a status other than `action-required` | `blocked` throws `WorkflowEngineError` — build validation can't see payloads, so the runtime check is what makes the rule real for the override path.
 
 **`WorkflowAPI/CancelWorkflow/CancelWorkflow.js`** — restructure:
 
@@ -39,6 +39,7 @@ The other three engine entry points restructure into the same load-plan-commit s
 - `WorkflowAPI/CancelWorkflow/CancelWorkflow.js` — rewrite
 - `WorkflowAPI/CloseWorkflow/CloseWorkflow.js` — rewrite
 - `StartWorkflow.test.js`, `CancelWorkflow.test.js`, `CloseWorkflow.test.js` — create/rewrite
+- `modules/workflows/resolvers/makeWorkflowsConfig.js` — restrict `starting_actions[].status` to the two legal seeds `action-required` | `blocked` (one line next to the existing `ACTION_STATUSES` membership check, which currently accepts all eight statuses — Part 45 review 2 #2).
 - `shared/fsm/tables.js` + `tables.test.js` — add the tracker `none` row (`activate → action-required`, `block → blocked`) per the updated state-machine.md "Creation" section (Part 45 review 1 #2 reversed the tracker exclusion so pre-hooks can conditionally spawn trackers); the test currently asserts the tracker has no `none` row — flip it.
 
 ## Notes
