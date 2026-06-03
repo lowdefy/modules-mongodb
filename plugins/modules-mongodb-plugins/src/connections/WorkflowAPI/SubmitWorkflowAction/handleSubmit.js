@@ -63,7 +63,7 @@ async function handleSubmit(context) {
   // ── Commit (D9: workflow CAS → actions → event → notifications → log) ────
   const commitResult = await commitPlan(context, plan);
 
-  // ── Tracker cascade (task 16; stubbed here, returns empty fire list) ─────
+  // ── Tracker cascade (task 16; per-level load-plan-commit loop) ───────────
   const cascade = await runTrackerCascade(plan.trackerFires, context);
   const trackerFired = cascade.fires;
 
