@@ -1,4 +1,12 @@
-import deriveEntityRefKey from "./utils/deriveEntityRefKey.js";
+// entity_ref_key is the authoritative source (task 21 + task 12); the inline
+// derivation below is a compat fallback for test fixtures that pre-date task 21
+// and do not carry entity_ref_key on the workflow doc.
+function deriveEntityRefKeyFallback(entityCollection) {
+  const stripped = entityCollection.endsWith("-collection")
+    ? entityCollection.slice(0, -"-collection".length)
+    : entityCollection;
+  return `${stripped.replace(/-/g, "_")}_ids`;
+}
 
 const DEFAULT_TITLE_TEMPLATE =
   "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}";
@@ -53,7 +61,9 @@ export function buildDefaultLogEventPayload({
         "Apps must wire app_name on the workflows module entry — see designs/workflows-module/parts/08-side-effect-dispatch/design.md § app_name plumbing.",
     );
   }
-  const refKey = deriveEntityRefKey(workflow.entity_collection);
+  const refKey =
+    workflow.entity_ref_key ??
+    deriveEntityRefKeyFallback(workflow.entity_collection);
 
   const metadata = {
     action_type: action.type,

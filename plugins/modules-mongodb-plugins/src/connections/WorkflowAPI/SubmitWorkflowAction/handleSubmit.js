@@ -10,7 +10,7 @@ import dispatchNotifications from "./dispatchNotifications.js";
 import fireTrackerSubscription from "./fireTrackerSubscription.js";
 import invokePostHook from "./invokePostHook.js";
 import invokePreHook from "./invokePreHook.js";
-import mergeEventOverrides from "./mergeEventOverrides.js";
+import mergeEventOverrides from "../../shared/mergeEventOverrides.js";
 import mergeFormOverrides from "./mergeFormOverrides.js";
 import mergePreHookActions from "./mergePreHookActions.js";
 import resolveTargetStatus from "./resolveTargetStatus.js";
