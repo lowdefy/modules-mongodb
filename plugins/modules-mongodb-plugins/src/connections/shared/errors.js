@@ -43,4 +43,21 @@ class ConcurrentSubmitError extends WorkflowEngineError {
   }
 }
 
-export { WorkflowEngineError, ConcurrentSubmitError };
+/**
+ * Thrown when the tracker cascade's chain depth exceeds `MAX_DEPTH` — a
+ * structural config bug (a cycle in workflow parent linking). Unlike a CAS miss
+ * or a gone parent, this is not recoverable per-level: it taints the whole
+ * cascade and propagates out of `runTrackerCascade` to fail the request loudly.
+ *
+ * `fire` is the offending cascade fire (carrying its `depth`); kept on the
+ * error so callers/tests can see which parent reference overflowed.
+ */
+class TrackerCascadeDepthError extends WorkflowEngineError {
+  constructor(message, { fire, cause } = {}) {
+    super(message, { code: 'tracker_depth_exceeded', cause });
+    this.name = 'TrackerCascadeDepthError';
+    this.fire = fire;
+  }
+}
+
+export { WorkflowEngineError, ConcurrentSubmitError, TrackerCascadeDepthError };

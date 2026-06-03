@@ -57,22 +57,23 @@ The 23 tasks group into five dependency bands. **A band is the unit of work** �
 - **Notes:** Part 34's absorption. The role-gate oracle fixtures (5) are the single `(gate, roles)→bool` source of truth across the three runtimes that can't share code; the three engine-independent surfaces (6 `validateActionAccess`, 7 `visible_verbs_filter.yaml`, 8 `action_role_check`) all sit on it and are sequenced **alongside, not interleaved with**, the rebuild core (per design D16) so they don't gate on it.
 - **Gate:** fixture table + validator/filter/client-check tests pass.
 
-### Band 3 — Phases (load · plan · commit) — in progress
+### Band 3 — Phases (load · plan · commit) ✅ Done
 
-- **Tasks:** 9 ✅ → 10 ✅, 11 ✅, 21 ✅ → 12 ✅ → 13 ✅, 22 → 14
+- **Tasks:** 9 ✅ → 10 ✅, 11 ✅, 21 ✅ → 12 ✅ → 13 ✅, 22 ✅ → 14 ✅
 - **Depends on bands:** 1, 2
-- **Progress:** Tasks 9, 10, 11, 21, 12, 13 done. Remaining: 22 (callApi-contract catch-up on landed code — do before 14, whose hook wrappers build on the corrected contract), then 14 (last in band).
 - **Task 21 ran first** — it was the reviews-8–13 deviation catch-up on already-implemented tasks (4, 6, 10), making the required `entity_ref_key` real (validated, in the resolver's pick whitelist, present in demo configs) before task 12's `planEventDispatch` was written against it.
 - **Q6 (form_data merge rule) — RESOLVED:** uniform deep-merge (objects deep-merge; arrays/scalars/`null` replace whole) onto the loaded `form_data.{action}` sub-object. The resolved rule is baked into task 11; no decision remains before implementing `planFormDataMerge`.
 - **Notes:** Phase types + load phase (9) anchor the contracts. Planners (10–12) are pure functions over FSM/render. Commit (13) and hook wrappers (14) close the cycle. The write-path-coupled Part 34 pieces — the submit-time access gate (in load, 9) and per-verb `computeEngineLinks` (in render, 3) — live here because they share the rebuild's surface.
 - **Gate:** planner unit tests pass; commit phase tested on both transaction and standalone paths incl. the CAS-miss gate.
 
-### Band 4 — Handler rewrites
+### Band 4 — Handler rewrites — in progress
 
-- **Tasks:** 15 → 16; 23 → 17 (the 23→17 chain is parallel-safe with 15/16)
+- **Tasks:** 15 ✅ → 16 ✅; 23 → 17 (the 23→17 chain is parallel-safe with 15/16)
 - **Depends on bands:** 3
-- **Notes:** Submit (15) is the reference handler. The tracker cascade (16) reuses 100% of the Submit planner machinery and so follows it. The planner-contract catch-up (23, from review-13) extends the landed Band 3 planners (`seedStage`, `lifecyclePush`), flips the tracker `none` row, and reconciles the cascade `fire.payload` passthrough if 16 landed without it — it must precede Start/Cancel/Close (17), which consume all four. 17 composes the same phases independently and can run parallel to 15/16.
-- **Gate:** handler-level tests pass; obsolete files deleted per task 15.
+- **Progress:** Tasks 15, 16 done. Remaining: 23 (planner-contract catch-up — review-13), then 17.
+- **Notes:** Submit (15) is the reference handler. The tracker cascade (16) reuses 100% of the Submit planner machinery and so follows it. The planner-contract catch-up (23, from review-13) extends the landed Band 3 planners (`seedStage`, `lifecyclePush`), flips the tracker `none` row, and reconciles the cascade `fire.payload` passthrough (16 landed without it, so the reconciliation applies) — it must precede Start/Cancel/Close (17), which consume all four. 17 composes the same phases independently and can run parallel to 15/16.
+- **Deferred deletions (lockstep with task 17):** tasks 15/16 deleted only files whose sole importer was the rewritten Submit path. Still imported by the un-rewritten Start/Cancel/Close (and therefore deferred to task 17): `shared/createAction.js`, `shared/updateAction.js`, `shared/recomputeWorkflowAfterActionWrite.js`, `shared/getActions.js`, `shared/getActionFields.js`, `SubmitWorkflowAction/reevaluateBlockedActions.js`, `SubmitWorkflowAction/utils/getCurrentAction.js`, `SubmitWorkflowAction/utils/shouldUpdate.js`, and `SubmitWorkflowAction/fireTrackerSubscription.js` (+ its remaining live unit tests). Task 17 deletes them once Start/Cancel/Close are rewired (compose context via `shared/phases/createEngineContext.js`, feed `trackerFires` into `shared/phases/runTrackerCascade.js`).
+- **Gate:** handler-level tests pass; obsolete files deleted per task 15 (Submit-only importers done; remainder deferred per above).
 
 ### Band 5 — Surfaces
 
