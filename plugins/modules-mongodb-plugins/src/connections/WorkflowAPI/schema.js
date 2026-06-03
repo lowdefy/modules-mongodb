@@ -1,6 +1,6 @@
 const schema = {
   type: 'object',
-  required: ['databaseUri', 'entry_id'],
+  required: ['databaseUri', 'entry_id', 'endpoints'],
   additionalProperties: false,
   properties: {
     databaseUri: {
@@ -16,6 +16,32 @@ const schema = {
         'entry-scoped page ids (`${entry_id}/${pageId}`) when computing the ' +
         'per-verb engine links written onto action docs, matching Lowdefy\'s ' +
         'build-time _module.pageId scoping.',
+    },
+    endpoints: {
+      type: 'object',
+      required: ['new_event', 'send_notification'],
+      description:
+        'Build-resolved dispatch targets, wired from `_module.endpointId` in ' +
+        'connections/workflow-api.yaml. Each value is an opaque pre-scoped ' +
+        'endpoint id string (`<moduleEntryId>/<endpointId>`) consumed verbatim ' +
+        'by the engine\'s dispatch helpers via `callApi({ endpointId, payload })` ' +
+        '— the engine never constructs prefixes at runtime.',
+      properties: {
+        new_event: {
+          type: 'string',
+          description:
+            'Pre-scoped id of the events module\'s new-event Api (e.g. ' +
+            '"events/new-event"); the engine dispatches the per-invocation ' +
+            'log event here.',
+        },
+        send_notification: {
+          type: 'string',
+          description:
+            'Pre-scoped id of the notifications module\'s send-notification ' +
+            'InternalApi (e.g. "notifications/send-notification"); the engine ' +
+            'dispatches `{ event_ids }` here after each committed event.',
+        },
+      },
     },
     read: {
       type: 'boolean',

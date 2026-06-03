@@ -59,8 +59,9 @@
  * writes the Plan and nothing else.
  *
  * No `notifications` field: the engine builds no notification doc. After
- * commit it fires `callApi("send-notification", { event_ids: [event_id] })`
- * keyed on the committed event (design D9 step 4).
+ * commit it fires `callApi({ endpointId: endpoints.send_notification,
+ * payload: { event_ids: [event_id] } })` keyed on the committed event
+ * (design D9 step 4).
  *
  * @typedef {Object} Plan
  * @property {{

@@ -8,10 +8,15 @@ const HOOK_INTERACTIONS = [
 const HOOK_PHASES = ['pre', 'post'];
 const EVENT_OVERRIDE_FIELDS = ['type', 'display', 'references', 'metadata'];
 
+// Hooks are engine-only by design: a built `Api` endpoint is HTTP-callable,
+// and a direct HTTP call to the predictable hook id
+// (`{workflow}-{action}-{interaction}-{pre|post}`) would bypass the engine
+// and its load-phase access gate entirely. `InternalApi` blocks HTTP and
+// client CallAPI actions while staying reachable via engine `callApi`.
 function emitHookApi(workflow, action, interaction, phase, body) {
   return {
     id: `${workflow.type}-${action.type}-${interaction}-${phase}`,
-    type: 'Api',
+    type: 'InternalApi',
     routine: body.routine,
   };
 }
@@ -28,7 +33,11 @@ function emitHooks(workflow, action) {
       const body = phases[phase];
       if (!body) continue;
       const api = emitHookApi(workflow, action, interaction, phase, body);
-      slot[phase] = api.id;
+      // String-form _module.endpointId — own-entry scope. The build walker
+      // resolves resolver output, so the engine receives the hook id as a
+      // pre-scoped opaque string (`<workflowsEntryId>/<hookApiId>`) on
+      // params.hooks and passes it to callApi verbatim.
+      slot[phase] = { '_module.endpointId': api.id };
       apis.push(api);
     }
     if (Object.keys(slot).length > 0) map[interaction] = slot;
@@ -92,11 +101,12 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
   };
 }
 
+// Engine-only for the same reason as hook Apis (see emitHookApi).
 function emitGroupOnCompleteApi(workflow, group) {
   if (!group.on_complete) return null;
   return {
     id: `${workflow.type}-group-${group.id}-on-complete`,
-    type: 'Api',
+    type: 'InternalApi',
     routine: group.on_complete.routine,
   };
 }

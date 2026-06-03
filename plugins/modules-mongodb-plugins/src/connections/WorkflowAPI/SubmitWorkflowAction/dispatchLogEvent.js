@@ -109,25 +109,19 @@ export function buildDefaultLogEventPayload({
  *
  * Returns `context.eventId` — no round-trip dependency on `new-event`'s return.
  *
+ * Shipped contract: `callApi({ endpointId, payload })` throws on failure, so
+ * a dispatch failure propagates to the request layer. The endpoint id is the
+ * build-resolved opaque string from `connection.endpoints.new_event`.
+ *
  * @param {object} context
  * @param {{ type: string, display: object, references: object, metadata: object }} payload
  * @returns {Promise<string>} eventId (= context.eventId)
  */
 async function dispatchLogEvent(context, payload) {
-  const result = await context.callApi(
-    { id: "new-event", module: "events" },
-    { _id: context.eventId, ...payload },
-    { user: context.user },
-  );
-
-  if (!result.success) {
-    const err = new Error(
-      `dispatchLogEvent: new-event failed: ${result.error?.message ?? "unknown"}`,
-    );
-    err.cause = result.error;
-    err.step = "dispatch-log-event";
-    throw err;
-  }
+  await context.callApi({
+    endpointId: context.connection.endpoints.new_event,
+    payload: { _id: context.eventId, ...payload },
+  });
 
   return context.eventId;
 }

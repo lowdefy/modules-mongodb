@@ -7,9 +7,10 @@ Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped
 | Module | Why |
 |---|---|
 | [layout](../layout/README.md) | Page wrapper consumed by every shared page |
-| [events](../events/README.md) | Provides the `change_stamp` component referenced by the `workflow-api` connection |
+| [events](../events/README.md) | Provides the `change_stamp` component referenced by the `workflow-api` connection, and the `new-event` Api the engine dispatches the per-invocation log event to |
+| [notifications](../notifications/README.md) | Provides the `send-notification` InternalApi the engine dispatches to after each committed event |
 
-`notifications` is consumed at runtime by the per-action submit endpoint (log-event + override-driven notifications) but is not declared as a module dependency — apps wire it independently.
+The `events` and `notifications` dispatch targets are resolved at app build time via `_module.endpointId` into the `workflow-api` connection's `endpoints` property; the engine consumes the pre-scoped ids verbatim.
 
 ## How to Use
 

@@ -4,10 +4,11 @@ import buildHookPayload from "./utils/buildHookPayload.js";
  * Step 2 of the SubmitWorkflowAction lifecycle: invoke the action's pre-hook.
  *
  * Resolves `params.hooks?.[interaction]?.pre` (any level undefined → return
- * null, no callApi). Hook Apis are emitted under the workflows module entry
- * by makeWorkflowApis (Part 13), so dispatch uses the `{ id, module: 'workflows' }`
- * form — a bare string would dispatch into the consuming app's own-Api
- * namespace.
+ * null, no callApi). makeWorkflowApis (Part 13) wraps each emitted hook id
+ * in string-form `_module.endpointId`, so the build resolves it to a
+ * pre-scoped opaque string — the engine passes it to
+ * `callApi({ endpointId, payload })` verbatim, never constructing prefixes
+ * at runtime.
  *
  * No try/catch. Throws — both generic crashes and `:reject` (UserError with
  * isReject: true) — propagate transparently. Classification happens at the
@@ -22,9 +23,7 @@ async function invokePreHook(context) {
   if (!hookId) return null;
 
   const payload = buildHookPayload(context);
-  return context.callApi({ id: hookId, module: "workflows" }, payload, {
-    user: context.user,
-  });
+  return context.callApi({ endpointId: hookId, payload });
 }
 
 export default invokePreHook;

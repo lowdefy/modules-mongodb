@@ -8,6 +8,8 @@ Scope: `tasks/22-callapi-contract-fix.md`, verified against the shipped framewor
 
 ### 1. Hook (and group on-complete) Apis are emitted as HTTP-exposed `type: 'Api'` — they should be `InternalApi`, and this task is the natural owner
 
+> **Resolved.** Folded into task 22 as proposed: item 4 now also flips `emitHookApi` and `emitGroupOnCompleteApi` to `type: 'InternalApi'` (submit Api stays `Api`), with the security rationale and the `send-notification` precedent; criterion 10 and the acceptance criteria assert the emitted types.
+
 `emitHookApi` (`makeWorkflowApis.js:11–17`) emits hook routines with `type: 'Api'`, and `emitGroupOnCompleteApi` (`:95–102`) does the same. Built `Api` endpoints are HTTP-callable; the shipped framework blocks only `InternalApi` over HTTP (`callEndpoint.js:36–37`) and from client `CallAPI` actions (`validateCallApiRefs.js:45`), while keeping them reachable via `callApi` (`callApi.integration.test.js:333` — "InternalApi endpoint is reachable via callApi").
 
 Hooks are engine-only by design — "Single `callApi` to the hook routine" (design § Pre-hook phase), and the load-phase access gate exists precisely so "unauthorized users never trigger pre-hook external side effects" (design.md:62, **"Do not move the check after the pre-hook"**). A direct HTTP call to the predictable id `{entry}/{workflow}-{action}-{interaction}-{pre|post}` bypasses that gate — and the whole engine — entirely, firing pre-hook side effects (third-party writes, callApi chains) with an attacker-chosen payload. Depending on the consuming app's `auth.api` config these endpoints are public or merely session-gated; either way the engine's per-verb access model (Part 34 D16) never runs.
@@ -25,6 +27,8 @@ The fix is one line per emitter: `type: 'InternalApi'` in `emitHookApi` and `emi
 ## Verification gap
 
 ### 3. Every acceptance criterion is mock- or grep-based; nothing checks the *resolved* wiring — and the build performs no existence check on endpoint ids
+
+> **Resolved.** Added the un-mocked acceptance criterion as proposed: after `pnpm build` on the demo, the built artifact must show the connection's resolved `endpoints` map (`events/new-event`, `notifications/send-notification`) and emitted submit Apis' hook values as `workflows/...` strings matching emitted Api ids in the same build output. Verified `resolveModuleEndpointId` (walker.js:449–474) only concatenates — no existence check — so this is the sole build-level check of the real wiring.
 
 `resolveModuleEndpointId` (`walker.js:449–474`) only concatenates `${targetEntry.id}/${arg.id}` — it never validates that the target module actually exports an endpoint with that id. A typo (`id: new-events`) builds clean and fails at runtime with `ConfigError`, which is precisely the failure class this task exists to eliminate: the landed code shipped broken because "all unit tests pass because they mock the invented contract" (task Context), and criterion 9's re-mocked tests are equally blind to a wrong endpoint *string*. The only non-mock criterion is "the demo app builds", which catches a missing dependency declaration (`resolveDepTarget` throws) but not a wrong id.
 

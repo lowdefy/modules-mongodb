@@ -576,10 +576,18 @@ describe("3-level chain integration", () => {
         leafChildConfig,
       ],
       changeStamp,
-      connection: { app_name: "test-app" },
+      connection: {
+        app_name: "test-app",
+        endpoints: {
+          new_event: "events/new-event",
+          send_notification: "notifications/send-notification",
+        },
+      },
       params: { action_id: "install-C", interaction: "submit_edit" },
       user: { id: "u1", roles: ["installer"] },
-      callApi: jest.fn(async () => ({ success: true, response: {} })),
+      callApi: jest.fn(async ({ endpointId, payload }) =>
+        endpointId === "events/new-event" ? { eventId: payload._id } : null,
+      ),
       eventId,
     };
   }
@@ -721,10 +729,18 @@ describe("depth-limit overflow (real fixture)", () => {
       actionsEnum,
       workflowsConfig: [oneActionParentConfig, leafChildConfig],
       changeStamp,
-      connection: { app_name: "test-app" },
+      connection: {
+        app_name: "test-app",
+        endpoints: {
+          new_event: "events/new-event",
+          send_notification: "notifications/send-notification",
+        },
+      },
       params: { action_id: "install-0", interaction: "submit_edit" },
       user: { id: "u1", roles: ["installer"] },
-      callApi: jest.fn(async () => ({ success: true, response: {} })),
+      callApi: jest.fn(async ({ endpointId, payload }) =>
+        endpointId === "events/new-event" ? { eventId: payload._id } : null,
+      ),
       eventId: "E1",
     };
   }

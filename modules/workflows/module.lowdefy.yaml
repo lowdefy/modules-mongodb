@@ -24,7 +24,15 @@ dependencies:
   - id: layout
     description: Page layout wrapper consumed by every shared page.
   - id: events
-    description: Provides the change_stamp component referenced by the workflow-api connection.
+    description: >
+      Provides the change_stamp component referenced by the workflow-api
+      connection, and the new-event Api the engine dispatches the
+      per-invocation log event to (endpoints.new_event on the connection).
+  - id: notifications
+    description: >
+      Provides the send-notification InternalApi the engine dispatches to
+      after each committed event (endpoints.send_notification on the
+      workflow-api connection).
 
 vars:
   workflows_config:

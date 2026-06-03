@@ -103,12 +103,14 @@ async function commitWorkflowAndActions(context, plan, session) {
 }
 
 /**
- * Step 3 — dispatch the per-invocation event via callApi("new-event").
- * `callApi` never throws; we reproduce the success-check from `dispatchLogEvent.js`
- * lines 123–129 (task 15 deletes that file; we own the check here).
+ * Step 3 — dispatch the per-invocation event via callApi.
+ * Shipped contract (callRequestResolver.js): `callApi({ endpointId, payload })`
+ * throws on failure (error classes pass through) and resolves the target's
+ * `:return` value. The endpoint id is the build-resolved opaque string from
+ * `connection.endpoints.new_event` — the engine never constructs prefixes.
  *
- * Returns the `event_id` string on success, or throws so the caller can
- * record the failure on `dispatchErrors` and skip step 4.
+ * Returns the `event_id` string on success; a `callApi` throw propagates so
+ * the caller records the failure on `dispatchErrors` and skips step 4.
  *
  * @param {Object} context
  * @param {import('./types.js').Plan} plan
@@ -116,19 +118,10 @@ async function commitWorkflowAndActions(context, plan, session) {
  */
 async function dispatchEvent(context, plan) {
   const eventDoc = plan.event.doc;
-  const result = await context.callApi(
-    { id: 'new-event', module: 'events' },
-    eventDoc,
-    { user: context.user },
-  );
-  if (!result.success) {
-    const err = new Error(
-      `commitPlan: new-event failed: ${result.error?.message ?? 'unknown'}`,
-    );
-    err.cause = result.error;
-    err.step = 'dispatch-event';
-    throw err;
-  }
+  await context.callApi({
+    endpointId: context.connection.endpoints.new_event,
+    payload: eventDoc,
+  });
   return String(eventDoc._id);
 }
 
@@ -179,7 +172,7 @@ function buildCommitResult(plan, event_id, dispatchErrors) {
  *      A null return (CAS miss) → throws ConcurrentSubmitError BEFORE any action
  *      write. On replica set, steps 1–2 run inside one transaction.
  *   2. Actions   — bulkWrite all plan.actions (insert + update ops).
- *   3. Event     — callApi("new-event") with plan.event.doc.
+ *   3. Event     — callApi(endpoints.new_event) with plan.event.doc.
  *   4. Notifications — dispatchNotifications keyed on the step-3 event_id.
  *      Skipped when step 3 recorded a failure.
  *   5. Change-log — insertMany plan.changeLog into the changeLog collection.
@@ -199,7 +192,8 @@ function buildCommitResult(plan, event_id, dispatchErrors) {
  *   context.mongoDb           — Db from getMongoDb
  *   context.mongoClient       — MongoClient from getMongoDb (transaction path only)
  *   context.useTransactions   — topology flag from getMongoDb
- *   context.connection        — raw connection config (collection names, changeLog, app_name)
+ *   context.connection        — raw connection config (collection names, changeLog,
+ *                               app_name, endpoints.{new_event,send_notification})
  *   context.loadedState       — LoadedState from load phase; .workflow.updated.timestamp
  *                               is the CAS anchor (D15)
  *   context.callApi           — Lowdefy callApi (community client, not engine session)

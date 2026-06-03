@@ -87,6 +87,10 @@ function buildLowdefyContext({ request }) {
       workflowsCollection: "workflows",
       actionsCollection: "actions",
       app_name: "test-app",
+      endpoints: {
+        new_event: "events/new-event",
+        send_notification: "notifications/send-notification",
+      },
       workflowsConfig,
       actionsEnum,
       changeStamp,
@@ -96,26 +100,29 @@ function buildLowdefyContext({ request }) {
       profile: { name: "Test User" },
       roles: ["account-manager"],
     },
-    callApi: async ({ id, module }, payload, options) => {
-      if (module === "events" && id === "new-event") {
+    // Shipped contract: callApi({ endpointId, payload }) — pre-scoped opaque
+    // ids, resolves the target's :return value, throws on failure.
+    callApi: async ({ endpointId, payload }) => {
+      if (endpointId === "events/new-event") {
         const _id = payload._id ?? randomUUID();
         const doc = {
           _id,
           ...(payload.display ?? {}),
           ...(payload.references ?? {}),
           date: new Date(),
-          created: { timestamp: new Date(), user: options.user },
+          created: { timestamp: new Date() },
           type: payload.type,
           metadata: payload.metadata,
           files: payload.files,
         };
         await mongo.db.collection("events").insertOne(doc);
-        return { success: true, response: { eventId: _id } };
+        return { eventId: _id };
       }
-      if (module === "notifications" && id === "send-notification") {
-        return { success: true, response: {} };
+      if (endpointId === "notifications/send-notification") {
+        // Default empty send_routine ends without :return.
+        return null;
       }
-      throw new Error(`unexpected callApi: ${module}/${id}`);
+      throw new Error(`unexpected callApi: ${endpointId}`);
     },
   };
 }

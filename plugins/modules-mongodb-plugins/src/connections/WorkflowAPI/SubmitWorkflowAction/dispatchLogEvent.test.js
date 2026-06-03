@@ -150,16 +150,14 @@ describe("buildDefaultLogEventPayload", () => {
 });
 
 describe("dispatchLogEvent", () => {
+  // Shipped contract: callApi({ endpointId, payload }) resolves new-event's
+  // :return value ({ eventId }) and throws on failure.
   function makeContext({ callApi, eventId } = {}) {
     return {
       user: { id: "u1", profile: { name: "Test User" }, roles: ["admin"] },
       eventId: eventId ?? "EV-1",
-      callApi:
-        callApi ??
-        jest.fn(async () => ({
-          success: true,
-          response: { eventId: "EV-1" },
-        })),
+      connection: { endpoints: { new_event: "events/new-event" } },
+      callApi: callApi ?? jest.fn(async () => ({ eventId: "EV-1" })),
     };
   }
 
@@ -181,24 +179,26 @@ describe("dispatchLogEvent", () => {
     },
   };
 
-  test("calls callApi with the new-event endpoint reference", async () => {
-    const callApi = jest.fn(async () => ({ success: true, response: {} }));
+  test("calls callApi with the pre-scoped new-event endpoint id", async () => {
+    const callApi = jest.fn(async () => ({ eventId: "EV-1" }));
     const context = makeContext({ callApi });
 
     await dispatchLogEvent(context, samplePayload);
 
     expect(callApi).toHaveBeenCalledTimes(1);
-    const [endpoint] = callApi.mock.calls[0];
-    expect(endpoint).toEqual({ id: "new-event", module: "events" });
+    expect(callApi).toHaveBeenCalledWith({
+      endpointId: "events/new-event",
+      payload: expect.objectContaining({ _id: "EV-1" }),
+    });
   });
 
   test("passes _id: context.eventId on the payload alongside the assembled bag", async () => {
-    const callApi = jest.fn(async () => ({ success: true, response: {} }));
+    const callApi = jest.fn(async () => ({ eventId: "EV-99" }));
     const context = makeContext({ callApi, eventId: "EV-99" });
 
     await dispatchLogEvent(context, samplePayload);
 
-    const [, payload] = callApi.mock.calls[0];
+    const { payload } = callApi.mock.calls[0][0];
     expect(payload._id).toBe("EV-99");
     expect(payload.type).toBe("action-submit_edit");
     expect(payload.display).toEqual(samplePayload.display);
@@ -206,21 +206,8 @@ describe("dispatchLogEvent", () => {
     expect(payload.metadata).toEqual(samplePayload.metadata);
   });
 
-  test("passes user via options", async () => {
-    const callApi = jest.fn(async () => ({ success: true, response: {} }));
-    const context = makeContext({ callApi });
-
-    await dispatchLogEvent(context, samplePayload);
-
-    const [, , options] = callApi.mock.calls[0];
-    expect(options).toEqual({ user: context.user });
-  });
-
   test("returns context.eventId, ignoring callApi response eventId", async () => {
-    const callApi = jest.fn(async () => ({
-      success: true,
-      response: { eventId: "OTHER-ID" },
-    }));
+    const callApi = jest.fn(async () => ({ eventId: "OTHER-ID" }));
     const context = makeContext({ callApi, eventId: "EV-CORRECT" });
 
     const result = await dispatchLogEvent(context, samplePayload);
@@ -228,24 +215,18 @@ describe("dispatchLogEvent", () => {
     expect(result).toBe("EV-CORRECT");
   });
 
-  test("throws with step + cause on callApi failure", async () => {
-    const callApi = jest.fn(async () => ({
-      success: false,
-      error: { message: "insert failed" },
-    }));
+  test("a callApi throw propagates raw to the request layer", async () => {
+    const boom = new Error("insert failed");
+    const callApi = jest.fn(async () => {
+      throw boom;
+    });
     const context = makeContext({ callApi });
 
-    await expect(
-      dispatchLogEvent(context, samplePayload),
-    ).rejects.toMatchObject({
-      message: expect.stringMatching(/new-event failed: insert failed/),
-      step: "dispatch-log-event",
-      cause: { message: "insert failed" },
-    });
+    await expect(dispatchLogEvent(context, samplePayload)).rejects.toBe(boom);
   });
 
   test("passes through the payload unchanged (no mutation, no rebuild)", async () => {
-    const callApi = jest.fn(async () => ({ success: true, response: {} }));
+    const callApi = jest.fn(async () => ({ eventId: "EV-1" }));
     const context = makeContext({ callApi });
 
     const customised = {
@@ -254,7 +235,7 @@ describe("dispatchLogEvent", () => {
     };
     await dispatchLogEvent(context, customised);
 
-    const [, payload] = callApi.mock.calls[0];
+    const { payload } = callApi.mock.calls[0][0];
     expect(payload.metadata.comment).toBe("from-handler");
   });
 });

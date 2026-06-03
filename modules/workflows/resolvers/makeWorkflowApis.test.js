@@ -122,8 +122,12 @@ test("makeWorkflowApis: sparse hooks, event_overrides maps", () => {
   const qualify = findApi(apis, "onboarding-qualify-submit");
   const sendQuote = findApi(apis, "onboarding-send-quote-submit");
 
+  // Hook ids are wrapped in string-form _module.endpointId so the build
+  // walker resolves them to pre-scoped opaque strings (own-entry scope).
   expect(propsOf(qualify).hooks).toEqual({
-    submit_edit: { pre: "onboarding-qualify-submit_edit-pre" },
+    submit_edit: {
+      pre: { "_module.endpointId": "onboarding-qualify-submit_edit-pre" },
+    },
   });
   expect(propsOf(qualify).hooks).not.toHaveProperty("post");
   expect(propsOf(qualify).hooks.submit_edit).not.toHaveProperty("post");
@@ -137,7 +141,8 @@ test("makeWorkflowApis: hook Api emission", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const hook = findApi(apis, "onboarding-qualify-submit_edit-pre");
   expect(hook).toBeDefined();
-  expect(hook.type).toBe("Api");
+  // Engine-only: blocked over HTTP and from client CallAPI, reachable via callApi.
+  expect(hook.type).toBe("InternalApi");
   expect(hook.routine).toEqual([{ id: "x", type: "MongoDBFindOne" }]);
 });
 
@@ -148,8 +153,16 @@ test("makeWorkflowApis: group on_complete Api emission", () => {
     "onboarding-group-phase-1-on-complete"
   );
   expect(onComplete).toBeDefined();
-  expect(onComplete.type).toBe("Api");
+  // Engine-only, same rationale as hook Apis.
+  expect(onComplete.type).toBe("InternalApi");
   expect(onComplete.routine).toEqual([{ id: "notify", type: "CallApi" }]);
+});
+
+test("makeWorkflowApis: per-action submit Api stays client-invokable type Api", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  expect(findApi(apis, "onboarding-qualify-submit").type).toBe("Api");
+  expect(findApi(apis, "onboarding-send-quote-submit").type).toBe("Api");
+  expect(findApi(apis, "onboarding-schedule-followup-submit").type).toBe("Api");
 });
 
 test("makeWorkflowApis: event_overrides carries the four-tuple", () => {

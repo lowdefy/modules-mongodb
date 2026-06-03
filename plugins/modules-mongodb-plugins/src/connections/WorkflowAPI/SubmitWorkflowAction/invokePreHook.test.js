@@ -53,12 +53,13 @@ describe("invokePreHook — skip cases", () => {
 });
 
 describe("invokePreHook — dispatch", () => {
-  test("dispatches via { id, module: 'workflows' } with the full payload + user option", async () => {
+  test("dispatches the pre-scoped hook id verbatim with the full payload", async () => {
     const callApi = jest.fn(async () => ({ status: "done" }));
     const ctx = makeContext({
       params: {
         hooks: {
-          submit_edit: { pre: "update-action-qualify-submit_edit-pre" },
+          // Pre-scoped by the build (_module.endpointId) — passed verbatim.
+          submit_edit: { pre: "workflows/onboarding-qualify-submit_edit-pre" },
         },
         comment: "hi",
       },
@@ -69,25 +70,27 @@ describe("invokePreHook — dispatch", () => {
 
     expect(response).toEqual({ status: "done" });
     expect(callApi).toHaveBeenCalledTimes(1);
-    const [endpoint, payload, options] = callApi.mock.calls[0];
-    expect(endpoint).toEqual({
-      id: "update-action-qualify-submit_edit-pre",
-      module: "workflows",
+    expect(callApi).toHaveBeenCalledWith({
+      endpointId: "workflows/onboarding-qualify-submit_edit-pre",
+      payload: expect.objectContaining({
+        workflow_id: "W1",
+        workflow_type: "onboarding",
+        action_id: "A1",
+        action_type: "qualify",
+        current_key: null,
+        interaction: "submit_edit",
+        current_status: null,
+        comment: "hi",
+        user: {
+          id: "u1",
+          profile: { name: "Sam" },
+          roles: ["account-manager"],
+        },
+      }),
     });
-    expect(payload).toMatchObject({
-      workflow_id: "W1",
-      workflow_type: "onboarding",
-      action_id: "A1",
-      action_type: "qualify",
-      current_key: null,
-      interaction: "submit_edit",
-      current_status: null,
-      comment: "hi",
-      user: { id: "u1", profile: { name: "Sam" }, roles: ["account-manager"] },
-    });
+    const { payload } = callApi.mock.calls[0][0];
     expect(payload.context.workflow).toBe(ctx.workflow);
     expect(payload.context.action).toBe(ctx.action);
-    expect(options).toEqual({ user: ctx.user });
   });
 
   test("payload current_status is null when not provided", async () => {
@@ -98,7 +101,7 @@ describe("invokePreHook — dispatch", () => {
     });
     delete ctx.params.current_status;
     await invokePreHook(ctx);
-    expect(callApi.mock.calls[0][1].current_status).toBeNull();
+    expect(callApi.mock.calls[0][0].payload.current_status).toBeNull();
   });
 
   test("payload current_status passes through for simple submit_edit", async () => {
@@ -111,7 +114,7 @@ describe("invokePreHook — dispatch", () => {
       callApi,
     });
     await invokePreHook(ctx);
-    expect(callApi.mock.calls[0][1].current_status).toBe("in-progress");
+    expect(callApi.mock.calls[0][0].payload.current_status).toBe("in-progress");
   });
 
   test("payload comment falls through params.comment ?? null", async () => {
@@ -122,7 +125,7 @@ describe("invokePreHook — dispatch", () => {
     });
     delete ctx.params.comment;
     await invokePreHook(ctx);
-    expect(callApi.mock.calls[0][1].comment).toBeNull();
+    expect(callApi.mock.calls[0][0].payload.comment).toBeNull();
   });
 
   test("generic throw from callApi propagates unchanged (no try/catch)", async () => {

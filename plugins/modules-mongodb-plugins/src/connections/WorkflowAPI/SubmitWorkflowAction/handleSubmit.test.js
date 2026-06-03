@@ -37,18 +37,31 @@ beforeEach(async () => {
   await mongo.db.collection("actions").deleteMany({});
 });
 
+// Shipped contract: callApi({ endpointId, payload }) resolves the target's
+// :return value ({ eventId } for new-event, null for send-notification) and
+// throws on failure.
+function makeCallApiMock() {
+  return jest.fn(async ({ endpointId, payload }) =>
+    endpointId === "events/new-event" ? { eventId: payload._id } : null,
+  );
+}
+
 function makeContext(overrides = {}) {
   return {
     mongoDBConnection,
     actionsEnum,
     workflowsConfig: overrides.workflowsConfig ?? [],
     changeStamp,
-    connection: overrides.connection ?? { app_name: "test-app" },
+    connection: overrides.connection ?? {
+      app_name: "test-app",
+      endpoints: {
+        new_event: "events/new-event",
+        send_notification: "notifications/send-notification",
+      },
+    },
     params: overrides.params ?? {},
     user: overrides.user ?? { id: "u1", roles: ["account-manager"] },
-    callApi:
-      overrides.callApi ??
-      jest.fn(async () => ({ success: true, response: {} })),
+    callApi: overrides.callApi ?? makeCallApiMock(),
     eventId: overrides.eventId ?? "event-1",
   };
 }
@@ -144,7 +157,7 @@ test("handleSubmit step 7: dispatchLogEvent receives status_before captured pre-
   await seedWorkflow();
   await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
 
-  const callApi = jest.fn(async () => ({ success: true, response: {} }));
+  const callApi = makeCallApiMock();
 
   await handleSubmit(
     makeContext({
@@ -156,10 +169,10 @@ test("handleSubmit step 7: dispatchLogEvent receives status_before captured pre-
 
   // First callApi invocation is new-event (dispatch-log-event).
   const newEventCall = callApi.mock.calls.find(
-    ([endpoint]) => endpoint.id === "new-event",
+    ([arg]) => arg.endpointId === "events/new-event",
   );
   expect(newEventCall).toBeDefined();
-  const [, payload] = newEventCall;
+  const { payload } = newEventCall[0];
   expect(payload._id).toBe("event-1");
   expect(payload.metadata).toMatchObject({
     action_type: "qualify",
@@ -175,7 +188,7 @@ test("handleSubmit step 8: dispatchNotifications fires with the just-emitted eve
   await seedWorkflow();
   await seedAction({ _id: "a1", type: "qualify" });
 
-  const callApi = jest.fn(async () => ({ success: true, response: {} }));
+  const callApi = makeCallApiMock();
 
   await handleSubmit(
     makeContext({
@@ -186,10 +199,10 @@ test("handleSubmit step 8: dispatchNotifications fires with the just-emitted eve
   );
 
   const sendCall = callApi.mock.calls.find(
-    ([endpoint]) => endpoint.id === "send-notification",
+    ([arg]) => arg.endpointId === "notifications/send-notification",
   );
   expect(sendCall).toBeDefined();
-  const [, payload] = sendCall;
+  const { payload } = sendCall[0];
   expect(payload).toEqual({ event_ids: ["event-1"] });
 });
 
@@ -197,11 +210,11 @@ test("handleSubmit step 7: throws to request layer when new-event callApi fails 
   await seedWorkflow();
   await seedAction({ _id: "a1", type: "qualify" });
 
-  const callApi = jest.fn(async ({ id }) => {
-    if (id === "new-event") {
-      return { success: false, error: { message: "boom" } };
+  const callApi = jest.fn(async ({ endpointId }) => {
+    if (endpointId === "events/new-event") {
+      throw new Error("boom");
     }
-    return { success: true, response: {} };
+    return null;
   });
 
   await expect(
@@ -212,7 +225,7 @@ test("handleSubmit step 7: throws to request layer when new-event callApi fails 
         callApi,
       }),
     ),
-  ).rejects.toMatchObject({ step: "dispatch-log-event" });
+  ).rejects.toThrow(/boom/);
 });
 
 test("handleSubmit: missing action_id throws", async () => {
@@ -1350,16 +1363,18 @@ test("part 10 step 10: auto-complete with valid parent_action_id → non-empty t
 // Part 9 — pre-hook (step 2) integration tests.
 // ---------------------------------------------------------------------------
 
+// Hook ids arrive on params.hooks pre-scoped by the build and are matched
+// verbatim against the endpointId — no module discrimination at runtime.
 function makeHookCallApi({ hookResponses = {}, throwForHook } = {}) {
-  return jest.fn(async ({ id, module }, _payload, _opts) => {
-    if (module === "workflows" && Object.prototype.hasOwnProperty.call(hookResponses, id)) {
-      return hookResponses[id];
+  return jest.fn(async ({ endpointId, payload }) => {
+    if (Object.prototype.hasOwnProperty.call(hookResponses, endpointId)) {
+      return hookResponses[endpointId];
     }
-    if (module === "workflows" && throwForHook && throwForHook.id === id) {
+    if (throwForHook && throwForHook.id === endpointId) {
       throw throwForHook.error;
     }
-    // Default for non-hook callApi (events, notifications) — wrapped shape.
-    return { success: true, response: {} };
+    // Default for non-hook callApi — new-event's :return / send-notification's null.
+    return endpointId === "events/new-event" ? { eventId: payload._id } : null;
   });
 }
 
@@ -1432,7 +1447,7 @@ test("part 32: pre-hook returns an invalid status → UserError before any write
   // no notification dispatch (both go through callApi too).
   expect(callApi).toHaveBeenCalledTimes(1);
   expect(callApi.mock.calls[0][0]).toEqual(
-    expect.objectContaining({ id: "h-pre" }),
+    expect.objectContaining({ endpointId: "h-pre" }),
   );
 });
 
@@ -1627,10 +1642,10 @@ test("part 9: pre-hook event_overrides merges metadata; default metadata preserv
   );
 
   const newEventCall = callApi.mock.calls.find(
-    ([endpoint]) => endpoint.id === "new-event",
+    ([arg]) => arg.endpointId === "events/new-event",
   );
   expect(newEventCall).toBeDefined();
-  const [, payload] = newEventCall;
+  const { payload } = newEventCall[0];
   expect(payload.metadata.scrubbed).toBe(true);
   expect(payload.metadata.action_type).toBe("qualify");
 });
@@ -1659,9 +1674,9 @@ test("part 9: pre-hook event_overrides.metadata.comment overrides user-supplied 
   );
 
   const newEventCall = callApi.mock.calls.find(
-    ([endpoint]) => endpoint.id === "new-event",
+    ([arg]) => arg.endpointId === "events/new-event",
   );
-  const [, payload] = newEventCall;
+  const { payload } = newEventCall[0];
   expect(payload.metadata.comment).toBe("SCRUBBED");
 });
 
@@ -1687,9 +1702,9 @@ test("part 9: YAML event_overrides.metadata.foo coexists with user comment (laye
   );
 
   const newEventCall = callApi.mock.calls.find(
-    ([endpoint]) => endpoint.id === "new-event",
+    ([arg]) => arg.endpointId === "events/new-event",
   );
-  const [, payload] = newEventCall;
+  const { payload } = newEventCall[0];
   expect(payload.metadata.foo).toBe("bar");
   expect(payload.metadata.comment).toBe("hello");
 });
@@ -1729,10 +1744,10 @@ test("part 9: pre-hook :reject (UserError isReject: true) rethrows; no writes; n
   expect(doc.status[0].stage).toBe("action-required");
   expect(doc.status).toHaveLength(1);
   expect(
-    callApi.mock.calls.some(([endpoint]) => endpoint.id === "new-event"),
+    callApi.mock.calls.some(([arg]) => arg.endpointId === "events/new-event"),
   ).toBe(false);
   expect(
-    callApi.mock.calls.some(([endpoint]) => endpoint.id === "send-notification"),
+    callApi.mock.calls.some(([arg]) => arg.endpointId === "notifications/send-notification"),
   ).toBe(false);
 });
 
@@ -1788,10 +1803,10 @@ test("part 9: pre-hook actions: [{ status: 'error' }] writes error transition vi
   expect(doc.status[0].stage).toBe("error");
   // Side effects still fire (this is a successful submit, not an error path).
   expect(
-    callApi.mock.calls.some(([endpoint]) => endpoint.id === "new-event"),
+    callApi.mock.calls.some(([arg]) => arg.endpointId === "events/new-event"),
   ).toBe(true);
   expect(
-    callApi.mock.calls.some(([endpoint]) => endpoint.id === "send-notification"),
+    callApi.mock.calls.some(([arg]) => arg.endpointId === "notifications/send-notification"),
   ).toBe(true);
   expect(result.event_id).toBe("event-1");
 });
@@ -1898,10 +1913,10 @@ test("part 9: post-hook receives result with final post-write state (action_ids,
   );
 
   const postCall = callApi.mock.calls.find(
-    ([endpoint]) => endpoint.id === "h-post",
+    ([arg]) => arg.endpointId === "h-post",
   );
   expect(postCall).toBeDefined();
-  const [, payload] = postCall;
+  const { payload } = postCall[0];
   expect(payload.result).toMatchObject({
     action_ids: ["a1"],
     event_id: "event-1",
@@ -1962,18 +1977,18 @@ test("part 9: post-hook fires AFTER tracker subscription (call ordering)", async
     }),
   );
 
-  const ids = callApi.mock.calls.map(([endpoint]) => endpoint.id);
+  const ids = callApi.mock.calls.map(([arg]) => arg.endpointId);
   // dispatchLogEvent (new-event) and dispatchNotifications (send-notification)
   // fire in steps 7+8 before tracker subscription / post-hook. fireTrackerSubscription
   // does not go through callApi, so the post-hook call appears after the
   // notification but reflects tracker_fired in its payload.result.
   const postIdx = ids.lastIndexOf("h-post");
-  const notifIdx = ids.lastIndexOf("send-notification");
+  const notifIdx = ids.lastIndexOf("notifications/send-notification");
   expect(postIdx).toBeGreaterThan(notifIdx);
 
   const postCall = callApi.mock.calls[postIdx];
-  expect(postCall[1].result.tracker_fired).toHaveLength(1);
-  expect(postCall[1].result.tracker_fired[0]).toMatchObject({
+  expect(postCall[0].payload.result.tracker_fired).toHaveLength(1);
+  expect(postCall[0].payload.result.tracker_fired[0]).toMatchObject({
     parent_action_id: "p-tracker",
   });
 });
@@ -2027,7 +2042,7 @@ test("part 10 step 10: mid-write throw propagates; tracker subscription not call
     return inner;
   };
 
-  const callApi = jest.fn(async () => ({ success: true, response: {} }));
+  const callApi = makeCallApiMock();
 
   await expect(
     handleSubmit({
@@ -2035,7 +2050,13 @@ test("part 10 step 10: mid-write throw propagates; tracker subscription not call
       actionsEnum,
       workflowsConfig: [onboardingWorkflowConfig],
       changeStamp,
-      connection: { app_name: "test-app" },
+      connection: {
+        app_name: "test-app",
+        endpoints: {
+          new_event: "events/new-event",
+          send_notification: "notifications/send-notification",
+        },
+      },
       params: { action_id: "a-quote", interaction: "submit_edit" },
       user: { id: "u1", roles: ["account-manager"] },
       callApi,
@@ -2100,11 +2121,11 @@ test("part 29: step 7 (log event) throw propagates; steps 4–6 writes stay dura
     stage: "action-required",
   });
 
-  const callApi = jest.fn(async ({ id }) => {
-    if (id === "new-event") {
+  const callApi = jest.fn(async ({ endpointId, payload }) => {
+    if (endpointId === "events/new-event") {
       throw new Error("simulated step 7 failure");
     }
-    return { success: true, response: {} };
+    return endpointId === "events/new-event" ? { eventId: payload._id } : null;
   });
 
   await expect(
@@ -2133,7 +2154,7 @@ test("part 29: step 7 (log event) throw propagates; steps 4–6 writes stay dura
 
   // Notifications (step 8) never invoked because step 7 threw first.
   expect(
-    callApi.mock.calls.some(([endpoint]) => endpoint.id === "send-notification"),
+    callApi.mock.calls.some(([arg]) => arg.endpointId === "notifications/send-notification"),
   ).toBe(false);
 });
 
@@ -2145,11 +2166,11 @@ test("part 29: step 8 (notifications) throw propagates; steps 4–7 writes stay 
     stage: "action-required",
   });
 
-  const callApi = jest.fn(async ({ id }) => {
-    if (id === "send-notification") {
+  const callApi = jest.fn(async ({ endpointId, payload }) => {
+    if (endpointId === "notifications/send-notification") {
       throw new Error("simulated step 8 failure");
     }
-    return { success: true, response: {} };
+    return endpointId === "events/new-event" ? { eventId: payload._id } : null;
   });
 
   await expect(
@@ -2170,7 +2191,7 @@ test("part 29: step 8 (notifications) throw propagates; steps 4–7 writes stay 
 
   // new-event (step 7) was called before step 8 threw.
   expect(
-    callApi.mock.calls.some(([endpoint]) => endpoint.id === "new-event"),
+    callApi.mock.calls.some(([arg]) => arg.endpointId === "events/new-event"),
   ).toBe(true);
 });
 

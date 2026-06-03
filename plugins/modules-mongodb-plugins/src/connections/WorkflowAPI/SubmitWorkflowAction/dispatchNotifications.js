@@ -7,27 +7,23 @@
  * from the doc on disk.
  *
  * Silent no-op when the app hasn't wired a `send_routine` — the
- * notifications module ships an empty default routine.
+ * notifications module ships an empty default routine, so `callApi`
+ * resolves `null` (routine ends without `:return`).
  *
- * @param {object} context - handler context (must carry callApi, user)
+ * Shipped contract: `callApi({ endpointId, payload })` throws on failure;
+ * throws propagate to the caller (commitPlan step-4 catch; legacy
+ * handleSubmit step 8). The endpoint id is the build-resolved opaque
+ * string from `connection.endpoints.send_notification`.
+ *
+ * @param {object} context - handler context (must carry callApi, connection)
  * @param {string} eventId - just-dispatched event's _id (= context.eventId)
  * @returns {Promise<void>}
  */
 async function dispatchNotifications(context, eventId) {
-  const result = await context.callApi(
-    { id: "send-notification", module: "notifications" },
-    { event_ids: [eventId] },
-    { user: context.user },
-  );
-
-  if (!result.success) {
-    const err = new Error(
-      `dispatchNotifications: send-notification failed: ${result.error?.message ?? "unknown"}`,
-    );
-    err.cause = result.error;
-    err.step = "dispatch-notifications";
-    throw err;
-  }
+  await context.callApi({
+    endpointId: context.connection.endpoints.send_notification,
+    payload: { event_ids: [eventId] },
+  });
 }
 
 export default dispatchNotifications;

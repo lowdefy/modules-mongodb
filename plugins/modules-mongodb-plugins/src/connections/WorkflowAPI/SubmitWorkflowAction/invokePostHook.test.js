@@ -60,11 +60,12 @@ describe("invokePostHook — skip cases", () => {
 });
 
 describe("invokePostHook — dispatch", () => {
-  test("dispatches with { id, module: 'workflows' } and payload includes result bag", async () => {
+  test("dispatches the pre-scoped hook id verbatim and payload includes result bag", async () => {
     const callApi = jest.fn(async () => ({ logged: true }));
     const ctx = makeContext({
       params: {
-        hooks: { approve: { post: "update-action-qualify-approve-post" } },
+        // Pre-scoped by the build (_module.endpointId) — passed verbatim.
+        hooks: { approve: { post: "workflows/onboarding-qualify-approve-post" } },
       },
       callApi,
     });
@@ -73,18 +74,16 @@ describe("invokePostHook — dispatch", () => {
 
     expect(response).toEqual({ logged: true });
     expect(callApi).toHaveBeenCalledTimes(1);
-    const [endpoint, payload, options] = callApi.mock.calls[0];
-    expect(endpoint).toEqual({
-      id: "update-action-qualify-approve-post",
-      module: "workflows",
+    expect(callApi).toHaveBeenCalledWith({
+      endpointId: "workflows/onboarding-qualify-approve-post",
+      payload: expect.objectContaining({
+        workflow_id: "W1",
+        action_id: "A1",
+        interaction: "approve",
+      }),
     });
+    const { payload } = callApi.mock.calls[0][0];
     expect(payload.result).toBe(result);
-    expect(payload).toMatchObject({
-      workflow_id: "W1",
-      action_id: "A1",
-      interaction: "approve",
-    });
-    expect(options).toEqual({ user: ctx.user });
   });
 
   test("payload.result reflects empty tracker_fired", async () => {
@@ -100,7 +99,7 @@ describe("invokePostHook — dispatch", () => {
       tracker_fired: [],
     };
     await invokePostHook(ctx, r);
-    expect(callApi.mock.calls[0][1].result).toEqual(r);
+    expect(callApi.mock.calls[0][0].payload.result).toEqual(r);
   });
 
   test("throw from callApi propagates unchanged", async () => {

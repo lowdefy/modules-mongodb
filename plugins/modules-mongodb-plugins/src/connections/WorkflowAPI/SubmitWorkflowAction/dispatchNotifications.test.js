@@ -1,24 +1,30 @@
 import dispatchNotifications from "./dispatchNotifications.js";
 
-function makeContext({ callApi, user } = {}) {
+// Shipped contract: callApi({ endpointId, payload }) resolves the target's
+// :return value — null for send-notification (default empty send_routine) —
+// and throws on failure.
+function makeContext({ callApi } = {}) {
   return {
-    callApi: callApi ?? jest.fn(async () => ({ success: true, response: {} })),
-    user: user ?? { id: "u1", roles: ["account-manager"] },
+    callApi: callApi ?? jest.fn(async () => null),
+    connection: {
+      endpoints: { send_notification: "notifications/send-notification" },
+    },
   };
 }
 
 test("dispatchNotifications: calls send-notification with event_ids only", async () => {
-  const callApi = jest.fn(async () => ({ success: true, response: {} }));
+  const callApi = jest.fn(async () => null);
   const context = makeContext({ callApi });
 
   await dispatchNotifications(context, "EV-1");
 
   expect(callApi).toHaveBeenCalledTimes(1);
-  const [endpoint, payload, options] = callApi.mock.calls[0];
-  expect(endpoint).toEqual({ id: "send-notification", module: "notifications" });
-  expect(payload).toEqual({ event_ids: ["EV-1"] });
+  expect(callApi).toHaveBeenCalledWith({
+    endpointId: "notifications/send-notification",
+    payload: { event_ids: ["EV-1"] },
+  });
+  const { payload } = callApi.mock.calls[0][0];
   expect(Object.keys(payload)).toEqual(["event_ids"]);
-  expect(options).toEqual({ user: context.user });
 });
 
 test("dispatchNotifications: returns undefined on success", async () => {
@@ -27,26 +33,12 @@ test("dispatchNotifications: returns undefined on success", async () => {
   expect(result).toBeUndefined();
 });
 
-test("dispatchNotifications: throws with step marker on callApi failure", async () => {
-  const callApi = jest.fn(async () => ({
-    success: false,
-    error: { message: "boom" },
-  }));
+test("dispatchNotifications: a callApi throw propagates raw", async () => {
+  const boom = new Error("boom");
+  const callApi = jest.fn(async () => {
+    throw boom;
+  });
   const context = makeContext({ callApi });
 
-  await expect(dispatchNotifications(context, "EV-1")).rejects.toMatchObject({
-    message: expect.stringMatching(/send-notification failed: boom/),
-    step: "dispatch-notifications",
-    cause: { message: "boom" },
-  });
-});
-
-test("dispatchNotifications: failure with missing error.message still throws", async () => {
-  const callApi = jest.fn(async () => ({ success: false }));
-  const context = makeContext({ callApi });
-
-  await expect(dispatchNotifications(context, "EV-1")).rejects.toMatchObject({
-    message: expect.stringMatching(/send-notification failed: unknown/),
-    step: "dispatch-notifications",
-  });
+  await expect(dispatchNotifications(context, "EV-1")).rejects.toBe(boom);
 });

@@ -59,12 +59,24 @@ function makePlan({
 }
 
 /**
+ * Default callApi mock per the shipped contract: resolves the target's
+ * `:return` value — `{ eventId }` for new-event, `null` for send-notification
+ * (empty default send_routine) — and throws to simulate failure.
+ */
+function makeCallApiMock() {
+  return jest.fn(async ({ endpointId, payload }) =>
+    endpointId === 'events/new-event' ? { eventId: payload._id } : null,
+  );
+}
+
+/**
  * Build a context object for standalone (no transactions). Lets the caller
- * override callApi to simulate step 3/4 failures.
+ * override callApi to simulate step 3/4 failures (mock-throw, never
+ * `{ success: false }` envelopes).
  */
 function makeContext(db, {
   loadedTimestamp = new Date('2026-01-01T00:00:00Z'),
-  callApi = jest.fn().mockResolvedValue({ success: true }),
+  callApi = makeCallApiMock(),
   connection = {},
 } = {}) {
   return {
@@ -74,6 +86,10 @@ function makeContext(db, {
     connection: {
       workflowsCollection: 'workflows',
       actionsCollection: 'actions',
+      endpoints: {
+        new_event: 'events/new-event',
+        send_notification: 'notifications/send-notification',
+      },
       ...connection,
     },
     loadedState: {
@@ -316,11 +332,11 @@ test('callApi (step 3) is called after workflow and action writes commit', async
   });
 
   const callOrder = [];
-  const callApi = jest.fn().mockImplementation(async ({ id }) => {
+  const callApi = jest.fn().mockImplementation(async ({ endpointId, payload }) => {
     // Capture DB state at the moment each callApi fires.
     const wf = await mongo.db.collection('workflows').findOne({ _id: 'wf-order' });
-    callOrder.push({ id, wfTimestamp: wf?.updated?.timestamp });
-    return { success: true };
+    callOrder.push({ endpointId, wfTimestamp: wf?.updated?.timestamp });
+    return endpointId === 'events/new-event' ? { eventId: payload._id } : null;
   });
 
   const plan = makePlan({
@@ -334,9 +350,9 @@ test('callApi (step 3) is called after workflow and action writes commit', async
 
   // Both new-event and send-notification fire after the workflow is committed.
   expect(callOrder.length).toBe(2);
-  expect(callOrder[0].id).toBe('new-event');
+  expect(callOrder[0].endpointId).toBe('events/new-event');
   expect(callOrder[0].wfTimestamp).toEqual(freshTs); // workflow already committed
-  expect(callOrder[1].id).toBe('send-notification');
+  expect(callOrder[1].endpointId).toBe('notifications/send-notification');
 });
 
 // ── Step-3 payload shape ──────────────────────────────────────────────────────
@@ -352,7 +368,7 @@ test('step 3 calls callApi with the full event doc as payload', async () => {
     status: [{ stage: 'in-progress' }],
   });
 
-  const callApi = jest.fn().mockResolvedValue({ success: true });
+  const callApi = makeCallApiMock();
 
   const plan = makePlan({
     workflowId: 'wf-evtpayload',
@@ -364,11 +380,10 @@ test('step 3 calls callApi with the full event doc as payload', async () => {
   const ctx = makeContext(mongo.db, { loadedTimestamp: loadedTs, callApi });
   await commitPlan(ctx, plan);
 
-  expect(callApi).toHaveBeenCalledWith(
-    { id: 'new-event', module: 'events' },
-    expect.objectContaining({ _id: 'evt-payload-test' }),
-    { user: ctx.user },
-  );
+  expect(callApi).toHaveBeenCalledWith({
+    endpointId: 'events/new-event',
+    payload: expect.objectContaining({ _id: 'evt-payload-test' }),
+  });
 });
 
 // ── Step-4 payload: event_ids (plural wire field) ─────────────────────────────
@@ -384,7 +399,7 @@ test('step 4 calls send-notification with event_ids plural containing the event_
     status: [{ stage: 'in-progress' }],
   });
 
-  const callApi = jest.fn().mockResolvedValue({ success: true });
+  const callApi = makeCallApiMock();
 
   const plan = makePlan({
     workflowId: 'wf-notif',
@@ -396,11 +411,10 @@ test('step 4 calls send-notification with event_ids plural containing the event_
   const ctx = makeContext(mongo.db, { loadedTimestamp: loadedTs, callApi });
   await commitPlan(ctx, plan);
 
-  expect(callApi).toHaveBeenCalledWith(
-    { id: 'send-notification', module: 'notifications' },
-    { event_ids: ['evt-notif-test'] },
-    { user: ctx.user },
-  );
+  expect(callApi).toHaveBeenCalledWith({
+    endpointId: 'notifications/send-notification',
+    payload: { event_ids: ['evt-notif-test'] },
+  });
 });
 
 // ── Failure policy: step-3 failure ───────────────────────────────────────────
@@ -417,7 +431,7 @@ test('step-3 failure: recorded on dispatchErrors, step 4 skipped, step 5 still r
   });
 
   const callApi = jest.fn()
-    .mockResolvedValueOnce({ success: false, error: { message: 'events down' } }); // step 3 fails
+    .mockRejectedValueOnce(new Error('events down')); // step 3 fails — callApi throws
 
   const changeLogEntry = { type: 'MongoDBUpdateOne', args: {}, timestamp: new Date() };
   const plan = makePlan({
@@ -468,8 +482,8 @@ test('step-4 failure: recorded on dispatchErrors, does not throw from commitPlan
   });
 
   const callApi = jest.fn()
-    .mockResolvedValueOnce({ success: true }) // step 3 succeeds
-    .mockResolvedValueOnce({ success: false, error: { message: 'notifications down' } }); // step 4 fails
+    .mockResolvedValueOnce({ eventId: 'evt-step4fail' }) // step 3 succeeds
+    .mockRejectedValueOnce(new Error('notifications down')); // step 4 fails — callApi throws
 
   const plan = makePlan({
     workflowId: 'wf-step4fail',
@@ -501,7 +515,7 @@ test('step-5 failure: recorded on dispatchErrors, does not throw from commitPlan
     status: [{ stage: 'in-progress' }],
   });
 
-  const callApi = jest.fn().mockResolvedValue({ success: true });
+  const callApi = makeCallApiMock();
 
   const changeLogEntry = { type: 'MongoDBUpdateOne', args: {}, timestamp: new Date() };
   const plan = makePlan({
@@ -568,7 +582,7 @@ test('change-log step is skipped when plan.changeLog is empty', async () => {
     status: [{ stage: 'in-progress' }],
   });
 
-  const callApi = jest.fn().mockResolvedValue({ success: true });
+  const callApi = makeCallApiMock();
 
   // No changeLog config on connection — plan.changeLog is []
   const plan = makePlan({
@@ -602,7 +616,7 @@ test('change-log entries are written when non-empty', async () => {
     status: [{ stage: 'in-progress' }],
   });
 
-  const callApi = jest.fn().mockResolvedValue({ success: true });
+  const callApi = makeCallApiMock();
 
   const entry1 = { _id: new ObjectId(), type: 'MongoDBUpdateOne', args: {}, timestamp: new Date() };
   const entry2 = { _id: new ObjectId(), type: 'MongoDBInsertOne', args: {}, timestamp: new Date() };
@@ -661,7 +675,7 @@ test('CommitResult has empty dispatchErrors on a fully clean commit', async () =
     status: [{ stage: 'action-required' }],
   });
 
-  const callApi = jest.fn().mockResolvedValue({ success: true });
+  const callApi = makeCallApiMock();
   const ctx = makeContext(mongo.db, { loadedTimestamp: loadedTs, callApi });
   const result = await commitPlan(ctx, plan);
 
@@ -716,7 +730,7 @@ describe('transaction path (MongoMemoryReplSet)', () => {
 
   function makeReplContext(db, client, {
     loadedTimestamp = new Date('2026-01-01T00:00:00Z'),
-    callApi = jest.fn().mockResolvedValue({ success: true }),
+    callApi = makeCallApiMock(),
     connection = {},
   } = {}) {
     return {
@@ -726,6 +740,10 @@ describe('transaction path (MongoMemoryReplSet)', () => {
       connection: {
         workflowsCollection: 'workflows',
         actionsCollection: 'actions',
+        endpoints: {
+          new_event: 'events/new-event',
+          send_notification: 'notifications/send-notification',
+        },
         ...connection,
       },
       loadedState: {
@@ -830,11 +848,11 @@ describe('transaction path (MongoMemoryReplSet)', () => {
     });
 
     const callOrder = [];
-    const callApi = jest.fn().mockImplementation(async ({ id }) => {
+    const callApi = jest.fn().mockImplementation(async ({ endpointId, payload }) => {
       // Verify the workflow is already committed (fresh ts visible) when callApi fires.
       const wf = await replDb.collection('workflows').findOne({ _id: 'wf-txn-order' });
-      callOrder.push({ id, wfTimestamp: wf?.updated?.timestamp });
-      return { success: true };
+      callOrder.push({ endpointId, wfTimestamp: wf?.updated?.timestamp });
+      return endpointId === 'events/new-event' ? { eventId: payload._id } : null;
     });
 
     const plan = makePlan({
@@ -847,9 +865,9 @@ describe('transaction path (MongoMemoryReplSet)', () => {
     await commitPlan(ctx, plan);
 
     expect(callOrder).toHaveLength(2);
-    expect(callOrder[0].id).toBe('new-event');
+    expect(callOrder[0].endpointId).toBe('events/new-event');
     expect(callOrder[0].wfTimestamp).toEqual(freshTs); // committed before step 3
-    expect(callOrder[1].id).toBe('send-notification');
+    expect(callOrder[1].endpointId).toBe('notifications/send-notification');
   });
 
   test('insert operation on transaction path: no CAS filter, steps 2–5 identical', async () => {

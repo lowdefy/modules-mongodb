@@ -88,30 +88,33 @@ beforeEach(async () => {
   await seedWorkedExample();
 });
 
+// Shipped contract: callApi({ endpointId, payload }) — pre-scoped opaque
+// endpoint ids, resolves the target's :return value, throws on failure.
 function makeCallApi({ sendRoutineWired }) {
-  return async ({ id, module }, payload, options) => {
-    if (module === "events" && id === "new-event") {
+  return async ({ endpointId, payload }) => {
+    if (endpointId === "events/new-event") {
       const _id = payload._id ?? randomUUID();
       const doc = {
         _id,
         ...(payload.display ?? {}),
         ...(payload.references ?? {}),
         date: new Date(),
-        created: { timestamp: new Date(), user: options.user },
+        created: { timestamp: new Date() },
         type: payload.type,
         metadata: payload.metadata,
         files: payload.files,
       };
       await mongo.db.collection("events").insertOne(doc);
-      return { success: true, response: { eventId: _id } };
+      return { eventId: _id };
     }
-    if (module === "notifications" && id === "send-notification") {
+    if (endpointId === "notifications/send-notification") {
       if (sendRoutineWired) {
         notificationCalls.push(payload);
       }
-      return { success: true, response: {} };
+      // Default empty send_routine ends without :return.
+      return null;
     }
-    throw new Error(`unexpected callApi: ${module}/${id}`);
+    throw new Error(`unexpected callApi: ${endpointId}`);
   };
 }
 
@@ -127,6 +130,10 @@ function buildContext({ sendRoutineWired }) {
       workflowsCollection: "workflows",
       actionsCollection: "actions",
       app_name: "test-app",
+      endpoints: {
+        new_event: "events/new-event",
+        send_notification: "notifications/send-notification",
+      },
       workflowsConfig,
       actionsEnum,
       changeStamp,

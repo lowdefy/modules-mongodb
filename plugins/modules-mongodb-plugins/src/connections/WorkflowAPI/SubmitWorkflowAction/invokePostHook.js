@@ -6,7 +6,9 @@ import buildHookPayload from "./utils/buildHookPayload.js";
  * sees the final post-subscription state via `result.tracker_fired`.
  *
  * Resolves `params.hooks?.[interaction]?.post`; any level undefined → return
- * null without calling callApi.
+ * null without calling callApi. The hook id arrives pre-scoped from
+ * `params.hooks` (build-resolved `_module.endpointId`) and is passed to
+ * `callApi({ endpointId, payload })` verbatim.
  *
  * No try/catch. Throws propagate — a post-hook failure surfaces to the
  * caller as a failed submit even though writes (steps 4–10) have landed.
@@ -21,9 +23,7 @@ async function invokePostHook(context, result) {
   if (!hookId) return null;
 
   const payload = buildHookPayload(context, result);
-  return context.callApi({ id: hookId, module: "workflows" }, payload, {
-    user: context.user,
-  });
+  return context.callApi({ endpointId: hookId, payload });
 }
 
 export default invokePostHook;

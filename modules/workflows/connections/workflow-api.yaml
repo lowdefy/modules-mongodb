@@ -23,3 +23,12 @@ properties:
     meta:
       user:
         _user: true
+  endpoints:
+    new_event:
+      _module.endpointId:
+        id: new-event
+        module: events
+    send_notification:
+      _module.endpointId:
+        id: send-notification
+        module: notifications
