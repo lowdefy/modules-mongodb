@@ -8,6 +8,8 @@ Review-3's findings (#1 design sketch nesting, #2 New→Modify reclassification,
 
 ### 1. Task 2 is unexecutable as written — the three APIs never `_ref` `visible_verbs.yaml`; its only caller is `visible_verbs_filter.yaml`
 
+> **Resolved.** Adopted option (b), default-fallback: each of the 8 `_module.var: app_name` sites in `visible_verbs.yaml` converts to `_var: { key: app_name, default: { _module.var: app_name } }` (the `events-timeline.yaml` `display_key` pattern) — zero caller churn; `visible_verbs_filter.yaml` and the three APIs stay untouched. Same parameterization applied to `resolve_action_link.yaml` (task 3), so task 4 inserts it into the three APIs as a bare ref. Task 2 rewritten (corrected call graph, 8 sites, one-file scope, AC); tasks 3/4 updated; tasks.md row, rationale, and Deviation 2 corrected; design D5 prose, sketch, and Files table updated (`visible_verbs.yaml` reclassified New → Modify).
+
 Task 2 (and review-3 #2, and tasks.md Deviation 2) states the three read APIs "`_ref` it bare" and instructs: "In all three API files, change each bare `_ref` of `visible_verbs.yaml` to pass the var explicitly", while its AC pins `visible_verbs_filter.yaml` as "untouched". The codebase says otherwise:
 
 - The **only** `_ref` to `modules/shared/workflow/visible_verbs.yaml` in the repo is `modules/workflows/api/stages/visible_verbs_filter.yaml:16`.
@@ -56,15 +58,21 @@ D4 says the de-dup is "carried verbatim"; task 5 says blocked-filtering "match[e
 
 ### 4. D2's cost claim is wrong: the window/de-dup stages process every event, not just action-referencing ones
 
+> **Resolved (auto).** D2's cost sentence rewritten: marginal cost is one empty `$lookup` plus a pass-through unwind/window/group over all matched events (semantically a no-op via the single null partition). Conclusion (always-on acceptable) unchanged.
+
 D2 states "The de-dup/window stages operate only on events whose `action_ids` is non-empty, so the marginal cost on action-free timelines is one no-op `$lookup` stage." Not so for the pipeline as specced (task 5): `$unwind (preserveNullAndEmptyArrays)` → `$setWindowFields` → `$group ($first: $$ROOT)` → `$replaceRoot` flow **every** matched event through (action-free events form a single `partitionBy: $actions._id = null` partition and get rebuilt by the `$group`). Semantically a no-op, but it's a per-event window+group pass on a `get-events` request that has no pagination. Fix the sentence (e.g. "the marginal cost on action-free timelines is one empty `$lookup` plus a pass-through unwind/window/group over the matched events"); the conclusion (always-on is acceptable) still holds.
 
 ## Minor
 
 ### 5. D2 "no new config surface" vs the new `action_statuses_display` events var
 
+> **Resolved (auto).** D2 bullet softened to "No new *required* config" and now notes the optional `action_statuses_display` override (default `{}`) from D3.
+
 D2's first rationale bullet claims "No new config surface … authors configure nothing", but D3/task 7 add a new author-facing events-module var (`action_statuses_display`, optional, default `{}`). Soften D2 to "no *required* config" or "no new config to get cards at all".
 
 ### 6. `schema.js` docstring still cites the old enum path
+
+> **Resolved (auto).** Added a step 4 to task 1 (update the `actionsEnum` docstring to `modules/shared/enums/action_statuses.yaml`) and added `schema.js` to task 1's Files list. The source edit happens when task 1 executes the move.
 
 `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js:124` documents `actionsEnum` as "Typically loaded from enums/action_statuses.yaml". After task 1's move the canonical path is `modules/shared/enums/action_statuses.yaml`. One-line docstring update; add to task 1's file list.
 

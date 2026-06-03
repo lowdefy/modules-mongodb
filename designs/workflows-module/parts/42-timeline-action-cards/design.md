@@ -37,8 +37,8 @@ The join lives once, in `modules/shared/workflow/timeline_action_lookup.yaml`. R
 
 The events timeline runs the lookup on every fetch, with no per-call or per-author flag. Rationale:
 
-- **No new config surface.** The fragment's only parameter is `app_name`, which the events module already has as `display_key` (the idioms doc confirms `display_key` *is* the app name). The timeline passes it through; authors configure nothing.
-- **Safe when there are no actions.** `$lookup` against a non-existent `actions` collection returns empty arrays — no error. An app that uses the events module without workflows simply gets empty `event.actions` and renders no cards. The de-dup/window stages operate only on events whose `action_ids` is non-empty, so the marginal cost on action-free timelines is one no-op `$lookup` stage.
+- **No new required config.** The fragment's only parameter is `app_name`, which the events module already has as `display_key` (the idioms doc confirms `display_key` *is* the app name). The timeline passes it through; authors configure nothing to get cards (the `action_statuses_display` override var in D3 is optional, default `{}`).
+- **Safe when there are no actions.** `$lookup` against a non-existent `actions` collection returns empty arrays — no error. An app that uses the events module without workflows simply gets empty `event.actions` and renders no cards. The marginal cost on action-free timelines is one empty `$lookup` plus a pass-through unwind/window/group over the matched events (semantically a no-op — action-free events form a single null partition and are rebuilt unchanged) — acceptable for an unpaginated timeline fetch.
 - **Trade-off (accepted):** the generic events timeline now structurally embeds the `actions`-collection + app-keyed-status-map convention. This is defensible because that convention is monorepo-wide (it is how `get-entity-workflows` and the v0 timeline both read live action display), and this is *the monorepo's* timeline, not a third-party library. Documented as a shared convention in the events README and idioms.
 
 ### D3 — One shared base enum + a per-module display override; reconcile the block to it
@@ -82,10 +82,10 @@ v0 stored one pre-resolved `link` per action and the card rendered it. [Part 38]
 - **State** is already encoded in the map: at a `done` stage the `edit`/`review`/`error` cells are `null`, so a done action resolves to `view` for everyone — no access logic needed for that. Selection must therefore skip `null` cells.
 - **Access** is *not* in the map: per-verb role gates live in `visible_verbs` (verbs the user actually holds, from `access.{app}.{verb}` ∩ `_user.apps.{app}.roles`). The events-timeline pipeline does not otherwise resolve this, so a naive pick could surface an `edit` link to a view-only user.
 
-The fragment resolves a single `link` = the highest-priority verb (`edit > review > error > view`) whose cell is **both** non-`null` (state) **and** true in `visible_verbs` (access), else `null`. Two new shared stages do this and are parameterized by `app_name`:
+The fragment resolves a single `link` = the highest-priority verb (`edit > review > error > view`) whose cell is **both** non-`null` (state) **and** true in `visible_verbs` (access), else `null`. Two shared stages do this, each parameterized by `app_name` as `_var: { key: app_name, default: { _module.var: app_name } }` (the `events-timeline.yaml` `display_key` pattern) — the events fragment supplies it explicitly via `_ref` `vars:`, while workflows-module callers ref bare and resolve via the `_module.var` default:
 
-- `modules/shared/workflow/visible_verbs.yaml` — `$addFields visible_verbs: { view, edit, review, error }` resolving each verb from `$access.<app_name>.<verb>` (`true` or a role array) against `_user.apps.<app_name>.roles`. This is the *compute* half of Part 38's `visible_verbs_filter.yaml`, factored out so the dependency-free events module can reuse it via `../shared/` (same D1 justification as the lookup). Part 38's `visible_verbs_filter.yaml` becomes this stage + its `$match $anyElementTrue` drop.
-- `modules/shared/workflow/resolve_action_link.yaml` — `$addFields link:` the priority pick over `$<app_name>.links` ∩ `visible_verbs`.
+- `modules/shared/workflow/visible_verbs.yaml` — `$addFields visible_verbs: { view, edit, review, error }` resolving each verb from `$access.<app_name>.<verb>` (`true` or a role array) against `_user.apps.<app_name>.roles`. Part 38 already shipped this as the *compute* half of `visible_verbs_filter.yaml` (that bundle = this stage + its `$match $anyElementTrue` drop), reading `_module.var: app_name`; this part **re-parameterizes** it to the default-fallback form so the dependency-free events module can supply `app_name` via `_ref` (same D1 justification as the lookup). Its sole existing caller — `visible_verbs_filter.yaml`, refed bare by the three read APIs — is untouched.
+- `modules/shared/workflow/resolve_action_link.yaml` — **New** — `$addFields link:` the priority pick over `$<app_name>.links` ∩ `visible_verbs`, same parameterization.
 
 **Reused by every surface.** The three link-projecting read APIs — `get-entity-workflows` (actions-on-entity), `get-workflow-overview` (workflow-overview page), and `get-action-group-overview` (workflow-group-overview page) — already run `visible_verbs_filter` (Part 38 task 7); each `_ref`s `resolve_action_link.yaml` after it, replacing its singular `link: $<app_name>.link` projection. The consuming pages are untouched — they render `actions_list.$.link` from the API response. So the timeline card, the entity widget, the group overview, and the workflow overview render an identical, access-correct link from one implementation.
 
@@ -97,7 +97,7 @@ $addFields:
   link:
     $let:
       vars:
-        v: { $getField: { field: links, input: { $getField: { field: { _var: app_name }, input: $$ROOT } } } }
+        v: { $getField: { field: links, input: { $getField: { field: { _var: { key: app_name, default: { _module.var: app_name } } }, input: $$ROOT } } } }
         vv: $visible_verbs
       in:
         $switch:
@@ -197,8 +197,8 @@ App developer, custom history pipeline:
 | File | Change |
 | ---- | ------ |
 | `modules/shared/workflow/timeline_action_lookup.yaml` | **New** — the shared lookup/de-dup fragment; composes the two stages below (D1, D4, D5). |
-| `modules/shared/workflow/visible_verbs.yaml` | **New** — `$addFields visible_verbs` compute stage; reused by the timeline fragment and `visible_verbs_filter.yaml` (D5). |
-| `modules/shared/workflow/resolve_action_link.yaml` | **New** — `$addFields link`, the access-aware priority pick over the per-verb `links` map (D5). |
+| `modules/shared/workflow/visible_verbs.yaml` | **Modify** (shipped by Part 38) — re-parameterize each `_module.var: app_name` site (×8) to `_var: { key: app_name, default: { _module.var: app_name } }` so the events fragment can supply `app_name`; existing callers (`visible_verbs_filter.yaml` → the three APIs) are untouched (D5). |
+| `modules/shared/workflow/resolve_action_link.yaml` | **New** — `$addFields link`, the access-aware priority pick over the per-verb `links` map; same `_var`-with-default parameterization (D5). |
 | `modules/workflows/api/get-entity-workflows.yaml`, `modules/workflows/api/get-workflow-overview.yaml`, `modules/workflows/api/get-action-group-overview.yaml` | Adopt `resolve_action_link.yaml` (after `visible_verbs_filter`), replacing each API's singular `link: $<app_name>.link` projection, so actions-on-entity / the workflow overview / the group overview render the identical server-resolved link (D5). Consuming pages render `actions_list.$.link` unchanged. |
 | `designs/workflows-module/parts/38-engine-rebuild/design.md` | Drop the read-side "UI applies the per-verb selection rule" prose (D14 display-surface note, D16, test strategy, Files-changed display row); engine keeps writing the per-verb `links` map (D5). **Part 38's generated tasks 7 + 18 also carried the UI-selection prose — repointed to this part's server-side resolution.** |
 | `modules/shared/enums/action_statuses.yaml` | **New (moved)** from `modules/workflows/enums/action_statuses.yaml` (D3). |

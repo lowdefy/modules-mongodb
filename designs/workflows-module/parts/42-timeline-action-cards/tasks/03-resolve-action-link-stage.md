@@ -24,8 +24,11 @@ Result: `link` = the highest-priority verb (`edit > review > error > view`) whos
 cell is **both** non-`null` **and** true in `visible_verbs`, else `null`.
 
 This stage **must run after** a `visible_verbs` compute stage (it reads
-`$visible_verbs`). It is parameterized by `_var: app_name` (same convention as the
-parameterized `visible_verbs.yaml` from Task 2), supplied by each consumer's `_ref`.
+`$visible_verbs`). It is parameterized the same way as `visible_verbs.yaml`
+(Task 2): `_var: app_name` **with a `_module.var: app_name` default**. The
+events fragment passes `app_name` explicitly via `_ref` `vars:`; the three read
+APIs (Task 4) ref the stage **bare** and resolve via the default in the
+workflows module's build scope.
 
 ## Task
 
@@ -41,10 +44,12 @@ prefers YAML block sequences over inline flow for logical operators):
 # (edit > review > error > view) whose cell is BOTH non-null (state) AND true in
 # `$visible_verbs` (access); else null.
 #
-# Parameter: `_var: app_name` — supplied by each consumer's `_ref` vars (the
-# timeline fragment, and the three read APIs). MUST run AFTER a `visible_verbs`
-# compute stage (it reads `$visible_verbs`). Single-stage object on purpose
-# (Lowdefy `_ref` substitutes a node in place; bundling stages would nest).
+# Parameter: `app_name` — `_var` with `_module.var` default (the visible_verbs
+# convention): the timeline fragment supplies it via `_ref` vars; in-module
+# consumers (the three read APIs) ref this file bare and the default resolves
+# in their module scope. MUST run AFTER a `visible_verbs` compute stage (it
+# reads `$visible_verbs`). Single-stage object on purpose (Lowdefy `_ref`
+# substitutes a node in place; bundling stages would nest).
 $addFields:
   link:
     $let:
@@ -55,7 +60,10 @@ $addFields:
             input:
               $getField:
                 field:
-                  _var: app_name
+                  _var:
+                    key: app_name
+                    default:
+                      _module.var: app_name
                 input: $$ROOT
         vv: $visible_verbs
       in:
@@ -95,7 +103,7 @@ $addFields:
 ## Acceptance Criteria
 
 - `modules/shared/workflow/resolve_action_link.yaml` exists as a single
-  `$addFields` stage using `_var: app_name`.
+  `$addFields` stage using `_var: { key: app_name, default: { _module.var: app_name } }`.
 - The priority order is `edit > review > error > view`; each branch requires both
   `visible_verbs.<verb>` truthy and the matching `links.<verb>` cell `!= null`;
   the default is `null`.

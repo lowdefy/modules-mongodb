@@ -10,11 +10,13 @@ projection with the shared, access-aware `resolve_action_link.yaml` stage (Task 
 so all three surfaces render the identical server-resolved link.
 
 By the time this task runs:
-- Task 2 has parameterized `visible_verbs.yaml` to `_var: app_name`, and each API
-  already `_ref`s it (with `vars: { app_name: { _module.var: app_name } }`)
-  followed by `_ref: api/stages/visible_verbs_filter.yaml`.
+- Task 2 has parameterized `visible_verbs.yaml` (`_var: app_name` with a
+  `_module.var: app_name` default). Each API refs only the **bundle**
+  `api/stages/visible_verbs_filter.yaml` (bare, inside `_build.array.concat`),
+  which composes the compute stage — those refs are unchanged; the default
+  resolves `app_name` in the workflows module scope.
 - Task 3 has created `resolve_action_link.yaml` (a `$addFields link:` reading
-  `$visible_verbs`), parameterized by `_var: app_name`.
+  `$visible_verbs`), parameterized the same way — so this task refs it **bare**.
 
 The stage must run **after** `visible_verbs_filter` (so `visible_verbs` exists on
 the doc) and **before** the `$group`/`$project` that emits the action, so the
@@ -37,14 +39,10 @@ The three APIs differ in shape — read each before editing:
 In each API:
 
 1. **Insert** the link stage immediately after the `visible_verbs_filter.yaml`
-   ref, passing the app name:
+   ref, as a bare ref (`app_name` resolves via the stage's `_module.var` default):
 
    ```yaml
-   - _ref:
-       path: ../shared/workflow/resolve_action_link.yaml
-       vars:
-         app_name:
-           _module.var: app_name
+   - _ref: ../shared/workflow/resolve_action_link.yaml
    ```
 
 2. **Remove the old singular `link` projection** and emit the resolved `$link`
@@ -67,7 +65,7 @@ Leave `message`, `status`, `type`, `visible_verbs`, and all sort logic unchanged
 - No API references `<app_name>.link` (the deleted singular field) anywhere;
   `grep -rn "'.link'\|\.link\b" modules/workflows/api` shows only `links`-map or
   resolved-`link` usage.
-- Each API `_ref`s `resolve_action_link.yaml` (with `app_name` var) after
+- Each API `_ref`s `resolve_action_link.yaml` (bare) after
   `visible_verbs_filter.yaml` and before its action-emitting `$group`/`$project`.
 - The resolved `link` field reaches the API response for all three
   (`get-entity-workflows` → `workflows.$.actions.$.link`; `get-workflow-overview`

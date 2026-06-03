@@ -45,6 +45,11 @@ from any workflows-module file the new path is `../shared/enums/action_statuses.
    workflow-api connection `_ref`ing `../enums/action_statuses.yaml` — change the
    path it cites to `../shared/enums/action_statuses.yaml`.
 
+4. **Update the `actionsEnum` docstring** in
+   `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js`
+   (line ~124): "Typically loaded from enums/action_statuses.yaml" → the new
+   canonical path `modules/shared/enums/action_statuses.yaml`.
+
 Do **not** touch references to the *component* `components/action_statuses.yaml`
 (used by `pages/group-overview.yaml` and `pages/workflow-overview.yaml`) — the
 component file's own path is unchanged; only the enum it points to moved.
@@ -71,6 +76,7 @@ component file's own path is unchanged; only the enum it points to moved.
 - `modules/workflows/pages/simple-edit.yaml` — modify — repoint 1 enum ref.
 - `modules/workflows/templates/edit.yaml.njk` — modify — repoint 1 enum ref.
 - `modules/workflows/module.lowdefy.yaml` — modify — update header comment path.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` — modify — update `actionsEnum` docstring path.
 
 ## Notes
 
