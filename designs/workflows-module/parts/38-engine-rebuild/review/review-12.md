@@ -23,6 +23,8 @@ pointer to tasks 16/17 — carried as finding 6).
 
 ### 1. Per-level invocation inputs are unspecced — reusing the base `event_id` collides on the event doc `_id`
 
+> **Resolved.** Each cascade level is its own invocation for the mint: fresh `event_id` per level (`randomUUID()`); `now` stays the single per-request `connection.changeStamp` shared across all levels (one user action = one timestamp — matches today's recursion sharing `context.changeStamp`, keeps the stamp app-overridable, matches transaction-time semantics standard in Postgres/SQL Server temporal tables/`$$NOW`); the `newId` factory passes through unchanged (each call already returns a fresh uuid). Both sketch copies (task 16 + D10) replace `/* per-level overrides */` with the real mint, `planTrackerLevel`'s signature widens to accept injected `{ event_id, now, newId }`, and task 16 + D10 prose pin the rationale.
+
 Each cascade level is its own invocation: design ("Engine entry points emit
 events") says "Tracker-mirror commits per cascade level each generate their
 own `event_id`," and the level's planners require it — the landed
@@ -49,6 +51,8 @@ per-request `connection.changeStamp` (today's recursion shares
 to accept the injected `{ event_id, now }` like every other planner.
 
 ### 2. A mid-cascade `ConcurrentSubmitError` strands committed fires and surfaces as a falsely-retryable error
+
+> **Resolved.** As recommended: bounded per-level CAS retry inside the cascade — 3 attempts, each a full fresh load → plan → commit (nothing stale re-issued; the level's `event_id` reused safely since a CAS miss writes nothing; a concurrent advance of the tracker action itself resolves to an FSM-no-op skip on re-plan). Tracker levels are pinned as the one engine site where auto-retry is safe by construction (no pre-hook, deterministic planner — D15's non-idempotence argument doesn't apply; D15 now carries the exception note). On exhaustion the fire records `{ fire, error }` on the cascade's error accumulation (shared with finding 4's gone-parent policy) and the cascade continues, surfacing via the handler's end-of-invocation `post_commit_dispatch_failed` throw. The asymmetry is written down: `TrackerCascadeDepthError` and unclassified errors propagate immediately — a depth cycle is a structural config bug (D13 defensive gate), and the loop's catch is a closed set (`concurrent_submit`, `workflow_not_found`, `missing_target`). Spec'd in task 16 + D10.
 
 Task 16 line 28: "only a steps-1–2 throw (e.g. `ConcurrentSubmitError`)
 propagates." For a cascade level, that policy reproduces exactly the failure
@@ -91,6 +95,8 @@ written down.
 
 ### 3. The loop sketch contradicts the task's own prose — and the cascade's return shape is still unpinned
 
+> **Resolved.** Both sketch copies (task 16 + D10) rewritten to the full corrected loop: per-level bounded CAS retry (finding 2), the closed catch set with `{ fire, error }` recording (findings 2/4), the FSM-no-op skip via `levelPlan === null`, dispatch-error accumulation, and a `{ fires, dispatchErrors, cascadeErrors }` return. No-op convention pinned: `planTrackerLevel` returns `null`, mirroring `planActionTransition`'s landed convention (D3 + task 16 wording aligned from "returns an empty plan"). Per-fire entry keeps today's `{ parent_action_id, parent_workflow_id, new_status }` shape via the plan's `fired` entry, composed by `planTrackerLevel` (review-11 #2 had pinned the consumer contract). Task 15's end-of-invocation throw and the D13 error-model sentence now key on **either** error list being non-empty.
+
 Three behaviours the task text requires are absent from the normative-looking
 sketch (lines 11–24), which is duplicated verbatim in design.md D10:
 
@@ -119,6 +125,8 @@ keeping today's `{ parent_action_id, parent_workflow_id, new_status }` keys
 
 ### 4. `planTrackerLevel`'s target/config resolution and missing-parent policy are unspecced
 
+> **Resolved.** Resolution half as recommended: task 16 now specs that `planTrackerLevel` locates `fire.parentActionId` within `levelLoaded.actions` and resolves its config from `workflowConfig.actions` (throwing `missing_target` when gone — the planner keeps planner throw semantics; the loop owns the policy). Policy half **deviates from the recommendation**: instead of preserving today's silent skip, a gone parent (`workflow_not_found` on the level's load, missing action doc, or action type absent from config — also covering the parent-workflow-deleted sub-case the finding didn't name) records `{ fire, error }` on the cascade's error accumulation, skips the level, continues remaining fires, and surfaces via the handler's end-of-invocation `post_commit_dispatch_failed` throw. Rationale: a dangling parent reference has no legitimate producing flow (an early-closed parent still has its tracker action — that's the FSM-no-op case, which stays silent), so it's a data bug made visible rather than a quiet mirror-chain stop; the committed submit is never aborted for it. Spec'd in task 16 + D10; test case for the branch carried into the AC.
+
 The landed `loadWorkflowState` in `{ workflowId }` mode returns only
 `{ workflow, actions, workflowConfig }` — no `targetAction`, no `actionConfig`
 (`loadWorkflowState.js:120–122`; the doc comment says so explicitly). But
@@ -143,6 +151,8 @@ lose it).
 
 ### 5. The producer gap (review-11 #1) recurses — `planTrackerLevel` is also a fire producer
 
+> **Resolved (auto).** Superseded by review-11 #1's resolution, which chose a third option (not (a)/(b)): workflow docs gain a denormalised `parent_workflow_id` stamped by Start, so fires at every level — cascade levels included — are composed purely from the loaded parent workflow's own `parent_action_id`/`parent_workflow_id` (D3 producer rule; task 16 Notes already state per-level fires recurse identically). The residual half is now specced: task 16 Notes pin the next-level fire's `signal` as the constant `internal_mirror_child_completed` (the only stage a level's recompute can push is `completed`).
+
 Not re-filing review-11 #1, but its resolution must account for this task's
 side of it: the sketch reads `levelPlan.trackerFires`, so `planTrackerLevel`
 must *produce* next-level fires when the parent's recompute pushes
@@ -162,6 +172,8 @@ push is `completed`, so it's a constant — say so).
 ## Minor
 
 ### 6. File home and leftover-helper dispositions
+
+> **Resolved (auto).** File home made explicit: task 16 and design.md (shared/phases list + "Rewritten" entry) now relocate the loop to `shared/phases/runTrackerCascade.js`, with the old file + test deleted once consumers rewire. `CHILD_STAGE_MAP` note added to task 16 — with a factual correction: its only external importer is its own test file (`handleSubmit.js`/`CancelWorkflow.js`/`CloseWorkflow.js` import only the default export), so nothing needs re-pointing; the export still dies, superseded by the FSM tracker table. The `getActionFields.js` disposition was already settled by review-11 #6 (deletion entry in task 17 line 44, pointer note in task 15).
 
 - The task keeps the rewritten loop at
   `WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js` ("rename file

@@ -118,7 +118,7 @@ Notes:
 - `changeLog` deltas (D7) capture before vs after for audit. Built during planning, alongside the planned doc shape.
 - `trackerFires` records what tracker subscriptions should fire after the current workflow's commit completes — the tracker recursion loop runs the next-level load-plan-commit per entry. **Producer rule (one rule, all handlers):** fires are composed *purely* from ids already in hand — the loaded workflow doc's `parent_action_id` + `parent_workflow_id` (the latter a schema addition stamped by `StartWorkflow`; see "Schema additions") — never by a cross-workflow read, which the pure plan phase couldn't do. Per handler: Submit emits one `internal_mirror_child_completed` fire iff the recompute pushed `completed` **and** `parent_action_id != null` (today's `shouldPushCompleted` gate + no-parent short-circuit); Start emits `internal_mirror_child_active` with ids from the loaded parent action (`payload.parent_action_id` + that action's `workflow_id`); Cancel/Close emit `internal_mirror_child_cancelled` under the same loaded-doc gate. Tracker levels recurse identically — each level's loaded parent workflow carries its own `parent_action_id`/`parent_workflow_id`.
 
-The Plan is immutable once handed to commit. **Empty plans never reach commit — the caller short-circuits.** A user-driven current-action signal with no FSM entry *throws* (D13 (3) / Q2), so Submit always plans at least one transition; the only real producer of an empty plan is a tracker cascade level whose mirror signal FSM-no-ops against the parent's target action. In that case nothing changed (no transitions → recomputed groups/summary equal the loaded ones), so `planTrackerLevel` returns an empty plan and the cascade loop skips `commitPlan` for that level entirely (task 16) — no workflow write (no `updated` stamp advance, which would otherwise claim the parent and create spurious CAS pressure on concurrent real submits), no mirror event, no change-log entries, no further fires from that level. `commitPlan` itself stays logic-free: it executes whatever it's given; the mongo helpers' empty-batch no-ops are a backstop, not the mechanism.
+The Plan is immutable once handed to commit. **Empty plans never reach commit — the caller short-circuits.** A user-driven current-action signal with no FSM entry *throws* (D13 (3) / Q2), so Submit always plans at least one transition; the only real producer of an empty plan is a tracker cascade level whose mirror signal FSM-no-ops against the parent's target action. In that case nothing changed (no transitions → recomputed groups/summary equal the loaded ones), so `planTrackerLevel` returns `null` (the planner no-op convention, mirroring `planActionTransition`) and the cascade loop skips `commitPlan` for that level entirely (task 16) — no workflow write (no `updated` stamp advance, which would otherwise claim the parent and create spurious CAS pressure on concurrent real submits), no mirror event, no change-log entries, no further fires from that level. `commitPlan` itself stays logic-free: it executes whatever it's given; the mongo helpers' empty-batch no-ops are a backstop, not the mechanism.
 
 ### D4. FSM resolution at the plan phase
 
@@ -263,23 +263,60 @@ The denormalised summary/groups on the planned workflow doc are computed from th
 `fireTrackerSubscription` becomes a loop, not a recursive function with shared engine context:
 
 ```js
+const MAX_DEPTH = 10; // chain depth, not fan-out
+const MAX_ATTEMPTS = 3; // per-level CAS retry bound
+const RECORDED_CODES = ["concurrent_submit", "workflow_not_found", "missing_target"];
+
 async function runTrackerCascade(initialFires, baseContext) {
+  const fires = []; // [{ parent_action_id, parent_workflow_id, new_status }] — today's shape
+  const dispatchErrors = []; // commit steps 3–5 failures, accumulated across levels (task 13)
+  const cascadeErrors = []; // [{ fire, error }] — CAS exhaustion + gone parents
   // Each fire carries its own depth (chain length up the parent tree), seeded at 1.
   let pendingFires = initialFires.map((f) => ({ ...f, depth: 1 }));
+
   while (pendingFires.length > 0) {
     const fire = pendingFires.shift();
-    if (fire.depth > MAX_DEPTH) throw new TrackerCascadeDepthError(fire);
-    const levelContext = { ...baseContext, /* per-level overrides */ };
-    const levelLoaded = await loadWorkflowState(levelContext, { workflowId: fire.parentWorkflowId });
-    const levelPlan = await planTrackerLevel(levelLoaded, { parentActionId: fire.parentActionId, signal: fire.signal });
-    const commitResult = await commitPlan(levelContext, levelPlan);
-    // Children inherit depth + 1 — the guard tracks chain depth, not total fan-out.
-    pendingFires.push(...levelPlan.trackerFires.map((f) => ({ ...f, depth: fire.depth + 1 })));
+    if (fire.depth > MAX_DEPTH) throw new TrackerCascadeDepthError(fire); // config bug — propagates
+
+    // Each level is its own invocation: fresh event_id; now + newId pass through (see below).
+    const levelContext = { ...baseContext, event_id: randomUUID() };
+    let attempts = 0;
+    while (true) {
+      try {
+        const levelLoaded = await loadWorkflowState(levelContext, { workflowId: fire.parentWorkflowId });
+        const levelPlan = await planTrackerLevel(levelLoaded, {
+          parentActionId: fire.parentActionId,
+          signal: fire.signal,
+          event_id: levelContext.event_id,
+          now: levelContext.now,
+          newId: levelContext.newId,
+        });
+        if (levelPlan === null) break; // FSM no-op — skip the level entirely (D3)
+        const commitResult = await commitPlan(levelContext, levelPlan);
+        dispatchErrors.push(...commitResult.dispatchErrors);
+        fires.push(levelPlan.fired); // the plan carries the level's fired entry (FSM-resolved new_status)
+        // Children inherit depth + 1 — the guard tracks chain depth, not total fan-out.
+        pendingFires.push(...levelPlan.trackerFires.map((f) => ({ ...f, depth: fire.depth + 1 })));
+        break;
+      } catch (error) {
+        if (error.code === "concurrent_submit" && ++attempts < MAX_ATTEMPTS) continue; // fresh load → plan → commit
+        if (RECORDED_CODES.includes(error.code)) {
+          cascadeErrors.push({ fire, error }); // exhausted CAS / gone parent — record, continue
+          break;
+        }
+        throw error; // unclassified — propagate
+      }
+    }
   }
+  return { fires, dispatchErrors, cascadeErrors };
 }
 ```
 
-Each level is its own load-plan-commit cycle on its own workflow. No shared in-memory state between levels. Each level's commit is independently atomic (or transactional). The `MAX_DEPTH = 10` cycle guard from today's recursive `fireTrackerSubscription` carries over, but it must track **chain depth, not loop iterations**: each fire carries a `depth` field seeded at 1 and incremented per level, so a wide-but-shallow cascade (one workflow with many tracker parents) doesn't trip the guard while a genuinely deep cycle still does. A single dequeue counter on the BFS loop would measure total fan-out (breadth), not depth, and would mis-fire on legitimate wide cascades — hence the per-fire `depth`.
+Each level is its own load-plan-commit cycle on its own workflow. No shared in-memory state between levels. Each level's commit is independently atomic (or transactional). **Each level is also its own invocation for the mint:** a fresh `event_id` per level (the event doc `_id` — reuse would duplicate-key; see "Engine entry points emit events"), while `now` (the per-request `connection.changeStamp` — one user action, one timestamp, app-overridable) and the `newId` factory pass through from the base context to every level.
+
+**Mid-cascade CAS policy (task 16).** A cascade level's `ConcurrentSubmitError` never propagates. The parent is a live workflow other users submit against — a CAS miss there is the expected concurrency event — and the caller cannot recover it by retrying the original submit (the child's commit already landed, so the retry FSM-no-ops and throws `signal_not_allowed`; D15's "retryable" framing doesn't hold post-commit). Instead the loop retries the level, bounded at 3 attempts, each a full fresh load → plan → commit — nothing stale is ever re-issued, and the level's `event_id` is safely reused since a CAS miss writes nothing (D9). Tracker levels are the one engine site where auto-retry is safe by construction: no pre-hook, deterministic planner — D15's non-idempotence argument doesn't apply. On exhaustion the fire records `{ fire, error }` on the cascade's error accumulation and the cascade continues; `TrackerCascadeDepthError` and unclassified errors propagate immediately (a depth cycle is a structural config bug — a D13 defensive gate — not a per-fire data state).
+
+**Gone-parent policy (task 16).** A fire whose parent is gone — `workflow_not_found` on the level's load, no action doc matching `fire.parentActionId`, or an action type no longer in the workflow config — is a dangling parent reference with no legitimate producing flow (a parent closed early still *has* its tracker action; that case FSM-no-ops and skips silently per D3). The cascade records `{ fire, error }` on its error accumulation, skips the level, and continues with the remaining fires; the failure surfaces through the handler's end-of-invocation `post_commit_dispatch_failed` throw. This deliberately deviates from today's silent `if (!tracker) return []` — the committed submit is never aborted for it, but broken mirror chains become visible instead of quietly stopping. The `MAX_DEPTH = 10` cycle guard from today's recursive `fireTrackerSubscription` carries over, but it must track **chain depth, not loop iterations**: each fire carries a `depth` field seeded at 1 and incremented per level, so a wide-but-shallow cascade (one workflow with many tracker parents) doesn't trip the guard while a genuinely deep cycle still does. A single dequeue counter on the BFS loop would measure total fan-out (breadth), not depth, and would mis-fire on legitimate wide cascades — hence the per-fire `depth`.
 
 This restructure is the only viable shape with load-plan-commit — recursion across workflows can't share a Plan because the Plan is per-aggregate. The good news is the per-level Plan reuses 100% of the per-Submit planner machinery; the only new piece is `planTrackerLevel`, which is a thin wrapper that emits the signal and then delegates to the same auto-unblock/recompute logic.
 
@@ -385,7 +422,7 @@ Three places where signals can be invalid:
 
 The distinction is intentional: user-driven signals indicate an explicit intent that should not silently fail, while cascade signals are deliberately permissive so engine re-evaluation can fire broadly without regressing siblings.
 
-**Engine error model.** Engine throws share one base class in `shared/errors.js`: `WorkflowEngineError extends Error`, constructor `(message, { code, cause })`. Callers and tests discriminate on `code`, never on message text. Load-phase invariant codes: `workflow_not_found`, `action_not_found`, `stage_rejects_submit`, `access_denied`. Plan-phase signal-validation codes (the throws in cases 1–3 above): `unknown_signal`, `missing_target`, `signal_not_allowed`. Pre-hook response-validation codes (task 14's validator): `prehook_redirect` — a return entry re-signals the current action (per the resolves-to-current rule); `invalid_prehook_response` — any other malformed manifest (entry keys outside the closed grammar, bad shape). Two codes so a hook author can tell *what* they did wrong from the code alone. Lifecycle-handler code: `stage_rejects_close` (Close on a cancelled workflow, task 17). Post-commit dispatch code: `post_commit_dispatch_failed` — thrown by the handler at the very end of an invocation (after the tracker cascade + post-hook) when commit steps 3–5 recorded failures on `CommitResult.dispatchErrors[]` (D9); its message states the commit succeeded and names the failed steps, `{ cause }` chaining the first recorded error. `ConcurrentSubmitError extends WorkflowEngineError` (`code: "concurrent_submit"`, D15) keeps its named class because callers catch it by name as the retryable case; `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`, D10) likewise. The engine does **not** reuse `SubmitWorkflowAction/UserError.js` for these: `UserError` is Lowdefy's routine-reject vehicle (discriminated by `runRoutine` on `name === "UserError"`) and stays reserved for surfacing pre-hook rejects (D5 / task 14) — engine invariants are defensive gates, not author-defined user messaging, so they intentionally surface as server-shaped errors. **Cause chains:** a rethrow that adds engine context (phase, workflow id) must pass `{ cause }` so the original error is preserved; the default is not to wrap at all — driver and downstream errors bubble as-is unless the wrap genuinely adds context.
+**Engine error model.** Engine throws share one base class in `shared/errors.js`: `WorkflowEngineError extends Error`, constructor `(message, { code, cause })`. Callers and tests discriminate on `code`, never on message text. Load-phase invariant codes: `workflow_not_found`, `action_not_found`, `stage_rejects_submit`, `access_denied`. Plan-phase signal-validation codes (the throws in cases 1–3 above): `unknown_signal`, `missing_target`, `signal_not_allowed`. Pre-hook response-validation codes (task 14's validator): `prehook_redirect` — a return entry re-signals the current action (per the resolves-to-current rule); `invalid_prehook_response` — any other malformed manifest (entry keys outside the closed grammar, bad shape). Two codes so a hook author can tell *what* they did wrong from the code alone. Lifecycle-handler code: `stage_rejects_close` (Close on a cancelled workflow, task 17). Post-commit dispatch code: `post_commit_dispatch_failed` — thrown by the handler at the very end of an invocation (after the tracker cascade + post-hook) when commit steps 3–5 recorded failures on `CommitResult.dispatchErrors[]` (D9) or the tracker cascade recorded fire errors on `cascadeErrors[]` (CAS-retry exhaustion / gone parents — D10); its message states the commit succeeded and names the failed steps, `{ cause }` chaining the first recorded error. `ConcurrentSubmitError extends WorkflowEngineError` (`code: "concurrent_submit"`, D15) keeps its named class because callers catch it by name as the retryable case; `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`, D10) likewise. The engine does **not** reuse `SubmitWorkflowAction/UserError.js` for these: `UserError` is Lowdefy's routine-reject vehicle (discriminated by `runRoutine` on `name === "UserError"`) and stays reserved for surfacing pre-hook rejects (D5 / task 14) — engine invariants are defensive gates, not author-defined user messaging, so they intentionally surface as server-shaped errors. **Cause chains:** a rethrow that adds engine context (phase, workflow id) must pass `{ cause }` so the original error is preserved; the default is not to wrap at all — driver and downstream errors bubble as-is unless the wrap genuinely adds context.
 
 ### D14. Salvaged from Part 30
 
@@ -423,7 +460,7 @@ Without transactions, concurrent submits on the same workflow could each read th
   });
   ```
 - If concurrent write happened in between, the filter matches zero docs; helper returns null. (Every commit stamps a fresh `updated.timestamp`; two submits in the same millisecond by the same user produce equal stamps, but CAS still catches the race — the first commit advances the stored timestamp, so the second's filter then misses.)
-- Engine throws a retryable error (`ConcurrentSubmitError extends WorkflowEngineError`, `code: "concurrent_submit"` — D13). Caller's retry policy decides what to do; the engine itself does not auto-retry (each retry runs the pre-hook again, which may have non-idempotent side effects — author's call).
+- Engine throws a retryable error (`ConcurrentSubmitError extends WorkflowEngineError`, `code: "concurrent_submit"` — D13). Caller's retry policy decides what to do; the engine itself does not auto-retry (each retry runs the pre-hook again, which may have non-idempotent side effects — author's call). **One exception:** tracker cascade levels auto-retry internally (bounded, 3 attempts) — they have no pre-hook and a deterministic planner, so the non-idempotence argument doesn't apply, and a mid-cascade CAS miss is unrecoverable by caller retry since the original submit already committed (D10).
 
 **Action writes.** Actions are bulk-written without per-doc CAS in v1. The race here is narrower than the workflow case (per-action concurrency is rare — same user submitting same action twice typically lands in same-stage no-ops via the FSM), and adding per-action CAS would force the bulk write into a loop. If contention proves real, add per-action `_id` + `updated` filters to the bulkWrite operations as a follow-up.
 
@@ -617,6 +654,7 @@ Phase functions, one file per phase, with sub-files for planners.
 - `invokePostHook.js` — wraps `callApi` to the post-hook routine. Receives `LoadedState` + `Plan` + `CommitResult` + the cascade fire list (D6).
 - `buildHookPayload.js` (+ test) — **relocated** from `SubmitWorkflowAction/utils/` (both hook wrappers import it; envelope unchanged except `interaction`→`signal` + `current_status` dropped — task 14).
 - `commitPlan.js` — single commit-phase entry point; sequences the writes per D9.
+- `runTrackerCascade.js` — the D10 per-level tracker loop, **relocated** from `SubmitWorkflowAction/fireTrackerSubscription.js` (task 16): a cross-handler orchestrator called by Submit (task 15) and Start/Cancel/Close (task 17), so it lives at the phase layer, not in the Submit directory.
 - `planSubmit.js` — the Submit plan-phase orchestrator (composes the planners below; task 15).
 - `planners/` — pure planning functions:
   - `planActionTransition.js` — given an action + signal + payload + context, returns the planned post-commit action doc + change-log delta. **Field write — generic passthrough.** This planner is the home of today's `updateAction` `...fields` spread: it sets `payload.fields` onto the planned action doc (the rebuilt equivalent of `$set: { ...fields }`). It is **kind-agnostic** and does not name `assignees` / `due_date` / `description` — it passes the `fields` bag through verbatim, exactly as today. This is the behavior-preserving baseline; the universal-fields surface ([Part 24](../24-universal-fields/design.md)) layers a kind-based rule on top (write the universal fields only for `kind: simple`; `kind: form` owns them via its own operation). Part 38 itself stays ignorant of universal fields — it only carries the generic passthrough forward so no submit (notably `kind: simple`, whose submission content *is* those fields) regresses before Part 24 lands.
@@ -656,7 +694,7 @@ Plus, one level up at `shared/`:
 - `WorkflowAPI/StartWorkflow/StartWorkflow.js` — restructured: load (workflowConfig + parent action if any), plan (workflow doc + initial action docs + optional parent-tracker transition), commit, optional tracker cascade (the parent-tracker push). No pre-hook in v1; could add later.
 - `WorkflowAPI/CancelWorkflow/CancelWorkflow.js` — load (workflow + all actions), plan (mark all non-terminal actions `not-required` via FSM signal `internal_cancel_action`, recompute, push workflow `cancelled`), commit, tracker cascade.
 - `WorkflowAPI/CloseWorkflow/CloseWorkflow.js` — same shape as Cancel.
-- `WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js` — restructured into the loop in D10. Each iteration calls into the same phases.
+- `WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js` — restructured into the loop in D10 and **relocated** to `shared/phases/runTrackerCascade.js` (its consumers span Submit and Start/Cancel/Close — task 16). Each iteration calls into the same phases. The `CHILD_STAGE_MAP` export dies with it, superseded by the FSM tracker table.
 
 ### Deleted
 
