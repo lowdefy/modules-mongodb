@@ -25,6 +25,8 @@ below is a different interaction of the same guard), consistency-8 #7
 
 ### 1. The Start section contradicts the design's resolved direct-seed decision — the Part 45 resolution that claims to have amended this task was not applied
 
+> **Resolved.** Most of the listed edits landed between this review and now (direct-seed rewrite, legal-seed grammar + build/runtime validation, the tracker `none`-row flip homed in this task's Files). The residuals resolved here: the seeding mechanism is now concrete — `planActionTransition` gains a **`seedStage` mode** (mutually exclusive with `signal`, insert-only, bypasses the `upsert` gate, skips `resolveSignal`, all downstream composition unchanged — one composition site, no hand-built drafts), specced in task 17, mirrored in task 10 and design.md:738, implemented by the task-23 catch-up (landed-code change); and a migration sentence added to task 17 (existing configs seeding out-of-set stages, e.g. `in-review`, must re-author — the build-time check breaks loud).
+
 Part 45 review-1 #2 is marked **Resolved** with: `starting_actions` /
 `start-workflow` `actions:` keep the `{ type, status }` grammar; "task 17's
 Start planner seeds drafts **directly at the declared status** (legal seeds:
@@ -76,6 +78,8 @@ decision, and give the two homeless pieces owners:
 
 ### 2. Close drops the `required_after_close` sweep exception — which also kills the submit carve-out task 9 just restored
 
+> **Resolved (auto).** Task 17's Close section now keeps today's sweep filter explicitly — sweep only non-terminal actions where `required_after_close !== true` OR currently `blocked` (the blocked-action exception), survivors stay at their stage — with the reachability rationale (empty form-FSM `not-required` row means a swept action never moves again, killing the D2/task-9 carve-out). Cancel's sweep is stated as unconditional (today's behaviour). AC gains the survive-then-post-close-submit test case.
+
 Today's Close does **not** sweep non-terminal actions whose config declares
 `required_after_close: true` (unless they sit at `blocked` — the
 blocked-action exception): `CloseWorkflow.js:66–71` builds the per-type map,
@@ -103,6 +107,8 @@ action → action survives at its stage → post-close submit on it succeeds.
 ## Planner interactions
 
 ### 3. "Sweep → recompute → push cancelled" triggers the auto-complete push — spurious `completed` entry and a wrong tracker mirror
+
+> **Resolved.** Both halves. (1) `planWorkflowRecompute` gains an optional `lifecyclePush: { stage, reason }` input — when present the auto-complete check is skipped entirely and the planner pushes the declared entry instead (single entry-composition site; carries `event_id`/`created`/`reason`). Cancel passes `{ stage: "cancelled", reason }`, Close `{ stage: "completed", reason }`; Submit/tracker levels omit it. Specced in task 17, mirrored in task 11 and design.md's planner list, implemented by the task-23 catch-up (landed-code change); exactly-one-entry Cancel test added to AC. (2) Fire signals pinned per handler: Cancel → `internal_mirror_child_cancelled`, Close → `internal_mirror_child_completed` — a user decision **amending** review-11 #1's recorded "Cancel/Close: `_cancelled`" (close is forced completion: the child's status reads `completed`, so the parent tracker lands `done` per today's `CHILD_STAGE_MAP`); D3, task 17, and the review-11 #1 annotation corrected.
 
 Task 17 line 19 orders Cancel's plan: "mark all non-terminal actions
 `not-required` …; recompute; push `cancelled`". The landed
@@ -140,6 +146,8 @@ task 11's planner doc if its signature changes):
   new entry (`cancelled`), parent tracker lands `not-required`.
 
 ### 4. Start's parent-tracker push: in-plan and via-cascade are both stated, and neither works as specced
+
+> **Resolved.** Cascade route (already settled by review-11 #1's D3 producer rule between this review and now); the residuals fixed here: task 17's in-plan remnant ("Plus optional parent-tracker transition") removed with an explicit per-aggregate rationale; fire entries gain optional `payload: { fields }` — Start's fire carries the child link fields (`child_workflow_id`, `child_entity_id`, `child_entity_collection`), `planTrackerLevel` forwards it into `planActionTransition`'s `payload.fields` (D3 typedef, task 16 sketch + bullet, task 17 fires paragraph). The two behaviour deltas are owned in task 17's AC: parent timeline gains `action-internal-mirror-active` (today's push is silent) and parent `groups[]`/`summary` recompute (today's push leaves them stale). The pure `parentWorkflowId` resolution from the loaded parent action was already folded into D3.
 
 Line 12 puts "optional parent-tracker transition" **in Start's plan**;
 line 13 routes "the parent-tracker push → `runTrackerCascade`". These are
@@ -180,6 +188,8 @@ Update task 16's fire shape in the same stroke.
 
 ### 5. Pin the pushed stages — "same shape as Cancel" plus D12's comment invites `stage: "closed"`
 
+> **Resolved (auto).** Task 17 now pins all three: Close pushes **`completed`** (not `closed`, with the consumer-breakage rationale), Start seeds **`active`**, Cancel pushes `cancelled`. Added: lifecycle status entries carry the invocation `event_id`, and `payload.reason` still lands on the entry. design.md's D12-adjacent comment fixed from "(status pushed: started/cancelled/closed)" to the real stage names.
+
 Nowhere does task 17 say Close pushes **`completed`**
 (`CloseWorkflow.js:78–82`) and Start seeds **`active`**
 (`StartWorkflow.js:82`). The surrounding signals all point the wrong way:
@@ -196,6 +206,8 @@ lifecycle entries carry none) and that `payload.reason` still lands on the
 entry (`CancelWorkflow.js:49–53`).
 
 ### 6. Payload and return surfaces are unpinned — `references`, `reason`, and the `:return` keys
+
+> **Resolved.** Task 17 gains a "Payload and return surfaces" paragraph: `payload.references` merges into the planned workflow doc (Start spread at insert; Cancel/Close minus `RESERVED_WORKFLOW_KEYS`, the filter now applied at plan time); returns pinned per handler — Start `{ workflow_id, action_ids, event_id }` (**user decision: `event_id` added** for a uniform surface; task 19 extends `start-workflow.yaml`'s `:return` + AC), Cancel/Close `{ action_ids, event_id, tracker_fired }` with `event_id` real and `tracker_fired` from `runTrackerCascade`'s `fires` (task 16). The Close idempotent-no-op carve-out is reconciled in both places: task 17's AC ("exactly one lifecycle event… except Close's idempotent no-op") and design.md's "Engine entry points emit events" intro. (`payload.reason` landing on the status entry was pinned under #5.)
 
 The module API yamls fix the wire contract: `start-workflow.yaml` maps
 `{ workflow_id, action_ids }`; `cancel-workflow.yaml` / `close-workflow.yaml`
@@ -222,6 +234,8 @@ map `{ action_ids, event_id, tracker_fired }` and pass
   which returns the empty result without an event") in both places.
 
 ### 7. Start's load phase can't be `loadWorkflowState` — say what it is
+
+> **Resolved (auto).** Start's load bullet now names the mechanism: not `loadWorkflowState` (throws `workflow_not_found`; no workflow exists yet) — own reads via `workflowsConfig.find(type)` + `findDocs` for the optional parent action. Cancel's load bullet names `loadWorkflowState` `{ workflowId }` mode and owns the `workflow_not_found` tightening as the deliberate exception to "no new guards". `getActionFields.js` deletion was already homed in Files (review-11 #6).
 
 `loadWorkflowState` requires an existing workflow (`{ workflowId }` mode
 throws `workflow_not_found`, `loadWorkflowState.js:92–102`) — Start has no

@@ -30,10 +30,11 @@ These tasks implement Part 38, which rebuilds the workflow engine around two com
 | 20  | `20-demo-migration.md`                      | **Superseded** → implement [Part 45 (demo rebuild)](../../45-demo-rebuild/design.md) instead, after Parts 43 + 44      | 1–19, Parts 43–45 |
 | 21  | `21-entity-ref-key-catchup.md`              | Catch-up on implemented tasks (reviews 8–9): required `entity_ref_key` (schema + resolver + demo) + stale docstring | 4, 6           |
 | 22  | `22-callapi-contract-fix.md`                | Catch-up: fix landed code to the shipped `callApi` contract (opaque pre-scoped endpoint ids, throws-on-failure, no `{ success }` envelope) | 4, 13          |
+| 23  | `23-planner-contract-catchup.md`            | Catch-up (review-13): `planActionTransition` `seedStage` mode, `planWorkflowRecompute` `lifecyclePush`, tracker `none` row, cascade `fire.payload` passthrough | 2, 10, 11, (16) |
 
 ## Implementation Bands
 
-The 22 tasks group into five dependency bands. **A band is the unit of work** — point an agent at this file and a band number ("implement Band 3 of `38-engine-rebuild`"); it implements every task in the band, in the listed internal order, then runs the band's gate before stopping.
+The 23 tasks group into five dependency bands. **A band is the unit of work** — point an agent at this file and a band number ("implement Band 3 of `38-engine-rebuild`"); it implements every task in the band, in the listed internal order, then runs the band's gate before stopping.
 
 **Rules for an agent working a band:**
 
@@ -68,9 +69,9 @@ The 22 tasks group into five dependency bands. **A band is the unit of work** �
 
 ### Band 4 — Handler rewrites
 
-- **Tasks:** 15 → 16; 17 (parallel-safe with 15/16)
+- **Tasks:** 15 → 16; 23 → 17 (the 23→17 chain is parallel-safe with 15/16)
 - **Depends on bands:** 3
-- **Notes:** Submit (15) is the reference handler. The tracker cascade (16) reuses 100% of the Submit planner machinery and so follows it. Start/Cancel/Close (17) compose the same phases independently and can run parallel to 15/16.
+- **Notes:** Submit (15) is the reference handler. The tracker cascade (16) reuses 100% of the Submit planner machinery and so follows it. The planner-contract catch-up (23, from review-13) extends the landed Band 3 planners (`seedStage`, `lifecyclePush`), flips the tracker `none` row, and reconciles the cascade `fire.payload` passthrough if 16 landed without it — it must precede Start/Cancel/Close (17), which consume all four. 17 composes the same phases independently and can run parallel to 15/16.
 - **Gate:** handler-level tests pass; obsolete files deleted per task 15.
 
 ### Band 5 — Surfaces
@@ -88,4 +89,4 @@ The 22 tasks group into five dependency bands. **A band is the unit of work** �
 
 **Source:** `designs/workflows-module/parts/38-engine-rebuild/design.md`
 **Context files considered:** none — `design.md` is the only non-review file in the design folder. (Prerequisite concept/part designs referenced but not re-tasked here: `workflows-module-concept/state-machine/design.md`, Part 34 `_completed/34-action-access-model`, Part 35 `_completed/35-rename-task-kind-to-simple`, Part 30 `_rejected/30-status-map-rendering`.)
-**Review files skipped:** `review/review-1.md` – `review/review-11.md`, `review/consistency-4.md`, `review/consistency-5.md`, `review/consistency-8.md`, `review/consistency-14.md` — all their decisions are already folded into `design.md` and these task files (reviews 4–11 were actioned directly into the tasks after the initial tasking pass). **Reviews 12–15 are written but not yet actioned** — their findings carry no resolution annotations and are not reflected here: review-15 (task 22 — InternalApi hook emission, stale docstrings, resolved-wiring verification) before implementing task 22; review-12 (task 16) and review-13 (task 17) before implementing Band 4; review-14 (task 18 vs Parts 40/42/43 — rename double-work) before implementing Band 5.
+**Review files skipped:** `review/review-1.md` – `review/review-11.md`, `review/consistency-4.md`, `review/consistency-5.md`, `review/consistency-8.md`, `review/consistency-14.md` — all their decisions are already folded into `design.md` and these task files (reviews 4–11 were actioned directly into the tasks after the initial tasking pass). **Reviews 12 and 13 are actioned** (review-13's landed-code contract changes live in task 23). **Reviews 14–15 are written but not yet actioned**: review-15 (task 22 — InternalApi hook emission, stale docstrings, resolved-wiring verification) before implementing task 22; review-14 (task 18 vs Parts 40/42/43 — rename double-work) before implementing Band 5.
