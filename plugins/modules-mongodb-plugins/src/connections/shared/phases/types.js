@@ -102,10 +102,14 @@
  *   commit; the cascade loop runs the next-level load-plan-commit per entry.
  *   `signal` is one of `internal_mirror_child_active` / `_completed` /
  *   `_cancelled`.
- * @property {string[]} completedGroups — action group ids that transitioned to
- *   completed in this plan (loaded-vs-planned groups diff + `on_complete` join,
+ * @property {Array<{
+ *   workflow_id: string,
+ *   id: string,
+ *   on_complete: Object | null,
+ * }>} completedGroups — groups newly `done` in this plan (loaded-vs-planned
+ *   groups diff, `on_complete` joined from `workflowConfig.action_groups` —
  *   design D3 / task 15 planSubmit step 5). Surfaced to the post-hook author
- *   via `result.completed_groups`.
+ *   via `result.completed_groups` and on the handler return payload.
  * @property {{ parent_action_id: string, parent_workflow_id: string, new_status: string }} [fired]
  *   — tracker-cascade only (`planTrackerLevel`, task 16): the level's own fired
  *   entry in today's shape (`new_status` the FSM-resolved parent stage). The
