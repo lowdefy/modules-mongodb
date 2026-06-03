@@ -57,10 +57,10 @@ The 21 tasks group into five dependency bands. **A band is the unit of work** �
 
 ### Band 3 — Phases (load · plan · commit) — in progress
 
-- **Tasks:** 9 ✅ → 10 ✅, 11 ✅, 21 → 12 → 13, 14
+- **Tasks:** 9 ✅ → 10 ✅, 11 ✅, 21 ✅ → 12 ✅ → 13 ✅, 14
 - **Depends on bands:** 1, 2
-- **Progress:** Tasks 9, 10, 11 done. Remaining: 21 (next), 12, 13, 14.
-- **Task 21 runs first** — it is the reviews-8–13 deviation catch-up on already-implemented tasks (4, 6, 10). The required `entity_ref_key` must be real (validated, in the resolver's pick whitelist, present in demo configs) before task 12's `planEventDispatch` is written against it; the resolver currently drops the field silently.
+- **Progress:** Tasks 9, 10, 11, 21, 12, 13 done. Remaining: 14 (last in band).
+- **Task 21 ran first** — it was the reviews-8–13 deviation catch-up on already-implemented tasks (4, 6, 10), making the required `entity_ref_key` real (validated, in the resolver's pick whitelist, present in demo configs) before task 12's `planEventDispatch` was written against it.
 - **Q6 (form_data merge rule) — RESOLVED:** uniform deep-merge (objects deep-merge; arrays/scalars/`null` replace whole) onto the loaded `form_data.{action}` sub-object. The resolved rule is baked into task 11; no decision remains before implementing `planFormDataMerge`.
 - **Notes:** Phase types + load phase (9) anchor the contracts. Planners (10–12) are pure functions over FSM/render. Commit (13) and hook wrappers (14) close the cycle. The write-path-coupled Part 34 pieces — the submit-time access gate (in load, 9) and per-verb `computeEngineLinks` (in render, 3) — live here because they share the rebuild's surface.
 - **Gate:** planner unit tests pass; commit phase tested on both transaction and standalone paths incl. the CAS-miss gate.
