@@ -96,4 +96,22 @@
  *   `_cancelled`.
  */
 
+/**
+ * Output of the commit phase (`commitPlan`). Carries the IDs of all docs
+ * written and records any post-commit dispatch failures (steps 3–5) without
+ * throwing — steps 1–2 are the atomicity gate; by step 3 the workflow and
+ * actions are durably committed.
+ *
+ * @typedef {Object} CommitResult
+ * @property {string} workflow_id — the committed workflow's `_id`.
+ * @property {string[]} action_ids — the `_id` of every action doc committed
+ *   (insert or update) in step 2.
+ * @property {string | null} event_id — the `_id` of the dispatched event doc
+ *   (step 3), or `null` when step 3 recorded a failure.
+ * @property {Array<{ step: number, error: Error }>} dispatchErrors — failures
+ *   recorded from steps 3–5. Empty on a clean commit. The handler (task 15)
+ *   throws `WorkflowEngineError` with `code: "post_commit_dispatch_failed"`
+ *   after the tracker cascade and post-hook complete when this is non-empty.
+ */
+
 export {};

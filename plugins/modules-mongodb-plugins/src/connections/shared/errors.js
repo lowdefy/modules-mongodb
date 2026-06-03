@@ -25,4 +25,22 @@ class WorkflowEngineError extends Error {
   }
 }
 
-export { WorkflowEngineError };
+/**
+ * Thrown when the CAS filter in commit step 1 finds zero matching docs —
+ * a concurrent write moved the workflow between load and commit. Callers
+ * (Submit, Cancel, Close, tracker cascade) catch this by class name as the
+ * retryable case; the engine does NOT auto-retry (each retry re-runs the
+ * pre-hook, which may be non-idempotent — caller's policy decides).
+ *
+ * Despite the name it fires for every handler's `update` commit path, not
+ * only Submit: Cancel, Close, and each tracker cascade level claim the
+ * workflow the same way.
+ */
+class ConcurrentSubmitError extends WorkflowEngineError {
+  constructor(message, { cause } = {}) {
+    super(message, { code: 'concurrent_submit', cause });
+    this.name = 'ConcurrentSubmitError';
+  }
+}
+
+export { WorkflowEngineError, ConcurrentSubmitError };
