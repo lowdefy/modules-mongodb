@@ -202,9 +202,9 @@ Pre-hooks return a structured response that the engine treats as a signal manife
 :return:
   actions:                         # emit signals against other actions (optional)
     - { type: <action_type>, signal: <name> }
-    - { workflow_id: <id>, type: <action_type>, signal: <name> }
     - { action_id: <id>, signal: <name> }       # by primary key
     - { type: <action_type>, key: <key>, signal: <name>, upsert: true }  # spawn a missing keyed instance
+    - { type: <action_type>, key: <key>, signal: <name>, upsert: true, fields: { ... }, metadata: { ... } }  # spawn seeded with data
   event_overrides: { ... }
   form_overrides: { ... }
 ```
@@ -212,8 +212,9 @@ Pre-hooks return a structured response that the engine treats as a signal manife
 **Pre-hook semantics:**
 
 - **The current action lands per the signal the user fired.** A pre-hook cannot re-signal the current action — there is no root-level signal override. It influences the current action only through `event_overrides` (log event) and `form_overrides` (written form data); where the action *lands* is fixed by the fired signal and the FSM. Conditional landing (e.g. "this submission should be marked not-required") is modelled as a separate thin action with its own button, not a redirect of the current submit (see worked example 4).
-- `actions[]` — auxiliary signals against **other** actions. Each entry identifies a target (by `type` + workflow context, or by `action_id`) and the signal to fire. Engine fires each against the target's FSM; non-listening targets no-op silently.
+- `actions[]` — auxiliary signals against **other** actions in the **current workflow**. Each entry identifies a target (by `type` + optional `key`, or by `action_id`) and the signal to fire. Engine fires each against the target's FSM; non-listening targets no-op silently. There is no cross-workflow target form — the engine plans one workflow aggregate at a time; signalling another workflow needs its own load-plan-commit cycle (the tracker cascade is the only such path).
 - `upsert: true` on an `actions[]` entry **authorizes spawning** a missing target. When no doc matches the entry's `(type, key)`, the engine resolves the signal against the `none` creation row (the absent doc's current stage is `none`) and inserts a new action at the resolved birth stage. This is the rebuilt home of today's `{ type, key, status, upsert: true }` spawn — the `status` seed is gone; the birth stage now comes from the signal via the `none` row. Without `upsert: true`, a missing target throws (Open question 1).
+- `fields?` / `metadata?` on an `actions[]` entry are the **data seeding channel**: `fields` is spread verbatim onto the target action doc and `metadata` is merged into its accumulated `metadata` object (the same passthrough the current-action submit payload gets). Allowed on any entry — they seed a spawned doc and apply to transitions of existing targets alike, preserving today's behaviour where `fields` threads into both create and update. The canonical use is seeding a spawned keyed instance (e.g. a per-device action carrying `device_ids` + a `metadata.physical_id`).
 
 The shape change from today's `{ type, status }` to `{ type, signal }` is the one author-visible YAML break. Migration is mechanical:
 

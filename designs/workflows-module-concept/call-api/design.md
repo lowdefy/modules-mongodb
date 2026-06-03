@@ -1,5 +1,7 @@
 # CallApi from Plugin Connections
 
+> **Shipped-contract note.** The primitive landed in `@lowdefy/api`, but with a different surface than Decisions 1–2 propose: `callApi({ endpointId, payload })` (single destructured object, opaque pre-scoped endpoint id string), **throws** on failure preserving the error class, returns the target's `:return` value or `null`, and offers no user/pageId/timeout options. [spec.md](spec.md) documents the shipped contract and the full deviation table; the decision text below is preserved as the original rationale.
+
 A new Lowdefy primitive: invoking a Lowdefy `Api` from inside a plugin connection's request handler. Currently plugin handlers can read connection-shaped Mongo / S3 / SQL but can't call back into the Lowdefy Api layer to invoke other modules' Apis or app-supplied routines.
 
 This sub-design carves out the primitive on its own because it's load-bearing for [submit-pipeline](../submit-pipeline/design.md) and likely useful for any future plugin that needs to compose Lowdefy Apis server-side. The workflows module is the first concrete consumer; the capability is upstream-Lowdefy work in `@lowdefy/api`.
@@ -99,7 +101,7 @@ Matches the tracker-subscription depth-limit mitigation already documented in [e
 - **Side-effect throws** (events module call fails, notifications call fails) propagate. The user sees the submit as failed — honest reporting, since they may want to manually notify the affected party while the system retries. The notifications module's own retry/queue still operates independently.
 - **Post-hook throws** propagate. Writes from steps 4–10 stay durable (deliberately non-atomic); authors must make post-hooks idempotent. No `post_hook_error` soft-surface field.
 
-The single rule: failures throw; success returns the structured success shape. `context.callApi`'s contract is unchanged — it still throws on inner-routine `:reject` / `:throw` and returns the raw response on success.
+The single rule: failures throw; success returns the target's raw `:return` value (or `null` when the routine ends without `:return`). There is no `{ success, response, error }` envelope anywhere — see [spec.md](spec.md) § Deviations. Resolver code must not inspect `result.success`; the shipped routines (`new-event` returns `{ eventId }`, `send-notification` returns `null` under the default empty routine) carry no such field, so a success-check misfires on every successful call.
 
 ## Decision 5 — Payload evaluation
 

@@ -94,6 +94,8 @@ testable — there is no defined payload to assert against.
 
 ### 3. The auxiliary-entry shape drops the `fields`/`metadata` seeding channel that real upsert spawns use
 
+> **Resolved.** Option (a): optional `fields?` / `metadata?` added to the auxiliary-entry grammar, allowed on any entry (not just upserts) — `fields` spread verbatim, `metadata` merged, matching today's `entry.fields` behaviour in both create and update paths. Edits: state-machine.md path-3 grammar + semantics bullet; design.md plan-input #2; task 14 output shape + validator passthrough + AC; task 15 planSubmit step 3 threads entry `fields`/`metadata` into `planActionTransition`'s `payload`. Tasks ≤13 are already implemented, so the only implemented-code deviation — task 9's `shared/phases/types.js` `PreHookResult` typedef — is folded into task 14 as a catch-up edit (deviation note added to task 9). `planActionTransition` (task 10) already accepts `payload.fields`/`metadata` generically; no other implemented code changes.
+
 Today's pre-hook `actions[]` entries carry `fields`
 (`mergePreHookActions.js` shape `{ type, key?, status?, fields?, upsert?,
 force? }`; the upsert branch threads `fields` into `createAction` —
@@ -145,6 +147,8 @@ it's the case a naive `type === currentType` check gets wrong.
 
 ### 5. Cross-workflow `{ workflow_id, type }` targets can't land in a per-aggregate Plan — validator posture needed
 
+> **Resolved.** Sharper than proposed (user decision): the `{ workflow_id, type, signal }` form is **deleted** from state-machine.md's grammar rather than caveated — no engine version ever honoured it, and the per-aggregate Plan can't (build for what exists). The semantics bullet now states targets are current-workflow only (cross-workflow signalling needs its own load-plan-commit cycle; tracker cascade is the only such path). No `workflow_id`-specific validator rule; instead task 14's shape validator enforces a **strict closed key set** (`type`, `key`, `action_id`, `signal`, `upsert`, `fields`, `metadata`) — any other key rejects the entry, covering the ghost form and typos alike; today's lax spread-through posture doesn't carry over. AC + test list gain unknown-key rejection.
+
 State-machine.md's grammar allows `{ workflow_id: <id>, type, signal }`
 (line 203), but Part 38's Plan is per-aggregate (D10: "recursion across
 workflows can't share a Plan") and the load phase reads only the current
@@ -164,6 +168,8 @@ out of scope here, but the validator must not let the entry through to be
 misinterpreted.
 
 ### 6. The rejection has no error class or code — D13's enumeration doesn't cover the pre-hook phase
+
+> **Resolved.** Two codes (user decision — so the author can tell what they did wrong from the code alone), both `WorkflowEngineError`: `prehook_redirect` for a return entry that re-signals the current action (the resolves-to-current rule, finding 4), and `invalid_prehook_response` for any other malformed manifest (entry keys outside the closed grammar per finding 5's strict key set, bad shape). Added to D13's enumeration as pre-hook response-validation codes; task 14's validation bullets name the codes (with the explicit not-`UserError` warning) and the AC asserts both by code.
 
 D13: "Callers and tests discriminate on `code`, never on message text," with
 codes enumerated for load-phase invariants, plan-phase signal validation, and
@@ -216,6 +222,8 @@ remains under `utils/`.
 ## Minor
 
 ### 9. No-hook default vs the surfaced `pre_hook_response`, and design.md shorthand drift
+
+> **Resolved.** Bullet 1 (user decision, simplest-final-code): the wrapper's return stays single-valued — the normalized `PreHookResult` is both plan input and the surfaced `pre_hook_response` (task 15 pins it: always `{ actions, event_overrides, form_overrides }`, empty when no hook, never `null`). The no-hook/`null` distinction is deliberately dropped: no consumer reads the field (grepped this repo + the reference project), and today a null-returning hook already surfaces `null`, so the distinction never really existed. Bullet 2 was already fixed as a side effect of the finding-1/2 resolutions — design.md's data flow and worked example both show the full typed shape.
 
 - Today no-hook returns `null`, and the handler surfaces it
   (`pre_hook_response: null` in the return payload; exposed by

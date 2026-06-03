@@ -1,5 +1,7 @@
 # Task 13: Commit phase — `commitPlan`
 
+> **Deviation (implemented; corrected by task 22).** Steps 3–4 below describe `callApi` with the unshipped contract: a `({ id, module }, payload, { user })` three-argument shape and a "`callApi` does not throw — it returns `{ success, error }`" claim. Both are wrong against the shipped framework (`callApi({ endpointId, payload })`, single object arg, **throws** on failure, returns the `:return` value or `null` — see design § "The shipped `callApi` contract" and [call-api/spec.md](../../../../workflows-module-concept/call-api/spec.md)). The landed `commitPlan.js` reproduces the wrong contract (`dispatchEvent`'s `!result.success` check misfires on every successful dispatch; the `{ id, module }` first argument destructures to `endpointId: undefined`). Task 22 fixes the landed code: opaque pre-scoped endpoint ids from `connection.endpoints.*`, per-step try/catch (already present) as the sole failure capture, no success-check. The text below is preserved as written for history.
+
 ## Context
 
 The commit phase is the single point that touches multiple collections. It writes the Plan and nothing else — no reads, no renders, no logic that wasn't in the plan. It must implement: workflow-first ordering (D9), the conditional transaction vs standalone-fallback paths (D11), and the compare-and-swap concurrency gate on `workflow.updated.timestamp` (D15). It consumes the task-1 Mongo helpers and the task-9 `Plan` type.

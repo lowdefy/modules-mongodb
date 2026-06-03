@@ -28,11 +28,12 @@ These tasks implement Part 38, which rebuilds the workflow engine around two com
 | 18  | `18-display-surface-renames.md`             | Rename fixed pages `workflow-*`, update `_module.pageId` refs + `message`/`links`     | 4, 6           |
 | 19  | `19-emitted-payload-surfaces.md`            | `makeWorkflowApis` payload mapping (drop `force`, add `signal`) + `start-workflow`    | 6              |
 | 20  | `20-demo-migration.md`                      | **Superseded** → implement [Part 45 (demo rebuild)](../../45-demo-rebuild/design.md) instead, after Parts 43 + 44      | 1–19, Parts 43–45 |
-| 21  | `21-entity-ref-key-catchup.md`              | Catch-up on implemented tasks (reviews 8–13): required `entity_ref_key` (schema + resolver + demo) + stale docstring | 4, 6           |
+| 21  | `21-entity-ref-key-catchup.md`              | Catch-up on implemented tasks (reviews 8–9): required `entity_ref_key` (schema + resolver + demo) + stale docstring | 4, 6           |
+| 22  | `22-callapi-contract-fix.md`                | Catch-up: fix landed code to the shipped `callApi` contract (opaque pre-scoped endpoint ids, throws-on-failure, no `{ success }` envelope) | 4, 13          |
 
 ## Implementation Bands
 
-The 21 tasks group into five dependency bands. **A band is the unit of work** — point an agent at this file and a band number ("implement Band 3 of `38-engine-rebuild`"); it implements every task in the band, in the listed internal order, then runs the band's gate before stopping.
+The 22 tasks group into five dependency bands. **A band is the unit of work** — point an agent at this file and a band number ("implement Band 3 of `38-engine-rebuild`"); it implements every task in the band, in the listed internal order, then runs the band's gate before stopping.
 
 **Rules for an agent working a band:**
 
@@ -57,9 +58,9 @@ The 21 tasks group into five dependency bands. **A band is the unit of work** �
 
 ### Band 3 — Phases (load · plan · commit) — in progress
 
-- **Tasks:** 9 ✅ → 10 ✅, 11 ✅, 21 ✅ → 12 ✅ → 13 ✅, 14
+- **Tasks:** 9 ✅ → 10 ✅, 11 ✅, 21 ✅ → 12 ✅ → 13 ✅, 22 → 14
 - **Depends on bands:** 1, 2
-- **Progress:** Tasks 9, 10, 11, 21, 12, 13 done. Remaining: 14 (last in band).
+- **Progress:** Tasks 9, 10, 11, 21, 12, 13 done. Remaining: 22 (callApi-contract catch-up on landed code — do before 14, whose hook wrappers build on the corrected contract), then 14 (last in band).
 - **Task 21 ran first** — it was the reviews-8–13 deviation catch-up on already-implemented tasks (4, 6, 10), making the required `entity_ref_key` real (validated, in the resolver's pick whitelist, present in demo configs) before task 12's `planEventDispatch` was written against it.
 - **Q6 (form_data merge rule) — RESOLVED:** uniform deep-merge (objects deep-merge; arrays/scalars/`null` replace whole) onto the loaded `form_data.{action}` sub-object. The resolved rule is baked into task 11; no decision remains before implementing `planFormDataMerge`.
 - **Notes:** Phase types + load phase (9) anchor the contracts. Planners (10–12) are pure functions over FSM/render. Commit (13) and hook wrappers (14) close the cycle. The write-path-coupled Part 34 pieces — the submit-time access gate (in load, 9) and per-verb `computeEngineLinks` (in render, 3) — live here because they share the rebuild's surface.
@@ -87,4 +88,4 @@ The 21 tasks group into five dependency bands. **A band is the unit of work** �
 
 **Source:** `designs/workflows-module/parts/38-engine-rebuild/design.md`
 **Context files considered:** none — `design.md` is the only non-review file in the design folder. (Prerequisite concept/part designs referenced but not re-tasked here: `workflows-module-concept/state-machine/design.md`, Part 34 `_completed/34-action-access-model`, Part 35 `_completed/35-rename-task-kind-to-simple`, Part 30 `_rejected/30-status-map-rendering`.)
-**Review files skipped:** `review/review-1.md` – `review/review-9.md`, `review/consistency-4.md`, `review/consistency-5.md`, `review/consistency-8.md` — all their decisions are already folded into `design.md` and these task files (reviews 4–9 were actioned directly into the tasks after the initial tasking pass). **Reviews 10–13 (tasks 14, 15, 16, 17) are written but not yet actioned** — their findings carry no resolution annotations and are not reflected here; action them before implementing Band 4 / the hook wrappers.
+**Review files skipped:** `review/review-1.md` – `review/review-11.md`, `review/consistency-4.md`, `review/consistency-5.md`, `review/consistency-8.md`, `review/consistency-14.md` — all their decisions are already folded into `design.md` and these task files (reviews 4–11 were actioned directly into the tasks after the initial tasking pass). **Reviews 12–15 are written but not yet actioned** — their findings carry no resolution annotations and are not reflected here: review-15 (task 22 — InternalApi hook emission, stale docstrings, resolved-wiring verification) before implementing task 22; review-12 (task 16) and review-13 (task 17) before implementing Band 4; review-14 (task 18 vs Parts 40/42/43 — rename double-work) before implementing Band 5.

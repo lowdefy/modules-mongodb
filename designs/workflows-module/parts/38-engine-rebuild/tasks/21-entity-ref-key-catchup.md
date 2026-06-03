@@ -1,8 +1,8 @@
-# Task 21: `entity_ref_key` catch-up on implemented tasks (reviews 8–13 actioning)
+# Task 21: `entity_ref_key` catch-up on implemented tasks (reviews 8–9 actioning)
 
 ## Context
 
-The review-8–13 actioning pass (commit `8a9fddd`) amended the contracts of several **already-implemented** tasks. Most amendments turned out to be already satisfied by the landed code or were patched in the actioning commit itself — audited and confirmed aligned:
+The review-8–9 actioning pass (commit `8a9fddd` — titled "reviews 8-13", but only reviews 8–9 carry resolution annotations from it; reviews 10+ were actioned separately) amended the contracts of several **already-implemented** tasks. Most amendments turned out to be already satisfied by the landed code or were patched in the actioning commit itself — audited and confirmed aligned:
 
 - Task 9: `types.js` Plan typedef (singular `event`, `workflow.operation`) — patched in `8a9fddd`.
 - Task 10: `planActionTransition` stamps `updated: now` on the **update** path too (`planActionTransition.js:134`), with test coverage.

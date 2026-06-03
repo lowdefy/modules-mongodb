@@ -13,7 +13,7 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
 **Define phase contract types** (extend `shared/types.js` or add `shared/phases/types.js`):
 
 - `LoadedState` — `{ workflow, actions[], workflowConfig, actionConfig (Submit only), targetAction (Submit only) }`. `targetAction` is a convenience handle — `actions.find((a) => String(a._id) === payload.action_id)` — the doc the handler (task 15) passes as `planActionTransition`'s `action` input (task 10).
-- `PreHookResult` — `{ actions: [{ target, signal, upsert? }], event_overrides, form_overrides }`. An `actions[]` entry may carry `upsert: true` to spawn a missing keyed target (D4 / D13 (2)); `target` then identifies a not-yet-existing `(type, key)`.
+- `PreHookResult` — `{ actions: [{ target, signal, upsert?, fields?, metadata? }], event_overrides, form_overrides }`. An `actions[]` entry may carry `upsert: true` to spawn a missing keyed target (D4 / D13 (2)); `target` then identifies a not-yet-existing `(type, key)`. Optional `fields?` / `metadata?` are the data-seeding channel (state-machine.md path 3). *(Deviation note: this task was implemented before review-10 #3 added `fields?` / `metadata?`; the typedef catch-up lands in task 14.)*
 - `Plan` — exactly the D3 shape:
   ```ts
   type Plan = {
@@ -23,6 +23,7 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
     changeLog: ChangeLogEntry[];  // finished community-schema log-changes entries built by planChangeLog (task 12) from the per-doc deltas; commit step 5 inserts these. Empty when changeLog is unconfigured.
     // No `notifications` field: the engine builds no notification doc. After commit it
     // fires callApi("send-notification", { event_ids }) keyed on the committed events (D9 step 4).
+    completedGroups: Array<{ workflow_id; id; on_complete }>;  // groups newly `done` — loaded vs planned groups diff + on_complete join (D3); feeds the handler return + post-hook result bag. *(Deviation note: added by review-11 #2 after this task was implemented; the typedef catch-up lands in task 14, the producing step in task 15 planSubmit step 5.)*
     trackerFires: Array<{ parentWorkflowId; parentActionId; signal }>;
   };
   ```

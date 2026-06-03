@@ -26,6 +26,7 @@ async function runTrackerCascade(initialFires, baseContext) {
 - **`MAX_DEPTH = 10` guard tracks chain depth, not loop iterations.** Each fire carries a `depth` field seeded at 1, incremented per level. A wide-but-shallow cascade (one workflow with many tracker parents) must **not** trip the guard; a genuinely deep cycle must. A single dequeue counter on the BFS loop would measure total fan-out (breadth), not depth — do **not** use that.
 - Define `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`) in `shared/errors.js` — engine throws share the D13 error model (base class created by task 9); it keeps a named class like `ConcurrentSubmitError`, but callers/tests discriminate on `code`.
 - **Collect per-level dispatch errors; don't stop the cascade for them.** Each level's `commitPlan` may record post-commit dispatch failures on its `CommitResult.dispatchErrors[]` (task 13 failure policy). `runTrackerCascade` accumulates these across levels and returns them, so the handler folds them into its single end-of-invocation `post_commit_dispatch_failed` throw (task 15). A level's dispatch failure never prevents the remaining fires from running — only a steps-1–2 throw (e.g. `ConcurrentSubmitError`) propagates.
+- **Return the accumulated fire list alongside the dispatch errors.** The handler's `tracker_fired` return key (task 15) and the post-hook `result` bag (task 14) read the cascade's per-level fire list in **today's shape** — `[{ parent_action_id, parent_workflow_id, new_status }]`, `new_status` the FSM-resolved parent stage (review-11 #2; this is the existing `tracker_fired` consumer contract, `makeWorkflowApis.js` `:return`).
 
 **Create `shared/phases/planners/planTrackerLevel.js`:**
 
@@ -53,4 +54,5 @@ async function runTrackerCascade(initialFires, baseContext) {
 ## Notes
 
 - Depends on task 15 (the Submit planner machinery + the handler call site). Start/Cancel/Close (task 17) also feed `trackerFires` into this loop.
+- Fires arrive **fully resolved**: every producer composes `{ parentWorkflowId, parentActionId, signal }` from ids in hand at plan time — the loaded workflow doc's `parent_action_id` + `parent_workflow_id` (D3 producer rule; the latter is the workflow-doc schema addition Start stamps). The cascade does no id resolution; per-level fires recurse identically (`planTrackerLevel`'s loaded parent workflow carries its own parent ids).
 - The mirror event is lower-prominence in the timeline (system event).

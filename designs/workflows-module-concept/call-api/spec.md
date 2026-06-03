@@ -1,125 +1,90 @@
 # CallApi from Plugin Connections — Spec
 
-`context.callApi` primitive on `@lowdefy/api` request handlers. Full rationale in [design.md](designs/workflows-module-concept/call-api/design.md); this file carries only the committed decisions.
+`callApi` function in the request-resolver argument bag in `@lowdefy/api`. Full rationale in [design.md](designs/workflows-module-concept/call-api/design.md); this file carries only the committed decisions.
 
-**Status:** Upstream-Lowdefy work in `@lowdefy/api`. First consumer: [submit-pipeline](../submit-pipeline/design.md). Submit-pipeline is gated on this landing.
+**Status: shipped.** Defined in [`callRequestResolver.js`](../../../../lowdefy/packages/api/src/routes/request/callRequestResolver.js). This spec documents the shipped contract, which differs from the originally proposed surface (see § Deviations from the original proposal). First consumer: [submit-pipeline](../submit-pipeline/design.md).
 
 ## API surface
 
-Added to the existing plugin-connection request-handler signature:
-
-```ts
-type CallApiEndpoint = string | { id: string; module: string };
-
-interface CallApiOptions {
-  user?: object; // override caller's user context; defaults to inheriting
-  pageId?: string; // override caller's pageId; defaults to inheriting
-  timeout?: number; // ms; defaults to remaining handler budget
-}
-
-interface CallApiResult {
-  success: boolean;
-  response: object;
-  error?: { type: string; message: string; stack?: string };
-}
-
-type CallApi = (
-  endpoint: CallApiEndpoint,
-  payload: object,
-  options?: CallApiOptions,
-) => Promise<CallApiResult>;
-```
-
-Available on the handler context:
+`callApi` is passed in the request-resolver argument bag (alongside `connection`, `payload`, `request`, etc.):
 
 ```js
-async function MyHandler({ payload, connection, context }) {
-  const result = await context.callApi('some-endpoint', { ... });
-  if (!result.success) {
-    // handle error
-  }
+async function MyResolver({ payload, connection, callApi }) {
+  const response = await callApi({ endpointId, payload });
 }
 ```
 
-**Endpoint resolution:**
+```ts
+type CallApi = (args: {
+  endpointId: string; // required
+  payload?: object; // already-evaluated literal; becomes the target's _payload
+}) => Promise<any>;
+```
 
-- `string` form → resolves against the host app's Api registry (top-level Api ids).
-- `{ id, module }` form → resolves a module-scoped Api (same semantics as YAML's `_module.endpointId: { id, module }`).
+- `endpointId` — **opaque string**. Module endpoints use a `<moduleEntryId>/<endpointId>` id; `callApi` does not parse or resolve it. Scoping happens at **app build time** via `_module.endpointId` (string form → own-module scope; `{ id, module }` form → dependency scope). Resolved ids reach the resolver as plain strings through connection properties or baked-in endpoint params — the engine never constructs prefixes at runtime.
+- `payload` — optional object passed to the target routine as `_payload`. Already evaluated by the caller; the target's routine still goes through full operator evaluation.
+
+**Return value.** The value returned by the target's `:return` step, or `null` if the target routine terminates without an explicit `:return`. There is **no envelope** — no `{ success, response, error }` wrapper.
+
+## Errors
+
+**`callApi` throws on failure.** The thrown error preserves its underlying class so resolvers can branch on it:
+
+- `ConfigError` — unknown endpoint id, unauthorized against the target, or depth cap exceeded. Unauthorized collapses to the same "does not exist" message as a missing endpoint to avoid leaking endpoint existence.
+- `UserError` — the target routine terminated with `:throw` or `:reject`. Catch this class to distinguish a deliberately-failed routine from a system fault. `:reject` carries `isReject: true`.
+- Other Lowdefy error classes (`RequestError`, `ServiceError`) propagate unchanged from the target's failure site.
+
+Caller decides what to do per call:
+
+- **Pre-hook errors** → propagate; `:reject` surfaces as a rejection at the calling app ([Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md)).
+- **Side-effect errors** (events, notifications, change-log) → caught per step by the commit phase and recorded on `dispatchErrors` (Part 38 D9) — the workflow/action writes are already durable by then.
+- **Post-hook errors** → propagate; authors must make post-hooks idempotent.
 
 ## Auth context
 
-**Default: inherit caller's user.** Hook resolves `_user` to the same identity that initiated the parent request. Inherited:
+**The caller's user identity authorizes the target endpoint — no auth bypass, no override.** There is no `options.user`; system-identity calls are not part of the shipped surface.
 
-- User object (`_user.id`, `_user.profile`, `_user.roles`)
-- `pageId` (for `apps.{app_name}.roles` resolution on `user_contacts`)
-- App globals (`_global`, `_module.*`)
+The target runs in an **isolated routine context**: fresh `_payload`, fresh `_state`, fresh `_step` namespace. The target inherits the caller's parser closure — `_user`, `_secret`, `_env` resolve to the same values as the caller.
 
-**Override:** Set `options.user` to call as a different identity (e.g. system writes). Logged on the call.
+Internal API endpoints (`type: InternalApi`) are reachable.
 
 ## Depth limit
 
-Every `context.callApi` invocation increments a request-scoped `_depth` counter. Default limit **10**. Exceeded → throws structured error citing the call chain:
-
-```
-CallApiDepthError: depth limit (10) exceeded in chain:
-  SubmitWorkflowAction → pre-hook(qualify-pre-submit) → workflow-onboarding-qualify-submit → SubmitWorkflowAction → ...
-```
-
-Counter rides on the request-scoped context object handlers can't accidentally drop. Per-handler override possible if a real use case surfaces.
-
-## Error propagation
-
-Errors raised inside an invoked Api return as `{ success: false, error }` to the caller. Caller decides what to do:
-
-- **Pre-hook errors** → submit-pipeline aborts the submit, writes `status: error` with captured context (engine Decision 5).
-- **Side-effect errors** (events, notifications) → logged, submit continues.
-- **Post-hook errors** → never abort; surfaced as `post_hook_response.error` on caller's API return.
-
-Behaviour is per-call. `context.callApi` itself doesn't decide.
+Endpoint calls share a per-chain depth cap of **10** with routine `:call_api` steps. Exceeding the cap throws.
 
 ## Payload evaluation
 
-- Handler passes a **literal** payload (no `_state` — there's no page state server-side).
+- Resolver passes a **literal** payload (no `_state` — there's no page state server-side).
 - Invoked Api's routine still goes through full operator evaluation.
-- `_user` resolves to inherited user (or `options.user` if overridden).
-- `_payload` resolves to the literal payload the handler passed.
-- `_state` is **not available**. APIs requiring `_state` aren't safely callable via `context.callApi`; documented in README.
+- `_payload` resolves to the literal payload the resolver passed.
+- `_state` starts fresh (empty) in the target's routine context.
 
-## Implementation
+## Deviations from the original proposal
 
-In `@lowdefy/api`:
+The originally proposed surface (preserved in [Part 1's design](../../workflows-module/parts/_completed/01-call-api-primitive/design.md) for history) was never built. Shipped differences:
 
-1. Extend the handler signature — all existing handlers get the new `context` parameter; ignore-by-default for handlers that don't use it.
-2. Implement `context.callApi` as a thin wrapper over the existing Api-invocation machinery (the same path the page-side `CallApi` block uses).
-3. Add depth counter on the request-scoped context.
-4. Add auth-context inheritance / override surface.
+| Proposed | Shipped |
+| --- | --- |
+| `callApi(endpoint, payload, options?)` — positional args | `callApi({ endpointId, payload })` — single destructured object |
+| `endpoint: string \| { id, module }` — runtime module resolution | `endpointId: string` — opaque, pre-scoped at build time via `_module.endpointId` |
+| Returns `{ success, response, error? }`; never throws | Returns the `:return` value (or `null`); **throws** on failure |
+| `options.user` identity override | No override — caller identity always |
+| `options.pageId`, `options.timeout` | Not built |
 
-## Test coverage required
-
-- Cross-module reference (`{ id, module }`) resolves correctly from JS.
-- Auth inheritance: `_user` inside invoked API resolves to caller's identity.
-- Auth override: `options.user` works and is logged.
-- Depth limit: chain of `n+1` recursive calls throws structured error.
-- Error propagation: thrown error inside invoked Api returns `{ success: false, error }`.
-- Payload evaluation: `_payload` resolves; `_state` is undefined / errors.
+Any resolver code that passes `{ id, module }` as the first argument, passes a third `{ user }` argument, or inspects `result.success` is written against the unshipped proposal and fails at runtime — `endpointId` destructures to `undefined` (ConfigError), and no shipped routine returns a `success` field. See Part 38 task 22 for the engine-side fix.
 
 ## Non-goals
 
 - General-purpose RPC (use a normal HTTP client for external services).
 - Page-side state access (`_state` deliberately unavailable).
-- Replacing the page-side `CallApi` block.
-- Streaming responses (out of scope; not in v1).
-- Transaction propagation (v2 concern when transactional engine writes land).
+- Replacing the page-side `CallApi` action.
+- Streaming responses.
+- Transaction propagation (v2 concern — the target runs on its own clients; see Part 38 § events-outside-transaction).
 - Result caching (would hide side-effect bugs).
-
-## Open questions
-
-1. **Spike before implementation.** Confirm cross-module Api invocation works from a JS handler — reuse the YAML-side `_module.endpointId: { id, module }` resolver against the in-process Api registry.
-2. **Telemetry.** Per-call timing + depth + success rate. Recommended but not blocking.
-3. **Streaming.** Not in scope but flagged for v2.
 
 ## Dependents
 
 - **[submit-pipeline](../submit-pipeline/design.md)** — Decisions 1, 4, 6 all depend on this.
-- **[engine](../engine/design.md)** — Future opt-in for the engine to call events/notifications module APIs directly.
-- **[action-groups](../action-groups/design.md)** — Decision 6's `on_complete` fan-out implementable once this lands.
+- **[engine](../engine/design.md)** — the engine calls events/notifications module APIs directly.
+- **[action-groups](../action-groups/design.md)** — Decision 6's `on_complete` fan-out.
+- **Part 38 (engine rebuild)** — commit-phase steps 3–4 dispatch via `callApi`; hook phases invoke pre/post hook endpoints.

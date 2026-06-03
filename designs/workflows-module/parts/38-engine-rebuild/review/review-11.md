@@ -22,6 +22,8 @@ findings below adjoin those; the overlap is flagged where it exists.
 
 ### 1. `plan.trackerFires` has no producer — and `parentWorkflowId` is not purely derivable
 
+> **Resolved.** Neither (a) nor (b) — a third option: workflow docs gain a denormalised **`parent_workflow_id`** beside `parent_action_id`, stamped by `StartWorkflow` from the loaded parent action's `workflow_id` (in hand at insert time; same copy mechanic as `entity_ref_key`). The fire is then purely derivable at plan time — `LoadedState` untouched, no per-level cascade read, D3 fire shape unchanged, bidirectional parent↔child linking as a data-model win. Producer rule written once in D3 (Submit: `internal_mirror_child_completed` iff `completed` pushed ∧ `parent_action_id != null`; Start: `_active` from the loaded parent action; Cancel/Close: `_cancelled`); producing step added to task 15's `planSubmit` (step 9 after #2's renumber) + data flow; task 17 stamps the field and cites the shared rule; task 16 notes fires arrive fully resolved. Backfill for pre-existing child workflows is author-owned (no fallback read), per the schema-additions note.
+
 `planSubmit`'s composition (task 15 steps 1–9) never composes `trackerFires`.
 Step 9 "Assemble the `Plan` object" implies the field exists, but no step — and
 no planner in tasks 10–12 — produces it. The handler then calls
@@ -66,6 +68,8 @@ say it once in shared terms (the cascade entry), not per handler.
 
 ### 2. The handler return payload is unpinned — and `completed_groups` has no producer anywhere
 
+> **Resolved.** Task 15 pins the handler return to today's six keys verbatim (matching the emitted Api `:return` block, which task 19 doesn't touch), with per-key producers: `action_ids` from `CommitResult`, `completed_groups` from the new `plan.completedGroups`, `event_id` singular (review-8 #9 had already pinned it end-to-end), `tracker_fired` from the cascade's fire list. `planSubmit` gains step 5 — the loaded-vs-planned groups diff + `on_complete` join — and D3's Plan gains the `completedGroups` field, the single producer feeding both the handler return and task 14's post-hook `result` bag (task 14 now cites it). AC added: integration test asserts all six keys, including a joined `completed_groups` entry when a submit completes a group.
+
 Task 15's flow ends "→ return handler payload" and the AC never says what that
 payload is. The consumer is concrete: the emitted per-action Api's `:return`
 block (`makeWorkflowApis.js:82–89`) maps six keys —
@@ -98,6 +102,8 @@ resolve them to one shape.
 
 ### 3. Engine-context composition is unowned — nobody calls `getMongoDb`
 
+> **Resolved.** Task 15's shared invocation-setup step now owns the full engine-context composition: `await getMongoDb(connection)` → `{ mongoDb, mongoClient, useTransactions }` plus `callApi`/`user`/`connection`/`params`/`workflowsConfig`, the mint, and the request-context fields — with the async-at-handler-entry note. The rebuilt Submit context drops `mongoDBConnection` (verified: loads via `findDocs`, hooks/events/notifications via `callApi` — nothing in the rebuilt path uses the community wrapper); the `createMongoDBConnection` import goes with the rewrite. Task 17 composes via the same shared step.
+
 The phases consume `context.mongoDb` (load `findDocs`, commit helpers),
 `context.mongoClient` (commit `startSession`, D11), and
 `context.useTransactions` — all produced by the landed
@@ -123,6 +129,8 @@ it's dropped; say so, since `createMongoDBConnection` is imported today.
 
 ### 4. `now` is *read* off `connection.changeStamp`, not generated — the task's "generated here" invites the wrong implementation
 
+> **Resolved (auto).** Task 15's mint paragraph now states `event_id`/`newId` are generated (`randomUUID()`) while `now` is read from `connection.changeStamp` (per-request evaluated events-module stamp; one stamp per invocation), with an explicit warning against constructing `{ timestamp: new Date(), user }` in the handler.
+
 Task 15: the minted values "are nondeterministic, so they are generated here."
 True for `event_id`/`newId`; wrong for `now`. Today's stamp is the
 **connection property** `changeStamp` — `workflow-api.yaml` wires
@@ -144,6 +152,8 @@ stamp per invocation, all writes share it, per the schema description).
 ## Dispositions
 
 ### 5. Three existing integration test files have no disposition
+
+> **Resolved.** All three added to task 15's Files list as delete-after-fold into `SubmitWorkflowAction.test.js` (the single integration home): `handleSubmit.test.js` deleted with a named salvage list (pre-hook auxiliary flows incl. wire-level upsert spawn, end-to-end form-data merge, `completed_groups` + `on_complete` join — everything else dies with the deleted behaviour, `required_after_close`/upsert-split already mirrored in task 9/10 unit tests); `worked-example.test.js` folded per the AC, re-driven through the new payload grammar; `event-id-round-trip.test.js` preserved as a named assertion block (the invariant is now designed-in, D3/task 12).
 
 Task 15 deletes the `.test.js` of each deleted source file and
 creates/rewrites `SubmitWorkflowAction.test.js`. It says nothing about:
@@ -168,6 +178,8 @@ creates/rewrites `SubmitWorkflowAction.test.js`. It says nothing about:
 Fix: add the three files to task 15's Files list with explicit dispositions.
 
 ### 6. The deletion audit re-opens decisions design.md already made — and misses `shared/getActions.js`
+
+> **Resolved (auto).** Task 15's audit sentence replaced with the four design-settled dispositions (`mergeEventOverrides` kept/relocated by task 12; `mergeFormOverrides`, `mergePreHookActions`, `shouldCreate` deleted, citing Q6 and the design Deleted list). `shared/getActions.js` (+ test) added to task 15's deletion list (importers verified: only `handleSubmit.js` + `recomputeWorkflowAfterActionWrite.js`). `shared/getActionFields.js` disposition assigned to task 17 (deletion entry added there; pointer note in task 15).
 
 Task 15 line 51 says to "audit each" of `mergeEventOverrides`,
 `mergeFormOverrides`, `mergePreHookActions`, `shouldCreate` — "keep and
@@ -196,6 +208,8 @@ it.
 ## Minor
 
 ### 7. The `planSubmit` step list drifts from the landed planner signatures
+
+> **Resolved (auto).** Steps 1–3 restated as entry composition (build the transition-entry list with `source` tags; `planActionTransition` resolves signals internally — no orchestrator pre-resolution), and the merge order fixed: `planFormDataMerge` runs first, `planWorkflowRecompute` consumes the merged `formData` (landed task-11 signature). List renumbered 1–8.
 
 Tasks 10–11 are implemented, so the orchestration contract is no longer
 hypothetical. Two adjustments:
