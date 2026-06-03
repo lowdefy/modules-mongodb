@@ -31,12 +31,19 @@
  *
  * @typedef {Object} PreHookResult
  * @property {Array<{
- *   target: { type: string, key?: string | null },
+ *   type: string,
+ *   key?: string | null,
+ *   action_id?: string,
  *   signal: string,
  *   upsert?: boolean,
+ *   fields?: Object,
+ *   metadata?: Object,
  * }>} actions — auxiliary signals against *other* actions. An entry may carry
  *   `upsert: true` to spawn a missing keyed target (design D4 / D13 (2));
- *   `target` then identifies a not-yet-existing `(type, key)`.
+ *   `type` + `key` (or `action_id`) identify the target action. `fields` and
+ *   `metadata` are verbatim data-seeding bags threaded into
+ *   `planActionTransition`'s `payload.fields` / `payload.metadata` for the
+ *   target (state-machine.md path 3).
  * @property {Object} event_overrides — merged over the engine-default event
  *   payload during planning.
  * @property {Object} form_overrides — merged into the planned workflow's
@@ -95,6 +102,10 @@
  *   commit; the cascade loop runs the next-level load-plan-commit per entry.
  *   `signal` is one of `internal_mirror_child_active` / `_completed` /
  *   `_cancelled`.
+ * @property {string[]} completedGroups — action group ids that transitioned to
+ *   completed in this plan (loaded-vs-planned groups diff + `on_complete` join,
+ *   design D3 / task 15 planSubmit step 5). Surfaced to the post-hook author
+ *   via `result.completed_groups`.
  */
 
 /**
