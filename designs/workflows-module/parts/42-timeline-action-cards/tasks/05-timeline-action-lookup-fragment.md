@@ -31,8 +31,18 @@ sort by `(sort_order, updated.timestamp)` → `$replaceRoot` back to the event.
 This attaches the card to the visually-last event because `new-event.yaml` sets
 both `date` and `created.timestamp` to `_date: now` at insert (D4 assumption).
 
-Blocked actions are filtered out (matching v0 and the block, which also hides
-`status === "blocked"`).
+**Card-worthiness filter (adapted from v0 — not verbatim, see design D4).** The
+fragment drops currently-blocked actions and never-worked actions (history
+containing no active stage — only `blocked` / `not-required`). v0 enumerated
+the two never-worked history shapes by exact array match; the fragment encodes
+the intent semantically. v0's app-cell guard (`$match: { <app>: { $ne: null } }`)
+is deliberately **not** ported — access alone gates card visibility (D5).
+
+**Zero-verb actions are dropped (D5).** After the `visible_verbs` compute ref,
+an inline `$match $expr $anyElementTrue` over the four `visible_verbs` bools
+drops actions the user holds no verbs on — the same access outcome every other
+surface gets from `visible_verbs_filter.yaml`. A dropped action leaves the
+event with `actions: []`, which renders no card; the event row still renders.
 
 ## Task
 
@@ -57,21 +67,59 @@ see Notes). Sketch:
     foreignField: _id
     as: actions
     pipeline:
+      # Card-worthiness filter (adapted from v0 — see design D4). Drops:
+      #   1. actions whose CURRENT stage is blocked (no blocked card ever
+      #      renders; the block also hides them), and
+      #   2. actions that have NEVER been in an active stage — a history of
+      #      only blocked / not-required (e.g. blocked → not-required) means
+      #      nothing ever happened, so there is no card story to tell.
+      # v0 enumerated the two never-worked history shapes (['blocked'] and
+      # ['not-required', 'blocked']); this expresses the same intent
+      # semantically and also covers shapes v0's exact-array match missed
+      # (e.g. blocked/not-required cycles).
+      # MUST run before the $addFields below, which overwrites `status`
+      # (the history array) with the scalar current stage.
+      - $match:
+          $expr:
+            $and:
+              - $ne:
+                  - $arrayElemAt:
+                      - $status.stage
+                      - 0
+                  - blocked
+              - $gt:
+                  - $size:
+                      $filter:
+                        input: $status.stage
+                        as: s
+                        cond:
+                          $not:
+                            $in:
+                              - $$s
+                              - - blocked
+                                - not-required
+                  - 0
       - $addFields:
           status:
             $arrayElemAt:
               - $status.stage
               - 0
-      - $match:
-          $expr:
-            $ne:
-              - $status
-              - blocked
       - _ref:
           path: ../shared/workflow/visible_verbs.yaml
           vars:
             app_name:
               _var: app_name
+      # Drop actions the user holds NO verbs on — Part 34's "no role
+      # intersection on any verb → invisible" outcome, same as every other
+      # surface gets from visible_verbs_filter.yaml. Inlined: this fragment
+      # (modules/shared/) cannot _ref the workflows-module-internal bundle.
+      - $match:
+          $expr:
+            $anyElementTrue:
+              - - $visible_verbs.view
+                - $visible_verbs.edit
+                - $visible_verbs.review
+                - $visible_verbs.error
       - _ref:
           path: ../shared/workflow/resolve_action_link.yaml
           vars:
@@ -169,12 +217,17 @@ or extend it if Part 38 added it. Match the placement/style of the existing
 ## Acceptance Criteria
 
 - `modules/shared/workflow/timeline_action_lookup.yaml` exists as a multi-stage
-  YAML sequence: `$lookup` (with inner `visible_verbs` + `resolve_action_link`
-  refs and `{ _id, sort_order, updated, status, link, message }` projection) →
-  `$unwind` → `$setWindowFields` → `$group` (keep-on-last-event) → null filter →
-  `$sortArray` → `$replaceRoot` → `$project { last_event_id: 0 }`.
+  YAML sequence: `$lookup` (with inner `visible_verbs` ref → zero-verb drop →
+  `resolve_action_link` ref and `{ _id, sort_order, updated, status, link, message }`
+  projection) → `$unwind` → `$setWindowFields` → `$group` (keep-on-last-event) →
+  null filter → `$sortArray` → `$replaceRoot` → `$project { last_event_id: 0 }`.
 - The `$lookup` joins `localField: action_ids` / `foreignField: _id`.
-- Blocked actions are filtered (`$match $status != blocked`).
+- The card-worthiness `$match` runs **first** in the inner pipeline (before the
+  `status`-scalar `$addFields`) and drops both currently-blocked actions
+  (`status.stage[0] == blocked`) and never-worked actions (no history entry
+  outside `blocked` / `not-required`).
+- Zero-verb actions are dropped: inline `$match $expr $anyElementTrue` over the
+  four `visible_verbs` bools, immediately after the `visible_verbs` ref (D5).
 - The workflows manifest exports a `timeline-action-lookup` component pointing at
   the shared fragment, with a `components:` entry and an `exports.components`
   entry.

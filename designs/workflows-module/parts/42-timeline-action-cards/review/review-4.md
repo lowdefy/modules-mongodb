@@ -39,6 +39,8 @@ Option (b) matches an established repo precedent and keeps the diff minimal; opt
 
 ### 2. The timeline renders cards for actions the user has **no** visible verbs on — every other surface drops them
 
+> **Resolved.** The fragment's `$lookup` inner pipeline gains the zero-verb drop — inline `$match $expr $anyElementTrue` over the four `visible_verbs` bools, immediately after the `visible_verbs` ref (inlined because the shared fragment cannot `_ref` the workflows-internal bundle). Dropped actions leave `actions: []` → no card; the event row still renders. D5 now states the decision explicitly: access alone gates card visibility; v0's "no message cell → hidden" data-presence gate was considered and deliberately not adopted (the verb model subsumes it; a second hiding mechanism would make forgotten status_map messages silently invisible). A build-time message-coverage lint was discussed and declined as out of scope for this part. Design D5 + Proposed-shape step 1 and task 5 (sketch, prose, AC) updated.
+
 The three read APIs run `visible_verbs_filter.yaml`, whose `$match $anyElementTrue` drop implements Part 34's access outcome — per its own header: "drops actions where all four `visible_verbs` are false (the 'no role intersection on any verb → invisible' outcome)" (`visible_verbs_filter.yaml:7-8`).
 
 The fragment (D5, task 5) composes only the **compute** half (`visible_verbs.yaml`) plus `resolve_action_link.yaml`. Nothing drops zero-verb actions. Result: a user with no verbs on an action sees its live card — current **status** and **message** — on the events timeline (with `link: null`), while the `actions-on-entity` widget on the *same page* hides that action entirely. D5 resolves the access question only for the *link* dimension ("a naive pick could surface an `edit` link to a view-only user") and never decides card visibility; review-1 #4's resolution likewise covered only the link.
@@ -50,6 +52,8 @@ This contradicts both Part 34's access model and the design's own "every surface
 ## Correctness / consistency
 
 ### 3. "Carried verbatim from v0" overstates — the fragment drops v0's app-cell guard and changes the blocked-filter semantics
+
+> **Resolved.** Both sub-points addressed, with one correction to the finding itself. (1) The app-cell guard is deliberately **not** ported — superseded by the D5/#2 decision that access alone gates card visibility (v0 used cell presence as its only read-side gate; the verb model subsumes it). (2) The blocked-filter difference is real but the finding's "visually equivalent" claim is wrong for one case: `['not-required', 'blocked']` has *current* stage `not-required`, passes a current-stage-only filter, and renders a "Not required" card v0 suppressed (v0's history match existed to gate not-required cards on the action having ever been live; the block hides blocked cards itself). Resolved by replacing the fragment's filter with a semantic card-worthiness `$match`: current stage ≠ `blocked` AND history contains ≥1 active stage (covers v0's two shapes plus blocked/not-required cycles its exact-array match missed). Design D4 + Proposed-shape step 1 and task 5 (sketch, prose, AC) rewritten; "verbatim/matching v0" now claimed only for the de-dup window/group logic, which is verbatim.
 
 D4 says the de-dup is "carried verbatim"; task 5 says blocked-filtering "match[es] v0". Against the actual v0 (`prp-support/.../get_ticket_history.yaml:118-133`):
 
