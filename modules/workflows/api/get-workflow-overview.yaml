@@ -48,12 +48,8 @@ routine:
                           - $
                           - _module.var: app_name
                           - .message
-                      link:
-                        _string.concat:
-                          - $
-                          - _module.var: app_name
-                          - .link
                 - _ref: api/stages/visible_verbs_filter.yaml
+                - - _ref: ../shared/workflow/resolve_action_link.yaml
                 - - $sort:
                       groupIndex: 1
                       sort_order: 1

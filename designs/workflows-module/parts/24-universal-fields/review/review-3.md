@@ -22,6 +22,8 @@ templates already use; the stub + all six call sites match task 10/11's descript
 
 ### 1. `event.metadata.comment` contradicts Part 33 D2 — which says Part 24 was already amended off it
 
+> **Resolved (auto).** Half of this was already fixed when actioning began: design.md (mtime between the tasks and this review) had been amended off `metadata.comment` onto the planner route — its lines 110/144 and the open question all read "no `metadata.comment`", so the reviewer's design.md citations were against a stale snapshot. The five task files were still on the old contract and have been swept: task 1's `buildMetadata` shape is `{ action_type, workflow_type, current_key }` (no `comment` key), its tests assert the key's absence, and its note now cites Part 33 D2/D3 as the contract; tasks 4/5/8/12 reworded onto "comment rides the planner's `comment` param; rendering owned by Part 33 (`display.{app_name}.description`)". The planner `comment` param is kept exactly as Part 33's contract prescribes (flows un-folded if Part 24 lands first).
+
 Part 33 (`33-comment-rendering/design.md`) pins the comment contract both write paths share:
 
 - D2 (`:8`, `:28-33`): "**`metadata.comment` is dropped.** The comment … carries it once, in
@@ -56,6 +58,8 @@ modified on this branch — whichever lands second must not reintroduce the key.
 
 ### 2. Design still claims pure reuse of Part 38's helpers; tasks 1–3 amend four shared files the design doesn't own
 
+> **Resolved (auto).** design.md now reads "reuses **and minimally amends**" with a one-line summary of each amendment, the Load/Commit bullets name the new load mode and the workflow-less commit explicitly, and the Files-changed plugin section is restructured under `src/connections/` (the `shared/` tree sits beside `WorkflowAPI/`, not inside it — a path error the original list carried) adding `loadWorkflowState.js` (third `{ actionId, verb }` mode), `commitPlan.js` (action-only plans, no CAS), and `types.js` (nullable `Plan.workflow`). Review-2 #4 annotated. (Note: `planEventDispatch.js` was already in the file list when actioning began — only the other three were missing.)
+
 `design.md:141` says the handler "reuses Part 38's helpers — `loadWorkflowState` / `commitPlan` …
 `planEventDispatch`", and the "Files changed (owned by this part)" list names only `planFieldsUpdate.js` (new),
 `planActionTransition.js` (amend), the handler, and the connection registration. But none of the three helpers
@@ -76,6 +80,8 @@ type; third load mode; nullable-workflow plan). Annotate review-2 #4 resolved.
 
 ### 3. The access-gate prose and component snippets are stale against the shipped Part 34 / Part 18 shapes
 
+> **Resolved (auto).** design.md reworded to the shipped model: the load gate is the per-app **`edit`** verb (`access.{app_name}.edit` via `gateAllows`, Part 34 — action-wide `access.roles` removed by Part 34 D4); the component gates on `_state.action_allowed.edit` (per-verb map from `action_role_check`, Part 18) — button snippet and Verification line fixed. The consequence is now stated under "Role gating": metadata updates require the `edit` verb; a review-only role cannot update universal fields from any surface (v1 stance).
+
 - `design.md:143` — "role check (`access.roles` ⊇ user roles), identical to `SubmitWorkflowAction`". Action-wide
   `access.roles` no longer exists; the build hard-errors on it (`makeWorkflowsConfig.js:150-154`, "removed
   (Part 34 D4)"). The shipped model is per-app per-verb `access.{app_name}.{view|edit|review|error}` via
@@ -91,6 +97,8 @@ a review-only role cannot update fields from anywhere. That's a fine v1 stance, 
 "Role gating", not an inference.
 
 ### 4. Design omits the binding prerequisites task 9 ships — including a cross-module amendment to user-account
+
+> **Resolved (auto).** The "Module-shipped requests added: None" section is now "none added, one amended", documenting the additive `get_action` `assignee_docs` `$lookup` and the cross-module `user-multi-selector` `id`/`title` vars (with Part 24a's "Part 24 binds `_state.fields.assignees`" anticipation cited); both files added to Files changed. The string-`_id` verification (re-verified against `invite-user.yaml` `_uuid: true` / `create-profile.yaml` `_user: id`) is recorded in task 9's notes and in the design section.
 
 `design.md:181` says "Module-shipped requests added: **None**", and "Files changed" contains no
 `modules/workflows/requests/get_action.yaml` or `modules/user-account/**` entries. But the design's own display
@@ -108,6 +116,8 @@ One open question task 9 left implicit is settled here so it doesn't resurface a
 
 ### 5. `get_action` returns an array — the simple pages' display bindings are broken today, and the design's display example replicates the broken shape
 
+> **Resolved.** Pinned `get_action.0.*` (user decision). Design: the display-mode bullet, the kind×mode table row, and the example all carry the `.0.` index (the example also gains the `assignee_docs` leaf); the binding bullet explains why bare `get_action.*` resolves `undefined` and notes the `_state: action.*` alternative on pages that already prime from `get_action.0`. Task 11 step 2's deferred "sanity-check" is now a directive: fix the simple pages' un-indexed reads to `.0.`, minimally — Part 40's rewrite replaces these pages with its `surface.*` namespace, so no SetState restructure here. Task 10's references updated to the same shape. Coordination note: Part 40's task 4 currently primes `surface.action ← _request: get_action` ("the full action doc") — that carries the same array bug and needs `get_action.0` on its side; flagged to the user (Part 40 is a concurrently-active design, not edited from here).
+
 `get_action.yaml` is a `MongoDBAggregation` (`$match` only) → the response is an **array**. The form templates
 handle this (`view.yaml.njk:63-66` — `SetState action: { _request: get_action.0 }`), but `simple-view.yaml:126-131`
 and `simple-review.yaml` bind `action_data` to `_request: get_action.assignees` — which resolves `undefined` on an
@@ -122,6 +132,8 @@ shape in task 11, and make task 10's `assignee_docs` leaf + post-update refetch 
 ## Process
 
 ### 6. Review-2 findings #4, #6, #8, #9 were actioned but never annotated — and tasks.md says the reviews were skipped
+
+> **Resolved (auto).** Review-2 annotated: #4 Resolved (task 3 + the design file-list catch-up from #2 here), #6 Resolved (task 1: planner stamps the type + `DEFAULT_TITLES`; icon/colour stays app-wired), #8 Resolved (task 2's sentence; lifted into design.md's Lifecycle paragraph), #9 Rejected — premise removed (no `metadata.comment` anywhere, per #1 here). tasks.md's "reviews skipped" line left as an accurate historical record of how the tasks were generated.
 
 `tasks/tasks.md:50` records "Review files skipped: `review/review-1.md`, `review-2.md`", yet four unannotated
 review-2 findings are in fact resolved by the tasks:
@@ -142,10 +154,14 @@ Add the resolution annotations to review-2 so the next reviewer doesn't re-verif
 
 ### 7. Registration file is `WorkflowAPI/WorkflowAPI.js`, not `WorkflowAPI/index.js`
 
+> **Resolved (auto).** Verified (`WorkflowAPI/` contains `WorkflowAPI.js`, no `index.js`); design.md's "Connection registration" paragraph and the Files-changed entry now name `WorkflowAPI/WorkflowAPI.js` (the connection's `requests` map, from which `src/types.js` derives the request-type list).
+
 `design.md:147` and the file list (`:198`) name `WorkflowAPI/index.js`. The requests map lives in
 `WorkflowAPI/WorkflowAPI.js:9-14` (task 5's note already says so). Fix the design.
 
 ### 8. `_build.array.includes` exists — remove task 10's hedge
+
+> **Resolved (auto).** Re-verified in the Lowdefy source (`operators-js/src/operators/shared/array.js:60` — `includes` with named args `on`/`value`, shared → build-time capable). Task 10's hedge replaced with the pinned operator and the source citation.
 
 Task 10's note punts: "If `_build.array.includes` doesn't exist … check the operators guide before improvising."
 Verified in the Lowdefy source: `includes` is a shared array operator

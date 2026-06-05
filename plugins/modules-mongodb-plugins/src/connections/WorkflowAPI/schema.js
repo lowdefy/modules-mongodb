@@ -121,7 +121,7 @@ const schema = {
       type: 'object',
       description:
         'Action status enum keyed by status name (e.g. "done", "blocked"). ' +
-        'Typically loaded from enums/action_statuses.yaml. ' +
+        'Typically loaded from modules/shared/enums/action_statuses.yaml. ' +
         'Each entry MUST carry priority — display-only (ordering in pickers / ' +
         'visualizations); the engine no longer consults it for transition ' +
         'legality (transitions are resolved by the per-kind FSM tables). ' +

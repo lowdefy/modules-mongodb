@@ -35,6 +35,7 @@ routine:
                           - $status.stage
                           - 0
                 - _ref: api/stages/visible_verbs_filter.yaml
+                - - _ref: ../shared/workflow/resolve_action_link.yaml
                 - - $addFields:
                       required_sort:
                         $cond:
@@ -72,11 +73,7 @@ routine:
                               - $
                               - _module.var: app_name
                               - .message
-                          link:
-                            _string.concat:
-                              - $
-                              - _module.var: app_name
-                              - .link
+                          link: $link
 
   - :return:
       workflows:

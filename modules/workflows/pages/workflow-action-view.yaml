@@ -80,7 +80,7 @@ _ref:
                     _js:
                       args:
                         statuses:
-                          _ref: enums/action_statuses.yaml
+                          _ref: ../shared/enums/action_statuses.yaml
                         stage:
                           _request: get_action.status.0.stage
                       fn: |
@@ -91,7 +91,7 @@ _ref:
                       _js:
                         args:
                           statuses:
-                            _ref: enums/action_statuses.yaml
+                            _ref: ../shared/enums/action_statuses.yaml
                           stage:
                             _request: get_action.status.0.stage
                         fn: |
@@ -101,7 +101,7 @@ _ref:
                       _js:
                         args:
                           statuses:
-                            _ref: enums/action_statuses.yaml
+                            _ref: ../shared/enums/action_statuses.yaml
                           stage:
                             _request: get_action.status.0.stage
                         fn: |
@@ -111,7 +111,7 @@ _ref:
                     _js:
                       args:
                         statuses:
-                          _ref: enums/action_statuses.yaml
+                          _ref: ../shared/enums/action_statuses.yaml
                         stage:
                           _request: get_action.status.0.stage
                       fn: |
@@ -157,7 +157,7 @@ _ref:
                         _js:
                           args:
                             statuses:
-                              _ref: enums/action_statuses.yaml
+                              _ref: ../shared/enums/action_statuses.yaml
                             stage:
                               _state: status_history_list.$.stage
                           fn: |
@@ -167,7 +167,7 @@ _ref:
                         _js:
                           args:
                             statuses:
-                              _ref: enums/action_statuses.yaml
+                              _ref: ../shared/enums/action_statuses.yaml
                             stage:
                               _state: status_history_list.$.stage
                           fn: |

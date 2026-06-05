@@ -144,7 +144,7 @@ _ref:
                 _js:
                   args:
                     statuses:
-                      _ref: enums/action_statuses.yaml
+                      _ref: ../shared/enums/action_statuses.yaml
                     currentStage:
                       _request: get_action.status.0.stage
                   fn: |

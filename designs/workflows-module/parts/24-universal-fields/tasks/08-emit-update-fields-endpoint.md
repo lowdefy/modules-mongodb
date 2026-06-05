@@ -22,7 +22,7 @@ This task adds the universal-fields operation endpoint: one per **`kind: form`**
          action_type: <action.type>           # build-time literal
          workflow_type: <workflow.type>       # build-time literal
          fields: { _payload: fields }         # { assignees?, due_date?, description? }
-         comment: { _payload: comment }       # optional; → event.metadata.comment
+         comment: { _payload: comment }       # optional; rides the planner's comment param (Part 33 renders it into display.{app_name}.description — no metadata.comment)
      - ':return':
          action_id: { _step: update_fields.action_id }
          event_id: { _step: update_fields.event_id }

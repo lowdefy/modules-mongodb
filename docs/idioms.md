@@ -4,6 +4,7 @@ Cross-cutting patterns shared by the modules in this repo. Every per-module READ
 
 - [Change stamps](#change-stamps)
 - [Event display](#event-display)
+- [Live action cards (timeline lookup)](#live-action-cards)
 - [Fields, components, request_stages slots](#slots)
 - [App name scoping](#app-name)
 - [Avatar colors](#avatar-colors)
@@ -122,6 +123,49 @@ When the consumer doesn't override `event_display`, the build wraps these templa
 ### Display metadata vs templates
 
 `event_display` covers titles only. Color, icon, and human-readable type names live in the separate `event_types` component on the events module — see [Events module README](../modules/events/README.md).
+
+---
+
+## Live action cards
+
+<a name="live-action-cards"></a>
+
+The events timeline enriches each event with **live action cards** — real-time workflow action status, per-app message, and a single access-resolved navigation link — by joining events to the `actions` collection on every fetch. This join is unconditional: it runs whether or not the host app uses the workflows module, so no extra configuration is needed to enable it.
+
+### How it works
+
+The events module's `get-events` pipeline splices `modules/shared/workflow/timeline_action_lookup.yaml` unconditionally via `_build.array.concat`. That fragment:
+
+1. `$lookup`s the `actions` collection, joining on each event's `action_ids` field.
+2. Filters actions by card-worthiness (drops blocked actions and actions that have never been in an active stage).
+3. Runs `visible_verbs` to compute per-verb access for the current user.
+4. Runs `resolve_action_link` to collapse the per-verb links map to the single link the card renders — priority **edit > review > error > view**, taking the highest-priority verb whose link is both non-null and access-visible.
+5. Reads `action.{app_name}.message` as the card's display message.
+6. De-duplicates: each action card is attached only to its latest referencing event (earlier events show the card as history, the latest event carries it live).
+
+**Safe with no workflows.** If the host app has no `actions` collection, or if a given entity has no workflows attached, the `$lookup` returns empty arrays. No cards render, and no errors occur.
+
+### Status display
+
+Action card colors, titles, and priority ordering come from the shared base enum at `modules/shared/enums/action_statuses.yaml`. Each module (`events` and `workflows`) accepts an `action_statuses_display` var (`object`, default `{}`) that is merged onto the base enum via `_build.object.assign` for UI-only display overrides (the engine reads the base enum directly — overrides cannot affect transition logic).
+
+To keep both modules in sync, point both `action_statuses_display` vars at one app-local file:
+
+```yaml
+modules:
+  - id: events
+    vars:
+      action_statuses_display:
+        _ref: config/action_statuses_display.yaml
+  - id: workflows
+    vars:
+      action_statuses_display:
+        _ref: config/action_statuses_display.yaml
+```
+
+### Link resolution
+
+`resolve_action_link.yaml` is a shared stage that resolves the single link a surface renders from the per-verb links map. The priority order is **edit > review > error > view**; the first verb that is both access-visible (user holds the role) and has a non-null link wins. This identical resolution runs across the events timeline cards, the `actions-on-entity` widget, the `workflow-overview` page, and the `group-overview` page.
 
 ---
 

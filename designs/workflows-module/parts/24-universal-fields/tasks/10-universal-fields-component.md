@@ -8,7 +8,7 @@ Everything it composes already exists:
 
 - Endpoint `{workflow_type}-{action_type}-update-fields` (task 8) running the `UpdateActionFields` handler (task 5).
 - `action_config.universal_fields` normalized to an array (task 7) — the form templates will pass it as `show`.
-- `user-multi-selector` with an `id` var + `title` var, `user-avatar` (`vars: { user: <doc with operator leaves> }`), and `get_action.assignee_docs` (task 9).
+- `user-multi-selector` with an `id` var + `title` var, `user-avatar` (`vars: { user: <doc with operator leaves> }`), and the `assignee_docs` leaf on the `get_action` response (task 9; the aggregation returns an array — consumers bind `get_action.0.assignee_docs`, review-3 #5).
 - `_state.action_allowed` — a per-verb map `{ view, edit, review, error }` written by `components/action_role_check.yaml` on form pages (Part 18); the edit affordances gate on `action_allowed.edit` (note: the design snippet sketches a bare boolean — the shipped shape is the map).
 
 Behaviour matrix (design):
@@ -99,4 +99,4 @@ Update the stub's header comment into real doc-comment describing the var contra
 - **No comment input in v1** (design open question, settled default): the operation accepts `comment` for callers that want it; the sidebar surfaces no field. The payload line stays so a future input is a one-line addition.
 - Block type for `due_date`: check the demo/templates for the date block actually used in this repo (`DateSelector` from the AntD blocks); match what `components/fields/date_selector.yaml` wraps.
 - Keep all ids snake_case except the data-path-bound input ids (`fields.*`), per CLAUDE.md.
-- If `_build.array.includes` doesn't exist for the `show` gating, an equivalent build-time membership test via `_build.if` + array ops is fine — check the operators guide before improvising.
+- `_build.array.includes` is verified to exist for the `show` gating: `includes` is a shared array operator (Lowdefy source `operators-js/src/operators/shared/array.js:60`, named args `on` / `value`), and the `_build.` prefix evaluates shared operators at build time. Use it; no fallback needed.

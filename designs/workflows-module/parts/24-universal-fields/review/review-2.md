@@ -100,6 +100,8 @@ The form-emission path (design.md:202, "emit … for every `kind: form` action")
 
 ### 4. `commitPlan` with no workflow-doc write is unverified
 
+> **Resolved.** Verified concrete and real: the shipped `commitWorkflowAndActions` destructures `plan.workflow` unconditionally and `buildCommitResult` reads `plan.workflow.doc._id` — a workflow-less plan throws today. Task 3 amends `commitPlan` + the `Plan` typedef (`types.js`) to accept `workflow: null` (skip the claim step cleanly, no CAS), and design.md's Files-changed list + commit bullet now carry the amendment explicitly (review-3 #2).
+
 design.md:143 — "Commit — `bulkWriteActions` (one action update) + event via `new-event` + change-log. Because
 no workflow doc is written there is no CAS gate."
 
@@ -133,6 +135,8 @@ the planners in `shared/phases/planners/`, and `renderStatusMap` in `shared/rend
 
 ### 6. `action-fields-updated` event type — registration and type-name plumbing unspecified
 
+> **Resolved.** Task 1: the type isn't signal-derived — `planEventDispatch` gains an `UpdateActionFields` handler type that stamps `type: action-fields-updated` directly, plus a `DEFAULT_TITLES` entry so the event carries a real rendered title at plan time. Icon/colour registration stays app-wired (`event_types.yaml`), matching the unregistered lifecycle event types — Part 38's stated "apps wire what they want" posture.
+
 design.md:142 and :193 introduce a new log-event type, `action-fields-updated`, but the design says nothing about
 how it gets a display (icon/color/title) or how the type string reaches the dispatcher. Today the engine builds the
 type as `action-${interaction}` (`dispatchLogEvent.js`), driven by the signal — but the fields operation has no
@@ -160,6 +164,8 @@ that isn't there.
 
 ### 8. Metadata editable on a cancelled/completed workflow — intentional but unstated
 
+> **Resolved.** Stated explicitly in both places: task 2 pins "a fields update on a `completed` workflow's action is legal regardless of `required_after_close`", and design.md's Lifecycle paragraph now says the same for the workflow lifecycle — `required_after_close` gates form *submit* after close, not this operation; the divergence is deliberate.
+
 design.md:151 says the operation is "editable in any stage the user has access to — including `done` /
 `not-required` / `error`" with "no `required_after_close` interaction." That's about the *action's* stage. It's
 silent on the *workflow's* lifecycle: can you reassign or re-date an action whose workflow is `cancelled` /
@@ -170,6 +176,8 @@ a deliberate divergence from how submit treats a closed workflow, and a reviewer
 oversight.
 
 ### 9. `comment` → `event.metadata.comment` flow is asserted, not anchored
+
+> **Rejected — premise removed.** The comment no longer targets `event.metadata.comment` at all: Part 33 D2 drops the key everywhere; the operation's `comment` routes through `planEventDispatch`'s `comment` param and Part 33's `foldCommentIntoEvent` renders it into `display.{app_name}.description`. Design + tasks swept onto that route in review-3 #1.
 
 design.md:108, :142, :261 route the optional `comment` payload to `event.metadata.comment`. Part 38 doesn't mention
 `metadata.comment` (verified). The existing submit path does carry `comment` (`makeWorkflowApis` emits it today), so

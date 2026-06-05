@@ -56,14 +56,14 @@ Block-id convention follows the CLAUDE.md "Input block IDs match data paths" rul
 | `kind` | `mode` | Renders | Write path |
 | ------ | ------ | ------- | ---------- |
 | `form` | `edit` | Sidebar card: the declared inputs **plus its own Update button** | Button calls `{workflow_type}-{action_type}-update-fields` with `fields: { _state: fields }` + optional `comment`. **Independent of form submit.** |
-| `form` | `display` | Sidebar card, read-only | — (reads `get_action.*`) |
+| `form` | `display` | Sidebar card, read-only | — (reads `get_action.0.*` — the aggregation response is an array) |
 | `simple` | `edit` | Primary content: the declared inputs, **no own button** | The page's `submit` button carries `fields: { _state: fields }` (unchanged). |
 | `simple` | `display` | Primary content, read-only | — |
 
 **Binding by mode:**
 
 - **`edit`** — `action_data` bound to `_state.fields.*`; primed by the page's `onMount` from the loaded action doc. For form kind the component's own Update button posts the `_state.fields` subtree; for simple kind the page's submit button posts it.
-- **`display`** — `action_data` bound to `_request: get_action.*`; reads straight from the loaded action doc (no `_state.fields` priming on `-view` / `-review`).
+- **`display`** — `action_data` bound to `_request: get_action.0.*`; reads straight from the loaded action doc (no `_state.fields` priming on `-view` / `-review`). The `.0.` index is load-bearing: `get_action` is a `MongoDBAggregation`, so the response is an **array** — an un-indexed `get_action.assignees` resolves `undefined`. (Pages that already prime `_state.action` from `get_action.0` in `onMount` — the form templates' pattern — bind `_state: action.*` instead; both shapes are correct, bare `get_action.*` is not.)
 
   ```yaml
   - _ref:
@@ -73,9 +73,10 @@ Block-id convention follows the CLAUDE.md "Input block IDs match data paths" rul
         kind: form
         show: { _var: action_config.universal_fields }
         action_data:
-          assignees:   { _request: get_action.assignees }
-          due_date:    { _request: get_action.due_date }
-          description: { _request: get_action.description }
+          assignees:      { _request: get_action.0.assignees }
+          assignee_docs:  { _request: get_action.0.assignee_docs }   # display-mode avatars (the $lookup leaf)
+          due_date:       { _request: get_action.0.due_date }
+          description:    { _request: get_action.0.description }
   ```
 
 ### Where the component renders
@@ -119,7 +120,7 @@ The component's Update button:
 - id: button_update_fields            # sidebar card footer
   type: Button
   properties: { title: Update, type: primary }
-  visible: { _eq: [{ _state: action_allowed }, true] }
+  visible: { _eq: [{ _state: action_allowed.edit }, true] }
   events:
     onClick:
       - id: validate
@@ -138,19 +139,19 @@ The component's Update button:
             comment:   { _state: fields_comment }   # optional
 ```
 
-**Engine handler `UpdateActionFields`** — a new plugin entry point in `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/UpdateActionFields/`, **shipped by this part**, on the same `WorkflowAPI` connection as `SubmitWorkflowAction` / `StartWorkflow` / etc. It reuses [Part 38](../38-engine-rebuild/design.md)'s helpers — `loadWorkflowState` / `commitPlan` (`shared/phases/`), `planEventDispatch` (`shared/phases/planners/`), and `renderStatusMap` (`shared/render/`) — and adds one new planner `shared/phases/planners/planFieldsUpdate.js`:
+**Engine handler `UpdateActionFields`** — a new plugin entry point in `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/UpdateActionFields/`, **shipped by this part**, on the same `WorkflowAPI` connection as `SubmitWorkflowAction` / `StartWorkflow` / etc. It reuses **and minimally amends** [Part 38](../38-engine-rebuild/design.md)'s helpers — `loadWorkflowState` / `commitPlan` (`shared/phases/`), `planEventDispatch` (`shared/phases/planners/`), and `renderStatusMap` (`shared/render/`, reused unchanged) — and adds one new planner `shared/phases/planners/planFieldsUpdate.js`. The amendments (one each): `planEventDispatch` gains the `UpdateActionFields` handler type; `loadWorkflowState` gains a third signal-less `{ actionId, verb }` mode; `commitPlan` (+ the `Plan` typedef in `types.js`) accepts a workflow-less plan. All four appear under "Files changed" below.
 
-- **Load** — workflow + target action + configs; role check (`access.roles` ⊇ user roles), identical to `SubmitWorkflowAction`.
+- **Load** — workflow + target action + configs via `loadWorkflowState`'s new third mode `{ actionId, verb: 'edit' }`: signal-less (no FSM signal to resolve), access-gated on the per-app **`edit`** verb (`access.{app_name}.edit` via `gateAllows` — Part 34's per-verb model; action-wide `access.roles` was removed by Part 34 D4), and **no stage check** (the submit mode's stage/`required_after_close` gate doesn't apply to this operation). The gate stays ahead of any side effects, preserving Part 38's load-gate invariant.
 - **Plan** (pure) — compose planned action doc = loaded action with `assignees` / `due_date` / `description` `$set`, change-stamp refreshed, `metadata` merged; **re-render the status-map cell** (Part 38 D12 render path) against the planned doc; build the `action-fields-updated` log event **via `planEventDispatch`** — this part adds an `UpdateActionFields` handler type + `action-fields-updated` event type (and a `DEFAULT_TITLES` entry) to the planner's enum and passes `comment` through, so the event gets the planner's full pipeline (references, default title, display render) and the comment folds into `display.{app_name}.description` via [Part 33](../33-comment-rendering/design.md)'s `foldCommentIntoEvent` inside the planner — **no `metadata.comment`**, no hand-built event payload; build the change-log delta. **No workflow doc write** — summary/groups/form_data are unaffected by metadata, so the workflow is untouched.
-- **Commit** — `bulkWriteActions` (one action update) + event via `new-event` + change-log. Because no workflow doc is written there is no CAS gate; concurrent fields-updates are last-write-wins on the action doc (acceptable for metadata, consistent with Part 38 D15's deferral of per-action CAS).
+- **Commit** — `bulkWriteActions` (one action update) + event via `new-event` + change-log, via `commitPlan` amended to accept an action-only plan (`workflow: null` — the claim step is skipped entirely; the `Plan` typedef in `types.js` makes `workflow` nullable). Because no workflow doc is written there is no CAS gate; concurrent fields-updates are last-write-wins on the action doc (acceptable for metadata, consistent with Part 38 D15's deferral of per-action CAS).
 
-**Connection registration.** `WorkflowAPI/index.js` (or the connection's request-type map) registers `UpdateActionFields` alongside the existing handlers; `WorkflowAPI/schema.js` needs no new connection-level fields (the handler reads the same `databaseUri` / `app_name` / `entry_id` / `changeLog` config the other handlers use).
+**Connection registration.** `WorkflowAPI/WorkflowAPI.js` (the connection's `requests` map — `src/types.js` derives the package's request-type list from it) registers `UpdateActionFields` alongside the existing handlers; `WorkflowAPI/schema.js` needs no new connection-level fields (the handler reads the same `databaseUri` / `app_name` / `entry_id` / `changeLog` config the other handlers use).
 
 **Submit-planner guard (kind-based field write).** Today's monolithic `SubmitWorkflowAction` writes `payload.fields` to the action doc via a **generic spread** (`updateAction`'s `$set: { ...fields }`) — it doesn't name the three fields; the `fields` bag just happens to carry `{ assignees, due_date, description }`. Part 38's rebuild carries that **generic, kind-agnostic passthrough** into the shared `planActionTransition.js` unchanged (behavior-preserving — see "Contract to neighbours"); Part 38 itself never names the universal fields. This part is where the universal-fields concept enters: it amends the passthrough to a **kind-based rule: the planner writes `assignees` / `due_date` / `description` only for `kind: simple`** — the kind whose submission content *is* those fields. For `kind: form` the planner never touches them; they are owned exclusively by the `{workflow_type}-{action_type}-update-fields` operation. The rule keys on the action's `kind` (already loaded in the plan context), **not** on the payload shape, so it cannot be defeated by a stray `fields` payload, and the form template dropping `fields` (Part 39) becomes hygiene — don't validate sidebar inputs on submit, don't post dead state — rather than a correctness precondition. Simple submit is unaffected: its `fields` payload is written exactly as today.
 
-**Role gating.** Same `access.roles` as the action, enforced in the handler's load phase. The component additionally reads `_state.action_allowed` (from `action_role_check`, Part 18) and switches inputs + Update button to read-only / hidden when `false` — defense in depth so users can't type changes that won't save.
+**Role gating.** The handler's load phase gates on the per-app **`edit`** verb — `access.{app_name}.edit`, evaluated with the existing `gateAllows` semantics (Part 34's per-verb model; there is no action-wide `access.roles`). The `edit` verb is the one that owns the page surface where the Update button renders. Stated consequence: **metadata updates require the `edit` verb** — a review-only role cannot update universal fields from any surface (the review page renders the card read-only); that's the v1 stance. The component additionally reads `_state.action_allowed.edit` (from `action_role_check`, Part 18 — `action_allowed` is a per-verb map `{ view, edit, review, error }`, not a bare boolean) and switches inputs + Update button to read-only / hidden when `false` — defense in depth so users can't type changes that won't save.
 
-**Lifecycle.** Editable in any stage the user has access to — including `done` / `not-required` / `error`. There is no stage allowlist and no `required_after_close` interaction; metadata is always editable for an accessible action.
+**Lifecycle.** Editable in any stage the user has access to — including `done` / `not-required` / `error`. There is no stage allowlist and no `required_after_close` interaction; metadata is always editable for an accessible action. That extends to the parent workflow's lifecycle: a fields update on a `completed` / `cancelled` workflow's action is legal regardless of `required_after_close` — that flag gates form **submit** after close, not this operation (a deliberate divergence from how submit treats a closed workflow).
 
 ### Authoring: `universal_fields`
 
@@ -176,9 +177,14 @@ Authoring-contract amendment: add `universal_fields` to the [action-authoring sp
 
 Engine spec amendment: [`engine/spec.md:132`](../../../workflows-module-concept/engine/spec.md) lists `description` as `string | null` — update to `{ text: string, html: string } | null` to match shipped behaviour (the `comment` field already carries this shape). Carry this amendment under Part 24.
 
-### Module-shipped requests added
+### Module-shipped requests: none added, one amended
 
-None. The selector and avatar reach user-account via cross-module component refs; the fields operation is a resolver-emitted Api, not a module-shipped request.
+The fields operation is a resolver-emitted Api, not a module-shipped request, and the selector and avatar reach user-account via cross-module component refs. But the display rule above (one `user-avatar` per assignee) is unimplementable from the action doc alone — `assignees` is an id array and `user-avatar` consumes a user doc. So two binding prerequisites ship here:
+
+- **`modules/workflows/requests/get_action.yaml`** (amend) — an additive `$lookup` into `user-contacts` projecting `assignee_docs: [{ _id, profile: { name, picture } }]` (cross-module collection precedent: `modules/activities/requests/stages/lookup_contacts.yaml`). Purely additive — every existing `get_action.*` binding keeps resolving.
+- **`modules/user-account/components/user-multi-selector.yaml`** (amend — cross-module) — gains a parameterizable `id` var (default `user-multi-selector`, so existing consumers are untouched) plus an optional `title` var, so the workflows sidebar can auto-bind it to `fields.assignees`. Part 24a's design explicitly anticipated this ("Part 24 binds `_state.fields.assignees`").
+
+Type-safety note (settled, not deferred): user-contacts `_id` is a **string** (`_uuid: true` on the invite upsert — `user-admin/api/invite-user.yaml`; `_user: id` on `user-account/api/create-profile.yaml`), so selector values round-trip the client as strings and the `$lookup` on `_id` matches without coercion.
 
 ### Manifest dependency
 
@@ -188,15 +194,20 @@ None. The selector and avatar reach user-account via cross-module component refs
 
 All API / plugin / resolver / schema edits for the universal-fields write path live here. The consuming template parts (below) only render.
 
-### Plugin — `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`
+### Plugin — `plugins/modules-mongodb-plugins/src/connections/`
 
-- **`UpdateActionFields/UpdateActionFields.js`** (new) — the operation handler: load → role check → plan → commit. No pre/post hook in v1.
-- **`UpdateActionFields/UpdateActionFields.test.js`** (new) — handler unit tests (fields write, cell re-render, no workflow write, role reject).
+(The shared phase helpers live at `src/connections/shared/`, beside `WorkflowAPI/` — not inside it.)
+
+- **`WorkflowAPI/UpdateActionFields/UpdateActionFields.js`** (new) — the operation handler: load → role check → plan → commit. No pre/post hook in v1.
+- **`WorkflowAPI/UpdateActionFields/UpdateActionFields.test.js`** (new) — handler unit tests (fields write, cell re-render, no workflow write, role reject).
+- **`WorkflowAPI/WorkflowAPI.js`** (amend) — register `UpdateActionFields` in the connection's `requests` map.
 - **`shared/phases/planners/planFieldsUpdate.js`** (new) — pure planner: planned action doc (`$set` fields + change-stamp + metadata merge), re-rendered status-map cell, event via `planEventDispatch` (`UpdateActionFields` handler type, `comment` passed through — Part 33), change-log delta.
-- **`shared/phases/planners/planEventDispatch.js`** (amend — Part 38's file) — add the `UpdateActionFields` handler type → `action-fields-updated` event type + a `DEFAULT_TITLES` entry; the existing post-render `foldCommentIntoEvent` call (Part 33) handles the `comment` with no further change.
 - **`shared/phases/planners/planFieldsUpdate.test.js`** (new).
+- **`shared/phases/planners/planEventDispatch.js`** (amend — Part 38's file) — add the `UpdateActionFields` handler type → `action-fields-updated` event type + a `DEFAULT_TITLES` entry, plus the optional `comment` param the fold consumes; Part 33's post-render `foldCommentIntoEvent` call handles the `comment` (if Part 33 hasn't landed yet, the param flows un-folded until it does — either order works, per Part 33's contract).
 - **`shared/phases/planners/planActionTransition.js`** (amend — Part 38's file) — narrow Part 38's generic, kind-agnostic `fields` passthrough to a kind-based rule: write the universal fields only for `kind: simple`; `kind: form` never writes them here. (Part 38 must first carry the existing generic `fields` passthrough into this planner — see "Contract to neighbours".)
-- **`WorkflowAPI/index.js`** (amend) — register `UpdateActionFields` in the connection's request-type map.
+- **`shared/phases/loadWorkflowState.js`** (amend — Part 38's file) — third load mode `{ actionId, verb }`: signal-less, access-gated on the given verb via `gateAllows`, no stage / `required_after_close` check; preserves the gate-ahead-of-side-effects invariant.
+- **`shared/phases/commitPlan.js`** (amend — Part 38's file) — accept an action-only plan (`workflow: null`): skip the workflow claim step (no CAS), commit actions + event + change-log.
+- **`shared/phases/types.js`** (amend — Part 38's file) — `Plan.workflow` becomes nullable.
 
 `schema.js` is unchanged — the handler uses the existing connection config.
 
@@ -209,6 +220,8 @@ All API / plugin / resolver / schema edits for the universal-fields write path l
 
 - **`modules/workflows/components/universal-fields/universal-fields.yaml`** (new) — the reusable component (modes + the form-kind Update button calling the operation).
 - **`modules/workflows/module.lowdefy.yaml`** (amend) — add `user-account` to `dependencies`.
+- **`modules/workflows/requests/get_action.yaml`** (amend) — additive `assignee_docs` `$lookup` (see "Module-shipped requests" above).
+- **`modules/user-account/components/user-multi-selector.yaml`** (amend — cross-module) — parameterizable `id` + optional `title` vars, defaults preserving current consumers (see "Module-shipped requests" above).
 
 ### Concept-spec amendments
 
@@ -257,7 +270,7 @@ Consumers (Parts 16 / 17 / 39, template-only) are enumerated under "Consumed by"
   - Form submit (`submit` / `progress`) does **not** alter `assignees` / `due_date` / `description`.
   - A `done` form action's universal fields are still editable via the sidebar.
   - Simple edit page writes universal fields on `submit` as primary content.
-  - `_state.action_allowed === false` hides the Update button and renders inputs read-only.
+  - `_state.action_allowed.edit === false` hides the Update button and renders inputs read-only.
 - End-to-end coverage lands in [Part 22](../_next/22-workflows-e2e-suite/design.md).
 
 ## Open questions

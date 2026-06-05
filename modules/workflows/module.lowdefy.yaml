@@ -12,7 +12,7 @@
 #                            wired from templates/{verb}.yaml.njk).
 #
 # The workflow-api connection `_ref`s the canonical enum file directly
-# (`actionsEnum: { _ref: ../enums/action_statuses.yaml }`), so the engine
+# (`actionsEnum: { _ref: ../shared/enums/action_statuses.yaml }`), so the engine
 # always reads the shipped enum with its canonical priorities. The merged
 # enum components below are UI-only consumers.
 
@@ -95,6 +95,14 @@ vars:
       enum. Same merge semantics as action_statuses_display: UI-only,
       cannot affect engine logic.
 
+exports:
+  components:
+    - id: timeline-action-lookup
+      description: >
+        Aggregation fragment that enriches events with live action cards
+        (status, message, access-resolved link); _ref into custom timeline
+        pipelines via _build.array.concat.
+
 components:
   - id: action_statuses
     component:
@@ -120,6 +128,9 @@ components:
   - id: entity-workflows-refetch
     component:
       _ref: components/entity-workflows-refetch.yaml
+  - id: timeline-action-lookup
+    component:
+      _ref: ../shared/workflow/timeline_action_lookup.yaml
 
 connections:
   - _ref: connections/workflows-collection.yaml
