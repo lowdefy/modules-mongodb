@@ -4,7 +4,7 @@
 
 Part 44 needs **no read-API change**: `planActionTransition` persists the per-verb `{slug}.links` map, and Part 42's shared stage `modules/shared/workflow/resolve_action_link.yaml` — already adopted by all three read APIs (`get-entity-workflows.yaml`, `get-workflow-overview.yaml`, `get-action-group-overview.yaml`) — does the generic priority pick (edit > review > error > view) over non-null link cells ∩ `visible_verbs`. For a pre-child tracker the start link is the only link the engine emits, so the generic pick surfaces it.
 
-Part 44's read-side contribution per the design is a **tracker-row case in `resolve_action_link`'s tests**. Reality check: Part 42 shipped the YAML stage with **no test file** (`git log` confirms; nothing matches `resolve_action_link` under `**/*.test.js`). So this task creates the test file with the tracker-row coverage, following the established resolved-MQL pattern of `modules/workflows/api/stages/visible_verbs_filter.test.js`: the YAML carries build-time Lowdefy operators (`_var` / `_module.var` for `app_name`), so the test mirrors the **resolved** MQL — `app_name` collapsed to a literal — and runs it through `mongodb-memory-server` via the shared `inMemoryMongo` helper.
+Part 44's read-side contribution per the design is **creating `modules/shared/workflow/resolve_action_link.test.js` with the tracker-row cases** — Part 42 shipped the YAML stage with no test file, so this task creates it. It follows the established resolved-MQL pattern of `modules/workflows/api/stages/visible_verbs_filter.test.js`: the YAML carries build-time Lowdefy operators (`_var` / `_module.var` for `app_name`), so the test mirrors the **resolved** MQL — `app_name` collapsed to a literal — and runs it through `mongodb-memory-server` via the shared `inMemoryMongo` helper.
 
 The stage under test (read it first — `modules/shared/workflow/resolve_action_link.yaml`): a single `$addFields` that sets `link` via `$let` (`app_links` = `$ROOT[app_name].links`, `verbs` = `$visible_verbs`) and a `$switch` prioritizing edit > review > error > view, each case requiring the verb true in `$visible_verbs` AND the cell non-null.
 
@@ -32,6 +32,6 @@ Create `modules/shared/workflow/resolve_action_link.test.js`:
 
 ## Notes
 
-- **Deviation from the design's assumption, flagged**: the design says "Part 44 adds a tracker-row case to its tests", assuming Part 42 left a test file. None exists, so this task creates it. Keep scope to the tracker rows above — exhaustive verb-priority matrices are Part 42 territory if ever needed; don't backfill them here.
+- Keep scope to the tracker rows above — exhaustive verb-priority matrices are Part 42 territory if ever needed; don't backfill them here.
 - No changes to any YAML under `modules/` — this task is test-only.
 - Depends on task 2 only for the emitted link shape mirrored in the fixtures; it can land in parallel with task 3.

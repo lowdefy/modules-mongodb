@@ -30,4 +30,4 @@ No demo-app task: the design explicitly defers demo coverage to Part 45 (`track-
 
 **Source:** `designs/workflows-module/parts/44-tracker-start-link/design.md`
 **Context files considered:** none besides `design.md` (the design folder contains no other supporting files); grounding came from the referenced source files (`computeEngineLinks.js`, `planActionTransition.js`, `types.js`, `makeWorkflowsConfig.js`, `resolve_action_link.yaml`, `substituteActionIdSentinel.js`) and the action-authoring concept docs.
-**Review files skipped:** `review/` folder (1 file).
+**Review files skipped:** `review/` folder (2 files; review-2's actioning subsequently updated task 1's sentinel rule directly).

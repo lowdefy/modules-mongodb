@@ -15,7 +15,7 @@ tracker:
       source: onboarding # static params pass through verbatim
 ```
 
-`modules/workflows/resolvers/makeWorkflowsConfig.js` is the config validator and the schema source of truth. Its `validateAction` (line 269) currently checks only that `kind: tracker` carries a `tracker:` block; the block's contents are unvalidated. The `tracker` field already flows through to the normalized output via `ACTION_FIELDS` (line 11), so no pick change is needed — only validation.
+`modules/workflows/resolvers/makeWorkflowsConfig.js` is the config validator and the schema source of truth. Its `validateAction` (line 274) currently checks only that `kind: tracker` carries a `tracker:` block; the block's contents are unvalidated. The `tracker` field already flows through to the normalized output via `ACTION_FIELDS` (line 7), so no pick change is needed — only validation.
 
 Validation matters here because a malformed `start_link` would otherwise fail silently downstream: a `true` on a non-sentinel key or a non-string static (`count: 3`) would ship the literal value into a URL.
 
@@ -26,11 +26,9 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`, add a validation functi
 1. **Applicability** — only runs when `action.tracker?.start_link` is present (`start_link` is optional; a `tracker:` block with only `workflow_type` stays valid).
 2. **Shape** — `start_link` must be a plain object (not null, not an array). Allowed keys are exactly `pageId` and `urlQuery`; any other key hard-errors via the existing `fail(workflow.type, ...)` helper. The error message for unknown keys should make the rejection of `title:` discoverable — `title` is familiar from custom-kind cell links but is not part of the engine-link shape (e.g. mention that only `pageId` / `urlQuery` are allowed).
 3. **`pageId`** — required, must be a non-empty string.
-4. **`urlQuery`** — optional; if present must be a plain object. Each value must be either:
-   - a string (static param, passes through verbatim), or
-   - the literal `true`, allowed **only** on the keys `action_id` and `entity_id` (the two sentinels).
+4. **`urlQuery`** — optional; if present must be a plain object. The two reserved keys `action_id` and `entity_id` are **sentinel-only**: if present, their value must be exactly `true`. Every other key must carry a string (static param, passes through verbatim).
 
-   Everything else hard-errors: `true` on any other key (would silently ship the literal `true` into a URL), and non-string statics (`3`, `false`, `null`, objects, arrays) for the same reason.
+   Everything else hard-errors: a static string on a reserved key (a stale `action_id: 'literal'` would silently hand the wrong `parent_action_id` to `start-workflow`, cross-linking the child onto the wrong tracker), `true` on any non-reserved key (would silently ship the literal `true` into a URL), and non-string statics (`3`, `false`, `null`, objects, arrays) for the same reason.
 
 Follow the existing validator idioms: `fail()` with messages of the form `` `${where} tracker.start_link ...` `` including the offending value via `JSON.stringify` where helpful (see `validateActionAccess` / `validateStatusMapCells` for tone and structure).
 
@@ -44,6 +42,7 @@ Add test cases to `modules/workflows/resolvers/makeWorkflowsConfig.test.js`, fol
 - Reject: `start_link` that is not an object (string, array).
 - Reject: `urlQuery` that is not an object.
 - Reject: `urlQuery` with `true` on a non-sentinel key (e.g. `source: true`).
+- Reject: `urlQuery` with a static string on a reserved key (e.g. `action_id: 'some-id'`; cover `entity_id: 'foo'` too).
 - Reject: `urlQuery` with a non-string static (e.g. `count: 3`, `flag: false`).
 
 ## Acceptance Criteria

@@ -24,7 +24,7 @@ Three doc surfaces, all currently describing trackers as display-only with a `wo
    - Extend the YAML-shape section: the `tracker:` block now carries an optional `start_link` (shape + sentinels), added by Part 44 (link to `../../workflows-module/parts/44-tracker-start-link/design.md`).
    - Rework "Two paired actions, not one" to state the D6 split instead of presenting the pair as the sole recommended shape: the pair remains right when creation is a small inline form with no app page; `start_link` is the recommended shape when an app page owns child creation.
 3. **`designs/workflows-module-concept/action-authoring/spec.md`** — keep the schema spec true to the validator:
-   - Validation rules (~98–100): `kind: tracker` requires `tracker:` with `workflow_type`, **optionally** `start_link: { pageId: string, urlQuery?: object }` — allowed keys exactly `pageId`/`urlQuery`; `urlQuery` values are strings or `true` on exactly `action_id`/`entity_id`.
+   - Validation rules (~98–100): `kind: tracker` requires `tracker:` with `workflow_type`, **optionally** `start_link: { pageId: string, urlQuery?: object }` — allowed keys exactly `pageId`/`urlQuery`; in `urlQuery` the reserved keys `action_id`/`entity_id` are sentinel-only (if present, value must be exactly `true`) and every other key must carry a string.
    - Tracker YAML section (~442–461): mention `start_link` in the block description and example.
    - "Recommended shape: paired trigger + tracker actions" (~498): same D6 repositioning as the design doc.
 

@@ -13,7 +13,7 @@ tracker:
 
 and the update path just spreads the loaded doc, so a tracker doc never carries `start_link` and never refreshes it.
 
-Design D1: the planner refreshes the tracker block from config **on every plan**, joining the existing denormalisation block at lines 179–183 (`doc.access = actionConfig.access; doc.workflow_type = loadedWorkflow.workflow_type;` — the one pattern by which `computeEngineLinks` gets config-derived fields: off the composed doc, never a synthesized view). This refresh is a denormalisation detail, **not** a config-versioning mechanism — edits to `start_link` on deployed workflows remain external-migration territory like every other config change.
+Design D1: the planner refreshes the tracker block from config **on every plan**, joining the existing denormalisation block at lines 178–183 (`doc.access = actionConfig.access; doc.workflow_type = loadedWorkflow.workflow_type;` — the one pattern by which `computeEngineLinks` gets config-derived fields: off the composed doc, never a synthesized view). This refresh is a denormalisation detail, **not** a config-versioning mechanism — edits to `start_link` on deployed workflows remain external-migration territory like every other config change.
 
 ## Task
 
@@ -31,7 +31,7 @@ Design D1: the planner refreshes the tracker block from config **on every plan**
        : null;
    ```
 
-   Remove the now-redundant narrowed `tracker:` field from the insert draft literal (the denorm assignment supersedes it; it runs before `computeEngineLinks`, so link computation sees the refreshed block). Extend the denormalisation comment (lines 179–181) to mention `tracker` alongside `access` / `workflow_type`.
+   Remove the now-redundant narrowed `tracker:` field from the insert draft literal (the denorm assignment supersedes it; it runs before `computeEngineLinks`, so link computation sees the refreshed block). Extend the denormalisation comment (lines 178–181) to mention `tracker` alongside `access` / `workflow_type`.
 
 2. **`types.js`** (`plugins/modules-mongodb-plugins/src/connections/shared/types.js:59`) — widen the `ActionDoc` tracker property:
 
