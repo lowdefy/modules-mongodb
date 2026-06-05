@@ -36,10 +36,10 @@ The comment lives once, in `display.{app_name}.description` (an HTML string). No
 
 Both the submit pipeline and Part 24's `UpdateActionFields` accept a `comment` and emit an event. The "fold comment into the event's description" logic is a single pure helper — `foldCommentIntoEvent(eventPayload, comment, appName)` — with exactly **one call site**: the shared event-dispatch planner (`planEventDispatch`) both paths route through, so the behaviour can't diverge. It:
 
-- reads the comment's `html` (accepting the `{ html, text }` rich-text value; ignores `markdown` / `fileList`),
+- reads the comment's `html` (accepting the `{ html, text, fileList }` rich-text value; ignores `markdown`),
 - ensures the `display[appName]` bucket exists before writing (`display[appName] ??= {}`) — a pre-hook/author override merge can produce a `display` without the app key (D7), so writing `display[appName].description` directly would throw,
-- sets `display[appName].description = comment.html` when `comment?.html` is a non-empty string,
-- is a no-op when there's no comment.
+- sets `display[appName].description = comment.html` when the comment is **non-empty**: `comment?.text` is a non-empty string **or** `comment?.fileList` is a non-empty array. The gate reads the editor's own emptiness signals, not `html` — TipTap emits `'<p></p>'` for an empty document and nulls only `text` (`useTiptapState.js:44-52`), so a type-then-delete leaves `{ html: '<p></p>', text: null, fileList: [] }` and a gate on `html` would store `'<p></p>'` and render an empty description card. The `fileList` clause keeps an image-only comment (screenshot, no text → `text: null`, `fileList` populated) from being silently dropped,
+- is a no-op when there's no comment (null, or empty by the gate above).
 
 This supersedes the pre-Part-38 inline `metadata.comment` write (in `dispatchLogEvent.js`'s `buildDefaultLogEventPayload`). Post-Part-38 the helper is called once inside the shared event-dispatch planner (`planEventDispatch`) that both the submit and `UpdateActionFields` paths reuse, so the two cannot drift. `planEventDispatch` is a **closed enum** over handler types (throws on unknown); Part 24 extends it with an `UpdateActionFields` handler type → `action-fields-updated` event type and passes `comment` through the same parameter the submit path uses — there is **no** separate per-event-builder call.
 
@@ -52,7 +52,7 @@ Precedence is per field:
 - **title** — an author per-app override wins over the engine-generic title (D7);
 - **description** — a runtime comment wins over an author static description.
 
-Both fall out of *merge, then fold-comment-last*, once the merge deep-merges under the app key (D7). The static `event:` display channel **stays**: authors set a default per-app title/description for comment-less interactions — the normal case on **form-submit events, which carry no comment** (the comment rides Part 24's sidebar fields operation, not form submit). The comment only takes precedence for the description on the one event where it's present.
+Both fall out of *merge, then fold-comment-last*, once the merge deep-merges under the app key (D7). A consequence worth naming: a pre-hook `event_overrides` can **no longer override or scrub a typed comment** — the fold runs after the merge, last by design. This is an intended behaviour change from the pre-Part-38 layering (where a pre-hook `metadata.comment` won), not collateral. The static `event:` display channel **stays**: authors set a default per-app title/description for comment-less interactions — the normal case on **form-submit events, which carry no comment** (the comment rides Part 24's sidebar fields operation, not form submit). The comment only takes precedence for the description on the one event where it's present.
 
 ### D7 — Multi-app event display & per-app author title overrides
 
@@ -64,7 +64,9 @@ For engine title + author title/description + comment to coexist *within one app
 
 ### D5 — Pin the wire contract: `comment` is the rich-text value, engine takes `.html`
 
-The pages keep sending `comment: { _state: comment }` (the TipTap value). The engine contract is: `comment` is `{ html, text, … } | null`; the engine reads `comment.html`. This fixes the current `typeof comment === "string"` bug (which silently drops object comments) without changing every page's payload. The `required` validation on `request_changes` already guards emptiness at the input.
+The pages keep sending `comment: { _state: comment }` (the TipTap value). The engine contract is: `comment` is `{ html, text, fileList, … } | null`; the engine stores `comment.html`, gated on `comment.text` / `comment.fileList` (D3). This fixes the current `typeof comment === "string"` bug (which silently drops object comments) without changing every page's payload.
+
+The `required` validation on `request_changes` does **not** guard emptiness today — on both review surfaces it is `_ne: [comment, null]` (`review.yaml.njk:364-369`, `workflow-action-review.yaml:256-262`), which a type-then-deleted comment passes (the state value is a non-null object). This part tightens it to mirror the fold's gate — pass when `comment.text` is a non-empty string or `comment.fileList` is non-empty — so a textually empty *mandatory* comment fails at the input with feedback, instead of submitting and then being (correctly) dropped by the engine gate with no comment stored.
 
 ### D6 — Delete the bespoke card; add the shared timeline to the workflow action pages
 
@@ -82,7 +84,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 
 ### Plugin — `plugins/modules-mongodb-plugins/src/connections/shared/`
 
-- **`phases/planners/foldCommentIntoEvent.js`** (new, beside `deepMerge.js`) — pure helper: `(eventPayload, comment, appName) → eventPayload` with `display[appName].description` set from `comment.html`. Unit-tested for: html present, html empty/whitespace, comment null, object-vs-string input, no app clobber of `title`, a **missing `display[appName]` bucket** (created via `display[appName] ??= {}`), and **template-syntax passthrough** — a comment whose HTML contains `{{ workflow.entity_id }}` and a stray `{%` is stored verbatim, not interpolated and not throwing (the fold runs post-render, D4).
+- **`phases/planners/foldCommentIntoEvent.js`** (new, beside `deepMerge.js`) — pure helper: `(eventPayload, comment, appName) → eventPayload` with `display[appName].description` set from `comment.html`, gated on `comment.text` / `comment.fileList` (D3). Unit-tested for: text present (`{ html: '<p>hi</p>', text: 'hi' }` → folds), the **empty-document value** (`{ html: '<p></p>', text: null, fileList: [] }` → no-op), **image-only** (`{ html: '<p><img …></p>', text: null, fileList: [file] }` → folds `html`), text whitespace-only → no-op, comment null, object-vs-string input, no app clobber of `title`, a **missing `display[appName]` bucket** (created via `display[appName] ??= {}`), and **template-syntax passthrough** — a comment whose HTML contains `{{ workflow.entity_id }}` and a stray `{%` is stored verbatim, not interpolated and not throwing (the fold runs post-render, D4).
 - **`phases/planners/planEventDispatch.js`** (amend — [Part 38](../38-engine-rebuild/design.md)'s shared event-dispatch planner) — four changes: (1) new **`comment` parameter** on the signature (the rich-text value, D5); (2) **deep-merge event `display` under the app key** (`display → {app} → {title,description}`) via Part 38's `deepMerge` helper inside `mergeEventOverrides` (D7), so the engine title + an author per-app override + the comment coexist instead of clobbering; (3) the engine-default event no longer writes `metadata.comment` (already true post-Part-38 — the planner's docblock defers to this part); (4) call `foldCommentIntoEvent` **after `renderEventDisplay`** — merge → render → fold — so the comment wins the description slot without passing through the Nunjucks compile (D4). Pre-Part-38 this logic lived across `SubmitWorkflowAction/buildDefaultLogEventPayload` (`dispatchLogEvent.js`) and `mergeEventOverrides.js`; Part 38 consolidates it into the planner, so this is where the fold is called — there is no longer a `handleSubmit.js` orchestration step to thread it through. Unit-test: title + static description + comment coexist under one app key; no `metadata.comment` written. Migrate any pre-Part-38 `metadata.comment` assertions onto `display.{app_name}.description` (see Verification § Test migration).
 - **`phases/planSubmit.js`** (amend) — thread `comment: params.comment` into the step-7 `planEventDispatch` call (`planSubmit.js:188-202`; `params` is already in scope).
 - **`mergeEventOverrides.js`** (amend) — deep-merge the `display` channel under the app key via `deepMerge` (D7); rewrite the stale docblock (it still documents the pre-rebuild `metadata.comment` fold and "Do NOT re-inject `comment` here").
@@ -92,6 +94,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 
 - **`pages/workflow-action-view.yaml`** (amend) — delete `comments_card` (+ `get_comment_events`, `comment_events_list`); add the shared `events-timeline` component filtered to the action.
 - **`templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`** (amend) — add the action-filtered `events-timeline` `_ref` to each generated form page (D6). There is no comments card to delete on this surface — the addition closes the gap where a form review comment would render nowhere. Additive and order-independent with [Part 39](../39-form-submit-buttons/design.md)'s button amendments to the same templates.
+- **`templates/review.yaml.njk` + `pages/workflow-action-review.yaml`** (amend) — tighten the `request_changes` comment validate from `_ne: [comment, null]` to the fold-gate condition: `comment.text` non-empty or `comment.fileList` non-empty (D5), so a type-then-deleted mandatory comment fails validation at the input.
 
 ### Concept-spec amendments
 
@@ -103,6 +106,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 - Dropping `metadata.comment`.
 - Deep-merging the engine event-display merge under the app key so per-app author title/description overrides and the comment coexist (D7).
 - Comment-beats-static-override precedence.
+- Tightening the `request_changes` comment validate on both review surfaces to match the fold gate (`text` non-empty or `fileList` non-empty).
 - Deleting the bespoke comments card and rendering the standard timeline on the workflow action pages — the simple view page and all four form-kind templates (`edit`/`view`/`review`/`error`).
 
 ## Out of scope / deferred
@@ -117,13 +121,14 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 
 ## Verification
 
-- **Unit:** `foldCommentIntoEvent` sets `display[app].description` from `comment.html`; no-ops on null/empty; doesn't touch `title`; identical result whether called from submit or fields paths.
-- **Test migration:** any pre-existing test that asserts `metadata.comment` on an event (pre-Part-38 these were `dispatchLogEvent.test.js`'s four `buildDefaultLogEventPayload` comment cases) is **removed or migrated** to assert `display.{app_name}.description` via `foldCommentIntoEvent` + the planner. No `metadata.comment` assertions remain after this part.
+- **Unit:** `foldCommentIntoEvent` sets `display[app].description` from `comment.html`, gated on `comment.text` non-empty or `comment.fileList` non-empty; no-ops on null and on the empty-document value (`{ html: '<p></p>', text: null, fileList: [] }`); folds an image-only comment; doesn't touch `title`; identical result whether called from submit or fields paths.
+- **Test migration:** the live `metadata.comment` assertions are in `mergeEventOverrides.test.js:45-68` (the pre-Part-38 `dispatchLogEvent.test.js` cases were deleted with that file in Part 38). Two cases, two fates: the *"YAML override does NOT clobber default metadata.comment"* regression migrates naturally onto `display.{app_name}.description` + the fold; the *"pre-hook override on metadata.comment overrides layer-1 runtime comment"* case is **deleted, not migrated** — it asserts the precedence D4 deliberately inverts (the fold is last; a pre-hook can no longer override the comment). Task 02 carries both. No `metadata.comment` assertions remain after this part.
 - **Unit:** the event-display merge deep-merges under the app key — engine title + an author per-app `display.{app}.{title,description}` override + the comment all coexist (D7); no layer clobbers another within an app bucket.
 - **Unit:** a static `event.{interaction}.display.{app}.description` is overwritten by a runtime comment (D4); with no comment, the static title and description survive and render.
 - **Integration (demo):**
   - Submit `request_changes` with a comment → the entity-page timeline and the action view-page timeline both show the auto-title + comment HTML inline; no `metadata.comment` is written.
   - Submit with no comment → event has only a title (or the static override description if declared); no empty description card.
+  - Type a comment, delete it, submit on an optional-comment surface → no description written, no empty card; on `request_changes` the tightened validate blocks the submit with feedback.
   - The deleted comments card no longer renders; the action page shows the standard timeline.
   - Part 24 `UpdateActionFields` with a comment → the `action-fields-updated` event renders the comment inline the same way.
   - Form action: submit `request_changes` with a review comment → all four generated form pages (`edit`/`view`/`review`/`error`) render the timeline with the comment inline.

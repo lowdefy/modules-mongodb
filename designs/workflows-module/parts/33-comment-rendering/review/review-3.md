@@ -29,6 +29,8 @@ The findings below are the gaps.
 
 ### 1. An "empty" TipTap comment is `{ html: '<p></p>', text: null }` — both of the design's emptiness guards let it through, producing empty description cards
 
+> **Resolved.** Valid on all three legs. The fold gate (D3) now reads the editor's own emptiness signals: fold when `comment.text` is a non-empty string **or** `comment.fileList` is non-empty — the `fileList` clause goes beyond the review's text-only fix so an image-only comment (screenshot, no text) isn't silently dropped; the user judged that silent drop an unexpected bug, not an acceptable trade-off. `comment.html` is still what's stored. D5's "required already guards emptiness" claim replaced with the tightened validate: both review surfaces' `request_changes` validate now passes on the same text-or-fileList condition (new task 07), so a type-then-deleted mandatory comment fails at the input. Unit case lists updated in D3/Files-changed/Verification and task 01 (empty-document value → no-op; image-only → folds).
+
 D3 gates the fold on "`comment?.html` is a non-empty string", and D5 claims "the
 `required` validation on `request_changes` already guards emptiness at the input."
 Neither holds against the actual value shape:
@@ -64,6 +66,8 @@ comment has `text: null` and would be dropped — fine per "build for what exist
 
 ### 2. The live `metadata.comment` assertions are in `mergeEventOverrides.test.js`, not the deleted `dispatchLogEvent.test.js` — and one of them encodes precedence D4 deliberately inverts
 
+> **Resolved (auto).** Verification § Test migration now points at `mergeEventOverrides.test.js:45-68` and names the two fates: the YAML-clobber regression migrates onto `display.{app_name}.description`; the pre-hook-overrides-comment case is deleted, not migrated. D4 gained the one-line acknowledgment that a pre-hook can no longer override/scrub a typed comment — an intended behaviour change, fold-last by design. Task 02 already directed both test changes correctly; no task edits needed.
+
 Verification § Test migration points at "pre-Part-38 … `dispatchLogEvent.test.js`'s
 four `buildDefaultLogEventPayload` comment cases" — that file is gone (Part 38). The
 assertions that actually exist on this branch are in
@@ -89,6 +93,8 @@ at `mergeEventOverrides.test.js:44-68`, and add one line to D4: a pre-hook
 ## Minor
 
 ### 3. The design states post-rename filenames as current fact — Part 38 task 18 is pending; carry the naming caveat in design.md, not only in tasks
+
+> **Resolved (auto).** Overtaken by events: Part 38 tasks 18–19 landed (PR #72, merged during this action-review) — `pages/workflow-action-{view,review,edit}.yaml` now exist on the tree, so the design's filenames are current fact and no caveat is needed. The stale "whichever name exists" caveat in `tasks.md` was updated to state the rename has landed.
 
 The design cites `workflow-action-view.yaml`, `workflow-action-review.yaml:140`, and
 `workflow-action-edit.yaml` throughout (Background `:15,:20`, D6, Files-changed
