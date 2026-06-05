@@ -1,0 +1,21 @@
+type: kickoff-call
+kind: check
+action_group: setup
+sort_order: 30
+blocked_by:
+  - assign-account-manager
+description: Schedule and complete the kickoff call with the company.
+access:
+  demo:
+    view: true
+    edit: true
+status_map:
+  blocked:
+    demo:
+      message: Awaiting account manager assignment.
+  action-required:
+    demo:
+      message: Schedule and complete the kickoff call.
+  done:
+    demo:
+      message: Kickoff call completed.

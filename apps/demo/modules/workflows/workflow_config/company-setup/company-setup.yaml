@@ -1,0 +1,23 @@
+type: company-setup
+title: Company setup
+entity_collection: companies-collection
+entity_ref_key: company_ids
+display_order: 2
+
+starting_actions:
+  - type: billing-details
+    status: action-required
+  - type: assign-account-manager
+    status: action-required
+  - type: kickoff-call
+    status: blocked
+
+action_groups:
+  - id: setup
+    title: Setup
+    icon: AiOutlineSetting
+
+actions:
+  - _ref: modules/workflows/workflow_config/company-setup/billing-details.yaml
+  - _ref: modules/workflows/workflow_config/company-setup/assign-account-manager.yaml
+  - _ref: modules/workflows/workflow_config/company-setup/kickoff-call.yaml
