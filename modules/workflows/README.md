@@ -1,6 +1,6 @@
 # Workflows
 
-Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine (see [Transition model](#transition-model-signals)) — authors do not hand-write status transitions. Ships shared simple-action pages (`simple-edit`, `simple-view`, `simple-review`), a `workflow-overview` page, a `group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/simple action (`{workflow_type}-{action_type}-submit`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp` so every workflow + action mutation is auditable.
+Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine (see [Transition model](#transition-model-signals)) — authors do not hand-write status transitions. Ships shared action pages (`workflow-action-edit`, `workflow-action-view`, `workflow-action-review`), a `workflow-overview` page, a `workflow-group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/simple action (`{workflow_type}-{action_type}-submit`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp`, every handler invocation emits exactly one timeline event, and — when the connection's `changeLog` is configured — every workflow + action mutation is audited to the app's `log-changes` collection.
 
 ## Dependencies
 
@@ -53,8 +53,9 @@ Declare a workflow with one form action in the app's `workflow_config/`:
 # app/workflow_config/lead-pipeline.yaml
 type: lead-pipeline
 entity_collection: leads-collection
+entity_ref_key: lead_ids # event-references key for the entity — engine events surface on the entity's timeline under this key
 starting_actions:
-  - { type: qualify, status: action-required }
+  - { type: qualify, status: action-required } # seed grammar: { type, status }; legal seeds are action-required | blocked
 action_groups:
   - { id: discovery, title: Discovery }
 actions:
@@ -124,15 +125,35 @@ The buttons each page template ships emit fixed signals:
 | `review` | Approve → `approve`, Request changes → `request_changes` |
 | `error` | Resolve → `resolve_error` |
 
-The only author-controlled branch is the `submit` split: `submit` resolves to **`in-review`** when the action grants a `review` verb to any app in its `access:` block (someone must approve), and to **`done`** otherwise. The engine also fires internal signals authors never send directly — `unblock` (from `blocked_by` re-evaluation) and `internal_mirror_child_*` (tracker subscription).
+The only author-controlled branch is the `submit` split: `submit` resolves to **`in-review`** when the action grants a `review` verb to any app in its `access:` block (someone must approve), and to **`done`** otherwise. The split is action-global — one action doc is shared across every app, so whether a review step exists is a property of the action, not the submitting app. The engine also fires internal signals authors never send directly — `unblock` (from `blocked_by` re-evaluation), `internal_cancel_action` (the cancel sweep), and `internal_mirror_child_*` (tracker subscription).
 
-To run custom logic around a transition, declare a **hook** rather than overriding the transition:
+If a signal doesn't apply to the action's current stage, a user-driven submission **throws** (the page surfaced a button it shouldn't have); engine-internal cascade signals no-op silently instead. A submission is also rejected up front unless the signal's required verb (`submit`/`progress`/`not_required` → `edit`, `approve`/`request_changes` → `review`, `resolve_error` → `error`) is granted to the caller by `access.{app_name}` — the access check runs before any hook fires.
+
+### Hooks
+
+To run custom logic around a transition, declare a **hook** rather than overriding the transition. Hooks are keyed by **signal**, each with optional `pre` / `post` phases:
 
 ```yaml
 hooks:
-  submit_edit: # interaction key: submit_edit | not_required | resolve_error | approve | request_changes
+  submit: # signal key: submit | progress | not_required | resolve_error | approve | request_changes
     pre: { routine: [ ... ] } # inline Lowdefy routine; phases: pre | post
 ```
+
+**Pre-hooks return intent; their writes are out-of-band.** A pre-hook runs after the engine's access check and before any engine write. The engine consumes only its `:return` value as plan input:
+
+```yaml
+# pre-hook `:return` shape — all keys optional
+actions: # auxiliary signals against OTHER actions
+  - { type: provision-access, signal: activate, upsert: true } # upsert spawns a missing keyed target
+form_overrides: { ... } # deep-merged into the submission's form data
+event_overrides: { ... } # layered onto the dispatched log event
+```
+
+- A pre-hook **cannot re-signal the current action** — where the submitted action lands is fixed by the signal the user fired; the engine rejects redirect attempts. Conditional landing ("mark this not-required instead") is modelled as a separate thin action with its own button.
+- An `actions[]` entry may carry `upsert: true` to spawn a missing keyed target, and optional `fields` / `metadata` bags to seed data onto the target.
+- Any reads/writes the pre-hook performs itself (CallAPI, MongoDB) commit **independently of the engine's atomic commit** — by contract they are out-of-band external coordination and are not rolled back if the submit fails. A pre-hook `:reject` aborts the submit before any engine write.
+
+**Post-hooks fire after the commit.** The hook payload's `context` carries the post-commit workflow + action docs (no re-read needed), and `result` is `{ action_ids, completed_groups, event_id, tracker_fired }`. Because the engine's writes have already landed, a post-hook failure does **not** roll them back — post-hook routines must be idempotent / safe to re-run, since a retried submission fires them again.
 
 ## Exports
 
@@ -142,13 +163,15 @@ hooks:
 
 | ID | Description | Path |
 |---|---|---|
-| `simple-edit` | Shared simple-action edit page (status selector + universal fields + Save). Addressed by `?action_id=<id>` | `/{entryId}/simple-edit` |
-| `simple-view` | Shared simple-action view page (read-only fields + status timeline + comment timeline) | `/{entryId}/simple-view` |
-| `simple-review` | Shared simple-action review page (read-only fields + approve / request_changes buttons) | `/{entryId}/simple-review` |
+| `workflow-action-edit` | Shared simple-kind action edit page (universal fields + signal buttons). Addressed by `?action_id=<id>` | `/{entryId}/workflow-action-edit` |
+| `workflow-action-view` | Shared simple-kind action view page (read-only fields + status timeline + comment timeline) | `/{entryId}/workflow-action-view` |
+| `workflow-action-review` | Shared simple-kind action review page (read-only fields + approve / request-changes buttons) | `/{entryId}/workflow-action-review` |
 | `workflow-overview` | Workflow detail page (header + action cards with form_data DataView). Addressed by `?workflow_id=<id>` | `/{entryId}/workflow-overview` |
-| `group-overview` | Group detail page (header + progress bar + group-status badge + action cards). Addressed by `?workflow_id=<id>&group_id=<id>` | `/{entryId}/group-overview` |
+| `workflow-group-overview` | Group detail page (header + progress bar + group-status badge + action cards). Addressed by `?workflow_id=<id>&group_id=<id>` | `/{entryId}/workflow-group-overview` |
 
-**Per-action form pages** (resolver-emitted by `makeActionPages`): one page per `(workflow_type, action_type, verb)` tuple, where `verb` is the intersection of `action.access.{app_name}.verbs` and the supported set `[edit, view, review, error]`. Only `kind: form` actions emit pages — simple and tracker actions emit none. Page ID format: `{workflow_type}-{action_type}-{verb}`. Path: `/{entryId}/{workflow_type}-{action_type}-{verb}`. Example: a `qualify` form action in the `onboarding` workflow with `access.demo.verbs: [edit, view]` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
+The `workflow-` prefix marks the module's fixed page space: `{entry_id}/workflow-*` always addresses module infrastructure, disjoint from the per-type derived pages below (and `workflow` is therefore a reserved workflow type name — the build rejects it).
+
+**Per-action form pages** (resolver-emitted by `makeActionPages`): one page per `(workflow_type, action_type, verb)` tuple, where the verbs are the keys declared in the action's `access.{app_name}` map (supported set: `edit`, `view`, `review`, `error`). Only `kind: form` actions emit pages — simple actions use the shared `workflow-action-*` pages, and tracker actions emit none. Page ID format: `{workflow_type}-{action_type}-{verb}`. Path: `/{entryId}/{workflow_type}-{action_type}-{verb}`. Example: a `qualify` form action in the `onboarding` workflow with `access.demo: { edit: true, view: true }` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
 
 ### Components
 
@@ -165,17 +188,17 @@ hooks:
 
 | ID | Description |
 |---|---|
-| `start-workflow` | Instantiate a workflow on an entity. Optional `parent_action_id` links as a child of an existing tracker action |
-| `cancel-workflow` | Push `cancelled` to workflow status; flip remaining open actions to `not-required` |
-| `close-workflow` | User-initiated normal termination: push `completed`; sweep non-terminal actions honoring `required_after_close` |
-| `get-entity-workflows` | Return workflows + filtered actions for one entity. Consumed by `actions-on-entity` |
-| `get-workflow-overview` | Return one workflow + ordered + filtered actions for the `workflow-overview` page |
-| `get-action-group-overview` | Return one workflow + one action group's metadata + ordered + filtered actions in that group |
+| `start-workflow` | Instantiate a workflow on an entity; emits a `workflow-started` event. The optional `actions` payload override seeds actions at a declared status — `{ type, status }` grammar, legal seeds `action-required` \| `blocked` (signals are submit-time grammar only and don't apply at start). Optional `metadata` merges onto every seeded action doc; optional `parent_action_id` links the new workflow as a child of an existing tracker action |
+| `cancel-workflow` | Push `cancelled` to workflow status; sweep remaining open actions to `not-required` (the internal `internal_cancel_action` signal); emits a `workflow-cancelled` event |
+| `close-workflow` | User-initiated normal termination: push `completed`; sweep non-terminal actions honoring `required_after_close`; emits a `workflow-closed` event. Idempotent no-op on an already-completed workflow; rejected on a cancelled one |
+| `get-entity-workflows` | Return workflows + actions for one entity. Each action carries a per-user `visible_verbs` bag (`{ view, edit, review, error }`); actions with no visible verb are dropped. Consumed by `actions-on-entity` |
+| `get-workflow-overview` | Return one workflow + ordered + verb-filtered actions for the `workflow-overview` page |
+| `get-action-group-overview` | Return one workflow + one action group's metadata + ordered + verb-filtered actions in that group |
 
 **Per-action submit endpoints** (resolver-emitted by `makeWorkflowApis`):
 
-- `{workflow_type}-{action_type}-submit` — one per `kind: form` or `kind: simple` action (tracker actions emit none). Bakes the action's `hooks:` / `event:` maps in as build-time literals; routes the submitted payload — including the resolved signal — through `SubmitWorkflowAction` on the `workflow-api` connection.
-- `{workflow_type}-{action_type}-{interaction}-{phase}` — one per declared inline hook routine (`hooks.{interaction}.{phase}.routine` on the action). Phases: `pre`, `post`. Interactions: `submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`.
+- `{workflow_type}-{action_type}-submit` — one per `kind: form` or `kind: simple` action (tracker actions emit none). Bakes the action's signal-keyed `hooks:` / `event:` maps in as build-time literals; routes the submitted payload through `SubmitWorkflowAction` on the `workflow-api` connection. The payload carries `action_id`, `signal`, `current_key`, `fields`, `form`, `form_review`, `comment`, and `metadata` — there is no `force` flag, no interaction key, and no client-supplied status: transition legality is resolved server-side by the FSM.
+- `{workflow_type}-{action_type}-{signal}-{phase}` — one per declared inline hook routine (`hooks.{signal}.{phase}.routine` on the action). Phases: `pre`, `post`. Signals: `submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`. Emitted as `InternalApi` — reachable only via the engine, never by direct HTTP or client CallAPI.
 - `{workflow_type}-group-{group_id}-on-complete` — one per declared `action_groups[*].on_complete.routine`. Fired by the group state machine when the group reaches a terminal status.
 
 ### Connections
@@ -184,7 +207,7 @@ hooks:
 |---|---|---|
 | `workflows-collection` | `MongoDBCollection` | Direct read access to the `workflows` collection |
 | `actions-collection` | `MongoDBCollection` | Direct read access to the `actions` collection |
-| `workflow-api` | `WorkflowAPI` | Server-side engine connection — owns transitions, tracker subscription, summary writeback |
+| `workflow-api` | `WorkflowAPI` | Server-side engine connection — load-plan-commit handlers (`SubmitWorkflowAction`, `StartWorkflow`, `CancelWorkflow`, `CloseWorkflow`), FSM signal resolution, tracker cascade, event + notification dispatch, optional native `changeLog` audit |
 
 ### Menus
 
@@ -203,8 +226,7 @@ Serves every workflow-stream read:
 - [`api/get-workflow-overview.yaml`](api/get-workflow-overview.yaml) — `$lookup foreignField: workflow_id`, on every workflow overview load.
 - [`api/get-action-group-overview.yaml`](api/get-action-group-overview.yaml) — `$lookup foreignField: workflow_id` (with a sub-pipeline filter on `action_group`), on every group overview load.
 - [`api/get-entity-workflows.yaml`](api/get-entity-workflows.yaml) — `$lookup foreignField: workflow_id`, once per workflow on every entity page render.
-- [`getActions.js`](../../plugins/modules-mongodb-plugins/src/connections/shared/getActions.js) — `find({ workflow_id })`, invoked by `recomputeWorkflowAfterActionWrite` after every action submit.
-- `CancelWorkflow` / `CloseWorkflow` — `find` / `updateMany` scoped by `workflow_id` (admin actions).
+- [`loadWorkflowState.js`](../../plugins/modules-mongodb-plugins/src/connections/shared/phases/loadWorkflowState.js) — `find({ workflow_id })` in every engine handler's load phase (submit, start, cancel, close, and each tracker-cascade level).
 
 Equality on `workflow_id` is the only useful key. The per-workflow `$sort` keys inside the `$lookup` sub-pipelines mix pipeline-computed fields (`groupIndex`, `required_sort`, `sort`) and stored fields (`created.timestamp`, `_id`); none are indexable here, and the per-workflow result set is small (typically <30 actions), so Mongo sorts it in memory.
 
@@ -228,11 +250,11 @@ The `actions` collection must remain free of any collection-level required-field
 
 ### `workflows_config` (required)
 
-`array` — The app's workflow YAML. Each entry is a workflow object with `type`, `entity_collection`, `starting_actions`, optional `action_groups`, and `actions`. Schema in [`designs/workflows-module-concept/action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md); validated by `makeWorkflowsConfig` at build time.
+`array` — The app's workflow YAML. Each entry is a workflow object with `type`, `entity_collection`, `entity_ref_key` (required — the event-references key for the workflow's entity, e.g. `lead_ids`, so engine events surface on the entity's timeline), `starting_actions`, optional `action_groups`, and `actions`. Schema in [`designs/workflows-module-concept/action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md); validated by `makeWorkflowsConfig` at build time.
 
 ### `app_name` (required)
 
-`string` — Host app's deployment name. Filters per-action access (`access.{app_name}`) and keys the default log event's display block. See [App name scoping](../../docs/idioms.md#app-name).
+`string` — Host app's deployment name. Three roles: (1) filters per-action access (`access.{app_name}`); (2) keys the default log event's display block; (3) keys the per-app display the engine writes onto each action doc — display surfaces read `action.{app_name}.message` and `action.{app_name}.links` for the current app's slug. See [App name scoping](../../docs/idioms.md#app-name).
 
 ### `entities` (required)
 
@@ -244,7 +266,7 @@ The `actions` collection must remain free of any collection-level required-field
 
 ### `action_statuses_display`
 
-`object` — Defaults to `{}`. Per-status display overrides for the shipped `action_statuses` enum. Merged via `_build.object.assign` onto the shipped enum and exposed as the `action_statuses` component for UI consumption only. The engine reads the shipped enum directly — overrides cannot affect engine priority logic.
+`object` — Defaults to `{}`. Per-status display overrides for the shipped `action_statuses` enum. Merged via `_build.object.assign` onto the shipped enum and exposed as the `action_statuses` component for UI consumption only. The engine reads the shipped enum directly — overrides are UI-only and cannot affect engine behaviour (transition legality is owned by the per-kind FSM tables; the enum's `priority` is display-only ordering).
 
 ### `workflow_lifecycle_stages_display`
 
@@ -258,10 +280,14 @@ The `actions` collection must remain free of any collection-level required-field
 
 ## Plugins
 
-- `@lowdefy/modules-mongodb-plugins` at `^0.6.0` — ships the `WorkflowAPI` server connection consumed by the `workflow-api` connection above.
+- `@lowdefy/modules-mongodb-plugins` at `^0.6.0` — ships the `WorkflowAPI` server connection consumed by the `workflow-api` connection above. Declares `mongodb` `^6` as a peer dependency: the host app provides the single driver build, from which the engine constructs its own pooled `MongoClient` for engine-internal write paths (app-side YAML requests keep using the community plugin).
 
 ## Notes
 
 - **Prerelease (0.x).** Pin to an exact version or commit SHA in production.
 - **Runtime dependencies.** Per-signal pre/post hooks are invoked by the engine. Navigation links are engine-derived from each action's `access:` verbs and emitted pages — authors don't write `link:` blocks. Group `on_complete` fan-out is the remaining unlanded engine piece (Part 11): declared `on_complete` routines are authored but inert until it ships.
+- **Event types.** Every engine invocation emits exactly one timeline event: `action-{signal}` for submits, `workflow-started` / `workflow-cancelled` / `workflow-closed` for the lifecycle handlers, and `action-internal-mirror-{state}` per tracker-mirror level. Apps that subscribe to events (notifications, external syncs) should explicitly route or ignore the lifecycle and mirror types.
+- **Transactions and atomicity.** On a replica set the engine commits each invocation's workflow + action writes in one transaction; on a standalone `mongod` it falls back to ordered writes guarded by the same compare-and-swap claim (the detected mode is logged at connection init). Event, notification, and change-log dispatches happen after the commit — a dispatch failure never rolls back a committed submit; it surfaces as a `post_commit_dispatch_failed` error after the invocation completes.
+- **Concurrency.** Handlers are optimistic: a concurrent write to the same workflow between an invocation's load and commit throws a retryable `concurrent_submit` error with zero writes landed — the caller decides whether to retry (the engine doesn't auto-retry, since that would re-fire pre-hooks). Tracker-cascade levels are the one exception: they auto-retry internally (bounded), having no pre-hook.
+- **Form data accumulation.** Each submission's form payload deep-merges onto the workflow's `form_data.{action}` namespace (objects merge; arrays, scalars, and `null` replace whole). Omitting a field leaves its prior value — clearing is explicit (`field: null`), never by omission.
 - **Cross-cutting idioms.** See [`docs/idioms.md`](../../docs/idioms.md) anchors `#change-stamps`, `#event-display`, `#slots`, `#app-name`, `#secrets`.

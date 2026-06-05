@@ -25,7 +25,7 @@ Custom Lowdefy blocks and actions used by the [modules-mongodb](../../README.md)
 
 | Connection | Purpose |
 |---|---|
-| `WorkflowAPI` | Server-side engine connection backing the [`workflows`](../../modules/workflows/README.md) module. Owns FSM-driven status transitions, the tracker subscription, workflow-summary writeback, side-effect dispatch (log events, notifications), and pre/post hook invocation via `context.callApi`. |
+| `WorkflowAPI` | Server-side engine connection backing the [`workflows`](../../modules/workflows/README.md) module. Owns FSM-driven status transitions, the tracker subscription, workflow-summary writeback, side-effect dispatch (log events, notifications), native change-log audit (the connection's `changeLog` config), and pre/post hook invocation via `context.callApi`. |
 
 `WorkflowAPI` exposes four request handlers — the `workflows` module's APIs route to them through its `workflow-api` connection:
 
@@ -57,13 +57,15 @@ The plugin assumes the following peers are already in the app:
 - `@lowdefy/block-utils`
 - `@lowdefy/blocks-antd`
 - `@lowdefy/blocks-basic`
+- `@lowdefy/community-plugin-mongodb` (^3)
 - `@lowdefy/helpers`
 - `@lowdefy/nunjucks`
 - `@lowdefy/plugin-aws` (≥ 4)
 - `antd` (≥ 6)
+- `mongodb` (^6)
 - `react` (≥ 18) and `react-dom` (≥ 18)
 
-`@lowdefy/plugin-aws` is required by `FileManager` and by the `file` / `fileList` field types in `DataDescriptions` and `SmartDescriptions`.
+`@lowdefy/plugin-aws` is required by `FileManager` and by the `file` / `fileList` field types in `DataDescriptions` and `SmartDescriptions`. `mongodb` and `@lowdefy/community-plugin-mongodb` are required by the `WorkflowAPI` connection — the engine constructs its own pooled `MongoClient` from the app's single driver build for engine-internal writes, while app-side YAML requests keep using the community plugin.
 
 ## `FetchRequest` action
 

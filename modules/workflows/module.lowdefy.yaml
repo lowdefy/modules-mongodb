@@ -42,8 +42,10 @@ vars:
       Array of workflow definitions consumed by every build-time resolver in this
       module (parts 4, 12, 13, 15). Host app supplies via the entry's `vars` block,
       e.g. `vars: { _ref: workflow_config/workflows.yaml }`. Each entry is a workflow
-      object with `type`, `entity_collection`, `starting_actions`, `action_groups`,
-      and `actions` (see workflows-module-concept/action-authoring/spec.md).
+      object with `type`, `entity_collection`, `entity_ref_key` (the event-references
+      key for the workflow's entity, e.g. `lead_ids` — required), `starting_actions`,
+      `action_groups`, and `actions` (see
+      workflows-module-concept/action-authoring/spec.md).
   app_name:
     type: string
     required: true
@@ -82,7 +84,9 @@ vars:
       Merged via `_build.object.assign` onto the shipped enum and exposed
       as the `action_statuses` component for UI consumption only. The
       engine reads the shipped enum directly from the module file —
-      overrides cannot affect engine priority logic.
+      overrides are UI-only and cannot affect engine behaviour (transition
+      legality is owned by the per-kind FSM tables; the enum's `priority`
+      is display-only ordering).
   workflow_lifecycle_stages_display:
     type: object
     default: {}

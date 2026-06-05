@@ -49,6 +49,7 @@ graph TD
   activities --> contacts
   workflows --> layout
   workflows --> events
+  workflows --> notifications
   release-notes --> layout
   events
 ```
