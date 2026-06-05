@@ -11,7 +11,9 @@ entities:
     page_id: lead-view
     id_query_key: _id
     title: Lead
-  companies-collection:
+  # key is the module-scoped connection id that
+  # _module.connectionId { id: companies-collection, module: companies } resolves to
+  companies/companies-collection:
     page_id: companies/view
     id_query_key: _id
     title: Company

@@ -36,7 +36,8 @@ on_create_routine:
         workflow_type: company-setup
         entity_id:
           _step: insert.insertedId
-        entity_collection: companies-collection
+        entity_collection:
+          _module.connectionId: { id: companies-collection, module: companies }
         parent_action_id:
           _payload: url_query.action_id
   - ":if":
@@ -73,4 +74,5 @@ components:
                 vars:
                   entity_id:
                     _url_query: _id
-                  entity_collection: companies-collection
+                  entity_collection:
+                    _module.connectionId: { id: companies-collection, module: companies }
