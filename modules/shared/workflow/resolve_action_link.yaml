@@ -1,0 +1,61 @@
+# Shared `resolve_action_link` stage (Part 42 D5).
+#
+# Collapses the per-verb `links` map (Part 38 / Part 34 D7) to the single
+# access-aware `link` a surface renders. Highest-priority verb
+# (edit > review > error > view) whose cell is BOTH non-null (state) AND true in
+# `$visible_verbs` (access); else null.
+#
+# Parameter: `app_name` — `_var` with `_module.var` default (the visible_verbs
+# convention): the timeline fragment supplies it via `_ref` vars; in-module
+# consumers (the three read APIs) ref this file bare and the default resolves
+# in their module scope. MUST run AFTER a `visible_verbs` compute stage (it
+# reads `$visible_verbs`). Single-stage object on purpose (Lowdefy `_ref`
+# substitutes a node in place; bundling stages would nest).
+$addFields:
+  link:
+    $let:
+      vars:
+        app_links:
+          $getField:
+            field:
+              _var:
+                key: app_name
+                default:
+                  _module.var: app_name
+            input:
+              $getField:
+                field: links
+                input: $$ROOT
+        verbs: $visible_verbs
+      in:
+        $switch:
+          branches:
+            - case:
+                $and:
+                  - $$verbs.edit
+                  - $ne:
+                      - $$app_links.edit
+                      - null
+              then: $$app_links.edit
+            - case:
+                $and:
+                  - $$verbs.review
+                  - $ne:
+                      - $$app_links.review
+                      - null
+              then: $$app_links.review
+            - case:
+                $and:
+                  - $$verbs.error
+                  - $ne:
+                      - $$app_links.error
+                      - null
+              then: $$app_links.error
+            - case:
+                $and:
+                  - $$verbs.view
+                  - $ne:
+                      - $$app_links.view
+                      - null
+              then: $$app_links.view
+          default: null
