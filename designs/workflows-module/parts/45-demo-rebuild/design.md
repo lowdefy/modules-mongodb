@@ -10,7 +10,7 @@ The demo app's `workflow_config` is rebuilt from scratch as a **realistic demo**
 4. **Tracker via Part 44 `start_link`** — `track-company-setup` declares `start_link` pointing at the companies module's `new` page with both URL-query sentinels (`action_id`, `entity_id`). No new tracker mechanics beyond [Part 44](../44-tracker-start-link/design.md).
 5. **Companies module `on_create_routine` var** — a new manifest var (array of API routine steps, default `[]`) spliced into the `create-company` API routine via its existing `_build.array.concat` composition, after the insert/link/event steps and before the `:return:` — the same consumer-extension idiom the routine already carries for `request_stages.write`. The new page's save payload additionally forwards the page's URL query under a reserved `url_query` key, so injected steps can read start-link params server-side.
 6. **Demo `on_create_routine`** — `CallApi` → workflows `start-workflow` (`workflow_type: company-setup`, the new company as entity, `parent_action_id` from `url_query.action_id` — absent when the page wasn't reached via the start link; `StartWorkflow` already treats that as "no parent"), plus a `convert-lead` event referencing lead + company behind an `:if` on `url_query.entity_id`. **Every** new company gets a setup workflow; conversion-from-lead is the linked special case, not a separate path.
-7. **Workflows `entities` var** gains a `companies-collection` entry so the workflows pages' entity back-links resolve for the child workflow — `vars.entities` is consumed by `workflow-overview.yaml` / `group-overview.yaml` (the part 20 back-link), not by the engine's link computation.
+7. **Workflows `entities` var** gains a companies entry (keyed `companies/companies-collection` — the module-scoped connection id, see D5's connection amendment) so the workflows pages' entity back-links resolve for the child workflow — `vars.entities` is consumed by `workflow-overview.yaml` / `group-overview.yaml` (the part 20 back-link), not by the engine's link computation.
 8. **Demo cleanup** — delete the installation workflow config, the `onboarding-spawn-proof-of-installation-actions` raw-insert API (and its `apis:` ref), the send-quote pre/post hooks (engine events + notifications cover their logging), lead-view's "Start onboarding" button and admin close/cancel-child buttons + `installation_child_id` JS, and the stale `tracker-only-onboarding.spec.js`.
 9. **One notification wired** — *superseded by [`designs/demo-notifications/design.md`](../../../demo-notifications/design.md)* (task 06 is a stub pointing there). The wired `action-approve` × `send-quote` notification and the default-ignored fall-through policy carry over unchanged; that design widens the scope with production-shaped notification docs, invite mocks, and the demo's `enums.event_types` global.
 10. **Happy-path e2e** replacing the stale spec: lead create → full-scope render → qualify (site visit on) → site-visit check-off → quote → review/approve → PO upload → convert via start link → company-setup → onboarding completes.
@@ -207,7 +207,10 @@ on_create_routine:
         workflow_type: company-setup
         entity_id:
           _step: insert.insertedId
-        entity_collection: companies-collection
+        entity_collection:
+          # module-scoped connection id — must match the workflow config's
+          # entity_collection (see D5's connection amendment)
+          _module.connectionId: { id: companies-collection, module: companies }
         parent_action_id:
           _payload: url_query.action_id
   - ":if":
@@ -264,9 +267,13 @@ The injected steps call the workflows and events endpoints directly via `_module
 
 ### D5 — Cross-entity child: `entities` var entry, workflows panel slotted into the companies view page
 
-The workflows `entities` var gains `companies-collection: { page_id: companies/view, id_query_key: _id, title: Company }` — module page ids are entry-scoped as `{entryId}/{pageId}` (verified against the demo build output: `build/pages/companies/view`).
+The workflows `entities` var gains a companies entry — `{ page_id: companies/view, id_query_key: _id, title: Company }` — keyed by `companies/companies-collection` (the module-scoped connection id; see the connection note below). Module page ids are entry-scoped as `{entryId}/{pageId}` (verified against the demo build output: `build/pages/companies/view`).
 
 The demo wires the workflows panel into the companies view page via the existing `components.main_slots`/`sidebar_slots` var — the same cross-module `_ref { module: workflows, component: actions-on-entity }` shape lead-view uses inline. This is newly possible: the entry-vars cross-module-`_ref` limitation recorded at `apps/demo/modules/companies/vars.yaml:29-34` was fixed by the deferred entry-vars resolve (see D4), so the slot wiring the comment always intended now builds. The user drives `company-setup` from the company page itself; the engine's tracker view-link to `workflow-overview` (unchanged Part 44 behavior) remains as the cross-entity hop from the lead side. The stale limitation comment is removed, and re-slotting the inlined activities tile becomes possible the same way — flagged as a companies-module cleanup outside this part's scope.
+
+**Implementation amendment — entry order matters (found at implementation, 2026-06-05).** The deferred entry-vars resolve is *module-entry-order-sensitive* in the pinned experimental build: Phase 2.5 (`buildModuleDefs.js`) resolves each entry's vars sequentially in `modules:` array order, and `_module.var` resolution is lazily cached per module entry (`walker.js` `resolveEffectiveVar` → `resolvedVarCache`). When the `companies` entry (whose vars carry the cross-module slot `_ref`) resolved *before* the `workflows` entry, the walk into `actions-on-entity` read `_module.var: workflows_config` while the workflows entry's `consumerVars` was still an unresolved `_ref` blob — resolving to `null` and *permanently caching* it, so every workflows resolver later crashed with "workflows is not iterable". Demo workaround: the `workflows` entry is listed **before** `companies` in `apps/demo/modules.yaml`, with a comment. This is a lowdefy build bug (stale-cache poisoning across phases 2.5/3), tracked for an upstream fix; once fixed, the ordering comment can be dropped.
+
+**Implementation amendment — module-scoped connection id (decided at implementation, 2026-06-05).** The generated `company-setup` action pages interpolate `entity_collection` verbatim as the `get_entity` request's `connectionId`, and the demo defines no app-level `companies-collection` connection (only the companies module's own, auto-scoped to `companies/companies-collection`). Rather than duplicating an app-level connection (the `leads-collection` pattern), the config references the module's connection: `entity_collection` is authored as `_module.connectionId: { id: companies-collection, module: companies }` (resolving at app level to `companies/companies-collection` — `resolveDepTarget.js` app-level branch). Every value that must match the stored `entity_collection` uses the same scheme: the workflow config, the `on_create_routine` start payload, the sidebar slot's `actions-on-entity` vars, and — as a literal key, since YAML keys can't carry operators — the workflows `entities` map key `companies/companies-collection`. The lead side is unaffected (`leads-collection` is a demo-owned app-level connection, unscoped).
 
 ### D6 — Scope split: realistic demo here, exhaustive coverage in Part 22
 
@@ -280,7 +287,9 @@ Deliberately **not** in this demo: keyed action instances, error/`resolve_error`
 | `apps/demo/modules/workflows/workflow_config/company-setup/*` | Create — `company-setup.yaml` + three action files. |
 | `apps/demo/modules/workflows/workflow_config/installation/*` | Delete. |
 | `apps/demo/modules/workflows/workflow_config/workflows.yaml` | Point at `onboarding` + `company-setup`. |
-| `apps/demo/modules/workflows/vars.yaml` | `entities` gains the `companies-collection` entry. |
+| `apps/demo/modules/workflows/vars.yaml` | `entities` gains the companies entry, keyed by the scoped id `companies/companies-collection` (D5 amendment). |
+| `apps/demo/modules.yaml` | `workflows` entry moved above `companies` — workaround for the order-sensitive entry-vars resolve (D5 amendment; lowdefy bug, comment marks it droppable once fixed upstream). |
+| `apps/demo/modules/events/event_types.yaml` | Cleanup: drop the orphaned `start-onboarding` entry (nothing logs it once `leads-create` starts the workflow directly); add a `convert-lead` entry for the new event type. |
 | `apps/demo/api/leads-create.yaml` | Add `CallApi` → workflows `start-workflow` (`workflow_type: onboarding`) after the insert. |
 | `apps/demo/api/onboarding-spawn-proof-of-installation-actions.yaml` | Delete (+ its `apis:` ref). |
 | `apps/demo/pages/leads/lead-view.yaml` | Remove "Start onboarding" + admin close/cancel-child buttons and `installation_child_id` JS; keep workflows panel + events timeline. |
