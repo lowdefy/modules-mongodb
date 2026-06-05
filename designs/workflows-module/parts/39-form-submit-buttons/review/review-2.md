@@ -2,7 +2,7 @@
 
 Reviewed the **current** design (post review-1 resolutions) against the shipped templates
 (`modules/workflows/templates/{edit,view,review,error}.yaml.njk`), the dependency designs
-[Part 24](../../24-universal-fields/design.md) and [Part 38](../../38-engine-rebuild/design.md),
+[Part 24](../../24-universal-fields/design.md) and [Part 38](../../_completed/38-engine-rebuild/design.md),
 the form FSM table in [state-machine](../../../../workflows-module-concept/state-machine/design.md),
 and the Lowdefy `_ref` build-time `key` mechanism.
 

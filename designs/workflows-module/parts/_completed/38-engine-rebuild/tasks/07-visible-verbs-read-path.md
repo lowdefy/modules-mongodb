@@ -24,7 +24,7 @@ Use the concrete pipeline from Part 34 D12 as the reference.
 - `modules/workflows/api/get-workflow-overview.yaml`
 - `modules/workflows/api/get-action-group-overview.yaml`
 
-Their existing `message` projection lights up automatically once the engine writes the top-level per-app fields (no change needed here). Their singular `link: $<app_name>.link` projection, however, references a field Part 38 deletes (replaced by the per-verb `.links` map) — replacing it with the server-side `resolve_action_link.yaml` pick is owned by [Part 42 D5](../../_completed/42-timeline-action-cards/design.md), not this task.
+Their existing `message` projection lights up automatically once the engine writes the top-level per-app fields (no change needed here). Their singular `link: $<app_name>.link` projection, however, references a field Part 38 deletes (replaced by the per-verb `.links` map) — replacing it with the server-side `resolve_action_link.yaml` pick is owned by [Part 42 D5](../../42-timeline-action-cards/design.md), not this task.
 
 **Add a test** that runs the shared `gates.fixtures.js` (task 5) through this aggregation via `mongodb-memory-server` `$match`, asserting the gate semantics match the oracle.
 

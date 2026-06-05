@@ -1,6 +1,6 @@
 # Part 38 — Worked example (Submit)
 
-A full `SubmitWorkflowAction` invocation walked through all five phases. Extracted from [design.md](./design.md) § Worked example — decision references (D4, D7, D9, D11, D15, D16) resolve there.
+A full `SubmitWorkflowAction` invocation walked through all five phases. Extracted from [design.md](design.md) § Worked example — decision references (D4, D7, D9, D11, D15, D16) resolve there.
 
 **Workflow:** an installation workflow with three actions in one group:
 

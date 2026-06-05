@@ -2,7 +2,7 @@
 
 ## Context
 
-Every landed `callApi` call site was implemented against the unshipped `{ success }`-envelope proposal (concept [call-api spec](../../../../workflows-module-concept/call-api/spec.md), pre-correction) instead of the shipped framework contract (design § "The shipped `callApi` contract"). The shipped function — defined in `lowdefy/packages/api/src/routes/request/callRequestResolver.js` — is:
+Every landed `callApi` call site was implemented against the unshipped `{ success }`-envelope proposal (concept [call-api spec](../../../../../workflows-module-concept/call-api/spec.md), pre-correction) instead of the shipped framework contract (design § "The shipped `callApi` contract"). The shipped function — defined in `lowdefy/packages/api/src/routes/request/callRequestResolver.js` — is:
 
 ```js
 const response = await callApi({ endpointId, payload });
@@ -83,4 +83,4 @@ Five landed call sites: `shared/phases/commitPlan.js` (`dispatchEvent`), `Submit
 - **Sequencing: before task 14.** The hook wrappers task builds on the corrected contract (its task file now references this one); landing 22 first keeps the legacy engine coherent in the interim — once `makeWorkflowApis` emits pre-scoped hook ids, the legacy `{ id: hookId, module: "workflows" }` form would double-scope.
 - Group `on_complete` Api ids (`emitGroupOnCompleteApi`) are emitted but not yet dispatched (Part 11 fan-out, unimplemented). When that lands, the same `_module.endpointId` wrapping applies to the emitted on-complete ids.
 - `connection.entry_id` is no longer needed for hook-id prefixing (the build resolves scoping); it remains for `computeEngineLinks`' pageId mechanic — don't remove it.
-- Task 13's deviation note points here; the concept [call-api spec](../../../../workflows-module-concept/call-api/spec.md) and Part 1's corrected deviation note document the shipped contract authoritatively.
+- Task 13's deviation note points here; the concept [call-api spec](../../../../../workflows-module-concept/call-api/spec.md) and Part 1's corrected deviation note document the shipped contract authoritatively.

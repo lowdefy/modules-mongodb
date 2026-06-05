@@ -6,7 +6,7 @@ The fix is one shared aggregation fragment that joins events to the live `action
 
 ## Proposed change
 
-1. Add a shared aggregation fragment `modules/shared/workflow/timeline_action_lookup.yaml` — the events→`actions` `$lookup`, an **access-aware** action projection (`status`, `message`, and a single resolved `link`), and the "attach to latest referencing event only" de-dup, parameterized by one build-time `app_name` var. The link is *not* read straight off the action cell: post-[Part 38](../../38-engine-rebuild/design.md) the cell carries a per-verb `links` map, so the fragment composes two new shared stages — `visible_verbs.yaml` (resolve which verbs this user has) and `resolve_action_link.yaml` (collapse the map to the one link the user can actually use) — see D5.
+1. Add a shared aggregation fragment `modules/shared/workflow/timeline_action_lookup.yaml` — the events→`actions` `$lookup`, an **access-aware** action projection (`status`, `message`, and a single resolved `link`), and the "attach to latest referencing event only" de-dup, parameterized by one build-time `app_name` var. The link is *not* read straight off the action cell: post-[Part 38](../38-engine-rebuild/design.md) the cell carries a per-verb `links` map, so the fragment composes two new shared stages — `visible_verbs.yaml` (resolve which verbs this user has) and `resolve_action_link.yaml` (collapse the map to the one link the user can actually use) — see D5.
 2. Splice that fragment into the events module's `events-timeline.yaml` `get-events` pipeline **unconditionally**, passing `app_name` from the events module's existing `display_key` var — no new author-facing config.
 3. Pass `actionStatusConfig` to the `EventsTimeline` block from a **shared** status-display enum.
 4. Move `modules/workflows/enums/action_statuses.yaml` to `modules/shared/enums/action_statuses.yaml` so both the workflows pages and the events timeline read one source; reconcile the `EventsTimeline` block to that enum's key shape.
@@ -77,7 +77,7 @@ The "attach the live card to the most recent referencing event only" behaviour i
 
 ### D5 — The single rendered link is resolved server-side, access-aware, once for every surface
 
-v0 stored one pre-resolved `link` per action and the card rendered it. [Part 38](../../38-engine-rebuild/design.md) (implementing [Part 34 D7](../34-action-access-model/design.md)) replaces that single cell with a per-verb **map** — `action.<app_name>.links: { view, edit, review, error }`, each cell a `{ pageId, urlQuery, title }` link object or `null` where the slug doesn't declare the verb / the stage has no page. So *some* consumer must collapse the map to the one link to show. The card reads a single `link` (`EventsTimeline.js:399-417`); it does not select.
+v0 stored one pre-resolved `link` per action and the card rendered it. [Part 38](../38-engine-rebuild/design.md) (implementing [Part 34 D7](../34-action-access-model/design.md)) replaces that single cell with a per-verb **map** — `action.<app_name>.links: { view, edit, review, error }`, each cell a `{ pageId, urlQuery, title }` link object or `null` where the slug doesn't declare the verb / the stage has no page. So *some* consumer must collapse the map to the one link to show. The card reads a single `link` (`EventsTimeline.js:399-417`); it does not select.
 
 **Decision: collapse the map in the aggregation, not the view layer — and account for both dimensions.**
 
@@ -230,7 +230,7 @@ None. (The earlier "is the link render-ready / does it need `action_id` substitu
 
 ## Depends on
 
-- **[Part 38 — engine rebuild](../../38-engine-rebuild/design.md)** for the link contract this part assumes: the per-verb `action.<app_name>.links: { view, edit, review, error }` map (Part 34 D7) and the `access.<app>.<verb>` shape `visible_verbs` resolves against. This part targets the **post-38** contract, not the pre-38 single `<app_name>.link`.
+- **[Part 38 — engine rebuild](../38-engine-rebuild/design.md)** for the link contract this part assumes: the per-verb `action.<app_name>.links: { view, edit, review, error }` map (Part 34 D7) and the `access.<app>.<verb>` shape `visible_verbs` resolves against. This part targets the **post-38** contract, not the pre-38 single `<app_name>.link`.
 - The `actions` collection + app-keyed status-map cell convention from the workflows engine (`get-entity-workflows.yaml`, `actions-collection.yaml`).
 - The shipped `EventsTimeline` block (`plugins/modules-mongodb-plugins`) — already renders the card (single `link`); this part feeds, re-colours, and resolves its link server-side.
 

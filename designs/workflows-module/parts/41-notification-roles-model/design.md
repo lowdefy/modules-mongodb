@@ -1,6 +1,6 @@
 # Part 41 — Notification-roles model (rethink)
 
-**Status: STUB — not yet designed.** This part captures the problem and the verified current state so a future rethink starts informed. It is deliberately deferred out of [Part 38 — Engine rebuild](../38-engine-rebuild/design.md) (already XL) and supersedes the consumer story implied by [Part 34 D9](../_completed/34-action-access-model/design.md).
+**Status: STUB — not yet designed.** This part captures the problem and the verified current state so a future rethink starts informed. It is deliberately deferred out of [Part 38 — Engine rebuild](../_completed/38-engine-rebuild/design.md) (already XL) and supersedes the consumer story implied by [Part 34 D9](../_completed/34-action-access-model/design.md).
 
 **Layer:** action grammar + engine event-dispatch + notifications module. **Size:** TBD. **Repo:** `modules/workflows/`, `modules/notifications/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`.
 
@@ -32,5 +32,5 @@ The reference implementation (per recollection) wrote `notification_roles` onto 
 ## Related
 
 - [Part 34 — Action access model § D9](../_completed/34-action-access-model/design.md) — current root placement; consumer story revisited here.
-- [Part 38 — Engine rebuild](../38-engine-rebuild/design.md) — scopes `notification_roles` wiring out (Non-goals); rebuilds the event-dispatch path this part would hook into.
+- [Part 38 — Engine rebuild](../_completed/38-engine-rebuild/design.md) — scopes `notification_roles` wiring out (Non-goals); rebuilds the event-dispatch path this part would hook into.
 - [Part 8 — side-effect dispatch](../_completed/08-side-effect-dispatch/design.md) and `modules/notifications` — the fan-out / subscription system that ultimately consumes recipients.
