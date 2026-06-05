@@ -13,7 +13,7 @@ properties:
   app_name:
     _module.var: app_name
   actionsEnum:
-    _ref: enums/action_statuses.yaml
+    _ref: ../shared/enums/action_statuses.yaml
   changeStamp:
     _ref:
       module: events

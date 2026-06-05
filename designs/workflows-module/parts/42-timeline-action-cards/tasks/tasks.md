@@ -11,17 +11,30 @@ events module's timeline and re-exported from the workflows module. Derived from
 
 ## Tasks
 
-| #   | File                                   | Summary                                                                                          | Depends On |
-| --- | -------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-move-action-statuses-enum.md`      | Move `action_statuses.yaml` to `modules/shared/enums/`; repoint all 6 referencing files (D3).    | —          |
-| 2   | `02-parameterize-visible-verbs.md`     | Convert shared `visible_verbs.yaml` to `_var: app_name` with `_module.var` default (no caller churn). | —          |
-| 3   | `03-resolve-action-link-stage.md`      | Create `modules/shared/workflow/resolve_action_link.yaml` access-aware link pick (D5).           | —          |
-| 4   | `04-apis-adopt-resolve-link.md`        | Adopt `resolve_action_link.yaml` in the 3 read APIs, replacing singular `link` projection (D5).  | 2, 3       |
-| 5   | `05-timeline-action-lookup-fragment.md`| Create the shared lookup/de-dup fragment + re-export it from the workflows manifest (D1, D4, D5). | 2, 3       |
-| 6   | `06-reconcile-eventaction-colours.md`  | Reconcile `EventsTimeline.js` `EventAction` colour keys to the enum shape (D3).                  | —          |
-| 7   | `07-wire-events-timeline.md`           | Splice fragment + D6 self-card filter into `events-timeline.yaml`; pass `actionStatusConfig`; add events manifest var (D2, D3, D6). | 1, 5, 6 |
-| 8   | `08-reconcile-part38-design.md`        | Drop the superseded "UI applies the per-verb selection rule" prose from Part 38 design + tasks.  | —          |
-| 9   | `09-docs.md`                           | Document the always-on lookup convention and the exported fragment (events README + idioms).     | 5, 7       |
+All tasks ✅ implemented on `design/42-timeline-action-cards` ([PR #71](https://github.com/lowdefy/modules-mongodb/pull/71), base `workflows-sam`). See the Implementation record below.
+
+| #   | File                                   | Summary                                                                                          | Depends On | Status |
+| --- | -------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------- | ------ |
+| 1   | `01-move-action-statuses-enum.md`      | Move `action_statuses.yaml` to `modules/shared/enums/`; repoint all 6 referencing files (D3).    | —          | ✅ |
+| 2   | `02-parameterize-visible-verbs.md`     | Convert shared `visible_verbs.yaml` to `_var: app_name` with `_module.var` default (no caller churn). | —          | ✅ |
+| 3   | `03-resolve-action-link-stage.md`      | Create `modules/shared/workflow/resolve_action_link.yaml` access-aware link pick (D5).           | —          | ✅ |
+| 4   | `04-apis-adopt-resolve-link.md`        | Adopt `resolve_action_link.yaml` in the 3 read APIs, replacing singular `link` projection (D5).  | 2, 3       | ✅ |
+| 5   | `05-timeline-action-lookup-fragment.md`| Create the shared lookup/de-dup fragment + re-export it from the workflows manifest (D1, D4, D5). | 2, 3       | ✅ |
+| 6   | `06-reconcile-eventaction-colours.md`  | Reconcile `EventsTimeline.js` `EventAction` colour keys to the enum shape (D3).                  | —          | ✅ |
+| 7   | `07-wire-events-timeline.md`           | Splice fragment + D6 self-card filter into `events-timeline.yaml`; pass `actionStatusConfig`; add events manifest var (D2, D3, D6). | 1, 5, 6 | ✅ |
+| 8   | `08-reconcile-part38-design.md`        | Drop the superseded "UI applies the per-verb selection rule" prose from Part 38 design + tasks.  | —          | ✅ (no-op) |
+| 9   | `09-docs.md`                           | Document the always-on lookup convention and the exported fragment (events README + idioms).     | 5, 7       | ✅ |
+
+## Implementation record
+
+Implemented 2026-06-05 on `design/42-timeline-action-cards` (branched from `workflows-sam` @ `d10fd65`), one commit per task plus fix commits — [PR #71](https://github.com/lowdefy/modules-mongodb/pull/71). Every task passed spec-compliance review + code-check.
+
+- **Task 1:** the action pages are `simple-view/review/edit.yaml` on this branch (Part 38's task-18 renames not yet landed); the repoints targeted them — ref counts (6/2/1) matched the task spec exactly.
+- **Task 3:** in-run fix `c30ea0a` — the first commit inverted the `$getField` nesting (`$$ROOT.links.<app>` instead of `$$ROOT.<app>.links`); corrected to read the per-verb map off the app-named field.
+- **Task 5:** in-run fix `c32af5a` — the fragment's two inner `_ref`s used bare sibling filenames; relative `_ref` paths resolve against the **consuming module's** root (verified in the Lowdefy build's `walker.js`), so they were corrected to `../shared/workflow/...`.
+- **Tasks 3, 5, 7:** the design sketches' `$let`/`$filter` variable names (`v`/`vv`, `as: s`/`as: a`) were replaced with descriptive names / `$$this` per code rules NAME-002/NAME-003; design sketches aligned in `bdb7089`.
+- **Task 8:** verification-only as drafted — the Part 38 prose reconcile had already landed in `d462706`; grep found no residual UI-selection attribution, no edits made.
+- **Not run:** the Lowdefy app build (deferred; it hung in the run environment). Plugin swc build green; `makeWorkflowsConfig.test.js` 31/31. Run `pnpm ldf:b` before merge to mechanically validate the `_ref` chain.
 
 ## Ordering Rationale
 

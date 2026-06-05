@@ -9,10 +9,11 @@
 #   - verb absent / [] → false (the outer `$ifNull` defaults a missing verb to
 #                        [], which intersects to empty → false).
 #
-# `_module.var: app_name` resolves to the consuming module's app at build time,
-# so each emitted instance carries its own app baked in. Factored out so the
-# dependency-free events timeline (Part 42 D5) can reuse the compute without the
-# `$match` drop.
+# The `app_name` parameter may be supplied by the consumer's `_ref` `vars:` (the
+# events timeline fragment does); when absent it defaults to the consuming
+# module's `app_name` module var (the workflows-module callers rely on this).
+# This allows the dependency-free events timeline (Part 42 D5) to reuse the
+# compute without the `$match` drop.
 #
 # This is the COMPUTE half only — it adds the `visible_verbs` bag but does not
 # drop anything. `api/stages/visible_verbs_filter.yaml` bundles this stage with
@@ -30,7 +31,10 @@ $addFields:
                     $ifNull:
                       - $getField:
                           field:
-                            _module.var: app_name
+                            _var:
+                              key: app_name
+                              default:
+                                _module.var: app_name
                           input: $access
                       - {}
               - []
@@ -39,7 +43,10 @@ $addFields:
               - _user:
                   _string.concat:
                     - 'apps.'
-                    - _module.var: app_name
+                    - _var:
+                        key: app_name
+                        default:
+                          _module.var: app_name
                     - '.roles'
               - []
         in:
@@ -64,7 +71,10 @@ $addFields:
                     $ifNull:
                       - $getField:
                           field:
-                            _module.var: app_name
+                            _var:
+                              key: app_name
+                              default:
+                                _module.var: app_name
                           input: $access
                       - {}
               - []
@@ -73,7 +83,10 @@ $addFields:
               - _user:
                   _string.concat:
                     - 'apps.'
-                    - _module.var: app_name
+                    - _var:
+                        key: app_name
+                        default:
+                          _module.var: app_name
                     - '.roles'
               - []
         in:
@@ -98,7 +111,10 @@ $addFields:
                     $ifNull:
                       - $getField:
                           field:
-                            _module.var: app_name
+                            _var:
+                              key: app_name
+                              default:
+                                _module.var: app_name
                           input: $access
                       - {}
               - []
@@ -107,7 +123,10 @@ $addFields:
               - _user:
                   _string.concat:
                     - 'apps.'
-                    - _module.var: app_name
+                    - _var:
+                        key: app_name
+                        default:
+                          _module.var: app_name
                     - '.roles'
               - []
         in:
@@ -132,7 +151,10 @@ $addFields:
                     $ifNull:
                       - $getField:
                           field:
-                            _module.var: app_name
+                            _var:
+                              key: app_name
+                              default:
+                                _module.var: app_name
                           input: $access
                       - {}
               - []
@@ -141,7 +163,10 @@ $addFields:
               - _user:
                   _string.concat:
                     - 'apps.'
-                    - _module.var: app_name
+                    - _var:
+                        key: app_name
+                        default:
+                          _module.var: app_name
                     - '.roles'
               - []
         in:
