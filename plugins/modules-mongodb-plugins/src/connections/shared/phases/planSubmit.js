@@ -57,7 +57,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
       signal: params.signal,
       upsert: false,
       key: targetAction.key ?? null,
-      payload: { fields: params.fields, metadata: undefined },
+      payload: { fields: params.fields, metadata: params.metadata },
     },
   ];
 

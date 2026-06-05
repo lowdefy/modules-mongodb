@@ -313,3 +313,18 @@ test('changeLog: empty when connection has no changeLog config', () => {
   });
   expect(plan.changeLog).toEqual([]);
 });
+
+test('submitted metadata lands on the planned action doc (params.metadata thread)', () => {
+  // Verifies that params.metadata is threaded into the user-action transition
+  // payload (not hardcoded undefined) so the planner's update-side merge picks
+  // it up. Without the one-line thread, submitted metadata silently falls on
+  // the floor (review-18 #9).
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext({
+      params: { action_id: 'A1', signal: 'submit', metadata: { reviewer: 'U2', note: 'approved' } },
+    }),
+  });
+  expect(plan.actions[0].doc.metadata).toMatchObject({ reviewer: 'U2', note: 'approved' });
+});
