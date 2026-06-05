@@ -12,7 +12,7 @@ doc = deepMerge(doc, rendered);
 
 This task ships the planner for the `UpdateActionFields` operation. The motivating invariant (design: "Why it still goes through the engine"): status-map cells can reference `assignees` / `due_date` (the D12 render context spreads them into the cell template), so a fields change must re-render the sticky cell or the entity-page card shows stale data. The plan touches **one action doc and no workflow doc**.
 
-Task 1 added the `UpdateActionFields` handler type to `planEventDispatch` (event type `action-fields-updated`, `metadata.comment` support). Task 3 made `Plan.workflow` nullable.
+Task 1 added the `UpdateActionFields` handler type to `planEventDispatch` (event type `action-fields-updated`, optional `comment` param — no `metadata.comment`; Part 33's fold owns rendering). Task 3 made `Plan.workflow` nullable.
 
 ## Task
 
@@ -42,7 +42,7 @@ Create `planFieldsUpdate.test.js` (mirror sibling planner test setup):
 - `updated` carries the injected `now`; `status` array identical before/after; stage unchanged.
 - Cell re-render: a `status_map` cell templating `{{ action.assignees }}`-style content reflects the NEW field values on the planned doc; omitted cell keys keep prior sticky values (deepMerge semantics); no cell configured for the stage → doc unchanged apart from fields/stamp.
 - Engine-link slugs on the doc are untouched.
-- Event doc: type `action-fields-updated`, references carry workflow id / action id / entity-ref key, `metadata.comment` from payload.
+- Event doc: type `action-fields-updated`, references carry workflow id / action id / entity-ref key, metadata carries `{ action_type, workflow_type, current_key }` with **no** `metadata.comment` (the `comment` payload rides the planner's `comment` param for Part 33's fold).
 - Change-log: one `MongoDBUpdateOne` entry with correct before/after; empty when `connection.changeLog` is unconfigured.
 - `Plan.workflow` is `null`.
 - Purity: no calls into mongo helpers; same inputs → same output.

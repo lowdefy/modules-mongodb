@@ -51,7 +51,7 @@ The operation is deliberately minimal: **no pre/post hooks, no tracker cascade, 
    - **No status change:** the action's `status` array and stage are identical before/after.
    - **Role reject:** caller without the `edit` verb gate → `access_denied`, and no write of any kind occurs.
    - **Lifecycle freedom:** action on a `completed` workflow (no `required_after_close`) updates fine; a `done` action updates fine.
-   - **Event + return:** `action-fields-updated` event dispatched via `endpoints.new_event` with `metadata.comment`; handler returns `{ action_id, event_id }`.
+   - **Event + return:** `action-fields-updated` event dispatched via `endpoints.new_event` with **no** `metadata.comment` (the `comment` payload routes through the planner's `comment` param; Part 33 owns rendering it into `display.{app_name}.description`); handler returns `{ action_id, event_id }`.
    - **Dispatch failure:** a `new_event` callApi throw → committed action write survives, handler throws `post_commit_dispatch_failed`.
 
 ## Acceptance Criteria
