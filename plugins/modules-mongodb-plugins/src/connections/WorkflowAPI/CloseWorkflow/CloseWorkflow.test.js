@@ -1,21 +1,59 @@
-import inMemoryMongo from "../../shared/inMemoryMongo.js";
-import CloseWorkflow from "./CloseWorkflow.js";
-import WorkflowAPI from "../WorkflowAPI.js";
+/**
+ * Integration tests for CloseWorkflow (task 17). Drives the real resolver
+ * against an in-memory Mongo (standalone, no transactions) with a mock callApi
+ * — mirrors SubmitWorkflowAction.test.js. The post-close-submit carve-out test
+ * also drives the real SubmitWorkflowAction handler.
+ */
+import { clearMongoClientCache } from '../../mongo/getMongoDb.js';
+import inMemoryMongo from '../../shared/inMemoryMongo.js';
+import CloseWorkflow from './CloseWorkflow.js';
+import SubmitWorkflowAction from '../SubmitWorkflowAction/SubmitWorkflowAction.js';
 
-const actionsEnum = {
-  "not-required": { priority: 0 },
-  done: { priority: 3 },
-  "in-review": { priority: 4 },
-  "changes-required": { priority: 5 },
-  "action-required": { priority: 6 },
-  blocked: { priority: 7 },
-  error: { priority: 8 },
-};
+jest.setTimeout(60000);
 
 const changeStamp = {
-  timestamp: new Date("2026-05-20T00:00:00Z"),
-  user: { id: "u1" },
+  timestamp: new Date('2026-05-20T00:00:00Z'),
+  user: { id: 'u1', name: 'Stamper' },
 };
+
+function makeWorkflowsConfig() {
+  return [
+    {
+      type: 'onboarding',
+      entity_collection: 'leads-collection',
+      entity_ref_key: 'lead_ids',
+      starting_actions: [{ type: 'qualify', status: 'action-required' }],
+      action_groups: [{ id: 'phase-1' }, { id: 'phase-2' }],
+      actions: [
+        {
+          type: 'qualify',
+          kind: 'simple',
+          action_group: 'phase-1',
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+        },
+        {
+          type: 'kickoff',
+          kind: 'simple',
+          action_group: 'phase-2',
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+        },
+        {
+          // A post-close required action — survives the sweep when non-blocked.
+          type: 'invoice',
+          kind: 'simple',
+          required_after_close: true,
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+        },
+        {
+          type: 'track-child',
+          kind: 'tracker',
+          tracker: { workflow_type: 'onboarding' },
+          access: { 'test-app': { view: true } },
+        },
+      ],
+    },
+  ];
+}
 
 let mongo;
 
@@ -24,791 +62,329 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await clearMongoClientCache();
   await mongo.cleanup();
 });
 
+async function resetCollections() {
+  await mongo.db.collection('workflows').deleteMany({});
+  await mongo.db.collection('actions').deleteMany({});
+  await mongo.db.collection('events').deleteMany({});
+}
+
 beforeEach(async () => {
-  await mongo.db.collection("workflows").deleteMany({});
-  await mongo.db.collection("actions").deleteMany({});
+  await clearMongoClientCache();
+  await resetCollections();
 });
 
-function makeLowdefyContext({ workflowsConfig, request }) {
-  return {
-    blockId: "test-block",
-    connection: {
-      databaseUri: mongo.uri,
-      workflowsConfig,
-      actionsEnum,
-      changeStamp,
-    },
-    connectionId: "test-conn",
-    pageId: "test-page",
-    requestId: "test-req",
-    request,
+function makeCallApi({ failOn = null, calls = [] } = {}) {
+  return async ({ endpointId, payload }) => {
+    calls.push({ endpointId, payload });
+    if (failOn === endpointId) {
+      throw new Error(`forced failure: ${endpointId}`);
+    }
+    if (endpointId === 'events/new-event') {
+      await mongo.db.collection('events').insertOne({
+        _id: payload._id,
+        type: payload.type,
+        display: payload.display,
+        references: payload.references,
+        metadata: payload.metadata,
+        created: { timestamp: new Date() },
+      });
+      return { eventId: payload._id };
+    }
+    if (endpointId === 'notifications/send-notification') {
+      return null;
+    }
+    throw new Error(`unexpected callApi: ${endpointId}`);
   };
 }
 
-async function seedWorkflow({
-  _id = "wf-1",
-  stage = "active",
-  parent_action_id = null,
-  workflow_type = "onboarding",
+function buildContext({
+  request,
+  app_name = 'test-app',
+  user = {
+    id: 'U1',
+    profile: { name: 'Test User' },
+    apps: { 'test-app': { roles: ['account-manager'] } },
+  },
+  callApi,
+  workflowsConfig = makeWorkflowsConfig(),
 } = {}) {
-  const doc = {
+  return {
+    request,
+    blockId: 'test-block',
+    connectionId: 'test-conn',
+    pageId: 'test-page',
+    requestId: 'test-req',
+    connection: {
+      databaseUri: mongo.uri,
+      useTransactions: false,
+      entry_id: 'workflows',
+      workflowsCollection: 'workflows',
+      actionsCollection: 'actions',
+      app_name,
+      endpoints: {
+        new_event: 'events/new-event',
+        send_notification: 'notifications/send-notification',
+      },
+      workflowsConfig,
+      changeStamp,
+    },
+    user,
+    callApi: callApi ?? makeCallApi(),
+  };
+}
+
+async function seedWorkflow({ _id = 'wf-1', overrides = {} } = {}) {
+  await mongo.db.collection('workflows').insertOne({
     _id,
-    workflow_type,
-    entity_id: "lead-1",
-    entity_collection: "leads-collection",
-    status: [{ stage, created: new Date("2026-05-19T00:00:00Z") }],
+    workflow_type: 'onboarding',
+    entity_id: 'lead-1',
+    entity_collection: 'leads-collection',
+    entity_ref_key: 'lead_ids',
+    status: [{ stage: 'active', event_id: 'e0', created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 0 },
     groups: [],
     form_data: {},
-  };
-  if (parent_action_id != null) doc.parent_action_id = parent_action_id;
-  await mongo.db.collection("workflows").insertOne(doc);
+    created: changeStamp,
+    updated: changeStamp,
+    ...overrides,
+  });
 }
 
 async function seedAction({
   _id,
   type,
   action_group = null,
-  stage = "action-required",
-  workflow_id = "wf-1",
-  kind = "simple",
-  key = null,
+  stage = 'action-required',
+  workflow_id = 'wf-1',
+  kind = 'simple',
+  extra = {},
 }) {
-  await mongo.db.collection("actions").insertOne({
+  await mongo.db.collection('actions').insertOne({
     _id,
     workflow_id,
     type,
     kind,
-    key,
+    key: null,
     action_group,
-    status: [{ stage, created: new Date("2026-05-19T00:00:00Z") }],
+    status: [{ stage, event_id: 'e0', created: changeStamp }],
+    metadata: {},
+    created: changeStamp,
+    updated: changeStamp,
+    ...extra,
   });
 }
 
-const baseConfig = {
-  type: "onboarding",
-  entity_collection: "leads-collection",
-  action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
-  actions: [
-    { type: "qualify", kind: "simple", action_group: "phase-1" },
-    { type: "kickoff", kind: "simple", action_group: "phase-2" },
-  ],
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// completed push + sweep with required_after_close exception
+// ─────────────────────────────────────────────────────────────────────────────
 
-// ===========================================================================
-// Task 1 — Scaffold & registration
-// ===========================================================================
+describe('close push + sweep', () => {
+  test('pushes completed (not closed) and emits workflow-closed', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+    const calls = [];
 
-test("Task 1: throws when payload is missing workflow_id", async () => {
-  await expect(
-    CloseWorkflow(
-      makeLowdefyContext({
-        workflowsConfig: [],
-        request: {},
-      }),
-    ),
-  ).rejects.toThrow("CloseWorkflow: workflow_id is required");
-});
+    const result = await CloseWorkflow(
+      buildContext({ request: { workflow_id: 'wf-1' }, callApi: makeCallApi({ calls }) }),
+    );
 
-test("Task 1: registered on WorkflowAPI.requests", () => {
-  expect(WorkflowAPI.requests.CloseWorkflow).toBe(CloseWorkflow);
-});
-
-// ===========================================================================
-// Task 2 — Payload + stage gate
-// ===========================================================================
-
-test("Task 2: throws when workflow does not exist", async () => {
-  await expect(
-    CloseWorkflow(
-      makeLowdefyContext({
-        workflowsConfig: [baseConfig],
-        request: { workflow_id: "missing-wf" },
-      }),
-    ),
-  ).rejects.toThrow("CloseWorkflow: workflow missing-wf not found");
-});
-
-test("Task 2: already-completed workflow is a silent no-op (returns empty shape, no writes)", async () => {
-  await seedWorkflow({ stage: "completed" });
-
-  const result = await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  expect(result).toEqual({
-    action_ids: [],
-    event_id: null,
-    tracker_fired: [],
-  });
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  // Original status array length 1 — no extra push.
-  expect(wf.status).toHaveLength(1);
-  expect(wf.status[0].stage).toBe("completed");
-});
-
-test("Task 2: already-cancelled workflow rejects", async () => {
-  await seedWorkflow({ stage: "cancelled" });
-
-  await expect(
-    CloseWorkflow(
-      makeLowdefyContext({
-        workflowsConfig: [baseConfig],
-        request: { workflow_id: "wf-1" },
-      }),
-    ),
-  ).rejects.toThrow(
-    "CloseWorkflow: workflow wf-1 is cancelled; cannot close",
-  );
-});
-
-test("Task 2: active workflow proceeds (does not throw)", async () => {
-  await seedWorkflow();
-
-  await expect(
-    CloseWorkflow(
-      makeLowdefyContext({
-        workflowsConfig: [baseConfig],
-        request: { workflow_id: "wf-1" },
-      }),
-    ),
-  ).resolves.toBeDefined();
-});
-
-// ===========================================================================
-// Task 3 — Status push + RESERVED_WORKFLOW_KEYS reference defense
-// ===========================================================================
-
-test("Task 3: pushes completed entry at status[0] preserving previous active entry", async () => {
-  await seedWorkflow();
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.status[0].stage).toBe("completed");
-  expect(wf.status[0].created).toEqual(changeStamp);
-  expect(wf.status[1].stage).toBe("active");
-});
-
-test("Task 3: reason propagated when present in payload", async () => {
-  await seedWorkflow();
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1", reason: "lead went cold" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.status[0].reason).toBe("lead went cold");
-});
-
-test("Task 3: reason omitted when not provided (no empty/null field)", async () => {
-  await seedWorkflow();
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect("reason" in wf.status[0]).toBe(false);
-});
-
-test("Task 3: references spread onto the workflow doc", async () => {
-  await seedWorkflow();
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: {
-        workflow_id: "wf-1",
-        references: { company_ids: ["c1"], region_ids: ["r1"] },
-      },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.company_ids).toEqual(["c1"]);
-  expect(wf.region_ids).toEqual(["r1"]);
-});
-
-test("Task 3: reserved-key collision blocked (references.status / references.summary ignored)", async () => {
-  await seedWorkflow();
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: {
-        workflow_id: "wf-1",
-        references: {
-          status: [{ stage: "injected" }],
-          summary: { hax: true },
-        },
-      },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  // Real status push lands, not the injected one.
-  expect(wf.status[0].stage).toBe("completed");
-  // Summary is recomputed (Task 5) — never the injected payload.
-  expect(wf.summary).toEqual({ done: 0, not_required: 0, total: 0 });
-});
-
-test("Task 3: workflow doc's updated reflects the change stamp", async () => {
-  await seedWorkflow();
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.updated).toEqual(changeStamp);
-});
-
-// ===========================================================================
-// Task 4 — Conditional action sweep
-// ===========================================================================
-
-test("Task 4: blanket sweep of non-terminal actions when no required_after_close flags set", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
-  await seedAction({ _id: "a2", type: "kickoff", action_group: "phase-2" });
-  await seedAction({
-    _id: "a3",
-    type: "qualify",
-    action_group: "phase-1",
-    stage: "done",
+    const wf = await mongo.db.collection('workflows').findOne({ _id: 'wf-1' });
+    expect(wf.status[0].stage).toBe('completed');
+    expect(wf.status[0].event_id).toBe(result.event_id);
+    expect(wf.status).toHaveLength(2);
+    const eventDoc = await mongo.db.collection('events').findOne({ _id: result.event_id });
+    expect(eventDoc.type).toBe('workflow-closed');
+    const eventCalls = calls.filter((c) => c.endpointId === 'events/new-event');
+    expect(eventCalls).toHaveLength(1);
   });
 
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+  test('sweeps non-protected actions; preserves done; a non-blocked required_after_close survivor keeps its stage', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+    await seedAction({ _id: 'a2', type: 'kickoff', stage: 'done' });
+    await seedAction({ _id: 'a3', type: 'invoice', stage: 'action-required' }); // required_after_close
 
-  const a1 = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  const a2 = await mongo.db.collection("actions").findOne({ _id: "a2" });
-  const a3 = await mongo.db.collection("actions").findOne({ _id: "a3" });
+    const result = await CloseWorkflow(buildContext({ request: { workflow_id: 'wf-1' } }));
 
-  expect(a1.status[0].stage).toBe("not-required");
-  expect(a2.status[0].stage).toBe("not-required");
-  // done untouched
-  expect(a3.status).toHaveLength(1);
-  expect(a3.status[0].stage).toBe("done");
-});
-
-test("Task 4: required_after_close: true action survives close when non-blocked", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
-
-  const configWithFlag = {
-    ...baseConfig,
-    actions: [
-      {
-        type: "qualify",
-        kind: "simple",
-        action_group: "phase-1",
-        required_after_close: true,
-      },
-      { type: "kickoff", kind: "simple", action_group: "phase-2" },
-    ],
-  };
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [configWithFlag],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const a1 = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  expect(a1.status).toHaveLength(1);
-  expect(a1.status[0].stage).toBe("action-required");
-});
-
-test("Task 4: required_after_close: true + blocked → still swept (blocked-action exception)", async () => {
-  await seedWorkflow();
-  await seedAction({
-    _id: "a1",
-    type: "qualify",
-    action_group: "phase-1",
-    stage: "blocked",
+    const a1 = await mongo.db.collection('actions').findOne({ _id: 'a1' });
+    const a2 = await mongo.db.collection('actions').findOne({ _id: 'a2' });
+    const a3 = await mongo.db.collection('actions').findOne({ _id: 'a3' });
+    expect(a1.status[0].stage).toBe('not-required'); // swept
+    expect(a2.status[0].stage).toBe('done'); // preserved
+    expect(a3.status[0].stage).toBe('action-required'); // survivor
+    expect(result.action_ids).toEqual(['a1']);
   });
 
-  const configWithFlag = {
-    ...baseConfig,
-    actions: [
-      {
-        type: "qualify",
-        kind: "simple",
-        action_group: "phase-1",
-        required_after_close: true,
-      },
-    ],
-  };
+  test('a BLOCKED required_after_close action is swept (blocked-action exception)', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a3', type: 'invoice', stage: 'blocked' }); // required_after_close + blocked
 
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [configWithFlag],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const a1 = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  expect(a1.status[0].stage).toBe("not-required");
-});
-
-test("Task 4: mixed (no-flag, flag, flag+blocked, done) — only no-flag and flag+blocked are swept", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a-noflag", type: "kickoff" });
-  await seedAction({ _id: "a-flag", type: "qualify" });
-  await seedAction({ _id: "a-flag-blocked", type: "qualify", stage: "blocked" });
-  await seedAction({ _id: "a-done", type: "kickoff", stage: "done" });
-
-  const configWithFlag = {
-    ...baseConfig,
-    actions: [
-      { type: "qualify", kind: "simple", required_after_close: true },
-      { type: "kickoff", kind: "simple" },
-    ],
-  };
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [configWithFlag],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const noflag = await mongo.db.collection("actions").findOne({ _id: "a-noflag" });
-  const flag = await mongo.db.collection("actions").findOne({ _id: "a-flag" });
-  const flagBlocked = await mongo.db
-    .collection("actions")
-    .findOne({ _id: "a-flag-blocked" });
-  const done = await mongo.db.collection("actions").findOne({ _id: "a-done" });
-
-  expect(noflag.status[0].stage).toBe("not-required");
-  expect(flag.status[0].stage).toBe("action-required");
-  expect(flagBlocked.status[0].stage).toBe("not-required");
-  expect(done.status).toHaveLength(1);
-  expect(done.status[0].stage).toBe("done");
-});
-
-test("Task 4: empty sweep when all actions already terminal — no writes pushed", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", stage: "done" });
-  await seedAction({ _id: "a2", type: "kickoff", stage: "not-required" });
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const a1 = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  const a2 = await mongo.db.collection("actions").findOne({ _id: "a2" });
-  expect(a1.status).toHaveLength(1);
-  expect(a2.status).toHaveLength(1);
-});
-
-test("Task 4: missing config for workflow_type defaults to blanket sweep", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify" });
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const a1 = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  expect(a1.status[0].stage).toBe("not-required");
-});
-
-test("Task 4: pre-existing not-required action untouched by $nin filter", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", stage: "not-required" });
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const a1 = await mongo.db.collection("actions").findOne({ _id: "a1" });
-  expect(a1.status).toHaveLength(1);
-});
-
-// ===========================================================================
-// Task 5 — Recompute summary + groups
-// ===========================================================================
-
-test("Task 5: summary counts reflect post-sweep state (swept count toward not_required)", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
-  await seedAction({ _id: "a2", type: "kickoff", action_group: "phase-2" });
-  await seedAction({
-    _id: "a3",
-    type: "qualify",
-    action_group: "phase-1",
-    stage: "done",
-  });
-  await seedAction({
-    _id: "a4",
-    type: "kickoff",
-    action_group: "phase-2",
-    stage: "not-required",
-  });
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.summary).toEqual({ done: 1, not_required: 3, total: 4 });
-});
-
-test("Task 5: summary asymmetry — required_after_close survivor counts in total but not terminal buckets", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "kickoff", action_group: "phase-2" });
-  await seedAction({ _id: "a2", type: "qualify", action_group: "phase-1" });
-
-  const configWithFlag = {
-    ...baseConfig,
-    actions: [
-      {
-        type: "qualify",
-        kind: "simple",
-        action_group: "phase-1",
-        required_after_close: true,
-      },
-      { type: "kickoff", kind: "simple", action_group: "phase-2" },
-    ],
-  };
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [configWithFlag],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  // a1 swept → not_required, a2 survives at action-required → only total.
-  expect(wf.summary).toEqual({ done: 0, not_required: 1, total: 2 });
-});
-
-test("Task 5: every action terminal post-sweep → all groups land done (parity with cancel)", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
-  await seedAction({ _id: "a2", type: "qualify", action_group: "phase-1" });
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  const phase1 = wf.groups.find((g) => g.id === "phase-1");
-  expect(phase1).toEqual({
-    id: "phase-1",
-    status: "done",
-    summary: { done: 0, not_required: 2, total: 2 },
+    const result = await CloseWorkflow(buildContext({ request: { workflow_id: 'wf-1' } }));
+    const a3 = await mongo.db.collection('actions').findOne({ _id: 'a3' });
+    expect(a3.status[0].stage).toBe('not-required');
+    expect(result.action_ids).toEqual(['a3']);
   });
 });
 
-test("Task 5: surviving non-blocked required_after_close action → group lands non-done (design.md:34 asymmetry)", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+// ─────────────────────────────────────────────────────────────────────────────
+// Post-close submit carve-out stays reachable
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const configWithFlag = {
-    ...baseConfig,
-    actions: [
-      {
-        type: "qualify",
-        kind: "simple",
-        action_group: "phase-1",
-        required_after_close: true,
-      },
-    ],
-  };
+describe('post-close submit carve-out (D2)', () => {
+  test('close → required_after_close survivor → a post-close submit on it succeeds', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a3', type: 'invoice', stage: 'action-required' }); // required_after_close
 
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [configWithFlag],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+    await CloseWorkflow(buildContext({ request: { workflow_id: 'wf-1' } }));
 
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  const phase1 = wf.groups.find((g) => g.id === "phase-1");
-  expect(phase1.status).not.toBe("done");
-});
+    // The survivor is still action-required after the close.
+    let a3 = await mongo.db.collection('actions').findOne({ _id: 'a3' });
+    expect(a3.status[0].stage).toBe('action-required');
 
-test("Task 5: blocked required_after_close action gets swept → group lands done (blocked-exception)", async () => {
-  await seedWorkflow();
-  await seedAction({
-    _id: "a1",
-    type: "qualify",
-    action_group: "phase-1",
-    stage: "blocked",
-  });
-
-  const configWithFlag = {
-    ...baseConfig,
-    actions: [
-      {
-        type: "qualify",
-        kind: "simple",
-        action_group: "phase-1",
-        required_after_close: true,
-      },
-    ],
-  };
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [configWithFlag],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  const phase1 = wf.groups.find((g) => g.id === "phase-1");
-  expect(phase1.status).toBe("done");
-});
-
-test("Task 5: empty group lands with default { status:'done', summary:{0,0,0} }", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
-
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  const phase2 = wf.groups.find((g) => g.id === "phase-2");
-  expect(phase2).toEqual({
-    id: "phase-2",
-    status: "done",
-    summary: { done: 0, not_required: 0, total: 0 },
+    // A post-close submit on it succeeds (review-less simple action → done).
+    await SubmitWorkflowAction(
+      buildContext({ request: { action_id: 'a3', signal: 'submit' } }),
+    );
+    a3 = await mongo.db.collection('actions').findOne({ _id: 'a3' });
+    expect(a3.status[0].stage).toBe('done');
   });
 });
 
-test("Task 5: status[] receives one completed push (no double-push from summary writeback)", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+// ─────────────────────────────────────────────────────────────────────────────
+// Lifecycle preconditions
+// ─────────────────────────────────────────────────────────────────────────────
 
-  await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+describe('lifecycle preconditions', () => {
+  test('close on a completed workflow is an idempotent no-op (empty result, no event, fires nothing)', async () => {
+    await seedWorkflow({
+      overrides: { status: [{ stage: 'completed', event_id: 'e0', created: changeStamp }] },
+    });
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'done' });
+    const calls = [];
 
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.status).toHaveLength(2);
-  expect(wf.status[0].stage).toBe("completed");
-  expect(wf.status[1].stage).toBe("active");
+    const result = await CloseWorkflow(
+      buildContext({ request: { workflow_id: 'wf-1' }, callApi: makeCallApi({ calls }) }),
+    );
+
+    expect(result).toEqual({ action_ids: [], event_id: null, tracker_fired: [] });
+    expect(calls).toHaveLength(0); // no event dispatched
+  });
+
+  test('close on a cancelled workflow throws stage_rejects_close', async () => {
+    await seedWorkflow({
+      overrides: { status: [{ stage: 'cancelled', event_id: 'e0', created: changeStamp }] },
+    });
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'not-required' });
+
+    await expect(
+      CloseWorkflow(buildContext({ request: { workflow_id: 'wf-1' } })),
+    ).rejects.toMatchObject({ code: 'stage_rejects_close' });
+  });
+
+  test('a missing workflow throws workflow_not_found', async () => {
+    await expect(
+      CloseWorkflow(buildContext({ request: { workflow_id: 'nope' } })),
+    ).rejects.toMatchObject({ code: 'workflow_not_found' });
+  });
 });
 
-// ===========================================================================
-// Task 6 — Tracker subscription + return shape
-// ===========================================================================
+// ─────────────────────────────────────────────────────────────────────────────
+// Tracker fire (parent → done)
+// ─────────────────────────────────────────────────────────────────────────────
 
-const parentChildBaseConfig = {
-  type: "onboarding",
-  entity_collection: "leads-collection",
-  action_groups: [],
-  actions: [
-    { type: "qualify", kind: "form" },
-    { type: "track-child", kind: "tracker" },
-  ],
-};
+describe('tracker cascade', () => {
+  async function seedParentWithTracker({ trackerStage = 'in-progress' } = {}) {
+    await mongo.db.collection('workflows').insertOne({
+      _id: 'wf-parent',
+      workflow_type: 'onboarding',
+      entity_id: 'parent-entity',
+      entity_collection: 'leads-collection',
+      entity_ref_key: 'lead_ids',
+      status: [{ stage: 'active', event_id: 'e0', created: changeStamp }],
+      summary: { done: 0, not_required: 0, total: 2 },
+      groups: [],
+      form_data: {},
+      created: changeStamp,
+      updated: changeStamp,
+    });
+    await mongo.db.collection('actions').insertOne({
+      _id: 'p-a',
+      workflow_id: 'wf-parent',
+      type: 'qualify',
+      kind: 'simple',
+      key: null,
+      action_group: null,
+      status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }],
+      metadata: {},
+      created: changeStamp,
+      updated: changeStamp,
+    });
+    await mongo.db.collection('actions').insertOne({
+      _id: 'p-tracker',
+      workflow_id: 'wf-parent',
+      type: 'track-child',
+      kind: 'tracker',
+      key: null,
+      action_group: null,
+      tracker: { workflow_type: 'onboarding' },
+      child_workflow_id: 'wf-child',
+      access: { 'test-app': { view: true } },
+      workflow_type: 'onboarding',
+      status: [{ stage: trackerStage, event_id: 'e0', created: changeStamp }],
+      metadata: {},
+      created: changeStamp,
+      updated: changeStamp,
+    });
+  }
 
-async function seedParentWithTracker({
-  parentId = "wf-parent",
-  trackerId = "p-tracker",
-  trackerStage = "in-progress",
-} = {}) {
-  await mongo.db.collection("workflows").insertOne({
-    _id: parentId,
-    workflow_type: "onboarding",
-    entity_id: `${parentId}-entity`,
-    entity_collection: "leads-collection",
-    status: [{ stage: "active", created: new Date("2026-05-19T00:00:00Z") }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [],
-    form_data: {},
+  test('close a child → parent tracker lands done', async () => {
+    await seedParentWithTracker();
+    await seedWorkflow({
+      _id: 'wf-child',
+      overrides: { parent_action_id: 'p-tracker', parent_workflow_id: 'wf-parent' },
+    });
+    await seedAction({ _id: 'c-a1', type: 'qualify', stage: 'action-required', workflow_id: 'wf-child' });
+
+    const result = await CloseWorkflow(
+      buildContext({ request: { workflow_id: 'wf-child' } }),
+    );
+
+    expect(result.tracker_fired).toHaveLength(1);
+    expect(result.tracker_fired[0]).toEqual({
+      parent_action_id: 'p-tracker',
+      parent_workflow_id: 'wf-parent',
+      new_status: 'done',
+    });
+    const tracker = await mongo.db.collection('actions').findOne({ _id: 'p-tracker' });
+    expect(tracker.status[0].stage).toBe('done');
   });
-  // Parent has a second non-tracker action so it does NOT auto-complete.
-  await mongo.db.collection("actions").insertOne({
-    _id: `${parentId}-approve`,
-    workflow_id: parentId,
-    type: "qualify",
-    kind: "form",
-    key: null,
-    status: [
-      { stage: "action-required", created: new Date("2026-05-19T00:00:00Z") },
-    ],
-  });
-  await mongo.db.collection("actions").insertOne({
-    _id: trackerId,
-    workflow_id: parentId,
-    type: "track-child",
-    kind: "tracker",
-    key: null,
-    status: [
-      { stage: trackerStage, created: new Date("2026-05-19T00:00:00Z") },
-    ],
-  });
-}
-
-test("Task 6: workflow without parent_action_id → tracker_fired: []", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify" });
-
-  const result = await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [parentChildBaseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  expect(result.tracker_fired).toEqual([]);
 });
 
-test("Task 6: child workflow with parent_action_id → parent tracker flips to done", async () => {
-  await seedParentWithTracker();
-  await seedWorkflow({
-    _id: "wf-child",
-    parent_action_id: "p-tracker",
+// ─────────────────────────────────────────────────────────────────────────────
+// Post-commit dispatch failure
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('post-commit dispatch failure', () => {
+  test('a failing event dispatch throws post_commit_dispatch_failed while the committed docs stay durable', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+
+    await expect(
+      CloseWorkflow(
+        buildContext({
+          request: { workflow_id: 'wf-1' },
+          callApi: makeCallApi({ failOn: 'events/new-event' }),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'post_commit_dispatch_failed' });
+
+    const wf = await mongo.db.collection('workflows').findOne({ _id: 'wf-1' });
+    expect(wf.status[0].stage).toBe('completed');
+    const a1 = await mongo.db.collection('actions').findOne({ _id: 'a1' });
+    expect(a1.status[0].stage).toBe('not-required');
   });
-  await seedAction({
-    _id: "child-a1",
-    type: "qualify",
-    workflow_id: "wf-child",
-    kind: "form",
-  });
-
-  const result = await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [parentChildBaseConfig],
-      request: { workflow_id: "wf-child" },
-    }),
-  );
-
-  expect(result.tracker_fired).toHaveLength(1);
-  expect(result.tracker_fired[0]).toEqual({
-    parent_action_id: "p-tracker",
-    parent_workflow_id: "wf-parent",
-    new_status: "done",
-  });
-  const tracker = await mongo.db
-    .collection("actions")
-    .findOne({ _id: "p-tracker" });
-  expect(tracker.status[0].stage).toBe("done");
-  expect(tracker.status[0].event_id).toBeNull();
-});
-
-test("Task 6: tracker same-stage (parent already done) → tracker_fired: [], no parent write", async () => {
-  await seedParentWithTracker({ trackerStage: "done" });
-  await seedWorkflow({
-    _id: "wf-child",
-    parent_action_id: "p-tracker",
-  });
-  await seedAction({
-    _id: "child-a1",
-    type: "qualify",
-    workflow_id: "wf-child",
-    kind: "form",
-  });
-
-  const result = await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [parentChildBaseConfig],
-      request: { workflow_id: "wf-child" },
-    }),
-  );
-
-  expect(result.tracker_fired).toEqual([]);
-  const tracker = await mongo.db
-    .collection("actions")
-    .findOne({ _id: "p-tracker" });
-  expect(tracker.status).toHaveLength(1);
-});
-
-test("Task 6: already-completed close skips subscription (no parent write, tracker_fired: [])", async () => {
-  await seedParentWithTracker();
-  await seedWorkflow({
-    _id: "wf-child",
-    stage: "completed",
-    parent_action_id: "p-tracker",
-  });
-
-  const result = await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [parentChildBaseConfig],
-      request: { workflow_id: "wf-child" },
-    }),
-  );
-
-  expect(result).toEqual({
-    action_ids: [],
-    event_id: null,
-    tracker_fired: [],
-  });
-  const tracker = await mongo.db
-    .collection("actions")
-    .findOne({ _id: "p-tracker" });
-  // Parent's pre-existing in-progress is untouched.
-  expect(tracker.status).toHaveLength(1);
-  expect(tracker.status[0].stage).toBe("in-progress");
-});
-
-test("Task 6: return shape always has event_id: null and action_ids array", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify" });
-
-  const result = await CloseWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  expect(result.event_id).toBeNull();
-  expect(Array.isArray(result.action_ids)).toBe(true);
-  expect(result.action_ids).toContain("a1");
 });

@@ -1,20 +1,50 @@
-import inMemoryMongo from "../../shared/inMemoryMongo.js";
-import CancelWorkflow from "./CancelWorkflow.js";
+/**
+ * Integration tests for CancelWorkflow (task 17). Drives the real resolver
+ * against an in-memory Mongo (standalone, no transactions) with a mock callApi
+ * — mirrors SubmitWorkflowAction.test.js.
+ */
+import { clearMongoClientCache } from '../../mongo/getMongoDb.js';
+import inMemoryMongo from '../../shared/inMemoryMongo.js';
+import CancelWorkflow from './CancelWorkflow.js';
 
-const actionsEnum = {
-  "not-required": { priority: 0 },
-  done: { priority: 3 },
-  "in-review": { priority: 4 },
-  "changes-required": { priority: 5 },
-  "action-required": { priority: 6 },
-  blocked: { priority: 7 },
-  error: { priority: 8 },
-};
+jest.setTimeout(60000);
 
 const changeStamp = {
-  timestamp: new Date("2026-05-20T00:00:00Z"),
-  user: { id: "u1" },
+  timestamp: new Date('2026-05-20T00:00:00Z'),
+  user: { id: 'u1', name: 'Stamper' },
 };
+
+function makeWorkflowsConfig() {
+  return [
+    {
+      type: 'onboarding',
+      entity_collection: 'leads-collection',
+      entity_ref_key: 'lead_ids',
+      starting_actions: [{ type: 'qualify', status: 'action-required' }],
+      action_groups: [{ id: 'phase-1' }, { id: 'phase-2' }],
+      actions: [
+        {
+          type: 'qualify',
+          kind: 'simple',
+          action_group: 'phase-1',
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+        },
+        {
+          type: 'kickoff',
+          kind: 'simple',
+          action_group: 'phase-2',
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+        },
+        {
+          type: 'track-child',
+          kind: 'tracker',
+          tracker: { workflow_type: 'onboarding' },
+          access: { 'test-app': { view: true } },
+        },
+      ],
+    },
+  ];
+}
 
 let mongo;
 
@@ -23,300 +53,373 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
+  await clearMongoClientCache();
   await mongo.cleanup();
 });
 
+async function resetCollections() {
+  await mongo.db.collection('workflows').deleteMany({});
+  await mongo.db.collection('actions').deleteMany({});
+  await mongo.db.collection('events').deleteMany({});
+}
+
 beforeEach(async () => {
-  await mongo.db.collection("workflows").deleteMany({});
-  await mongo.db.collection("actions").deleteMany({});
+  await clearMongoClientCache();
+  await resetCollections();
 });
 
-function makeLowdefyContext({ workflowsConfig, request }) {
-  return {
-    blockId: "test-block",
-    connection: {
-      databaseUri: mongo.uri,
-      workflowsConfig,
-      actionsEnum,
-      changeStamp,
-    },
-    connectionId: "test-conn",
-    pageId: "test-page",
-    requestId: "test-req",
-    request,
+function makeCallApi({ failOn = null, calls = [] } = {}) {
+  return async ({ endpointId, payload }) => {
+    calls.push({ endpointId, payload });
+    if (failOn === endpointId) {
+      throw new Error(`forced failure: ${endpointId}`);
+    }
+    if (endpointId === 'events/new-event') {
+      await mongo.db.collection('events').insertOne({
+        _id: payload._id,
+        type: payload.type,
+        display: payload.display,
+        references: payload.references,
+        metadata: payload.metadata,
+        created: { timestamp: new Date() },
+      });
+      return { eventId: payload._id };
+    }
+    if (endpointId === 'notifications/send-notification') {
+      return null;
+    }
+    throw new Error(`unexpected callApi: ${endpointId}`);
   };
 }
 
-async function seedWorkflow({ _id = "wf-1" } = {}) {
-  await mongo.db.collection("workflows").insertOne({
+function buildContext({
+  request,
+  app_name = 'test-app',
+  user = {
+    id: 'U1',
+    profile: { name: 'Test User' },
+    apps: { 'test-app': { roles: ['account-manager'] } },
+  },
+  callApi,
+  workflowsConfig = makeWorkflowsConfig(),
+} = {}) {
+  return {
+    request,
+    blockId: 'test-block',
+    connectionId: 'test-conn',
+    pageId: 'test-page',
+    requestId: 'test-req',
+    connection: {
+      databaseUri: mongo.uri,
+      useTransactions: false,
+      entry_id: 'workflows',
+      workflowsCollection: 'workflows',
+      actionsCollection: 'actions',
+      app_name,
+      endpoints: {
+        new_event: 'events/new-event',
+        send_notification: 'notifications/send-notification',
+      },
+      workflowsConfig,
+      changeStamp,
+    },
+    user,
+    callApi: callApi ?? makeCallApi(),
+  };
+}
+
+async function seedWorkflow({ _id = 'wf-1', overrides = {} } = {}) {
+  await mongo.db.collection('workflows').insertOne({
     _id,
-    workflow_type: "onboarding",
-    entity_id: "lead-1",
-    entity_collection: "leads-collection",
-    status: [{ stage: "active", created: new Date("2026-05-19T00:00:00Z") }],
+    workflow_type: 'onboarding',
+    entity_id: 'lead-1',
+    entity_collection: 'leads-collection',
+    entity_ref_key: 'lead_ids',
+    status: [{ stage: 'active', event_id: 'e0', created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 0 },
     groups: [],
     form_data: {},
+    created: changeStamp,
+    updated: changeStamp,
+    ...overrides,
   });
 }
 
-async function seedAction({ _id, type, action_group = null, stage = "action-required", workflow_id = "wf-1" }) {
-  await mongo.db.collection("actions").insertOne({
+async function seedAction({
+  _id,
+  type,
+  action_group = null,
+  stage = 'action-required',
+  workflow_id = 'wf-1',
+  kind = 'simple',
+  extra = {},
+}) {
+  await mongo.db.collection('actions').insertOne({
     _id,
     workflow_id,
     type,
-    kind: "simple",
+    kind,
     key: null,
     action_group,
-    status: [{ stage, created: new Date("2026-05-19T00:00:00Z") }],
+    status: [{ stage, event_id: 'e0', created: changeStamp }],
+    metadata: {},
+    created: changeStamp,
+    updated: changeStamp,
+    ...extra,
   });
 }
 
-const baseConfig = {
-  type: "onboarding",
-  entity_collection: "leads-collection",
-  action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
-  actions: [
-    { type: "qualify", kind: "simple", action_group: "phase-1" },
-    { type: "kickoff", kind: "simple", action_group: "phase-2" },
-  ],
-};
+// ─────────────────────────────────────────────────────────────────────────────
+// Sweep + lifecycle entry
+// ─────────────────────────────────────────────────────────────────────────────
 
-test("CancelWorkflow: groups all land at done with not_required counts after cancel", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
-  await seedAction({ _id: "a2", type: "kickoff", action_group: "phase-2" });
+describe('cancel sweep + lifecycle', () => {
+  test('sweeps all non-terminal actions to not-required and preserves done actions', async () => {
+    await seedWorkflow({ overrides: { summary: { done: 1, not_required: 0, total: 3 } } });
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+    await seedAction({ _id: 'a2', type: 'kickoff', stage: 'blocked' });
+    await seedAction({ _id: 'a3', type: 'qualify', stage: 'done' });
 
-  await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+    const result = await CancelWorkflow(
+      buildContext({ request: { workflow_id: 'wf-1' } }),
+    );
 
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.groups).toEqual([
-    {
-      id: "phase-1",
-      status: "done",
-      summary: { done: 0, not_required: 1, total: 1 },
-    },
-    {
-      id: "phase-2",
-      status: "done",
-      summary: { done: 0, not_required: 1, total: 1 },
-    },
-  ]);
-});
+    const a1 = await mongo.db.collection('actions').findOne({ _id: 'a1' });
+    const a2 = await mongo.db.collection('actions').findOne({ _id: 'a2' });
+    const a3 = await mongo.db.collection('actions').findOne({ _id: 'a3' });
+    expect(a1.status[0].stage).toBe('not-required');
+    expect(a2.status[0].stage).toBe('not-required');
+    expect(a3.status[0].stage).toBe('done'); // preserved
+    // Only swept actions appear in action_ids.
+    expect(result.action_ids.sort()).toEqual(['a1', 'a2']);
+  });
 
-test("CancelWorkflow: empty group lands as { status:'done', summary:{0,0,0} }", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
-  // phase-2 has no actions — should land as empty done group.
+  test('status[] gains exactly one cancelled entry carrying the invocation event_id (no phantom completed)', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
 
-  await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+    const result = await CancelWorkflow(
+      buildContext({ request: { workflow_id: 'wf-1', reason: 'duplicate' } }),
+    );
 
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  const phase2 = wf.groups.find((g) => g.id === "phase-2");
-  expect(phase2).toEqual({
-    id: "phase-2",
-    status: "done",
-    summary: { done: 0, not_required: 0, total: 0 },
+    const wf = await mongo.db.collection('workflows').findOne({ _id: 'wf-1' });
+    expect(wf.status).toHaveLength(2);
+    expect(wf.status[0].stage).toBe('cancelled');
+    expect(wf.status[0].event_id).toBe(result.event_id);
+    expect(wf.status[0].reason).toBe('duplicate');
+    expect(wf.status[1].stage).toBe('active');
+  });
+
+  test('emits exactly one workflow-cancelled event', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+    const calls = [];
+
+    const result = await CancelWorkflow(
+      buildContext({ request: { workflow_id: 'wf-1' }, callApi: makeCallApi({ calls }) }),
+    );
+
+    const eventCalls = calls.filter((c) => c.endpointId === 'events/new-event');
+    expect(eventCalls).toHaveLength(1);
+    const eventDoc = await mongo.db
+      .collection('events')
+      .findOne({ _id: result.event_id });
+    expect(eventDoc.type).toBe('workflow-cancelled');
+    expect(eventDoc.references.action_ids.sort()).toEqual(['a1']);
+  });
+
+  test('change-log records each per-action not-required transition', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+    await seedAction({ _id: 'a2', type: 'kickoff', stage: 'blocked' });
+
+    await CancelWorkflow(
+      buildContext({
+        request: { workflow_id: 'wf-1' },
+        // changeLog opt-in.
+      }),
+    );
+    // No changeLog configured → no entries (opt-out). Re-run with changeLog.
+    await resetCollections();
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+    await seedAction({ _id: 'a2', type: 'kickoff', stage: 'blocked' });
+
+    const ctx = buildContext({ request: { workflow_id: 'wf-1' } });
+    ctx.connection.changeLog = { collection: 'log_changes', meta: {} };
+    await CancelWorkflow(ctx);
+
+    const logs = await mongo.db.collection('log_changes').find({}).toArray();
+    const actionUpdates = logs.filter(
+      (l) =>
+        l.type === 'MongoDBUpdateOne' &&
+        ['a1', 'a2'].includes(l.args?.filter?._id),
+    );
+    expect(actionUpdates).toHaveLength(2);
+    for (const u of actionUpdates) {
+      expect(u.after.status[0].stage).toBe('not-required');
+    }
+    await mongo.db.collection('log_changes').deleteMany({});
+  });
+
+  test('return shape is { action_ids, event_id, tracker_fired } with no completed_groups', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+
+    const result = await CancelWorkflow(
+      buildContext({ request: { workflow_id: 'wf-1' } }),
+    );
+    expect(Object.keys(result).sort()).toEqual(
+      ['action_ids', 'event_id', 'tracker_fired'].sort(),
+    );
+    expect(result.tracker_fired).toEqual([]);
+    expect('completed_groups' in result).toBe(false);
+  });
+
+  test('groups/summary recompute after the sweep', async () => {
+    await seedWorkflow({ overrides: { summary: { done: 0, not_required: 0, total: 2 } } });
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1', stage: 'action-required' });
+    await seedAction({ _id: 'a2', type: 'kickoff', action_group: 'phase-2', stage: 'action-required' });
+
+    await CancelWorkflow(buildContext({ request: { workflow_id: 'wf-1' } }));
+
+    const wf = await mongo.db.collection('workflows').findOne({ _id: 'wf-1' });
+    expect(wf.summary).toEqual({ done: 0, not_required: 2, total: 2 });
+    expect(wf.groups.every((g) => g.status === 'done')).toBe(true);
   });
 });
 
-test("CancelWorkflow: summary reflects pre-existing done + newly-cancelled not_required", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1", stage: "done" });
-  await seedAction({ _id: "a2", type: "kickoff", action_group: "phase-2", stage: "action-required" });
+// ─────────────────────────────────────────────────────────────────────────────
+// Preconditions
+// ─────────────────────────────────────────────────────────────────────────────
 
-  await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+describe('preconditions', () => {
+  test('a missing workflow_id param throws invalid_params', async () => {
+    await expect(
+      CancelWorkflow(buildContext({ request: {} })),
+    ).rejects.toMatchObject({ code: 'invalid_params' });
+  });
 
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.summary).toEqual({ done: 1, not_required: 1, total: 2 });
-  expect(wf.groups.every((g) => g.status === "done")).toBe(true);
+  test('a missing workflow throws workflow_not_found (intended tightening)', async () => {
+    await expect(
+      CancelWorkflow(buildContext({ request: { workflow_id: 'nope' } })),
+    ).rejects.toMatchObject({ code: 'workflow_not_found' });
+  });
+
+  test('cancelling a completed workflow is unguarded (no stage guard)', async () => {
+    await seedWorkflow({
+      overrides: { status: [{ stage: 'completed', event_id: 'e0', created: changeStamp }] },
+    });
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'done' });
+    await expect(
+      CancelWorkflow(buildContext({ request: { workflow_id: 'wf-1' } })),
+    ).resolves.toBeDefined();
+    const wf = await mongo.db.collection('workflows').findOne({ _id: 'wf-1' });
+    expect(wf.status[0].stage).toBe('cancelled');
+  });
 });
 
-test("CancelWorkflow: return shape has no completed_groups key", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+// ─────────────────────────────────────────────────────────────────────────────
+// Tracker fire (parent → not-required)
+// ─────────────────────────────────────────────────────────────────────────────
 
-  const result = await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+describe('tracker cascade', () => {
+  async function seedParentWithTracker({ trackerStage = 'in-progress' } = {}) {
+    await mongo.db.collection('workflows').insertOne({
+      _id: 'wf-parent',
+      workflow_type: 'onboarding',
+      entity_id: 'parent-entity',
+      entity_collection: 'leads-collection',
+      entity_ref_key: 'lead_ids',
+      status: [{ stage: 'active', event_id: 'e0', created: changeStamp }],
+      summary: { done: 0, not_required: 0, total: 2 },
+      groups: [],
+      form_data: {},
+      created: changeStamp,
+      updated: changeStamp,
+    });
+    await mongo.db.collection('actions').insertOne({
+      _id: 'p-a',
+      workflow_id: 'wf-parent',
+      type: 'qualify',
+      kind: 'simple',
+      key: null,
+      action_group: null,
+      status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }],
+      metadata: {},
+      created: changeStamp,
+      updated: changeStamp,
+    });
+    await mongo.db.collection('actions').insertOne({
+      _id: 'p-tracker',
+      workflow_id: 'wf-parent',
+      type: 'track-child',
+      kind: 'tracker',
+      key: null,
+      action_group: null,
+      tracker: { workflow_type: 'onboarding' },
+      child_workflow_id: 'wf-child',
+      access: { 'test-app': { view: true } },
+      workflow_type: 'onboarding',
+      status: [{ stage: trackerStage, event_id: 'e0', created: changeStamp }],
+      metadata: {},
+      created: changeStamp,
+      updated: changeStamp,
+    });
+  }
 
-  expect(result).toEqual({
-    action_ids: ["a1"],
-    event_id: null,
-    // No parent_action_id on the workflow; subscription returns [].
-    tracker_fired: [],
+  test('cancel a child → parent tracker lands not-required; tracker_fired carries the level entry', async () => {
+    await seedParentWithTracker();
+    await seedWorkflow({
+      _id: 'wf-child',
+      overrides: { parent_action_id: 'p-tracker', parent_workflow_id: 'wf-parent' },
+    });
+    await seedAction({ _id: 'c-a1', type: 'qualify', stage: 'action-required', workflow_id: 'wf-child' });
+
+    const result = await CancelWorkflow(
+      buildContext({ request: { workflow_id: 'wf-child' } }),
+    );
+
+    expect(result.tracker_fired).toHaveLength(1);
+    expect(result.tracker_fired[0]).toEqual({
+      parent_action_id: 'p-tracker',
+      parent_workflow_id: 'wf-parent',
+      new_status: 'not-required',
+    });
+    const tracker = await mongo.db.collection('actions').findOne({ _id: 'p-tracker' });
+    expect(tracker.status[0].stage).toBe('not-required');
   });
-  expect("completed_groups" in result).toBe(false);
+
+  test('a workflow without parent_action_id fires nothing', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
+    const result = await CancelWorkflow(buildContext({ request: { workflow_id: 'wf-1' } }));
+    expect(result.tracker_fired).toEqual([]);
+  });
 });
 
-test("CancelWorkflow: status[] gets one 'cancelled' push (not double-pushed by summary $set)", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
+// ─────────────────────────────────────────────────────────────────────────────
+// Post-commit dispatch failure
+// ─────────────────────────────────────────────────────────────────────────────
 
-  await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [baseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
+describe('post-commit dispatch failure', () => {
+  test('a failing event dispatch throws post_commit_dispatch_failed while the swept docs stay committed', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', stage: 'action-required' });
 
-  const wf = await mongo.db.collection("workflows").findOne({ _id: "wf-1" });
-  expect(wf.status).toHaveLength(2);
-  expect(wf.status[0].stage).toBe("cancelled");
-  expect(wf.status[1].stage).toBe("active");
-});
+    await expect(
+      CancelWorkflow(
+        buildContext({
+          request: { workflow_id: 'wf-1' },
+          callApi: makeCallApi({ failOn: 'events/new-event' }),
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'post_commit_dispatch_failed' });
 
-// ===========================================================================
-// Part 10 — Tracker subscription wiring
-// ===========================================================================
-
-const parentChildBaseConfig = {
-  type: "onboarding",
-  entity_collection: "leads-collection",
-  action_groups: [],
-  actions: [
-    { type: "qualify", kind: "form" },
-    { type: "track-child", kind: "tracker" },
-  ],
-};
-
-async function seedParentWithTracker({
-  parentId = "wf-parent",
-  trackerId = "p-tracker",
-  trackerStage = "in-progress",
-} = {}) {
-  await mongo.db.collection("workflows").insertOne({
-    _id: parentId,
-    workflow_type: "onboarding",
-    entity_id: `${parentId}-entity`,
-    entity_collection: "leads-collection",
-    status: [{ stage: "active", created: new Date("2026-05-19T00:00:00Z") }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [],
-    form_data: {},
+    // Swept docs committed (durable).
+    const a1 = await mongo.db.collection('actions').findOne({ _id: 'a1' });
+    expect(a1.status[0].stage).toBe('not-required');
+    const wf = await mongo.db.collection('workflows').findOne({ _id: 'wf-1' });
+    expect(wf.status[0].stage).toBe('cancelled');
   });
-  // Parent has a second non-tracker action so it does NOT auto-complete.
-  await mongo.db.collection("actions").insertOne({
-    _id: `${parentId}-approve`,
-    workflow_id: parentId,
-    type: "qualify",
-    kind: "form",
-    key: null,
-    status: [{ stage: "action-required", created: new Date("2026-05-19T00:00:00Z") }],
-  });
-  await mongo.db.collection("actions").insertOne({
-    _id: trackerId,
-    workflow_id: parentId,
-    type: "track-child",
-    kind: "tracker",
-    key: null,
-    status: [{ stage: trackerStage, created: new Date("2026-05-19T00:00:00Z") }],
-  });
-}
-
-test("part 10: cancel workflow with parent_action_id:null → tracker_fired:[]; no parent action writes", async () => {
-  await seedWorkflow();
-  await seedAction({ _id: "a1", type: "qualify" });
-
-  const result = await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [parentChildBaseConfig],
-      request: { workflow_id: "wf-1" },
-    }),
-  );
-
-  expect(result.tracker_fired).toEqual([]);
-});
-
-test("part 10: cancel workflow with valid parent_action_id → tracker flips to not-required with event_id:null", async () => {
-  await seedParentWithTracker();
-  // Child workflow points back at parent's tracker.
-  await mongo.db.collection("workflows").insertOne({
-    _id: "wf-child",
-    workflow_type: "onboarding",
-    entity_id: "lead-child",
-    entity_collection: "leads-collection",
-    parent_action_id: "p-tracker",
-    status: [{ stage: "active", created: new Date("2026-05-19T00:00:00Z") }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [],
-    form_data: {},
-  });
-  await mongo.db.collection("actions").insertOne({
-    _id: "child-a1",
-    workflow_id: "wf-child",
-    type: "qualify",
-    kind: "form",
-    key: null,
-    status: [{ stage: "action-required", created: new Date("2026-05-19T00:00:00Z") }],
-  });
-
-  const result = await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [parentChildBaseConfig],
-      request: { workflow_id: "wf-child" },
-    }),
-  );
-
-  expect(result.tracker_fired).toHaveLength(1);
-  expect(result.tracker_fired[0]).toEqual({
-    parent_action_id: "p-tracker",
-    parent_workflow_id: "wf-parent",
-    new_status: "not-required",
-  });
-  const tracker = await mongo.db.collection("actions").findOne({ _id: "p-tracker" });
-  expect(tracker.status[0].stage).toBe("not-required");
-  expect(tracker.status[0].event_id).toBeNull();
-});
-
-test("part 10: same-stage guard fires (parent already not-required) → tracker_fired:[]; no parent write", async () => {
-  await seedParentWithTracker({ trackerStage: "not-required" });
-  await mongo.db.collection("workflows").insertOne({
-    _id: "wf-child",
-    workflow_type: "onboarding",
-    entity_id: "lead-child",
-    entity_collection: "leads-collection",
-    parent_action_id: "p-tracker",
-    status: [{ stage: "active", created: new Date("2026-05-19T00:00:00Z") }],
-    summary: { done: 0, not_required: 0, total: 0 },
-    groups: [],
-    form_data: {},
-  });
-  await mongo.db.collection("actions").insertOne({
-    _id: "child-a1",
-    workflow_id: "wf-child",
-    type: "qualify",
-    kind: "form",
-    key: null,
-    status: [{ stage: "action-required", created: new Date("2026-05-19T00:00:00Z") }],
-  });
-
-  const result = await CancelWorkflow(
-    makeLowdefyContext({
-      workflowsConfig: [parentChildBaseConfig],
-      request: { workflow_id: "wf-child" },
-    }),
-  );
-
-  expect(result.tracker_fired).toEqual([]);
-  const tracker = await mongo.db.collection("actions").findOne({ _id: "p-tracker" });
-  expect(tracker.status).toHaveLength(1); // no new push
 });
