@@ -79,7 +79,7 @@ test('tracker kind: unblock from blocked lands action-required', () => {
   const result = plan({
     action: makeAction({ kind: 'tracker', stage: 'blocked' }),
     signal: 'unblock',
-    actionConfig: makeConfig({ kind: 'tracker' }),
+    actionConfig: makeConfig({ kind: 'tracker', tracker: { workflow_type: 'child-type' } }),
   });
   expect(result.doc.status[0].stage).toBe('action-required');
 });
@@ -162,6 +162,64 @@ test('persists denormalised access and workflow_type on the composed doc', () =>
   const result = plan({ actionConfig });
   expect(result.doc.access).toEqual(actionConfig.access);
   expect(result.doc.workflow_type).toBe('onboarding');
+});
+
+test('update path refreshes tracker block incl. start_link from config', () => {
+  // Loaded doc has a stale tracker without start_link; config declares one —
+  // the denorm refresh must write the full block from config.
+  const result = plan({
+    action: makeAction({ kind: 'tracker', stage: 'blocked', tracker: { workflow_type: 'child-type' } }),
+    signal: 'unblock',
+    actionConfig: makeConfig({
+      kind: 'tracker',
+      tracker: {
+        workflow_type: 'child-type',
+        start_link: { pageId: 'start-child', urlQuery: { action_id: true } },
+      },
+    }),
+  });
+  expect(result.doc.tracker).toEqual({
+    workflow_type: 'child-type',
+    start_link: { pageId: 'start-child', urlQuery: { action_id: true } },
+  });
+});
+
+test('end-to-end: tracker with start_link + edit verb materialises links.edit on action-required', () => {
+  // Exercises task 2's computeEngineLinks tracker arm through the planner.
+  const result = planActionTransition({
+    action: makeAction({ kind: 'tracker', stage: 'blocked', entity_id: 'ent-1', tracker: { workflow_type: 'child-type' } }),
+    signal: 'unblock',
+    actionConfig: makeConfig({
+      kind: 'tracker',
+      access: { demo: { view: true, edit: true } },
+      tracker: {
+        workflow_type: 'child-type',
+        start_link: {
+          pageId: 'start-child',
+          urlQuery: { action_id: true, entity_id: true, ref: 'static-val' },
+        },
+      },
+    }),
+    loadedWorkflow,
+    entry_id,
+    event_id,
+    now,
+  });
+  expect(result.doc.status[0].stage).toBe('action-required');
+  expect(result.doc.demo.links.edit).toEqual({
+    pageId: 'start-child',
+    urlQuery: { action_id: 'a-1', entity_id: 'ent-1', ref: 'static-val' },
+  });
+});
+
+test('non-tracker kinds get tracker: null on update as well as insert', () => {
+  // Update path: form action gets tracker: null from the denorm refresh.
+  const result = plan({
+    action: makeAction({ kind: 'form', stage: 'action-required' }),
+    signal: 'submit',
+    actionConfig: makeConfig({ kind: 'form' }),
+  });
+  expect(result.doc.tracker).toBeNull();
 });
 
 test('user null FSM resolution throws signal_not_allowed', () => {

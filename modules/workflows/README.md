@@ -155,6 +155,60 @@ event_overrides: { ... } # layered onto the dispatched log event
 
 **Post-hooks fire after the commit.** The hook payload's `context` carries the post-commit workflow + action docs (no re-read needed), and `result` is `{ action_ids, completed_groups, event_id, tracker_fired }`. Because the engine's writes have already landed, a post-hook failure does **not** roll them back — post-hook routines must be idempotent / safe to re-run, since a retried submission fires them again.
 
+### Tracker actions (`tracker:`)
+
+A tracker action mirrors a child workflow's lifecycle — its stage follows the child (`active → in-progress`, `completed → done`, `cancelled → not-required`). It is never submitted by a user; the engine writes it via the internal tracker subscription.
+
+The `tracker:` block carries two fields:
+
+| Field | Required | Description |
+|---|---|---|
+| `workflow_type` | yes | The child workflow type this action mirrors |
+| `start_link` | no | Navigation target rendered before the child exists — `{ pageId, urlQuery? }` |
+
+**When to use `start_link`.** Before a child workflow is started, the tracker row is `action-required` with nothing to click. `start_link` points to the app page where the child gets created. Choose the shape based on where creation lives:
+
+- **App page owns creation → `start_link`** — the tracker row links directly to the creation page; no separate trigger action needed.
+- **Inline form owns creation → paired trigger + tracker** — a `kind: form` (or `kind: simple`) trigger action creates the child and calls `start-workflow` from its submit hook; the tracker mirrors the result. This remains the right shape when there is no app page for the child.
+
+**`start_link` shape.**
+
+```yaml
+tracker:
+  workflow_type: device-installation
+  start_link:
+    pageId: ticket-new # app page id, used verbatim
+    urlQuery:
+      action_id: true   # → tracker action _id (pass as parent_action_id to start-workflow)
+      entity_id: true   # → parent workflow's entity _id (prefill the child doc's parent ref)
+      source: onboarding # static params pass through verbatim
+```
+
+Two reserved `urlQuery` keys substitute runtime values: `action_id: true` resolves to the tracker action's `_id`; `entity_id: true` resolves to the tracker action's `entity_id` (the parent workflow's entity). Any other key must carry a string, passed through verbatim. Both are optional.
+
+**`edit` verb gates the link.** `start_link` is emitted as the tracker's `edit`-verb link — it appears only for slugs that declare `edit` in `access.{slug}`, role-filtered at read time like every other link. Trackers that declare only `view` remain display-only. The link is live while the tracker is `action-required` with no child started; once `start-workflow` runs, it is replaced by a `view` link to the child's `workflow-overview`.
+
+**Destination page contract.** The page that `start_link` points to is responsible for creating the child entity (if needed) and calling `start-workflow`. `action_id` in the URL is the `parent_action_id`:
+
+```yaml
+- id: start_child_workflow
+  type: CallAPI
+  params:
+    endpointId:
+      _module.endpointId: { id: start-workflow, module: workflows }
+    payload:
+      workflow_type: device-installation
+      entity_id:
+        _step: create_ticket.insertedId
+      entity_collection: tickets-collection
+      parent_action_id:
+        _url_query: action_id
+```
+
+Clicking the link changes no workflow state. Abandoning the page abandons nothing — the tracker stays `action-required` and the link remains.
+
+**Known limitation.** A cancelled child leaves the tracker `not-required` with its child link still set, so the start link does not reappear — accepted for v1 (see the [Part 44 design](../../designs/workflows-module/parts/44-tracker-start-link/design.md) for recovery paths).
+
 ### Starting actions (`starting_actions:`)
 
 `starting_actions` is the workflow's scope declaration. It seeds one action doc per entry when the workflow is started, and it tells every user what the full set of standard actions is the moment the workflow appears.

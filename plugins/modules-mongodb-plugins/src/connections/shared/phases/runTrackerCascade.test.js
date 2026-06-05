@@ -26,7 +26,7 @@ const oneTrackerParent = {
   entity_collection: 'parents',
   entity_ref_key: 'parent_ids',
   action_groups: [],
-  actions: [{ type: 'track-child', kind: 'tracker' }],
+  actions: [{ type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } }],
 };
 // Two-action parent: stays active (the form action keeps it non-terminal).
 const twoActionParent = {
@@ -36,7 +36,7 @@ const twoActionParent = {
   action_groups: [],
   actions: [
     { type: 'qualify', kind: 'form' },
-    { type: 'track-child', kind: 'tracker' },
+    { type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } },
   ],
 };
 

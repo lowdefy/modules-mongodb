@@ -50,7 +50,7 @@ function makeConfig({ actions } = {}) {
     entity_collection: 'parents',
     entity_ref_key: 'parent_ids',
     action_groups: [],
-    actions: actions ?? [{ type: 'track-child', kind: 'tracker' }],
+    actions: actions ?? [{ type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } }],
   };
 }
 
@@ -109,7 +109,7 @@ test('no next-level fire when the parent does not auto-complete', () => {
   const config = makeConfig({
     actions: [
       { type: 'qualify', kind: 'form' },
-      { type: 'track-child', kind: 'tracker' },
+      { type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } },
     ],
   });
   const actions = [

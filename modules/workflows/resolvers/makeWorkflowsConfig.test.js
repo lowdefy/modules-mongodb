@@ -557,3 +557,180 @@ test("validateStatusMapCells: rejects a non-string/null status_title", () => {
     /status_title must be a string or null/,
   );
 });
+
+// --- validateTrackerStartLink (Part 44) ------------------------------------
+
+function workflowWithTracker(tracker) {
+  return {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "install-device", status: "action-required" }],
+    actions: [{ type: "install-device", kind: "tracker", tracker }],
+  };
+}
+
+test("validateTrackerStartLink: full shape (pageId + urlQuery with sentinels and static string) passes and flows through", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: {
+      pageId: "ticket-new",
+      urlQuery: {
+        action_id: true,
+        entity_id: true,
+        source: "onboarding",
+      },
+    },
+  });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].tracker.start_link).toEqual({
+    pageId: "ticket-new",
+    urlQuery: { action_id: true, entity_id: true, source: "onboarding" },
+  });
+});
+
+test("validateTrackerStartLink: minimal shape (pageId only, no urlQuery) passes", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new" },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+});
+
+test("validateTrackerStartLink: tracker block with no start_link passes (regression guard)", () => {
+  const wf = workflowWithTracker({ workflow_type: "device-installation" });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+});
+
+test("validateTrackerStartLink: rejects missing pageId", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { urlQuery: { source: "onboarding" } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.pageId must be a non-empty string/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /onboarding/,
+  );
+});
+
+test("validateTrackerStartLink: rejects non-string pageId", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: 42 },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.pageId must be a non-empty string/,
+  );
+});
+
+test("validateTrackerStartLink: rejects empty-string pageId", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "" },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.pageId must be a non-empty string/,
+  );
+});
+
+test("validateTrackerStartLink: rejects unknown key — specifically title:", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", title: "Create ticket" },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link has unknown key "title"/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /only pageId and urlQuery are allowed/,
+  );
+});
+
+test("validateTrackerStartLink: rejects start_link that is a string", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: "ticket-new",
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link must be a plain object/,
+  );
+});
+
+test("validateTrackerStartLink: rejects start_link that is an array", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: [{ pageId: "ticket-new" }],
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link must be a plain object/,
+  );
+});
+
+test("validateTrackerStartLink: rejects urlQuery that is not an object", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", urlQuery: "not-an-object" },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.urlQuery must be a plain object/,
+  );
+});
+
+test("validateTrackerStartLink: rejects urlQuery with true on a non-sentinel key (source: true)", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", urlQuery: { source: true } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.urlQuery\.source must be a string/,
+  );
+});
+
+test("validateTrackerStartLink: rejects urlQuery with static string on reserved key action_id", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", urlQuery: { action_id: "some-id" } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.urlQuery\.action_id is a reserved sentinel key/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /value must be exactly true/,
+  );
+});
+
+test("validateTrackerStartLink: rejects urlQuery with static string on reserved key entity_id", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", urlQuery: { entity_id: "foo" } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.urlQuery\.entity_id is a reserved sentinel key/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /value must be exactly true/,
+  );
+});
+
+test("validateTrackerStartLink: rejects urlQuery with non-string static — number (count: 3)", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", urlQuery: { count: 3 } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.urlQuery\.count must be a string/,
+  );
+});
+
+test("validateTrackerStartLink: rejects urlQuery with non-string static — boolean false (flag: false)", () => {
+  const wf = workflowWithTracker({
+    workflow_type: "device-installation",
+    start_link: { pageId: "ticket-new", urlQuery: { flag: false } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /tracker\.start_link\.urlQuery\.flag must be a string/,
+  );
+});

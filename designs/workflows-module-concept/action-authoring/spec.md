@@ -96,7 +96,7 @@ Per action:
 
 - `type`, `kind` required.
 - `kind: form` requires non-empty `form:` block; rejects if `tracker:` is also present.
-- `kind: tracker` requires `tracker:` block with `workflow_type`; rejects if `form:` is also present.
+- `kind: tracker` requires `tracker:` block with `workflow_type`; optionally carries `start_link: { pageId: string, urlQuery?: object }` — allowed keys exactly `pageId` / `urlQuery`; in `urlQuery` the reserved keys `action_id` / `entity_id` are sentinel-only (if present, value must be exactly `true`); all other `urlQuery` keys must carry strings. Rejects if `form:` is also present.
 - `kind: simple` rejects both `form:` and `tracker:`.
 - `kind: task` is rejected in workflow-config validation — that value is reserved for the future tasks module, whose docs are not authored via `workflows_config`.
 - Any other `kind:` value rejects with "unknown action kind."
@@ -446,19 +446,30 @@ description: Tracks the device-installation workflow on the linked installation 
 blocked_by: [schedule-followup]
 access:
   my-team-app:
-    view: [account-manager] # display-only, no edit page
+    view: true # everyone sees the row
+    edit: [account-manager] # only AMs get the start link (Part 44)
 tracker:
   workflow_type: device-installation
+  start_link: # optional (Part 44) — navigation target before the child exists
+    pageId: ticket-new
+    urlQuery:
+      action_id: true # → tracker action _id (parent_action_id for start-workflow)
+      entity_id: true # → parent entity _id (prefill the child doc's parent ref)
+      source: onboarding # static params pass through verbatim
 status_map:
   blocked:
     my-team-app: { message: Awaiting follow-up scheduling. }
+  action-required:
+    my-team-app: { message: Create the installation ticket. }
   in-progress:
     my-team-app: { message: Installation in progress. }
   done:
     my-team-app: { message: Installation completed. }
 ```
 
-The `tracker:` block carries one field — the child `workflow_type`. The status_map is display copy per parent stage; the parent-stage mapping itself is hard-coded by the engine (`active → in-progress`, `completed → done`, `cancelled → not-required`).
+The `tracker:` block carries the child `workflow_type` and, optionally, a `start_link`. The `status_map` is display copy per parent stage; the parent-stage mapping itself is hard-coded by the engine (`active → in-progress`, `completed → done`, `cancelled → not-required`).
+
+`start_link: { pageId, urlQuery? }` declares the navigation target rendered while the tracker is `action-required` with no child started. It is emitted as the tracker's `edit`-verb link — role-gated at read time like every other link. Two reserved `urlQuery` sentinel keys: `action_id: true` → tracker action `_id`; `entity_id: true` → parent workflow's entity `_id`. All other `urlQuery` keys must carry strings (static params passed through verbatim). No other top-level keys besides `pageId` and `urlQuery` are allowed.
 
 ### Parent ↔ child link at runtime
 
@@ -495,9 +506,14 @@ Each child workflow has at most one `parent_action_id`; each tracker action has 
 
 `kind: form` / `kind: simple` / `kind: tracker` are mutually exclusive.
 
-### Recommended shape: paired trigger + tracker actions
+### Recommended shape: `start_link` vs paired trigger + tracker
 
-A trigger form action creates the child entity and starts the child workflow with `parent_action_id` set; a separate tracker action mirrors the child's lifecycle. The module doesn't enforce this split but the README documents it as the recommended shape.
+Two shapes suit different situations (Part 44):
+
+- **App page owns creation → `start_link`** — add `start_link` to the `tracker:` block. One tracker row links to the existing app page; no separate trigger action needed.
+- **Inline form owns creation → paired trigger + tracker** — a trigger form action creates the child entity and starts the child workflow with `parent_action_id` set; a separate tracker action mirrors the child's lifecycle.
+
+The module doesn't enforce either split. The README documents the choice: **app page owns creation → `start_link`; inline form owns creation → paired trigger + tracker.**
 
 ### Tracking simple entities
 

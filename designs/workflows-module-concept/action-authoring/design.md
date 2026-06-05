@@ -299,7 +299,7 @@ The shape is one YAML field and one runtime convention.
 
 ### YAML shape
 
-A tracker action declares a `tracker:` block with a single field — the child `workflow_type` it mirrors:
+A tracker action declares a `tracker:` block with the child `workflow_type` it mirrors, and (Part 44) an optional `start_link` for the pre-child navigation target:
 
 ```yaml
 type: track-installation
@@ -309,16 +309,27 @@ sort_order: 40
 description: Tracks the device-installation workflow on the linked installation ticket.
 blocked_by: [schedule-followup]
 access:
-  my-team-app: [view] # display-only — no edit / submit page
+  my-team-app:
+    view: true # everyone sees the row
+    edit: [account-manager] # only AMs get the start link
 tracker:
   workflow_type: device-installation
+  start_link: # optional (Part 44) — navigation target before the child exists
+    pageId: ticket-new
+    urlQuery:
+      action_id: true # → tracker action _id (parent_action_id for start-workflow)
+      entity_id: true # → parent entity _id (prefill the child doc's parent ref)
+      source: onboarding # static params pass through verbatim
 status_map: # optional — display copy per parent stage; mapping itself is hard-coded
   blocked: { my-team-app: { message: Awaiting follow-up scheduling. } }
+  action-required: { my-team-app: { message: Create the installation ticket. } }
   in-progress: { my-team-app: { message: Installation in progress. } }
   done: { my-team-app: { message: Installation completed. } }
 ```
 
-No `relationship`, no registry reference, no per-action `status_map` mapping child stages to parent stages. The `tracker:` block carries one fact: which child `workflow_type` this action tracks.
+No `relationship`, no registry reference, no per-action `status_map` mapping child stages to parent stages. The `tracker:` block carries the child `workflow_type` and, optionally, a `start_link`.
+
+**`start_link` (Part 44 — [tracker-start-link](../../workflows-module/parts/44-tracker-start-link/design.md))** — Before a child is started, the tracker row is `action-required` with nothing to click. `start_link: { pageId, urlQuery? }` declares the app page where the child gets created. `pageId` is used verbatim. Two reserved `urlQuery` keys substitute runtime values at emission time: `action_id: true` → tracker action `_id` (pass as `parent_action_id` to `start-workflow`); `entity_id: true` → tracker action's `entity_id` (parent workflow's entity, for prefilling the child doc's parent reference). All other keys must carry strings (static params, passed through verbatim). The link is emitted as the tracker's `edit`-verb link — active while the tracker is `action-required` with `child_workflow_id: null`; replaced by the child-overview `view` link once `start-workflow` writes the `in-progress` transition. Trackers with no `edit` verb declaration remain display-only.
 
 ### How parent and child get linked at runtime
 
@@ -384,11 +395,14 @@ What's ruled out by the constraint:
 - One parent action mirroring multiple sequential children.
 - A parent action that's both a regular action and a tracker action — `kind: form` / `kind: tracker` / `kind: simple` are mutually exclusive (Decision 2).
 
-### Two paired actions, not one
+### Two shapes: `start_link` vs paired trigger + tracker
 
-The recommended shape pairs **trigger** and **tracker** as two actions: a trigger action with a form that creates the child entity and starts the child workflow with `parent_action_id` set, plus a tracker action that mirrors the child's lifecycle. The trigger action's submit hook makes one `CallApi` to `start-workflow` (as shown above); the engine writes both sides of the link in one server-side call, and the tracker action takes it from there.
+**Division of labour (Part 44 — [tracker-start-link](../../workflows-module/parts/44-tracker-start-link/design.md)):** a trigger and a tracker are genuinely different lifecycles. A **trigger** is a one-shot human task — it has an assignee, a due date, a form, and completes on submit. A **tracker** is a long-running mirror — no assignee, no deadline of its own, never touched by a human. The two shapes suit different situations:
 
-The module doesn't enforce this split — apps can put `tracker:` on whatever action makes sense — but the README documents the paired-actions pattern as the recommended shape because it separates "workflow logic that creates the child" from "state mirroring."
+- **App page owns creation → `start_link`** — when the child entity is created on an ordinary app page (a new-ticket page, a new-order page) that already does the job better than a workflow form, add `start_link` to the `tracker:` block. One tracker row links directly to that page; no separate trigger action is needed. The in-workflow trigger form is the wrong home for that work, and its `done` row lingering afterwards is UX noise.
+- **Inline form owns creation → paired trigger + tracker** — when creation is a small inline form and no app page exists for it, the paired shape remains right: a `kind: form` (or `kind: simple`) trigger action creates the child entity and calls `start-workflow` from its submit hook, and a separate tracker action mirrors the child's lifecycle. The pair composes two existing kinds at zero new machinery.
+
+The module doesn't enforce either split. The README documents the choice: **app page owns creation → `start_link`; inline form owns creation → paired trigger + tracker.**
 
 ### Tracking simple entities (minimal workflow shim)
 

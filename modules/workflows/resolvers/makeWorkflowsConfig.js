@@ -216,6 +216,78 @@ function validateActionAccess(workflow, action) {
   }
 }
 
+// Part 44: tracker.start_link validation. An optional engine-link shape
+// { pageId: string, urlQuery?: object }. Reserved urlQuery keys action_id /
+// entity_id are sentinel-only (value must be exactly true); all other keys
+// must carry string values (static params, passed through verbatim). Any
+// other key at the top level (e.g. title:) hard-errors because the engine-link
+// shape only supports pageId / urlQuery — title is familiar from custom-kind
+// cell links but is not valid here.
+const TRACKER_START_LINK_ALLOWED_KEYS = new Set(['pageId', 'urlQuery']);
+const TRACKER_URL_QUERY_SENTINEL_KEYS = new Set(['action_id', 'entity_id']);
+
+function validateTrackerStartLink(workflow, action) {
+  if (!action.tracker?.start_link) return;
+  const where = `action "${action.type}"`;
+  const startLink = action.tracker.start_link;
+
+  if (
+    startLink === null ||
+    typeof startLink !== 'object' ||
+    Array.isArray(startLink)
+  ) {
+    fail(
+      workflow.type,
+      `${where} tracker.start_link must be a plain object (got: ${JSON.stringify(startLink)}).`
+    );
+  }
+
+  for (const key of Object.keys(startLink)) {
+    if (!TRACKER_START_LINK_ALLOWED_KEYS.has(key)) {
+      fail(
+        workflow.type,
+        `${where} tracker.start_link has unknown key "${key}" — only pageId and urlQuery are allowed (note: "title" is not part of the engine-link shape).`
+      );
+    }
+  }
+
+  const { pageId, urlQuery } = startLink;
+
+  if (typeof pageId !== 'string' || pageId === '') {
+    fail(
+      workflow.type,
+      `${where} tracker.start_link.pageId must be a non-empty string (got: ${JSON.stringify(pageId)}).`
+    );
+  }
+
+  if (urlQuery !== undefined) {
+    if (urlQuery === null || typeof urlQuery !== 'object' || Array.isArray(urlQuery)) {
+      fail(
+        workflow.type,
+        `${where} tracker.start_link.urlQuery must be a plain object (got: ${JSON.stringify(urlQuery)}).`
+      );
+    }
+
+    for (const [key, value] of Object.entries(urlQuery)) {
+      if (TRACKER_URL_QUERY_SENTINEL_KEYS.has(key)) {
+        if (value !== true) {
+          fail(
+            workflow.type,
+            `${where} tracker.start_link.urlQuery.${key} is a reserved sentinel key — its value must be exactly true (got: ${JSON.stringify(value)}).`
+          );
+        }
+      } else {
+        if (typeof value !== 'string') {
+          fail(
+            workflow.type,
+            `${where} tracker.start_link.urlQuery.${key} must be a string (static param passed through verbatim) (got: ${JSON.stringify(value)}).`
+          );
+        }
+      }
+    }
+  }
+}
+
 // Part 30 D9: status_map cell shape. Each `status_map[stage]` is a cell of
 // per-slug `{ message? }` objects plus a reserved `status_title` (string|null).
 // Built-in kinds reject `link:` (engine-managed); `kind: custom` (Part 28, not
@@ -299,6 +371,7 @@ function validateAction(workflow, action) {
 
   validateActionAccess(workflow, action);
   validateStatusMapCells(workflow, action);
+  validateTrackerStartLink(workflow, action);
   validateHooks(workflow, action);
   validateEvent(workflow, action);
 }

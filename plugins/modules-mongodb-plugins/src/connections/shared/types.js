@@ -56,7 +56,7 @@
  * @property {string[]} assignees
  * @property {Date | null} due_date
  * @property {string | null} description
- * @property {{ workflow_type: string } | null} tracker
+ * @property {{ workflow_type: string, start_link?: { pageId: string, urlQuery?: Object } } | null} tracker
  * @property {string | null} child_workflow_id
  * @property {string | null} child_entity_id
  * @property {string | null} child_entity_collection

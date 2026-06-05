@@ -144,6 +144,128 @@ test('tracker kind: only view, to the child workflow-overview, when started', ()
   expect(notStarted.demo.view).toBeNull();
 });
 
+test('tracker start_link: edit emitted at action-required with null child + declared start_link', () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: {
+      _id: 'action-abc',
+      entity_id: 'entity-xyz',
+      kind: 'tracker',
+      status: [{ stage: 'action-required' }],
+      child_workflow_id: null,
+      access: { demo: { view: true, edit: true } },
+      tracker: {
+        workflow_type: 'device-installation',
+        start_link: {
+          pageId: 'ticket-new',
+          urlQuery: { action_id: true, entity_id: true, source: 'onboarding' },
+        },
+      },
+    },
+  });
+  // edit → start_link with sentinel substitution; pageId NOT entry-scoped
+  expect(links.demo.edit).toEqual({
+    pageId: 'ticket-new',
+    urlQuery: { action_id: 'action-abc', entity_id: 'entity-xyz', source: 'onboarding' },
+  });
+  // view null because child does not exist
+  expect(links.demo.view).toBeNull();
+});
+
+test('tracker start_link: edit null when edit verb not declared', () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: {
+      _id: 'action-abc',
+      entity_id: 'entity-xyz',
+      kind: 'tracker',
+      status: [{ stage: 'action-required' }],
+      child_workflow_id: null,
+      // view-only — edit not declared
+      access: { demo: { view: true } },
+      tracker: {
+        workflow_type: 'device-installation',
+        start_link: { pageId: 'ticket-new' },
+      },
+    },
+  });
+  expect(links.demo.edit).toBeNull();
+});
+
+test('tracker start_link: edit null when no start_link declared', () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: {
+      _id: 'action-abc',
+      kind: 'tracker',
+      status: [{ stage: 'action-required' }],
+      child_workflow_id: null,
+      access: { demo: { view: true, edit: true } },
+      tracker: { workflow_type: 'device-installation' },
+    },
+  });
+  expect(links.demo.edit).toBeNull();
+});
+
+test('tracker start_link: blocked stage stays linkless even with start_link + edit declared', () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: {
+      _id: 'action-abc',
+      kind: 'tracker',
+      status: [{ stage: 'blocked' }],
+      child_workflow_id: null,
+      access: { demo: { view: true, edit: true } },
+      tracker: {
+        workflow_type: 'device-installation',
+        start_link: { pageId: 'ticket-new', urlQuery: { action_id: true } },
+      },
+    },
+  });
+  expect(links.demo).toEqual({ view: null, edit: null, review: null, error: null });
+});
+
+test('tracker start_link: child exists at action-required — view arm wins, edit null', () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: {
+      _id: 'action-abc',
+      kind: 'tracker',
+      status: [{ stage: 'action-required' }],
+      child_workflow_id: 'w-child',
+      access: { demo: { view: true, edit: true } },
+      tracker: {
+        workflow_type: 'device-installation',
+        start_link: { pageId: 'ticket-new' },
+      },
+    },
+  });
+  expect(links.demo.view).toEqual({
+    pageId: 'workflows/workflow-overview',
+    urlQuery: { workflow_id: 'w-child' },
+  });
+  expect(links.demo.edit).toBeNull();
+});
+
+test('tracker start_link: without urlQuery emits link with only pageId', () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: {
+      _id: 'action-abc',
+      kind: 'tracker',
+      status: [{ stage: 'action-required' }],
+      child_workflow_id: null,
+      access: { demo: { view: true, edit: true } },
+      tracker: {
+        workflow_type: 'device-installation',
+        start_link: { pageId: 'ticket-new' },
+      },
+    },
+  });
+  expect(links.demo.edit).toEqual({ pageId: 'ticket-new' });
+  expect(links.demo.edit).not.toHaveProperty('urlQuery');
+});
+
 test('custom kind returns no engine links', () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,
