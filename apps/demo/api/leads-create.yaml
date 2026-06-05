@@ -40,6 +40,18 @@ routine:
         references:
           lead_ids:
             - _payload: _id
+  - id: start_onboarding
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId:
+          id: start-workflow
+          module: workflows
+      payload:
+        workflow_type: onboarding
+        entity_id:
+          _payload: _id
+        entity_collection: leads-collection
   - :return:
       _id:
         _payload: _id
