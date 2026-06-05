@@ -18,8 +18,13 @@
  *                exists for the simple kind; recovery is a button on the view page)
  *   - form    -> derived pages `{workflow_type}-{action_type}-{verb}` (unprefixed),
  *                urlQuery action_id
- *   - tracker -> child workflow `workflow-overview`, urlQuery workflow_id
- *               (only `view` is ever non-null; null until the child is started)
+ *   - tracker -> two arms:
+ *               • child exists → `view` to child `workflow-overview`,
+ *                 urlQuery workflow_id
+ *               • `action-required` + null child + declared `tracker.start_link`
+ *                 → `edit` to start_link.pageId (verbatim, NOT entry-scoped),
+ *                   urlQuery sentinels: `action_id: true` → action._id,
+ *                   `entity_id: true` → action.entity_id, statics verbatim
  *   - custom  -> no engine links (author authors them in the cell); returns {}
  *
  * Output: `{ [slug]: { view, edit, review, error } }` (each cell a link object
@@ -66,14 +71,39 @@ function computeEngineLinks({ action, entry_id: entryId }) {
     const links = { view: null, edit: null, review: null, error: null };
 
     if (kind === 'tracker') {
-      // Tracker: only `view`, linking to the child workflow's overview, and
-      // only once the child workflow exists.
+      // Arm 1: child exists → `view` to child workflow-overview.
       if ('view' in verbsDeclared && action.child_workflow_id != null) {
         links.view = {
           pageId: scoped(entryId, 'workflow-overview'),
           urlQuery: { workflow_id: action.child_workflow_id },
         };
       }
+
+      // Arm 2: pre-child at action-required + declared start_link → `edit`.
+      const startLink = action.tracker?.start_link;
+      if (
+        'edit' in verbsDeclared &&
+        stage === 'action-required' &&
+        action.child_workflow_id == null &&
+        startLink != null
+      ) {
+        const link = { pageId: startLink.pageId };
+        if (startLink.urlQuery != null) {
+          const urlQuery = {};
+          for (const [key, val] of Object.entries(startLink.urlQuery)) {
+            if (key === 'action_id' && val === true) {
+              urlQuery[key] = action._id;
+            } else if (key === 'entity_id' && val === true) {
+              urlQuery[key] = action.entity_id;
+            } else {
+              urlQuery[key] = val;
+            }
+          }
+          link.urlQuery = urlQuery;
+        }
+        links.edit = link;
+      }
+
       result[slug] = links;
       continue;
     }
