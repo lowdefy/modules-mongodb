@@ -20,13 +20,13 @@ Part 34 D10 reserves the `workflow-*` glob space for the module's **fixed** page
 - While flipping the link table, fix the simple-kind `error`-verb target (review-14 #4): there is no error page for the simple kind (Part 40 D4 — recovery is a `resolve_error` button on the view page), so the `error` verb links to **`workflow-action-view`**, not a nonexistent `workflow-action-error`. Update `computeEngineLinks.test.js` (currently asserts the nonexistent page). Form kind unchanged — generated `{workflow_type}-{action_type}-error` pages exist.
 - The `_module.pageId: group-overview` references → `workflow-group-overview`.
 - The `pages:` `_ref` paths in `modules/workflows/module.lowdefy.yaml` → the renamed files.
-- The `exports.pages` ids in `module.lowdefy.yaml` (if listed).
+- `module.lowdefy.yaml` has **no** `exports:` section (pages live under `pages:` only) — nothing beyond the `_ref` paths to update.
 
 ## Acceptance Criteria
 
 - Fixed pages renamed to `workflow-group-overview`, `workflow-action-view/edit/review`; `workflow-overview` unchanged.
 - No dangling `_module.pageId: simple-*` or `group-overview` references remain in the module tree (`modules/workflows/` + `plugins/`; grep clean). The demo's stale refs (`apps/demo/.../onboarding/schedule-followup.yaml` link cells) are accepted-by-design until Part 45 deletes and re-authors the config.
-- `module.lowdefy.yaml` `pages:` `_ref` paths + export ids point at the renamed files.
+- `module.lowdefy.yaml` `pages:` `_ref` paths point at the renamed files (the manifest has no `exports:` section).
 - `workflow-group-overview` page-side reads are unchanged (`.message` + singular `.link`); the API-side link projection is replaced by Part 42 D5's `resolve_action_link.yaml` (owned by Part 42, not this task).
 - `computeEngineLinks`' fixed-page link targets use `workflow-action-{verb}`, except the simple-kind `error` verb, which targets `workflow-action-view` (no error page exists — Part 40 D4 / review-14 #4); tests updated to match.
 - The module builds; the demo (rebuilt by Part 45) resolves these pages.
@@ -38,12 +38,12 @@ Part 34 D10 reserves the `workflow-*` glob space for the module's **fixed** page
 - `modules/workflows/pages/simple-view.yaml` → rename to `workflow-action-view.yaml`
 - `modules/workflows/pages/simple-edit.yaml` → rename to `workflow-action-edit.yaml` (+ update internal `_module.pageId` refs)
 - `modules/workflows/pages/simple-review.yaml` → rename to `workflow-action-review.yaml` (+ update internal refs)
-- `modules/workflows/module.lowdefy.yaml` — modify (`pages:` `_ref` paths + export ids)
+- `modules/workflows/module.lowdefy.yaml` — modify (`pages:` `_ref` paths; no `exports:` section exists)
 - `plugins/.../shared/render/computeEngineLinks.js` — modify (the simple-kind link table hardcodes `workflow-simple-${verb}` at line 86 and the header comment at line 16; flip to `workflow-action-${verb}`, with the `error` verb → `workflow-action-view` per review-14 #4)
 - `plugins/.../shared/render/computeEngineLinks.test.js` — modify (asserts `workflows/workflow-simple-*` incl. the nonexistent `workflow-simple-error` at line 76)
-- `plugins/.../shared/phases/planners/planActionTransition.test.js` — modify (fixtures assert `workflows/workflow-simple-edit` links at lines 155, 247, 251 — task 10's implemented output)
+- `plugins/.../shared/phases/planners/planActionTransition.test.js` — modify (fixtures assert `workflows/workflow-simple-*` links at lines 155, 247, 251 — task 10's implemented output — plus line 336, added by task 23's seedStage tests)
 - `modules/workflows/components/universal-fields/universal-fields.yaml` — modify (header comment names the `simple-*` pages)
-- `modules/workflows/README.md` — modify (Pages table rows for `simple-edit` / `simple-view` / `simple-review`)
+- `modules/workflows/README.md` — **no edits**: task 24's docs pass already rewrote it onto the final ids (intro, Pages table incl. the `workflow-group-overview` row, URL column); verify it stays grep-clean, nothing more
 
 ## Notes
 

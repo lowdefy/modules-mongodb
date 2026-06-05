@@ -671,7 +671,7 @@ Plus, one level up at `shared/`:
 ### Rewritten — engine entry points
 
 - `WorkflowAPI/SubmitWorkflowAction/SubmitWorkflowAction.js` + `handleSubmit.js` — restructured around phase calls. Old 11-step flow collapses to: load → invokePreHook → planSubmit (composition of the planners above) → commitPlan → runTrackerCascade → invokePostHook.
-- `WorkflowAPI/StartWorkflow/StartWorkflow.js` — restructured: load (workflowConfig + parent action if any), plan (workflow doc + initial action docs + optional parent-tracker transition), commit, optional tracker cascade (the parent-tracker push). No pre-hook in v1; could add later.
+- `WorkflowAPI/StartWorkflow/StartWorkflow.js` — restructured: load (workflowConfig + parent action if any), plan (workflow doc + seeded action drafts), commit, tracker cascade (the parent-tracker mirror fire when started as a tracker child — the parent action belongs to a different workflow, so its transition is never in Start's per-aggregate Plan; D3/D10). No pre-hook in v1; could add later.
 - `WorkflowAPI/CancelWorkflow/CancelWorkflow.js` — load (workflow + all actions), plan (mark all non-terminal actions `not-required` via FSM signal `internal_cancel_action`, recompute, push workflow `cancelled`), commit, tracker cascade.
 - `WorkflowAPI/CloseWorkflow/CloseWorkflow.js` — same shape as Cancel.
 - `WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js` — restructured into the loop in D10 and **relocated** to `shared/phases/runTrackerCascade.js` (its consumers span Submit and Start/Cancel/Close — task 16). Each iteration calls into the same phases. The `CHILD_STAGE_MAP` export dies with it, superseded by the FSM tracker table.
@@ -693,6 +693,8 @@ Plus, one level up at `shared/`:
 - `SubmitWorkflowAction/mergeFormOverrides.js` — superseded by Q6's uniform deep-merge (the top-level spread is not preserved; the landed `planFormDataMerge` doesn't import it). Deleted by task 15.
 - `shared/getActions.js` — its only importers are `handleSubmit.js` (rewritten) and `recomputeWorkflowAfterActionWrite.js` (deleted); dead after task 15.
 - `shared/getActionFields.js` — its importers are `fireTrackerSubscription.js` (rewritten, task 16) and `StartWorkflow.js` (rewritten, task 17); deleted by task 17 once both are migrated.
+- `shared/pushWorkflowStatus.js` (+ test) — orphaned by the task-15/16 rewrites of its former call sites (status pushes now compose in `planWorkflowRecompute`); swept by task 17.
+- `shared/populateIds.js` — orphaned likewise (zero importers); swept by task 17.
 - `SubmitWorkflowAction/utils/buildHookPayload.js` — **relocated** (not deleted) to `shared/phases/` by task 14; the original is removed after task 15 rewires.
 
 `SubmitWorkflowAction/dispatchNotifications.js` is **not** deleted — it is the commit step-4 helper (D9). Its dispatch mechanic (one `send-notification` call carrying `{ event_ids }`) is unchanged, but its call shape and error handling are corrected by task 22 to the shipped contract (`callApi({ endpointId: connection.endpoints.send_notification, payload })`, no `result.success` check — see "The shipped `callApi` contract" under D9); `commitPlan` calls it after the event write, passing the `event_id`s committed in step 3. (Today it is called only by Submit; under this rebuild every handler's `commitPlan` invokes it with that invocation's committed event ids — Start/Cancel/Close included — so the new lifecycle events can drive notifications via the same path. The app's `send_routine` decides which event types to act on.)
