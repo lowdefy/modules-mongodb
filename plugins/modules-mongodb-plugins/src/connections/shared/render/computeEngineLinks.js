@@ -13,7 +13,9 @@
  *
  * Page ids are entry-scoped (`${entry_id}/${page}`) to match Lowdefy's build-
  * time _module.pageId scoping (Part 30 D4 mechanic):
- *   - simple  -> fixed module pages `workflow-simple-{verb}`, urlQuery action_id
+ *   - simple  -> fixed module pages `workflow-action-{verb}`, urlQuery action_id
+ *               (the `error` verb maps to `workflow-action-view` — no error page
+ *                exists for the simple kind; recovery is a button on the view page)
  *   - form    -> derived pages `{workflow_type}-{action_type}-{verb}` (unprefixed),
  *                urlQuery action_id
  *   - tracker -> child workflow `workflow-overview`, urlQuery workflow_id
@@ -83,7 +85,9 @@ function computeEngineLinks({ action, entry_id: entryId }) {
       if (!stageVerbs[verb]) continue; // stage has no page for this verb
       const page =
         kind === 'simple'
-          ? `workflow-simple-${verb}`
+          ? verb === 'error'
+            ? 'workflow-action-view'
+            : `workflow-action-${verb}`
           : `${action.workflow_type}-${action.type}-${verb}`;
       links[verb] = {
         pageId: scoped(entryId, page),

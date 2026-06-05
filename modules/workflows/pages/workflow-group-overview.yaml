@@ -16,7 +16,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: group-overview
+    id: workflow-group-overview
     hide_title: true
     content_width: 1100
     events:

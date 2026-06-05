@@ -11,7 +11,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: simple-edit
+    id: workflow-action-edit
     hide_title: true
     content_width: 750
     requests:
@@ -47,7 +47,7 @@ _ref:
                   - true
           params:
             pageId:
-              _module.pageId: simple-view
+              _module.pageId: workflow-action-view
             urlQuery:
               _url_query: true
         # Step 4: load workflow — needed for required_after_close gate.
@@ -77,7 +77,7 @@ _ref:
             comment: null
         # Step 8 (author-supplied pages.edit.events.onMount) — omitted on shared
         # simple pages because static pages have no per-action page_config var.
-        # Same gap as simple-view; tracked in part 27 / follow-up.
+        # Same gap as workflow-action-view; tracked in part 27 / follow-up.
     blocks:
       - id: action_card
         type: Card

@@ -142,11 +142,11 @@ api:
 
 pages:
   _build.array.concat:
-    - - _ref: pages/simple-edit.yaml
-      - _ref: pages/simple-view.yaml
-      - _ref: pages/simple-review.yaml
+    - - _ref: pages/workflow-action-edit.yaml
+      - _ref: pages/workflow-action-view.yaml
+      - _ref: pages/workflow-action-review.yaml
       - _ref: pages/workflow-overview.yaml
-      - _ref: pages/group-overview.yaml
+      - _ref: pages/workflow-group-overview.yaml
     - _ref:
         resolver: resolvers/makeActionPages.js
         vars:
