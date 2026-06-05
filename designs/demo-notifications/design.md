@@ -11,7 +11,7 @@ This supersedes [Part 45 task 06](../workflows-module/parts/45-demo-rebuild/task
 3. **Branch 2 — `invite-user` / `resend-user-invite`:** the user-admin invite APIs' dispatches insert an inbox notification for the invited contact — the demo's mock of the production invite *email*. No email is sent anywhere.
 4. **Inserted docs follow the production `consumeNotifications` schema minus email fields** (see schema table): `_id` (uuid string), `key`, `popup`, `contact_id`, `title`, `description`, `body`, `links`, `type`, `event_type`, `event_id`, `created` (events-module change stamp), `read`, `priority`.
 5. **Every other event type falls through silently** — no generic event-type→handler map, no notification, no error (same default-ignored policy as Part 45 item 9).
-6. **Wire `global.enums.event_types` in the demo app** (currently absent) via the events module's exported `event_types` component, and add enum entries for the three handled event types — this makes the inbox type chips render and fixes the inbox type-filter dropdown, which builds its options from this global and is empty today.
+6. **Wire `global.enums.event_types` in the demo app** (currently absent) via the events module's exported `event_types` component, and add an enum entry for `action-approve` (the invite event types already arrive via the composed component — see decision below) — this makes the inbox type chips render and fixes the inbox type-filter dropdown, which builds its options from this global and is empty today.
 
 ## Current state
 
@@ -128,7 +128,7 @@ The notification **is** the mock email: in production the pipeline renders an in
 - **`created` is the module change stamp, not the production `{timestamp, app_name, service_name}` stamp.** No technical blocker either way; the change stamp carries the two fields the surfaces match on plus `user`/`version`, and the repo rule mandates change stamps on writes. The single schema deviation is documented in the table above.
 - **Two explicit branch steps, no handler registry.** Three handled event types don't justify a generic event-type→handler abstraction (Part 45 task 06's policy, kept).
 - **`$merge` over a separate insert step.** One step per branch, no conditional plumbing, empty-match no-ops for free. Trade-off: `$merge` bypasses the connection's `changeLog` plugin behavior — notification inserts aren't change-logged. Production inserts via the Lambda bypass it identically; accepted.
-- **Enums global is in scope.** Without `global.enums.event_types` the inbox filter is broken (empty options) and chips never render; the events module already exports the composed component, so the fix is a 5-line `global:` block plus three enum entries. The orphaned `modules/user-admin/enums/event_types.yaml` (invite entries, referenced nowhere) is a pre-existing module inconsistency, out of scope here.
+- **Enums global is in scope.** Without `global.enums.event_types` the inbox filter is broken (empty options) and chips never render; the events module already exports the composed component, so the fix is a 5-line `global:` block plus one enum entry. The composed component already carries the invite entries: `modules/events/module.lowdefy.yaml:66` assigns `modules/shared/enums/event_types.yaml`, which `_ref`s `modules/user-admin/enums/event_types.yaml` (`invite-user`, `resend-user-invite`). Only `action-approve` exists nowhere and must be added app-side.
 
 ## Enums wiring
 
@@ -142,7 +142,7 @@ global:
         component: event_types
 ```
 
-`apps/demo/modules/events/event_types.yaml` gains entries (color/title/icon) for `action-approve`, `invite-user`, `resend-user-invite`, joining the existing `create-lead`/`start-onboarding` entries. These also render anywhere else the global is consumed (events timeline already composes its own map; no conflict).
+`apps/demo/modules/events/event_types.yaml` gains an `action-approve` entry (color/title/icon), joining the existing `create-lead`/`start-onboarding` entries. `invite-user` and `resend-user-invite` already render via the composed component's user-admin entries (`modules/shared/enums/event_types.yaml`). These also render anywhere else the global is consumed (events timeline already composes its own map; no conflict).
 
 ## Files changed
 
@@ -151,7 +151,7 @@ global:
 | `apps/demo/modules/notifications/send-routine.yaml` | Rewrite: two `$merge`-terminated aggregation branches; delete the `AxiosHttp` remnant. |
 | `apps/demo/modules/notifications/vars.yaml` | Uncomment the `send_routine` ref. |
 | `apps/demo/lowdefy.yaml` | Add the `global.enums.event_types` block. |
-| `apps/demo/modules/events/event_types.yaml` | Add `action-approve`, `invite-user`, `resend-user-invite` entries. |
+| `apps/demo/modules/events/event_types.yaml` | Add the `action-approve` entry (invite entries already composed in). |
 | `designs/workflows-module/parts/45-demo-rebuild/tasks/06-notifications-send-routine.md` | Reduce to a stub pointing here. |
 | `designs/workflows-module/parts/45-demo-rebuild/design.md` | Annotate item 9: superseded by this design. |
 
@@ -171,7 +171,7 @@ global:
 - The notification roles/fan-out model (deferred to workflows Part 41).
 - Key-based dedup behavior, popup notifications, socket counts, file attachments.
 - A generic event-type→handler registry.
-- Fixing the orphaned `modules/user-admin/enums/event_types.yaml`.
+- Restructuring how `modules/shared/enums/event_types.yaml` composes per-module enum files.
 
 ## Related
 

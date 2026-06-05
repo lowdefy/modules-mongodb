@@ -6,3 +6,7 @@ start-onboarding:
   color: "#7c3aed"
   title: Onboarding Started
   icon: AiOutlinePlayCircle
+action-approve:
+  color: "#52c41a"
+  title: Action Approved
+  icon: AiOutlineCheckCircle

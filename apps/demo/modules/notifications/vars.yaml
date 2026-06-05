@@ -2,5 +2,5 @@ app_name:
   _ref:
     path: app_config.yaml
     key: app_name
-# send_routine:
-#   _ref: modules/notifications/send-routine.yaml
+send_routine:
+  _ref: modules/notifications/send-routine.yaml
