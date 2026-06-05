@@ -45,7 +45,7 @@ The modal is an **in-app shortcut layered on the live working surfaces**, never 
 Verified against the shipped pages (`modules/workflows/pages/simple-*.yaml`):
 
 - **`workflow-action-edit.yaml`** — 8-step `onMount` (action_id guard → `get_action` → stale-URL guard allowlisting `[action-required, in-progress, changes-required]` → `get_workflow` → `action_role_check` → prime `fields.*` + `status` state). Body: workflow-closed banner, universal-fields (`mode: edit`), **status `Selector`** with a `_js` priority filter (`:135–156`) plus a "No transitions available" Alert when stage is `not-required`, comment `TiptapInput`, and a single **Save** button firing `interaction: submit_edit` + `current_status: {_state: status}` (`:196–215`).
-- **`workflow-action-view.yaml`** — read-only: action header (title + status badge), universal-fields (`mode: display`), **Status History** card (List over `status`), **Comments** card (aggregation over `events` where `action_ids` ∋ this action and `metadata.comment` exists). No button bar, no stale-URL guard.
+- **`workflow-action-view.yaml`** — read-only: action header (title + status badge), universal-fields (`mode: display`), **Status History** card (List over `status`), **Comments** card (aggregation over `events` where `action_ids` ∋ this action and `metadata.comment` exists). No button bar, no stale-URL guard. **Note:** [Part 33](../33-comment-rendering/design.md), ordered before this part, deletes the Comments card and replaces it with the shared `events-timeline` `_ref` filtered to the action — by the time this part runs, the view body carries the timeline, not the card.
 - **`workflow-action-review.yaml`** — workflow-closed banner, header, universal-fields (`mode: display`), comment field, a **floating-actions** bar with **Request Changes** (opens a comment `Modal`) + **Approve** (fires `interaction: approve`), and a `request_changes_modal` firing `interaction: request_changes`. Stale-URL guard allowlists `[in-review, error]`.
 - **`ActionSteps.js`** — renders each action row as a hard `Link` to `action.link.pageId`/`urlQuery` (`:162–171`). No click event today.
 
@@ -60,7 +60,7 @@ The body of a simple action — header + universal fields + comment + the signal
 | `mode`   | Renders                                                                          | Button bar                                          |
 | -------- | -------------------------------------------------------------------------------- | --------------------------------------------------- |
 | `edit`   | universal fields (editable) + comment                                            | `submit`, `progress`, `not_required`                |
-| `view`   | header + universal fields (read-only) + status-history + comments timeline       | `resolve_error` (only at stage `error` — D4)        |
+| `view`   | header + universal fields (read-only) + status-history + events timeline ([Part 33](../33-comment-rendering/design.md)) | `resolve_error` (only at stage `error` — D4)        |
 | `review` | header + universal fields (read-only) + comment                                  | `approve`, `request_changes` (modal)                |
 
 The three `simple-*` pages `_ref` it; the `simple-action-modal` (D5) `_ref`s the same. One body, two containers — this DRY payoff is the reason the surface is extracted now rather than editing three pages in place.
@@ -133,7 +133,7 @@ Rationale:
 
 Two new pieces plus one generic block event.
 
-**`components/simple-action-modal.yaml` (standalone, reusable).** A single **`Drawer`** block, fixed blockId `simple_action_modal`, whose body `_ref`s `simple-action-surface` with `mode` derived from the action's stage. One container type for all modes: a `Drawer` holds the heavy `view` mode (fields + status-history + comments timeline) comfortably and serves the lighter `edit`/`review` surfaces equally — and a single block type keeps the one fixed blockId / one open contract intact (a runtime block cannot switch its type by mode, so two container types would mean two blockIds and break the contract).
+**`components/simple-action-modal.yaml` (standalone, reusable).** A single **`Drawer`** block, fixed blockId `simple_action_modal`, whose body `_ref`s `simple-action-surface` with `mode` derived from the action's stage. One container type for all modes: a `Drawer` holds the heavy `view` mode (fields + status-history + events timeline) comfortably and serves the lighter `edit`/`review` surfaces equally — and a single block type keeps the one fixed blockId / one open contract intact (a runtime block cannot switch its type by mode, so two container types would mean two blockIds and break the contract).
 
 - stage `error` → `view` (surfaces `resolve_error`); stage `in-review` and `action_allowed.review` → `review`; an actionable stage with `action_allowed.edit` → `edit`; otherwise → `view`. (The per-verb bools come from `action_role_check` — see the modal's open sequence in this decision.)
 
@@ -153,7 +153,7 @@ On open the modal runs the **same gating sequence the page's `onMount` runs**, f
 2. `get_workflow` → drives the workflow-closed banner and the `required_after_close` gate on the submit buttons.
 3. `action_role_check` → populates the per-verb `surface.action_allowed: { view, edit, review, error }` (Part 34 D8) that D2's role gates and the mode derivation read.
 
-Then it renders. On a successful signal call it runs the host-supplied `onComplete` refetch (passed as a `_var`) and closes. `workflow-action-view`-style timelines (status history, comments) are shown in the modal for `mode: view`; for `edit`/`review` the `Drawer` renders just the actionable surface.
+Then it renders. On a successful signal call it runs the host-supplied `onComplete` refetch (passed as a `_var`) and closes. `workflow-action-view`-style blocks (status history + the [Part 33](../33-comment-rendering/design.md) events timeline) are shown in the modal for `mode: view` — they live inside the surface component's view mode, so pages and modal render them identically, no page-only special case; for `edit`/`review` the `Drawer` renders just the actionable surface.
 
 **`ActionSteps` block — generic `onActionClick` event.** When the host wires `onActionClick`, the block fires it with the clicked action as event data **instead of** navigating; when not wired, it navigates via the user-selected per-verb link (`action.links.{verb}`, the selection [Part 34 D7](../_completed/34-action-access-model/design.md) adds to the block) — default behaviour, unchanged by this part, so notifications/overviews/deep-links are preserved and it is backward-compatible. The event is **generic** (carries the action object); the block gains no workflow-surface knowledge.
 
@@ -168,7 +168,7 @@ A developer never drops the standalone modal on a page that already has `actions
 
 ### D6 — What carries over unchanged
 
-The shared-page scaffolding stays: the `action_id` presence guard, `get_action` / `get_workflow` requests, `action_role_check` (now sets the per-verb `action_allowed: { view, edit, review, error }`, per [Part 34 D8](../_completed/34-action-access-model/design.md)), the workflow-closed banner + `required_after_close` gate on the submit buttons, the stale-URL guard on `workflow-action-edit` (`[action-required, in-progress, changes-required]`) and `workflow-action-review` (`[in-review, error]`), and `workflow-action-view`'s status-history + comments cards (now inside the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
+The shared-page scaffolding stays: the `action_id` presence guard, `get_action` / `get_workflow` requests, `action_role_check` (now sets the per-verb `action_allowed: { view, edit, review, error }`, per [Part 34 D8](../_completed/34-action-access-model/design.md)), the workflow-closed banner + `required_after_close` gate on the submit buttons, the stale-URL guard on `workflow-action-edit` (`[action-required, in-progress, changes-required]`) and `workflow-action-review` (`[in-review, error]`), and `workflow-action-view`'s status-history card + events-timeline `_ref` (Part 33's swap — now inside the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
 
 ## Discovered gap — action items in the event timeline (Part 41)
 

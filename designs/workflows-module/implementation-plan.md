@@ -34,7 +34,7 @@ Part 38 rebuilds every engine write entry point into load → pre-hook → plan 
 
 | #   | Part                                                          | Size | Depends on | Status |
 | --- | ------------------------------------------------------------- | ---- | ---------- | ------ |
-| 40  | [simple-action-surfaces](parts/40-simple-action-surfaces/design.md) | M | 34, 35, 38, **24**, 39 | |
+| 40  | [simple-action-surfaces](parts/40-simple-action-surfaces/design.md) | M | 34, 35, 38, **24**, 39, **33** (33's comments-card → events-timeline swap lands first; 40 carries the timeline `_ref` into the surface) | |
 | 36  | [extra-action-buttons](parts/36-extra-action-buttons/design.md) | S–M | 16/17 templates; **needs signal-model reconciliation** (design-only — can run in parallel anytime) | |
 | 41  | [notification-roles-model](parts/41-notification-roles-model/design.md) | TBD | rethink; supersedes part 34 D9 | ⚠️ STUB — not yet designed (design work can run in parallel anytime) |
 
@@ -157,7 +157,7 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | 37  | [actions-collection-indexes](parts/_completed/37-actions-collection-indexes/design.md) | S | `modules/workflows/` (docs + index verification)         | ✅ shipped |
 | 38  | [engine-rebuild](parts/38-engine-rebuild/design.md)                   | XL   | `plugins/modules-mongodb-plugins/src/connections/` + `modules/workflows/` | 🚧 13 of 22 tasks shipped (Bands 1–3 mostly done; Bands 4–5 remain) |
 | 39  | [form-submit-buttons](parts/39-form-submit-buttons/design.md)         | M    | `modules/workflows/templates/` + `modules/workflows/enums/` + concept | next (after 38 task 19) |
-| 40  | [simple-action-surfaces](parts/40-simple-action-surfaces/design.md)   | M    | `modules/workflows/pages/` + `components/` + `ActionSteps` block + resolver | depends on 24, 39 |
+| 40  | [simple-action-surfaces](parts/40-simple-action-surfaces/design.md)   | M    | `modules/workflows/pages/` + `components/` + `ActionSteps` block + resolver | depends on 24, 39, 33 |
 | 41  | [notification-roles-model](parts/41-notification-roles-model/design.md) | TBD | `modules/workflows/` + `modules/notifications/` + engine        | ⚠️ STUB — not yet designed |
 | 42  | [timeline-action-cards](parts/42-timeline-action-cards/design.md)     | M    | `modules/shared/workflow/` + `modules/events/` + `modules/workflows/` | parallel-startable now (38 contracts shipped) |
 | 43  | [rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) | S | `modules/workflows/` + `plugins/modules-mongodb-plugins/` | 📐 design only — after 40 |

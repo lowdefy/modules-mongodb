@@ -7,16 +7,16 @@ The three shared simple-action pages still run the v0 interaction model and must
 Current files:
 
 - `modules/workflows/pages/workflow-action-edit.yaml` — 8-step `onMount`; body has a workflow-closed banner, universal-fields (`mode: edit`), a **status `Selector`** with a `_js` priority filter (`:135–156`), a "No transitions available" Alert, a comment, and a single **Save** button firing `interaction: submit_edit` + `current_status` (`:196–215`).
-- `modules/workflows/pages/workflow-action-view.yaml` — read-only header + universal-fields (`mode: display`) + status-history card + comments card. No button bar, no stale-URL guard.
+- `modules/workflows/pages/workflow-action-view.yaml` — read-only header + universal-fields (`mode: display`) + status-history card + events-timeline `_ref` (Part 33, ordered before this part, replaced the old comments card). No button bar, no stale-URL guard.
 - `modules/workflows/pages/workflow-action-review.yaml` — workflow-closed banner, header, universal-fields (`mode: display`), comment, **floating-actions** bar with Request Changes (opens a comment `Modal`) + Approve (`interaction: approve`), and a `request_changes_modal` (`interaction: request_changes`). Stale-URL guard allowlists `[in-review, error]`.
 
-**What carries over unchanged (D6):** the `action_id` presence guard; `get_action` / `get_workflow` requests; `action_role_check`; the workflow-closed banner + `required_after_close` gate; the stale-URL guard on `workflow-action-edit` (`[action-required, in-progress, changes-required]`) and `workflow-action-review` (`[in-review, error]`); `workflow-action-view`'s status-history + comments (now living **inside** the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
+**What carries over unchanged (D6):** the `action_id` presence guard; `get_action` / `get_workflow` requests; `action_role_check`; the workflow-closed banner + `required_after_close` gate; the stale-URL guard on `workflow-action-edit` (`[action-required, in-progress, changes-required]`) and `workflow-action-review` (`[in-review, error]`); `workflow-action-view`'s status-history + events timeline (Part 33's swap; now living **inside** the surface component). Only the selector, the `interaction:`/`current_status` payloads, and the per-button `_js` visibility are replaced.
 
 ## Task
 
 ### All three pages
 
-1. **Body → surface.** Replace each page's inline body blocks with an `_ref` of `components/simple-action-surface.yaml` passing `mode: edit` / `view` / `review` respectively. The header, banner, fields, comment, button bars, status-history, and comments now live in the surface — remove the now-duplicated inline blocks from the pages.
+1. **Body → surface.** Replace each page's inline body blocks with an `_ref` of `components/simple-action-surface.yaml` passing `mode: edit` / `view` / `review` respectively. The header, banner, fields, comment, button bars, status-history, and events timeline now live in the surface — remove the now-duplicated inline blocks from the pages.
 2. **Populate the `surface` namespace in `onMount`.** Rewrite each page's priming `SetState` so the surface's `_state.surface` reads resolve:
    - `surface.action` ← `_request: get_action` (the full action doc).
    - `surface.fields` ← `{ assignees, due_date, description }` from `get_action` (edit page) — primes editable fields; for view/review the surface reads display fields from `surface.action`, so seeding `surface.fields` is only required where fields are editable (`edit`).
@@ -53,7 +53,7 @@ Current files:
 ## Files
 
 - `modules/workflows/pages/workflow-action-edit.yaml` — modify — delete selector/Alert/`current_status`; body → surface (`edit`); `onMount` primes `surface.*`; `interaction:`→`signal:` removed (now in surface).
-- `modules/workflows/pages/workflow-action-view.yaml` — modify — body → surface (`view`); `resolve_error` via surface; reconcile status-history/comments seeding with the surface.
+- `modules/workflows/pages/workflow-action-view.yaml` — modify — body → surface (`view`); `resolve_error` via surface; reconcile status-history/events-timeline seeding with the surface.
 - `modules/workflows/pages/workflow-action-review.yaml` — modify — body → surface (`review`); move approve/request-changes flow into the surface; keep stale-URL guard.
 
 ## Notes

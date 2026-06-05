@@ -245,10 +245,10 @@ Every signal that transitions the current action generates a log event by defaul
 type: action-{signal} # e.g. action-submit, action-approve
 display:
   { app_name }: # consuming app's app_name (events module's display_key)
-    title:
-      _nunjucks:
-        template: "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}"
-        on: { user, action_type, status_after }
+    # plain Nunjucks template string, rendered by the engine at plan time (Part 38)
+    # against the action-event render context: user, action, workflow, signal,
+    # status_before, status_after, submitted_form
+    title: "{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"
 references:
   workflow_ids: [<workflow_id>]
   action_ids: [<action_id>]

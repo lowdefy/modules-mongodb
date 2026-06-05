@@ -29,10 +29,10 @@ The current pages do **not** use this namespace (they prime top-level `fields.*`
 | `mode`   | Renders                                                                     | Button bar                                          |
 | -------- | --------------------------------------------------------------------------- | --------------------------------------------------- |
 | `edit`   | universal fields (editable) + comment                                       | `submit`, `progress`, `not_required`                |
-| `view`   | header + universal fields (read-only) + status-history + comments timeline  | `resolve_error` (only at stage `error`)             |
+| `view`   | header + universal fields (read-only) + status-history + events timeline (Part 33) | `resolve_error` (only at stage `error`)             |
 | `review` | header + universal fields (read-only) + comment                             | `approve`, `request_changes` (comment modal)        |
 
-The header (title + status badge), status-history card, and comments card come from the current `workflow-action-view.yaml` (`:64–286`). Universal fields render via `_ref: components/universal-fields/universal-fields.yaml` with `mode: edit` (editable, `edit` surface mode) or `mode: display` (read-only, `view`/`review`), `kind: simple`, `action_data` sourced from `surface.fields` (edit) or `surface.action` (display).
+The header (title + status badge), status-history card, and the events-timeline `_ref` (Part 33, ordered before this part, replaced the old comments card with it) come from the current `workflow-action-view.yaml`. Universal fields render via `_ref: components/universal-fields/universal-fields.yaml` with `mode: edit` (editable, `edit` surface mode) or `mode: display` (read-only, `view`/`review`), `kind: simple`, `action_data` sourced from `surface.fields` (edit) or `surface.action` (display).
 
 ## Task
 
@@ -94,7 +94,7 @@ payload:
 ### Mode-specific bodies
 
 - **`edit`**: workflow-closed banner (carry over from `workflow-action-edit.yaml:90–108`, gated on `surface.action` fields), editable universal fields, comment, button bar `submit` / `progress` / `not_required`. **No status selector, no "No transitions available" Alert** — both deleted.
-- **`view`**: header (title + status badge), read-only universal fields, status-history card, comments card (carry over from `workflow-action-view.yaml`), button bar with only `resolve_error`.
+- **`view`**: header (title + status badge), read-only universal fields, status-history card, events-timeline `_ref` (carry over from `workflow-action-view.yaml` — Part 33's swap; **not** the deleted comments card), button bar with only `resolve_error`.
 - **`review`**: workflow-closed banner, header, read-only universal fields, comment, button bar `approve` + `request_changes` (with its comment modal).
 
 The submit-style buttons keep the `disabled` workflow-closed gate (`required_after_close`) from the current pages (`workflow-action-edit.yaml:176–187`).

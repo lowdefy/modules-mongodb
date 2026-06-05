@@ -6,7 +6,7 @@ Part 40 adds an in-context modal so live working surfaces (`actions-on-entity`, 
 
 This task ships the standalone, reusable component `modules/workflows/components/simple-action-modal.yaml`. It wraps the `simple-action-surface` (Task 3) — one body, two containers. Task 6 wires it into `actions-on-entity`; a host app page that renders the event timeline can drop and wire it independently (Part 41).
 
-**Container choice (D5):** a single **`Drawer`** block with a **fixed blockId `simple_action_modal`**. One container type for all modes — a `Drawer` holds the heavy `view` mode (fields + status-history + comments) comfortably and serves the lighter `edit`/`review` surfaces equally. A single block type keeps the one fixed blockId / one open contract intact (a runtime block cannot switch type by mode, so two container types would break the contract).
+**Container choice (D5):** a single **`Drawer`** block with a **fixed blockId `simple_action_modal`**. One container type for all modes — a `Drawer` holds the heavy `view` mode (fields + status-history + events timeline) comfortably and serves the lighter `edit`/`review` surfaces equally. A single block type keeps the one fixed blockId / one open contract intact (a runtime block cannot switch type by mode, so two container types would break the contract).
 
 ## Task
 
@@ -52,7 +52,7 @@ Create `modules/workflows/components/simple-action-modal.yaml`:
 
 ## Notes
 
-- **`view` mode in the Drawer** shows the status-history + comments timelines; `edit`/`review` render just the actionable surface. This is the surface's own mode behaviour (Task 3) — the modal just selects the mode.
+- **`view` mode in the Drawer** shows the status-history card + the events timeline (Part 33); `edit`/`review` render just the actionable surface. This is the surface's own mode behaviour (Task 3) — the modal just selects the mode.
 - **Keep the open sequence byte-for-byte aligned with the page `onMount`** (Task 4) so a simple action behaves identically whether opened as a page or in the drawer — that parity is the whole point of the shared surface.
 - The `action_role_check` per-verb `action_allowed` output is the same [Part 34 D8] cross-wave dependency noted in Tasks 3 and 4; land its result under `surface.action_allowed` here too.
 - This task defines the component and its open contract; the `EventsTimeline.onActionClick` event and the timeline wiring that also consume this modal are **Part 41**.
