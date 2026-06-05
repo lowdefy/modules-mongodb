@@ -4,7 +4,7 @@
 
 `modules/workflows/resolvers/makeWorkflowsConfig.js` validates the raw workflow YAML at build time. `validateAction` (called per action from `validateWorkflow`) already runs structural checks for `access`, `status_map`, `hooks`, and `event`. The raw action object still carries `pages` at validation time (it's only excluded from the *normalized output* via `ACTION_FIELDS`), so per-verb page config is reachable as `action.pages?.[verb]`.
 
-Part 36 introduces a new authoring slot, `pages.{verb}.buttons.extra: [...]` — an array of author-composed Lowdefy `Button` blocks that the verb templates concatenate into the `floating-actions` bar (task 2). The validator must check the slot's structure and keep author ids from colliding with the template-shipped signal-button block ids.
+Part 36 introduces a new authoring slot, `pages.{verb}.buttons.extra: [...]` — an array of author-composed Lowdefy `Button` blocks that the verb templates concatenate into the `floating-actions` bar (task 2). The validator must check the slot's structure and keep author ids from colliding with the template-shipped bar-button block ids (signal buttons plus the review page's `button_edit` navigation button — the collision rationale is about block ids in the bar, not signals).
 
 The reserved set uses the **post-Part-39** button ids. Part 39 renames `button_submit_edit` → `button_submit` and adds `button_progress` (Save Draft); if Part 39 hasn't landed yet, the constant still uses the post-39 names — it guards author config, not template state (see tasks.md "Cross-part sequencing").
 
@@ -17,9 +17,12 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
 1. Add a module-level constant near the other vocab constants (`ACCESS_VERBS`, `ACTION_STATUSES`):
 
    ```js
-   // Block ids of the template-shipped signal buttons (post-Part 39 names).
-   // Hand-maintained alongside the hardcoded `id:` values in the verb
-   // templates — each new signal-button part touches both (Part 36 item 3).
+   // Block ids of the template-shipped bar buttons (post-Part 39 names) —
+   // signal buttons plus navigation buttons (the collision check is about
+   // block ids in the bar, not signals). Hand-maintained alongside the
+   // hardcoded `id:` values in the verb templates — each new signal-button
+   // part touches both (Part 36 item 3). Reservation is global: any reserved
+   // id is rejected on every verb page, not just the page whose bar ships it.
    const RESERVED_BUTTON_IDS = [
      'button_submit',
      'button_progress',
@@ -27,6 +30,7 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
      'button_approve',
      'button_request_changes',
      'button_resolve_error',
+     'button_edit',
    ];
 
    // Verbs whose form-action templates offer the `buttons.extra` slot.
@@ -43,7 +47,7 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
      - Must be an array — else `fail` with the offending verb and the received value (`JSON.stringify`), matching the error style of the existing validators.
      - Each entry must be a non-null object with a string `id` — else `fail` naming the verb and index.
      - Each entry must have `events.onClick` as an array — else `fail`. Do not validate the actions inside the array.
-     - Entry `id` must not be in `RESERVED_BUTTON_IDS` — else `fail` naming the colliding id and explaining it is a template-shipped signal-button id.
+     - Entry `id` must not be in `RESERVED_BUTTON_IDS` — else `fail` naming the colliding id and explaining it is a template-shipped bar-button id. The check is **global**: any reserved id is rejected on every verb page, regardless of whether that page's bar ships the button (design item 3 — per-page semantics would only let authors name an edit-page extra `button_approve`, which is confusion fuel, and global reservation self-protects when buttons move between pages).
 
    Follow the existing `fail(workflow.type, \`${where} ...\`)` message convention (`where` = `action "${action.type}"`).
 
@@ -56,6 +60,8 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
    - (e) entry with `id: button_submit` on `edit` rejected.
    - (e2) entry with `id: button_progress` on `edit` rejected.
    - (f) entry with `id: button_resolve_error` on `error` rejected.
+   - (f2) entry with `id: button_edit` on `review` rejected — nav buttons reserve their ids too.
+   - (f3) entry with `id: button_approve` on `edit` rejected even though the edit bar ships no approve button — pins the global (not per-page) reservation semantics.
    - (g) any `buttons.extra` on `pages.view` rejected.
 
    A minimal valid entry for fixtures:
@@ -74,7 +80,7 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
 ## Files
 
 - `modules/workflows/resolvers/makeWorkflowsConfig.js` — modify — add `RESERVED_BUTTON_IDS`, `EXTRA_BUTTON_VERBS`, `validateButtonsExtra`, call from `validateAction`.
-- `modules/workflows/resolvers/makeWorkflowsConfig.test.js` — modify — add cases (a)–(g).
+- `modules/workflows/resolvers/makeWorkflowsConfig.test.js` — modify — add cases (a)–(g) including (f2)/(f3).
 
 ## Notes
 
