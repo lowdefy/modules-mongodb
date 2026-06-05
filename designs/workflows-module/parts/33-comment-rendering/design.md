@@ -140,7 +140,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 - **[Part 32 — drop static overrides](../_completed/32-drop-static-overrides/design.md)** — the static `event:` description channel stays; this part pins comment-beats-static precedence, closing Part 32's deferred question.
 - **[Part 38 — engine rebuild](../38-engine-rebuild/design.md)** — `foldCommentIntoEvent` slots into the shared event-dispatch planner both handlers reuse.
 - **[Part 40 — simple-action-surfaces](../40-simple-action-surfaces/design.md)** — ordered **after** this part (pinned in `implementation-plan.md`). Part 40 moves the view-page body into a shared `simple-action-surface.yaml` (rendered by the three pages *and* a Drawer modal); it carries over the events-timeline `_ref` this part installs — **not** the deleted comments card — and the timeline rides the surface's `view` mode, so pages and modal render it identically.
-- **[Part 42 — timeline-action-cards](../42-timeline-action-cards/design.md)** — coordinates from its side: its D6 suppresses the self-referential action card on the action-page timeline this part adds.
+- **[Part 42 — timeline-action-cards](../_completed/42-timeline-action-cards/design.md)** — coordinates from its side: its D6 suppresses the self-referential action card on the action-page timeline this part adds.
 
 ## Contract to neighbours
 

@@ -6,7 +6,7 @@ The fix is one shared aggregation fragment that joins events to the live `action
 
 ## Proposed change
 
-1. Add a shared aggregation fragment `modules/shared/workflow/timeline_action_lookup.yaml` — the events→`actions` `$lookup`, an **access-aware** action projection (`status`, `message`, and a single resolved `link`), and the "attach to latest referencing event only" de-dup, parameterized by one build-time `app_name` var. The link is *not* read straight off the action cell: post-[Part 38](../38-engine-rebuild/design.md) the cell carries a per-verb `links` map, so the fragment composes two new shared stages — `visible_verbs.yaml` (resolve which verbs this user has) and `resolve_action_link.yaml` (collapse the map to the one link the user can actually use) — see D5.
+1. Add a shared aggregation fragment `modules/shared/workflow/timeline_action_lookup.yaml` — the events→`actions` `$lookup`, an **access-aware** action projection (`status`, `message`, and a single resolved `link`), and the "attach to latest referencing event only" de-dup, parameterized by one build-time `app_name` var. The link is *not* read straight off the action cell: post-[Part 38](../../38-engine-rebuild/design.md) the cell carries a per-verb `links` map, so the fragment composes two new shared stages — `visible_verbs.yaml` (resolve which verbs this user has) and `resolve_action_link.yaml` (collapse the map to the one link the user can actually use) — see D5.
 2. Splice that fragment into the events module's `events-timeline.yaml` `get-events` pipeline **unconditionally**, passing `app_name` from the events module's existing `display_key` var — no new author-facing config.
 3. Pass `actionStatusConfig` to the `EventsTimeline` block from a **shared** status-display enum.
 4. Move `modules/workflows/enums/action_statuses.yaml` to `modules/shared/enums/action_statuses.yaml` so both the workflows pages and the events timeline read one source; reconcile the `EventsTimeline` block to that enum's key shape.
@@ -15,13 +15,13 @@ The fix is one shared aggregation fragment that joins events to the live `action
 
 ## Current state
 
-**The block can already render the card; nothing feeds it.** `EventsTimeline.js` ships an `EventAction` component ([EventsTimeline.js:356-423](../../../../plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js)) that, for each entry in an event's `actions[]` array, draws an Antd `Card` styled from `actionStatusConfig[status]`, renders the action `message` as a badge, and renders a `link` → action page via the block's `onActionClick` event ([meta.js:9-16](../../../../plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/meta.js)). It renders nothing when `actions` is empty or `actionStatusConfig` is absent (EventsTimeline.js:357, 475-478).
+**The block can already render the card; nothing feeds it.** `EventsTimeline.js` ships an `EventAction` component ([EventsTimeline.js:356-423](../../../../../plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js)) that, for each entry in an event's `actions[]` array, draws an Antd `Card` styled from `actionStatusConfig[status]`, renders the action `message` as a badge, and renders a `link` → action page via the block's `onActionClick` event ([meta.js:9-16](../../../../../plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/meta.js)). It renders nothing when `actions` is empty or `actionStatusConfig` is absent (EventsTimeline.js:357, 475-478).
 
-**Neither input is wired.** The events module's `events-timeline.yaml` component runs a plain `$match` (by reference key) → `$sort` → title/description/info projection ([events-timeline.yaml:13-58](../../../../modules/events/components/events-timeline.yaml)). It performs no `$lookup`, so `event.actions` is always empty, and it passes no `actionStatusConfig` to the block. The workflows module ships no timeline at all (`workflow-history` was deferred out of v1 — [part 18 § Out of scope](../_completed/18-entity-components/design.md)). So the inline live-action card is dropped at the data layer in both modules.
+**Neither input is wired.** The events module's `events-timeline.yaml` component runs a plain `$match` (by reference key) → `$sort` → title/description/info projection ([events-timeline.yaml:13-58](../../../../../modules/events/components/events-timeline.yaml)). It performs no `$lookup`, so `event.actions` is always empty, and it passes no `actionStatusConfig` to the block. The workflows module ships no timeline at all (`workflow-history` was deferred out of v1 — [part 18 § Out of scope](../18-entity-components/design.md)). So the inline live-action card is dropped at the data layer in both modules.
 
 **The reference implementation** (v0, `apps/.../tickets/ticket-view/requests/get_ticket_history.yaml`) did it in one custom request: `$lookup from: actions` on `action_ids`, project `{ status, message, link }` from the app-keyed status-map cell, then a `$setWindowFields`(partition by `action._id`, sort by `created.timestamp`) + `$group` pass that pushed each action only onto the event whose `_id` equalled the partition's last event id. That request also did category filtering (notes/comments/actions/events chips) and pagination — those stay app-specific (see Non-goals).
 
-**Why not `actions-on-entity`.** The shipped `actions-on-entity` widget ([part 18](../_completed/18-entity-components/design.md)) renders the always-on, grouped action tree at the top of an entity page. It is a different surface with a different job: it does not place a current-status card *chronologically inline* on the most recent referencing event. The timeline card and the widget coexist, exactly as in v0.
+**Why not `actions-on-entity`.** The shipped `actions-on-entity` widget ([part 18](../18-entity-components/design.md)) renders the always-on, grouped action tree at the top of an entity page. It is a different surface with a different job: it does not place a current-status card *chronologically inline* on the most recent referencing event. The timeline card and the widget coexist, exactly as in v0.
 
 ## Key decisions
 
@@ -63,7 +63,7 @@ The current `EventsTimeline.EventAction` reads `card_color` / `border_color` / `
 | Status badge dot / text | `color` | `titleColor` |
 | Badge label fallback | `title` | `title` (unchanged) |
 
-This makes one shared base enum the single source of status display across the workflow pages (which already consume the `action_statuses` component) and the timeline, with each surface layering the same per-app override. (`ActionSteps` is unaffected — it uses its own hardcoded theme-token map, [ActionSteps.js:18](../../../../plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js), and is out of scope here.)
+This makes one shared base enum the single source of status display across the workflow pages (which already consume the `action_statuses` component) and the timeline, with each surface layering the same per-app override. (`ActionSteps` is unaffected — it uses its own hardcoded theme-token map, [ActionSteps.js:18](../../../../../plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js), and is out of scope here.)
 
 ### D4 — De-dup semantics carried verbatim
 
@@ -77,7 +77,7 @@ The "attach the live card to the most recent referencing event only" behaviour i
 
 ### D5 — The single rendered link is resolved server-side, access-aware, once for every surface
 
-v0 stored one pre-resolved `link` per action and the card rendered it. [Part 38](../38-engine-rebuild/design.md) (implementing [Part 34 D7](../_completed/34-action-access-model/design.md)) replaces that single cell with a per-verb **map** — `action.<app_name>.links: { view, edit, review, error }`, each cell a `{ pageId, urlQuery, title }` link object or `null` where the slug doesn't declare the verb / the stage has no page. So *some* consumer must collapse the map to the one link to show. The card reads a single `link` (`EventsTimeline.js:399-417`); it does not select.
+v0 stored one pre-resolved `link` per action and the card rendered it. [Part 38](../../38-engine-rebuild/design.md) (implementing [Part 34 D7](../34-action-access-model/design.md)) replaces that single cell with a per-verb **map** — `action.<app_name>.links: { view, edit, review, error }`, each cell a `{ pageId, urlQuery, title }` link object or `null` where the slug doesn't declare the verb / the stage has no page. So *some* consumer must collapse the map to the one link to show. The card reads a single `link` (`EventsTimeline.js:399-417`); it does not select.
 
 **Decision: collapse the map in the aggregation, not the view layer — and account for both dimensions.**
 
@@ -119,7 +119,7 @@ $addFields:
 
 ### D6 — A timeline keyed to a reference never renders that reference's own action card
 
-[Part 33](../33-comment-rendering/design.md) adds the standard `events-timeline` component to the action view page (`workflow-action-view.yaml`), filtered to the action (`reference_field: action_ids`, `reference_value: get_action._id`). Because this part splices the lookup fragment into `events-timeline` **unconditionally** (D2), that page's timeline would otherwise attach a live status card for the very action whose page you're on — a card whose resolved `link` points back to the current page, sitting beside the action header and the `status_history_list` Part 33 leaves in place. That self-referential card is noise.
+[Part 33](../../33-comment-rendering/design.md) adds the standard `events-timeline` component to the action view page (`workflow-action-view.yaml`), filtered to the action (`reference_field: action_ids`, `reference_value: get_action._id`). Because this part splices the lookup fragment into `events-timeline` **unconditionally** (D2), that page's timeline would otherwise attach a live status card for the very action whose page you're on — a card whose resolved `link` points back to the current page, sitting beside the action header and the `status_history_list` Part 33 leaves in place. That self-referential card is noise.
 
 **Decision: the `events-timeline` component drops the action whose `_id` equals the timeline's own `reference_value`.** The component already carries `reference_value` as a request payload (`events-timeline.yaml:18-20`) — the id the whole timeline is keyed on. A single `$filter` stage spliced **after** the fragment removes that action from each event's `actions[]` array. The event row still renders (title + comment-as-description); only its own card is stripped, and an emptied `actions: []` renders no card (`EventsTimeline.js:357`).
 
@@ -221,7 +221,7 @@ pipeline:
 ## Non-goals
 
 - **Category-chip filtering** (notes / comments / actions / events) and **pagination** — these were app-specific UI in v0's `get_ticket_history` and stay app-authored. The exported fragment is the reusable piece; the surrounding `$match`/`$facet` is not.
-- **Comment-inline rendering** — owned by [part 33](../33-comment-rendering/design.md). This part is about the *action* card; the two timeline-enrichment concerns stay separate.
+- **Comment-inline rendering** — owned by [part 33](../../33-comment-rendering/design.md). This part is about the *action* card; the two timeline-enrichment concerns stay separate.
 - **`ActionSteps` colour source** — unchanged (hardcoded theme tokens).
 
 ## Open questions
@@ -230,11 +230,11 @@ None. (The earlier "is the link render-ready / does it need `action_id` substitu
 
 ## Depends on
 
-- **[Part 38 — engine rebuild](../38-engine-rebuild/design.md)** for the link contract this part assumes: the per-verb `action.<app_name>.links: { view, edit, review, error }` map (Part 34 D7) and the `access.<app>.<verb>` shape `visible_verbs` resolves against. This part targets the **post-38** contract, not the pre-38 single `<app_name>.link`.
+- **[Part 38 — engine rebuild](../../38-engine-rebuild/design.md)** for the link contract this part assumes: the per-verb `action.<app_name>.links: { view, edit, review, error }` map (Part 34 D7) and the `access.<app>.<verb>` shape `visible_verbs` resolves against. This part targets the **post-38** contract, not the pre-38 single `<app_name>.link`.
 - The `actions` collection + app-keyed status-map cell convention from the workflows engine (`get-entity-workflows.yaml`, `actions-collection.yaml`).
 - The shipped `EventsTimeline` block (`plugins/modules-mongodb-plugins`) — already renders the card (single `link`); this part feeds, re-colours, and resolves its link server-side.
 
 ## Related
 
-- [Part 33 — Comment rendering on the events timeline](../33-comment-rendering/design.md) — sibling timeline-enrichment concern; it adds the standard timeline to the action view page, where D6 governs the combined surface (this part's card + Part 33's inline comment) by suppressing the action's own self-referential card.
-- [Part 18 — Entity-page components](../_completed/18-entity-components/design.md) — `actions-on-entity` (the always-on widget, distinct surface).
+- [Part 33 — Comment rendering on the events timeline](../../33-comment-rendering/design.md) — sibling timeline-enrichment concern; it adds the standard timeline to the action view page, where D6 governs the combined surface (this part's card + Part 33's inline comment) by suppressing the action's own self-referential card.
+- [Part 18 — Entity-page components](../18-entity-components/design.md) — `actions-on-entity` (the always-on widget, distinct surface).
