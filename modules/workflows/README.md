@@ -155,6 +155,50 @@ event_overrides: { ... } # layered onto the dispatched log event
 
 **Post-hooks fire after the commit.** The hook payload's `context` carries the post-commit workflow + action docs (no re-read needed), and `result` is `{ action_ids, completed_groups, event_id, tracker_fired }`. Because the engine's writes have already landed, a post-hook failure does **not** roll them back — post-hook routines must be idempotent / safe to re-run, since a retried submission fires them again.
 
+### Starting actions (`starting_actions:`)
+
+`starting_actions` is the workflow's scope declaration. It seeds one action doc per entry when the workflow is started, and it tells every user what the full set of standard actions is the moment the workflow appears.
+
+**List every standard action.** Include every action that will exist unconditionally — entry actions at `action-required`, downstream actions at `blocked`. The workflow then renders its complete scope on load, not just the first unlocked step.
+
+```yaml
+starting_actions:
+  - { type: qualify, status: action-required }       # entry — immediately actionable
+  - { type: send-quote, status: blocked }            # standard downstream
+  - { type: schedule-followup, status: blocked }     # standard downstream
+  - { type: upload-po, status: blocked }             # standard downstream
+  - { type: track-company-setup, status: blocked }   # standard downstream
+  # site-visit is absent — conditional; spawned by the qualify pre-submit hook
+  # with { type: site-visit, signal: activate, upsert: true } when needed.
+```
+
+Legal seed statuses are `action-required` and `blocked` only — `makeWorkflowsConfig` rejects any other value at build time, and `StartWorkflow` enforces the same rule on the `start-workflow` payload's `actions:` override at runtime. These are the only two states that make sense at creation: an action either needs attention now or is waiting on something else. Any other status implies a transition that should have gone through the FSM.
+
+**Do not list conditional actions.** An action whose existence depends on runtime user input is not a standard action — it may or may not ever exist. List only the actions that always exist; conditional actions are spawned by pre-submit hooks with `upsert: true` when the condition is met. An action neither listed nor hook-spawned never exists.
+
+The demo's `apps/demo/modules/workflows/workflow_config/onboarding/` is the worked example: `qualify`, `send-quote`, `schedule-followup`, `upload-po`, and `track-company-setup` are listed; `site-visit` is conditional (spawned by the `qualify` pre-submit hook when the user flags a site visit is needed) and correctly absent.
+
+### Conditional actions and `blocked_by`
+
+**Conditional actions must never appear as `blocked_by` targets.** A `blocked_by` entry naming an action type resolves by checking whether that type has reached a terminal status (`done` or `not-required`). If no doc of that type exists — because a conditional action was never spawned — the entry resolves as *unsatisfied* forever, and the action waiting on it is permanently blocked.
+
+This is not a recoverable state: the engine reads `blocked_by` only on actions (never on groups), so there is no automatic way to unblock an action gated on a type that never existed. The conditional action that was never spawned will simply never satisfy the check.
+
+**Use the group target instead.** An action that should wait on a group of work — which may or may not include conditional actions — names the group ID in `blocked_by`. Group status is derived from whatever member docs actually exist: a never-spawned conditional simply isn't counted in the group's progress. An action blocked by a group unblocks when the group reaches `done`.
+
+```yaml
+# WRONG — blocks forever if site-visit is never spawned
+blocked_by:
+  - site-visit  # conditional type; may not exist
+
+# RIGHT — block on the quoting group, which includes site-visit as a member
+blocked_by:
+  - quoting  # group id; unblocks when the group is done regardless of which
+             # actions in the group were ever spawned
+```
+
+Note: `blocked_by` is an action-level field. A `blocked_by` key on a group entry in `action_groups:` is ignored by the engine.
+
 ## Exports
 
 ### Pages
