@@ -17,14 +17,14 @@ $addFields:
       vars:
         app_links:
           $getField:
-            field:
-              _var:
-                key: app_name
-                default:
-                  _module.var: app_name
+            field: links
             input:
               $getField:
-                field: links
+                field:
+                  _var:
+                    key: app_name
+                    default:
+                      _module.var: app_name
                 input: $$ROOT
         verbs: $visible_verbs
       in:
