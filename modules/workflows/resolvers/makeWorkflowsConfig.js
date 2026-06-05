@@ -39,6 +39,11 @@ const ACTION_STATUSES = [
   'blocked',
 ];
 
+// The two legal direct-seed statuses for starting_actions (Part 45 review 2 #2;
+// task 17). Creation at workflow start is not an FSM transition, so a seed may
+// only land at one of the two non-terminal birth stages.
+const LEGAL_SEED_STATUSES = ['action-required', 'blocked'];
+
 // Part 34 access verbs. Vocabulary is closed in v1 (Part 34 D4 / per-app block).
 const ACCESS_VERBS = ['view', 'edit', 'review', 'error'];
 
@@ -370,6 +375,12 @@ function validateWorkflow(workflow) {
       fail(
         workflow.type,
         `starting_actions entry for "${entry.type}" has invalid status "${entry.status}".`
+      );
+    }
+    if (!LEGAL_SEED_STATUSES.includes(entry.status)) {
+      fail(
+        workflow.type,
+        `starting_actions entry for "${entry.type}" seeds status "${entry.status}" — only ${LEGAL_SEED_STATUSES.join(' | ')} are legal seeds (creation at workflow start is not an FSM transition). Re-author to a legal seed.`
       );
     }
   }
