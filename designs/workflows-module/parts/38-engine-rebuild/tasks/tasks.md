@@ -24,7 +24,7 @@ These tasks implement Part 38, which rebuilds the workflow engine around two com
 | 14  | `14-hook-phase-wrappers.md`                 | `invokePreHook` (signal return shape) + `invokePostHook` moved to `shared/phases/`    | 9              |
 | 15  | `15-submit-handler-rewrite.md`              | Rewrite `SubmitWorkflowAction`/`handleSubmit` around phases; delete obsolete files    | 10,11,12,13,14 |
 | 16  | `16-tracker-cascade.md`                     | `runTrackerCascade` loop + `planTrackerLevel` (per-fire chain-depth guard)            | 15             |
-| 17  | `17-start-cancel-close-rewrite.md`          | Rewrite Start/Cancel/Close around phases; each emits a lifecycle log event            | 10,11,12,13    |
+| 17  | `17-start-cancel-close-rewrite.md`          | Rewrite Start/Cancel/Close around phases; each emits a lifecycle log event            | 10,11,12,13,18,19 |
 | 18  | `18-display-surface-renames.md`             | Rename fixed pages (`workflow-group-overview`, final `workflow-action-*`) + `_module.pageId` refs + link table | 4, 6           |
 | 19  | `19-emitted-payload-surfaces.md`            | `makeWorkflowApis` payload mapping (drop `force`, add `signal`) + `start-workflow`    | 6              |
 | 20  | `20-demo-migration.md`                      | **Superseded** → implement [Part 45 (demo rebuild)](../../45-demo-rebuild/design.md) instead, after Parts 43 + 44      | 1–19, Parts 43–45 |
@@ -69,21 +69,22 @@ The 23 tasks group into five dependency bands. **A band is the unit of work** �
 
 ### Band 4 — Handler rewrites — in progress
 
-- **Tasks:** 15 ✅ → 16 ✅; 23 ✅ → 17 (the 23→17 chain is parallel-safe with 15/16)
-- **Depends on bands:** 3
+- **Tasks:** 15 ✅ → 16 ✅; 23 ✅ → 17 (after Band 5's 18 ∥ 19 — see below)
+- **Depends on bands:** 3, plus Band 5's tasks 18 + 19 for task 17
 - **Progress:** Tasks 15, 16, 23 done. Remaining: 17 (Start/Cancel/Close rewrite — all four task-23 contract extensions are landed and tested).
+- **17 runs after 18 ∥ 19** (re-sequenced by the review-18 action review): 17 and 19 collide on `makeWorkflowsConfig.js` (17's legal-seed restriction vs 19's `validateHooks` re-key + `event:`-key validation — serialize, 19 first), and 17's new handler integration tests assert seeded drafts' `links`, which must be the final `workflow-action-*` ids from 18's link-table flip — written against the interim `workflow-simple-*` ids they'd recreate the rename drift review-18 #7 documented.
 - **Notes:** Submit (15) is the reference handler. The tracker cascade (16) reuses 100% of the Submit planner machinery and so follows it. The planner-contract catch-up (23, from review-13) extends the landed Band 3 planners (`seedStage`, `lifecyclePush`), flips the tracker `none` row, and reconciles the cascade `fire.payload` passthrough (16 landed without it, so the reconciliation applies) — it must precede Start/Cancel/Close (17), which consume all four. 17 composes the same phases independently and can run parallel to 15/16.
 - **Deferred deletions (lockstep with task 17):** tasks 15/16 deleted only files whose sole importer was the rewritten Submit path. Still imported by the un-rewritten Start/Cancel/Close (and therefore deferred to task 17): `shared/createAction.js`, `shared/updateAction.js`, `shared/recomputeWorkflowAfterActionWrite.js`, `shared/getActions.js`, `shared/getActionFields.js`, `SubmitWorkflowAction/reevaluateBlockedActions.js`, `SubmitWorkflowAction/utils/getCurrentAction.js`, `SubmitWorkflowAction/utils/shouldUpdate.js`, and `SubmitWorkflowAction/fireTrackerSubscription.js` (+ its remaining live unit tests). Task 17 deletes them once Start/Cancel/Close are rewired (compose context via `shared/phases/createEngineContext.js`, feed `trackerFires` into `shared/phases/runTrackerCascade.js`).
 - **Gate:** handler-level tests pass; obsolete files deleted per task 15 (Submit-only importers done; remainder deferred per above).
 
 ### Band 5 — Surfaces
 
-- **Tasks:** 18, 19 (parallel-safe) → 24 (docs-pass stub, last)
-- **Depends on bands:** 4 (and 1–3 transitively)
-- **Notes:** Display renames (18) + payload mapping (19). The demo capstone formerly here (task 20) is superseded by [Part 45](../../45-demo-rebuild/design.md)'s from-scratch demo rebuild — task 20 is now a stub pointing there. The docs pass (24) is a stub collecting README deferrals from tasks 4/14/19 — expand via `/r:design-docs` once 18/19 land.
+- **Tasks:** 18, 19 (parallel-safe, **run before Band 4's task 17**) → 24 (docs-pass stub, last — after 17/18/19)
+- **Depends on bands:** 3 for tasks 18/19 (their task-level deps are 4 and 6 — Bands 1–2 — plus Band 3's landed test fixtures); task 24 additionally waits for Band 4's 17
+- **Notes:** Display renames (18) + payload mapping (19). Neither depends on task 17, and both should land first: 18/19 touch fully disjoint file sets (pages/components/render vs resolvers/api/`planSubmit`) and are safe to run concurrently, then 17 closes out Band 4 on the renamed, re-keyed base (see Band 4 notes for the collision rationale). The demo capstone formerly here (task 20) is superseded by [Part 45](../../45-demo-rebuild/design.md)'s from-scratch demo rebuild — task 20 is now a stub pointing there. The docs pass (24) is a stub collecting README deferrals from tasks 4/14/19 — expand via `/r:design-docs` once 17/18/19 land.
 - **Gate:** module builds with the renamed pages; emitted payloads carry `signal` (no `force`). The end-to-end exercise of the rebuilt engine is Part 45's demo rebuild + happy-path e2e (after Parts 43 and 44).
 
-**Cross-band parallelism:** Bands 1 and 2 are independent and can run concurrently. All other bands are sequential on the band(s) listed.
+**Cross-band parallelism:** Bands 1 and 2 are independent and can run concurrently. Bands 4 and 5 interleave at the tail: Band 5's 18 ∥ 19 run first, then Band 4's 17, then Band 5's 24. All other bands are sequential on the band(s) listed.
 
 **Open questions:** Q1–Q6 are all resolved in the design and baked into the relevant tasks as decisions. Q6 (form_data merge rule) resolved to a uniform deep-merge (objects deep-merge; arrays/scalars/`null` replace whole) onto the loaded `form_data.{action}` sub-object — its analysis and edge cases are embedded in task 11.
 
