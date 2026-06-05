@@ -229,6 +229,11 @@ _ref:
                         - _var:
                             key: page_config.buttons.request_changes.visible
                             default: true
+                        - _array.includes:
+                            - _ref:
+                                path: enums/button_signal_sources.yaml
+                                key: request_changes
+                            - _state: action.status.0.stage
                         - _eq:
                             - _state: action_allowed.review
                             - true
@@ -255,6 +260,11 @@ _ref:
                         - _var:
                             key: page_config.buttons.approve.visible
                             default: true
+                        - _array.includes:
+                            - _ref:
+                                path: enums/button_signal_sources.yaml
+                                key: approve
+                            - _state: action.status.0.stage
                         - _eq:
                             - _state: action_allowed.review
                             - true
@@ -287,7 +297,6 @@ _ref:
                                   params:
                                     regex:
                                       - ^form_review\.
-                                      - ^fields\.
                               - _var:
                                   key: page_config.events.onApprove
                                   default: []
@@ -302,15 +311,13 @@ _ref:
                                     payload:
                                       action_id:
                                         _state: action._id
-                                      interaction: approve
+                                      signal: approve
                                       current_key:
                                         _state: action.key
                                       form:
                                         _state: form
                                       form_review:
                                         _state: form_review
-                                      fields:
-                                        _state: fields
                                       comment:
                                         _state: comment
         # Mandatory Request Changes modal — carries the required comment input.
@@ -341,15 +348,13 @@ _ref:
                         payload:
                           action_id:
                             _state: action._id
-                          interaction: request_changes
+                          signal: request_changes
                           current_key:
                             _state: action.key
                           form:
                             _state: form
                           form_review:
                             _state: form_review
-                          fields:
-                            _state: fields
                           comment:
                             _state: comment
               onClose:
@@ -401,7 +406,6 @@ _ref:
                           params:
                             regex:
                               - ^form_review\.
-                              - ^fields\.
                       - _var:
                           key: page_config.events.onApprove
                           default: []
@@ -416,15 +420,13 @@ _ref:
                             payload:
                               action_id:
                                 _state: action._id
-                              interaction: approve
+                              signal: approve
                               current_key:
                                 _state: action.key
                               form:
                                 _state: form
                               form_review:
                                 _state: form_review
-                              fields:
-                                _state: fields
                               comment:
                                 _state: comment
             else: []
