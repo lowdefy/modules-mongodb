@@ -299,6 +299,7 @@ async function runTrackerCascade(initialFires, baseContext) {
         const levelPlan = await planTrackerLevel(levelLoaded, {
           parentActionId: fire.parentActionId,
           signal: fire.signal,
+          payload: fire.payload, // optional — Start's child link fields (task 17)
           event_id: levelContext.event_id,
           now: levelContext.now,
           newId: levelContext.newId,

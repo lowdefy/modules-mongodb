@@ -6,7 +6,7 @@ Part 30's display contract is salvaged unchanged on disk: per-app cells spread a
 
 The one access-model change from Part 34 D7: links become a **per-verb `links` map** (`{ view, edit, review, error }` per slug) computed by `computeEngineLinks`, replacing Part 30's single `<slug>.link`.
 
-This task depends on task 4 because `computeEngineLinks` uses the `entry_id` connection field for build-time `_module.pageId` scoping, and references the renamed fixed-page ids (`workflow-simple-view/edit/review`) and the unprefixed derived-page ids (`{workflow_type}-{action_type}-{verb}`) per Part 34 D10.
+This task depends on task 4 because `computeEngineLinks` uses the `entry_id` connection field for build-time `_module.pageId` scoping, and references the renamed fixed-page ids (`workflow-action-view/edit/review` — final ids per review-14 #1; task 18 flips the implemented interim `workflow-simple-*` strings) and the unprefixed derived-page ids (`{workflow_type}-{action_type}-{verb}`) per Part 34 D10.
 
 ## Task
 

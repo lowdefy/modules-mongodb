@@ -8,6 +8,8 @@ Verified clean (no findings): the `HOOK_SIGNALS` list (`submit, progress, not_re
 
 ### 1. `makeWorkflowsConfig.js` carries a second, un-re-keyed hook-key list — the build rejects signal-keyed configs before the emitter ever sees them
 
+> **Resolved.** Task 19 gains a `hookSignals.js` + `makeWorkflowsConfig.js` block: shared `HOOK_SIGNALS`/`HOOK_PHASES` constants in `resolvers/hookSignals.js` imported by both resolvers (one correct way; dev-rebuild caveat noted), `validateHooks` re-keyed, and the key check extended to `event:` blocks (same hard-error against the same constant). AC and Files updated, including re-keyed `makeWorkflowsConfig.test.js` cases plus new `event:`-key cases.
+
 `makeWorkflowsConfig.js:40-46` has its own `HOOK_INTERACTIONS = ['submit_edit', 'not_required', 'resolve_error', 'approve', 'request_changes']`, and `validateHooks` (lines 66-72) **hard-errors** on any `hooks:` key outside it ("not a known interaction" — pinned by `makeWorkflowsConfig.test.js:271`). Task 19 re-keys only `makeWorkflowApis.js`'s copy. With task 19 done as scoped, Part 45's signal-keyed config (`hooks.submit` — the qualify.yaml sketch in Part 45's design) fails the **build** with a validation error: the demo can't even reach the emitter the task fixes. The task's own rationale ("without this, the signal-keyed demo config is silently skipped") understates it — the config is loudly rejected, by a file outside the task's scope.
 
 No prior review covers this: review-10 #2's resolution added the re-key for `makeWorkflowApis.js` only ("Related resolver gap: `makeWorkflowApis.js:1-7`"), and no other task touches `validateHooks`.
@@ -17,6 +19,8 @@ No prior review covers this: review-10 #2's resolution added the re-key for `mak
 ## Contract Ambiguity
 
 ### 2. The payload list reads as exhaustive but omits load-bearing fields — a literal implementation breaks Submit
+
+> **Resolved.** Task 19 now enumerates the complete mapping (`action_id`, `signal`, `current_key`, `fields`, `form`, `form_review`, `comment`, `metadata`, conditional `hooks`/`event_overrides`) with the why for each easy-to-miss field, in both body and AC. The baked `action_type`/`workflow_type` literals are **dropped deliberately** — no rebuilt code or task reads them; the handler derives both from the loaded action doc ("build for what exists"). Test AC asserts the full set present and the five removed fields absent.
 
 Task line 11 and AC line 26 enumerate the mapping as "`signal`, `comment`, `metadata`, `form`, `form_review`, `event_overrides`, hooks". The rebuilt engine also requires, from the same wire payload:
 
@@ -30,16 +34,22 @@ The current mapping (`makeWorkflowApis.js:65-78`) passes all three, plus the bak
 
 ### 3. "Drops `force`" describes a change with nothing to change
 
+> **Resolved (auto).** Reworded task 19: the payload bullet now states the real deltas (drop `interaction`/`current_status`, add `metadata`) and notes `force` never appeared in this mapping — the existing no-force assertion stays green. AC and Files entries updated to match.
+
 `makeWorkflowApis.js` has never passed `force` — verified at the pre-task-6 revision (`git show f944850` — no `force` in `emitActionEndpoint`'s properties); `force` was a pre-hook-return / `updateAction` flag, never an emitted-payload field. The no-force assertion already exists (`makeWorkflowApis.test.js:189-197`). The real payload-mapping deltas this task lands are: `interaction` → `signal`, drop `current_status`, **add `metadata`** (currently absent from the mapping). Minor accuracy fix so the implementer doesn't hunt for a `force` line to delete: reword to "asserts `force` stays absent (it never appeared in this mapping; the force *model* died with D4)".
 
 ## Cross-Task Gaps
 
 ### 4. `metadata` on `start-workflow.yaml` has no specified consumer
 
+> **Resolved.** Kept the field and completed the thread: task 17 now specifies that every seed-mode `planActionTransition` call receives `payload.metadata` from `params.metadata` (the landed planner already merges it — pure threading), and task 19 names task 17 as the consumer. Part 30 carry-over semantics preserved.
+
 Task 19 adds `metadata` to the Start payload ("Part 30 carry-over"), but task 17's StartWorkflow rewrite never mentions `params.metadata`, and the current `StartWorkflow.js` doesn't read it. The carry-over source (Part 30, "Proposed change" #5 / D10) had start-payload `metadata` merge into action docs' `metadata` and the render context — under the rebuild that translates to threading `params.metadata` into each seeded draft's `planActionTransition` `payload.metadata` (the landed planner already merges it, `planActionTransition.js:129,137`), but no task says so. As written, task 19 wires a payload field that falls on the floor.
 
 **Fix:** either task 17 gains the thread ("seed-mode `planActionTransition` calls receive `payload.metadata` from `params.metadata`") and task 19 names that consumer, or the field is dropped from both per "build for what exists" (nothing in the Part 45 demo passes `metadata` at start). Decide now rather than at implementation time.
 
 ### 5. AC "`signal` is documented" is unverifiable and contradicts the task body
+
+> **Resolved.** Replaced the clause with a concrete, verifiable criterion: `start-workflow.yaml` carries a YAML comment stating the current contract (the `actions:` override seeds at a declared status, `{ type, status }`, legal seeds `action-required` | `blocked`, runtime-enforced; signals are submit-time grammar only — no design/task references in the comment). Body, AC, and Files updated. Consumer-facing README updates are deferred to a new docs-pass stub, task 24, which collects the README deferrals from tasks 4/14/19.
 
 The body (line 19) pins the opposite: "No signal grammar at start" — the `actions:` override keeps `{ type, status }`. Yet AC line 28 says "`signal` is documented" and Files line 34 says "document `signal`", with no instruction anywhere in the body for what to write. An implementer can't satisfy this criterion. **Fix:** replace with something concrete — e.g. "`start-workflow.yaml` carries a comment noting the `actions:` override keeps the `{ type, status }` grammar (legal seeds `action-required` | `blocked`, enforced at runtime by task 17); signals do not apply at start" — or delete the clause from both AC and Files.
