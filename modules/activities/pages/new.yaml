@@ -55,6 +55,10 @@ _ref:
                     - _url_query: company_ids
                     - []
             attributes: {}
+            # Init companies' cycle-check state keys so the company-selector
+            # request (get_companies_for_selector) doesn't fire ConfigWarning
+            # for unreferenced _state on this page. Runtime behaviour unchanged
+            # — the selector's `_if_none` defaults already handle null/empty.
             cycle_check_self_id: null
             cycle_check_ids: []
     blocks:

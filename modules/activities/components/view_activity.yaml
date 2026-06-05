@@ -46,7 +46,7 @@ blocks:
                     {{ activity.type }}
                   </span>
                   {% endif %}
-                  {% if stage %}
+                  {% if stage and type_entry.type != 'basic' %}
                   <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 32%, transparent); text-transform:capitalize">
                     {{ stage }}
                   </span>
@@ -105,7 +105,7 @@ blocks:
         visible:
           _ne:
             - _if_none:
-                - _request: get_activity.0.description
+                - _request: get_activity.0.description.html
                 - ""
             - ""
         properties:
@@ -116,68 +116,8 @@ blocks:
               on:
                 description:
                   _if_none:
-                    - _request: get_activity.0.description
+                    - _request: get_activity.0.description.html
                     - ""
-      # Linked contacts (chips)
-      - id: linked_contacts_section
-        type: Box
-        blocks:
-          - id: linked_contacts_label
-            type: Html
-            properties:
-              html: '<div style="font-size:11px; font-weight:600; color:var(--ant-color-text-secondary); text-transform:uppercase; letter-spacing:0.04em; margin:8px 0 4px 0">Linked Contacts</div>'
-          - _ref: components/contact_list_items.yaml
-      # Linked companies (chips)
-      - id: linked_companies_section
-        type: Box
-        blocks:
-          - id: linked_companies_label
-            type: Html
-            properties:
-              html: '<div style="font-size:11px; font-weight:600; color:var(--ant-color-text-secondary); text-transform:uppercase; letter-spacing:0.04em; margin:8px 0 4px 0">Linked Companies</div>'
-          - _ref: components/company_list_items.yaml
-      # Status history timeline (newest first — already in array order)
-      - id: status_history_section
-        type: Box
-        visible:
-          _gt:
-            - _array.length:
-                _if_none:
-                  - _request: get_activity.0.status
-                  - []
-            - 0
-        blocks:
-          - id: status_history_label
-            type: Html
-            properties:
-              html: '<div style="font-size:11px; font-weight:600; color:var(--ant-color-text-secondary); text-transform:uppercase; letter-spacing:0.04em; margin:12px 0 4px 0">Status History</div>'
-          - id: status_history_html
-            type: Html
-            properties:
-              html:
-                _nunjucks:
-                  template: |
-                    <ul style="list-style:none; padding:0; margin:0">
-                      {% for entry in status %}
-                      <li style="display:flex; gap:10px; align-items:flex-start; padding:6px 0{% if not loop.last %}; border-bottom:1px dashed var(--ant-color-border-secondary){% endif %}">
-                        {% set entry_color = stage_palette[entry.stage] or '#8c8c8c' %}
-                        <span style="flex:0 0 auto; padding:2px 8px; border-radius:999px; font-size:11px; font-weight:600; color:{{ entry_color }}; background:color-mix(in srgb, {{ entry_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ entry_color }} 30%, transparent); text-transform:capitalize">{{ entry.stage }}</span>
-                        <span style="flex:1 1 auto; min-width:0; font-size:12px; color:var(--ant-color-text-secondary)">
-                          {% if entry.created.user.name %}<b style="color:var(--ant-color-text)">{{ entry.created.user.name }}</b>{% endif %}
-                          {% if entry.created.timestamp %}<span style="margin-left:6px">{{ entry.created.timestamp }}</span>{% endif %}
-                        </span>
-                      </li>
-                      {% endfor %}
-                    </ul>
-                  on:
-                    status:
-                      _if_none:
-                        - _request: get_activity.0.status
-                        - []
-                    stage_palette:
-                      open: "#1890ff"
-                      done: "#52c41a"
-                      cancelled: "#8c8c8c"
     # Consumer-defined attribute fields (only when provided)
     - _build.if:
         test:
@@ -200,20 +140,3 @@ blocks:
         else: []
     # Consumer main-slot extension
     - _module.var: components.main_slots
-    # Created / Updated footer
-    - - id: change_stamps
-        type: SmartDescriptions
-        properties:
-          column: 2
-          size: small
-          data:
-            _request: get_activity.0
-          fields:
-            - id: created_at
-              type: TextInput
-              properties:
-                title: Created
-            - id: updated_at
-              type: TextInput
-              properties:
-                title: Updated
