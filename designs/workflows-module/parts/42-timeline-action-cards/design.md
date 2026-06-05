@@ -147,20 +147,23 @@ requests:
   - id: get-events
     properties:
       pipeline:
-        - $match: { ... }                      # unchanged
-        - _ref:                                 # NEW — always spliced
-            path: ../shared/workflow/timeline_action_lookup.yaml
-            vars:
-              app_name:
-                _var: { key: display_key, default: { _module.var: display_key } }
-        - $addFields:                           # NEW — drop the timeline's own action card (D6)
-            actions:
-              $filter:
-                input: $actions
-                as: a
-                cond: { $ne: [$$a._id, { _payload: reference_value }] }
-        - $sort: { date: -1 }                   # unchanged
-        - $addFields: { title, description, info }   # unchanged
+        # The fragment is a multi-stage list — a bare `- _ref:` would nest, not
+        # flatten (Lowdefy `_ref` substitutes a node in place), so the pipeline
+        # is wrapped in `_build.array.concat` and the fragment ref is one element.
+        _build.array.concat:
+          - - $match: { ... }                  # unchanged
+          - _ref:                               # NEW — always spliced
+              path: ../shared/workflow/timeline_action_lookup.yaml
+              vars:
+                app_name:
+                  _var: { key: display_key, default: { _module.var: display_key } }
+          - - $addFields:                       # NEW — drop the timeline's own action card (D6)
+                actions:
+                  $filter:
+                    input: $actions
+                    cond: { $ne: [$$this._id, { _payload: reference_value }] }
+            - $sort: { date: -1 }               # unchanged
+            - $addFields: { title, description, info }   # unchanged
 blocks:
   - id: events-timeline
     type: EventsTimeline
@@ -185,15 +188,17 @@ components:
       _ref: ../shared/workflow/timeline_action_lookup.yaml
 ```
 
-App developer, custom history pipeline:
+App developer, custom history pipeline (the fragment is a multi-stage list — splice it with `_build.array.concat`; a bare `- _ref:` would nest):
 
 ```yaml
-- $match: { ... }            # entity + category-chip filtering, app-authored
-- _ref:
-    module: workflows
-    component: timeline-action-lookup
-    vars: { app_name: my-app }
-- $facet: { ... }            # pagination, app-authored
+pipeline:
+  _build.array.concat:
+    - - $match: { ... }        # entity + category-chip filtering, app-authored
+    - _ref:
+        module: workflows
+        component: timeline-action-lookup
+        vars: { app_name: my-app }
+    - - $facet: { ... }        # pagination, app-authored
 ```
 
 ## Files changed

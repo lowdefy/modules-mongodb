@@ -369,9 +369,9 @@ function EventAction({ action, actionStatusConfig, methods }) {
         size="small"
         style={{
           borderColor:
-            statusConf.border_color || "var(--ant-color-border-secondary)",
+            statusConf.borderColor || "var(--ant-color-border-secondary)",
           backgroundColor:
-            statusConf.card_color || "var(--ant-color-fill-quaternary)",
+            statusConf.color || "var(--ant-color-fill-quaternary)",
         }}
         styles={{ body: { padding: "8px 12px" } }}
       >
@@ -384,7 +384,7 @@ function EventAction({ action, actionStatusConfig, methods }) {
           }}
         >
           <Badge
-            color={statusConf.color || "#999"}
+            color={statusConf.titleColor || "#999"}
             text={
               <span
                 dangerouslySetInnerHTML={{
