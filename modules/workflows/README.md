@@ -207,7 +207,7 @@ Two reserved `urlQuery` keys substitute runtime values: `action_id: true` resolv
 
 Clicking the link changes no workflow state. Abandoning the page abandons nothing — the tracker stays `action-required` and the link remains.
 
-**Known limitation.** If a child workflow is cancelled after being started, the tracker lands `not-required` with its child link still set. `start-workflow` rejects a second link attempt (`child_workflow_id != null`), so the start link does not reappear. Recovery requires an admin write or the child workflow being uncancelled. Accepted for v1.
+**Known limitation.** A cancelled child leaves the tracker `not-required` with its child link still set, so the start link does not reappear — accepted for v1 (see the [Part 44 design](../../designs/workflows-module/parts/44-tracker-start-link/design.md) for recovery paths).
 
 ### Starting actions (`starting_actions:`)
 
