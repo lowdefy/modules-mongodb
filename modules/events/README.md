@@ -66,7 +66,7 @@ To extend the change stamp (e.g. add `app_name` so writes record which app produ
       key: login.icon
   ```
 
-- **`events-timeline`** — Timeline panel for an entity's event history. Drop into a sidebar tile:
+- **`events-timeline`** — Timeline panel for an entity's event history. Runs the live action-card lookup unconditionally on every fetch (see [Live action cards](../../docs/idioms.md#live-action-cards)). Drop into a sidebar tile:
 
   ```yaml
   _ref:
@@ -116,6 +116,10 @@ The operators (`_date: now`, `_user: profile.name`) are runtime operators. See [
 
 `object` — Default `{}`. Additional event-type display metadata merged with the built-in types in `modules/shared/enums/event_types.yaml`. Keys are event type strings; values are `{ title, color, icon }`.
 
+### `action_statuses_display`
+
+`object` — Default `{}`. Per-status display overrides for the shared action_statuses enum, merged onto the shared base for the timeline's live action cards. Keep in sync with the workflows module's `action_statuses_display` by pointing both module entries at one app-local file, e.g. `action_statuses_display: { _ref: <app>/action_statuses_display.yaml }`. See [Live action cards](../../docs/idioms.md#live-action-cards).
+
 ## Secrets
 
 | Name | Used for |
@@ -129,3 +133,5 @@ The operators (`_date: now`, `_user: profile.name`) are runtime operators. See [
 ## Notes
 
 Event documents store **per-app pre-rendered titles** under `display.{app_name}`. The events module's role on read is just to project `display.{display_key}` — no Nunjucks at read time. Writers (other modules' APIs) are responsible for rendering all known per-app titles at write time using the `event_display` var on the writing module. See [Event display](../../docs/idioms.md#event-display).
+
+The events timeline runs the action-card lookup (`modules/shared/workflow/timeline_action_lookup.yaml`) unconditionally on every fetch. It `$lookup`s the `actions` collection and reads the per-app status display from `action.{app_name}.message` and `action.{app_name}.links`. The lookup is safe with no workflows — if the `actions` collection is absent or the entity has no attached workflows, the result is empty arrays and no cards render. See [Live action cards](../../docs/idioms.md#live-action-cards).

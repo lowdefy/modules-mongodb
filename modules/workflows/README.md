@@ -159,6 +159,23 @@ hooks:
 - **`action_role_check`** — Client-side per-verb role-gate action sequence. Composed into a page's `onMount`; writes the four-key bag `_state.action_allowed: { view, edit, review, error }` by evaluating each `access.{app}.{verb}` gate against the user's app roles (Part 34 D8). Page templates read the verb-specific bool (e.g. `_state: action_allowed.edit`). Defence in depth only — the server-side `visible_verbs` query filter and the submit-time gate are authoritative.
 - **`entity-workflows-refetch`** — Reusable action sequence (`CallAPI` `get-entity-workflows` → `SetState` `entity_workflows`) that any page mutating workflows on an entity can `_ref` into its event chain to refresh `actions-on-entity` without knowing the endpoint id or state key. Takes `entity_id` + `entity_collection` vars. Canonical consumer: `apps/demo/pages/leads/lead-view.yaml`'s start-onboarding modal.
 
+- **`timeline-action-lookup`** — Aggregation pipeline fragment that enriches events with live action cards (status, message, access-resolved link). Consumed internally by the events module's timeline; also exported so app developers building custom history pipelines can splice it in rather than re-authoring the de-duplication logic.
+
+  **It is a multi-stage fragment — splice it with `_build.array.concat`, not a bare `- _ref:`.** A bare `- _ref:` nests the fragment as a single pipeline element instead of flattening its stages into the surrounding array.
+
+  ```yaml
+  pipeline:
+    _build.array.concat:
+      - - $match: { ... }           # entity + category-chip filtering, app-authored
+      - _ref:
+          module: workflows
+          component: timeline-action-lookup
+          vars: { app_name: my-app }
+      - - $facet: { ... }           # pagination, app-authored
+  ```
+
+  The fragment reads `action.{app_name}.message` and resolves a single navigation link via the priority **edit > review > error > view**. Category-chip filtering (pre-`$match` on event type) and pagination (post-`$facet`) stay app-authored — these are non-goals for the shared fragment. See [Live action cards](../../docs/idioms.md#live-action-cards).
+
 ### API Endpoints
 
 **Operational** (static):
