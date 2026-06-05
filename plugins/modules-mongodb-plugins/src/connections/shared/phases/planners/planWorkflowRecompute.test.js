@@ -218,6 +218,104 @@ test("already-cancelled workflow with all terminal actions → no completed push
   expect(doc.status.some((s) => s.stage === "completed")).toBe(false);
 });
 
+describe("lifecyclePush", () => {
+  test("non-terminal actions: pushes exactly the declared entry, never the auto completed", () => {
+    // Close's required_after_close survivor case — the action set is
+    // non-terminal but the declared push lands regardless (skip-entirely).
+    const plannedActions = [
+      makeAction({ type: "qualify", stage: "done", action_group: "phase-1" }),
+      makeAction({
+        type: "kickoff",
+        stage: "action-required",
+        action_group: "phase-2",
+      }),
+    ];
+
+    const doc = planWorkflowRecompute({
+      loadedState: makeLoadedState(),
+      plannedActions,
+      lifecyclePush: { stage: "cancelled", reason: "duplicate record" },
+      event_id,
+      now,
+    });
+
+    expect(doc.status).toHaveLength(2);
+    expect(doc.status[0]).toEqual({
+      stage: "cancelled",
+      event_id,
+      created: now,
+      reason: "duplicate record",
+    });
+    expect(doc.status[1].stage).toBe("active");
+    expect(doc.status.some((s) => s.stage === "completed")).toBe(false);
+  });
+
+  test("all-terminal actions: the auto-complete is skipped entirely — exactly one new entry", () => {
+    // Cancel's sweep makes everything terminal; without the skip the auto
+    // completed would land under the declared cancelled.
+    const plannedActions = [
+      makeAction({
+        type: "qualify",
+        stage: "not-required",
+        action_group: "phase-1",
+      }),
+      makeAction({
+        type: "kickoff",
+        stage: "not-required",
+        action_group: "phase-2",
+      }),
+    ];
+
+    const doc = planWorkflowRecompute({
+      loadedState: makeLoadedState(),
+      plannedActions,
+      lifecyclePush: { stage: "cancelled", reason: "no longer needed" },
+      event_id,
+      now,
+    });
+
+    expect(doc.status).toHaveLength(2);
+    expect(doc.status[0].stage).toBe("cancelled");
+    expect(doc.status.some((s) => s.stage === "completed")).toBe(false);
+  });
+
+  test("Close's completed push lands once, even with all actions terminal", () => {
+    const plannedActions = [
+      makeAction({ type: "qualify", stage: "done", action_group: "phase-1" }),
+      makeAction({
+        type: "kickoff",
+        stage: "not-required",
+        action_group: "phase-2",
+      }),
+    ];
+
+    const doc = planWorkflowRecompute({
+      loadedState: makeLoadedState(),
+      plannedActions,
+      lifecyclePush: { stage: "completed" },
+      event_id,
+      now,
+    });
+
+    expect(doc.status).toHaveLength(2);
+    expect(doc.status.filter((s) => s.stage === "completed")).toHaveLength(1);
+    expect(doc.status[0]).toEqual({ stage: "completed", event_id, created: now });
+  });
+
+  test("omitted reason → no reason key on the entry", () => {
+    const doc = planWorkflowRecompute({
+      loadedState: makeLoadedState(),
+      plannedActions: [],
+      lifecyclePush: { stage: "cancelled" },
+      event_id,
+      now,
+    });
+
+    expect(doc.status[0]).toEqual({ stage: "cancelled", event_id, created: now });
+    expect("reason" in doc.status[0]).toBe(false);
+  });
+});
+
 test("composes the whole doc: passthrough fields survive, updated: now, formData lands as form_data", () => {
   const loadedState = makeLoadedState();
   const plannedActions = [

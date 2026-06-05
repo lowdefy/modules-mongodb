@@ -24,6 +24,16 @@ const TERMINAL = ["done", "not-required"];
  * mutually exclusive. Both guards preserve
  * `recomputeWorkflowAfterActionWrite.js:82–89` and its pinned tests.
  *
+ * `lifecyclePush` (task 23; consumed by task 17's Cancel/Close): when present,
+ * the auto-complete check is **skipped entirely** and the declared lifecycle
+ * entry is pushed instead — `{ stage, event_id, created: now, ...(reason ?
+ * { reason } : {}) }` — composed here, the single status-entry composition
+ * site. Skip-entirely, not replace-if-firing: Close pushes `completed` even
+ * when a `required_after_close` survivor keeps the action set non-terminal,
+ * and Cancel's sweep-induced all-terminal state can't add a phantom
+ * `completed` under its `cancelled`. Submit and tracker levels omit it —
+ * auto-complete behaviour unchanged.
+ *
  * Pure: derives everything from its inputs; builds **new** `status`/`groups`/
  * `summary` values rather than mutating the loaded doc.
  *
@@ -36,6 +46,9 @@ const TERMINAL = ["done", "not-required"];
  * @param {Object} [args.formData] — the whole merged `form_data` object from
  *   `planFormDataMerge` (task 15 threads it through). Omitted → the loaded
  *   `form_data` carries over unchanged.
+ * @param {{ stage: string, reason?: string }} [args.lifecyclePush] — declared
+ *   lifecycle entry (Cancel's `cancelled` / Close's `completed`); skips the
+ *   auto-complete check entirely. Omitted → auto-complete as documented above.
  * @param {string} args.event_id — the per-invocation event id (minted at
  *   handler entry, task 15); stamped on the optional `completed` status entry.
  * @param {Object} args.now — the per-invocation change stamp; written to
@@ -47,6 +60,7 @@ function planWorkflowRecompute({
   loadedState,
   plannedActions,
   formData,
+  lifecyclePush,
   event_id,
   now,
 }) {
@@ -66,21 +80,32 @@ function planWorkflowRecompute({
     total: actions.length,
   };
 
-  const allTerminal =
-    actions.length > 0 &&
-    actions.every((a) => TERMINAL.includes(a.status?.[0]?.stage));
-  const currentWorkflowStage = workflow.status?.[0]?.stage;
-  const shouldPushCompleted =
-    allTerminal &&
-    currentWorkflowStage !== "completed" &&
-    currentWorkflowStage !== "cancelled";
+  let status;
+  if (lifecyclePush != null) {
+    // Declared lifecycle entry — the auto-complete check is skipped entirely
+    // (skip-entirely, not replace-if-firing; see the doc block).
+    const { stage, reason } = lifecyclePush;
+    status = [
+      { stage, event_id, created: now, ...(reason ? { reason } : {}) },
+      ...(workflow.status ?? []),
+    ];
+  } else {
+    const allTerminal =
+      actions.length > 0 &&
+      actions.every((a) => TERMINAL.includes(a.status?.[0]?.stage));
+    const currentWorkflowStage = workflow.status?.[0]?.stage;
+    const shouldPushCompleted =
+      allTerminal &&
+      currentWorkflowStage !== "completed" &&
+      currentWorkflowStage !== "cancelled";
 
-  const status = shouldPushCompleted
-    ? [
-        { stage: "completed", event_id, created: now },
-        ...(workflow.status ?? []),
-      ]
-    : [...(workflow.status ?? [])];
+    status = shouldPushCompleted
+      ? [
+          { stage: "completed", event_id, created: now },
+          ...(workflow.status ?? []),
+        ]
+      : [...(workflow.status ?? [])];
+  }
 
   return {
     ...workflow,

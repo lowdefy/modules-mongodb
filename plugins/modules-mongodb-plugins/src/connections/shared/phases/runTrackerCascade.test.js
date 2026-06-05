@@ -288,6 +288,48 @@ test('depth guard throws TrackerCascadeDepthError on a chain deeper than MAX_DEP
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// fire.payload passthrough — Start's child link fields land on the parent doc
+// ─────────────────────────────────────────────────────────────────────────────
+
+test('a fire carrying payload.fields sets those fields on the parent tracker doc alongside the transition', async () => {
+  // Start's tracker-child fire shape (task 17): payload.fields carries the
+  // parent↔child link fields, forwarded into planActionTransition (task 23).
+  await seedWorkflow({ _id: 'wf-A', workflow_type: 'two-action-parent' });
+  await seedAction({ _id: 'qualify-1', workflow_id: 'wf-A', type: 'qualify', stage: 'in-review' });
+  await seedAction({
+    _id: 'track-1', workflow_id: 'wf-A', type: 'track-child', kind: 'tracker', stage: 'action-required',
+  });
+
+  const result = await runTrackerCascade(
+    [
+      {
+        parentWorkflowId: 'wf-A',
+        parentActionId: 'track-1',
+        signal: 'internal_mirror_child_active',
+        payload: {
+          fields: {
+            child_workflow_id: 'wf-child-new',
+            child_entity_id: 'ent-child',
+            child_entity_collection: 'children',
+          },
+        },
+      },
+    ],
+    makeBaseContext(),
+  );
+
+  expect(result.cascadeErrors).toEqual([]);
+  expect(result.fires).toEqual([
+    { parent_action_id: 'track-1', parent_workflow_id: 'wf-A', new_status: 'in-progress' },
+  ]);
+  const track1 = await mongo.db.collection('actions').findOne({ _id: 'track-1' });
+  expect(track1.status[0].stage).toBe('in-progress');
+  expect(track1.child_workflow_id).toBe('wf-child-new');
+  expect(track1.child_entity_id).toBe('ent-child');
+  expect(track1.child_entity_collection).toBe('children');
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // FSM no-op skip — silent, no commit
 // ─────────────────────────────────────────────────────────────────────────────
 

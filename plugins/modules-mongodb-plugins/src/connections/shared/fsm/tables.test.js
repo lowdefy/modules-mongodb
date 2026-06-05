@@ -83,6 +83,8 @@ const EXPECTED_FORM = {
 
 const TRACKER_SIGNALS = [
   'unblock',
+  'activate',
+  'block',
   'internal_mirror_child_active',
   'internal_mirror_child_completed',
   'internal_mirror_child_cancelled',
@@ -90,6 +92,10 @@ const TRACKER_SIGNALS = [
 ];
 
 const EXPECTED_TRACKER = {
+  none: {
+    activate: 'action-required',
+    block: 'blocked',
+  },
   blocked: {
     unblock: 'action-required',
     internal_mirror_child_active: 'in-progress',
@@ -149,7 +155,7 @@ test('simple is the form table by object identity (not a copy)', () => {
   expect(FSM_TABLES.simple).toBe(FSM_TABLES.form);
 });
 
-test('form/simple has a none creation row; tracker does not', () => {
+test('every kind has a none creation row; tracker births only via activate/block', () => {
   expect(FSM_TABLES.form.none).toBeDefined();
   expect(FSM_TABLES.form.none.activate).toBe('action-required');
   expect(FSM_TABLES.form.none.block).toBe('blocked');
@@ -159,7 +165,12 @@ test('form/simple has a none creation row; tracker does not', () => {
   expect(FSM_TABLES.form.none.submit).toBeUndefined();
   expect(FSM_TABLES.form.none.progress).toBeUndefined();
   expect(FSM_TABLES.form.none.unblock).toBeUndefined();
-  expect(FSM_TABLES.tracker.none).toBeUndefined();
+  // Tracker `none` row carries the two birth signals only (pre-hooks can
+  // conditionally spawn trackers — state-machine.md "Creation").
+  expect(FSM_TABLES.tracker.none).toEqual({
+    activate: 'action-required',
+    block: 'blocked',
+  });
 });
 
 test('unblock only transitions from blocked (re-fire safety)', () => {

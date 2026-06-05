@@ -127,6 +127,28 @@ test('no next-level fire when the parent does not auto-complete', () => {
   expect(plan.trackerFires).toEqual([]);
 });
 
+test('forwards the fire payload.fields onto the parent tracker doc alongside the transition', () => {
+  // Start's child link fields (task 17) ride the fire's optional payload and
+  // land via planActionTransition's payload.fields passthrough (task 23).
+  const actions = [makeTrackerAction({ stage: 'action-required', child_workflow_id: null })];
+  const plan = planTrackerLevel(makeLoaded({ actions }), {
+    ...baseArgs,
+    signal: 'internal_mirror_child_active',
+    payload: {
+      fields: {
+        child_workflow_id: 'wf-child-new',
+        child_entity_id: 'ent-child',
+        child_entity_collection: 'children',
+      },
+    },
+  });
+  const target = plan.actions.find((e) => e.doc._id === 'track-1');
+  expect(target.doc.status[0]).toMatchObject({ stage: 'in-progress', event_id });
+  expect(target.doc.child_workflow_id).toBe('wf-child-new');
+  expect(target.doc.child_entity_id).toBe('ent-child');
+  expect(target.doc.child_entity_collection).toBe('children');
+});
+
 test('returns null when the mirror signal FSM-no-ops (tracker already done)', () => {
   const actions = [makeTrackerAction({ stage: 'done' })];
   const plan = planTrackerLevel(makeLoaded({ actions }), baseArgs);

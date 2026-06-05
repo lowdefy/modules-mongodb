@@ -56,8 +56,13 @@ const RECORDED_CODES = ['concurrent_submit', 'workflow_not_found', 'missing_targ
  * Depth-cycle + unclassified errors propagate immediately: `TrackerCascadeDepthError`
  * is a structural config bug that taints the whole cascade and fails loudly.
  *
- * @param {Array<{ parentWorkflowId: string, parentActionId: string, signal: string }>} initialFires
+ * @param {Array<{ parentWorkflowId: string, parentActionId: string, signal: string,
+ *   payload?: { fields?: Object } }>} initialFires
  *   — fully-resolved fires from the originating plan (`plan.trackerFires`).
+ *   The optional `payload.fields` (Start's child link fields —
+ *   `child_workflow_id`, `child_entity_id`, `child_entity_collection`, task 17)
+ *   is forwarded through `planTrackerLevel` into `planActionTransition`'s
+ *   `payload.fields` (D3 fire shape).
  * @param {Object} baseContext — engine context for the next-level loads/commits
  *   (mongoDb, connection, callApi, user, workflowsConfig, now, newId,
  *   lowdefyContext, …). Its `event_id` is replaced per level.
@@ -93,6 +98,7 @@ async function runTrackerCascade(initialFires, baseContext) {
         const levelPlan = planTrackerLevel(levelLoaded, {
           parentActionId: fire.parentActionId,
           signal: fire.signal,
+          payload: fire.payload,
           event_id: levelContext.event_id,
           now: levelContext.now,
           newId: levelContext.newId,

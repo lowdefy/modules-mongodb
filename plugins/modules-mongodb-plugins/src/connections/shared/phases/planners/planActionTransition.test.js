@@ -258,19 +258,22 @@ describe('upsert spawn', () => {
     });
   });
 
-  test('tracker spawn is a structural no-op (tracker FSM has no none row)', () => {
-    // Tracker actions are engine-created by StartWorkflow / the tracker
-    // subscription, never pre-hook-spawned — the tracker table has no `none`
-    // creation row, so an auxiliary upsert resolves null and no-ops.
-    const result = spawn({
-      signal: 'block',
-      actionConfig: makeConfig({
-        type: 'child-flow',
-        kind: 'tracker',
-        tracker: { workflow_type: 'child-type' },
-      }),
+  test('tracker spawn births via the none row (pre-hooks can conditionally spawn trackers)', () => {
+    // state-machine.md "Creation": the tracker `none` row carries only the
+    // birth signals `activate` / `block` (task 23 / Part 45 review 1 #2).
+    const trackerConfig = makeConfig({
+      type: 'child-flow',
+      kind: 'tracker',
+      tracker: { workflow_type: 'child-type' },
     });
-    expect(result).toBeNull();
+    const result = spawn({ signal: 'block', actionConfig: trackerConfig });
+    expect(result.operation).toBe('insert');
+    expect(result.doc.status).toEqual([{ stage: 'blocked', event_id, created: now }]);
+    expect(result.doc.tracker).toEqual({ workflow_type: 'child-type' });
+    // Non-birth signals still no-op from none.
+    expect(
+      spawn({ signal: 'internal_mirror_child_active', actionConfig: trackerConfig }),
+    ).toBeNull();
   });
 
   test('insert change-log delta has null before', () => {
@@ -281,6 +284,75 @@ describe('upsert spawn', () => {
   test('missing target without upsert throws missing_target', () => {
     expect(() => spawn({ upsert: false })).toThrow(
       expect.objectContaining({ code: 'missing_target' }),
+    );
+  });
+});
+
+describe('seedStage mode', () => {
+  function seed(overrides = {}) {
+    return planActionTransition({
+      action: null,
+      seedStage: 'action-required',
+      key: null,
+      actionConfig: makeConfig({ type: 'install-step', kind: 'simple' }),
+      loadedWorkflow,
+      entry_id,
+      event_id,
+      now,
+      newId: () => 'new-1',
+      ...overrides,
+    });
+  }
+
+  test('seeds operation: insert at the declared stage; bypasses the upsert gate', () => {
+    // No upsert flag — the gate guards the signal path only.
+    const result = seed();
+    expect(result.operation).toBe('insert');
+    expect(result.doc.status).toEqual([{ stage: 'action-required', event_id, created: now }]);
+  });
+
+  test('seeds blocked', () => {
+    expect(seed({ seedStage: 'blocked' }).doc.status[0].stage).toBe('blocked');
+  });
+
+  test('runs the full downstream composition: denormalisation, status_map render at the seed stage, engine links, change-log', () => {
+    const result = seed({
+      actionConfig: makeConfig({
+        type: 'install-step',
+        kind: 'simple',
+        status_map: {
+          'action-required': {
+            status_title: 'To do',
+            demo: { message: 'Please complete this step.' },
+          },
+        },
+      }),
+    });
+    expect(result.doc.access).toEqual({ demo: { view: true, edit: true } });
+    expect(result.doc.workflow_type).toBe('onboarding');
+    expect(result.doc.status_title).toBe('To do');
+    expect(result.doc.demo.message).toBe('Please complete this step.');
+    expect(result.doc.demo.links.edit).toEqual({
+      pageId: 'workflows/workflow-simple-edit',
+      urlQuery: { action_id: 'new-1' },
+    });
+    expect(result.changeLog).toEqual({ before: null, after: result.doc });
+  });
+
+  test('no legal-seed validation in the planner (Start owns enforcement)', () => {
+    // The planner stays generic — an out-of-set seed composes fine here.
+    expect(seed({ seedStage: 'done' }).doc.status[0].stage).toBe('done');
+  });
+
+  test('seedStage with a signal throws invalid_seed', () => {
+    expect(() => seed({ signal: 'activate' })).toThrow(
+      expect.objectContaining({ code: 'invalid_seed' }),
+    );
+  });
+
+  test('seedStage with a loaded action throws invalid_seed (insert-only)', () => {
+    expect(() => seed({ action: makeAction() })).toThrow(
+      expect.objectContaining({ code: 'invalid_seed' }),
     );
   });
 });

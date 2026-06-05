@@ -5,8 +5,8 @@
  * `code`, never on message text. Load-phase invariant codes:
  * `workflow_not_found`, `action_not_found`, `stage_rejects_submit`,
  * `access_denied`. Plan-phase signal-validation codes: `unknown_signal`,
- * `missing_target`, `signal_not_allowed`. Lifecycle-handler code:
- * `stage_rejects_close`.
+ * `missing_target`, `signal_not_allowed`, `invalid_seed`. Lifecycle-handler
+ * code: `stage_rejects_close`.
  *
  * Subclasses that callers catch by name keep named classes:
  * `ConcurrentSubmitError` (`code: "concurrent_submit"`, task 13) and

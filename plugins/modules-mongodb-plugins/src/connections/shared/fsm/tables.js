@@ -97,9 +97,14 @@ const form = {
   'not-required': {},
 };
 
-// --- Tracker kind. No `none` row — tracker actions are engine-created by
-// StartWorkflow / the tracker subscription, never pre-hook-spawned. ----------
+// --- Tracker kind. The `none` row carries only the birth signals `activate` /
+// `block` — a pre-hook can conditionally spawn a tracker (state-machine.md
+// "Creation"); the mirror/cancel signals never resolve from `none`. ----------
 const tracker = {
+  none: {
+    activate: 'action-required',
+    block: 'blocked',
+  },
   blocked: {
     unblock: 'action-required',
     internal_mirror_child_active: 'in-progress',

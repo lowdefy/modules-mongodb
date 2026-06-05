@@ -27,6 +27,16 @@ import deepMerge from './deepMerge.js';
  * is seeded at the resolved birth stage. A missing target without `upsert`
  * throws (programming error).
  *
+ * `seedStage` mode (task 23; consumed by task 17's Start): an optional input,
+ * mutually exclusive with `signal`, insert-only (no `action`; bypasses the
+ * `upsert` gate, which guards the signal path only). Skips `resolveSignal` —
+ * the declared stage IS the target stage — and runs every downstream step
+ * unchanged. This is how Start's direct-seeded drafts (`starting_actions` /
+ * payload `actions:`) get the full composition without an FSM transition;
+ * creation at workflow start is not a transition (Part 45 review 1 #2). The
+ * planner stays generic — legal-seed enforcement (`action-required` |
+ * `blocked`) is Start's, not here.
+ *
  * Q3 sticky display: a slug removed from `access` keeps its stale
  * `<slug>.message` / `<slug>.links` on the doc — no cleanup; display surfaces
  * don't project departed slugs.
@@ -34,7 +44,10 @@ import deepMerge from './deepMerge.js';
  * @param {Object} args
  * @param {Object} [args.action] — loaded (or already-planned) action doc;
  *   absent when the target `(type, key)` matched no doc.
- * @param {string} args.signal
+ * @param {string} [args.signal] — required unless `seedStage` is given.
+ * @param {string} [args.seedStage] — direct-seed target stage; mutually
+ *   exclusive with `signal`, insert-only (both violations throw
+ *   `invalid_seed`).
  * @param {'user' | 'auxiliary' | 'cascade'} [args.source] — signal source,
  *   discriminates throw-vs-noop on null FSM resolution. Default `'user'`.
  * @param {{ fields?: Object, metadata?: Object }} [args.payload] — generic
@@ -60,6 +73,7 @@ import deepMerge from './deepMerge.js';
 function planActionTransition({
   action,
   signal,
+  seedStage,
   source = 'user',
   payload = {},
   actionConfig,
@@ -71,9 +85,24 @@ function planActionTransition({
   now,
   newId,
 }) {
+  if (seedStage != null) {
+    if (signal != null) {
+      throw new WorkflowEngineError(
+        `seedStage "${seedStage}" and signal "${signal}" are mutually exclusive — a direct seed is not an FSM transition.`,
+        { code: 'invalid_seed' },
+      );
+    }
+    if (action != null) {
+      throw new WorkflowEngineError(
+        `seedStage "${seedStage}" is insert-only but a loaded action doc was passed (action type "${actionConfig?.type}").`,
+        { code: 'invalid_seed' },
+      );
+    }
+  }
+
   const operation = action == null ? 'insert' : 'update';
 
-  if (action == null && upsert !== true) {
+  if (seedStage == null && action == null && upsert !== true) {
     throw new WorkflowEngineError(
       `Signal "${signal}" targets action type "${actionConfig?.type}" (key: ${JSON.stringify(
         key,
@@ -82,20 +111,26 @@ function planActionTransition({
     );
   }
 
-  // Upsert spawn resolves against a pseudo-action at the FSM `none` creation
-  // row; the birth stage comes from the signal, not a status seed.
-  const resolutionTarget =
-    action ?? { kind: actionConfig.kind, status: [{ stage: 'none' }] };
-  const targetStage = resolveSignal({ action: resolutionTarget, signal, actionConfig });
+  let targetStage;
+  if (seedStage != null) {
+    // Direct seed: the declared stage IS the target — no FSM resolution.
+    targetStage = seedStage;
+  } else {
+    // Upsert spawn resolves against a pseudo-action at the FSM `none` creation
+    // row; the birth stage comes from the signal, not a status seed.
+    const resolutionTarget =
+      action ?? { kind: actionConfig.kind, status: [{ stage: 'none' }] };
+    targetStage = resolveSignal({ action: resolutionTarget, signal, actionConfig });
 
-  if (targetStage == null) {
-    if (source === 'user') {
-      throw new WorkflowEngineError(
-        `Signal "${signal}" is not allowed from stage "${resolutionTarget.status?.[0]?.stage}" for kind "${resolutionTarget.kind}".`,
-        { code: 'signal_not_allowed' },
-      );
+    if (targetStage == null) {
+      if (source === 'user') {
+        throw new WorkflowEngineError(
+          `Signal "${signal}" is not allowed from stage "${resolutionTarget.status?.[0]?.stage}" for kind "${resolutionTarget.kind}".`,
+          { code: 'signal_not_allowed' },
+        );
+      }
+      return null; // auxiliary/cascade no-op — FSM structural safety
     }
-    return null; // auxiliary/cascade no-op — FSM structural safety
   }
 
   const statusEntry = { stage: targetStage, event_id, created: now };

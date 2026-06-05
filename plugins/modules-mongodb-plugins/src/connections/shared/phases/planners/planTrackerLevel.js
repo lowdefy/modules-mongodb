@@ -40,6 +40,11 @@ import planChangeLog from './planChangeLog.js';
  * @param {Object} args
  * @param {string} args.parentActionId — the tracker action on this workflow.
  * @param {string} args.signal — the cascade mirror signal.
+ * @param {{ fields?: Object }} [args.payload] — the fire's optional payload
+ *   (Start's child link fields — `child_workflow_id`, `child_entity_id`,
+ *   `child_entity_collection`, task 17); forwarded into
+ *   `planActionTransition`'s `payload.fields`, which sets the fields on the
+ *   parent tracker doc alongside the transition (D3 fire shape).
  * @param {string} args.event_id — per-level event id (minted per level).
  * @param {{ timestamp: Date, user: Object }} args.now — shared per-request stamp.
  * @param {() => string} [args.newId] — id source (passed through unchanged).
@@ -52,7 +57,16 @@ import planChangeLog from './planChangeLog.js';
  */
 function planTrackerLevel(
   loadedState,
-  { parentActionId, signal, event_id, now, newId, connection, lowdefyContext },
+  {
+    parentActionId,
+    signal,
+    payload,
+    event_id,
+    now,
+    newId,
+    connection,
+    lowdefyContext,
+  },
 ) {
   const { workflow, actions, workflowConfig } = loadedState;
   const entry_id = connection?.entry_id;
@@ -80,7 +94,7 @@ function planTrackerLevel(
     action: targetAction,
     signal,
     source: 'cascade',
-    payload: {},
+    payload: payload ?? {},
     actionConfig,
     loadedWorkflow: workflow,
     entry_id,
