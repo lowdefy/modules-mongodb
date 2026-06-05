@@ -121,13 +121,31 @@ The buttons each page template ships emit fixed signals:
 
 | Template | Buttons → signals |
 |---|---|
-| `edit` | Submit → `submit`, Save draft → `progress`, Mark not required → `not_required` |
+| `edit` | Submit → `submit`, Save draft → `progress`, Mark not required → `not_required` (opt-in) |
+| `view` | Request changes → `request_changes` (opt-in), Edit → navigation Link |
 | `review` | Approve → `approve`, Request changes → `request_changes` |
 | `error` | Resolve → `resolve_error` |
 
 The only author-controlled branch is the `submit` split: `submit` resolves to **`in-review`** when the action grants a `review` verb to any app in its `access:` block (someone must approve), and to **`done`** otherwise. The split is action-global — one action doc is shared across every app, so whether a review step exists is a property of the action, not the submitting app. The engine also fires internal signals authors never send directly — `unblock` (from `blocked_by` re-evaluation), `internal_cancel_action` (the cancel sweep), and `internal_mirror_child_*` (tracker subscription).
 
-If a signal doesn't apply to the action's current stage, a user-driven submission **throws** (the page surfaced a button it shouldn't have); engine-internal cascade signals no-op silently instead. A submission is also rejected up front unless the signal's required verb (`submit`/`progress`/`not_required` → `edit`, `approve`/`request_changes` → `review`, `resolve_error` → `error`) is granted to the caller by `access.{app_name}` — the access check runs before any hook fires.
+If a signal doesn't apply to the action's current stage, a user-driven submission **throws** (the page surfaced a button it shouldn't have); engine-internal cascade signals no-op silently instead. A submission is also rejected up front unless the signal's required verb (`submit`/`progress`/`not_required` → `edit`, `approve`/`request_changes` → `review`, `resolve_error` → `error`, `request_changes` on `view` → `view`) is granted to the caller by `access.{app_name}` — the access check runs before any hook fires.
+
+#### Button visibility rules
+
+Each template-shipped button renders only when **all three** conditions hold:
+
+1. **Author opt-out** — `pages.{verb}.buttons.{name}.visible`, default `true`, except for the two opt-in buttons: `not_required` (on `edit`) and `request_changes` (on `view`), which default `false`. Accepts a boolean **or any operator expression** (e.g. `_eq: [{ _state: show_revise }, true]`). Because it AND-combines with the other two gates, an author can only further *restrict* visibility — not show a button that the FSM or role gate would reject.
+
+2. **FSM source-stage** — the action's current stage must be in the signal's source-stage list (`enums/button_signal_sources.yaml`, derived from the engine FSM and guarded by a unit test). This is why a button disappears rather than throwing: the engine rejects user-driven signals with no FSM entry for the current state, and the page hides the button before the user can reach that path.
+
+3. **Per-verb role gate** — `action_allowed.{verb}` for the page's own verb (`edit` page → `action_allowed.edit`, `review` → `action_allowed.review`, `error` → `action_allowed.error`, `view` → `action_allowed.view`). The `action_role_check` component writes this bag on mount by comparing the current user's per-app roles against `access.{app_name}` on the action config.
+
+#### `view` page button bar
+
+The `view` template ships two affordances:
+
+- **Edit-nav Link** — renders when `page_ids.edit` is set (i.e. an edit page was emitted for this action in the current app). Carries `skip_status_redirect: true` so following an in-progress save back to edit doesn't redirect to view. This is navigation, not a signal — it does not call the submit endpoint.
+- **`request_changes` button** (opt-in, default hidden) — sends `signal: request_changes`, fires `onRequestChanges`, targets `changes-required`. Enable via `pages.view.buttons.request_changes.visible: true`. Gated on `action_allowed.view`. Intended for the revise-after-`done` path in actions that have no `review` verb — when there is no review page, the view bar is the only surface that can send the action back to `changes-required`.
 
 ### Hooks
 

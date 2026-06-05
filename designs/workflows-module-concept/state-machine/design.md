@@ -255,7 +255,7 @@ Page templates each declare which signals to surface as buttons. The button clic
 | Template | Signals surfaced                                    | Notes                                                                            |
 | -------- | --------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `edit`   | `submit`, `progress`, `not_required`         | The submitter's working surface.                                                 |
-| `view`   | `request_changes` (gated on the `review` verb — ui sub-design; modal for comment), navigation to `edit` | Default landing for `done` actions. The `request_changes` button surfaces only to users with `review` access, not to plain viewers. "Edit" is navigation, not a signal. |
+| `view`   | `request_changes` (opt-in; gated on `action_allowed.view` — the per-verb gate for this template; modal for comment), Edit-nav Link (shows when `page_ids.edit` is set) | Default landing for `done` actions. `request_changes` is opt-in (default hidden) and gated like every other template button — `action_allowed.view` — not the `review` verb. Concrete justification: an action with no `review` verb in `access:` ships no review page; the view bar is then the only surface that can send the action back to `changes-required`, so gating on `action_allowed.review` would dead-end exactly that case. "Edit" is navigation, not a signal. |
 | `review` | `approve`, `request_changes`                        | The reviewer's surface.                                                          |
 | `error`  | `resolve_error`                                     | The error-handler's surface.                                                     |
 
