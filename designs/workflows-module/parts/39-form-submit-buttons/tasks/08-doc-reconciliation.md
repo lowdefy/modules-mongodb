@@ -62,7 +62,7 @@ Also record the new `view` bar: an Edit-nav `Link` (shows when `page_ids.edit` i
 
 ## Files
 
-- `designs/workflows-module-concept/ui/design.md` — modify — D2 `progress` handler + new `view` row; D4 fifth verb.
+- `designs/workflows-module-concept/ui/design.md` — modify — D2 `progress` handler + new `view` row + payload/count prose (~118/~130); D3 floating-actions count (~219); D4 fifth verb + `onRequestChanges` row gains `view`.
 - `designs/workflows-module-concept/state-machine/design.md` — modify — fix the `view` row's gating claim in "Default v1 button bars".
 - `modules/workflows/README.md` — modify — document the button-visibility rules + the new `view` bar.
 - `designs/workflows-module/design.md` — modify — add the Part 39 follow-on entry.
