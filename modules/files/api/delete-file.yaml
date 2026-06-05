@@ -11,7 +11,7 @@ routine:
           _payload: file_id
       update:
         $set:
-          deleted: true
+          removed: true
           updated:
             _ref:
               module: events

@@ -14,7 +14,7 @@ Add Playwright e2e specs (in the Part 22 suite, following its `ldf`/`mdb` fixtur
 On an `action-required` form action, open the edit page, fill in *partial* form data (leave a required field empty), click **Save Draft**, and assert: no validation error blocks the save, the action lands `in-progress`, and the partial form data is persisted (re-open the page and the saved fields are present).
 
 **(b) A button absent from a stage's source list is not rendered.**
-Assert that a button whose signal is not coherent from the current stage does not render — e.g. `approve` (source list `[in-review]`) is **not** shown on the `edit` page, and `progress` (source list `[action-required, in-progress]`) is **not** shown once the action is `done`. Pick assertions that exercise the FSM source-stage gate, not just the role gate.
+Assert that a button whose signal is not coherent from the current stage does not render: on the `edit` page of a `done` action, `progress` (source list `[action-required, in-progress]`) is **not** shown while `submit` (source list includes `done`) **stays visible**. The visible/hidden pair on the same page and stage is what proves the FSM source-stage gate is doing the work — not template construction or the role gate. (Do **not** use "`approve` is not shown on `edit`" — `approve` is a `review.yaml.njk` button absent from `edit` by construction, so that assertion passes regardless of the visibility mechanism.)
 
 **(c) `submit` from `done` re-opens the action to `in-review`.**
 On a `done` form action (one whose action declares a `review` verb), navigate `view → Edit` (the Edit-nav button sets `skip_status_redirect: true`, so the edit page's stale-URL guard lets the `done` action through), edit the form, click **Submit**, and assert the action lands `in-review`.
@@ -23,13 +23,13 @@ On a `done` form action (one whose action declares a `review` verb), navigate `v
 
 - Three e2e specs exist in the Part 22 suite covering (a), (b), and (c).
 - (a) confirms `progress` lands `in-progress`, persists partial data, and runs no form validation.
-- (b) confirms at least one button is correctly hidden by the FSM source-stage gate (e.g. `approve` not on `edit`).
+- (b) confirms `progress` is hidden on the `edit` page of a `done` action **while `submit` stays visible on the same page** — the FSM source-stage gate, not template construction, must explain the difference.
 - (c) confirms `submit` from `done` (via the `view → Edit` re-open path) lands `in-review`.
 - The specs pass against the demo app with the Part 39 templates and Part 38 engine in place.
 
 ## Files
 
-- Part 22 e2e suite (per its location convention, e.g. `apps/demo/**/*.spec.js`) — create/extend — the three specs above.
+- `apps/demo/e2e/workflows/` — create/extend — the three specs above. This is the Part 22 suite's concrete home; the root Jest config ignores `/apps/demo/e2e/`, so Playwright specs must live there to stay out of Jest's matching.
 
 ## Notes
 

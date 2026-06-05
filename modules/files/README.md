@@ -16,7 +16,7 @@ The module ships three rendering components (`file-manager`, `file-card`, `file-
 ```yaml
 modules:
   - id: files
-    source: "github:lowdefy/modules-mongodb/modules/files@v0.6.0"
+    source: "github:lowdefy/modules-mongodb/modules/files@v0.7.0"
     vars:
       s3_region: us-east-1
 ```
@@ -135,7 +135,7 @@ Documents in the `files` collection:
   metadata: { valid_date: "2027-01-15" },        // from form fields
   created: { timestamp, user: { name, id } },
   updated: { ... },
-  deleted: null | true
+  removed: null | true
 }
 ```
 

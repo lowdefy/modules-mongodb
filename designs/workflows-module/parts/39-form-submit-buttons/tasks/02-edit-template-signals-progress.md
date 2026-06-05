@@ -4,7 +4,7 @@
 
 `modules/workflows/templates/edit.yaml.njk` is the submitter's working surface. Today its floating-actions bar has two buttons:
 
-- `button_submit_edit` — payload carries `interaction: submit_edit`; visibility is `page_config.buttons.submit_edit.visible` (default `true`) AND `action_allowed`.
+- `button_submit_edit` — payload carries `interaction: submit_edit`; visibility is `page_config.buttons.submit_edit.visible` (default `true`) AND `action_allowed.edit`.
 - `button_not_required` — payload carries `interaction: not_required`; visibility AND's a hand-rolled `_js` priority lookup (`statuses[stage].priority > 0`, lines ~272–282), a direct expression of the now-dead priority rule.
 
 There is **no Save Draft button**. Each button's `onClick` either runs `Validate` → author `onSubmit` → `CallAPI`, or opens a confirm modal (when `page_config.buttons.{name}.modal` is set) whose `onOk` carries a **second, independent copy** of the same `Validate` + `CallAPI`.
@@ -51,7 +51,7 @@ Add a new `button_progress` button to the floating-actions `actions` array. It m
       - _array.includes:
           - _ref: { path: enums/button_signal_sources.yaml, key: progress }
           - _state: action.status.0.stage
-      - _eq: [{ _state: action_allowed }, true]
+      - _eq: [{ _state: action_allowed.edit }, true]
   properties:
     title: Save Draft
     type: default
@@ -90,7 +90,7 @@ visible:
     - _array.includes:
         - _ref: { path: enums/button_signal_sources.yaml, key: submit }
         - _state: action.status.0.stage
-    - _eq: [{ _state: action_allowed }, true]
+    - _eq: [{ _state: action_allowed.edit }, true]
 ```
 
 Apply to `button_submit` (key `submit`, default `true`), `button_progress` (key `progress`, default `true` — already shown above), and `button_not_required` (key `not_required`, **default `false`** — keep its opt-in default; do **not** flip it to `true`).
@@ -102,8 +102,8 @@ Apply to `button_submit` (key `submit`, default `true`), `button_progress` (key 
 - No `fields:` key remains in any `CallAPI` payload in the file.
 - The `submit` `Validate` regex (both copies) is `[^form\.]` (no `^fields\.`).
 - `button_progress` exists with title "Save Draft", no `Validate`, fires `onProgress`, sends `signal: progress` + `form` (no `fields`), and has no modal.
-- All three buttons' `visible` is the three-way `_and` reading `enums/button_signal_sources.yaml` via `_ref` and testing `_state: action.status.0.stage` via `_array.includes`.
-- The `_js` priority-lookup clause is gone; `enums/action_statuses.yaml` is no longer referenced from a button `visible`.
+- All three buttons' `visible` is the three-way `_and` reading `enums/button_signal_sources.yaml` via `_ref`, testing `_state: action.status.0.stage` via `_array.includes`, and role-gating on `action_allowed.edit` (the per-verb key — never the bare `action_allowed` object).
+- The `_js` priority-lookup clause is gone; `../shared/enums/action_statuses.yaml` is no longer referenced from a button `visible`.
 - `not_required`'s author opt-out default stays `false`.
 - The module builds (`pnpm ldf:b` or the repo's build command) with no template errors.
 
@@ -113,6 +113,7 @@ Apply to `button_submit` (key `submit`, default `true`), `button_progress` (key 
 
 ## Notes
 
+- **The role gate is per-verb.** `_state.action_allowed` is a map of per-verb booleans (`{ view, edit, review, error }`, written by `action_role_check.yaml`) — never compare the whole object to `true` (an object never equals `true`; the button would be permanently hidden). This template tests **`action_allowed.edit`**, preserving what the shipped buttons already test (`edit.yaml.njk:207/270`).
 - **Two copies per modal button.** `submit` and `not_required` each carry their payload + (for submit) `Validate` twice — once in the `onClick` `_build.if` else-branch, once in the confirm-modal's `onOk`. Apply every payload/validate change to **both** copies. `progress` has no modal — single copy.
 - `submit` is **nullary** — it sends no `target_status`. The engine derives `in-review` vs `done` from whether the action declares the `review` verb. Do not add any target-status logic to the page.
 - The `progress` log event (`progress_saved`) and `form_data` persistence are engine-side (Part 38); the template only fires the signal.

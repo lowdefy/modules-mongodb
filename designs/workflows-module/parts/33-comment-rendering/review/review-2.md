@@ -87,7 +87,7 @@ Consequences of leaving it unpinned:
 **Fix:** pin the order in `implementation-plan.md`, amend the lagging design (likely
 Part 40: "carry over the events-timeline `_ref`, not the comments card"), answer the
 modal question explicitly, and add Part 40 to this part's Depends-on/relates-to. While
-there, also back-reference [Part 42](../../42-timeline-action-cards/design.md), which
+there, also back-reference [Part 42](../../_completed/42-timeline-action-cards/design.md), which
 already coordinates with this part from its side (D6 suppresses the self-referential
 action card on the timeline this part adds — Part 42 `:122`, `:234`).
 

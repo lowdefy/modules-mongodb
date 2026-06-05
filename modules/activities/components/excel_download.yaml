@@ -60,7 +60,7 @@ events:
                 type: String
                 width: 12
               - column: description
-                value: description
+                value: description.text
                 type: String
                 width: 40
               - column: completed_at

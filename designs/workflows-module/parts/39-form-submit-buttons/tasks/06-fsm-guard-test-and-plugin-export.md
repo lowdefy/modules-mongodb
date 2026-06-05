@@ -27,8 +27,8 @@ In `plugins/modules-mongodb-plugins/package.json`, add to the `exports` map:
 Add a test (alongside `modules/workflows/resolvers/makeActionPages.test.js` — e.g. `modules/workflows/enums/button_signal_sources.test.js` or a clearly-named file in the resolvers test dir) that:
 
 - Reads and parses the local `enums/button_signal_sources.yaml` (YAML parse to a JS object).
-- `import`s the `form` FSM table from the plugin's public export: `@lowdefy/modules-mongodb-plugins/fsm`.
-- For **each** of the six button-surfaced signals (`submit`, `progress`, `not_required`, `approve`, `request_changes`, `resolve_error`), computes the derivable source-stages from the table — the set of stages where `formTable[stage][signal]` is defined — and asserts it equals (as a set, order-independent) the enum's stage list for that signal.
+- `import`s the `form` FSM table from the plugin's public export: `@lowdefy/modules-mongodb-plugins/fsm`. The export shape: `tables.js` exports `FSM_TABLES` (named + default) and `hasReview` — there is **no** named `form` export, so the test reads `FSM_TABLES.form`.
+- For **each** of the six button-surfaced signals (`submit`, `progress`, `not_required`, `approve`, `request_changes`, `resolve_error`), computes the derivable source-stages from the table — the set of **stored statuses** where `formTable[stage][signal]` is defined, **excluding the `none` row** (the transient creation-time sentinel, never a stored status; its `request_changes` entry serves the upsert-spawn path and must not leak into button visibility) — and asserts it equals (as a set, order-independent) the enum's stage list for that signal.
 - Asserts the enum contains **exactly** these six signals (no extra keys, no missing keys) — in particular that the pre-hook-only `error` signal is **not** present.
 
 The test fails the build if either side drifts.
@@ -45,10 +45,11 @@ The test fails the build if either side drifts.
 ## Files
 
 - `plugins/modules-mongodb-plugins/package.json` — modify — add the `./fsm` export entry.
+- `modules/workflows/package.json` — modify — add `devDependencies: { "@lowdefy/modules-mongodb-plugins": "workspace:*", "js-yaml": "^4" }`. The module package currently declares **no dependencies at all** (its Lowdefy-manifest `plugins:` consumption goes through the Lowdefy build, not node resolution), so under pnpm's strict isolation neither the plugin import nor the YAML parse resolves without these.
 - `modules/workflows/enums/button_signal_sources.test.js` (or equivalent path alongside `resolvers/makeActionPages.test.js`) — create — the enum/FSM guard test.
 
 ## Notes
 
 - **Prerequisite:** `plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js` must exist (created by Part 38). If it does not yet, this part sequences with/after Part 38 — do not stub it here; coordinate so the table is the real Part 38 export.
-- The plugin must be built (`dist/`) for the `./fsm` subpath to resolve at test time, matching how the module already consumes other plugin exports.
-- Derive sources from the table programmatically (`Object.keys(formTable).filter(stage => signal in formTable[stage])`), don't hardcode them in the test — hardcoding would just duplicate the enum and defeat the guard.
+- The plugin must be built (`dist/`) for the `./fsm` subpath to resolve at test time. The plugin's `prepare: pnpm build` script produces `dist/` on workspace install, so the `workspace:*` devDependency satisfies this.
+- Derive sources from the table programmatically — e.g. `Object.keys(FSM_TABLES.form).filter((s) => s !== 'none' && signal in FSM_TABLES.form[s])`, with a comment citing the `none`-sentinel rule (`tables.js` header: "never a stored status"). Don't hardcode sources in the test — hardcoding would just duplicate the enum and defeat the guard. Excluding `none` matters concretely: the `none` row defines `request_changes` (the upsert-spawn path), so an unfiltered derivation yields `[none, in-review, done]` and fails against the correct enum.

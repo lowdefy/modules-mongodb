@@ -76,3 +76,17 @@ components:
                     _url_query: _id
                   entity_collection:
                     _module.connectionId: { id: companies-collection, module: companies }
+    - _ref:
+        module: activities
+        component: tile_activities
+        vars:
+          reference_field: company_ids
+          reference_value:
+            _url_query: _id
+          prefill:
+            company_ids:
+              - _url_query: _id
+          on_created:
+            - id: refetch_events
+              type: Request
+              params: get-events

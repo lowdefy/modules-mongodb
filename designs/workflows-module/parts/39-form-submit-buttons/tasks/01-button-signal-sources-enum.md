@@ -37,5 +37,5 @@ The `error` signal is **omitted** — it is a pre-hooks-only signal and is never
 
 ## Notes
 
-- The existing enums in this directory (`action_groups.yaml`, `action_statuses.yaml`, `workflow_lifecycle_stages.yaml`) are the reference for file style — plain YAML maps, no top-level wrapper key.
+- The existing enums in this directory (`action_groups.yaml`, `workflow_lifecycle_stages.yaml`) are the reference for file style — plain YAML maps, no top-level wrapper key. (`action_statuses.yaml` is **not** here — it lives in the shared module, `modules/shared/enums/action_statuses.yaml`, with a separate copy at `modules/workflows/components/action_statuses.yaml`.)
 - Do not add an `error` row. Do not add the engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) — only the six **button-surfaced** signals belong here.

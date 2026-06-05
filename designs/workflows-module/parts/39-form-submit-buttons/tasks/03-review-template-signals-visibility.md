@@ -34,7 +34,7 @@ visible:
     - _array.includes:
         - _ref: { path: enums/button_signal_sources.yaml, key: approve }
         - _state: action.status.0.stage
-    - _eq: [{ _state: action_allowed }, true]
+    - _eq: [{ _state: action_allowed.review }, true]
 ```
 
 - `button_approve` — key `approve`, default `true`.
@@ -47,7 +47,7 @@ visible:
 - No `interaction:` key remains in `review.yaml.njk`; `approve`/`request_changes` send `signal:`.
 - No `fields:` key remains in any `CallAPI` payload (all three).
 - The `approve` `Validate` regex (both copies) is `[^form_review\.]`.
-- `button_approve` and `button_request_changes` use the three-way `_and` reading `enums/button_signal_sources.yaml` via `_ref` and testing `_state: action.status.0.stage`.
+- `button_approve` and `button_request_changes` use the three-way `_and` reading `enums/button_signal_sources.yaml` via `_ref`, testing `_state: action.status.0.stage`, and role-gating on `action_allowed.review` (the per-verb key — never the bare `action_allowed` object).
 - `button_edit` is untouched.
 - The module builds with no template errors.
 
@@ -57,6 +57,7 @@ visible:
 
 ## Notes
 
+- **The role gate is per-verb.** `_state.action_allowed` is a map of per-verb booleans (`{ view, edit, review, error }`) — never compare the whole object to `true`. This template tests **`action_allowed.review`**, preserving what the shipped buttons already test (`review.yaml.njk:233/259`).
 - `approve` carries its payload + `Validate` **twice** (inline `onClick` else-branch + the optional `approve_modal` `onOk`). Apply changes to both.
 - `request_changes` keeps `form` and `form_review` in its payload — only `fields` is dropped.
 - The `request_changes` source list (`[in-review, done]`) means it stays visible on `in-review` here; the `done` source matters on the `view` template (task 5), not review.

@@ -143,15 +143,29 @@ properties:
             _function:
               __nunjucks:
                 template: |
+                  {% if meta_type == 'complex' %}
                   {% if stage == 'open' %}
                   <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#52c41a; background:color-mix(in srgb,#52c41a 12%,transparent); border:1px solid color-mix(in srgb,#52c41a 30%,transparent); cursor:pointer">Mark done</span>
                   {% elif stage == 'done' or stage == 'cancelled' %}
                   <span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#1890ff; background:color-mix(in srgb,#1890ff 12%,transparent); border:1px solid color-mix(in srgb,#1890ff 30%,transparent); cursor:pointer">Reopen</span>
                   {% endif %}
+                  {% else %}&mdash;{% endif %}
                 on:
                   stage:
                     __args: 0.data.current_stage
-        # Secondary action: Cancel — only shown when current stage is open.
+                  meta_type:
+                    __get:
+                      from:
+                        _build.object.assign:
+                          - _ref: enums/activity_types.yaml
+                          - _module.var: activity_types
+                      key:
+                        __string.concat:
+                          - __args: 0.data.type
+                          - .type
+                      default: complex
+        # Secondary action: Cancel — only shown when current stage is open
+        # AND the activity type is `complex` (basic activities are terminal).
         - headerName: Cancel
           colId: cancel_action
           field: current_stage
@@ -162,10 +176,21 @@ properties:
             _function:
               __nunjucks:
                 template: |
-                  {% if stage == 'open' %}<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#8c8c8c; background:color-mix(in srgb,#8c8c8c 12%,transparent); border:1px solid color-mix(in srgb,#8c8c8c 30%,transparent); cursor:pointer">Cancel</span>{% else %}&mdash;{% endif %}
+                  {% if meta_type == 'complex' and stage == 'open' %}<span style="display:inline-flex; align-items:center; gap:4px; padding:2px 10px; border-radius:6px; font-size:11px; font-weight:600; color:#8c8c8c; background:color-mix(in srgb,#8c8c8c 12%,transparent); border:1px solid color-mix(in srgb,#8c8c8c 30%,transparent); cursor:pointer">Cancel</span>{% else %}&mdash;{% endif %}
                 on:
                   stage:
                     __args: 0.data.current_stage
+                  meta_type:
+                    __get:
+                      from:
+                        _build.object.assign:
+                          - _ref: enums/activity_types.yaml
+                          - _module.var: activity_types
+                      key:
+                        __string.concat:
+                          - __args: 0.data.type
+                          - .type
+                      default: complex
 events:
   onCellClick:
     - id: stage_complete
@@ -183,6 +208,18 @@ events:
           - _ne:
               - _event: row.current_stage
               - open
+          - _ne:
+              - _get:
+                  from:
+                    _build.object.assign:
+                      - _ref: enums/activity_types.yaml
+                      - _module.var: activity_types
+                  key:
+                    _string.concat:
+                      - _event: row.type
+                      - .type
+                  default: complex
+              - complex
       params:
         endpointId:
           _module.endpointId: change-activity-status
@@ -209,6 +246,18 @@ events:
               - _ne:
                   - _event: row.current_stage
                   - cancelled
+          - _ne:
+              - _get:
+                  from:
+                    _build.object.assign:
+                      - _ref: enums/activity_types.yaml
+                      - _module.var: activity_types
+                  key:
+                    _string.concat:
+                      - _event: row.type
+                      - .type
+                  default: complex
+              - complex
       params:
         endpointId:
           _module.endpointId: change-activity-status
@@ -225,6 +274,18 @@ events:
             - " cancelled."
       skip:
         _or:
+          - _ne:
+              - _get:
+                  from:
+                    _build.object.assign:
+                      - _ref: enums/activity_types.yaml
+                      - _module.var: activity_types
+                  key:
+                    _string.concat:
+                      - _event: row.type
+                      - .type
+                  default: complex
+              - complex
           - _ne:
               - _event: colId
               - cancel_action
