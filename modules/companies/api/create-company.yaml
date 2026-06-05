@@ -157,7 +157,10 @@ routine:
             metadata:
               company_id:
                 _step: insert.insertedId
-
-      - :return:
+    # Consumer-provided post-create routine steps (default [] — no-op concat).
+    # Steps run after insert/link/event; may read `_step: insert.insertedId`
+    # and the full request payload including the reserved `url_query` key.
+    - _module.var: on_create_routine
+    - - :return:
           companyId:
             _step: insert.insertedId

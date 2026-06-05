@@ -152,6 +152,15 @@ Cycles are prevented on both the API (a `$graphLookup` ancestor check on `update
 
 `array` — Default `[]`. Additional requests fetched alongside the custom `filters` blocks (e.g. dropdown option sources).
 
+### `on_create_routine`
+
+`array` — Default `[]`. API routine steps appended to the `create-company` routine after the insert, contact-link, and event steps, and before the `:return:`. Steps run server-side with the routine's full context:
+
+- `_step: insert.insertedId` — the newly inserted company's `_id`.
+- `_payload` — the full request payload, including the reserved `url_query` key. The `new` page forwards its entire URL query under `url_query`, so start-link sentinel params (e.g. `action_id`, `entity_id`) are available to injected steps without any additional plumbing.
+
+Default `[]` is a no-op: the concat of an empty array leaves the routine behaviorally identical to a build without the var. Conditional logic belongs inside the injected steps, not in the var value itself.
+
 ## Field presets
 
 The module ships block-array presets under `field-presets/`. Apps `_ref` whichever sections they want; the module itself ships nothing wired up (all `fields.X` default to `[]`).

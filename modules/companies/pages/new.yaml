@@ -96,6 +96,8 @@ _ref:
                                 _state: registration
                               attributes:
                                 _state: attributes
+                              url_query:
+                                _url_query: true
                               contacts:
                                 _array.map:
                                   on:
