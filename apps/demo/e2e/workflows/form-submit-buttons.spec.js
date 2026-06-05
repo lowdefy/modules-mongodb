@@ -137,7 +137,7 @@ test('progress button hidden and submit visible on edit page of a done action (P
   });
 
   // Seed send-quote at done.  send-quote has a review verb
-  // (submit_edit → in-review → approve → done), so `done` is a valid terminal
+  // (submit → in-review → approve → done), so `done` is a valid terminal
   // stage and `submit` source list includes it.
   // `progress` source list is [action-required, in-progress] — excludes done.
   await mdb.collection('actions').insertOne({
@@ -155,12 +155,10 @@ test('progress button hidden and submit visible on edit page of a done action (P
   });
 
   try {
-    // Navigate directly to the edit page.  The stale-URL guard would normally
-    // redirect a done action to view, but skip_status_redirect bypasses it.
-    // We set it via the input param directly in the URL query isn't supported —
-    // instead we use ldf.goto with the input mechanism (same as view's Edit
-    // button sets it).  Since the guard checks `_input: skip_status_redirect`,
-    // we navigate via the view page's Edit button to pass the input correctly.
+    // The stale-URL guard would normally redirect a done action's edit page
+    // back to view. The guard checks `_input: skip_status_redirect`, and page
+    // input cannot be set via the URL query — only a Link action can pass it —
+    // so we navigate via the view page's Edit button, which sets the flag.
 
     // Step 1: open the view page.
     await ldf.goto(`/workflows/onboarding-send-quote-view?action_id=${actionId}`);
