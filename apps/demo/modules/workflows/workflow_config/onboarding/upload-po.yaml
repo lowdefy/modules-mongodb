@@ -1,0 +1,32 @@
+type: upload-po
+kind: form
+action_group: order
+sort_order: 10
+blocked_by:
+  - quoting
+description: Upload the signed purchase order to proceed with the order.
+access:
+  demo:
+    view: true
+    edit: true
+form:
+  - key: form.po_number
+    component: text_input
+    title: PO number
+    required: true
+  - key: form.po_document
+    component: file_upload
+    title: PO document
+status_map:
+  blocked:
+    demo:
+      message: Awaiting quote approval.
+  action-required:
+    demo:
+      message: Upload the purchase order.
+  in-progress:
+    demo:
+      message: Purchase order upload in progress.
+  done:
+    demo:
+      message: Purchase order uploaded.
