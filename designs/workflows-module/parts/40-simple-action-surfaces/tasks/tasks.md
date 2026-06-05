@@ -17,6 +17,21 @@ These tasks rewrite the three shared simple-action pages (`workflow-action-edit`
 | 7   | `07-concept-doc-reconciliation.md`     | Reconcile `ui`, `state-machine`, and parent design docs                                  | —          |
 | 8   | `08-e2e-supplements.md`                | E2E coverage on the demo `schedule-followup` simple action (a–e)                         | 4, 5, 6    |
 
+## Bands
+
+The part lands in two bands (sequencing owned by the [implementation plan](../../../implementation-plan.md)). Band 1 is on the **demo-testing critical path**: the rebuilt engine accepts only `signal:` payloads (Part 38 tasks 15/19 dropped `interaction`/`current_status` from the wire), so until the three shared pages are rewritten, `kind: check` actions cannot be driven at all. Band 2 is post-demo UX and verification.
+
+### Band 1 — Signal rewrite of the shared pages (demo-blocking)
+
+- **Tasks:** 1 → 3 → 4
+- **Runs after:** Part 39 (the surface consumes its `enums/button_signal_sources.yaml`).
+- **Known stubs accepted in this band:** `universal-fields` renders nothing until Part 24 lands (the surface `_ref`s it exactly as the pages do today), and the view surface keeps the current status-history/comments cards — the events-timeline swap arrives with Part 33 and is folded in during Band 2.
+
+### Band 2 — In-context modal + verification (post-demo)
+
+- **Tasks:** 2 ∥ 5 ∥ 7 → 6 → 8
+- **Runs after:** Parts 24 and 33 (real `universal-fields` renderer; timeline swap into the surface) and Part 45 (task 8's e2e drives the rebuilt demo's `schedule-followup` action).
+
 ## Ordering Rationale
 
 Two independent foundations open the graph and can run in parallel:
