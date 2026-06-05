@@ -37,7 +37,7 @@ visible:
     - _array.includes:
         - _ref: { path: enums/button_signal_sources.yaml, key: resolve_error }
         - _state: action.status.0.stage
-    - _eq: [{ _state: action_allowed }, true]
+    - _eq: [{ _state: action_allowed.error }, true]
 ```
 
 (Key `resolve_error`, default `true`.)
@@ -47,7 +47,7 @@ visible:
 - No `interaction:` key remains in `error.yaml.njk`; `resolve_error` sends `signal:`.
 - No `form_review:` and no `fields:` key remain in either `CallAPI` payload.
 - The `resolve_error` `Validate` regex (both copies) is `[^form\.]`.
-- `button_resolve_error` uses the three-way `_and` reading `enums/button_signal_sources.yaml` via `_ref` and testing `_state: action.status.0.stage`.
+- `button_resolve_error` uses the three-way `_and` reading `enums/button_signal_sources.yaml` via `_ref`, testing `_state: action.status.0.stage`, and role-gating on `action_allowed.error` (the per-verb key — never the bare `action_allowed` object).
 - The overridable button title (`page_config.buttons.resolve_error.title`, default "Resolve") is preserved.
 - The module builds with no template errors.
 
@@ -57,5 +57,6 @@ visible:
 
 ## Notes
 
+- **The role gate is per-verb.** `_state.action_allowed` is a map of per-verb booleans (`{ view, edit, review, error }`) — never compare the whole object to `true`. This template tests **`action_allowed.error`**, preserving what the shipped button already tests (`error.yaml.njk:237`).
 - `resolve_error` carries its payload + `Validate` **twice** (inline `onClick` else-branch + the optional `resolve_error_modal` `onOk`). Apply changes to both.
 - The author event verb stays `onSubmit` (error has no dedicated verb — D5 adds `onProgress` for the edit page's Save Draft button only).
