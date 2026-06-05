@@ -7,44 +7,38 @@ display_order: 1
 starting_actions:
   - type: qualify
     status: action-required
+  - type: send-quote
+    status: blocked
+  - type: schedule-followup
+    status: blocked
+  - type: upload-po
+    status: blocked
+  - type: track-company-setup
+    status: blocked
+  # site-visit is deliberately absent — conditional, spawned by the
+  # qualify pre-submit hook when the user flags a site visit.
 
+# No blocked_by on groups — groups are blocked_by *targets* (an action's
+# blocked_by entry may name a group id), never carriers; the engine reads
+# blocked_by only on actions. Sequencing lives on the actions below.
 action_groups:
-  - id: g1
+  - id: qualification
     title: Qualify
     icon: AiOutlineUserAdd
-    on_complete:
-      routine:
-        - id: log_g1_complete_event
-          type: CallApi
-          properties:
-            endpointId:
-              _module.endpointId:
-                id: new-event
-                module: events
-            payload:
-              type: workflow-group-complete
-              display:
-                demo:
-                  title: Onboarding group g1 (Qualify) complete.
-              references:
-                workflow_ids:
-                  - _payload: workflow_id
-        - :return:
-            message: Onboarding group g1 (Qualify) complete.
-  - id: g2
+  - id: quoting
     title: Quote
     icon: GrDocumentText
-    blocked_by:
-      - g1
-  - id: g3
-    title: Installation
-    icon: AiOutlineTool
-    blocked_by:
-      - g2
+  - id: order
+    title: Purchase order
+    icon: AiOutlineFileDone
+  - id: conversion
+    title: Convert to customer
+    icon: AiOutlineShop
 
 actions:
   - _ref: modules/workflows/workflow_config/onboarding/qualify.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/site-visit.yaml
   - _ref: modules/workflows/workflow_config/onboarding/send-quote.yaml
   - _ref: modules/workflows/workflow_config/onboarding/schedule-followup.yaml
-  - _ref: modules/workflows/workflow_config/onboarding/proof-of-installation.yaml
-  - _ref: modules/workflows/workflow_config/onboarding/track-installation.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/upload-po.yaml
+  - _ref: modules/workflows/workflow_config/onboarding/track-company-setup.yaml

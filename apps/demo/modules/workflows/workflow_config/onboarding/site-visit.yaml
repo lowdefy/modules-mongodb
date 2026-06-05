@@ -1,0 +1,16 @@
+type: site-visit
+kind: check
+action_group: quoting
+sort_order: 10
+description: Visit the site before quoting.
+access:
+  demo:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    demo:
+      message: Complete the site visit.
+  done:
+    demo:
+      message: Site visit completed.

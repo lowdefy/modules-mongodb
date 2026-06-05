@@ -889,6 +889,62 @@ Both paths flow through the same `SubmitWorkflowAction` engine handler (engine s
 
 A tracker action can't be keyed. Tracker semantics depend on a 1:1 parent-action ↔ child-workflow link (Decision 5); instancing a tracker would break the cardinality. Build-time rejection.
 
+## Decision 10 — `starting_actions` scope rule and the conditional-`blocked_by` constraint
+
+### D10a — `starting_actions` declares the full standard scope
+
+`starting_actions` serves two roles: it seeds action docs when the workflow starts, and it declares the workflow's visible scope to users the moment the workflow appears. Both roles depend on the same requirement: **every standard action must be listed**.
+
+A "standard action" is one that always exists for this workflow — either entry actions (seeded at `action-required`) or downstream actions (seeded at `blocked`, waiting on predecessors). Downstream actions seeded as `blocked` surface immediately in the action list; users see the full workflow shape up front rather than discovering steps one by one as predecessors complete.
+
+**Conditional actions are not listed.** An action whose existence depends on runtime input (e.g. a site-visit step that's only needed when the user flags it) is not standard — it may never exist. Conditional actions are spawned mid-workflow by a pre-submit hook returning `{ type, signal: activate, upsert: true }`. An action neither listed in `starting_actions` nor spawned by a hook never exists for that workflow instance.
+
+The legal seed statuses for entries in `starting_actions` are `action-required` and `blocked` only (`makeWorkflowsConfig` rejects any other value at build time; `StartWorkflow` enforces the same rule on the `start-workflow` payload's `actions:` override at runtime). These are the only statuses that make sense at creation: `action-required` for immediately-actionable entry work, `blocked` for downstream work that depends on predecessors. Any other status would imply a lifecycle transition was skipped.
+
+```yaml
+# Canonical shape — from the demo's onboarding workflow
+starting_actions:
+  - { type: qualify, status: action-required }       # entry action
+  - { type: send-quote, status: blocked }            # downstream standard action
+  - { type: schedule-followup, status: blocked }     # downstream standard action
+  - { type: upload-po, status: blocked }             # downstream standard action
+  - { type: track-company-setup, status: blocked }   # downstream standard action
+  # site-visit is absent — conditional; spawned by qualify's pre-submit hook
+  # with { type: site-visit, signal: activate, upsert: true } when needed.
+```
+
+The demo's `apps/demo/modules/workflows/workflow_config/onboarding/` is the canonical reference implementation.
+
+### D10b — Conditional actions are never `blocked_by` targets
+
+**Engine mechanic.** `planAutoUnblock` resolves a `blocked_by` entry naming an action type by calling `terminalByType.get(entry)`. For a type with zero action docs the map returns `undefined` — evaluated as unsatisfied. An action blocked by a never-spawned conditional type remains blocked forever with no recovery path.
+
+This is not a corner case: it is the engine's designed behaviour. `blocked_by` resolution is additive — it checks whether existing docs satisfy the constraint. A missing doc has no presence and contributes nothing.
+
+**The constraint.** Conditional action types must **never appear in another action's `blocked_by` list**. They may themselves carry `blocked_by` (a conditional action can be blocked on standard predecessors), but they must not be named as targets.
+
+**The group-target pattern.** When a piece of work should wait on a group that may contain conditional actions, name the **group ID** in `blocked_by` rather than individual action types. Group status derives from whatever member docs exist — a never-spawned conditional is simply absent from the member set and does not hold up group completion:
+
+```yaml
+# WRONG — permanently blocked if site-visit is never spawned
+blocked_by:
+  - site-visit   # conditional type; may never exist
+
+# RIGHT — wait on the quoting group (which site-visit is a member of when spawned)
+blocked_by:
+  - quoting      # group id; resolves as "group done" once all existing members are terminal
+```
+
+Group-ID entries in `blocked_by` resolve as "group status is `done`"; action-type entries resolve as "that type's doc is at a terminal status." The engine resolves by group-id-first lookup precedence (Decision 1; no group ID may equal any action type within the same workflow). A `blocked_by` entry on a group definition in `action_groups:` is silently ignored — the field is only meaningful on actions.
+
+**Summary table.**
+
+| Element | May carry `blocked_by`? | May be named in `blocked_by`? |
+|---|---|---|
+| Standard action (always-spawned) | Yes | Yes |
+| Conditional action (hook-spawned, `upsert: true`) | Yes | **No** |
+| Group ID | No (`blocked_by` on groups is ignored) | Yes |
+
 ## Open Questions
 
 1. **`makeActionsForm` recursion across module boundaries (early-implementation spike required).** The resolver recursively invokes itself to build nested form sections (e.g. ControlledList inside a form). The recursion uses a relative path. When the resolver lives in the module package, the recursive `_ref` path inside templates is resolved against the _template's source location_ at template-render time, which goes through the module-loader. No existing modules-mongodb module uses `_ref: { resolver }` from inside a template, so this is genuinely untested. Before relying on the recursion, run a minimal spike: a template inside a module that calls `_ref: { resolver: <relative-path> }` and confirms the resolver runs and the path resolves correctly. If it doesn't, the form builder becomes a flat (non-recursive) emitter — apps that need nested form sections supply a per-action template override.

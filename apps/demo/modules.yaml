@@ -3,6 +3,15 @@
   vars:
     _ref: modules/activities/vars.yaml
 
+# workflows must be listed before companies: the companies entry vars
+# cross-module _ref workflows components, and the experimental build's
+# entry-vars resolve is order-sensitive (target module entry must be
+# registered first).
+- id: workflows
+  source: "file:../../modules/workflows"
+  vars:
+    _ref: modules/workflows/vars.yaml
+
 - id: companies
   source: "file:../../modules/companies"
   vars:
@@ -48,8 +57,3 @@
   source: "file:../../modules/user-admin"
   vars:
     _ref: modules/user-admin/vars.yaml
-
-- id: workflows
-  source: "file:../../modules/workflows"
-  vars:
-    _ref: modules/workflows/vars.yaml

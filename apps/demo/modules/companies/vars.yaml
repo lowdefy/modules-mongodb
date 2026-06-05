@@ -26,8 +26,56 @@ event_display:
   demo:
     create-company: "{{ user.profile.name }} created {{ target.name }}"
     update-company: "{{ user.profile.name }} updated {{ target.name }}"
+on_create_routine:
+  - id: start_company_setup
+    type: CallApi
+    properties:
+      endpointId:
+        _module.endpointId: { id: start-workflow, module: workflows }
+      payload:
+        workflow_type: company-setup
+        entity_id:
+          _step: insert.insertedId
+        entity_collection:
+          _module.connectionId: { id: companies-collection, module: companies }
+        parent_action_id:
+          _payload: url_query.action_id
+  - ":if":
+      _ne:
+        - _payload: url_query.entity_id
+        - null
+    ":then":
+      - id: log_convert_lead
+        type: CallApi
+        properties:
+          endpointId:
+            _module.endpointId: { id: new-event, module: events }
+          payload:
+            type: convert-lead
+            display:
+              demo:
+                title: Lead converted to customer.
+            references:
+              lead_ids:
+                - _payload: url_query.entity_id
+              company_ids:
+                - _step: insert.insertedId
 components:
   sidebar_slots:
+    - _ref:
+        module: layout
+        component: card
+        vars:
+          title: Workflows
+          blocks:
+            - _ref:
+                module: workflows
+                component: actions-on-entity
+                vars:
+                  entity_id:
+                    _url_query: _id
+                  entity_collection:
+                    _module.connectionId: { id: companies-collection, module: companies }
     - _ref:
         module: activities
         component: tile_activities

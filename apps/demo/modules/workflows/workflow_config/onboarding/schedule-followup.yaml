@@ -1,14 +1,14 @@
 type: schedule-followup
-kind: simple
-action_group: g2
-sort_order: 20
+kind: check
+action_group: quoting
+sort_order: 30
+blocked_by:
+  - qualify
 description: Schedule a follow-up call with the lead within a week of qualification.
 access:
   demo:
-    - edit
-    - view
-  roles:
-    - admin
+    view: true
+    edit: true
 status_map:
   blocked:
     demo:
@@ -16,25 +16,6 @@ status_map:
   action-required:
     demo:
       message: Schedule the follow-up call.
-      link:
-        pageId:
-          _module.pageId:
-            id: simple-edit
-            module: workflows
-        title: Schedule Follow-up
-        urlQuery:
-          action_id: true
-  in-progress:
-    demo:
-      message: Follow-up scheduled.
-      link:
-        pageId:
-          _module.pageId:
-            id: simple-edit
-            module: workflows
-        title: Schedule Follow-up
-        urlQuery:
-          action_id: true
   done:
     demo:
-      message: Follow-up complete.
+      message: Follow-up call scheduled.

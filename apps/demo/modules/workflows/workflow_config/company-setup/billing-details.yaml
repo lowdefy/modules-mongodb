@@ -1,0 +1,27 @@
+type: billing-details
+kind: form
+action_group: setup
+sort_order: 10
+description: Capture the company's billing details.
+access:
+  demo:
+    view: true
+    edit: true
+form:
+  - key: form.billing_email
+    component: text_input
+    title: Billing email
+    required: true
+  - key: form.vat_number
+    component: text_input
+    title: VAT number
+status_map:
+  action-required:
+    demo:
+      message: Capture the company's billing details.
+  in-progress:
+    demo:
+      message: Billing details in progress.
+  done:
+    demo:
+      message: Billing details captured.

@@ -1,64 +1,50 @@
 type: qualify
 kind: form
-action_group: g1
+action_group: qualification
 sort_order: 10
-description: Confirm the lead's contact details and capture qualification notes.
+description: Confirm the lead's details and capture qualification notes.
 access:
   demo:
-    - edit
-    - view
-  roles:
-    - admin
+    view: true
+    edit: true
 form:
-  - key: contact_name
+  # Keys are full state paths including the form. prefix — field components
+  # bind block id verbatim from the key, and the edit template primes/submits
+  # the form state subtree. Hooks receive the values under the payload's
+  # form bag (without the prefix): _payload: form.site_visit_required.
+  - key: form.contact_name
     component: text_input
     title: Contact name
     required: true
-  - key: notes
+  - key: form.notes
     component: text_area
     title: Qualification notes
-  - key: devices
-    component: controlled_list
-    title: Devices
-    minItems: 1
-    form:
-      - key: devices.$.device_serial
-        component: text_input
-        title: Device serial
-        required: true
+  - key: form.site_visit_required
+    component: yes_no_selector
+    title: Site visit needed?
 hooks:
-  submit_edit:
+  submit:
     pre:
       routine:
-        _ref: modules/workflows/workflow_config/onboarding/hooks/qualify-pre-submit.yaml
+        - :return:
+            actions:
+              _if:
+                test:
+                  _eq:
+                    - _payload: form.site_visit_required
+                    - true
+                then:
+                  - type: site-visit
+                    signal: activate
+                    upsert: true
+                else: []
 status_map:
   action-required:
     demo:
       message: Qualify the lead.
-      link:
-        pageId:
-          _module.pageId:
-            id: onboarding-qualify-edit
-            module: workflows
-        title: Qualify Lead
-        urlQuery:
-          action_id: true
   in-progress:
     demo:
       message: Qualifying the lead.
-      link:
-        pageId:
-          _module.pageId:
-            id: onboarding-qualify-view
-            module: workflows
-        title: Qualify Lead
-        urlQuery:
-          action_id: true
   done:
     demo:
       message: Lead qualified.
-pages:
-  edit:
-    title: Qualify Lead
-  view:
-    title: Qualify Lead

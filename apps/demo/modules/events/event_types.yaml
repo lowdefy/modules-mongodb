@@ -2,10 +2,10 @@ create-lead:
   color: "#1890ff"
   title: Lead Created
   icon: AiOutlineUserAdd
-start-onboarding:
+convert-lead:
   color: "#7c3aed"
-  title: Onboarding Started
-  icon: AiOutlinePlayCircle
+  title: Lead Converted
+  icon: AiOutlineShop
 action-approve:
   color: "#52c41a"
   title: Action Approved

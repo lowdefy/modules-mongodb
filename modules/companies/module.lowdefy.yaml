@@ -171,6 +171,17 @@ vars:
           Pipeline update stages appended to both create-company and
           update-company flows. On create, runs as a follow-up update on the
           newly inserted document; skipped at build time when empty.
+  on_create_routine:
+    type: array
+    default: []
+    description: >
+      API routine steps appended to the create-company routine after the
+      insert, contact-link, and event steps, before the :return:. Steps run
+      server-side with the routine's context: `_step: insert.insertedId` is
+      the new company's id, and the request payload is readable via
+      `_payload`, including the reserved `url_query` key — the new page
+      forwards its full URL query under `url_query`, which is how
+      start-link params reach the server.
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
