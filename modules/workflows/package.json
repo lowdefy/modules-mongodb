@@ -2,5 +2,9 @@
   "name": "@lowdefy/modules-mongodb-workflows",
   "version": "0.6.0",
   "license": "MIT",
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "@lowdefy/modules-mongodb-plugins": "workspace:*",
+    "js-yaml": "^4"
+  }
 }
