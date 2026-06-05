@@ -98,10 +98,13 @@
  *   parentWorkflowId: string,
  *   parentActionId: string,
  *   signal: string,
+ *   payload?: { fields?: Object },
  * }>} trackerFires — tracker subscriptions to fire after this workflow's
  *   commit; the cascade loop runs the next-level load-plan-commit per entry.
  *   `signal` is one of `internal_mirror_child_active` / `_completed` /
- *   `_cancelled`.
+ *   `_cancelled`. The optional `payload.fields` (Start's child link fields,
+ *   task 17) is forwarded onto the parent tracker doc alongside the
+ *   transition (D3 fire shape).
  * @property {Array<{
  *   workflow_id: string,
  *   id: string,

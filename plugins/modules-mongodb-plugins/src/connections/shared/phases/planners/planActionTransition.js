@@ -58,7 +58,9 @@ import deepMerge from './deepMerge.js';
  * @param {Object} args.loadedWorkflow — the loaded workflow doc (NOT the
  *   recomputed one — that doesn't exist yet). Reads only the immutable
  *   `workflow_type`, plus `_id` / `entity_id` / `entity_collection` for
- *   inserts.
+ *   inserts. In seed mode the caller passes its planned workflow INSERT doc
+ *   instead — Start has no loaded doc; the immutable-fields constraint holds
+ *   because Start mints them before any draft is seeded (task 17).
  * @param {string} args.entry_id — module entry id for engine link scoping.
  * @param {boolean} [args.upsert] — spawn flag for a missing target.
  * @param {string | null} [args.key] — key for a spawned doc.
