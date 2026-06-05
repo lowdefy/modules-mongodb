@@ -14,7 +14,10 @@
     "enabled": true,
     "excludedCommands": ["gh"],
     "network": {
-      "allowedDomains": ["github.com", "api.github.com"]
+      "allowedDomains": ["github.com", "api.github.com", "registry.npmjs.org"]
+    },
+    "filesystem": {
+      "allowWrite": ["~/Library/pnpm", "~/Library/Caches/pnpm"]
     }
   }
 }

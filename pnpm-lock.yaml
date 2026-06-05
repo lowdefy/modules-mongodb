@@ -149,9 +149,6 @@ importers:
       '@lowdefy/operators-yaml':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701
-      '@lowdefy/plugin-aws':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(next-auth@4.24.10(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
@@ -240,9 +237,6 @@ importers:
       '@lowdefy/block-utils':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/blocks-aggrid':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701(@ant-design/icons@6.2.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(dayjs@1.11.19)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-antd':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -255,9 +249,6 @@ importers:
       '@lowdefy/blocks-loaders':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/blocks-markdown':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701(@types/react@19.2.15)(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/blocks-tiptap':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(@tiptap/extension-text-style@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2)))(@tiptap/suggestion@2.27.2(@tiptap/core@2.27.2(@tiptap/pm@2.27.2))(@tiptap/pm@2.27.2))(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
@@ -291,24 +282,9 @@ importers:
       '@lowdefy/node-utils':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701
-      '@lowdefy/operators-dayjs':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701
       '@lowdefy/operators-js':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701
-      '@lowdefy/operators-mql':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701
-      '@lowdefy/operators-nunjucks':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701
-      '@lowdefy/operators-uuid':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701
-      '@lowdefy/plugin-aws':
-        specifier: 0.0.0-experimental-20260525131701
-        version: 0.0.0-experimental-20260525131701(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260525131701
         version: 0.0.0-experimental-20260525131701(next-auth@4.24.10(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(next@16.1.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
@@ -419,6 +395,9 @@ importers:
       dompurify:
         specifier: ^3
         version: 3.4.6
+      mongodb:
+        specifier: ^6
+        version: 6.21.0
       react:
         specifier: '>=18'
         version: 19.2.6
@@ -1499,13 +1478,6 @@ packages:
 
   '@lowdefy/operators@0.0.0-experimental-20260525131701':
     resolution: {integrity: sha512-stswNkhxbh2yRqzZzap4/xhWvY5zeu5U+yN49dZyW7CQwUieGhjRx5JHPmGBPBjJvHuIRa/l2FpBKk6SrzyfAw==}
-
-  '@lowdefy/plugin-aws@0.0.0-experimental-20260525131701':
-    resolution: {integrity: sha512-Nhq+RbBt6JVHA45xjCgphnFmh6CLLt42v8Zylh0nLkttz9t0GfxLZ5lUtDFBR/t8Ktvtub9j8cSaBdU49Pv3qQ==}
-    peerDependencies:
-      antd: '>=6'
-      react: '>=18'
-      react-dom: '>=18'
 
   '@lowdefy/plugin-aws@5.3.0':
     resolution: {integrity: sha512-oaTdIjIL9CkWjRdFPJ/+VTCvn/jatJZDbdIrSsvbd9FIVbzpFsbzw4Fa3tLyrQ3ovokgf0c/jpqXAtGhAf3ajw==}
@@ -9274,21 +9246,6 @@ snapshots:
     dependencies:
       '@lowdefy/errors': 0.0.0-experimental-20260525131701
       '@lowdefy/helpers': 0.0.0-experimental-20260525131701
-
-  '@lowdefy/plugin-aws@0.0.0-experimental-20260525131701(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
-    dependencies:
-      '@aws-sdk/client-s3': 3.797.0
-      '@aws-sdk/s3-presigned-post': 3.797.0
-      '@aws-sdk/s3-request-presigner': 3.797.0
-      '@lowdefy/block-utils': 0.0.0-experimental-20260525131701(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/blocks-antd': 0.0.0-experimental-20260525131701(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/errors': 0.0.0-experimental-20260525131701
-      '@lowdefy/helpers': 0.0.0-experimental-20260525131701
-      antd: 6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      react: 18.2.0
-      react-dom: 18.2.0(react@18.2.0)
-    transitivePeerDependencies:
-      - aws-crt
 
   '@lowdefy/plugin-aws@5.3.0(antd@6.4.3(moment@2.29.4)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
