@@ -233,6 +233,11 @@ _ref:
                         - _var:
                             key: page_config.buttons.resolve_error.visible
                             default: true
+                        - _array.includes:
+                            - _ref:
+                                path: enums/button_signal_sources.yaml
+                                key: resolve_error
+                            - _state: action.status.0.stage
                         - _eq:
                             - _state: action_allowed.error
                             - true
@@ -268,7 +273,6 @@ _ref:
                                   params:
                                     regex:
                                       - ^form\.
-                                      - ^fields\.
                               - _var:
                                   key: page_config.events.onSubmit
                                   default: []
@@ -283,15 +287,11 @@ _ref:
                                     payload:
                                       action_id:
                                         _state: action._id
-                                      interaction: resolve_error
+                                      signal: resolve_error
                                       current_key:
                                         _state: action.key
                                       form:
                                         _state: form
-                                      form_review:
-                                        _state: form_review
-                                      fields:
-                                        _state: fields
                                       comment:
                                         _state: comment
         # Optional ConfirmModal — renders iff page_config.buttons.resolve_error.modal is set.
@@ -327,7 +327,6 @@ _ref:
                           params:
                             regex:
                               - ^form\.
-                              - ^fields\.
                       - _var:
                           key: page_config.events.onSubmit
                           default: []
@@ -342,15 +341,11 @@ _ref:
                             payload:
                               action_id:
                                 _state: action._id
-                              interaction: resolve_error
+                              signal: resolve_error
                               current_key:
                                 _state: action.key
                               form:
                                 _state: form
-                              form_review:
-                                _state: form_review
-                              fields:
-                                _state: fields
                               comment:
                                 _state: comment
             else: []

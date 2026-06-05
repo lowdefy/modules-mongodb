@@ -361,7 +361,14 @@ importers:
 
   modules/user-admin: {}
 
-  modules/workflows: {}
+  modules/workflows:
+    devDependencies:
+      '@lowdefy/modules-mongodb-plugins':
+        specifier: workspace:*
+        version: link:../../plugins/modules-mongodb-plugins
+      js-yaml:
+        specifier: ^4
+        version: 4.1.1
 
   plugins/modules-mongodb-plugins:
     dependencies:

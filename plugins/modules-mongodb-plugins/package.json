@@ -16,6 +16,7 @@
     "./actions": "./dist/actions.js",
     "./blocks": "./dist/blocks.js",
     "./connections": "./dist/connections.js",
+    "./fsm": "./dist/connections/shared/fsm/tables.js",
     "./metas": "./dist/metas.js",
     "./types": "./dist/types.js"
   },

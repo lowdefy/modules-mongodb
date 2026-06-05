@@ -11,7 +11,7 @@
 #   workflow_type: workflow.type
 #   entity_collection: workflow.entity_collection (connection id baked into get_entity)
 #
-# View is read-only — no buttons, no stale-URL guard, no outer-card suppression.
+# View has a floating-actions bar (Edit nav + request_changes), but no stale-URL guard.
 _ref:
   module: layout
   component: page
@@ -95,42 +95,168 @@ _ref:
                     _state: action.due_date
                   description:
                     _state: action.description
+                comment: null
           # Step 8: author-supplied onMount runs last.
           - _var:
               key: page_config.events.onMount
               default: []
     blocks:
-      - id: form_card
-        type: Card
-        layout:
-          gap: 16
-        blocks:
-          _build.array.concat:
-            - _var:
-                key: page_config.formHeader
-                default: []
-            - - _ref:
-                  path: components/universal-fields/universal-fields.yaml
-                  vars:
-                    mode: display
-                    kind: form
-                    action_data:
-                      assignees:
-                        _state: action.assignees
-                      due_date:
-                        _state: action.due_date
-                      description:
-                        _state: action.description
-            - - id: form_body
-                type: DataDescriptions
+      _build.array.concat:
+        - - id: form_card
+            type: Card
+            layout:
+              gap: 16
+            blocks:
+              _build.array.concat:
+                - _var:
+                    key: page_config.formHeader
+                    default: []
+                - - _ref:
+                      path: components/universal-fields/universal-fields.yaml
+                      vars:
+                        mode: display
+                        kind: form
+                        action_data:
+                          assignees:
+                            _state: action.assignees
+                          due_date:
+                            _state: action.due_date
+                          description:
+                            _state: action.description
+                - - id: form_body
+                    type: DataDescriptions
+                    properties:
+                      formConfig:
+                        _var: action_config.form
+                      data:
+                        form:
+                          _state: form
+                        entity:
+                          _request: get_entity
+                - _var:
+                    key: page_config.formFooter
+                    default: []
+        # Floating-actions sticky button bar.
+        - - _ref:
+              module: layout
+              component: floating-actions
+              vars:
+                actions:
+                  # Edit (navigation) — not gated on action_allowed; edit page
+                  # gates its own writes. Sets skip_status_redirect so edit's
+                  # stale-URL guard lets `done` actions through to re-open.
+                  - id: button_edit
+                    type: Button
+                    visible:
+                      _var:
+                        key: page_config.buttons.edit.visible
+                        default:
+                          _build.ne:
+                            - _var:
+                                key: page_ids.edit
+                                default: null
+                            - null
+                    properties:
+                      title: Edit
+                      type: default
+                      disabled:
+                        _var:
+                          key: page_config.buttons.edit.disabled
+                          default: false
+                    events:
+                      onClick:
+                        - id: link_edit
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId:
+                                _var: page_ids.edit
+                            urlQuery:
+                              _url_query: true
+                            input:
+                              skip_status_redirect: true
+                  - id: button_request_changes
+                    type: Button
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.request_changes.visible
+                            default: false
+                        - _array.includes:
+                            - _ref:
+                                path: enums/button_signal_sources.yaml
+                                key: request_changes
+                            - _state: action.status.0.stage
+                        - _eq:
+                            - _state: action_allowed.view
+                            - true
+                    properties:
+                      title: Request Changes
+                      type: default
+                      danger: true
+                      ghost: true
+                      disabled:
+                        _var:
+                          key: page_config.buttons.request_changes.disabled
+                          default: false
+                    events:
+                      onClick:
+                        - id: open_request_changes_modal
+                          type: CallMethod
+                          params:
+                            method: open
+                            blockId: request_changes_modal
+        # Mandatory Request Changes modal — carries the required comment input.
+        - - id: request_changes_modal
+            type: Modal
+            properties:
+              width: 600
+              title: Request Changes
+              maskClosable: false
+              okText: Request Changes
+            events:
+              onOk:
+                _build.array.concat:
+                  - - id: validate
+                      type: Validate
+                      params: comment
+                  - _var:
+                      key: page_config.events.onRequestChanges
+                      default: []
+                  - - id: submit_request_changes
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId:
+                            _build.string.concat:
+                              - update-action-
+                              - _var: action_config.type
+                        payload:
+                          action_id:
+                            _state: action._id
+                          signal: request_changes
+                          current_key:
+                            _state: action.key
+                          form:
+                            _state: form
+                          comment:
+                            _state: comment
+              onClose:
+                - id: reset_comment
+                  type: SetState
+                  params:
+                    comment: null
+            blocks:
+              - id: comment
+                type: TiptapInput
+                required: true
+                validate:
+                  - message: A comment is required to request changes
+                    status: error
+                    pass:
+                      _ne:
+                        - _state: comment
+                        - null
                 properties:
-                  formConfig:
-                    _var: action_config.form
-                  data:
-                    form:
-                      _state: form
-                    entity:
-                      _request: get_entity
-            - _var:
-                key: page_config.formFooter
-                default: []
+                  title: Change Description
+                  placeholder: Please provide a description of the changes you would like.

@@ -116,18 +116,19 @@ The `-error` page is gated identically to the other verbs: emitted iff the `erro
 Each form-action template declares a button bar over the signal namespace ([state-machine](../state-machine/design.md) "Templates and buttons"). Each button is a template-shipped block that, on click:
 
 1. Fires the matching `pages.{verb}.events.{handler}` author-supplied event handler (if declared), for page-state work — set state, fire requests, validate.
-2. Calls the action's `{workflow_type}-{action_type}-submit` endpoint with `signal: <name>` + the standard payload (`form`, `form_review`, `fields`, `current_key`).
+2. Calls the action's `{workflow_type}-{action_type}-submit` endpoint with `signal: <name>` + the standard payload (`form`, `form_review`, `current_key`).
 
 | Button            | Rendered on template     | `signal` value    | Author event handler fired | FSM-resolved target (form kind)                                            |
 | ----------------- | ------------------------ | ----------------- | -------------------------- | -------------------------------------------------------------------------- |
 | `submit`     | `edit.yaml.njk`          | `submit`     | `onSubmit`                 | `in-review` if action has `review` verb in any `access.{app}`, else `done` |
-| `progress`      | `edit.yaml.njk`          | `progress`      | `onSubmit`                 | `in-progress` (persists `form_data` without advancing — restored in v1)    |
+| `progress`      | `edit.yaml.njk`          | `progress`      | `onProgress`               | `in-progress` (persists `form_data` without advancing — restored in v1)    |
 | `not_required`    | `edit.yaml.njk` (opt-in) | `not_required`    | `onSubmit`                 | `not-required`                                                             |
 | `resolve_error`   | `error.yaml.njk`         | `resolve_error`   | `onSubmit`                 | `in-review` (recovery returns the action to its normal flow)               |
 | `approve`         | `review.yaml.njk`        | `approve`         | `onApprove`                | `done`                                                                     |
 | `request_changes` | `review.yaml.njk`        | `request_changes` | `onRequestChanges`         | `changes-required`                                                         |
+| `request_changes` | `view.yaml.njk` (opt-in) | `request_changes` | `onRequestChanges`         | `changes-required` (opt-in default hidden; gated on `action_allowed.view`) |
 
-These are the *button-surfaced* signals (the "interactions"); the FSM also accepts engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) that no template surfaces. The author event handlers (`onSubmit`, `onApprove`, `onRequestChanges`) are unchanged from action-authoring Decision 8 and stay separate from the engine call (Decision 4 above lists the four-verb event vocabulary). Authors who need pre-write logic register a pre-hook on the action YAML (`hooks.{signal}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
+These are the *button-surfaced* signals (the "interactions"); the FSM also accepts engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) that no template surfaces. The author event handlers (`onSubmit`, `onProgress`, `onApprove`, `onRequestChanges`) are unchanged from action-authoring Decision 8 and stay separate from the engine call (Decision 4 above lists the five-verb event vocabulary). Authors who need pre-write logic register a pre-hook on the action YAML (`hooks.{signal}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
 
 The block-tree shape for each button looks roughly like:
 
@@ -216,7 +217,7 @@ _ref:
 
 **Cards within the page** use `_ref: { module: layout, component: card, vars: { title, blocks, footer? } }`. Card is the standard content wrapper — title bar, optional back button, body, optional footer. The form-action templates render the form inside a card; the simple-action pages render the universal-field inputs / timeline inside cards; the workflow-overview page renders one card per action.
 
-**Floating actions** (Save / Submit / Approve buttons on edit and review pages) use `_ref: { module: layout, component: floating-actions, vars: { blocks: [...] } }` — the standard sticky-bottom action bar layout module ships. Templates that include floating-actions wire them to the four page-event handlers (`onSubmit`, `onApprove`, `onRequestChanges`); the buttons themselves are template-shipped, not author-authored.
+**Floating actions** (Save / Submit / Approve buttons on edit and review pages) use `_ref: { module: layout, component: floating-actions, vars: { blocks: [...] } }` — the standard sticky-bottom action bar layout module ships. Templates that include floating-actions wire them to the button-wired page-event handlers (`onSubmit`, `onProgress`, `onApprove`, `onRequestChanges`); the buttons themselves are template-shipped, not author-authored.
 
 ### Page-level rendering of universal fields
 
@@ -280,7 +281,7 @@ Reusable access-check primitive — per-app, per-verb role gates. Reads the curr
 
 ## Decision 4 — Page-event vocabulary and per-page chrome
 
-Action page YAML carries four event handlers plus four chrome blocks. The module-emitted page template wires them automatically.
+Action page YAML carries five event handlers plus four chrome blocks. The module-emitted page template wires them automatically.
 
 ### Event handlers (fixed vocabulary)
 
@@ -288,8 +289,9 @@ Action page YAML carries four event handlers plus four chrome blocks. The module
 | ------------------ | --------------------------------- | -------------------------------------- |
 | `onMount`          | `edit`, `view`, `review`, `error` | Page lifecycle (fires after page init) |
 | `onSubmit`         | `edit`                            | Submit button                          |
+| `onProgress`       | `edit`                            | Save Draft button                      |
 | `onApprove`        | `review`                          | Approve button                         |
-| `onRequestChanges` | `review`                          | Request-changes button                 |
+| `onRequestChanges` | `review`, `view`                  | Request-changes button                 |
 
 Authors declare these as standard Lowdefy action arrays under `pages.{verb}.events.{handler}`:
 
@@ -349,13 +351,13 @@ The form-action templates (`edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`) 
 
 ### Why fixed names
 
-Three reasons to lock the four event verbs:
+Three reasons to lock the five event verbs:
 
-- The template buttons are module-shipped; authors don't get to add a fifth button per-action without reaching for a different mechanism (form components library, or a custom block in `formFooter`).
+- The template buttons are module-shipped; authors don't get to add a sixth button per-action without reaching for a different mechanism (form components library, or a custom block in `formFooter`).
 - Locked names mean apps can lint event handlers consistently — `onSubmit` always builds a submit payload, `onApprove` always means "approve in review."
 - Mirrors v0 exactly. No translation overhead for teams porting v0 actions into v1.
 
-Apps that need additional buttons add them via `formFooter:` — buttons in `formFooter:` carry their own `events.onClick`. The four locked verbs are template-wired; everything else is author-composed.
+Apps that need additional buttons add them via `formFooter:` — buttons in `formFooter:` carry their own `events.onClick`. The five locked verbs are template-wired; everything else is author-composed.
 
 ## Decision 5 — Status-map binding for `actions-on-entity` and `workflow-history`
 

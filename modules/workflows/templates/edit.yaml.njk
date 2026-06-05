@@ -196,13 +196,18 @@ _ref:
               component: floating-actions
               vars:
                 actions:
-                  - id: button_submit_edit
+                  - id: button_submit
                     type: Button
                     visible:
                       _and:
                         - _var:
-                            key: page_config.buttons.submit_edit.visible
+                            key: page_config.buttons.submit.visible
                             default: true
+                        - _array.includes:
+                            - _ref:
+                                path: enums/button_signal_sources.yaml
+                                key: submit
+                            - _state: action.status.0.stage
                         - _eq:
                             - _state: action_allowed.edit
                             - true
@@ -211,7 +216,7 @@ _ref:
                       type: primary
                       disabled:
                         _var:
-                          key: page_config.buttons.submit_edit.disabled
+                          key: page_config.buttons.submit.disabled
                           default: false
                     events:
                       onClick:
@@ -219,15 +224,15 @@ _ref:
                           test:
                             _build.ne:
                               - _var:
-                                  key: page_config.buttons.submit_edit.modal
+                                  key: page_config.buttons.submit.modal
                                   default: null
                               - null
                           then:
-                            - id: open_submit_edit_modal
+                            - id: open_submit_modal
                               type: CallMethod
                               params:
                                 method: open
-                                blockId: submit_edit_modal
+                                blockId: submit_modal
                           else:
                             _build.array.concat:
                               - - id: validate
@@ -235,11 +240,10 @@ _ref:
                                   params:
                                     regex:
                                       - ^form\.
-                                      - ^fields\.
                               - _var:
                                   key: page_config.events.onSubmit
                                   default: []
-                              - - id: submit_edit
+                              - - id: submit
                                   type: CallAPI
                                   params:
                                     endpointId:
@@ -250,15 +254,57 @@ _ref:
                                     payload:
                                       action_id:
                                         _state: action._id
-                                      interaction: submit_edit
+                                      signal: submit
                                       current_key:
                                         _state: action.key
                                       form:
                                         _state: form
-                                      fields:
-                                        _state: fields
                                       comment:
                                         _state: comment
+                  - id: button_progress
+                    type: Button
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.progress.visible
+                            default: true
+                        - _array.includes:
+                            - _ref:
+                                path: enums/button_signal_sources.yaml
+                                key: progress
+                            - _state: action.status.0.stage
+                        - _eq:
+                            - _state: action_allowed.edit
+                            - true
+                    properties:
+                      title: Save Draft
+                      type: default
+                      disabled:
+                        _var:
+                          key: page_config.buttons.progress.disabled
+                          default: false
+                    events:
+                      onClick:
+                        _build.array.concat:
+                          - _var:
+                              key: page_config.events.onProgress
+                              default: []
+                          - - id: progress
+                              type: CallAPI
+                              params:
+                                endpointId:
+                                  _module.endpointId:
+                                    _build.string.concat:
+                                      - update-action-
+                                      - _var: action_config.type
+                                payload:
+                                  action_id:
+                                    _state: action._id
+                                  signal: progress
+                                  current_key:
+                                    _state: action.key
+                                  form:
+                                    _state: form
                   - id: button_not_required
                     type: Button
                     visible:
@@ -266,20 +312,14 @@ _ref:
                         - _var:
                             key: page_config.buttons.not_required.visible
                             default: false
+                        - _array.includes:
+                            - _ref:
+                                path: enums/button_signal_sources.yaml
+                                key: not_required
+                            - _state: action.status.0.stage
                         - _eq:
                             - _state: action_allowed.edit
                             - true
-                        - _gt:
-                            - _js:
-                                args:
-                                  statuses:
-                                    _ref: ../shared/enums/action_statuses.yaml
-                                  stage:
-                                    _state: action.status.0.stage
-                                fn: |
-                                  const { statuses, stage } = args;
-                                  return statuses?.[stage]?.priority ?? 0;
-                            - 0
                     properties:
                       title: Mark Not Required
                       type: default
@@ -318,11 +358,9 @@ _ref:
                                     payload:
                                       action_id:
                                         _state: action._id
-                                      interaction: not_required
+                                      signal: not_required
                                       current_key:
                                         _state: action.key
-                                      fields:
-                                        _state: fields
                                       comment:
                                         _state: comment
         # Confirm modals — render iff page_config.buttons.{name}.modal is set.
@@ -330,22 +368,22 @@ _ref:
             test:
               _build.ne:
                 - _var:
-                    key: page_config.buttons.submit_edit.modal
+                    key: page_config.buttons.submit.modal
                     default: null
                 - null
             then:
-              - id: submit_edit_modal
+              - id: submit_modal
                 type: ConfirmModal
                 properties:
                   width: 600
                   title:
                     _var:
-                      key: page_config.buttons.submit_edit.modal.title
+                      key: page_config.buttons.submit.modal.title
                       default: null
                   okText: Submit
                   content:
                     _var:
-                      key: page_config.buttons.submit_edit.modal.content
+                      key: page_config.buttons.submit.modal.content
                       default: You are confirming your submission. Would you like to proceed?
                 events:
                   onOk:
@@ -355,11 +393,10 @@ _ref:
                           params:
                             regex:
                               - ^form\.
-                              - ^fields\.
                       - _var:
                           key: page_config.events.onSubmit
                           default: []
-                      - - id: submit_edit
+                      - - id: submit
                           type: CallAPI
                           params:
                             endpointId:
@@ -370,13 +407,11 @@ _ref:
                             payload:
                               action_id:
                                 _state: action._id
-                              interaction: submit_edit
+                              signal: submit
                               current_key:
                                 _state: action.key
                               form:
                                 _state: form
-                              fields:
-                                _state: fields
                               comment:
                                 _state: comment
             else: []
@@ -418,11 +453,9 @@ _ref:
                             payload:
                               action_id:
                                 _state: action._id
-                              interaction: not_required
+                              signal: not_required
                               current_key:
                                 _state: action.key
-                              fields:
-                                _state: fields
                               comment:
                                 _state: comment
             else: []
