@@ -6,10 +6,13 @@
  * `workflow_not_found`, `action_not_found`, `stage_rejects_submit`,
  * `access_denied`. Plan-phase signal-validation codes: `unknown_signal`,
  * `missing_target`, `signal_not_allowed`, `invalid_seed`. Lifecycle-handler
- * codes: `stage_rejects_close`, plus Start's config-shaped preconditions —
+ * codes: `stage_rejects_close`; `invalid_params` — a missing required request
+ * param (Start's `workflow_type`/`entity_id`/`entity_collection`,
+ * Cancel/Close's `workflow_id`); plus Start's config-shaped preconditions —
  * `unknown_workflow_type` / `unknown_action_type` (config lookups, distinct
- * from the doc-lookup `*_not_found` codes) and `invalid_seed` (seed grammar +
- * param preconditions; Cancel/Close reuse it for a missing `workflow_id`).
+ * from the doc-lookup `*_not_found` codes) and `invalid_seed` (seed
+ * grammar/shape: illegal seed status, keyed `starting_actions` entry,
+ * tracker-parent shape; also `planActionTransition`'s seed-mode validation).
  *
  * Subclasses that callers catch by name keep named classes:
  * `ConcurrentSubmitError` (`code: "concurrent_submit"`, task 13) and

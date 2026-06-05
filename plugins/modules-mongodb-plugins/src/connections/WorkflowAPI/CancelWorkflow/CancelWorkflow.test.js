@@ -294,6 +294,12 @@ describe('cancel sweep + lifecycle', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('preconditions', () => {
+  test('a missing workflow_id param throws invalid_params', async () => {
+    await expect(
+      CancelWorkflow(buildContext({ request: {} })),
+    ).rejects.toMatchObject({ code: 'invalid_params' });
+  });
+
   test('a missing workflow throws workflow_not_found (intended tightening)', async () => {
     await expect(
       CancelWorkflow(buildContext({ request: { workflow_id: 'nope' } })),

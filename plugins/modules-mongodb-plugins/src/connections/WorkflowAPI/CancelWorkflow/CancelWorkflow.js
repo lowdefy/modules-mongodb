@@ -55,7 +55,7 @@ async function CancelWorkflow(lowdefyContext) {
 
   if (!params.workflow_id) {
     throw new WorkflowEngineError('CancelWorkflow: workflow_id is required', {
-      code: 'invalid_seed',
+      code: 'invalid_params',
     });
   }
 

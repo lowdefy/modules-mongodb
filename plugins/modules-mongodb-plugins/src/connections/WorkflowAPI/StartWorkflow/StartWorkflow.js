@@ -48,18 +48,18 @@ async function StartWorkflow(lowdefyContext) {
   // ── Config-shaped preconditions (carry over from the prior handler) ──────
   if (!params.workflow_type) {
     throw new WorkflowEngineError('StartWorkflow: workflow_type is required', {
-      code: 'invalid_seed',
+      code: 'invalid_params',
     });
   }
   if (!params.entity_id) {
     throw new WorkflowEngineError('StartWorkflow: entity_id is required', {
-      code: 'invalid_seed',
+      code: 'invalid_params',
     });
   }
   if (!params.entity_collection) {
     throw new WorkflowEngineError(
       'StartWorkflow: entity_collection is required',
-      { code: 'invalid_seed' },
+      { code: 'invalid_params' },
     );
   }
 
