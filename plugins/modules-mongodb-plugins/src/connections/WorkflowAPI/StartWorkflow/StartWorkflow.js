@@ -69,7 +69,7 @@ async function StartWorkflow(lowdefyContext) {
   if (!workflowConfig) {
     throw new WorkflowEngineError(
       `StartWorkflow: workflow_type "${params.workflow_type}" not found in workflowsConfig`,
-      { code: 'workflow_not_found' },
+      { code: 'unknown_workflow_type' },
     );
   }
 
@@ -109,7 +109,7 @@ async function StartWorkflow(lowdefyContext) {
     if (!findActionConfig(entry.type)) {
       throw new WorkflowEngineError(
         `StartWorkflow: seed action type "${entry.type}" is not in workflow "${params.workflow_type}" config.`,
-        { code: 'action_not_found' },
+        { code: 'unknown_action_type' },
       );
     }
   }

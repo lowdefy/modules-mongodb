@@ -528,7 +528,7 @@ describe('started as a tracker child', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('preconditions', () => {
-  test('unknown workflow_type throws workflow_not_found', async () => {
+  test('unknown workflow_type throws unknown_workflow_type', async () => {
     await expect(
       StartWorkflow(
         buildContext({
@@ -539,7 +539,22 @@ describe('preconditions', () => {
           },
         }),
       ),
-    ).rejects.toMatchObject({ code: 'workflow_not_found' });
+    ).rejects.toMatchObject({ code: 'unknown_workflow_type' });
+  });
+
+  test('seed action type not in the workflow config throws unknown_action_type', async () => {
+    await expect(
+      StartWorkflow(
+        buildContext({
+          request: {
+            workflow_type: 'onboarding',
+            entity_id: 'lead-1',
+            entity_collection: 'leads-collection',
+            actions: [{ type: 'nope', status: 'action-required' }],
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'unknown_action_type' });
   });
 });
 

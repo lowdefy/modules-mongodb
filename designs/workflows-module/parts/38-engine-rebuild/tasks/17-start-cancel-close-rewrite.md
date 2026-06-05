@@ -69,3 +69,11 @@ The other three engine entry points restructure into the same load-plan-commit s
 - No pre-hook for Start/Cancel/Close in v1 (could add later — not now, per "Build for what exists").
 - `internal_cancel_action` must exist in the FSM tables (task 2) for the relevant kinds.
 - **Runs after tasks 18 + 19** (re-sequenced by the review-18 action review): task 19 edits `makeWorkflowsConfig.js` first (this task's legal-seed restriction lands in the same region as 19's `validateHooks` re-key — serialize the shared file), and this task's new integration tests assert seeded drafts' `links` against task 18's final `workflow-action-*` ids, not the interim `workflow-simple-*` strings.
+
+## Implementation deviations (as landed)
+
+Error-code vocabulary only — behaviour matches the task. Start's config-shaped preconditions threw codes the design's D13 list didn't yet name, resolved post-review (D13 now carries all three):
+
+- `unknown_workflow_type` — Start on a `workflow_type` not in `workflowsConfig` (initially reused `workflow_not_found`; renamed so callers can tell "bad type" from "gone doc").
+- `unknown_action_type` — a seed entry's action type not in the workflow config (initially reused `action_not_found`; renamed for the same reason). The tracker-parent doc lookup keeps `action_not_found` — that one *is* a doc lookup.
+- `invalid_seed` — new code (not in the original D13 list) covering Start's seed grammar + param preconditions (illegal seed status, keyed `starting_actions` entry, missing `workflow_type`/`entity_id`/`entity_collection`, tracker-parent shape violations); also thrown by `planActionTransition` seed-mode input validation, and reused by Cancel/Close for a missing `workflow_id` param.
