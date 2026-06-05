@@ -1,7 +1,16 @@
-import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
-import fireTrackerSubscription from '../SubmitWorkflowAction/fireTrackerSubscription.js';
-import recomputeGroups from '../../shared/phases/planners/recomputeGroups.js';
+import createEngineContext from '../../shared/phases/createEngineContext.js';
+import loadWorkflowState from '../../shared/phases/loadWorkflowState.js';
+import planActionTransition from '../../shared/phases/planners/planActionTransition.js';
+import planWorkflowRecompute from '../../shared/phases/planners/planWorkflowRecompute.js';
+import planEventDispatch from '../../shared/phases/planners/planEventDispatch.js';
+import planChangeLog from '../../shared/phases/planners/planChangeLog.js';
+import commitPlan from '../../shared/phases/commitPlan.js';
+import runTrackerCascade from '../../shared/phases/runTrackerCascade.js';
+import throwIfDispatchFailed from '../../shared/phases/throwIfDispatchFailed.js';
+import { WorkflowEngineError } from '../../shared/errors.js';
 
+// Fields that may NOT be overwritten by payload.references — engine-owned on
+// the workflow doc (carried over from the prior handler).
 const RESERVED_WORKFLOW_KEYS = [
   '_id',
   'workflow_id',
@@ -17,170 +26,168 @@ const RESERVED_WORKFLOW_KEYS = [
   'updated',
 ];
 
+const TERMINAL_STAGES = ['done', 'not-required'];
+
+/**
+ * CloseWorkflow handler (design D2/D3/D12; task 17).
+ *
+ * Same load → plan → commit (→ tracker cascade) shape as CancelWorkflow, with
+ * two deltas:
+ *   - Close pushes `completed` (not `closed`; `closed` is not a workflow stage,
+ *     and every `status.0.stage === 'completed'` consumer depends on it).
+ *   - Close's sweep keeps the `required_after_close` exception: it sweeps only
+ *     non-terminal actions where `required_after_close !== true` OR currently
+ *     `blocked` (the blocked-action exception). Survivors stay at their stage,
+ *     keeping the post-close submit carve-out reachable (D2 / task 9).
+ *
+ * Lifecycle preconditions (carried over): Close on a `completed` workflow is an
+ * idempotent no-op (returns the empty result, mints no event, fires nothing);
+ * Close on a `cancelled` workflow throws `stage_rejects_close`.
+ */
 async function CloseWorkflow(lowdefyContext) {
-  const { request: payload = {}, connection } = lowdefyContext;
-  const context = {
-    mongoDBConnection: createMongoDBConnection(lowdefyContext),
-    workflowsConfig: connection.workflowsConfig,
-    actionsEnum: connection.actionsEnum,
-    changeStamp: connection.changeStamp,
-    eventId: null,
-    params: payload,
-  };
+  const context = await createEngineContext(lowdefyContext);
+  const { params, event_id, now, newId, user, connection } = context;
+  const entry_id = connection.entry_id;
 
-  if (!payload.workflow_id) {
-    throw new Error('CloseWorkflow: workflow_id is required');
-  }
-
-  const workflowDoc = await context.mongoDBConnection('workflows').MongoDBFindOne({
-    query: { _id: payload.workflow_id },
-    options: {
-      // Project the first status entry as a 1-element slice — MongoDB can't
-      // dot-project nested-array-index fields like `status.0.stage`.
-      projection: { status: { $slice: 1 }, workflow_type: 1 },
-    },
-  });
-
-  if (!workflowDoc) {
-    throw new Error(
-      `CloseWorkflow: workflow ${payload.workflow_id} not found`,
-    );
-  }
-
-  const currentStage = workflowDoc.status?.[0]?.stage;
-
-  if (currentStage === 'completed') {
-    return { action_ids: [], event_id: null, tracker_fired: [] };
-  }
-
-  if (currentStage === 'cancelled') {
-    throw new Error(
-      `CloseWorkflow: workflow ${payload.workflow_id} is cancelled; cannot close`,
-    );
-  }
-
-  const workflowConfig = (context.workflowsConfig ?? []).find(
-    (w) => w.type === workflowDoc.workflow_type,
-  );
-  const declaredGroups = workflowConfig?.action_groups ?? [];
-  const requiredAfterCloseByType = Object.fromEntries(
-    (workflowConfig?.actions ?? []).map((a) => [
-      a.type,
-      a.required_after_close === true,
-    ]),
-  );
-
-  const safeReferences = { ...(payload.references ?? {}) };
-  for (const key of RESERVED_WORKFLOW_KEYS) {
-    delete safeReferences[key];
-  }
-
-  const completedEntry = {
-    stage: 'completed',
-    created: context.changeStamp,
-    ...(payload.reason ? { reason: payload.reason } : {}),
-  };
-
-  await context.mongoDBConnection('workflows').MongoDBUpdateOne({
-    filter: { _id: payload.workflow_id },
-    update: {
-      $set: {
-        ...safeReferences,
-        updated: context.changeStamp,
-      },
-      $push: {
-        status: {
-          $position: 0,
-          $each: [completedEntry],
-        },
-      },
-    },
-  });
-
-  const candidateActions =
-    (await context.mongoDBConnection('actions').MongoDBFind({
-      query: {
-        workflow_id: payload.workflow_id,
-        'status.0.stage': { $nin: ['done', 'not-required'] },
-      },
-      options: {
-        projection: {
-          _id: 1,
-          type: 1,
-          key: 1,
-          status: { $slice: 1 },
-        },
-      },
-    })) ?? [];
-
-  const actionsToSweep = candidateActions.filter((a) => {
-    const isBlocked = a.status?.[0]?.stage === 'blocked';
-    const requiredAfterClose = requiredAfterCloseByType[a.type] === true;
-    // Sweep when not protected, OR when blocked (blocked-action exception).
-    return !requiredAfterClose || isBlocked;
-  });
-  const actionIds = actionsToSweep.map((a) => a._id);
-
-  if (actionIds.length > 0) {
-    await context.mongoDBConnection('actions').MongoDBUpdateMany({
-      filter: { _id: { $in: actionIds } },
-      update: {
-        $set: { updated: context.changeStamp },
-        $push: {
-          status: {
-            $position: 0,
-            $each: [{ stage: 'not-required', created: context.changeStamp }],
-          },
-        },
-      },
+  if (!params.workflow_id) {
+    throw new WorkflowEngineError('CloseWorkflow: workflow_id is required', {
+      code: 'invalid_seed',
     });
   }
 
-  const allActions =
-    (await context.mongoDBConnection('actions').MongoDBFind({
-      query: { workflow_id: payload.workflow_id },
-      options: {
-        // Project the first status entry as a 1-element slice — MongoDB can't
-        // dot-project nested-array-index fields like `status.0.stage`.
-        projection: { status: { $slice: 1 }, action_group: 1 },
-      },
-    })) ?? [];
+  // ── Load (throws workflow_not_found on a missing workflow) ───────────────
+  const loadedState = await loadWorkflowState(context, {
+    workflowId: params.workflow_id,
+  });
+  const { workflow, actions, workflowConfig } = loadedState;
+  const actionsConfig = workflowConfig.actions ?? [];
 
-  const total = allActions.length;
-  const done = allActions.filter((a) => a.status?.[0]?.stage === 'done').length;
-  const not_required = allActions.filter(
-    (a) => a.status?.[0]?.stage === 'not-required',
-  ).length;
+  // ── Lifecycle preconditions ──────────────────────────────────────────────
+  const currentStage = workflow.status?.[0]?.stage;
+  if (currentStage === 'completed') {
+    // Idempotent no-op — returns before commit, so no event and no fires.
+    return { action_ids: [], event_id: null, tracker_fired: [] };
+  }
+  if (currentStage === 'cancelled') {
+    throw new WorkflowEngineError(
+      `CloseWorkflow: workflow ${params.workflow_id} is cancelled; cannot close`,
+      { code: 'stage_rejects_close' },
+    );
+  }
 
-  const groups = recomputeGroups({
-    declaredGroups,
-    actions: allActions,
+  context.loadedState = loadedState; // commitPlan's CAS anchor
+
+  const requiredAfterCloseByType = Object.fromEntries(
+    actionsConfig.map((a) => [a.type, a.required_after_close === true]),
+  );
+
+  // ── Plan: sweep non-terminal actions with the required_after_close exception
+  const sweepEntries = [];
+  for (const action of actions) {
+    const stage = action.status?.[0]?.stage;
+    if (TERMINAL_STAGES.includes(stage)) continue; // preserve done / not-required
+    const isBlocked = stage === 'blocked';
+    const requiredAfterClose = requiredAfterCloseByType[action.type] === true;
+    // Sweep when not protected, OR when blocked (blocked-action exception).
+    if (requiredAfterClose && !isBlocked) continue; // survivor stays at its stage
+    const actionConfig = actionsConfig.find((c) => c.type === action.type);
+    const planned = planActionTransition({
+      action,
+      signal: 'internal_cancel_action',
+      source: 'cascade',
+      actionConfig,
+      loadedWorkflow: workflow,
+      entry_id,
+      event_id,
+      now,
+      newId,
+    });
+    if (planned == null) continue; // FSM no-op (structural safety)
+    sweepEntries.push(planned);
+  }
+
+  const sweptById = new Map(
+    sweepEntries.map((e) => [String(e.doc._id), e.doc]),
+  );
+  const plannedActions = actions.map(
+    (a) => sweptById.get(String(a._id)) ?? a,
+  );
+
+  // ── Plan: workflow recompute with the completed lifecycle entry ──────────
+  // Close pushes `completed` regardless of survivors (skip-entirely semantics).
+  const recomputed = planWorkflowRecompute({
+    loadedState,
+    plannedActions,
+    lifecyclePush: { stage: 'completed', reason: params.reason },
+    event_id,
+    now,
   });
 
-  await context.mongoDBConnection('workflows').MongoDBUpdateOne({
-    filter: { _id: payload.workflow_id },
-    update: {
-      $set: {
-        summary: { done, not_required, total },
-        groups,
-        updated: context.changeStamp,
-      },
-    },
+  const safeReferences = { ...(params.references ?? {}) };
+  for (const key of RESERVED_WORKFLOW_KEYS) {
+    delete safeReferences[key];
+  }
+  const plannedWorkflowDoc = { ...recomputed, ...safeReferences };
+
+  // ── Plan: lifecycle event (workflow-closed) ──────────────────────────────
+  const event = planEventDispatch({
+    event_id,
+    user,
+    handlerType: 'CloseWorkflow',
+    signal: 'closed',
+    plannedWorkflowDoc,
+    allTouchedActionDocs: sweepEntries.map((e) => e.doc),
+    connection,
   });
 
-  // Tracker subscription — fires after the final writeback so the completed
-  // doc is on-disk consistent before the parent recompute reads it. Returns []
-  // when the workflow has no parent_action_id, so safe to call unconditionally.
-  const trackerFired = await fireTrackerSubscription(context, {
-    workflowId: payload.workflow_id,
-    newStage: 'completed',
-    depth: 0,
+  // ── Plan: change-log ─────────────────────────────────────────────────────
+  const planWorkflow = {
+    doc: plannedWorkflowDoc,
+    operation: 'update',
+    changeLog: { before: workflow, after: plannedWorkflowDoc },
+  };
+  const changeLog = planChangeLog({
+    planActions: sweepEntries,
+    planWorkflow,
+    connection,
+    lowdefyContext: context.lowdefyContext,
+    timestamp: now?.timestamp,
   });
+
+  // ── Plan: tracker fire (parent tracker → done; close is forced completion) ─
+  const trackerFires =
+    workflow.parent_action_id != null
+      ? [
+          {
+            parentWorkflowId: workflow.parent_workflow_id,
+            parentActionId: workflow.parent_action_id,
+            signal: 'internal_mirror_child_completed',
+          },
+        ]
+      : [];
+
+  const plan = {
+    workflow: planWorkflow,
+    actions: sweepEntries,
+    event,
+    changeLog,
+    trackerFires,
+    completedGroups: [],
+  };
+
+  // ── Commit (CAS-gated update) ────────────────────────────────────────────
+  const commitResult = await commitPlan(context, plan);
+
+  // ── Tracker cascade ──────────────────────────────────────────────────────
+  const cascade = await runTrackerCascade(plan.trackerFires, context);
+
+  // ── Surface post-commit dispatch failures, last (D9/D13) ─────────────────
+  throwIfDispatchFailed({ handlerName: 'CloseWorkflow', commitResult, cascade });
 
   return {
-    action_ids: actionIds,
-    event_id: null,
-    tracker_fired: trackerFired,
+    action_ids: commitResult.action_ids,
+    event_id,
+    tracker_fired: cascade.fires,
   };
 }
 

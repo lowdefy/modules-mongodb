@@ -4,7 +4,7 @@ import planSubmit from '../../shared/phases/planSubmit.js';
 import commitPlan from '../../shared/phases/commitPlan.js';
 import invokePostHook from '../../shared/phases/invokePostHook.js';
 import runTrackerCascade from '../../shared/phases/runTrackerCascade.js';
-import { WorkflowEngineError } from '../../shared/errors.js';
+import throwIfDispatchFailed from '../../shared/phases/throwIfDispatchFailed.js';
 
 /**
  * SubmitWorkflowAction handler — the reference phase composition (design D2/D3;
@@ -79,27 +79,15 @@ async function handleSubmit(context) {
   );
 
   // ── Surface post-commit dispatch failures, last (D13) ────────────────────
-  // commitPlan never throws for steps 3–5 — it records them on
-  // commitResult.dispatchErrors. The cascade returns each level's
-  // dispatchErrors plus its own cascadeErrors. The cascade and post-hook always
-  // run first; the throw is last, so a dispatch failure costs the caller only
-  // the success payload — never committed state work — while still surfacing
-  // through Lowdefy's error reporting.
-  const dispatchErrors = [
-    ...commitResult.dispatchErrors,
-    ...cascade.dispatchErrors,
-  ];
-  const { cascadeErrors } = cascade;
-  if (dispatchErrors.length > 0 || cascadeErrors.length > 0) {
-    const failedSteps = dispatchErrors.map((e) => `step ${e.step}`);
-    const failedCascades = cascadeErrors.length > 0 ? ['tracker cascade'] : [];
-    const named = [...failedSteps, ...failedCascades].join(', ');
-    const cause = dispatchErrors[0]?.error ?? cascadeErrors[0]?.error;
-    throw new WorkflowEngineError(
-      `SubmitWorkflowAction: the workflow + action writes committed successfully, but post-commit dispatch failed (${named}). The committed state is durable; the failed dispatch(es) must be reconciled.`,
-      { code: 'post_commit_dispatch_failed', cause },
-    );
-  }
+  // The cascade and post-hook always run first; the throw is last, so a
+  // dispatch failure costs the caller only the success payload — never
+  // committed state work — while still surfacing through Lowdefy's error
+  // reporting. Shared with Start/Cancel/Close ("one correct way").
+  throwIfDispatchFailed({
+    handlerName: 'SubmitWorkflowAction',
+    commitResult,
+    cascade,
+  });
 
   // ── Return the six-key payload (verbatim; matches makeWorkflowApis :return) ─
   return {
