@@ -167,8 +167,11 @@ test('progress button hidden and submit visible on edit page of a done action (P
     await ldf.request('get_action').expect.toFinish();
 
     // Step 2: click the Edit button (sets skip_status_redirect: true via Link input).
+    // Use ldf.waitForPage so currentBlockMap is updated to the edit page before
+    // any ldf.block() calls — a bare page.waitForURL would leave currentBlockMap
+    // pointing at the view page, causing ldf.block('button_submit') to throw.
     await Promise.all([
-      page.waitForURL((url) => url.pathname.includes('onboarding-send-quote-edit'), { timeout: 15_000 }),
+      ldf.waitForPage(/onboarding-send-quote-edit/),
       page.getByRole('button', { name: 'Edit' }).click(),
     ]);
 
