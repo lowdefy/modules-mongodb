@@ -1,5 +1,7 @@
 # Implementation Tasks — Part 38: Engine rebuild (FSM + load-plan-commit)
 
+**Status: complete.** All five bands are shipped (tasks 1–19, 21–24). Task 20 (demo migration) is superseded by [Part 45 — demo-rebuild](../../45-demo-rebuild/design.md) and is the only non-shipped entry.
+
 ## Overview
 
 These tasks implement Part 38, which rebuilds the workflow engine around two combined axes: a per-kind FSM signal model (replacing the priority-rule + `force: true` transition model) and a load → pre-hook → plan → commit → post-hook architecture (replacing the mutable-`context` interleaved handler flow). Part 38 also absorbs Part 34's access model (per-verb `access` map, `visible_verbs`, signal→verb submit gating, per-verb `links` map, emitted-id naming) and salvages Part 30's on-disk action-doc display contract. Derived from `designs/workflows-module/parts/38-engine-rebuild/design.md`.

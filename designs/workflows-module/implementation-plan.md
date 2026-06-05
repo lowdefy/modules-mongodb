@@ -1,45 +1,37 @@
 # Workflows Module — Implementation Plan
 
-Live roadmap for the workflows module. The current focus is the **shortest path to a testable demo** — reaching [Part 45 — demo-rebuild](parts/45-demo-rebuild/design.md) (from-scratch demo config + happy-path e2e). Everything already delivered is collapsed into [Shipped](#shipped); the original wave-by-wave delivery record lives in git history and the `parts/_completed/` folders.
+Live roadmap for the workflows module, ordered by dependency. The next milestone is [Part 45 — demo-rebuild](parts/45-demo-rebuild/design.md) (from-scratch demo config + happy-path e2e), which is the first end-to-end exercise of the rebuilt engine. Everything already delivered is collapsed into [Shipped](#shipped); the original wave-by-wave delivery record lives in git history and the `parts/_completed/` folders.
 
 Status legend: `✅ shipped` · `🚧 in progress` · `📐 design only` · `💤 deferred (_next)` · `❌ rejected (_rejected)` · empty = not started.
 
-## Why this order
+## Sequence
 
-- **Part 38 (engine-rebuild) is nearly done** — 21 of 24 tasks shipped. Remaining: task 17 (Start/Cancel/Close rewrite, unblocked) and the task-24 docs pass; task 20 is a stub (superseded by Part 45). 38 rebuilt every write entry point into load → plan → commit with signals + per-kind FSM tables, and carried the design-only [Part 34](parts/_completed/34-action-access-model/design.md) access model into code.
-- **The rebuilt engine accepts only `signal:` payloads** — 38 tasks 15/19 dropped `interaction`/`current_status` from the wire — but every UI submit surface still fires `interaction:`: the four form templates ([Part 39](parts/39-form-submit-buttons/design.md)) and the three shared `workflow-action-*` pages ([Part 40 Band 1](parts/40-simple-action-surfaces/tasks/tasks.md#bands)). Until those land, no surface can drive the engine — they go ahead of anything cosmetic.
-- **[Part 24 — universal-fields](parts/24-universal-fields/design.md) blocks nothing.** The component is a render-nothing stub the shared pages already `_ref` safely, and no Part 45 task touches it. Check actions are driven by signal buttons, not field editing — so 24 is post-demo, along with everything that depends on it.
-
-## Critical path to the demo
-
-**Start now — independent, can run in parallel:**
-
-| Work | Size | Status |
-| ---- | ---- | ------ |
-| [38 task 17](parts/38-engine-rebuild/tasks/17-start-cancel-close-rewrite.md) — Start/Cancel/Close rewrite; completes "38 tasks 1–19" for Part 45 | task | 🚧 |
-| [39 form-submit-buttons](parts/39-form-submit-buttons/design.md) — form templates fire `signal:`; ships `enums/button_signal_sources.yaml` | M | |
-| [44 tracker-start-link](parts/44-tracker-start-link/design.md) | S–M | 📐 design + review |
-
-**Then, in order:**
+Dependency-ordered. Items with no entry in **After** have no unmet dependencies and can run in parallel.
 
 | Work | Size | After | Status |
 | ---- | ---- | ----- | ------ |
+| [39 form-submit-buttons](parts/39-form-submit-buttons/design.md) — form templates fire `signal:`; ships `enums/button_signal_sources.yaml` | M | — | 📐 designed + tasked |
+| [44 tracker-start-link](parts/44-tracker-start-link/design.md) | S–M | — | 📐 design + review |
 | [40 Band 1](parts/40-simple-action-surfaces/tasks/tasks.md#bands) — signal rewrite of the three shared pages (tasks 1, 3, 4) | ~half of M | 39 | |
-| [43 rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) — kind-only sweep (page renames already landed in 38 task 18) | S | 38 task 17, 40 Band 1 | 📐 design only |
-| [45 demo-rebuild](parts/45-demo-rebuild/design.md) — demo + happy-path e2e (8 tasks) | M–L | 38 tasks 1–19, 43, 44 | 📐 designed + tasked |
+| [43 rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) — kind-only sweep (page renames already landed in 38 task 18) | S | 40 Band 1 | 📐 design only |
+| [45 demo-rebuild](parts/45-demo-rebuild/design.md) — demo + happy-path e2e (8 tasks) | M–L | 43, 44 | 📐 designed + tasked |
 
-Only **Band 1 of Part 40** gates the demo — without it, `kind: check` actions can't be driven. Band 2 (in-context modal, `ActionSteps.onActionClick`, e2e supplements) is post-demo; the split is recorded in [40's tasks.md](parts/40-simple-action-surfaces/tasks/tasks.md#bands). Accepted trade-offs: universal fields render nothing until Part 24 lands (check actions stay drivable), and 43's sweep runs before 40 Band 2 re-touches those pages (minor churn; 43 must still land before any real app onboards a workflow config).
+Sequencing constraints:
 
-## Post-demo
+- **The rebuilt engine accepts only `signal:` payloads** — 38 tasks 15/19 dropped `interaction`/`current_status` from the wire — but the four form templates (39) and the three shared `workflow-action-*` pages (40 Band 1) still fire `interaction:`. No UI surface can drive the engine until both land, so they precede 45.
+- **Only Band 1 of Part 40 is a dependency of 45** — without it, `kind: check` actions can't be driven. Band 2 (in-context modal, `ActionSteps.onActionClick`, e2e supplements) is sequenced after 24/33/45; the split is recorded in [40's tasks.md](parts/40-simple-action-surfaces/tasks/tasks.md#bands).
+- **43 precedes 40 Band 2's re-touch of the shared pages** (avoids churn on the same files) and must land before any real app onboards a workflow config.
+- **[Part 24 — universal-fields](parts/24-universal-fields/design.md) is not a dependency of 45.** The component is a render-nothing stub the shared pages already `_ref` safely, no Part 45 task touches it, and check actions are driven by signal buttons, not field editing. Until 24 lands, universal fields render nothing.
+
+## After Part 45
 
 | #   | Part | Size | After | Status |
 | --- | ---- | ---- | ----- | ------ |
-| 24  | [universal-fields](parts/24-universal-fields/design.md) — real renderer + `UpdateActionFields` handler | M | nothing — fully unblocked, deliberately deprioritised | |
+| 24  | [universal-fields](parts/24-universal-fields/design.md) — real renderer + `UpdateActionFields` handler | M | — | |
 | 33  | [comment-rendering](parts/33-comment-rendering/design.md) | M | 24 (`UpdateActionFields` is its 2nd write site) | |
 | —   | [40 Band 2](parts/40-simple-action-surfaces/tasks/tasks.md#bands) — in-context modal + `ActionSteps.onActionClick` + e2e supplements (tasks 2, 5–8) | ~half of M | 24, 33, 45 | |
-| —   | [38 task 24](parts/38-engine-rebuild/tasks/24-user-docs-pass.md) — user-docs pass | task | 38 task 17 | |
 
-## Design-only — can run anytime, in parallel
+## Design-only — unsequenced
 
 | #   | Part | Size | Status |
 | --- | ---- | ---- | ------ |
@@ -92,4 +84,5 @@ Delivered in waves 0–7 plus follow-ons: two streams — engine in `plugins/mod
 | 34  | [action-access-model](parts/_completed/34-action-access-model/design.md) | 📐 design-only — per-app per-verb `access`, per-verb `links`, `visible_verbs`; implemented inside 38 |
 | 35  | [rename-task-kind-to-simple](parts/_completed/35-rename-task-kind-to-simple/design.md) | |
 | 37  | [actions-collection-indexes](parts/_completed/37-actions-collection-indexes/design.md) | |
+| 38  | [engine-rebuild](parts/38-engine-rebuild/design.md) | all bands shipped — rebuilt every write entry point (Submit/Start/Cancel/Close + tracker cascade) into load → plan → commit with signals + per-kind FSM tables; carried Part 34's access model into code; task 20 superseded by Part 45; see [tasks.md](parts/38-engine-rebuild/tasks/tasks.md) |
 | 42  | [timeline-action-cards](parts/_completed/42-timeline-action-cards/design.md) | merged via [PR #71](https://github.com/lowdefy/modules-mongodb/pull/71) — see the [implementation record](parts/_completed/42-timeline-action-cards/tasks/tasks.md#implementation-record) |
