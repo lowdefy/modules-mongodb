@@ -50,7 +50,7 @@
               - $status.stage
               - 0
       - _ref:
-          path: visible_verbs.yaml
+          path: ../shared/workflow/visible_verbs.yaml
           vars:
             app_name:
               _var: app_name
@@ -66,7 +66,7 @@
                 - $visible_verbs.review
                 - $visible_verbs.error
       - _ref:
-          path: resolve_action_link.yaml
+          path: ../shared/workflow/resolve_action_link.yaml
           vars:
             app_name:
               _var: app_name
