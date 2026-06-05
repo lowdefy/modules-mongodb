@@ -75,7 +75,7 @@ blocks:
                 workflowsConfig:
                   _module.var: workflows_config
                 groupOverviewPageId:
-                  _module.pageId: group-overview
+                  _module.pageId: workflow-group-overview
               fn: |
                 const { workflow, workflowsConfig, groupOverviewPageId } = args;
                 const wfConfig = (workflowsConfig || []).find(

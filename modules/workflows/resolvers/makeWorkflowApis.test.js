@@ -7,12 +7,12 @@ const qualifyAction = {
   action_group: "phase-1",
   form: [{ id: "contact_name", type: "TextInput" }],
   hooks: {
-    submit_edit: {
+    submit: {
       pre: { routine: [{ id: "x", type: "MongoDBFindOne" }] },
     },
   },
   event: {
-    submit_edit: {
+    submit: {
       type: "qualified",
       display: "Lead qualified",
       references: { lead_id: "$action.references.lead_id" },
@@ -95,15 +95,33 @@ test("makeWorkflowApis: worked example emits the expected {type}-{action}-submit
   expect(ids).not.toContain("onboarding-track-installation-submit");
 });
 
-test("makeWorkflowApis: simple endpoint includes current_status; form endpoints do not", () => {
+test("makeWorkflowApis: payload contains the complete required field set", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const simpleApi = findApi(apis, "onboarding-schedule-followup-submit");
-  const form = findApi(apis, "onboarding-qualify-submit");
-  const sendQuote = findApi(apis, "onboarding-send-quote-submit");
+  const qualify = findApi(apis, "onboarding-qualify-submit");
+  const props = propsOf(qualify);
 
-  expect(propsOf(simpleApi).current_status).toEqual({ _payload: "current_status" });
-  expect(propsOf(form)).not.toHaveProperty("current_status");
-  expect(propsOf(sendQuote)).not.toHaveProperty("current_status");
+  expect(props.action_id).toEqual({ _payload: "action_id" });
+  expect(props.signal).toEqual({ _payload: "signal" });
+  expect(props.current_key).toEqual({ _payload: "current_key" });
+  expect(props.fields).toEqual({ _payload: "fields" });
+  expect(props.form).toEqual({ _payload: "form" });
+  expect(props.form_review).toEqual({ _payload: "form_review" });
+  expect(props.comment).toEqual({ _payload: "comment" });
+  expect(props.metadata).toEqual({ _payload: "metadata" });
+});
+
+test("makeWorkflowApis: payload does not carry removed/superseded fields", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  for (const api of apis.filter((a) => a.id.endsWith("-submit"))) {
+    if (api.routine?.[0]?.properties) {
+      const props = api.routine[0].properties;
+      expect(props).not.toHaveProperty("force");
+      expect(props).not.toHaveProperty("interaction");
+      expect(props).not.toHaveProperty("current_status");
+      expect(props).not.toHaveProperty("action_type");
+      expect(props).not.toHaveProperty("workflow_type");
+    }
+  }
 });
 
 test("makeWorkflowApis: every form/simple endpoint passes runtime comment through to the handler", () => {
@@ -117,33 +135,63 @@ test("makeWorkflowApis: every form/simple endpoint passes runtime comment throug
   expect(propsOf(sendQuote).comment).toEqual({ _payload: "comment" });
 });
 
-test("makeWorkflowApis: sparse hooks, event_overrides maps", () => {
+test("makeWorkflowApis: sparse hooks, event_overrides maps — signal-keyed", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const qualify = findApi(apis, "onboarding-qualify-submit");
   const sendQuote = findApi(apis, "onboarding-send-quote-submit");
 
   // Hook ids are wrapped in string-form _module.endpointId so the build
   // walker resolves them to pre-scoped opaque strings (own-entry scope).
+  // Keys are signal-keyed (`submit`, not `submit_edit`).
   expect(propsOf(qualify).hooks).toEqual({
-    submit_edit: {
-      pre: { "_module.endpointId": "onboarding-qualify-submit_edit-pre" },
+    submit: {
+      pre: { "_module.endpointId": "onboarding-qualify-submit-pre" },
     },
   });
   expect(propsOf(qualify).hooks).not.toHaveProperty("post");
-  expect(propsOf(qualify).hooks.submit_edit).not.toHaveProperty("post");
+  expect(propsOf(qualify).hooks.submit).not.toHaveProperty("post");
 
   // send-quote declares no hooks/event — both keys absent.
   expect(propsOf(sendQuote)).not.toHaveProperty("hooks");
   expect(propsOf(sendQuote)).not.toHaveProperty("event_overrides");
 });
 
-test("makeWorkflowApis: hook Api emission", () => {
+test("makeWorkflowApis: hook Api emission uses signal name in id (signal-keyed)", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const hook = findApi(apis, "onboarding-qualify-submit_edit-pre");
+  // Signal-keyed: `…-submit-pre` not `…-submit_edit-pre`
+  const hook = findApi(apis, "onboarding-qualify-submit-pre");
   expect(hook).toBeDefined();
   // Engine-only: blocked over HTTP and from client CallAPI, reachable via callApi.
   expect(hook.type).toBe("InternalApi");
   expect(hook.routine).toEqual([{ id: "x", type: "MongoDBFindOne" }]);
+  // Legacy-keyed id is not emitted.
+  expect(findApi(apis, "onboarding-qualify-submit_edit-pre")).toBeUndefined();
+});
+
+test("makeWorkflowApis: legacy-keyed hooks.submit_edit block is not emitted (signal-keyed emitter)", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "simple",
+        hooks: {
+          submit_edit: {
+            pre: { routine: [{ id: "x", type: "MongoDBFindOne" }] },
+          },
+        },
+      },
+    ],
+  };
+  const apis = makeWorkflowApis(null, { workflows: [workflow] });
+  // The emitter only loops over HOOK_SIGNALS; submit_edit is not in the list,
+  // so no hook Api is emitted and the hooks map on the submit endpoint is absent.
+  expect(findApi(apis, "onboarding-qualify-submit_edit-pre")).toBeUndefined();
+  const qualify = findApi(apis, "onboarding-qualify-submit");
+  expect(propsOf(qualify)).not.toHaveProperty("hooks");
 });
 
 test("makeWorkflowApis: group on_complete Api emission", () => {
@@ -165,11 +213,11 @@ test("makeWorkflowApis: per-action submit Api stays client-invokable type Api", 
   expect(findApi(apis, "onboarding-schedule-followup-submit").type).toBe("Api");
 });
 
-test("makeWorkflowApis: event_overrides carries the four-tuple", () => {
+test("makeWorkflowApis: event_overrides carries the four-tuple, signal-keyed", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const qualify = findApi(apis, "onboarding-qualify-submit");
   expect(propsOf(qualify).event_overrides).toEqual({
-    submit_edit: {
+    submit: {
       type: "qualified",
       display: "Lead qualified",
       references: { lead_id: "$action.references.lead_id" },

@@ -1,21 +1,15 @@
-const HOOK_INTERACTIONS = [
-  'submit_edit',
-  'not_required',
-  'resolve_error',
-  'approve',
-  'request_changes',
-];
-const HOOK_PHASES = ['pre', 'post'];
+import { HOOK_SIGNALS, HOOK_PHASES } from './hookSignals.js';
+
 const EVENT_OVERRIDE_FIELDS = ['type', 'display', 'references', 'metadata'];
 
 // Hooks are engine-only by design: a built `Api` endpoint is HTTP-callable,
 // and a direct HTTP call to the predictable hook id
-// (`{workflow}-{action}-{interaction}-{pre|post}`) would bypass the engine
+// (`{workflow}-{action}-{signal}-{pre|post}`) would bypass the engine
 // and its load-phase access gate entirely. `InternalApi` blocks HTTP and
 // client CallAPI actions while staying reachable via engine `callApi`.
-function emitHookApi(workflow, action, interaction, phase, body) {
+function emitHookApi(workflow, action, signal, phase, body) {
   return {
-    id: `${workflow.type}-${action.type}-${interaction}-${phase}`,
+    id: `${workflow.type}-${action.type}-${signal}-${phase}`,
     type: 'InternalApi',
     routine: body.routine,
   };
@@ -25,14 +19,14 @@ function emitHooks(workflow, action) {
   const apis = [];
   const map = {};
   if (!action.hooks) return { apis, map: undefined };
-  for (const interaction of HOOK_INTERACTIONS) {
-    const phases = action.hooks[interaction];
+  for (const signal of HOOK_SIGNALS) {
+    const phases = action.hooks[signal];
     if (!phases) continue;
     const slot = {};
     for (const phase of HOOK_PHASES) {
       const body = phases[phase];
       if (!body) continue;
-      const api = emitHookApi(workflow, action, interaction, phase, body);
+      const api = emitHookApi(workflow, action, signal, phase, body);
       // String-form _module.endpointId — own-entry scope. The build walker
       // resolves resolver output, so the engine receives the hook id as a
       // pre-scoped opaque string (`<workflowsEntryId>/<hookApiId>`) on
@@ -40,7 +34,7 @@ function emitHooks(workflow, action) {
       slot[phase] = { '_module.endpointId': api.id };
       apis.push(api);
     }
-    if (Object.keys(slot).length > 0) map[interaction] = slot;
+    if (Object.keys(slot).length > 0) map[signal] = slot;
   }
   return { apis, map: Object.keys(map).length > 0 ? map : undefined };
 }
@@ -48,31 +42,28 @@ function emitHooks(workflow, action) {
 function emitEventOverrides(action) {
   if (!action.event) return undefined;
   const map = {};
-  for (const interaction of HOOK_INTERACTIONS) {
-    const e = action.event[interaction];
+  for (const signal of HOOK_SIGNALS) {
+    const e = action.event[signal];
     if (!e) continue;
     const slot = {};
     for (const field of EVENT_OVERRIDE_FIELDS) {
       if (field in e) slot[field] = e[field];
     }
-    if (Object.keys(slot).length > 0) map[interaction] = slot;
+    if (Object.keys(slot).length > 0) map[signal] = slot;
   }
   return Object.keys(map).length > 0 ? map : undefined;
 }
 
 function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
-  const isSimple = action.kind === 'simple';
   const properties = {
     action_id: { _payload: 'action_id' },
-    action_type: action.type,
-    workflow_type: workflow.type,
-    interaction: { _payload: 'interaction' },
+    signal: { _payload: 'signal' },
     current_key: { _payload: 'current_key' },
+    fields: { _payload: 'fields' },
     form: { _payload: 'form' },
     form_review: { _payload: 'form_review' },
-    fields: { _payload: 'fields' },
     comment: { _payload: 'comment' },
-    ...(isSimple ? { current_status: { _payload: 'current_status' } } : {}),
+    metadata: { _payload: 'metadata' },
     ...(hooksMap ? { hooks: hooksMap } : {}),
     ...(eventMap ? { event_overrides: eventMap } : {}),
   };

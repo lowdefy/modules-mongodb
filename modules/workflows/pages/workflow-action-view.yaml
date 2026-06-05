@@ -11,7 +11,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: simple-view
+    id: workflow-action-view
     hide_title: true
     content_width: 750
     requests:

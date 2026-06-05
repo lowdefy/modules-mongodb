@@ -185,7 +185,7 @@ test("makeWorkflowsConfig: blocked_by walk doesn't short-circuit on the first va
   );
 });
 
-test("makeWorkflowsConfig: inline hook routine validates cleanly", () => {
+test("makeWorkflowsConfig: inline hook routine validates cleanly (signal-keyed)", () => {
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
@@ -197,7 +197,7 @@ test("makeWorkflowsConfig: inline hook routine validates cleanly", () => {
         type: "qualify",
         kind: "simple",
         hooks: {
-          submit_edit: {
+          submit: {
             pre: { routine: [{ id: "x", type: "MongoDBFindOne" }] },
           },
         },
@@ -220,7 +220,7 @@ test("makeWorkflowsConfig: legacy string hook fails with migration message", () 
       {
         type: "qualify",
         kind: "simple",
-        hooks: { submit_edit: { pre: "some-api-id" } },
+        hooks: { submit: { pre: "some-api-id" } },
       },
     ],
   };
@@ -243,7 +243,7 @@ test("makeWorkflowsConfig: hook value missing routine: array fails", () => {
       {
         type: "qualify",
         kind: "simple",
-        hooks: { submit_edit: { pre: { not_routine: [] } } },
+        hooks: { submit: { pre: { not_routine: [] } } },
       },
     ],
   };
@@ -252,7 +252,27 @@ test("makeWorkflowsConfig: hook value missing routine: array fails", () => {
   );
 });
 
-test("makeWorkflowsConfig: unknown hook interaction fails", () => {
+test("makeWorkflowsConfig: unknown hook signal fails (legacy submit_edit rejected)", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "simple",
+        hooks: { submit_edit: { pre: { routine: [] } } },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /is not a known signal/,
+  );
+});
+
+test("makeWorkflowsConfig: completely unknown hook key fails", () => {
   const workflow = {
     type: "onboarding",
     entity_collection: "leads-collection",
@@ -268,7 +288,80 @@ test("makeWorkflowsConfig: unknown hook interaction fails", () => {
     ],
   };
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /is not a known interaction/,
+    /is not a known signal/,
+  );
+});
+
+// --- validateEvent: event: key validation -----------------------------------
+
+test("makeWorkflowsConfig: signal-keyed event block validates cleanly", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "simple",
+        event: {
+          submit: { type: "qualified", display: "Lead qualified" },
+          approve: { type: "approved", display: "Lead approved" },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: legacy event key submit_edit hard-errors", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "simple",
+        event: {
+          submit_edit: { type: "qualified", display: "Lead qualified" },
+        },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /is not a known signal/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /submit_edit/,
+  );
+});
+
+test("makeWorkflowsConfig: unknown event key hard-errors", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "simple",
+        event: { surprise: { type: "something" } },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /is not a known signal/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /surprise/,
   );
 });
 

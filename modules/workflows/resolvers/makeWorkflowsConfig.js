@@ -1,3 +1,5 @@
+import { HOOK_SIGNALS, HOOK_PHASES } from './hookSignals.js';
+
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
 // they're consumed by build-time resolvers (parts 12, 13, 15) against
@@ -37,16 +39,6 @@ const ACTION_STATUSES = [
   'blocked',
 ];
 
-const HOOK_INTERACTIONS = [
-  'submit_edit',
-  'not_required',
-  'resolve_error',
-  'approve',
-  'request_changes',
-];
-
-const HOOK_PHASES = ['pre', 'post'];
-
 // Part 34 access verbs. Vocabulary is closed in v1 (Part 34 D4 / per-app block).
 const ACCESS_VERBS = ['view', 'edit', 'review', 'error'];
 
@@ -65,32 +57,32 @@ function fail(workflowType, message) {
 function validateHooks(workflow, action) {
   if (!action.hooks) return;
   const where = `action "${action.type}"`;
-  for (const interaction of Object.keys(action.hooks)) {
-    if (!HOOK_INTERACTIONS.includes(interaction)) {
+  for (const signal of Object.keys(action.hooks)) {
+    if (!HOOK_SIGNALS.includes(signal)) {
       fail(
         workflow.type,
-        `${where} hooks key "${interaction}" is not a known interaction (expected one of: ${HOOK_INTERACTIONS.join(', ')}).`
+        `${where} hooks key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}).`
       );
     }
-    const phases = action.hooks[interaction];
+    const phases = action.hooks[signal];
     if (phases === null || typeof phases !== 'object') {
       fail(
         workflow.type,
-        `${where} hooks.${interaction} must be an object with pre/post phase entries (got: ${JSON.stringify(phases)}).`
+        `${where} hooks.${signal} must be an object with pre/post phase entries (got: ${JSON.stringify(phases)}).`
       );
     }
     for (const phase of Object.keys(phases)) {
       if (!HOOK_PHASES.includes(phase)) {
         fail(
           workflow.type,
-          `${where} hooks.${interaction} phase "${phase}" is invalid (expected "pre" or "post").`
+          `${where} hooks.${signal} phase "${phase}" is invalid (expected "pre" or "post").`
         );
       }
       const value = phases[phase];
       if (typeof value === 'string') {
         fail(
           workflow.type,
-          `${where} hooks.${interaction}.${phase} is a string ("${value}") — the legacy shape pointing at an external Api id. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Action hooks contract".`
+          `${where} hooks.${signal}.${phase} is a string ("${value}") — the legacy shape pointing at an external Api id. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Action hooks contract".`
         );
       }
       if (
@@ -100,9 +92,22 @@ function validateHooks(workflow, action) {
       ) {
         fail(
           workflow.type,
-          `${where} hooks.${interaction}.${phase} must be an object with a routine: array (got: ${JSON.stringify(value)}).`
+          `${where} hooks.${signal}.${phase} must be an object with a routine: array (got: ${JSON.stringify(value)}).`
         );
       }
+    }
+  }
+}
+
+function validateEvent(workflow, action) {
+  if (!action.event) return;
+  const where = `action "${action.type}"`;
+  for (const signal of Object.keys(action.event)) {
+    if (!HOOK_SIGNALS.includes(signal)) {
+      fail(
+        workflow.type,
+        `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}).`
+      );
     }
   }
 }
@@ -290,6 +295,7 @@ function validateAction(workflow, action) {
   validateActionAccess(workflow, action);
   validateStatusMapCells(workflow, action);
   validateHooks(workflow, action);
+  validateEvent(workflow, action);
 }
 
 function validateWorkflow(workflow) {

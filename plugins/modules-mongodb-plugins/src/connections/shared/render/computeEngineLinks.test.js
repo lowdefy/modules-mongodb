@@ -13,8 +13,8 @@ test('simple kind at action-required: view+edit links, review/error null', () =>
     },
   });
   expect(links.demo).toEqual({
-    view: { pageId: 'workflows/workflow-simple-view', urlQuery: { action_id: 'a1' } },
-    edit: { pageId: 'workflows/workflow-simple-edit', urlQuery: { action_id: 'a1' } },
+    view: { pageId: 'workflows/workflow-action-view', urlQuery: { action_id: 'a1' } },
+    edit: { pageId: 'workflows/workflow-action-edit', urlQuery: { action_id: 'a1' } },
     review: null,
     error: null,
   });
@@ -59,11 +59,11 @@ test('in-review exposes review (declared), nulls edit', () => {
       access: { demo: { view: true, edit: true, review: true } },
     },
   });
-  expect(links.demo.review.pageId).toBe('workflows/workflow-simple-review');
+  expect(links.demo.review.pageId).toBe('workflows/workflow-action-review');
   expect(links.demo.edit).toBeNull();
 });
 
-test('error stage exposes the error verb -> workflow-simple-error', () => {
+test('error stage: simple kind error verb maps to workflow-action-view (no error page exists)', () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,
     action: {
@@ -73,8 +73,10 @@ test('error stage exposes the error verb -> workflow-simple-error', () => {
       access: { demo: { view: true, error: true } },
     },
   });
-  expect(links.demo.error.pageId).toBe('workflows/workflow-simple-error');
-  expect(links.demo.view.pageId).toBe('workflows/workflow-simple-view');
+  // Per review-14 #4: simple kind has no error page; recovery is a
+  // resolve_error button on the view page, so the error verb links there too.
+  expect(links.demo.error.pageId).toBe('workflows/workflow-action-view');
+  expect(links.demo.view.pageId).toBe('workflows/workflow-action-view');
 });
 
 test('blocked / not-required stages produce all-null cells', () => {

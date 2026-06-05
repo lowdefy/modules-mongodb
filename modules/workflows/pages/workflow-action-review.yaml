@@ -11,7 +11,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: simple-review
+    id: workflow-action-review
     hide_title: true
     content_width: 750
     requests:
@@ -43,7 +43,7 @@ _ref:
               - _request: get_action.status.0.stage
           params:
             pageId:
-              _module.pageId: simple-view
+              _module.pageId: workflow-action-view
             urlQuery:
               _url_query: true
         # Step 4: load workflow — needed for required_after_close gate.
@@ -64,7 +64,7 @@ _ref:
           params:
             comment: null
         # Step 8 (author-supplied pages.review.events.onMount) — omitted on
-        # shared simple pages; same gap as simple-view / simple-edit.
+        # shared simple pages; same gap as workflow-action-view / workflow-action-edit.
     blocks:
       - id: action_card
         type: Card
