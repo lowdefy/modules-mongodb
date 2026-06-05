@@ -55,6 +55,15 @@ vars:
       without a link. Example: `/user-admin/view?user_id={id}`.
       Per-call overrides via `contact_page_url` and `disable_contact_link`
       vars on the events-timeline component.
+  action_statuses_display:
+    type: object
+    default: {}
+    description: >
+      Per-status display overrides for the shared action_statuses enum, merged onto
+      the shared base for the timeline's live action cards. Keep in sync with the
+      workflows module's `action_statuses_display` by pointing both module entries
+      at one app-local file, e.g.
+      `action_statuses_display: { _ref: <app>/action_statuses_display.yaml }`.
 
 components:
   - id: change_stamp

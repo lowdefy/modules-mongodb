@@ -20,42 +20,59 @@ requests:
         _var: reference_value
     properties:
       pipeline:
-        - $match:
-            _object.fromEntries:
-              - - _var: reference_field
-                - _payload: reference_value
-              - - _var:
+        _build.array.concat:
+          - - $match:
+                _object.fromEntries:
+                  - - _var: reference_field
+                    - _payload: reference_value
+                  - - _var:
+                          key: display_key
+                          default:
+                            _module.var: display_key
+                    - $ne: null
+          - _ref:
+              path: ../shared/workflow/timeline_action_lookup.yaml
+              vars:
+                app_name:
+                  _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - $ne: null
-        - $sort:
-            date: -1
-        - $addFields:
-            title:
-              _string.concat:
-                - '$'
-                - _var:
-                    key: display_key
-                    default:
-                      _module.var: display_key
-                - '.title'
-            description:
-              _string.concat:
-                - '$'
-                - _var:
-                    key: display_key
-                    default:
-                      _module.var: display_key
-                - '.description'
-            info:
-              _string.concat:
-                - '$'
-                - _var:
-                    key: display_key
-                    default:
-                      _module.var: display_key
-                - '.info'
+          - - $addFields:
+                actions:
+                  $filter:
+                    input: $actions
+                    cond:
+                      $ne:
+                        - $$this._id
+                        - _payload: reference_value
+            - $sort:
+                date: -1
+            - $addFields:
+                title:
+                  _string.concat:
+                    - '$'
+                    - _var:
+                        key: display_key
+                        default:
+                          _module.var: display_key
+                    - '.title'
+                description:
+                  _string.concat:
+                    - '$'
+                    - _var:
+                        key: display_key
+                        default:
+                          _module.var: display_key
+                    - '.description'
+                info:
+                  _string.concat:
+                    - '$'
+                    - _var:
+                        key: display_key
+                        default:
+                          _module.var: display_key
+                    - '.info'
 
 blocks:
   - id: events_timeline_empty
@@ -85,6 +102,10 @@ blocks:
         _build.object.assign:
           - _ref: ../shared/enums/event_types.yaml
           - _module.var: event_types
+      actionStatusConfig:
+        _build.object.assign:
+          - _ref: ../shared/enums/action_statuses.yaml
+          - _module.var: action_statuses_display
       reverse:
         _var:
           key: reverse
