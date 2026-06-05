@@ -20,7 +20,7 @@ Part 38 rebuilds every engine write entry point into load → pre-hook → plan 
 
 | #   | Part                                                          | Size | Needs from 38 (all shipped) | Status |
 | --- | ------------------------------------------------------------- | ---- | --------------------------- | ------ |
-| 42  | [timeline-action-cards](parts/42-timeline-action-cards/design.md) | M | per-verb `links` (task 3 ✅), `visible_verbs` gating (tasks 5/7 ✅), `references.action_ids` event contract (task 12 ✅) | startable — read-path config in `modules/shared/` + `modules/events/`, disjoint from 38's remaining bands. Also supplies the shared `visible_verbs.yaml` stage 38's `visible_verbs_filter.yaml` already refs. **Action 38's review-14 first** (task 18 ↔ 42 D5 scope overlap). |
+| 42  | [timeline-action-cards](parts/42-timeline-action-cards/design.md) | M | per-verb `links` (task 3 ✅), `visible_verbs` gating (tasks 5/7 ✅), `references.action_ids` event contract (task 12 ✅) | 🚧 implemented — all 9 tasks on [PR #71](https://github.com/lowdefy/modules-mongodb/pull/71) (`design/42-timeline-action-cards` → `workflows-sam`); Lowdefy build validation pending before merge. See the [implementation record](parts/42-timeline-action-cards/tasks/tasks.md#implementation-record). |
 | 24  | [universal-fields](parts/24-universal-fields/design.md)       | M    | render helpers (task 3 ✅); phase machinery for `UpdateActionFields` (Band 3, tasks 22+14 outstanding) | surface work (component / resolver / manifest) startable now; hold the `UpdateActionFields` engine handler until 38 task 14 lands |
 
 **Next — after 38's remaining bands**
@@ -159,7 +159,7 @@ These didn't exist when the dependency graph was cut; they slot wherever their d
 | 39  | [form-submit-buttons](parts/39-form-submit-buttons/design.md)         | M    | `modules/workflows/templates/` + `modules/workflows/enums/` + concept | next (after 38 task 19) |
 | 40  | [simple-action-surfaces](parts/40-simple-action-surfaces/design.md)   | M    | `modules/workflows/pages/` + `components/` + `ActionSteps` block + resolver | depends on 24, 39, 33 |
 | 41  | [notification-roles-model](parts/41-notification-roles-model/design.md) | TBD | `modules/workflows/` + `modules/notifications/` + engine        | ⚠️ STUB — not yet designed |
-| 42  | [timeline-action-cards](parts/42-timeline-action-cards/design.md)     | M    | `modules/shared/workflow/` + `modules/events/` + `modules/workflows/` | parallel-startable now (38 contracts shipped) |
+| 42  | [timeline-action-cards](parts/42-timeline-action-cards/design.md)     | M    | `modules/shared/workflow/` + `modules/events/` + `modules/workflows/` | 🚧 implemented — PR #71 open (build validation pending) |
 | 43  | [rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) | S | `modules/workflows/` + `plugins/modules-mongodb-plugins/` | 📐 design only — after 40 |
 | 44  | [tracker-start-link](parts/44-tracker-start-link/design.md)           | S–M  | `plugins/modules-mongodb-plugins/` + `modules/workflows/`      | 📐 design + review — after 38 read side + 42 |
 | 45  | [demo-rebuild](parts/45-demo-rebuild/design.md)                       | M–L  | `apps/demo/` + docs                                            | 📐 designed + tasked — capstone after 43 + 44; supersedes 38 task 20 |
