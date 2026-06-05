@@ -12,6 +12,17 @@ design meets the actual wiring.
 
 ### 1. The per-verb link *selection* in the blocks is unowned — and Part 38 breaks navigation before this part fixes it
 
+> **Resolved.** Overtaken by Part 42 (timeline-action-cards, shipped): link selection moved
+> **server-side** — the shared `visible_verbs.yaml` + `resolve_action_link.yaml` stages collapse
+> the engine's per-verb `links` map to a single `action.link` in all three read APIs
+> (`get-entity-workflows.yaml:38`, `get-workflow-overview.yaml:52`,
+> `get-action-group-overview.yaml:33`), so the blocks' singular `action.link` read works and no
+> block-side selection is needed. Design updated: navigation prose now cites Part 42 D5's
+> server-resolved `action.link` (surfaces section, D5, Files-changed), the stale "Part 41"
+> timeline references were renumbered to Part 42 and marked shipped, and a payload caveat was
+> recorded (shipped `EventsTimeline.onActionClick` fires `{pageId, urlQuery}`, not the action
+> object D5's modal contract needs).
+
 The design's navigation default (the "Surfaces, the engine link" section; D5; Files-changed
 `ActionSteps.js` row) reads *"navigate via the user-selected per-verb link `action.links.{verb}`
 … default unchanged by this part — per-verb link selection itself is [Part 34 D7]."* Task 02
@@ -46,6 +57,20 @@ name the explicit part that does and sequence it before Part 38 reaches the demo
 drop "default unchanged" — Part 38 changes the doc shape out from under the current default.
 
 ### 2. `global.simple_action_buttons` is mis-wired to a resolver that has no global path — and is unnecessary
+
+> **Resolved.** The requirements behind the mechanism were re-examined and the per-action
+> button-config map was dropped entirely — it contradicted ui's "no per-action customisation"
+> spec for simple actions, and no button except `not_required` has a per-action story. D3 is
+> rewritten to a single doc-borne flag: `allow_not_required` authored at the action root (any
+> kind, opt-in), persisted onto the action doc in the per-transition denormalisation block
+> beside `access` (display only, refreshed from config), read by the surface as
+> `surface.action.allow_not_required` (zero config plumbing — neither option (a) nor (b) is
+> needed), and **enforced kind-agnostically off live config** at the load-phase gate beside
+> the per-verb access gate (user-driven `not_required` without the flag → `access_denied`;
+> the doc copy is never authoritative, mirroring the `access` security model), closing
+> Part 39's client-only gap on forms. Form templates align (`page_config.buttons.not_required.visible`
+> becomes a plain opt-out, default `true`). Part 46 OQ4 records the outcome; the broader
+> raw-config-embed problem this finding surfaced is now [Part 46 — debundle-workflow-config](../../46-debundle-workflow-config/design.md).
 
 D3 and Files-changed say *"the `makeWorkflowsConfig` resolver emits a per-simple-action button
 map into `global.simple_action_buttons.{action_type}`"*, read via `_global`. Two problems:
@@ -105,6 +130,19 @@ The design's D6 is correct; the cross-wave "must land before" caveat is stale an
 
 ### 4. The modal's `view` mode needs the comments aggregation, which D5's open sequence omits
 
+> **Resolved.** Requirement re-examined: the in-modal timeline was **dropped** rather than wired.
+> The modal's hosts are entity pages whose own entity timeline already shows the action's events
+> and comments, and the full action-filtered stream lives on `workflow-action-view` — an in-modal
+> copy duplicates both. The Part 33 timeline `_ref` stays page-level on `workflow-action-view`,
+> below the surface (Part 33's "rides the surface's view mode" line amended); the surface's `view`
+> mode is header + read-only fields + status history (a List over `surface.action.status`, no
+> request, modal-safe). This also dissolved a blocker the finding didn't see: a second
+> `events-timeline` instance on an entity page would collide on the component's fixed `get-events`
+> request id (verified — Lowdefy build throws `Duplicate requestId`; `_ref` does not scope request
+> ids), so timeline-in-modal would have required parameterising the events component's request id.
+> With every mode now light, the container switched `Drawer` → `Modal`, and the open contract was
+> corrected to the real block method (`setOpen({open: true})` — neither block has an `open` method).
+
 D5 says `mode: view` in the modal renders *"status history, comments"* and lists the open
 sequence as `get_action → get_workflow → action_role_check → render`. But `simple-view`'s comments
 are **not** on the action doc — they come from a separate aggregation `get_comment_events` over
@@ -124,6 +162,16 @@ are page-only and the modal's `view` shows status-history only.
 
 ### 5. The `^surface\.fields\.` Validate scope imposes an unstated contract on Part 24's universal-fields
 
+> **Resolved.** Contract pinned on both sides: Part 24's renderer gains a `state_path` var
+> (default `fields` — form sidebars and existing consumers untouched) parameterising the
+> edit-mode input block IDs (`{state_path}.{field}`, threading into the `user-multi-selector`
+> id passthrough); the surface passes `state_path: surface.fields`, so its inputs land at
+> `surface.fields.*` and the scoped `Validate` matches them. The alternative (surface uses
+> top-level `fields.*` to match Part 24 as-is) was rejected: the modal renders on host entity
+> pages, and un-namespaced live input state is exactly the host-collision the namespace
+> prevents. Part 24's design (pending) was amended directly; Part 40 D1 now states the
+> dependency explicitly.
+
 D1 scopes `submit`'s `Validate` to `params: { regex: ^surface\.fields\. }`. Lowdefy `Validate`
 matches **state keys**, so this only validates the universal-fields inputs if their block IDs are
 `surface.fields.assignees` etc. (the "input IDs match data paths" idiom). Today
@@ -137,6 +185,11 @@ surface, otherwise the scoped `Validate` matches nothing.
 ## Minor
 
 ### 6. `simple_action_buttons` keyed by `action.type` assumes global type uniqueness
+
+> **Rejected.** Mooted by #2's resolution — the per-type map no longer exists in any form; the
+> lone `allow_not_required` flag rides the action doc itself, so there is no type-keyed lookup
+> to collide. (The pre-existing `makeActionFormConfigs` type-keying noted here is untouched and
+> remains tracked by Part 46 OQ2.)
 
 If finding 2 is resolved toward a per-type map (Task 01 keys `simple_action_buttons[action.type]`),
 note that `makeWorkflowsConfig` only enforces action-`type` uniqueness **within** a workflow

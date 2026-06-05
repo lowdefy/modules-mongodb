@@ -39,6 +39,7 @@ Status-map cells can reference `assignees` / `due_date` (Part 38 D12's render co
     vars:
       mode: edit              # 'edit' | 'display'
       kind: form              # 'form' | 'simple' — tracker excluded
+      state_path: fields      # state namespace for the edit-mode inputs (block IDs become {state_path}.{field})
       workflow_type: lead-qualification   # with action_type, builds the fields endpoint id (form + edit only)
       action_type: qualify    # builds {workflow_type}-{action_type}-update-fields (form + edit only)
       show:                   # which fields render; from action_config.universal_fields
@@ -49,7 +50,7 @@ Status-map cells can reference `assignees` / `due_date` (Part 38 D12's render co
         description: { _state: fields.description }
 ```
 
-Block-id convention follows the CLAUDE.md "Input block IDs match data paths" rule: `fields.assignees`, `fields.due_date`, `fields.description`.
+Block-id convention follows the CLAUDE.md "Input block IDs match data paths" rule, parameterised by the `state_path` var (default `fields`): `{state_path}.assignees`, `{state_path}.due_date`, `{state_path}.description`. The default keeps the form sidebars and shared pages at `fields.*`; [Part 40](../40-simple-action-surfaces/design.md)'s `simple-action-surface` passes `state_path: surface.fields` so its inputs land in the surface's state namespace and its scoped `Validate` (`^surface\.fields\.`) matches them (Part 40 review-2 #5). The namespace threads into the `user-multi-selector` id passthrough (Files changed).
 
 **Behaviour by `kind` × `mode`:**
 
@@ -182,7 +183,7 @@ Engine spec amendment: [`engine/spec.md:132`](../../../workflows-module-concept/
 The fields operation is a resolver-emitted Api, not a module-shipped request, and the selector and avatar reach user-account via cross-module component refs. But the display rule above (one `user-avatar` per assignee) is unimplementable from the action doc alone — `assignees` is an id array and `user-avatar` consumes a user doc. So two binding prerequisites ship here:
 
 - **`modules/workflows/requests/get_action.yaml`** (amend) — an additive `$lookup` into `user-contacts` projecting `assignee_docs: [{ _id, profile: { name, picture } }]` (cross-module collection precedent: `modules/activities/requests/stages/lookup_contacts.yaml`). Purely additive — every existing `get_action.*` binding keeps resolving.
-- **`modules/user-account/components/user-multi-selector.yaml`** (amend — cross-module) — gains a parameterizable `id` var (default `user-multi-selector`, so existing consumers are untouched) plus an optional `title` var, so the workflows sidebar can auto-bind it to `fields.assignees`. Part 24a's design explicitly anticipated this ("Part 24 binds `_state.fields.assignees`").
+- **`modules/user-account/components/user-multi-selector.yaml`** (amend — cross-module) — gains a parameterizable `id` var (default `user-multi-selector`, so existing consumers are untouched) plus an optional `title` var, so the workflows sidebar can auto-bind it to `{state_path}.assignees` (default `fields.assignees`). Part 24a's design explicitly anticipated this ("Part 24 binds `_state.fields.assignees`").
 
 Type-safety note (settled, not deferred): user-contacts `_id` is a **string** (`_uuid: true` on the invite upsert — `user-admin/api/invite-user.yaml`; `_user: id` on `user-account/api/create-profile.yaml`), so selector values round-trip the client as strings and the `$lookup` on `_id` matches without coercion.
 
