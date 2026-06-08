@@ -25,13 +25,13 @@ function makeWorkflowsConfig() {
       actions: [
         {
           type: 'qualify',
-          kind: 'simple',
+          kind: 'check',
           action_group: 'phase-1',
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
         {
           type: 'kickoff',
-          kind: 'simple',
+          kind: 'check',
           action_group: 'phase-2',
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
@@ -151,7 +151,7 @@ async function seedAction({
   action_group = null,
   stage = 'action-required',
   workflow_id = 'wf-1',
-  kind = 'simple',
+  kind = 'check',
   extra = {},
 }) {
   await mongo.db.collection('actions').insertOne({
@@ -342,7 +342,7 @@ describe('tracker cascade', () => {
       _id: 'p-a',
       workflow_id: 'wf-parent',
       type: 'qualify',
-      kind: 'simple',
+      kind: 'check',
       key: null,
       action_group: null,
       status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }],

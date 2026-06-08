@@ -13,9 +13,9 @@
  *
  * Page ids are entry-scoped (`${entry_id}/${page}`) to match Lowdefy's build-
  * time _module.pageId scoping (Part 30 D4 mechanic):
- *   - simple  -> fixed module pages `workflow-action-{verb}`, urlQuery action_id
+ *   - check   -> fixed module pages `workflow-action-{verb}`, urlQuery action_id
  *               (the `error` verb maps to `workflow-action-view` — no error page
- *                exists for the simple kind; recovery is a button on the view page)
+ *                exists for the check kind; recovery is a button on the view page)
  *   - form    -> derived pages `{workflow_type}-{action_type}-{verb}` (unprefixed),
  *                urlQuery action_id
  *   - tracker -> two arms:
@@ -35,7 +35,7 @@ const VERBS = ['view', 'edit', 'review', 'error'];
 
 const RESERVED_ACCESS_KEYS = new Set(['roles', 'notification_roles']);
 
-// Which verbs have a meaningful page at each stage (shared by simple + form).
+// Which verbs have a meaningful page at each stage (shared by check + form).
 // `true` => the stage exposes a page for that verb; otherwise the cell is null.
 const STAGE_VERB_PAGE = {
   'action-required': { view: true, edit: true, review: false, error: false },
@@ -108,13 +108,13 @@ function computeEngineLinks({ action, entry_id: entryId }) {
       continue;
     }
 
-    // simple / form
+    // check / form
     const stageVerbs = STAGE_VERB_PAGE[stage] ?? {};
     for (const verb of VERBS) {
       if (!(verb in verbsDeclared)) continue; // slug doesn't declare this verb
       if (!stageVerbs[verb]) continue; // stage has no page for this verb
       const page =
-        kind === 'simple'
+        kind === 'check'
           ? verb === 'error'
             ? 'workflow-action-view'
             : `workflow-action-${verb}`

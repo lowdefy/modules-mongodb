@@ -39,7 +39,7 @@ const workflowsConfig = [
       },
       {
         type: 'final-audit',
-        kind: 'simple',
+        kind: 'check',
         required_after_close: true,
         access: { [APP]: { view: true, edit: true } },
       },
@@ -75,7 +75,7 @@ async function seedWorkflow({ stage = 'in-progress' } = {}) {
       _id: 'act-2',
       workflow_id: 'wf-1',
       type: 'final-audit',
-      kind: 'simple',
+      kind: 'check',
       status: [{ stage: 'action-required' }],
     },
   ]);
