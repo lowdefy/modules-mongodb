@@ -42,12 +42,12 @@ test('submit lands in-review when any app declares review, else done', () => {
   ).toBe('done');
 });
 
-test('submit split is action-global — same result for simple kind', () => {
+test('submit split is action-global — same result for check kind', () => {
   const reviewing = { access: { a: { review: true }, b: { view: true } } };
   // Even though app b does not declare review, the action-global rule lands in-review.
   expect(
     resolveSignal({
-      action: action('simple', 'action-required'),
+      action: action('check', 'action-required'),
       signal: 'submit',
       actionConfig: reviewing,
     }),

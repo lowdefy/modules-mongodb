@@ -6,7 +6,7 @@ const validWorkflow = {
   entity_ref_key: "lead_ids",
   display_order: 1,
   starting_actions: [{ type: "do-it", status: "action-required" }],
-  actions: [{ type: "do-it", kind: "simple" }],
+  actions: [{ type: "do-it", kind: "check" }],
 };
 
 test("makeWorkflowsConfig: entity_collection flows through and no entity_type appears on the normalized output", () => {
@@ -75,8 +75,8 @@ test("makeWorkflowsConfig: blocked_by referencing a declared action type passes"
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
-      { type: "qualify", kind: "simple" },
-      { type: "send-quote", kind: "simple", blocked_by: ["qualify"] },
+      { type: "qualify", kind: "check" },
+      { type: "send-quote", kind: "check", blocked_by: ["qualify"] },
     ],
   };
   expect(() =>
@@ -93,8 +93,8 @@ test("makeWorkflowsConfig: blocked_by referencing a declared group id passes", (
     action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
-      { type: "qualify", kind: "simple", action_group: "phase-1" },
-      { type: "send-quote", kind: "simple", blocked_by: ["phase-1"] },
+      { type: "qualify", kind: "check", action_group: "phase-1" },
+      { type: "send-quote", kind: "check", blocked_by: ["phase-1"] },
     ],
   };
   expect(() =>
@@ -111,10 +111,10 @@ test("makeWorkflowsConfig: blocked_by with mixed group id + action type passes",
     action_groups: [{ id: "phase-1" }],
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
-      { type: "qualify", kind: "simple", action_group: "phase-1" },
+      { type: "qualify", kind: "check", action_group: "phase-1" },
       {
         type: "send-quote",
-        kind: "simple",
+        kind: "check",
         blocked_by: ["phase-1", "qualify"],
       },
     ],
@@ -132,8 +132,8 @@ test("makeWorkflowsConfig: no blocked_by field on any action passes", () => {
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
-      { type: "qualify", kind: "simple" },
-      { type: "send-quote", kind: "simple" },
+      { type: "qualify", kind: "check" },
+      { type: "send-quote", kind: "check" },
     ],
   };
   expect(() =>
@@ -149,8 +149,8 @@ test("makeWorkflowsConfig: blocked_by entry that resolves to nothing throws with
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
-      { type: "qualify", kind: "simple" },
-      { type: "send-quote", kind: "simple", blocked_by: ["nonexistent-entry"] },
+      { type: "qualify", kind: "check" },
+      { type: "send-quote", kind: "check", blocked_by: ["nonexistent-entry"] },
     ],
   };
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
@@ -172,10 +172,10 @@ test("makeWorkflowsConfig: blocked_by walk doesn't short-circuit on the first va
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
-      { type: "qualify", kind: "simple" },
+      { type: "qualify", kind: "check" },
       {
         type: "send-quote",
-        kind: "simple",
+        kind: "check",
         blocked_by: ["qualify", "nonexistent-entry"],
       },
     ],
@@ -195,7 +195,7 @@ test("makeWorkflowsConfig: inline hook routine validates cleanly (signal-keyed)"
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         hooks: {
           submit: {
             pre: { routine: [{ id: "x", type: "MongoDBFindOne" }] },
@@ -219,7 +219,7 @@ test("makeWorkflowsConfig: legacy string hook fails with migration message", () 
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         hooks: { submit: { pre: "some-api-id" } },
       },
     ],
@@ -242,7 +242,7 @@ test("makeWorkflowsConfig: hook value missing routine: array fails", () => {
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         hooks: { submit: { pre: { not_routine: [] } } },
       },
     ],
@@ -262,7 +262,7 @@ test("makeWorkflowsConfig: unknown hook signal fails (legacy submit_edit rejecte
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         hooks: { submit_edit: { pre: { routine: [] } } },
       },
     ],
@@ -282,7 +282,7 @@ test("makeWorkflowsConfig: completely unknown hook key fails", () => {
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         hooks: { surprise: { pre: { routine: [] } } },
       },
     ],
@@ -304,7 +304,7 @@ test("makeWorkflowsConfig: signal-keyed event block validates cleanly", () => {
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         event: {
           submit: { type: "qualified", display: "Lead qualified" },
           approve: { type: "approved", display: "Lead approved" },
@@ -327,7 +327,7 @@ test("makeWorkflowsConfig: legacy event key submit_edit hard-errors", () => {
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         event: {
           submit_edit: { type: "qualified", display: "Lead qualified" },
         },
@@ -352,7 +352,7 @@ test("makeWorkflowsConfig: unknown event key hard-errors", () => {
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         event: { surprise: { type: "something" } },
       },
     ],
@@ -380,7 +380,7 @@ test("makeWorkflowsConfig: inline on_complete routine validates cleanly", () => 
       },
     ],
     starting_actions: [{ type: "qualify", status: "action-required" }],
-    actions: [{ type: "qualify", kind: "simple", action_group: "phase-1" }],
+    actions: [{ type: "qualify", kind: "check", action_group: "phase-1" }],
   };
   expect(() =>
     makeWorkflowsConfig(null, { workflows: [workflow] }),
@@ -400,7 +400,7 @@ test("makeWorkflowsConfig: legacy string on_complete fails with migration messag
       },
     ],
     starting_actions: [{ type: "qualify", status: "action-required" }],
-    actions: [{ type: "qualify", kind: "simple", action_group: "phase-1" }],
+    actions: [{ type: "qualify", kind: "check", action_group: "phase-1" }],
   };
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
     /on_complete is a string/,

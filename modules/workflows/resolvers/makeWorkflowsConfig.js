@@ -26,7 +26,7 @@ const WORKFLOW_FIELDS = [
   'action_groups',
 ];
 
-const ACTION_KINDS = ['form', 'simple', 'tracker'];
+const ACTION_KINDS = ['form', 'check', 'tracker'];
 
 const ACTION_STATUSES = [
   'not-required',
@@ -349,7 +349,7 @@ function validateAction(workflow, action) {
   if (!ACTION_KINDS.includes(action.kind)) {
     fail(
       workflow.type,
-      `${where} has unknown kind "${action.kind}" (expected form, simple, or tracker).`
+      `${where} has unknown kind "${action.kind}" (expected form, check, or tracker).`
     );
   }
 
@@ -359,10 +359,10 @@ function validateAction(workflow, action) {
   if (action.kind === 'tracker' && !action.tracker) {
     fail(workflow.type, `${where} has kind "tracker" but no tracker: block.`);
   }
-  if (action.kind === 'simple' && (action.form || action.tracker)) {
+  if (action.kind === 'check' && (action.form || action.tracker)) {
     fail(
       workflow.type,
-      `${where} has kind "simple" but defines form: or tracker:.`
+      `${where} has kind "check" but defines form: or tracker:.`
     );
   }
   if (action.form && action.tracker) {

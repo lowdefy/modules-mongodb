@@ -27,20 +27,20 @@ function makeWorkflowsConfig() {
       actions: [
         {
           type: 'qualify',
-          kind: 'simple',
+          kind: 'check',
           action_group: 'phase-1',
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
         {
           type: 'kickoff',
-          kind: 'simple',
+          kind: 'check',
           action_group: 'phase-2',
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
         {
           // A post-close required action — survives the sweep when non-blocked.
           type: 'invoice',
-          kind: 'simple',
+          kind: 'check',
           required_after_close: true,
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
@@ -160,7 +160,7 @@ async function seedAction({
   action_group = null,
   stage = 'action-required',
   workflow_id = 'wf-1',
-  kind = 'simple',
+  kind = 'check',
   extra = {},
 }) {
   await mongo.db.collection('actions').insertOne({
@@ -245,7 +245,7 @@ describe('post-close submit carve-out (D2)', () => {
     let a3 = await mongo.db.collection('actions').findOne({ _id: 'a3' });
     expect(a3.status[0].stage).toBe('action-required');
 
-    // A post-close submit on it succeeds (review-less simple action → done).
+    // A post-close submit on it succeeds (review-less check action → done).
     await SubmitWorkflowAction(
       buildContext({ request: { action_id: 'a3', signal: 'submit' } }),
     );
@@ -315,7 +315,7 @@ describe('tracker cascade', () => {
       _id: 'p-a',
       workflow_id: 'wf-parent',
       type: 'qualify',
-      kind: 'simple',
+      kind: 'check',
       key: null,
       action_group: null,
       status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }],

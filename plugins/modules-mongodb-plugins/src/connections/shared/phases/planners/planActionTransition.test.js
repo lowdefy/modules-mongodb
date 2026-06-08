@@ -67,10 +67,10 @@ test('form kind: submit with a review verb declared lands in-review (action-glob
   expect(result.doc.status[0].stage).toBe('in-review');
 });
 
-test('simple kind resolves through the form table (alias)', () => {
+test('check kind resolves through the form table (alias)', () => {
   const result = plan({
-    action: makeAction({ kind: 'simple' }),
-    actionConfig: makeConfig({ kind: 'simple' }),
+    action: makeAction({ kind: 'check' }),
+    actionConfig: makeConfig({ kind: 'check' }),
   });
   expect(result.doc.status[0].stage).toBe('done');
 });
@@ -147,9 +147,9 @@ test('links computation reads access/workflow_type off the composed doc, not the
   // Loaded action carries no access/workflow_type — only the planner's
   // denormalisation makes the links computable.
   const result = plan({
-    action: makeAction({ stage: 'blocked', kind: 'simple' }),
+    action: makeAction({ stage: 'blocked', kind: 'check' }),
     signal: 'unblock',
-    actionConfig: makeConfig({ kind: 'simple' }),
+    actionConfig: makeConfig({ kind: 'check' }),
   });
   expect(result.doc.demo.links.edit).toEqual({
     pageId: 'workflows/workflow-action-edit',
@@ -255,7 +255,7 @@ describe('upsert spawn', () => {
       source: 'auxiliary',
       upsert: true,
       key: 'k-1',
-      actionConfig: makeConfig({ type: 'install-step', kind: 'simple' }),
+      actionConfig: makeConfig({ type: 'install-step', kind: 'check' }),
       loadedWorkflow,
       entry_id,
       event_id,
@@ -281,7 +281,7 @@ describe('upsert spawn', () => {
       _id: 'new-1',
       workflow_id: 'wf-1',
       type: 'install-step',
-      kind: 'simple',
+      kind: 'check',
       key: 'k-1',
       action_group: null,
       status: [{ stage: 'action-required', event_id, created: now }],
@@ -352,7 +352,7 @@ describe('seedStage mode', () => {
       action: null,
       seedStage: 'action-required',
       key: null,
-      actionConfig: makeConfig({ type: 'install-step', kind: 'simple' }),
+      actionConfig: makeConfig({ type: 'install-step', kind: 'check' }),
       loadedWorkflow,
       entry_id,
       event_id,
@@ -377,7 +377,7 @@ describe('seedStage mode', () => {
     const result = seed({
       actionConfig: makeConfig({
         type: 'install-step',
-        kind: 'simple',
+        kind: 'check',
         status_map: {
           'action-required': {
             status_title: 'To do',

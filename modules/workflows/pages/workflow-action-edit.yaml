@@ -1,4 +1,4 @@
-# Shared simple-action edit page (part 17).
+# Shared check-action edit page (part 17).
 #
 # Addressed by ?action_id=<id>. Mirrors part 16's edit.yaml.njk adapted for
 # static (non-Nunjucks) emission. Carries the status selector with priority
@@ -54,7 +54,7 @@ _ref:
         - id: get_workflow
           type: Request
           params: get_workflow
-        # Step 5 (get_entity) — intentionally omitted on all simple pages (v1).
+        # Step 5 (get_entity) — intentionally omitted on all check pages (v1).
         # Step 6: role check — sets _state.action_allowed.
         - _ref:
             path: components/action_role_check.yaml
@@ -76,7 +76,7 @@ _ref:
               _request: get_action.status.0.stage
             comment: null
         # Step 8 (author-supplied pages.edit.events.onMount) — omitted on shared
-        # simple pages because static pages have no per-action page_config var.
+        # check pages because static pages have no per-action page_config var.
         # Same gap as workflow-action-view; tracked in part 27 / follow-up.
     blocks:
       - id: action_card
@@ -110,7 +110,7 @@ _ref:
               path: components/universal-fields/universal-fields.yaml
               vars:
                 mode: edit
-                kind: simple
+                kind: check
                 action_data:
                   assignees:
                     _state: fields.assignees
