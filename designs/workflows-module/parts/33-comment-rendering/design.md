@@ -93,7 +93,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 ### Module — `modules/workflows/`
 
 - **`pages/workflow-action-view.yaml`** (amend) — delete `comments_card` (+ `get_comment_events`, `comment_events_list`); add the shared `events-timeline` component filtered to the action.
-- **`templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`** (amend) — add the action-filtered `events-timeline` `_ref` to each generated form page (D6). There is no comments card to delete on this surface — the addition closes the gap where a form review comment would render nowhere. Additive and order-independent with [Part 39](../39-form-submit-buttons/design.md)'s button amendments to the same templates.
+- **`templates/edit.yaml.njk`, `templates/view.yaml.njk`, `templates/review.yaml.njk`, `templates/error.yaml.njk`** (amend) — add the action-filtered `events-timeline` `_ref` to each generated form page (D6). There is no comments card to delete on this surface — the addition closes the gap where a form review comment would render nowhere. Additive and order-independent with [Part 39](../_completed/39-form-submit-buttons/design.md)'s button amendments to the same templates.
 - **`templates/review.yaml.njk` + `pages/workflow-action-review.yaml`** (amend) — tighten the `request_changes` comment validate from `_ne: [comment, null]` to the fold-gate condition: `comment.text` non-empty or `comment.fileList` non-empty (D5), so a type-then-deleted mandatory comment fails validation at the input.
 
 ### Concept-spec amendments

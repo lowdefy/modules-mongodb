@@ -1,10 +1,10 @@
 # Review 1 — Reconciliation scope, visibility mechanism, and the new `view` bar
 
 Reviewed against the four shipped templates (`modules/workflows/templates/*.yaml.njk`),
-the FSM tables in [state-machine](../../../../workflows-module-concept/state-machine/design.md),
+the FSM tables in [state-machine](../../../../../workflows-module-concept/state-machine/design.md),
 the role-check primitive (`modules/workflows/components/action_role_check.yaml`), and the
-current state of the [ui](../../../../workflows-module-concept/ui/design.md) /
-[submit-pipeline](../../../../workflows-module-concept/submit-pipeline/design.md) concept docs.
+current state of the [ui](../../../../../workflows-module-concept/ui/design.md) /
+[submit-pipeline](../../../../../workflows-module-concept/submit-pipeline/design.md) concept docs.
 
 The signal-vocabulary mapping is sound: I verified the proposed `button_signal_sources.yaml`
 (design §D3, lines 126–134) against the form FSM table (state-machine §"Form kind", lines

@@ -155,7 +155,7 @@ Net client result: zero `_module.var: workflows_config` reads and zero client ac
 
 - [Part 47 — Per-workflow submit endpoints](../47-per-workflow-submit-endpoints/design.md) — sibling part from the same exploration; server/build-side endpoint-count scaling.
 - [Part 40 — Simple-action surfaces](../40-simple-action-surfaces/design.md) — paused; re-sequenced to depend on and consume this part's `GetAction` contract (D5/D8, Ripples).
-- [Part 39 — Form submit buttons](../39-form-submit-buttons/design.md) — shipped; its form template button bars are rewritten here to consume server-resolved buttons (Ripples).
+- [Part 39 — Form submit buttons](../_completed/39-form-submit-buttons/design.md) — shipped; its form template button bars are rewritten here to consume server-resolved buttons (Ripples).
 - [Part 42 — Timeline action cards](../_completed/42-timeline-action-cards/design.md) — the server-side selection precedent D1 extends; owner of the YAML stages D6 leaves in place.
 - [Part 38 — Engine rebuild](../_completed/38-engine-rebuild/design.md) — `evaluateVerbGate` / `computeEngineLinks` / `gateAllows` and the FSM table the read methods reuse and port.
 - [Part 34 — Action access model](../_completed/34-action-access-model/design.md) — verb vocabulary and access grammar the resolved buttons/access build on.
