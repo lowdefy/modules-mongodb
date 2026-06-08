@@ -30,3 +30,5 @@
       actionable rows — the handler never has to no-op a missing link. DECIDED.
   Open: does GetWorkflowOverview / GetActionGroupOverview also need _id/kind per action? Their surfaces render nav links (no modal), so probably not — confirm when those
   methods' projections are pinned (ties to item C).
+
+F. What about events timeline yaml request? 

@@ -69,21 +69,30 @@ readers never show the same datum side by side). **Current lean: keep the baked 
 pages** (i.e. drop my earlier amendment proposal) — but it's a judgement call; decide and either
 leave D3 as written or flip the form-alignment bullet to the doc read.
 
-## 4. Discovered gap — modal wiring needs a `kind` branch (D5 edit needed)
+## 4. Modal wiring needs a `kind` branch — RESOLVED 2026-06-08
 
-The bundled `actions-on-entity` wiring fires `simple-action-modal` for **every** clicked action,
-but a form action can't render in the simple surface (no form body). The wiring must branch:
-open the modal only for `kind: simple` (post-Part-43: `check`), navigate via `action.link`
-otherwise. `kind` is stamped on the doc (`planActionTransition.js:147`) so the
-`get-entity-workflows` response carries it — verify it survives the response projection, then
-amend D5's host-wiring contract and the `actions-on-entity` Files-changed row.
+**Decided.** The `onActionClick` host wiring branches on `action.kind`: `kind === 'check'` opens
+the modal (allowlist), every other kind navigates via `action.link`. `ActionSteps` (and the
+converged `EventsTimeline`, item 5) suppress the click for linkless rows, so the navigate branch
+never sees a null link. Applied to D5 (open-contract code block + `actions-on-entity` bundling
+prose + Files-changed).
 
-## 5. `EventsTimeline.onActionClick` payload mismatch (recorded, unowned)
+**Verify result (sharper than the note):** the `get-entity-workflows` `$group.$push` projects
+each action as `{ type, status, visible_verbs, message, link }` only — it carries **neither
+`kind` nor `_id`** (both are on the doc, `planActionTransition.js:144,147`, but dropped). So the
+fix is cross-part: `GetEntityWorkflows` (Part 46) must add `_id` + `kind` to the projection —
+recorded in [Part 46 `todo-discuss.md` item E](../46-debundle-workflow-config/todo-discuss.md).
 
-Already noted in design.md ("Event-timeline action items (Part 42 — shipped)"): the shipped
-event fires `{ pageId, urlQuery }`, not the action object, while the modal's open contract needs
-`action._id` (and now `kind`, per item 4). Someone must own the payload reconciliation — a small
-Part 42 follow-up or a Part 40 task. Not yet assigned.
+## 5. `EventsTimeline.onActionClick` payload mismatch — RESOLVED 2026-06-08 (pulled into Part 40)
+
+**Decided: converge the block now** (no consumers — workflows aren't live — so no migration
+concern). Both `ActionSteps` and `EventsTimeline` present the **same** `onActionClick(action)`
+contract: fire the action object (`{ _id, kind, status, link, … }`) when wired, navigate via
+`action.link` by default when unwired. The shipped `EventsTimeline` fired `{ pageId, urlQuery }`
+with no navigate-default (`EventsTimeline.js:404–407`); Part 40 changes it, and adds `kind` to
+`timeline_action_lookup.yaml`'s `$project` (it already projects `_id`). Applied to D5, the
+"Event-timeline action items" section, Files-changed, and Tests (e2e f/g). The timeline read's
+full engine-method port stays deferred (Part 46 D6).
 
 ## 6. Housekeeping after the review closes
 

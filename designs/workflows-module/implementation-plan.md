@@ -1,6 +1,6 @@
 # Workflows Module — Implementation Plan
 
-Live roadmap for the workflows module, ordered by dependency. [Part 45 — demo-rebuild](parts/45-demo-rebuild/design.md) (from-scratch demo config + happy-path e2e) is shipped via [PR #75](https://github.com/lowdefy/modules-mongodb/pull/75), but it landed ahead of its runtime prerequisites: the demo is authored in the post-rebuild grammar and won't build or run until [40 Band 1](parts/40-simple-action-surfaces/tasks/tasks.md#bands) (signal rewrite of the shared pages) and [43](parts/43-rename-simple-kind-to-check/design.md) (`kind: check` rename) land — those are the next milestone. Everything already delivered is collapsed into [Shipped](#shipped); the original wave-by-wave delivery record lives in git history and the `parts/_completed/` folders.
+> **Scope: order and status only.** This file tracks what's done, what's next, and what each item depends on. It does **not** carry rationale for sequencing or design decisions — that lives in the individual part designs and their review folders. Keep edits here terse: update the table, don't explain the change.
 
 Status legend: `✅ shipped` · `🚧 in progress` · `📐 design only` · `💤 deferred (_next)` · `❌ rejected (_rejected)` · empty = not started.
 
@@ -10,25 +10,10 @@ Dependency-ordered. Items with no entry in **After** have no unmet dependencies 
 
 | Work | Size | After | Status |
 | ---- | ---- | ----- | ------ |
-| [40 Band 1](parts/40-simple-action-surfaces/tasks/tasks.md#bands) — signal rewrite of the three shared pages (tasks 1, 3, 4) | ~half of M | — | |
-| [43 rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) — kind-only sweep (page renames already landed in 38 task 18) | S | 40 Band 1 | 📐 design only |
-| [24 universal-fields](parts/24-universal-fields/design.md) — real renderer + `UpdateActionFields` handler | M | — | |
-| [33 comment-rendering](parts/33-comment-rendering/design.md) | M | 24 (`UpdateActionFields` is its 2nd write site) | |
-| [40 Band 2](parts/40-simple-action-surfaces/tasks/tasks.md#bands) — in-context modal + `ActionSteps.onActionClick` + e2e supplements (tasks 2, 5–8) | ~half of M | 24, 33, 43 | |
+| [46 debundle-workflow-config](parts/46-debundle-workflow-config/design.md) — four engine read methods (`GetAction` + 3 overviews), server-side access/buttons | L–XL | — | 📐 design only |
+| [40 simple-action-surfaces](parts/40-simple-action-surfaces/design.md) — three shared pages → signals, shared surface, in-context modal, `ActionSteps.onActionClick` | M | 46 | tasks need rework for 46 |
 
-Sequencing constraints:
-
-- **The shipped demo (45) doesn't run yet.** It's authored in the post-rebuild grammar — `kind: check`, signal-driven shared pages — that the codebase doesn't satisfy: the resolver/engine still validate `kind: simple` (43), and the three shared `workflow-action-*` pages still fire `interaction:` while the rebuilt engine accepts only `signal:` payloads (40 Band 1; 38 tasks 15/19 dropped `interaction`/`current_status` from the wire). The demo build and its happy-path e2e go green when 40 Band 1 + 43 land.
-- **Only Band 1 of Part 40 blocks the demo** — without it, `kind: check` actions can't be driven. Band 2 (in-context modal, `ActionSteps.onActionClick`, e2e supplements) is sequenced after 24/33; the split is recorded in [40's tasks.md](parts/40-simple-action-surfaces/tasks/tasks.md#bands).
-- **43 precedes 40 Band 2's re-touch of the shared pages** (avoids churn on the same files) and must land before any real app onboards a workflow config.
-- **[Part 24 — universal-fields](parts/24-universal-fields/design.md) doesn't block the demo.** The component is a render-nothing stub the shared pages already `_ref` safely, and check actions are driven by signal buttons, not field editing. Until 24 lands, universal fields render nothing.
-
-## Design-only — unsequenced
-
-| #   | Part | Size | Status |
-| --- | ---- | ---- | ------ |
-| 36  | [extra-action-buttons](parts/36-extra-action-buttons/design.md) | S–M | needs signal-model reconciliation |
-| 41  | [notification-roles-model](parts/41-notification-roles-model/design.md) | TBD | ⚠️ STUB — rethink; supersedes part 34 D9 |
+Demo (45) builds red until 46 + 40 land.
 
 ## Deferred — `_next/` (slot in once their deps land)
 
@@ -36,9 +21,13 @@ Sequencing constraints:
 | --- | ---- | ---- | ------ |
 | 11  | [group-on-complete-fanout](parts/_next/11-group-on-complete-fanout/design.md) | S | 💤 |
 | 22  | [workflows-e2e-suite](parts/_next/22-workflows-e2e-suite/design.md) | M | 💤 |
+| 24  | [universal-fields](parts/_next/24-universal-fields/design.md) — real renderer + `UpdateActionFields` handler | M | 💤 |
 | 26  | [entity-data-contract](parts/_next/26-entity-data-contract/design.md) | M | 💤 |
 | 28  | [custom-action-kind](parts/_next/28-custom-action-kind/design.md) | M | 💤 |
 | 31  | [keyed-auto-unblock-fanout](parts/_next/31-keyed-auto-unblock-fanout/design.md) | S–M | 💤 draft / open for discussion |
+| 33  | [comment-rendering](parts/_next/33-comment-rendering/design.md) | M | 💤 |
+| 36  | [extra-action-buttons](parts/_next/36-extra-action-buttons/design.md) | S–M | 💤 needs signal-model reconciliation |
+| 41  | [notification-roles-model](parts/_next/41-notification-roles-model/design.md) | TBD | 💤 ⚠️ STUB — rethink; supersedes part 34 D9 |
 
 ## Shipped
 
@@ -79,5 +68,6 @@ Delivered in waves 0–7 plus follow-ons: two streams — engine in `plugins/mod
 | 38  | [engine-rebuild](parts/_completed/38-engine-rebuild/design.md) | all bands shipped — rebuilt every write entry point (Submit/Start/Cancel/Close + tracker cascade) into load → plan → commit with signals + per-kind FSM tables; carried Part 34's access model into code; task 20 superseded by Part 45; see [tasks.md](parts/_completed/38-engine-rebuild/tasks/tasks.md) |
 | 39  | [form-submit-buttons](parts/_completed/39-form-submit-buttons/design.md) | merged via [PR #77](https://github.com/lowdefy/modules-mongodb/pull/77) — form templates fire `signal:`; ships `enums/button_signal_sources.yaml` |
 | 42  | [timeline-action-cards](parts/_completed/42-timeline-action-cards/design.md) | merged via [PR #71](https://github.com/lowdefy/modules-mongodb/pull/71) — see the [implementation record](parts/_completed/42-timeline-action-cards/tasks/tasks.md#implementation-record) |
+| 43  | [rename-simple-kind-to-check](parts/43-rename-simple-kind-to-check/design.md) | merged via [PR #78](https://github.com/lowdefy/modules-mongodb/pull/78) — `kind: simple → check` vocabulary sweep |
 | 44  | [tracker-start-link](parts/44-tracker-start-link/design.md) | merged via [PR #76](https://github.com/lowdefy/modules-mongodb/pull/76) |
 | 45  | [demo-rebuild](parts/45-demo-rebuild/design.md) | merged via [PR #75](https://github.com/lowdefy/modules-mongodb/pull/75) — lead-onboarding demo config + cross-entity `company-setup` child + happy-path e2e; authored in post-rebuild grammar, so it won't build or run until 40 Band 1 + 43 land |
