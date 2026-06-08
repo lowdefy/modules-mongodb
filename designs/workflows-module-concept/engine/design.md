@@ -431,7 +431,7 @@ This is exactly the retry behaviour the idempotency guards are designed to provi
 
 ## Decision 4 — Signal-driven FSM transitions
 
-> Replaces the original priority-rule + `force: true` model. The canonical signal inventory and the per-kind FSM tables (form / simple / tracker) are owned by the [state-machine](../state-machine/design.md) sub-design; this section covers how the engine consumes them.
+> Replaces the original priority-rule + `force: true` model. The canonical signal inventory and the per-kind FSM tables (form / check / tracker) are owned by the [state-machine](../state-machine/design.md) sub-design; this section covers how the engine consumes them.
 
 Every status mutation is the result of a named **signal** fired against an action. The plugin's transition resolver (`shouldUpdate.js` → an FSM lookup) reads the action's `kind` and current `status[0].stage`, then looks up `transitions[kind][currentStatus][signal]`:
 
@@ -506,9 +506,9 @@ This collapses two reserved keys to zero. `makeWorkflowsConfig` no longer needs 
 
 `error` is purely an **author-driven** domain stage ([Part 29 § D1–D4](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md)). The engine never sets `error` itself — engine sub-step failures **throw**, and the throw surfaces as an API-level reject/error toast (submit-pipeline), not an action-status transition. The action does not pick up a synthetic `error` entry that nobody designed for.
 
-Entry paths into `error` (both form and simple kind):
+Entry paths into `error` (both form and check kind):
 
-1. **Pre-hook `error` signal.** The author-deliberate "this downstream action has failed" signal ([state-machine](../state-machine/design.md) inventory). A pre-hook fires `error` against another action via `actions: [{ type, signal: error }]`; the form/simple FSM accepts it from every non-terminal state (`action-required`, `in-progress`, `in-review`, `changes-required`, `blocked`) → `error`. This replaces the v0 pre-hook `actions: [{ ..., status: 'error' }]` return. (To fail the *current* submission, `:reject` / `throw` — not an `error` signal against self.) Failure context rides on the events-log entry via `event_overrides.metadata`.
+1. **Pre-hook `error` signal.** The author-deliberate "this downstream action has failed" signal ([state-machine](../state-machine/design.md) inventory). A pre-hook fires `error` against another action via `actions: [{ type, signal: error }]`; the form/check FSM accepts it from every non-terminal state (`action-required`, `in-progress`, `in-review`, `changes-required`, `blocked`) → `error`. This replaces the v0 pre-hook `actions: [{ ..., status: 'error' }]` return. (To fail the *current* submission, `:reject` / `throw` — not an `error` signal against self.) Failure context rides on the events-log entry via `event_overrides.metadata`.
 2. **External systems.** Backend microservices, scheduled lambdas, or other out-of-band writers push `error` directly (direct DB write). A follow-on injection API is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
 
 Status entries are uniform `{ stage, created, event_id }` — no polymorphic `reason` / `error_message` / `error_metadata` fields. The on-disk shape is identical regardless of which entry path was used.
