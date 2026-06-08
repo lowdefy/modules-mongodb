@@ -14,7 +14,7 @@ const properties = {
 };
 ```
 
-Part 32 drops the `interactions:` literal only. The `event_overrides:` literal stays — the `event:` channel survives (see the design's § Scope note and [Part 33](../../../33-comment-rendering/design.md)). So `emitEventOverrides`, the `EVENT_OVERRIDE_FIELDS` constant, and the `event_overrides:` property spread all remain untouched.
+Part 32 drops the `interactions:` literal only. The `event_overrides:` literal stays — the `event:` channel survives (see the design's § Scope note and [Part 33](../../../_next/33-comment-rendering/design.md)). So `emitEventOverrides`, the `EVENT_OVERRIDE_FIELDS` constant, and the `event_overrides:` property spread all remain untouched.
 
 Snapshot of the relevant code (current `makeWorkflowApis.js`):
 

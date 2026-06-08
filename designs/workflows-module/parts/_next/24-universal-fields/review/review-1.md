@@ -52,13 +52,13 @@ Per the contact-fields guide (`apps/demo/.claude/guides/contact-fields.md:33`), 
 
 ### 4. `user-avatar` component doesn't exist; the existing one is `profile-avatar` in user-account
 
-> **Resolved.** Part 24 now `_ref`s a new `user-avatar` component shipped by [part 24a](../../_completed/24a-user-account-selector-avatar/design.md) in the user-account module. Distinct from `profile-avatar` (which is a config fragment bound to the logged-in user and stays for the layout module's profile-menu slot). `user-avatar` takes a user-contacts doc via `vars.user` and renders picture + name.
+> **Resolved.** Part 24 now `_ref`s a new `user-avatar` component shipped by [part 24a](../../../_completed/24a-user-account-selector-avatar/design.md) in the user-account module. Distinct from `profile-avatar` (which is a config fragment bound to the logged-in user and stays for the layout module's profile-menu slot). `user-avatar` takes a user-contacts doc via `vars.user` and renders picture + name.
 
 The design says display mode renders "via the user-admin module's `user-avatar` component". `grep -r 'user-avatar' modules/` returns nothing. There is a `profile-avatar` component in `modules/user-account` (`designs/_completed/profile-menu 1/design.md:44`), but no `user-avatar` in user-admin. The design either needs to (a) name the existing component correctly and the module that ships it, or (b) commit to shipping a new avatar component as part of this part (and add it to "Component shipped").
 
 ### 5. `selector_assignees` duplicates an existing component without justification
 
-> **Resolved.** Dropped the planned `selector_assignees.yaml` request entirely. Part 24's edit mode reuses the shared `user-selector` component instead. [Part 24a](../../_completed/24a-user-account-selector-avatar/design.md) migrates that selector from user-admin to user-account (user-account is universally present across apps; user-admin is optional) and Part 24 declares the new home as a dependency. The "Module-shipped requests added" section now reads "None."
+> **Resolved.** Dropped the planned `selector_assignees.yaml` request entirely. Part 24's edit mode reuses the shared `user-selector` component instead. [Part 24a](../../../_completed/24a-user-account-selector-avatar/design.md) migrates that selector from user-admin to user-account (user-account is universally present across apps; user-admin is optional) and Part 24 declares the new home as a dependency. The "Module-shipped requests added" section now reads "None."
 
 The user-admin module already ships `components/user-selector.yaml` backed by `requests/get_users_for_selector.yaml`, which:
 
