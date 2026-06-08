@@ -107,6 +107,21 @@ type, read `…buttons.{signal}.visible` with a `default:`. No new resolver outp
 
 ### 3. The "single `_state.surface` namespace" doesn't survive the shared `action_role_check` component
 
+> **Resolved.** Relocation recorded explicitly. The shared `action_role_check` keeps writing its
+> per-verb map to **root** `action_allowed` — that target is fixed, since the component is `_ref`'d by
+> both the three simple pages and Part 39's four form templates, which read root. So each caller (the
+> three pages' `onMount` + the modal's open handler) runs it as-is and a following `SetState` copies the
+> output into the namespace: `surface.action_allowed: { _state: action_allowed }`. Chose the trailing
+> `SetState` over parameterising the component's key: the component is plain `.yaml`, so a configurable
+> key would force a `.yaml.njk` conversion + `_ref`-path edits in the four out-of-scope form templates
+> while *still* requiring every caller to pass the var — same per-caller cost, more blast radius, no
+> enforcement gain (so the "one correct way" framing didn't apply; finding #5's `state_path` precedent
+> doesn't carry because Part 24's renderer was already `.yaml.njk`). Recorded in D1 + D6 and Task 03/04
+> Notes/priming step. Also cut the stale "emits a **single boolean** / migration must land before"
+> framing in Tasks 03/04/tasks.md — the per-verb map already ships (`action_role_check.yaml` +
+> `evaluateVerbGate.js`, Part 38 task 8); aligned tasks.md's same-paragraph `action.link` claim with
+> #1's server-side resolution (Part 42 D5).
+
 D1's state contract puts everything under one namespace — `_state.surface.{action, fields,
 comment, action_allowed}` — and D2 gates on `_state: surface.action_allowed.edit`. But the
 shipped `components/action_role_check.yaml:13–15` is a `SetState` with a **hardcoded** target

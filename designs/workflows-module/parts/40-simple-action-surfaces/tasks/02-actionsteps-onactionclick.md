@@ -1,38 +1,43 @@
-# Task 2: Generic `onActionClick` event on the `ActionSteps` block (D5)
+# Task 2: `ActionSteps` block — generic `onActionClick` event (D5)
 
 ## Context
 
-The `actions-on-entity` component renders an entity's workflow actions via the `ActionSteps` block (`plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js`). Today each action row is a **hard `Link`** to `action.link.pageId` / `action.link.urlQuery` (`ActionSteps.js:162–171`) — clicking always navigates to the action page. There is no click event.
+Part 40 (D5) lets live working surfaces open a simple action **in place** via a modal instead of navigating. The mechanism is a **generic** event on the `ActionSteps` block: when a host wires `onActionClick`, the block fires it with the clicked action object **instead of** navigating; when not wired, the block navigates exactly as it does today. The block gains **no** workflow-surface knowledge — the event carries the action object and nothing else, keeping `ActionSteps`/workflows decoupled (the host app composes the modal + the wiring in `actions-on-entity`, Task 6).
 
-Part 40 adds an **in-context modal** so a user can open a simple action without a full page navigation. The decoupling rule (design D5): the block stays **generic** — it fires an `onActionClick(action)` event carrying the clicked action object and knows nothing about workflow surfaces. The host app page (e.g. `actions-on-entity`, Task 6) wires that event to open the modal. When the event is **not** wired, the block keeps its current behaviour and **navigates** — so notifications, overviews, and deep-links are unaffected and the change is backward-compatible.
+This is a self-contained plugin change. Nothing in the module depends on it until the `actions-on-entity` wiring (Task 6).
 
-The sibling `EventsTimeline` block already demonstrates the pattern (`EventsTimeline.js:399–417`): on click it calls `methods.triggerEvent({ name: "onActionClick", event: ... })`, and `meta.js` declares the event. Mirror that here, but the **event payload carries the full action object** (`action`), per D5 ("The event is generic — carries the action object").
+### Relevant current state
 
-`ActionSteps` has **no test file yet** — create `ActionSteps.test.js`.
+- **`plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js`** — each action row renders as a `<Link>` (lines 162–184) to `action.link.pageId` / `action.link.urlQuery` / `action.link.input`, `disabled` when `action.link` is absent/disabled, with `renderHtml` of `action.message` (including the `not-required` strikethrough) and a status-coloured `<Badge>`. `methods` is already destructured. The read-side link resolution (collapsing the engine's per-verb `links` map to the singular `action.link`) is server-side and unchanged ([Part 42 D5](../../_completed/42-timeline-action-cards/design.md)).
+- **`plugins/.../blocks/ActionSteps/meta.js`** — block meta with `cssKeys`; no `events` declared yet.
+- **Event-firing reference:** the sibling **`EventsTimeline`** block already fires an `onActionClick`-style event via `methods.triggerEvent` and declares it in its `meta.js`. Mirror that pattern — but here the event payload carries the **full action object** (`event: action`).
 
 ## Task
 
-1. **Fire the event when wired.** In `ActionSteps.js`, when `onActionClick` is wired (detectable via the block's `events`/`methods` — follow the `EventsTimeline` `methods.triggerEvent` pattern), make each action row call `methods.triggerEvent({ name: "onActionClick", event: action })` on click **instead of** navigating, where `action` is the clicked action object.
-2. **Navigate when not wired.** When `onActionClick` is **not** wired, keep the current default: render/behave as a `Link` to the action's link. (Per-verb link selection — choosing `action.links.{verb}` by the user's verbs — is [Part 34 D7]; this task preserves whatever link the block already reads. Do not implement verb selection here. See Notes.)
-3. **Declare the event** in `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/meta.js` under an `events:` map, e.g. `onActionClick: 'Triggered with the clicked action object when wired; the block fires it instead of navigating.'` (match the description shape used in `EventsTimeline/meta.js` and `FileManager/meta.js`).
-4. **Tests** — create `ActionSteps.test.js` covering both modes:
-   - event wired → clicking a row calls `triggerEvent` with the action object and does **not** navigate;
-   - event not wired → clicking navigates via the action link (no event fired).
+In `ActionSteps.js`, change the per-action rendering so that **when `onActionClick` is wired** the action is a clickable element that fires `methods.triggerEvent({ name: 'onActionClick', event: action })` and does **not** navigate; **when not wired** it renders the current `<Link>` (default, unchanged).
+
+1. **Fire when wired.** Detect whether `onActionClick` is registered using the same convention `EventsTimeline` uses (`methods.triggerEvent` / event-registration check). When wired, render the action label as a clickable element (keep the `<Badge>`, status colour, and `renderHtml` of `action.message` incl. the `not-required` strikethrough) whose click calls `triggerEvent` with the clicked `action`. Do not navigate.
+2. **Navigate when not wired.** Leave the existing `<Link>` path exactly as-is — `pageId`/`urlQuery`/`input`/`newTab`/`disabled` unchanged — so notifications, overviews, and deep-links are preserved (backward compatible).
+3. The group-title `<Link>` (lines 114–129) is **unchanged** — only per-action rows gain the event.
+4. **Declare the event** in `meta.js` under an `events:` map: `onActionClick` — fires with the clicked action object instead of navigating when wired (match the description shape used in `EventsTimeline/meta.js`).
+5. **Tests** in `ActionSteps.test.js` covering both modes: event wired → click calls `triggerEvent` with the action object and does not navigate; not wired → click navigates via the action link and fires no event.
 
 ## Acceptance Criteria
 
-- With `onActionClick` wired, clicking an action row fires `onActionClick` with the clicked `action` object as event data and does not navigate.
-- With `onActionClick` not wired, clicking an action row navigates via the action link exactly as before (backward-compatible).
+- With `onActionClick` wired, clicking an action fires `onActionClick` with the full action object as event data; no navigation occurs.
+- Without `onActionClick` wired, clicking navigates via `action.link` exactly as today (existing behaviour preserved).
 - `meta.js` declares the `onActionClick` event.
-- `ActionSteps.test.js` exists and covers both modes; the plugin test suite passes.
+- `ActionSteps.test.js` covers both modes; the plugin test suite passes.
+- The block has no workflow-surface knowledge — it only emits the generic action object.
 
 ## Files
 
-- `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js` — modify — fire `onActionClick(action)` when wired; navigate otherwise.
-- `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/meta.js` — modify — declare the `onActionClick` event.
-- `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.test.js` — create — cover both modes.
+- `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js` — modify — conditional event-vs-navigate on the per-action row.
+- `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/meta.js` — modify — declare `onActionClick`.
+- `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.test.js` — create/modify — cover both modes.
 
 ## Notes
 
-- **Per-verb link is Part 34's scope, not this task's.** The design's default-navigation branch ultimately uses the user-selected per-verb link `action.links.{verb}` ([Part 34 D7]). The block currently reads a single `action.link`. Keep using whatever link field the block reads today for the navigate branch; if Part 34 has already migrated the block to `action.links.{verb}` selection, preserve that. Either way this task only adds the **event-vs-navigate** branch.
-- The `EventsTimeline.onActionClick` event and the timeline action-items wiring belong to **Part 41**, not here. This task defines only the `ActionSteps` event; the modal component it ultimately opens is defined in Task 5 and wired in Task 6.
+- Per-verb link selection (`action.links.{verb}` → the singular `action.link`) is resolved **server-side** ([Part 42 D5](../../_completed/42-timeline-action-cards/design.md), shipped) — do not implement verb selection in the block. This task only adds the event-vs-navigate branch on top of the link the block already reads.
+- Build the plugin per the package build step so the demo/module pick up the change; `dist/` copies are generated — don't hand-edit them.
+- The `EventsTimeline.onActionClick` event + the timeline action-item wiring shipped with [Part 42](../../_completed/42-timeline-action-cards/design.md); this task defines only the `ActionSteps` event.

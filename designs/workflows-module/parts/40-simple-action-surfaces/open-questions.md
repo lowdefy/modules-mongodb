@@ -1,30 +1,27 @@
 # Open questions — Part 40 action review (paused 2026-06-05)
 
-Status snapshot for pickup. Review-2 findings: **#1, #2, #4, #5 resolved; #6 rejected; #3 open.**
+Status snapshot for pickup. Review-2 findings: **#1, #2, #3, #4, #5 resolved; #6 rejected** (#3 resolved 2026-06-08 — see §1).
 All resolutions are annotated in `review/review-2.md` and applied to `design.md` (plus ripple
 edits to Part 24, Part 33, and Part 46 OQ4). The items below are everything still pending,
 with the standing recommendation and the reasoning for each.
 
-## 1. Review-2 #3 — where `action_allowed` lives (last open finding)
+## 1. Review-2 #3 — where `action_allowed` lives — RESOLVED 2026-06-08
 
-D1 declares a single `_state.surface` namespace including `surface.action_allowed`; the shipped
-shared component `action_role_check.yaml` writes to a **hardcoded root** `action_allowed` key,
-which all form pages read.
+**Decided: keep it namespaced under `surface.action_allowed`.** The shared `action_role_check.yaml`
+keeps writing its per-verb map to root `action_allowed` (fixed — the form pages read it there); each
+of the surface's callers (the three pages' `onMount` + the modal's open handler) adds a `SetState`
+copying it into `surface.action_allowed`.
 
-**Recommendation (awaiting yes/no): keep the root key** — amend D1/D2 so the surface reads
-`_state: action_allowed.{verb}` like every other page, and drop `action_allowed` from the
-`surface.*` contract. Reasoning: `action_allowed` has **one writer** (the shared component, in
-both containers) and is computed output, not input state — the collision argument that kept
-`fields` namespaced (review-2 #5: live inputs inside a modal on a host page) doesn't apply.
-Parameterising the component's target key (the review's lean) relocates the opt-in-correctness
-drift rather than removing it; a trailing remap `SetState` is glue. Alternatives are in the
-finding body.
+Rationale: the modal renders inside a host entity page's state, and the module keeps **all** its vars
+in its own namespace rather than writing a module-internal key into the host's root — a structural
+namespace-hygiene rule, not a per-var collision judgement. This overrides the Friday paused-session
+lean toward reading root (which under-weighted host-namespace ownership at the end of a long context).
+Applied to D1/D2/D5/D6 and tasks 03/04/tasks.md; annotated in review-2 #3 and review-3 #4.
 
-Also folded into this resolution: cut the stale "Part 34 sequencing" blockquote claim that the
-per-verb `action_allowed` migration "must land before this part" — it shipped (commit 68b9b09,
-`action_role_check.yaml` + `evaluateVerbGate.js` write the per-verb map today). The blockquote's
-"single `action.link`" framing is also stale post-#1 (the singular link is now legitimately
-server-resolved).
+Stale-caveat cleanup folded in (confirmed by review-3 #5): the "Part 34 must land before" framing in
+tasks 03/04/tasks.md is cut — the per-verb `action_allowed` map shipped (commit 68b9b09,
+`action_role_check.yaml` + `evaluateVerbGate.js`), and the "single `action.link`" framing is stale
+post-#1 (the singular link is now legitimately server-resolved).
 
 ## 2. Part 46 reconciliation package (proposed, awaiting approval)
 
