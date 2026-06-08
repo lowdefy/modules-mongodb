@@ -2,7 +2,7 @@
 
 ## Context
 
-The emitted per-workflow API payloads must carry the new signal model instead of the old `force` flag, so the rebuilt Submit handler receives `signal`. This builds on task 6's id-naming edits to `makeWorkflowApis.js` (same file, different concern — payload mapping). It gates the demo rebuild (task 20 → [Part 45](../../../45-demo-rebuild/design.md)) and the Submit handler's input contract.
+The emitted per-workflow API payloads must carry the new signal model instead of the old `force` flag, so the rebuilt Submit handler receives `signal`. This builds on task 6's id-naming edits to `makeWorkflowApis.js` (same file, different concern — payload mapping). It gates the demo rebuild (task 20 → [Part 45](../../45-demo-rebuild/design.md)) and the Submit handler's input contract.
 
 ## Task
 

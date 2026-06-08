@@ -2,7 +2,7 @@
 
 The demo app's notifications module is wired for display only: the bell, inbox, and deep-link pages all exist, but the `send_routine` var is commented out and the routine file is dead config from a previous architecture, so nothing ever inserts a notification document. This design rewrites the demo's `send_routine` to handle three event types — the workflow quote approval, and the two user-invite events (mocked as inbox docs instead of emails) — inserting documents shaped like the production notification pipeline's docs, minus all email fields. It also wires the `enums.event_types` global the inbox surfaces depend on, which the demo is currently missing entirely.
 
-This supersedes [Part 45 task 06](../workflows-module/parts/45-demo-rebuild/tasks/06-notifications-send-routine.md) (one wired notification), widening its scope to the invite mocks, the production doc schema, and the enums global.
+This supersedes [Part 45 task 06](../workflows-module/parts/_completed/45-demo-rebuild/tasks/06-notifications-send-routine.md) (one wired notification), widening its scope to the invite mocks, the production doc schema, and the enums global.
 
 ## Proposed change
 
@@ -175,5 +175,5 @@ global:
 
 ## Related
 
-- Supersedes: [workflows-module Part 45, task 06](../workflows-module/parts/45-demo-rebuild/tasks/06-notifications-send-routine.md); extends Part 45 design item 9.
+- Supersedes: [workflows-module Part 45, task 06](../workflows-module/parts/_completed/45-demo-rebuild/tasks/06-notifications-send-routine.md); extends Part 45 design item 9.
 - E2E ownership: the happy-path assertion (approve → submitter notification) stays with Part 45 task 08; in the e2e flow submitter and approver are the same mock session user.

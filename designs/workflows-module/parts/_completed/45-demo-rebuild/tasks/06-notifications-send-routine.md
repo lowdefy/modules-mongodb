@@ -1,6 +1,6 @@
 # Task 6: Wire the demo notifications `send_routine` — SUPERSEDED
 
-**This task is superseded by [`designs/demo-notifications/design.md`](../../../../demo-notifications/design.md).**
+**This task is superseded by [`designs/demo-notifications/design.md`](../../../../../demo-notifications/design.md).**
 
 The original scope (one wired notification: `action-approve` × `send-quote` → inbox doc for the quote submitter) is carried over there unchanged, widened with:
 
