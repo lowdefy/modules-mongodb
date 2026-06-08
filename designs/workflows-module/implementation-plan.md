@@ -12,6 +12,7 @@ Dependency-ordered. Items with no entry in **After** have no unmet dependencies 
 | ---- | ---- | ----- | ------ |
 | [46 debundle-workflow-config](parts/46-debundle-workflow-config/design.md) — four engine read methods (`GetAction` + 3 overviews), server-side access/buttons | L–XL | — | 📐 design only |
 | [40 simple-action-surfaces](parts/40-simple-action-surfaces/design.md) — three shared pages → signals, shared surface, in-context modal, `ActionSteps.onActionClick` | M | 46 | tasks need rework for 46 |
+| [48 render-config-off-connection](parts/48-render-config-off-connection/design.md) — `status_map`/`event_overrides` off the blob onto per-workflow write endpoints via `tracker.child_type` trace; unlocks `internal_mirror_*` overrides; supersedes 47 | L | — | 📐 design only — OQ1 (Start/Cancel/Close generic ease-of-use) open |
 
 Demo (45) builds red until 46 + 40 land.
 
