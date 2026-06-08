@@ -150,6 +150,17 @@ Both workflow actions and adhoc tasks use the `events` module's `new-event` API 
 
 A single timeline component can render events filtered by `action_id` for both streams, identical UI, identical write path. No new comment storage, no parallel comment model.
 
+### Timeline action cards are cross-stream — but task auth/links are the tasks module's job
+
+[Part 46](../../workflows-module/parts/46-debundle-workflow-config/design.md) ports the events-timeline action-card lookup into a cross-stream engine method (`GetEventsTimeline`): it enriches a card for *any* action referenced by an event, branching on `workflow_id`. Workflow actions get the full treatment (verb-gate access filter + engine link); non-workflow actions (`workflow_id: null` tasks) **pass through** on the shared display fields — `status` and `<app-slug>.message`, which Decision 1 already has tasks write into the same fields workflow actions use — so a task card renders with **zero** workflow logic.
+
+Part 46 deliberately does **not** build task-specific timeline behaviour (none exists yet, no task docs exist). Two things become the **tasks module's** responsibility when it ships, resolved on the tasks side and **not** injected into the workflows `GetEventsTimeline` method (so the two access models stay separate, per "Access model" below):
+
+- **Access filtering for task cards** — `GetEventsTimeline` applies no access filter to pass-through cards; the tasks module decides how task cards are gated (doc-level: creator/assignees/team).
+- **Links for task cards** — workflow cards carry an engine link; task cards need a `/tasks/view` link the workflows engine has no business computing.
+
+The constraint Part 46 honours now is only the one this plan already mandates: don't bake a workflow-only (`workflow_id != null`) assumption into the shared timeline path.
+
 ## Access model — different shapes, no overlap
 
 Workflow actions have a config-driven access model: `access.{app_name}` is a per-app map of verb → role-gate (`access.{app_name}.{verb}: true | [roles]`, verbs `view` / `edit` / `review` / `error`; no action-wide role list). The workflows engine enforces it per-verb at submit time (Part 34).
