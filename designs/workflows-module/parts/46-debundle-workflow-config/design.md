@@ -195,7 +195,7 @@ Net client result: zero `_module.var: workflows_config` reads and zero client ac
 
 ## Related
 
-- [Part 47 — Per-workflow submit endpoints](../47-per-workflow-submit-endpoints/design.md) — sibling part from the same exploration; server/build-side endpoint-count scaling.
+- [Part 47 — Per-workflow submit endpoints](../_rejected/47-per-workflow-submit-endpoints/design.md) — sibling part from the same exploration; server/build-side endpoint-count scaling.
 - [Part 40 — Check-action surfaces](../40-simple-action-surfaces/design.md) — paused; re-sequenced to depend on and consume this part's `GetWorkflowAction` contract (D5/D8, Ripples).
 - [Part 39 — Form submit buttons](../_completed/39-form-submit-buttons/design.md) — shipped; its form template button bars are rewritten here to consume server-resolved buttons (Ripples).
 - [Part 42 — Timeline action cards](../_completed/42-timeline-action-cards/design.md) — the server-side selection precedent D1 extends; its `timeline_action_lookup` YAML is ported into `GetEventsTimeline` and deleted here (D6).

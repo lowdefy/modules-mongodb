@@ -81,7 +81,7 @@ prose + Files-changed).
 each action as `{ type, status, visible_verbs, message, link }` only — it carries **neither
 `kind` nor `_id`** (both are on the doc, `planActionTransition.js:144,147`, but dropped). So the
 fix is cross-part: `GetEntityWorkflows` (Part 46) must add `_id` + `kind` to the projection —
-recorded in [Part 46 `todo-discuss.md` item E](../46-debundle-workflow-config/todo-discuss.md).
+recorded in [Part 46 `todo-discuss.md` item E](../46-debundle-workflow-config/review/todo-discuss.md).
 
 ## 5. `EventsTimeline.onActionClick` payload mismatch — RESOLVED 2026-06-08 (pulled into Part 40)
 
