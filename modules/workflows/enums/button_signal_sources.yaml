@@ -1,5 +1,5 @@
 # enums/button_signal_sources.yaml — source-stages for each button-surfaced signal
-# (form and simple kinds share this table; derived from the FSM in shared/fsm/tables.js)
+# (form and check kinds share this table; derived from the FSM in shared/fsm/tables.js)
 submit:
   - action-required
   - in-progress

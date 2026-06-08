@@ -1,4 +1,4 @@
-# Shared simple-action review page (part 17).
+# Shared check-action review page (part 17).
 #
 # Addressed by ?action_id=<id>. Mirrors part 16's review.yaml.njk adapted for
 # static (non-Nunjucks) emission. Reviewers approve or request changes; no
@@ -50,7 +50,7 @@ _ref:
         - id: get_workflow
           type: Request
           params: get_workflow
-        # Step 5 (get_entity) — intentionally omitted on all simple pages (v1).
+        # Step 5 (get_entity) — intentionally omitted on all check pages (v1).
         # Step 6: role check — sets _state.action_allowed.
         - _ref:
             path: components/action_role_check.yaml
@@ -64,7 +64,7 @@ _ref:
           params:
             comment: null
         # Step 8 (author-supplied pages.review.events.onMount) — omitted on
-        # shared simple pages; same gap as workflow-action-view / workflow-action-edit.
+        # shared check pages; same gap as workflow-action-view / workflow-action-edit.
     blocks:
       - id: action_card
         type: Card
@@ -129,7 +129,7 @@ _ref:
               path: components/universal-fields/universal-fields.yaml
               vars:
                 mode: display
-                kind: simple
+                kind: check
                 action_data:
                   assignees:
                     _request: get_action.assignees
