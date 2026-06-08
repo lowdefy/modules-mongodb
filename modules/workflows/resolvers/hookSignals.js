@@ -7,7 +7,7 @@
 // Dev-rebuild cache note: the dev-rebuild cache-bust query applies only to the
 // entry file. Edits to this shared module require a build restart in dev.
 
-// Submit-time signal names. `submit` covers form/simple direct submission;
+// Submit-time signal names. `submit` covers form/check direct submission;
 // `progress` is the form pre-review step (task 12). The remaining four are
 // review-outcome signals (D12 rename from old interaction names).
 export const HOOK_SIGNALS = [

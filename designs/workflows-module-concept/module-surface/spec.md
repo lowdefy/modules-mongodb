@@ -21,7 +21,7 @@ exports:
     - id: action-view # generated when `view` verb key present in app `access` map
     - id: action-review # generated when `review` verb key present in app `access` map
     - id: action-error # generated when `error` verb key present in app `access` map
-    # Shared simple-action pages
+    # Shared check-action pages
     - id: workflow-action-edit
     - id: workflow-action-view
     - id: workflow-action-review
@@ -236,4 +236,4 @@ Per-action `{workflow_type}-{action_type}-submit` endpoints are resolver-emitted
 
 ## Risk
 
-- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / simple action (`{workflow_type}-{action_type}-submit`) plus four operational APIs. If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Current shape stays extensible (optional fields default to no-op).
+- **Submit endpoint surface stability.** v1 ships one resolver-generated endpoint per form / check action (`{workflow_type}-{action_type}-submit`) plus four operational APIs. If real apps surface complex submit flows that don't fit the pre/post hook contract, apps extend the pre-hook return shape (additional `actions[]` entries, `event_overrides`, `form_overrides`) or wire post-hook follow-up writes; the module adds extension fields additively. Current shape stays extensible (optional fields default to no-op).

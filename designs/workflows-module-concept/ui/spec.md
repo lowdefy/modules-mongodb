@@ -1,6 +1,6 @@
 # Workflows UI — Spec
 
-Per-action page generation, templates, simple-action pages, and entity-page UI components. Full rationale in [design.md](designs/workflows-module-concept/ui/design.md); this file carries only the committed decisions.
+Per-action page generation, templates, check-action pages, and entity-page UI components. Full rationale in [design.md](designs/workflows-module-concept/ui/design.md); this file carries only the committed decisions.
 
 ## Per-action page generation
 
@@ -15,7 +15,7 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 | Kind      | Pages generated                                                                                                                                                                                                                                                               |
 | --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb key is present in the action's `access.{app_name}` map. All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. |
-| `simple`  | None (uses shared `workflow-action-edit` / `workflow-action-view` / `workflow-action-review`)                                                                                                                                                                                                            |
+| `check`   | None (uses shared `workflow-action-edit` / `workflow-action-view` / `workflow-action-review`)                                                                                                                                                                                                            |
 | `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                  |
 
 ### Form-action page YAML shape
@@ -72,13 +72,13 @@ The `-error` page is gated identically to the other verbs: emitted iff the `erro
 
 These are the *button-surfaced* signals (the "interactions"); the FSM also accepts engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) that no template surfaces. On click, each button (1) fires the matching `pages.{verb}.events.{handler}` author-supplied event (for page-state work — set state, fire requests, validate), then (2) calls `{workflow_type}-{action_type}-submit` with `signal: <name>` and the standard payload (`form`, `form_review`, `fields`, `current_key`). Authors who need pre-write logic register a pre-hook (`hooks.{signal}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
 
-**Static simple-action pages** at `pages/`:
+**Static check-action pages** at `pages/`:
 
-- `pages/workflow-action-edit.yaml` — `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), and the template-shipped signal buttons (`submit`, `progress`, `not_required` — the same bar `edit.yaml.njk` ships; see Decision 7). **No status selector** — simple actions advance through the same nullary signal buttons as form actions ([state-machine](../state-machine/design.md) "Simple kind"). The `submit` button calls `{workflow_type}-{action_type}-submit` with `signal: submit` (nullary — no `target_status`; the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions), `fields:` block, `form:` (empty for simple actions), and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` before the event hits the events module).
+- `pages/workflow-action-edit.yaml` — `assignees` multi-select, `due_date` picker, `description` text input, comment field (rich text), and the template-shipped signal buttons (`submit`, `progress`, `not_required` — the same bar `edit.yaml.njk` ships; see Decision 7). **No status selector** — check actions advance through the same nullary signal buttons as form actions ([state-machine](../state-machine/design.md) "Check kind"). The `submit` button calls `{workflow_type}-{action_type}-submit` with `signal: submit` (nullary — no `target_status`; the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions), `fields:` block, `form:` (empty for check actions), and a top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` before the event hits the events module).
 - `pages/workflow-action-view.yaml` — action header (title from action YAML, current status badge), universal-fields display, status timeline (from action's `status` history), comments timeline (events with `metadata.comment` populated for this `action_id`).
-- `pages/workflow-action-review.yaml` — action header + universal-fields display (same shape as `workflow-action-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `{workflow_type}-{action_type}-submit` with `signal: approve` / `signal: request_changes`; the simple FSM resolves target status to `done` / `changes-required` respectively. The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
+- `pages/workflow-action-review.yaml` — action header + universal-fields display (same shape as `workflow-action-view`) plus the template-shipped `approve` / `request_changes` button band and an optional comment field. The buttons call `{workflow_type}-{action_type}-submit` with `signal: approve` / `signal: request_changes`; the check FSM resolves target status to `done` / `changes-required` respectively. The comment, if entered, rides as a top-level `comment` field in the payload; the resolver-emitted API maps it to `event.metadata.comment`.
 
-All three simple-action pages take `?action_id=<id>` as a URL query. Apps don't override these pages — simple actions intentionally share one experience per verb. Apps that need different UX use form actions instead.
+All three check-action pages take `?action_id=<id>` as a URL query. Apps don't override these pages — check actions intentionally share one experience per verb. Apps that need different UX use form actions instead.
 
 **Workflow overview page** at `pages/workflow-overview.yaml`:
 
@@ -96,7 +96,7 @@ All three simple-action pages take `?action_id=<id>` as a URL query. Apps don't 
 
 ### Layout-module composition (all module-shipped pages)
 
-Every page the module ships — generated per-action pages, shared simple-action pages, and the shared workflow-overview page — wraps content in the layout module's components. Hard `layout` dependency in `module.lowdefy.yaml` ensures the host app pulls it in.
+Every page the module ships — generated per-action pages, shared check-action pages, and the shared workflow-overview page — wraps content in the layout module's components. Hard `layout` dependency in `module.lowdefy.yaml` ensures the host app pulls it in.
 
 **Canonical page shape:**
 
@@ -122,7 +122,7 @@ _ref:
 
 | Layout component          | Where                                                                                                                                         |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| `layout.page`             | Top-level wrapper of every module-shipped page (form-action `edit`/`view`/`review`/`error`, simple-action `edit`/`view`/`review`, `workflow-overview`) |
+| `layout.page`             | Top-level wrapper of every module-shipped page (form-action `edit`/`view`/`review`/`error`, check-action `edit`/`view`/`review`, `workflow-overview`) |
 | `layout.card`             | Each content section — form card, info card, action card on the overview page                                                                 |
 | `layout.floating-actions` | Sticky submit / approve / request-changes bar on `-edit` and `-review` pages                                                                  |
 
@@ -193,7 +193,7 @@ Apps that need additional buttons add them via `formFooter:` with their own `eve
 Actions declaring `key:` generate the same set of per-verb pages as single-instance actions — one `-edit` / `-view` / `-review` / `-error` per action type, not per instance.
 
 - **Page ID:** `{workflow_type}-{action_type}-{verb}`. No key segment.
-- **Instance selection:** via `?action_id=<id>` URL query (same as simple-action pages).
+- **Instance selection:** via `?action_id=<id>` URL query (same as check-action pages).
 - **Form-state path:** `form_data.{action_type}.{key}.{field}` on the workflow doc; `key` sourced from `_request: get_action.key`.
 - **URL contract:** status-map link cells use `urlQuery: { action_id: true }` only.
 - **In `actions-on-entity`:** instanced actions render as N rows within their `action_group`, one per instance. Each row uses its own `status_map` cell with per-instance message templating.
@@ -203,22 +203,22 @@ Actions declaring `key:` generate the same set of per-verb pages as single-insta
 Universal action fields (`assignees`, `due_date`, `description`) render differently per kind:
 
 - **Form action's edit page**: header band above the form schema.
-- **Simple action's edit page**: primary content (signal buttons and comment field sit below).
+- **Check action's edit page**: primary content (signal buttons and comment field sit below).
 - **Tracker action inline display**: small badges next to the link in `actions-on-entity`.
 
 Updates flow through `{workflow_type}-{action_type}-submit` like any other action change. The template-shipped button composes the `fields:` payload from form-state plus an optional top-level `comment` field (the resolver-emitted API maps it to `event.metadata.comment` — see part 13 design § Comment mapping).
 
 ## Signal buttons on `workflow-action-edit` (no status selector)
 
-The v0 status selector is **removed** ([state-machine](../state-machine/design.md) "Simple kind", review #6). A simple action is a form action with no `form:` body; its edit page surfaces the **same nullary signal buttons as the form edit template**, not a status dropdown:
+The v0 status selector is **removed** ([state-machine](../state-machine/design.md) "Check kind", review #6). A check action is a form action with no `form:` body; its edit page surfaces the **same nullary signal buttons as the form edit template**, not a status dropdown:
 
 - **Button bar:** `submit`, `progress`, `not_required` (the same bar `edit.yaml.njk` ships). `submit` is nullary — the FSM resolves `in-review` vs `done` from the action's `review` verb, exactly as for form actions; the caller supplies no target. `progress` ("mark started") re-saves in `in-progress` without advancing. `not_required` lands `not-required`.
 - Each button only renders when the FSM lists an outgoing transition for it from the action's current state — a button whose signal the current state doesn't accept is hidden (same gating the form templates apply). No "pick any status" affordance exists.
-- There is no `force: true` escape hatch in the UI — migrations and admin overrides are out-of-band direct DB writes (engine "Signal-driven FSM transitions"). Pushing a simple action straight to `blocked` or `error` is a pre-hook `block` / `error` cascade from elsewhere, not a self-set.
+- There is no `force: true` escape hatch in the UI — migrations and admin overrides are out-of-band direct DB writes (engine "Signal-driven FSM transitions"). Pushing a check action straight to `blocked` or `error` is a pre-hook `block` / `error` cascade from elsewhere, not a self-set.
 
 Buttons hidden at render time still get FSM-checked server-side: a submission the FSM doesn't accept (e.g. a concurrent stage push from another user the local UI didn't see) resolves to an undefined cell and no-ops; the page reflects the engine's resolved state.
 
-**Error recovery for simple actions is a follow-on.** A simple action can land in `error` via a pre-hook `error` cascade, but no simple page ships an `error` surface today (a `simple-error` page vs. a `resolve_error` button on `workflow-action-view` is open — see Open Questions); v1 ships no `simple-error` page.
+**Error recovery for check actions is a follow-on.** A check action can land in `error` via a pre-hook `error` cascade, but no check page ships an `error` surface today (a `check-error` page vs. a `resolve_error` button on `workflow-action-view` is open — see Open Questions); v1 ships no `check-error` page.
 
 ## Entity-page UI components
 

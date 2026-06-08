@@ -34,19 +34,19 @@ function makeWorkflowsConfig({ withGroups = false, startingActions } = {}) {
       actions: [
         {
           type: 'a',
-          kind: 'simple',
+          kind: 'check',
           ...(withGroups ? { action_group: 'phase-1' } : {}),
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
         {
           type: 'b',
-          kind: 'simple',
+          kind: 'check',
           ...(withGroups ? { action_group: 'phase-1' } : {}),
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
         {
           type: 'c',
-          kind: 'simple',
+          kind: 'check',
           ...(withGroups ? { action_group: 'phase-2' } : {}),
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
@@ -67,7 +67,7 @@ function makeParentChildConfig() {
       actions: [
         {
           type: 'a',
-          kind: 'simple',
+          kind: 'check',
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
         {
@@ -264,7 +264,7 @@ describe('seeded drafts', () => {
     expect(byType.a.workflow_type).toBe('onboarding'); // denormalised
   });
 
-  test('seeded simple-kind drafts carry task-18 workflow-action-* engine links', async () => {
+  test('seeded check-kind drafts carry task-18 workflow-action-* engine links', async () => {
     await StartWorkflow(
       buildContext({
         request: {
@@ -275,7 +275,7 @@ describe('seeded drafts', () => {
       }),
     );
     const a = await mongo.db.collection('actions').findOne({ type: 'a' });
-    // action-required stage: view + edit pages exist for simple kind.
+    // action-required stage: view + edit pages exist for check kind.
     expect(a['test-app'].links.view).toEqual({
       pageId: 'workflows/workflow-action-view',
       urlQuery: { action_id: a._id },
@@ -415,7 +415,7 @@ describe('started as a tracker child', () => {
       _id: 'p-a',
       workflow_id: 'wf-parent',
       type: 'a',
-      kind: 'simple',
+      kind: 'check',
       key: null,
       action_group: null,
       status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }],

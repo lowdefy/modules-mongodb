@@ -2,12 +2,12 @@ import computeEngineLinks from './computeEngineLinks.js';
 
 const ENTRY = 'workflows';
 
-test('simple kind at action-required: view+edit links, review/error null', () => {
+test('check kind at action-required: view+edit links, review/error null', () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,
     action: {
       _id: 'a1',
-      kind: 'simple',
+      kind: 'check',
       status: [{ stage: 'action-required' }],
       access: { demo: { view: true, edit: true } },
     },
@@ -25,7 +25,7 @@ test('verb the slug does not declare is null', () => {
     entry_id: ENTRY,
     action: {
       _id: 'a1',
-      kind: 'simple',
+      kind: 'check',
       status: [{ stage: 'action-required' }],
       access: { customer: { view: true } },
     },
@@ -39,7 +39,7 @@ test('does NOT consult role gates — an array gate still yields a link', () => 
     entry_id: ENTRY,
     action: {
       _id: 'a1',
-      kind: 'simple',
+      kind: 'check',
       status: [{ stage: 'action-required' }],
       // gate is a role list the (absent) user could never satisfy — irrelevant
       // to link computation; only verb-key presence matters.
@@ -54,7 +54,7 @@ test('in-review exposes review (declared), nulls edit', () => {
     entry_id: ENTRY,
     action: {
       _id: 'a1',
-      kind: 'simple',
+      kind: 'check',
       status: [{ stage: 'in-review' }],
       access: { demo: { view: true, edit: true, review: true } },
     },
@@ -63,17 +63,17 @@ test('in-review exposes review (declared), nulls edit', () => {
   expect(links.demo.edit).toBeNull();
 });
 
-test('error stage: simple kind error verb maps to workflow-action-view (no error page exists)', () => {
+test('error stage: check kind error verb maps to workflow-action-view (no error page exists)', () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,
     action: {
       _id: 'a1',
-      kind: 'simple',
+      kind: 'check',
       status: [{ stage: 'error' }],
       access: { demo: { view: true, error: true } },
     },
   });
-  // Per review-14 #4: simple kind has no error page; recovery is a
+  // Per review-14 #4: check kind has no error page; recovery is a
   // resolve_error button on the view page, so the error verb links there too.
   expect(links.demo.error.pageId).toBe('workflows/workflow-action-view');
   expect(links.demo.view.pageId).toBe('workflows/workflow-action-view');
@@ -85,7 +85,7 @@ test('blocked / not-required stages produce all-null cells', () => {
       entry_id: ENTRY,
       action: {
         _id: 'a1',
-        kind: 'simple',
+        kind: 'check',
         status: [{ stage }],
         access: { demo: { view: true, edit: true } },
       },
@@ -284,7 +284,7 @@ test('reserved access keys are not treated as slugs', () => {
     entry_id: ENTRY,
     action: {
       _id: 'a1',
-      kind: 'simple',
+      kind: 'check',
       status: [{ stage: 'action-required' }],
       access: { demo: { view: true }, roles: ['x'], notification_roles: ['y'] },
     },

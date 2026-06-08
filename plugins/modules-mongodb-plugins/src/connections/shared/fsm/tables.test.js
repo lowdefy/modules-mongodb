@@ -151,8 +151,8 @@ test('tracker table matches state-machine.md exactly', () => {
   assertTableExhaustive(FSM_TABLES.tracker, EXPECTED_TRACKER, TRACKER_SIGNALS);
 });
 
-test('simple is the form table by object identity (not a copy)', () => {
-  expect(FSM_TABLES.simple).toBe(FSM_TABLES.form);
+test('check is the form table by object identity (not a copy)', () => {
+  expect(FSM_TABLES.check).toBe(FSM_TABLES.form);
 });
 
 test('every kind has a none creation row; tracker births only via activate/block', () => {

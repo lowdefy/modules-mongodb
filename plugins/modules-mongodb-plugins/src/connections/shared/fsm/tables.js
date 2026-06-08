@@ -28,11 +28,11 @@ export function hasReview(actionConfig) {
 }
 
 // The `submit` function cell: in-review iff the action declares a review verb,
-// else done. Same rule for form and simple kinds.
+// else done. Same rule for form and check kinds.
 const submitTarget = ({ actionConfig }) =>
   hasReview(actionConfig) ? 'in-review' : 'done';
 
-// --- Form kind (inherited by `simple` via the alias below). -----------------
+// --- Form kind (inherited by `check` via the alias below). -----------------
 const form = {
   // Creation source state — only reachable via the upsert-spawn path (task 10).
   none: {
@@ -136,10 +136,10 @@ const tracker = {
 export const FSM_TABLES = {
   form,
   tracker,
-  // `simple` is IDENTICAL to form — aliased by object identity, never a copy,
-  // so a future edit to `form` can't silently diverge from `simple`
-  // (state-machine.md "Simple kind"; CLAUDE.md "One correct way").
-  simple: form,
+  // `check` is IDENTICAL to form — aliased by object identity, never a copy,
+  // so a future edit to `form` can't silently diverge from `check`
+  // (state-machine.md "Check kind"; CLAUDE.md "One correct way").
+  check: form,
 };
 
 export default FSM_TABLES;

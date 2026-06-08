@@ -36,7 +36,7 @@ Connection structure: see [engine spec](../engine/spec.md) for the canonical `sr
 
 ## Per-action `{workflow_type}-{action_type}-submit` Api (resolver-emitted)
 
-`makeWorkflowApis` (action-authoring Decision 6) emits one Lowdefy Api per form / simple action. Shape:
+`makeWorkflowApis` (action-authoring Decision 6) emits one Lowdefy Api per form / check action. Shape:
 
 ```yaml
 id: {workflow_type}-{action_type}-submit
@@ -75,7 +75,7 @@ routine:
       post_hook_response: { _step: submit.post_hook_response }
 ```
 
-**Scope:** Emitted for `kind: form` and `kind: simple` actions. Tracker actions get no endpoint (engine writes their status via the tracker subscription).
+**Scope:** Emitted for `kind: form` and `kind: check` actions. Tracker actions get no endpoint (engine writes their status via the tracker subscription).
 
 **Per-app emission:** The submit endpoint is emitted regardless of the action's `access.{app_name}` map — the handler enforces access at submit time via the interaction's required verb (`access.{current_app}.{required-verb}` against the caller's per-app roles; table below). Lowdefy's central `api.roles` glob over the endpoint id is the coarse outer fence (Part 34 D10–D11). (Per-page emission is still verb-filtered per ui spec.)
 
@@ -117,7 +117,7 @@ Apps that customize a template pick the button bar they want; the FSM is unchang
 
 The engine carries no resolution table. The target is the FSM cell `transitions[kind][currentStatus][signal]`:
 
-- **`submit`** lands `in-review` if the action declares the `review` verb in its `access.{app_name}` map, else `done` — baked into the FSM's `submit` rule, **identical for form and simple kinds**. `submit` is nullary: the target is resolved from the action's static `review` verb, not from any runtime payload. Simple kind has **no status selector and no `target_status` payload** (the v0 selector is removed — state-machine review #6).
+- **`submit`** lands `in-review` if the action declares the `review` verb in its `access.{app_name}` map, else `done` — baked into the FSM's `submit` rule, **identical for form and check kinds**. `submit` is nullary: the target is resolved from the action's static `review` verb, not from any runtime payload. Check kind has **no status selector and no `target_status` payload** (the v0 selector is removed — state-machine review #6).
 - **`progress` / `approve` / `request_changes` / `not_required` / `resolve_error`** are nullary — the signal name fully determines the transition via the FSM.
 - **`error`** is a pre-hook/cascade signal (no button) that lands an action in `error` from any non-terminal state. Recovery is `resolve_error`.
 - **No current-action redirect.** The current action lands per the signal the user fired; a pre-hook cannot re-signal it (it influences the current action only via `event_overrides` / `form_overrides`). All pre-hook signal emission is cross-action via `actions[]`.
@@ -347,7 +347,7 @@ The page never builds this manually — the template ships the button and the wi
 1. **Per-template button bars.** The default bars are settled in [state-machine](../state-machine/design.md) "Templates and buttons" (`edit`: `submit` / `progress` / `not_required`; `view`: Edit link; `review`: `approve` / `request_changes`; `error`: `resolve_error`). Remaining edge cases to confirm during review:
    - `request_changes` on the `view` template — should default to reviewer-gated (state-machine review-1 finding 7).
    - A `cancel` button for workflow-level cancellation from an action context (out of scope for the v1 signal inventory).
-   - How the shared simple pages surface `error` recovery — a `simple-error` page vs. a `resolve_error` button on `workflow-action-view` (ui follow-on).
+   - How the shared check pages surface `error` recovery — a `check-error` page vs. a `resolve_error` button on `workflow-action-view` (ui follow-on).
 2. **Group `on_complete` mechanism.** Engine fans out one `context.callApi` per completed group's declared `on_complete` endpoint. Confirm during review.
 3. **Event-types config var.** Should the module expose `event_types` as a manifest var (like events module's `event_display`) so apps can register canonical types per app? Steph flagged.
 4. **Pre-hook actions[] merge precedence on collisions.** Pre-hook entries take precedence over auto-unblocks on `(type, key)` collisions. Confirm during review.

@@ -1,6 +1,6 @@
 # Workflows
 
-Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine (see [Transition model](#transition-model-signals)) — authors do not hand-write status transitions. Ships shared action pages (`workflow-action-edit`, `workflow-action-view`, `workflow-action-review`), a `workflow-overview` page, a `workflow-group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/simple action (`{workflow_type}-{action_type}-submit`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp`, every handler invocation emits exactly one timeline event, and — when the connection's `changeLog` is configured — every workflow + action mutation is audited to the app's `log-changes` collection.
+Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine (see [Transition model](#transition-model-signals)) — authors do not hand-write status transitions. Ships shared action pages (`workflow-action-edit`, `workflow-action-view`, `workflow-action-review`), a `workflow-overview` page, a `workflow-group-overview` page, six operational APIs (`start-workflow`, `cancel-workflow`, `close-workflow`, `get-entity-workflows`, `get-workflow-overview`, `get-action-group-overview`), and a resolver-emitted dynamic surface: one page set per form action (`-edit` / `-view` / `-review` / `-error`) and one submit endpoint per form/check action (`{workflow_type}-{action_type}-submit`), both derived from the app's `workflows_config`. The engine is wired through a `WorkflowAPI` server connection from `@lowdefy/modules-mongodb-plugins`; engine writes are stamped with the events module's `change_stamp`, every handler invocation emits exactly one timeline event, and — when the connection's `changeLog` is configured — every workflow + action mutation is audited to the app's `log-changes` collection.
 
 ## Dependencies
 
@@ -85,7 +85,7 @@ At runtime the engine resolves each submission as a **signal** against the actio
 
 ## Authoring actions
 
-Every action declares a `kind:` — `form`, `simple`, or `tracker` — and an `access:` block. The action-level fields the engine reads at runtime are `type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `sort_order`, `required_after_close`, `access`, and `status_map`. Build-time-only fields (`form`, `hooks`, `event`, `pages`) are consumed by the resolvers. Schema source of truth: [`makeWorkflowsConfig.js`](resolvers/makeWorkflowsConfig.js) and [`action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md).
+Every action declares a `kind:` — `form`, `check`, or `tracker` — and an `access:` block. The action-level fields the engine reads at runtime are `type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `sort_order`, `required_after_close`, `access`, and `status_map`. Build-time-only fields (`form`, `hooks`, `event`, `pages`) are consumed by the resolvers. Schema source of truth: [`makeWorkflowsConfig.js`](resolvers/makeWorkflowsConfig.js) and [`action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md).
 
 ### Access (`access:`)
 
@@ -115,7 +115,7 @@ status_map:
 
 ### Transition model (signals)
 
-Actions don't declare their own status transitions. Each submission carries a **signal**, and the engine resolves `(current_stage, signal) → new_stage` against a per-kind finite-state machine (`form`, `simple`, `tracker`). The FSM tables are engine-owned and not author-overridable in v1 ([`shared/fsm/tables.js`](../../plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js)).
+Actions don't declare their own status transitions. Each submission carries a **signal**, and the engine resolves `(current_stage, signal) → new_stage` against a per-kind finite-state machine (`form`, `check`, `tracker`). The FSM tables are engine-owned and not author-overridable in v1 ([`shared/fsm/tables.js`](../../plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js)).
 
 The buttons each page template ships emit fixed signals:
 
@@ -187,7 +187,7 @@ The `tracker:` block carries two fields:
 **When to use `start_link`.** Before a child workflow is started, the tracker row is `action-required` with nothing to click. `start_link` points to the app page where the child gets created. Choose the shape based on where creation lives:
 
 - **App page owns creation → `start_link`** — the tracker row links directly to the creation page; no separate trigger action needed.
-- **Inline form owns creation → paired trigger + tracker** — a `kind: form` (or `kind: simple`) trigger action creates the child and calls `start-workflow` from its submit hook; the tracker mirrors the result. This remains the right shape when there is no app page for the child.
+- **Inline form owns creation → paired trigger + tracker** — a `kind: form` (or `kind: check`) trigger action creates the child and calls `start-workflow` from its submit hook; the tracker mirrors the result. This remains the right shape when there is no app page for the child.
 
 **`start_link` shape.**
 
@@ -279,15 +279,15 @@ Note: `blocked_by` is an action-level field. A `blocked_by` key on a group entry
 
 | ID | Description | Path |
 |---|---|---|
-| `workflow-action-edit` | Shared simple-kind action edit page (universal fields + signal buttons). Addressed by `?action_id=<id>` | `/{entryId}/workflow-action-edit` |
-| `workflow-action-view` | Shared simple-kind action view page (read-only fields + status timeline + comment timeline) | `/{entryId}/workflow-action-view` |
-| `workflow-action-review` | Shared simple-kind action review page (read-only fields + approve / request-changes buttons) | `/{entryId}/workflow-action-review` |
+| `workflow-action-edit` | Shared check-kind action edit page (universal fields + signal buttons). Addressed by `?action_id=<id>` | `/{entryId}/workflow-action-edit` |
+| `workflow-action-view` | Shared check-kind action view page (read-only fields + status timeline + comment timeline) | `/{entryId}/workflow-action-view` |
+| `workflow-action-review` | Shared check-kind action review page (read-only fields + approve / request-changes buttons) | `/{entryId}/workflow-action-review` |
 | `workflow-overview` | Workflow detail page (header + action cards with form_data DataView). Addressed by `?workflow_id=<id>` | `/{entryId}/workflow-overview` |
 | `workflow-group-overview` | Group detail page (header + progress bar + group-status badge + action cards). Addressed by `?workflow_id=<id>&group_id=<id>` | `/{entryId}/workflow-group-overview` |
 
 The `workflow-` prefix marks the module's fixed page space: `{entry_id}/workflow-*` always addresses module infrastructure, disjoint from the per-type derived pages below (and `workflow` is therefore a reserved workflow type name — the build rejects it).
 
-**Per-action form pages** (resolver-emitted by `makeActionPages`): one page per `(workflow_type, action_type, verb)` tuple, where the verbs are the keys declared in the action's `access.{app_name}` map (supported set: `edit`, `view`, `review`, `error`). Only `kind: form` actions emit pages — simple actions use the shared `workflow-action-*` pages, and tracker actions emit none. Page ID format: `{workflow_type}-{action_type}-{verb}`. Path: `/{entryId}/{workflow_type}-{action_type}-{verb}`. Example: a `qualify` form action in the `onboarding` workflow with `access.demo: { edit: true, view: true }` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
+**Per-action form pages** (resolver-emitted by `makeActionPages`): one page per `(workflow_type, action_type, verb)` tuple, where the verbs are the keys declared in the action's `access.{app_name}` map (supported set: `edit`, `view`, `review`, `error`). Only `kind: form` actions emit pages — check actions use the shared `workflow-action-*` pages, and tracker actions emit none. Page ID format: `{workflow_type}-{action_type}-{verb}`. Path: `/{entryId}/{workflow_type}-{action_type}-{verb}`. Example: a `qualify` form action in the `onboarding` workflow with `access.demo: { edit: true, view: true }` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
 
 ### Components
 
@@ -330,7 +330,7 @@ The `workflow-` prefix marks the module's fixed page space: `{entry_id}/workflow
 
 **Per-action submit endpoints** (resolver-emitted by `makeWorkflowApis`):
 
-- `{workflow_type}-{action_type}-submit` — one per `kind: form` or `kind: simple` action (tracker actions emit none). Bakes the action's signal-keyed `hooks:` / `event:` maps in as build-time literals; routes the submitted payload through `SubmitWorkflowAction` on the `workflow-api` connection. The payload carries `action_id`, `signal`, `current_key`, `fields`, `form`, `form_review`, `comment`, and `metadata` — there is no `force` flag, no interaction key, and no client-supplied status: transition legality is resolved server-side by the FSM.
+- `{workflow_type}-{action_type}-submit` — one per `kind: form` or `kind: check` action (tracker actions emit none). Bakes the action's signal-keyed `hooks:` / `event:` maps in as build-time literals; routes the submitted payload through `SubmitWorkflowAction` on the `workflow-api` connection. The payload carries `action_id`, `signal`, `current_key`, `fields`, `form`, `form_review`, `comment`, and `metadata` — there is no `force` flag, no interaction key, and no client-supplied status: transition legality is resolved server-side by the FSM.
 - `{workflow_type}-{action_type}-{signal}-{phase}` — one per declared inline hook routine (`hooks.{signal}.{phase}.routine` on the action). Phases: `pre`, `post`. Signals: `submit`, `progress`, `not_required`, `resolve_error`, `approve`, `request_changes`. Emitted as `InternalApi` — reachable only via the engine, never by direct HTTP or client CallAPI.
 - `{workflow_type}-group-{group_id}-on-complete` — one per declared `action_groups[*].on_complete.routine`. Fired by the group state machine when the group reaches a terminal status.
 
