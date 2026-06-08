@@ -36,7 +36,7 @@ const sendQuoteAction = {
 
 const scheduleFollowupAction = {
   type: "schedule-followup",
-  kind: "simple",
+  kind: "check",
   access: { "my-team-app": { view: true, edit: ["account-manager"] } },
   blocked_by: ["send-quote"],
 };
@@ -109,7 +109,7 @@ test("makeActionPages: send-quote (form, access [view, edit, review]) emits -edi
   expect(pages.some((p) => p.id.endsWith("-error"))).toBe(false);
 });
 
-test("makeActionPages: schedule-followup (simple) emits nothing even with view+edit access", () => {
+test("makeActionPages: schedule-followup (check) emits nothing even with view+edit access", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([scheduleFollowupAction])],
     app_name: APP,

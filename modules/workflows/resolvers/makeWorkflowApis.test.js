@@ -41,7 +41,7 @@ const sendQuoteAction = {
 
 const scheduleFollowupAction = {
   type: "schedule-followup",
-  kind: "simple",
+  kind: "check",
   access: { "my-team-app": { view: true, edit: ["ops-lead"] } },
   action_group: "phase-2",
 };
@@ -124,7 +124,7 @@ test("makeWorkflowApis: payload does not carry removed/superseded fields", () =>
   }
 });
 
-test("makeWorkflowApis: every form/simple endpoint passes runtime comment through to the handler", () => {
+test("makeWorkflowApis: every form/check endpoint passes runtime comment through to the handler", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const simpleApi = findApi(apis, "onboarding-schedule-followup-submit");
   const form = findApi(apis, "onboarding-qualify-submit");
@@ -177,7 +177,7 @@ test("makeWorkflowApis: legacy-keyed hooks.submit_edit block is not emitted (sig
     actions: [
       {
         type: "qualify",
-        kind: "simple",
+        kind: "check",
         hooks: {
           submit_edit: {
             pre: { routine: [{ id: "x", type: "MongoDBFindOne" }] },
@@ -259,7 +259,7 @@ test("makeWorkflowApis: a workflow type named `workflow` is rejected (reserved â
     entity_collection: "leads-collection",
     display_order: 1,
     starting_actions: [{ type: "do-it", status: "action-required" }],
-    actions: [{ type: "do-it", kind: "simple" }],
+    actions: [{ type: "do-it", kind: "check" }],
   };
   expect(() => makeWorkflowApis(null, { workflows: [reserved] })).toThrow(
     /reserved workflow type name/,
