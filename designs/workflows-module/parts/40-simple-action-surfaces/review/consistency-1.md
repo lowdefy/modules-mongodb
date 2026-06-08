@@ -43,8 +43,8 @@ Checked the full Part 40 file tree (design.md, open-questions.md, three review f
 These are real drifts, but they live in task files the user is regenerating separately, and review-3 is their authoritative spec:
 
 - `tasks/01-resolver-simple-action-buttons.md` — entirely implements the deleted `global.simple_action_buttons` model; should instead validate the optional boolean `allow_not_required` + carry it through `ACTION_FIELDS` (R3 #1).
-- `tasks/03-simple-action-surface.md` — three-way AND with `_global: simple_action_buttons` (should be two-term AND + doc-borne `allow_not_required` term for `not_required` only, R3 #2); events-timeline placed inside the surface (should be page-level, R3 #3); endpoint operator hedged though design fixed it (R3 #7).
-- `tasks/04-rewrite-simple-pages.md` — events-timeline inside surface (R3 #3); prescribes the `action_allowed` remap glue R3 #4 rejected framing-wise (placement itself is correct: `surface.action_allowed`).
+- `tasks/03-check-action-surface.md` — three-way AND with `_global: simple_action_buttons` (should be two-term AND + doc-borne `allow_not_required` term for `not_required` only, R3 #2); events-timeline placed inside the surface (should be page-level, R3 #3); endpoint operator hedged though design fixed it (R3 #7).
+- `tasks/04-rewrite-check-pages.md` — events-timeline inside surface (R3 #3); prescribes the `action_allowed` remap glue R3 #4 rejected framing-wise (placement itself is correct: `surface.action_allowed`).
 - `tasks/07-concept-doc-reconciliation.md` — still references `global.simple_action_buttons` (lines 19/29).
 - `tasks/tasks.md` — Task 1 row + Band-1 narrative still describe the `simple_action_buttons` global; missing the dedicated `allow_not_required` engine task that R3 #6 assigned to Band 1.
 

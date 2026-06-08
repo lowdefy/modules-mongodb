@@ -2,7 +2,7 @@
 
 ## Context
 
-The three shared simple-action pages still run the v0 interaction model and must move to the signals + FSM model, with their body delegated to the `simple-action-surface` component (Task 3, `mode: edit|view|review`). This task rewrites the page shells: each keeps its own `onMount` scaffolding (guards, requests, role check) but populates the **`_state.surface`** namespace the surface reads, swaps its inline body for an `_ref` of the surface, and drops the v0 selector / `interaction:` / `current_status` machinery.
+The three shared check-action pages still run the v0 interaction model and must move to the signals + FSM model, with their body delegated to the `check-action-surface` component (Task 3, `mode: edit|view|review`). This task rewrites the page shells: each keeps its own `onMount` scaffolding (guards, requests, role check) but populates the **`_state.surface`** namespace the surface reads, swaps its inline body for an `_ref` of the surface, and drops the v0 selector / `interaction:` / `current_status` machinery.
 
 Current files:
 
@@ -16,7 +16,7 @@ Current files:
 
 ### All three pages
 
-1. **Body → surface.** Replace each page's inline body blocks with an `_ref` of `components/simple-action-surface.yaml` passing `mode: edit` / `view` / `review`. The header, banner, fields, comment, button bars, and (view) status-history now live in the surface — remove the now-duplicated inline blocks.
+1. **Body → surface.** Replace each page's inline body blocks with an `_ref` of `components/check-action-surface.yaml` passing `mode: edit` / `view` / `review`. The header, banner, fields, comment, button bars, and (view) status-history now live in the surface — remove the now-duplicated inline blocks.
 2. **Populate the `surface` namespace in `onMount`.** Rewrite each page's priming `SetState`:
    - `surface.action` ← `_request: get_action` (the full action doc, including `allow_not_required`).
    - `surface.fields` ← `{ assignees, due_date, description }` from `get_action` (**edit page only** — primes editable fields; view/review read display fields from `surface.action`).
@@ -32,7 +32,7 @@ Current files:
 
 ### `workflow-action-view.yaml`
 
-- Body → `mode: view`. The `resolve_error` button (D4) is rendered **by the surface** (source `[error]`, gated `action_allowed.error`) — appears only at stage `error`. **No `simple-error` page.** The Part 38 link table already routes `kind: simple` `error` → `workflow-action-view`, so the button lands where the engine points — no Part 30/38 change needed here.
+- Body → `mode: view`. The `resolve_error` button (D4) is rendered **by the surface** (source `[error]`, gated `action_allowed.error`) — appears only at stage `error`. **No `check-error` page.** The Part 38 link table already routes `kind: check` `error` → `workflow-action-view`, so the button lands where the engine points — no Part 30/38 change needed here.
 - **Render the Part 33 events-timeline `_ref` at page level, below the surface `_ref`** (D1 / review-2 #4) — it is **not** inside the surface. Carry over Part 33's action-filtered `events-timeline` `_ref` from the current view page (the swap Part 33 made), placed as a sibling block after the surface.
 - The status-history `List` is **inside the surface** (`view` mode reads `surface.action.status` — no request). Drop the page's separate `status_history_list` `SetState` seed (`:36–40`) and the inline status-history card — the surface owns it.
 
@@ -43,7 +43,7 @@ Current files:
 
 ## Acceptance Criteria
 
-- All three pages render their body via `_ref: components/simple-action-surface.yaml` with the correct `mode`.
+- All three pages render their body via `_ref: components/check-action-surface.yaml` with the correct `mode`.
 - No status `Selector`, "No transitions available" Alert, or `_js` priority filter remains on any page.
 - No `interaction:` or `current_status` / `target_status` payload keys remain on any page.
 - Each page's `onMount` populates `_state.surface.{action, fields?, comment, action_allowed}`; the surface's reads resolve.

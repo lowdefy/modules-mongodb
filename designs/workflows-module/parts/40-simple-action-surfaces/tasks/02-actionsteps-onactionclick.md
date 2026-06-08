@@ -2,7 +2,7 @@
 
 ## Context
 
-Part 40 (D5) lets live working surfaces open a simple action **in place** via a modal instead of navigating. The mechanism is a **generic** event on the `ActionSteps` block: when a host wires `onActionClick`, the block fires it with the clicked action object **instead of** navigating; when not wired, the block navigates exactly as it does today. The block gains **no** workflow-surface knowledge — the event carries the action object and nothing else, keeping `ActionSteps`/workflows decoupled (the host app composes the modal + the wiring in `actions-on-entity`, Task 6).
+Part 40 (D5) lets live working surfaces open a check action **in place** via a modal instead of navigating. The mechanism is a **generic** event on the `ActionSteps` block: when a host wires `onActionClick`, the block fires it with the clicked action object **instead of** navigating; when not wired, the block navigates exactly as it does today. The block gains **no** workflow-surface knowledge — the event carries the action object and nothing else, keeping `ActionSteps`/workflows decoupled (the host app composes the modal + the wiring in `actions-on-entity`, Task 6).
 
 This is a self-contained plugin change. Nothing in the module depends on it until the `actions-on-entity` wiring (Task 6).
 

@@ -66,9 +66,9 @@ parameter in the planner bullet.
 **including the comments card and its `metadata.comment: { $exists }` query** — into a
 new shared `components/simple-action-surface.yaml`, rendered by the three pages *and* a
 `Drawer` modal (design `:48`, `:156`, `:171`; tasks
-[03 `:32,:97`](../../40-simple-action-surfaces/tasks/03-simple-action-surface.md),
-[04 `:10,:13,:19`](../../40-simple-action-surfaces/tasks/04-rewrite-simple-pages.md),
-[05 `:9`](../../40-simple-action-surfaces/tasks/05-simple-action-modal.md) — "comments
+[03 `:32,:97`](../../40-simple-action-surfaces/tasks/03-check-action-surface.md),
+[04 `:10,:13,:19`](../../40-simple-action-surfaces/tasks/04-rewrite-check-pages.md),
+[05 `:9`](../../40-simple-action-surfaces/tasks/05-check-action-modal.md) — "comments
 card (carry over from `workflow-action-view.yaml`)"). This part deletes that card and
 swaps in the events timeline. Neither design mentions the other on this point, and
 `implementation-plan.md` (`:31`, `:37`) doesn't order Part 33 against Part 40 — 33 is

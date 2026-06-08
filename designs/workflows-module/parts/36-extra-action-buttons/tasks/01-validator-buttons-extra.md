@@ -39,7 +39,7 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
    const EXTRA_BUTTON_VERBS = ['edit', 'review', 'error'];
    ```
 
-2. Add a `validateButtonsExtra(workflow, action)` function and call it from `validateAction` **for `kind: form` actions only** (the slot only exists on form-action pages; simple-action pages share one experience per verb). Behaviour:
+2. Add a `validateButtonsExtra(workflow, action)` function and call it from `validateAction` **for `kind: form` actions only** (the slot only exists on form-action pages; check-action pages share one experience per verb). Behaviour:
 
    - For each verb in `['edit', 'review', 'error', 'view']`, read `action.pages?.[verb]?.buttons?.extra`. Skip if absent (`undefined`).
    - If the verb is `view` and the slot is present → `fail(...)` with a message saying extras are not offered on `view` pages (deferred to a follow-on).
@@ -74,7 +74,7 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
 
 - `validateAction` rejects every malformed shape above with a message naming the workflow type, action type, and verb.
 - A form action with no `pages`, no `buttons`, or no `extra` key validates exactly as before (no behaviour change when the slot is absent).
-- Simple/tracker actions with stray `pages.*.buttons.extra` are not checked (form kind only — matches the design's "form kind only" scope; simple actions have no `pages` slot anyway).
+- Check/tracker actions with stray `pages.*.buttons.extra` are not checked (form kind only — matches the design's "form kind only" scope; check actions have no `pages` slot anyway).
 - All existing tests in `makeWorkflowsConfig.test.js` still pass: `pnpm --filter @lowdefy-modules/workflows test` (or the repo's equivalent test invocation for `modules/workflows`).
 
 ## Files

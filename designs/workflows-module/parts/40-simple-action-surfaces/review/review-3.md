@@ -1,7 +1,7 @@
 # Review 3 — Band 1 task files vs. the post-review-2 design
 
 Scope: the **band 1** tasks on the demo-critical path — `01-resolver-simple-action-buttons.md`,
-`03-simple-action-surface.md`, `04-rewrite-simple-pages.md` (tasks.md: Band 1 = 1 → 3 → 4).
+`03-check-action-surface.md`, `04-rewrite-check-pages.md` (tasks.md: Band 1 = 1 → 3 → 4).
 This pass checks the task files against the current `design.md` (heavily revised by review-2's
 resolutions) and against shipped code. The design prose itself was already verified by reviews 1–2;
 the problem this pass surfaces is that **the band-1 task files were generated before review-2 and
@@ -57,7 +57,7 @@ the defaults table, and the "first global-config emission" hand-wave (Task 01 st
 > anywhere. Task 03's three-way AND and the `<type>` Notes paragraph are stale. Fixed by regenerating
 > Task 03 via `/r:design-task`; this finding is the spec.
 
-`03-simple-action-surface.md` (Button visibility, L43–53, L105, L108, L119) gates **every** button with a
+`03-check-action-surface.md` (Button visibility, L43–53, L105, L108, L119) gates **every** button with a
 three-way AND whose first term is `_global: simple_action_buttons.<type>.<signal>.visible`. Per the
 current D2/D3 (`design.md:89–125`):
 

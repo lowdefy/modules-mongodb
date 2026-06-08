@@ -2,7 +2,7 @@
 
 ## Context
 
-This is the design's mandated follow-on for the template/layout work whose owning parts (16 — page templates, 17 — shared simple pages) live in `_completed/`: "Their template edits are deviations from already-implemented designs — handle as a follow-on task, not by reopening those folders."
+This is the design's mandated follow-on for the template/layout work whose owning parts (16 — page templates, 17 — shared check pages) live in `_completed/`: "Their template edits are deviations from already-implemented designs — handle as a follow-on task, not by reopening those folders."
 
 Current state: all four form templates (`modules/workflows/templates/{edit,view,review,error}.yaml.njk`) embed the universal-fields `_ref` **inside the form card as a header band** (e.g. `edit.yaml.njk:131` and `:168`), passing only `mode` / `kind` / `action_data`. The design moves form-kind universal fields to a **right-hand sidebar card** beside the form body, gated on `universal_fields` being non-empty — when an action declares `universal_fields: false` / `[]`, the column is omitted and the form body spans full width.
 
@@ -14,8 +14,8 @@ Placement matrix (design):
 | ---------------------- | --------- | ------------------------------------------------------------------ |
 | Form `edit`            | `edit`    | Right sidebar card with own Update button                          |
 | Form `view` / `review` / `error` | `display` | Right sidebar card, read-only                            |
-| Simple `edit`          | `edit`    | Primary content (unchanged position; written on `submit`)          |
-| Simple `view` / `review` | `display` | Primary content, read-only                                       |
+| Check `edit`           | `edit`    | Primary content (unchanged position; written on `submit`)          |
+| Check `view` / `review` | `display` | Primary content, read-only                                        |
 
 ## Task
 
@@ -26,10 +26,10 @@ Placement matrix (design):
      - `edit.yaml.njk`: `mode: edit`, `kind: form`, `workflow_type: { _var: workflow_type }`, `action_type: { _var: action_config.type }`, `show: { _var: action_config.universal_fields }`, `action_data` bound to `_state.fields.*`.
      - `view/review/error.yaml.njk`: `mode: display`, `kind: form`, `show: { _var: action_config.universal_fields }`, `action_data` with `assignees/due_date/description` from the template's existing read source (the form templates prime `_state.action` from `get_action.0` in `onMount` — bind `_state: action.*`) plus `assignee_docs` (`_state: action.assignee_docs` once primed, or directly `_request: get_action.0.assignee_docs` — never un-indexed `get_action.*`).
    - Do **not** touch the submit/progress button payloads or the submit `Validate` regex — Part 39 owns that hygiene (independent by design; the kind guard makes the stray `fields` payload inert).
-2. **Simple pages** (`pages/simple-{edit,view,review}.yaml`) — minimal touch:
-   - Keep the component refs in their primary-content position with no `show` var (default all three — the design pins "no behavioural change" for simple pages).
-   - Add the `assignee_docs` leaf to the display pages' `action_data` (`simple-view.yaml`, `simple-review.yaml`) so display-mode avatars resolve.
-   - Fix the display pages' `action_data` request paths to the **pinned** shape (settled — review-3 #5): `get_action` is a `MongoDBAggregation`, so the response is an **array**; direct reads must be `_request: get_action.0.assignees` / `.0.due_date` / `.0.description` / `.0.assignee_docs`. The current un-indexed `get_action.assignees` reads on `simple-{view,review,edit}.yaml` resolve `undefined`. Fix any other un-indexed `get_action.*` reads on the same pages the same way, but keep the fix minimal — Part 40's rewrite replaces these pages with its `surface.*` namespace, so don't restructure them onto SetState here.
+2. **Check pages** (`pages/workflow-action-{edit,view,review}.yaml`) — minimal touch:
+   - Keep the component refs in their primary-content position with no `show` var (default all three — the design pins "no behavioural change" for check pages).
+   - Add the `assignee_docs` leaf to the display pages' `action_data` (`workflow-action-view.yaml`, `workflow-action-review.yaml`) so display-mode avatars resolve.
+   - Fix the display pages' `action_data` request paths to the **pinned** shape (settled — review-3 #5): `get_action` is a `MongoDBAggregation`, so the response is an **array**; direct reads must be `_request: get_action.0.assignees` / `.0.due_date` / `.0.description` / `.0.assignee_docs`. The current un-indexed `get_action.assignees` reads on `workflow-action-{view,review,edit}.yaml` resolve `undefined`. Fix any other un-indexed `get_action.*` reads on the same pages the same way, but keep the fix minimal — Part 40's rewrite replaces these pages with its `surface.*` namespace, so don't restructure them onto SetState here.
 3. **Deviation notes** — add a one-paragraph note at the top of `_completed/16-page-templates/design.md` and `_completed/17-shared-pages/design.md` recording the Part 24 layout deviation and pointing to this part (notes documenting deviations are allowed; reopening/redesigning is not).
 
 ## Acceptance Criteria
@@ -38,7 +38,7 @@ Placement matrix (design):
 - Form edit page (demo): sidebar card right of the form; changing the assignee + Update writes the doc and the entity-page status-map cell shows the new assignee, without touching form data or stage; a `done` action's sidebar still edits.
 - Form action with `universal_fields: false` (add/adjust one demo fixture action): no sidebar, form body spans full width.
 - View/review/error pages: read-only sidebar card with avatars, formatted date, rich-text description, placeholders when empty.
-- Simple edit page: fields render as primary content and persist via `submit` exactly as before.
+- Check edit page: fields render as primary content and persist via `submit` exactly as before.
 
 ## Files
 
@@ -46,9 +46,9 @@ Placement matrix (design):
 - `modules/workflows/templates/view.yaml.njk` — modify — display sidebar.
 - `modules/workflows/templates/review.yaml.njk` — modify — display sidebar.
 - `modules/workflows/templates/error.yaml.njk` — modify — display sidebar (both branches).
-- `modules/workflows/pages/simple-view.yaml` — modify — `assignee_docs` leaf (+ binding sanity check).
-- `modules/workflows/pages/simple-review.yaml` — modify — `assignee_docs` leaf (+ binding sanity check).
-- `modules/workflows/pages/simple-edit.yaml` — verify only (no `show`, primary content unchanged).
+- `modules/workflows/pages/workflow-action-view.yaml` — modify — `assignee_docs` leaf (+ binding sanity check).
+- `modules/workflows/pages/workflow-action-review.yaml` — modify — `assignee_docs` leaf (+ binding sanity check).
+- `modules/workflows/pages/workflow-action-edit.yaml` — verify only (no `show`, primary content unchanged).
 - `designs/workflows-module/parts/_completed/16-page-templates/design.md` — modify — deviation note.
 - `designs/workflows-module/parts/_completed/17-shared-pages/design.md` — modify — deviation note.
 

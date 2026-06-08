@@ -146,7 +146,7 @@ These three points were open during initial drafting; the v0 inventory in `/User
 
 `view.yaml.njk` is unchanged *by this part*. Part 39 (D4) added a `floating-actions` bar to view (carrying `request_changes` + an Edit-nav button), so the bar now exists — but offering `buttons.extra` on view is an additive choice deferred to a follow-on (see Out of scope). If a concrete need surfaces (e.g. a "Print" button on view), the follow-on extends the same `_build.array.concat` wiring to `view.yaml.njk` and adds `view` to the validator's bar-verb set.
 
-`pages/workflow-action-edit.yaml`, `workflow-action-view.yaml`, `workflow-action-review.yaml` are unchanged. Simple-action pages intentionally share one experience per verb (`ui/design.md:167`); apps that need a custom button use a form action.
+`pages/workflow-action-edit.yaml`, `workflow-action-view.yaml`, `workflow-action-review.yaml` are unchanged. Check-action pages intentionally share one experience per verb (`ui/design.md:167`); apps that need a custom button use a form action.
 
 ## Files changed — concept docs
 
@@ -158,7 +158,7 @@ These three points were open during initial drafting; the v0 inventory in `/User
 
 ## Files changed — demo app
 
-One demo action should exercise the slot for e2e coverage. The cheapest exercise is **Open Help** on a form action's edit page — a `Link` action firing on `onClick`, no new endpoint or Lambda required. Pick `onboarding/qualify.yaml` (a form action with an `edit` page; `installation/install-step.yaml` is `kind: simple` and has no `pages.edit` slot, and `installation/installation.yaml` is the workflow file, not an action) and add:
+One demo action should exercise the slot for e2e coverage. The cheapest exercise is **Open Help** on a form action's edit page — a `Link` action firing on `onClick`, no new endpoint or Lambda required. Pick `onboarding/qualify.yaml` (a form action with an `edit` page; `installation/install-step.yaml` is `kind: check` and has no `pages.edit` slot, and `installation/installation.yaml` is the workflow file, not an action) and add:
 
 ```yaml
 pages:
@@ -206,7 +206,7 @@ The locked-signal invariant therefore means: **the engine's recognised signal vo
 - **Additional locked signals (future `button_report_issue`, etc.).** Each new signal button is its own part — owns its FSM transition, hook dispatch, template rendering, and reserved-id registration. (The v0 Save Draft button is no longer future: it shipped as the `progress` signal in Part 39 and is registered as `button_progress` in the reserved set above.) This part only opens the bar to author-supplied entries and registers the *currently-shipped* reserved ids. Future signal parts add their button block to the relevant template *and* add their id to `RESERVED_BUTTON_IDS` (the duplication is acknowledged in Proposed Change item 3).
 - **Extras on `view` pages.** Part 39 (D4) added a `floating-actions` bar to view, so the bar now exists — but extending `buttons.extra` to it is an additive choice deferred to a follow-on, not a requirement here (Part 39 "Part 36 — rebase notes"). This part ships the slot on `edit` / `review` / `error` only; a follow-on adds `view` when a concrete extras need surfaces there.
 - **Extras on the workflow-overview page.** The overview is read-only chrome aggregating actions; it never had a per-action button bar. Out of scope.
-- **Extras on simple-action pages.** Simple-action pages share one experience across every workflow (`ui/design.md:167`); adding per-action extras to them collapses that contract. If a real need surfaces ("this simple action needs a side-button"), the answer is to convert the action to `kind: form` with an empty form, not to extend the shared simple pages.
+- **Extras on check-action pages.** Check-action pages share one experience across every workflow (`ui/design.md:167`); adding per-action extras to them collapses that contract. If a real need surfaces ("this check action needs a side-button"), the answer is to convert the action to `kind: form` with an empty form, not to extend the shared check pages.
 - **Reordering template buttons via author config.** Authors cannot reorder the template-shipped signal buttons; their position in the bar is fixed by the template. Extras only render after the signal buttons.
 - **A dedicated `pages.{verb}.modals:` slot.** Author modals live in `pages.{verb}.formFooter:` and are opened via `CallMethod` from button `onClick`. A separate slot adds no capability over `formFooter` since Lowdefy modals overlay regardless of declaration position. If practice shows `formFooter` is awkward, a follow-on part introduces whichever shape the evidence warrants.
 - **Inline `modal:` sub-field under each extra.** Same deferral: multiple extras sometimes open the same modal, and an inline shape collapses to one modal per button. Re-evaluate if a real awkwardness surfaces.

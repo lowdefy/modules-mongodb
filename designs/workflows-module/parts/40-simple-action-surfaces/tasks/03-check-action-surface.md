@@ -1,8 +1,8 @@
-# Task 3: Shared `simple-action-surface` component (D1 / D2 / D3)
+# Task 3: Shared `check-action-surface` component (D1 / D2 / D3)
 
 ## Context
 
-The three simple-action pages (`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`) and the new in-context modal (Task 5) all render the **same body**: header + universal fields + comment + a signal button bar. This task extracts that body into one reusable component, `modules/workflows/components/simple-action-surface.yaml`, parameterised by a `mode` var (`edit` | `view` | `review`). One body, two containers — the DRY payoff is the reason it's extracted now.
+The three check-action pages (`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`) and the new in-context modal (Task 5) all render the **same body**: header + universal fields + comment + a signal button bar. This task extracts that body into one reusable component, `modules/workflows/components/check-action-surface.yaml`, parameterised by a `mode` var (`edit` | `view` | `review`). One body, two containers — the DRY payoff is the reason it's extracted now.
 
 It consumes Part 39's enum **`modules/workflows/enums/button_signal_sources.yaml`** (a build-time `_ref` source-stage map, shipped). Its contents:
 
@@ -15,7 +15,7 @@ request_changes: [in-review, done]
 resolve_error:   [error]
 ```
 
-**No new enum, no resolver-emitted global.** Button visibility is the FSM source-stage check AND the per-verb role gate; `not_required` alone adds a doc-borne `allow_not_required` term (D3). There is **no** `global.simple_action_buttons` (that model was dropped — D3); do not read any runtime button-config global.
+**No new enum, no resolver-emitted global.** Button visibility is the FSM source-stage check AND the per-verb role gate; `not_required` alone adds a doc-borne `allow_not_required` term (D3). There is **no** `global.check_action_buttons` (that model was dropped — D3); do not read any runtime button-config global.
 
 **State contract (D1).** The surface reads everything from a single `_state.surface` namespace: `{ action, fields, comment, action_allowed }`. The surface is a pure reader — its **writers** are the page `onMount` (Task 4) and the modal open handler (Task 5). It reads:
 
@@ -34,11 +34,11 @@ resolve_error:   [error]
 
 **The Part 33 events timeline is NOT part of the surface (D1 / review-2 #4).** It is page-level chrome rendered by `workflow-action-view` **below** the surface `_ref` (Task 4), and is **omitted** in the modal. Do not put an `events-timeline` `_ref` inside this component. (Reasons: the modal's host entity pages already show the action's events; a second `events-timeline` instance would collide on the component's fixed `get-events` request id — request ids are not `_ref`-scoped.) The `view` mode's status-history is a plain `List` over `surface.action.status` (no request), so it is modal-safe.
 
-Universal fields render via `_ref: components/universal-fields/universal-fields.yaml` with `mode: edit` (editable) or `mode: display` (read-only), `kind: simple`. **In edit mode pass `state_path: surface.fields`** (Part 24's renderer var, default `fields`) so the renderer's input block IDs become `surface.fields.{assignees, due_date, description}` — required so the scoped `Validate` and the `fields` payload bind to the surface's namespace (see Validate scope below). The header (title + status badge) carries over from `workflow-action-view.yaml` (lines 64–119), reading `surface.action.*`.
+Universal fields render via `_ref: components/universal-fields/universal-fields.yaml` with `mode: edit` (editable) or `mode: display` (read-only), `kind: check`. **In edit mode pass `state_path: surface.fields`** (Part 24's renderer var, default `fields`) so the renderer's input block IDs become `surface.fields.{assignees, due_date, description}` — required so the scoped `Validate` and the `fields` payload bind to the surface's namespace (see Validate scope below). The header (title + status badge) carries over from `workflow-action-view.yaml` (lines 64–119), reading `surface.action.*`.
 
 ## Task
 
-Create `modules/workflows/components/simple-action-surface.yaml` accepting a `mode` var and rendering per the table above.
+Create `modules/workflows/components/check-action-surface.yaml` accepting a `mode` var and rendering per the table above.
 
 ### Button visibility (D2)
 
@@ -83,7 +83,7 @@ payload:
 ```
 
 - **No `current_status` / `target_status`** — the v0 selector payload is gone. `submit` carries no target; the engine resolves `in-review` vs `done` from the action's `review` verb.
-- **No `form` / `form_review`** — simple actions have no form body.
+- **No `form` / `form_review`** — check actions have no form body.
 - **Endpoint** aligns with the form templates: `endpointId: { _module.endpointId: { _build.string.concat: [update-action-, <type>] } }` where `<type>` is `_state: surface.action.type`. (The current pages use `_string.concat` of `_module.id` + `/update-action-` + type — replace with `_module.endpointId` per the design.)
 
 ### Validate scope (D1) — critical
@@ -104,7 +104,7 @@ The submit-style buttons keep the `disabled` workflow-closed gate (`required_aft
 
 ## Acceptance Criteria
 
-- `simple-action-surface.yaml` exists, takes a `mode` var, and renders the correct body + button bar per mode.
+- `check-action-surface.yaml` exists, takes a `mode` var, and renders the correct body + button bar per mode.
 - Button `visible` = FSM source-stage `_ref` membership AND per-verb role gate; `not_required` adds the `surface.action.allow_not_required` term. No `_js` priority lookup and no button-config global remain.
 - Button payloads are nullary on target (`signal:` only — no `current_status`/`target_status`/`form`/`form_review`); endpoint uses `_module.endpointId`.
 - `submit` has a `Validate` scoped to `^surface\.fields\.`; `progress` has no `Validate` and fires `onProgress` first; `request_changes` validates its comment in a modal inside the surface.
@@ -114,7 +114,7 @@ The submit-style buttons keep the `disabled` workflow-closed gate (`required_aft
 
 ## Files
 
-- `modules/workflows/components/simple-action-surface.yaml` — create — the shared body + mode-keyed signal button bar.
+- `modules/workflows/components/check-action-surface.yaml` — create — the shared body + mode-keyed signal button bar.
 - `modules/workflows/module.lowdefy.yaml` — modify (if needed) — register under `components:` only if it must be referenced cross-module (the three pages `_ref` it by path; the modal does too).
 
 ## Notes

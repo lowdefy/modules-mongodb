@@ -107,7 +107,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 - Deep-merging the engine event-display merge under the app key so per-app author title/description overrides and the comment coexist (D7).
 - Comment-beats-static-override precedence.
 - Tightening the `request_changes` comment validate on both review surfaces to match the fold gate (`text` non-empty or `fileList` non-empty).
-- Deleting the bespoke comments card and rendering the standard timeline on the workflow action pages — the simple view page and all four form-kind templates (`edit`/`view`/`review`/`error`).
+- Deleting the bespoke comments card and rendering the standard timeline on the workflow action pages — the check view page and all four form-kind templates (`edit`/`view`/`review`/`error`).
 
 ## Out of scope / deferred
 
@@ -139,7 +139,7 @@ The `status_history_list` block is left as-is in v1 (it reads the action doc's `
 - **[Part 24 — universal-fields](../24-universal-fields/design.md)** — shares the `comment` param on the `UpdateActionFields` operation; both paths route through `planEventDispatch`, which owns the single `foldCommentIntoEvent` call (Part 24 adds the `UpdateActionFields` handler type to the planner — its design's plan/payload prose has been amended off `metadata.comment` onto the planner route). Part 24's open question "does the sidebar surface a comment field" is unaffected — wherever a comment is captured, it renders the same way.
 - **[Part 32 — drop static overrides](../_completed/32-drop-static-overrides/design.md)** — the static `event:` description channel stays; this part pins comment-beats-static precedence, closing Part 32's deferred question.
 - **[Part 38 — engine rebuild](../_completed/38-engine-rebuild/design.md)** — `foldCommentIntoEvent` slots into the shared event-dispatch planner both handlers reuse.
-- **[Part 40 — simple-action-surfaces](../40-simple-action-surfaces/design.md)** — ordered **after** this part (pinned in `implementation-plan.md`). Part 40 moves the view-page body into a shared `simple-action-surface.yaml` (rendered by the three pages *and* a `Modal`); the events-timeline `_ref` this part installs stays **page-level** on `workflow-action-view`, below the surface `_ref` — Part 40's modal deliberately omits it (its entity-page hosts already render the action's events on the entity timeline, and a second `events-timeline` instance on one page would collide on the component's fixed `get-events` request id; Part 40 review-2 #4).
+- **[Part 40 — Check-action surfaces](../40-simple-action-surfaces/design.md)** — ordered **after** this part (pinned in `implementation-plan.md`). Part 40 moves the view-page body into a shared `check-action-surface.yaml` (rendered by the three pages *and* a `Modal`); the events-timeline `_ref` this part installs stays **page-level** on `workflow-action-view`, below the surface `_ref` — Part 40's modal deliberately omits it (its entity-page hosts already render the action's events on the entity timeline, and a second `events-timeline` instance on one page would collide on the component's fixed `get-events` request id; Part 40 review-2 #4).
 - **[Part 42 — timeline-action-cards](../_completed/42-timeline-action-cards/design.md)** — coordinates from its side: its D6 suppresses the self-referential action card on the action-page timeline this part adds.
 
 ## Contract to neighbours

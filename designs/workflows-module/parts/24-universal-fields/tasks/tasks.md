@@ -2,7 +2,7 @@
 
 ## Overview
 
-Implements the universal-fields surface (`assignees`, `due_date`, `description`): the `UpdateActionFields` engine operation (form kind), the kind-based submit-planner guard (simple kind keeps writing fields on submit), the `universal_fields` authoring passthrough, the reusable `universal-fields` Lowdefy component, and the template/page integration. Derives from `designs/workflows-module/parts/24-universal-fields/design.md`.
+Implements the universal-fields surface (`assignees`, `due_date`, `description`): the `UpdateActionFields` engine operation (form kind), the kind-based submit-planner guard (check kind keeps writing fields on submit), the `universal_fields` authoring passthrough, the reusable `universal-fields` Lowdefy component, and the template/page integration. Derives from `designs/workflows-module/parts/24-universal-fields/design.md`.
 
 **Sequencing precondition:** the whole part sequences after Part 38 (engine rebuild) — every plugin task amends or reuses Part 38's `shared/phases/` + `shared/render/` helpers, which already exist on this branch.
 
@@ -15,12 +15,12 @@ Implements the universal-fields surface (`assignees`, `due_date`, `description`)
 | 3   | `03-commit-workflow-less-plan.md`     | `commitPlan` + `Plan` typedef accept plans with no workflow write (no CAS)                    | —          |
 | 4   | `04-plan-fields-update.md`            | New pure planner `planFieldsUpdate.js` (fields `$set` + cell re-render + event + change-log)  | 1          |
 | 5   | `05-update-action-fields-handler.md`  | `UpdateActionFields` handler + `WorkflowAPI` connection registration                          | 2, 3, 4    |
-| 6   | `06-submit-kind-guard.md`             | Kind-based universal-fields rule in `planActionTransition` (write only for `kind: simple`)    | —          |
+| 6   | `06-submit-kind-guard.md`             | Kind-based universal-fields rule in `planActionTransition` (write only for `kind: check`)    | —          |
 | 7   | `07-universal-fields-passthrough.md`  | `universal_fields` authoring field: validation, allowlist passthrough, default normalization  | —          |
 | 8   | `08-emit-update-fields-endpoint.md`   | `makeWorkflowApis` emits `{workflow_type}-{action_type}-update-fields` per form action        | 5 (runtime) |
 | 9   | `09-binding-prerequisites.md`         | `user-multi-selector` id var, `get_action` assignee `$lookup`, `user-account` manifest dep    | —          |
 | 10  | `10-universal-fields-component.md`    | The `universal-fields` component (replaces the stub; kind × mode behaviour + Update button)   | 7, 8, 9    |
-| 11  | `11-template-sidebar-integration.md`  | Form-template sidebar column + display bindings + simple-page verification (Part 16/17 follow-on) | 10     |
+| 11  | `11-template-sidebar-integration.md`  | Form-template sidebar column + display bindings + check-page verification (Part 16/17 follow-on) | 10     |
 | 12  | `12-concept-spec-amendments.md`       | Concept-spec amendments (authoring reserved fields, `description` shape, handler docs)        | 5, 8       |
 
 ## Ordering Rationale
@@ -48,4 +48,4 @@ Parallelizable groups: {1, 2, 3, 6, 7, 9} → {4, 8} → {5} → {10} → {11, 1
 **Source:** `designs/workflows-module/parts/24-universal-fields/design.md`
 **Context files considered:** Part 38 design + planner contract (`parts/38-engine-rebuild/design.md`), Part 24a design (`parts/_completed/24a-user-account-selector-avatar/design.md`), concept specs (`workflows-module-concept/action-authoring/spec.md`, `workflows-module-concept/engine/spec.md`), and the current code of every touched file (planners, phases, resolvers, templates, pages, manifests).
 **Review files skipped:** `review/review-1.md`, `review/review-2.md`.
-**Excluded:** Part 39's `fields`-payload drop + submit-Validate-regex narrowing (Part 39 is an active part with its own tasks folder); a fields endpoint for simple actions; `universal_fields_required`; tracker universal-fields UI (all explicitly out of scope in the design).
+**Excluded:** Part 39's `fields`-payload drop + submit-Validate-regex narrowing (Part 39 is an active part with its own tasks folder); a fields endpoint for check actions; `universal_fields_required`; tracker universal-fields UI (all explicitly out of scope in the design).

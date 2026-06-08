@@ -1,8 +1,8 @@
-# Implementation Tasks — Part 40: Simple-action surfaces
+# Implementation Tasks — Part 40: Check-action surfaces
 
 ## Overview
 
-These tasks rewrite the three shared simple-action pages (`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`) from the v0 interaction/selector model to the signals + FSM model, extract their body into one shared `simple-action-surface` component, add a standalone `simple-action-modal` (a `Modal`) so live working surfaces can open a simple action in place, give the `ActionSteps` block a generic `onActionClick` event, implement the doc-borne `allow_not_required` policy (config validate → engine persist → engine enforce → form-template alignment), resolve simple-action error recovery (`resolve_error` on `workflow-action-view`), and reconcile the concept docs. Derived from `designs/workflows-module/parts/40-simple-action-surfaces/design.md`.
+These tasks rewrite the three shared check-action pages (`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`) from the v0 interaction/selector model to the signals + FSM model, extract their body into one shared `check-action-surface` component, add a standalone `check-action-modal` (a `Modal`) so live working surfaces can open a check action in place, give the `ActionSteps` block a generic `onActionClick` event, implement the doc-borne `allow_not_required` policy (config validate → engine persist → engine enforce → form-template alignment), resolve check-action error recovery (`resolve_error` on `workflow-action-view`), and reconcile the concept docs. Derived from `designs/workflows-module/parts/40-simple-action-surfaces/design.md`.
 
 ## Tasks
 
@@ -10,12 +10,12 @@ These tasks rewrite the three shared simple-action pages (`workflow-action-edit`
 | --- | -------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------- |
 | 1   | `01-allow-not-required-policy.md`      | `allow_not_required`: validate (`makeWorkflowsConfig`) + persist (`planActionTransition`) + enforce (`loadWorkflowState`) + form alignment (`edit.yaml.njk`); engine unit tests (D3) | —          |
 | 2   | `02-actionsteps-onactionclick.md`      | Generic `onActionClick` event on the `ActionSteps` block (fire when wired, navigate otherwise) + tests (D5) | —          |
-| 3   | `03-simple-action-surface.md`          | New shared `simple-action-surface` component — body + mode-keyed signal button bar (D1/D2/D3)    | —          |
-| 4   | `04-rewrite-simple-pages.md`           | Rewrite the three `workflow-action-*` pages onto the surface; delete selector; `interaction:`→`signal:`; `resolve_error`; page-level events timeline (D1/D2/D4/D6) | 3          |
-| 5   | `05-simple-action-modal.md`            | New standalone `simple-action-modal` (`Modal`) + open contract (D5)                              | 3          |
+| 3   | `03-check-action-surface.md`          | New shared `check-action-surface` component — body + mode-keyed signal button bar (D1/D2/D3)    | —          |
+| 4   | `04-rewrite-check-pages.md`           | Rewrite the three `workflow-action-*` pages onto the surface; delete selector; `interaction:`→`signal:`; `resolve_error`; page-level events timeline (D1/D2/D4/D6) | 3          |
+| 5   | `05-check-action-modal.md`            | New standalone `check-action-modal` (`Modal`) + open contract (D5)                              | 3          |
 | 6   | `06-actions-on-entity-wiring.md`       | Bundle the modal in `actions-on-entity`; wire `ActionSteps.onActionClick` → open it (D5)         | 2, 5       |
 | 7   | `07-concept-doc-reconciliation.md`     | Reconcile `ui`, `state-machine`, and parent design docs                                          | —          |
-| 8   | `08-e2e-supplements.md`                | E2E coverage on the demo `schedule-followup` simple action (a–f, incl. `allow_not_required`)     | 1, 4, 5, 6 |
+| 8   | `08-e2e-supplements.md`                | E2E coverage on the demo `schedule-followup` check action (a–f, incl. `allow_not_required`)     | 1, 4, 5, 6 |
 
 ## Ordering Rationale
 
@@ -32,7 +32,7 @@ Parallelizable: {1, 2, 3, 7} at the start; {4, 5} after 3.
 
 ## Bands
 
-The part lands in two bands (sequencing owned by the implementation plan). Band 1 is on the **demo-testing critical path**: the rebuilt engine accepts only `signal:` payloads (Part 38 dropped `interaction`/`current_status` from the wire), so until the three shared pages are rewritten, `kind: simple` actions cannot be driven from the UI at all.
+The part lands in two bands (sequencing owned by the implementation plan). Band 1 is on the **demo-testing critical path**: the rebuilt engine accepts only `signal:` payloads (Part 38 dropped `interaction`/`current_status` from the wire), so until the three shared pages are rewritten, `kind: check` actions cannot be driven from the UI at all.
 
 ### Band 1 — Signal rewrite + policy (demo-blocking)
 
@@ -50,7 +50,7 @@ This part **builds on Part 34's per-verb access model**, which has **shipped**: 
 
 ## Known open items (carried from the design, not yet resolved)
 
-- **`kind` branch in the `actions-on-entity` wiring** (open-questions §4) — D5's host wiring opens the modal for every clicked action, but a form action can't render in the simple surface. Task 6 implements the design as written and **flags** the likely `kind: simple` branch pending design amendment + response-projection verification.
+- **`kind` branch in the `actions-on-entity` wiring** (open-questions §4) — D5's host wiring opens the modal for every clicked action, but a form action can't render in the check surface. Task 6 implements the design as written and **flags** the likely `kind: check` branch pending design amendment + response-projection verification.
 - **`EventsTimeline.onActionClick` payload** (open-questions §5) — the shipped timeline event fires `{ pageId, urlQuery }`, not the action object; a timeline host driving the modal must reconcile the payload. The `ActionSteps` path (Task 6) is unaffected — its event carries the action object. Noted in Task 5.
 
 ## Scope

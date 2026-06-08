@@ -2,7 +2,7 @@
 
 ## Context
 
-The four generated form-page templates — `modules/workflows/templates/{edit,view,review,error}.yaml.njk` — have **no comment surface at all** (verified: zero comment-rendering matches), yet form actions capture the one *mandatory* comment: `request_changes` on the review surface (`review.yaml.njk`, TiptapInput `id: comment`, required). With the engine writing comments into `display.{app_name}.description` (tasks 1–4), a form review comment would render on the entity-page timeline but nowhere on the action's own pages. Design D6: add the same action-filtered `events-timeline` `_ref` that task 5 installs on the simple view page to **every** generated form page.
+The four generated form-page templates — `modules/workflows/templates/{edit,view,review,error}.yaml.njk` — have **no comment surface at all** (verified: zero comment-rendering matches), yet form actions capture the one *mandatory* comment: `request_changes` on the review surface (`review.yaml.njk`, TiptapInput `id: comment`, required). With the engine writing comments into `display.{app_name}.description` (tasks 1–4), a form review comment would render on the entity-page timeline but nowhere on the action's own pages. Design D6: add the same action-filtered `events-timeline` `_ref` that task 5 installs on the check view page to **every** generated form page.
 
 Template structure (relevant bits):
 

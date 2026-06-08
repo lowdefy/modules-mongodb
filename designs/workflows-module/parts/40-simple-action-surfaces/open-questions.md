@@ -33,7 +33,7 @@ review session; its **buttons thread is stale** against the #2 resolution. Propo
   reasons: (a) the requirement died — Part 40 D3 dropped per-action button config; only
   `allow_not_required` survives (doc-borne, enforced off live config at the load-phase gate);
   (b) wrong data path — the three read methods feed *list* surfaces that render no buttons,
-  while the simple surface reads its action via the page/modal `get_action` request, so resolved
+  while the check surface reads its action via the page/modal `get_action` request, so resolved
   booleans on the list responses would never reach it.
 - **Replace D5** with a short note: button visibility resolved at Part 40 D3; record the
   re-add path if a per-action button need ever materialises (authored map back into
@@ -99,11 +99,11 @@ full engine-method port stays deferred (Part 46 D6).
 - **Task files are stale** (`tasks/01–08`, `tasks.md`): Task 01 (resolver/global) is dead per
   #2's resolution; Task 02 carries the old "Part 34's scope" link framing (per #1); Task 04's
   namespace-remap discussion resolves with #3; Task 07's concept-reconciliation lines still say
-  `global.simple_action_buttons`. Re-run `/r:design-consistency-review workflows-module/parts/40-simple-action-surfaces`
+  `global.check_action_buttons`. Re-run `/r:design-consistency-review workflows-module/parts/40-simple-action-surfaces`
   (design.md changed substantially), then regenerate/sweep tasks via `/r:design-task`.
-- **Part 43 (rename simple→check) ordering**: this design still says "simple" throughout —
-  deliberate (the rename part owns terminology) — but confirm Part 43's position relative to
-  Part 40 in the implementation plan.
+- **Part 43 (rename simple→check) ordering**: Part 43 merged ahead of Part 40 and did not sweep
+  the part docs, so the simple→check rename has now been applied to this design directly.
+  Terminology here is `check` throughout.
 - **Part 46 has no review yet**: after the reconciliation package lands, run
   `/r:design-review` on it (its D1–D4/D6/D7 verified well against code in this session; the
   buttons thread was the only stale piece found).

@@ -64,7 +64,7 @@ The opt-in now lives in the root flag; the `page_config` term is a plain opt-out
 
 - `makeWorkflowsConfig` rejects a non-boolean `allow_not_required` and accepts a boolean / absence; the field appears on the resolved config when authored.
 - A planned transition stamps `allow_not_required` onto the action doc: `true` when config sets it, `false` when absent — set and absent cases both covered, never copied forward from the prior doc.
-- The load phase throws `access_denied` for a user-driven `not_required` signal when `actionConfig.allow_not_required !== true`, for **both form and simple kinds**, and passes it through when the flag is set. Other signals (e.g. `submit`) are unaffected.
+- The load phase throws `access_denied` for a user-driven `not_required` signal when `actionConfig.allow_not_required !== true`, for **both form and check kinds**, and passes it through when the flag is set. Other signals (e.g. `submit`) are unaffected.
 - `edit.yaml.njk`'s `not_required` button shows only when the baked `action_config.allow_not_required` is true (and its FSM/role terms pass); the `page_config` opt-out defaults to `true`.
 - Engine unit tests cover the stamp (set/absent/not-copied-forward) and the gate (reject unset, pass set, pass non-`not_required`, both kinds). `makeWorkflowsConfig` test covers the boolean validation.
 
@@ -80,6 +80,6 @@ The opt-in now lives in the root flag; the `page_config` term is a plain opt-out
 
 ## Notes
 
-- This is the only task that touches the engine connection and the form template; the simple surface (Task 3) only **reads** the resulting doc field `surface.action.allow_not_required` — no engine dependency in that direction.
+- This is the only task that touches the engine connection and the form template; the check surface (Task 3) only **reads** the resulting doc field `surface.action.allow_not_required` — no engine dependency in that direction.
 - `not-required` is the FSM stage slug (hyphen); `not_required` is the signal / flag (underscore). Keep them distinct.
 - "User-driven" vs "engine-driven": `loadWorkflowState` is the user submit entry; cascade transitions resolved inside pre-hooks do not pass through it, so the gate naturally only sees user-driven signals — no extra flag needed.

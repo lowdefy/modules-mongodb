@@ -2,7 +2,7 @@
 
 ## Context
 
-`modules/workflows/components/universal-fields/universal-fields.yaml` is currently a render-nothing stub (Part 20a) that the form templates (`templates/{edit,view,review,error}.yaml.njk`) and the shared simple pages (`pages/simple-{edit,view,review}.yaml`) already `_ref` with vars `mode` / `kind` / `action_data`. This task ships the real component. Existing call sites must keep building (they pass no `show` / `workflow_type` / `action_type` yet — task 11 upgrades the form templates; the simple pages intentionally stay on the default-all-three behaviour).
+`modules/workflows/components/universal-fields/universal-fields.yaml` is currently a render-nothing stub (Part 20a) that the form templates (`templates/{edit,view,review,error}.yaml.njk`) and the shared check pages (`pages/workflow-action-{edit,view,review}.yaml`) already `_ref` with vars `mode` / `kind` / `action_data`. This task ships the real component. Existing call sites must keep building (they pass no `show` / `workflow_type` / `action_type` yet — task 11 upgrades the form templates; the check pages intentionally stay on the default-all-three behaviour).
 
 Everything it composes already exists:
 
@@ -17,15 +17,15 @@ Behaviour matrix (design):
 | -------- | --------- | ------------------------------------------------------ | ---------------------------------------------------- |
 | `form`   | `edit`    | Sidebar card: declared inputs + own **Update** button   | Button → `{workflow_type}-{action_type}-update-fields` |
 | `form`   | `display` | Sidebar card, read-only                                 | —                                                    |
-| `simple` | `edit`    | Primary content: declared inputs, **no** own button     | Page's `submit` button carries `fields` (unchanged)  |
-| `simple` | `display` | Primary content, read-only                              | —                                                    |
+| `check`  | `edit`    | Primary content: declared inputs, **no** own button     | Page's `submit` button carries `fields` (unchanged)  |
+| `check`  | `display` | Primary content, read-only                              | —                                                    |
 
 ## Task
 
 Replace the stub with the real component. Vars (all build-time literals except `action_data` / `show` leaves, which may be operators):
 
 - `mode` — `'edit' | 'display'` (required).
-- `kind` — `'form' | 'simple'` (required; tracker excluded).
+- `kind` — `'form' | 'check'` (required; tracker excluded).
 - `workflow_type`, `action_type` — required for `kind: form` + `mode: edit` only; together they build the endpoint id.
 - `show` — array of field names to render; default `[assignees, due_date, description]` via `_var: { key: show, default: [...] }`. The v1 consumers pass build-time literals (or omit it), so per-field presence is gated at build time (`_build.*` operators — see `.claude/guides/operators.md`).
 - `action_data` — map of operator leaves the display mode reads: `assignees`, `due_date`, `description`, and (display) `assignee_docs`.
@@ -33,12 +33,12 @@ Replace the stub with the real component. Vars (all build-time literals except `
 
 Structure:
 
-1. **Chrome by kind** (build-time branch): `kind: form` wraps in a `Card` (the sidebar card — title e.g. `Details`); `kind: simple` renders a plain `Box` (the page provides chrome). Use the parent `layout.gap` for spacing per house rules.
+1. **Chrome by kind** (build-time branch): `kind: form` wraps in a `Card` (the sidebar card — title e.g. `Details`); `kind: check` renders a plain `Box` (the page provides chrome). Use the parent `layout.gap` for spacing per house rules.
 2. **Edit inputs** (`mode: edit`), each gated on `show` membership, ids following the "input block IDs match data paths" rule:
    - `assignees` → `_ref: { module: user-account, component: user-multi-selector, vars: { id: fields.assignees, title: Assignees } }`.
    - `due_date` → a `DateSelector` block, `id: fields.due_date`, title `Due date`.
    - `description` → a `TiptapInput` block, `id: fields.description`, title `Description` (same direct-block precedent as the templates' `comment` input; TiptapInput stores `{ text, html }`).
-   - For `kind: form`, disable the inputs when the user lacks edit access: `properties.disabled: { _eq: [{ _state: action_allowed.edit }, false] }` (defense in depth — the handler's verb gate is authoritative). Simple pages manage their own gating; don't wire `action_allowed` for `kind: simple`.
+   - For `kind: form`, disable the inputs when the user lacks edit access: `properties.disabled: { _eq: [{ _state: action_allowed.edit }, false] }` (defense in depth — the handler's verb gate is authoritative). Check pages manage their own gating; don't wire `action_allowed` for `kind: check`.
    - State priming is the **page's** job (templates' `onMount` already SetStates `fields.*` from the loaded action) — the component only binds.
 3. **Update button** (`kind: form` + `mode: edit` only), snake_case id per house rules, in the card footer:
 
@@ -83,9 +83,9 @@ Update the stub's header comment into real doc-comment describing the var contra
 
 ## Acceptance Criteria
 
-- `apps/demo` builds with the existing (un-upgraded) call sites: simple pages render all three fields in both modes; form templates still build (they pass `mode`/`kind`/`action_data` only — `show` defaults, and the Update button branch requires `workflow_type`/`action_type` which they don't pass yet, so confirm the build doesn't dereference those vars outside the form+edit branch... the `_build` branching must keep unused vars unevaluated).
+- `apps/demo` builds with the existing (un-upgraded) call sites: check pages render all three fields in both modes; form templates still build (they pass `mode`/`kind`/`action_data` only — `show` defaults, and the Update button branch requires `workflow_type`/`action_type` which they don't pass yet, so confirm the build doesn't dereference those vars outside the form+edit branch... the `_build` branching must keep unused vars unevaluated).
 - `kind: form, mode: edit` (exercised via task 11 or a scratch page): sidebar card with the three inputs + Update button; clicking Update with a changed assignee writes the doc, refetches, and does not touch `form.*` state or the action's stage.
-- `kind: simple, mode: edit`: inputs render, no button.
+- `kind: check, mode: edit`: inputs render, no button.
 - `mode: display`: read-only values with placeholders for null/empty.
 - `_state.action_allowed.edit === false`: button hidden, inputs disabled (form kind).
 - `show: [assignees]` renders only the assignee field; `show: []` renders nothing.

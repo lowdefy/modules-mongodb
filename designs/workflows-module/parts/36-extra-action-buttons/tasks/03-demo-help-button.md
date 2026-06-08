@@ -4,7 +4,7 @@
 
 Tasks 1 and 2 shipped the `buttons.extra` slot (validator + template wiring). One demo action must exercise it so `pnpm build` materialises the `_build.array.concat` merge against real config and e2e coverage (task 6) has a target.
 
-The cheapest exercise is an **Open Help** button — a `Link` action firing on `onClick`, no new endpoint or Lambda required. The design picks `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml`: it's a form action with an `edit` page (`installation/install-step.yaml` is `kind: simple` with no `pages.edit` slot; `installation/installation.yaml` is the workflow file, not an action).
+The cheapest exercise is an **Open Help** button — a `Link` action firing on `onClick`, no new endpoint or Lambda required. The design picks `apps/demo/modules/workflows/workflow_config/onboarding/qualify.yaml`: it's a form action with an `edit` page (`installation/install-step.yaml` is `kind: check` with no `pages.edit` slot; `installation/installation.yaml` is the workflow file, not an action).
 
 `qualify.yaml` currently has:
 

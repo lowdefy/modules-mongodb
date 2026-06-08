@@ -2,7 +2,7 @@
 
 ## Overview
 
-Make the workflow submit comment a first-class part of the standard event: the engine folds the comment's HTML into `display.{app_name}.description` (rendered by the standard `EventsTimeline`), the event-display merge deep-merges under the app key so engine title + author overrides + comment coexist, the bespoke comments card is deleted, and the shared `events-timeline` component is added to the workflow action pages (simple view page + all four form-kind templates). Derived from `designs/workflows-module/parts/33-comment-rendering/design.md`.
+Make the workflow submit comment a first-class part of the standard event: the engine folds the comment's HTML into `display.{app_name}.description` (rendered by the standard `EventsTimeline`), the event-display merge deep-merges under the app key so engine title + author overrides + comment coexist, the bespoke comments card is deleted, and the shared `events-timeline` component is added to the workflow action pages (check view page + all four form-kind templates). Derived from `designs/workflows-module/parts/33-comment-rendering/design.md`.
 
 ## Tasks
 
@@ -12,7 +12,7 @@ Make the workflow submit comment a first-class part of the standard event: the e
 | 2   | `02-deep-merge-event-display.md`     | `mergeEventOverrides` deep-merges `display` under the app key via `deepMerge`; migrate stale tests  | —          |
 | 3   | `03-plan-event-dispatch-comment.md`  | `planEventDispatch` takes `comment`, calls the fold after `renderEventDisplay` (merge → render → fold) | 1, 2       |
 | 4   | `04-thread-comment-plan-submit.md`   | `planSubmit` step 7 threads `comment: params.comment` into the planner call                         | 3          |
-| 5   | `05-simple-view-timeline-swap.md`    | Delete the bespoke comments card on the simple view page; add the shared `events-timeline`         | —          |
+| 5   | `05-check-view-timeline-swap.md`    | Delete the bespoke comments card on the check view page; add the shared `events-timeline`          | —          |
 | 6   | `06-form-template-timelines.md`      | Add the action-filtered `events-timeline` to all four form-kind templates                          | —          |
 | 7   | `07-tighten-comment-validate.md`     | Tighten the `request_changes` comment validate to the fold-gate condition on both review surfaces  | —          |
 
@@ -30,7 +30,7 @@ The boundary between 3 and 4 keeps the planner's unit-level behaviour (fold, pre
 ## Scope
 
 **Source:** `designs/workflows-module/parts/33-comment-rendering/design.md`
-**Context files considered:** `design.md` only (the design folder contains no other non-review files). Codebase state verified directly: `planEventDispatch.js`, `mergeEventOverrides.js`, `planSubmit.js`, `deepMerge.js`, `renderEventDisplay.js`, `buildHookPayload.js`, `makeWorkflowApis.js`, `pages/simple-view.yaml`, `templates/{view,edit,review,error}.yaml.njk`, `modules/events/components/events-timeline.yaml`, Part 38 tasks tracker.
+**Context files considered:** `design.md` only (the design folder contains no other non-review files). Codebase state verified directly: `planEventDispatch.js`, `mergeEventOverrides.js`, `planSubmit.js`, `deepMerge.js`, `renderEventDisplay.js`, `buildHookPayload.js`, `makeWorkflowApis.js`, `pages/workflow-action-view.yaml`, `templates/{view,edit,review,error}.yaml.njk`, `modules/events/components/events-timeline.yaml`, Part 38 tasks tracker.
 **Review files skipped:** `review/` (2 files).
 
 ## Out of scope (per design)
