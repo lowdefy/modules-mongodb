@@ -255,7 +255,7 @@ These parts hold no API/plugin/resolver work for this surface — they compose t
 - **[Part 5 (start/cancel handlers)](../_completed/05-start-cancel-handlers/design.md)** — the action doc shape these fields live on (seeded at `StartWorkflow`).
 - **[Part 18 (entity-components)](../18-entity-components/design.md)** — `action_role_check` populates `_state.action_allowed` gating the component's edit affordances.
 - **[Part 24a (user-account selector + avatar)](../_completed/24a-user-account-selector-avatar/design.md)** — `user-selector` + `user-avatar`.
-- **[Part 35 (rename `task` → `simple`)](../_completed/35-rename-task-kind-to-simple/design.md)** + **[Part 43 (rename `simple` → `check`)](../43-rename-simple-kind-to-check/design.md)** — the kind landed as `simple` (Part 35) and was then renamed to `check` (Part 43), so the resolver keys on `kind: check` and every `kind: check` reference in this design (the component table, the check-page consumption row) is coherent. The `form`-emission path is unaffected by either rename.
+- **[Part 35 (rename `task` → `simple`)](../_completed/35-rename-task-kind-to-simple/design.md)** + **[Part 43 (rename `simple` → `check`)](../_completed/43-rename-simple-kind-to-check/design.md)** — the kind landed as `simple` (Part 35) and was then renamed to `check` (Part 43), so the resolver keys on `kind: check` and every `kind: check` reference in this design (the component table, the check-page consumption row) is coherent. The `form`-emission path is unaffected by either rename.
 
 Consumers (Parts 16 / 17 / 39, template-only) are enumerated under "Consumed by" above.
 

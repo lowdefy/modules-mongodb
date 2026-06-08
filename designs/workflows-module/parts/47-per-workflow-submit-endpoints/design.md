@@ -1,6 +1,6 @@
 # Part 47 — Per-workflow submit endpoints
 
-`makeWorkflowApis` generates one submit endpoint per action (`{workflow_type}-{action_type}-submit`). At the target scale (~100 workflows × ~5 actions in a production app) that is ~500 generated endpoints, each existing only to carry a small per-action hooks/event-overrides map. This part collapses them to **one submit endpoint per workflow** (`{workflow_type}-submit`), with those maps keyed by action type, cutting generated endpoint count ~5× with no behaviour change.
+`makeWorkflowApis` generates one submit endpoint per action (`{workflow_type}-{action_type}-submit`). At the target scale (~100 workflows × ~5 actions in a production app) that is ~500 generated endpoints, each carrying that action's hook refs and event-overrides — config that is **not small**: `event.{signal}.display` is per-signal × per-app Nunjucks (`event_overrides` is deliberately excluded from the connection's `workflowsConfig`, see [D4](#d4--what-rides-on-the-endpoint-vs-workflowsconfig)). This part collapses them to **one submit endpoint per workflow** (`{workflow_type}-submit`), with those maps keyed by action type — cutting generated endpoint count ~5× **and** bounding each submit call's resolved config payload to a single workflow's actions, with no externally observable behaviour change.
 
 **Layer:** module build wiring (`makeWorkflowApis`) + engine submit entry (`SubmitWorkflowAction`) + the call sites that target submit endpoints. **Size:** S–M. **Repo:** `modules/workflows/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`.
 
@@ -14,11 +14,17 @@
 
 ## Key decisions
 
-### D1 — Per-workflow, not per-action
+### D1 — Per-workflow, not per-action — and not global
 
-The per-action endpoint exists only because each one bakes in that action's hook refs and event overrides — but those are small maps that key naturally by action type on a per-workflow endpoint. The caller already sends `action_id` in the payload, so the engine knows which entry applies. Per-workflow is also the natural unit for **generic callers** (the Part 40 simple surface, anything data-driven): building `{workflow_type}-submit` from runtime data needs one field every action doc carries, instead of reproducing the generator's `{workflow}-{action}-submit` joining convention from two fields. Access is unaffected — per-action/per-verb gates run in the engine (`loadWorkflowState`'s access check), not at the endpoint boundary.
+Three granularities are possible. The choice is governed by **how much config each submit call must resolve**, because a built endpoint's static `properties` are evaluated into `params` on every call — exactly as the connection's `workflowsConfig` is loaded whole on every call (`loadWorkflowState.js:110`):
 
-Not chosen: going further to a single global submit endpoint. The per-workflow endpoint is what carries the workflow's hook/event maps as build-time properties; a global endpoint would need config lookup for those at runtime, and hooks are deliberately resolved to pre-scoped `_module.endpointId` refs at build (`makeWorkflowApis.js:29–34`).
+- **Per-action (today):** each call resolves one action's hooks/event_overrides — minimal payload — but emits ~500 endpoints.
+- **Global (one fixed `workflow-submit`):** one endpoint, but every submit call resolves the hooks/event_overrides maps for *all* workflows. `event.{signal}.display` is per-signal × per-app Nunjucks ([D4](#d4--what-rides-on-the-endpoint-vs-workflowsconfig)), so this is the heaviest possible per-call payload. **Rejected.**
+- **Per-workflow (chosen):** ~5× fewer endpoints than per-action, while each call resolves only one workflow's actions' maps. The balance point between endpoint count and per-call payload.
+
+The engine knows which action's entry applies because the caller already sends `action_id`; the maps key by action type. Per-workflow is also the natural unit for **generic callers** (the Part 40 simple surface, anything data-driven): building `{workflow_type}-submit` needs one field every action doc carries, vs reproducing the generator's `{workflow}-{action}-submit` join from two. Access is unaffected — per-action/per-verb gates run in the engine (`loadWorkflowState`'s access check), not at the endpoint boundary.
+
+(An earlier draft rejected global because it "would need config lookup at runtime." That reasoning was wrong — the engine already does config lookup (`loadWorkflowState.js:110`), and the build walker resolves `_module.endpointId` hook refs identically at any map depth. The real reason global loses is per-call payload weight, above — which is also why this config rides the endpoint at all rather than `workflowsConfig`; see D4.)
 
 ### D2 — Start/Cancel/Close stay generic
 
@@ -57,7 +63,7 @@ routine:
           submit: { type: ..., display: ... }
 ```
 
-Engine change in `SubmitWorkflowAction`: after load, `hooks = params.hooks?.[action.type]`, `event_overrides = params.event_overrides?.[action.type]`; downstream (`invokePreHook`, `invokePostHook`, event planning) unchanged. Actions with no hooks/overrides simply have no key.
+Engine change lives in `handleSubmit` (the phase composition behind `SubmitWorkflowAction`): after `loadWorkflowState` resolves `targetAction`, re-slice the maps by action type **before any phase runs** — `params.hooks = params.hooks?.[targetAction.type]` and `params.event_overrides = params.event_overrides?.[targetAction.type]`. This matters because the three consumers read the *signal*-keyed shape directly off `params`: `invokePreHook` / `invokePostHook` (`params.hooks?.[signal]?.{pre,post}`) and event planning (`planSubmit.js:200` — `params.event_overrides?.[signal]`). After the re-slice they see exactly today's shape, so the phases themselves are untouched; the re-slice is the entire engine change. Actions with no hooks/overrides slice to `undefined`, identical to today's absent-key case.
 
 The Part 34 D10 reservation carries over: workflow type `workflow` stays reserved (`workflow-submit` would land in the module's fixed `workflow-*` page/endpoint space).
 
