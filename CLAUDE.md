@@ -24,6 +24,8 @@ Never move design folders into `_completed/` unless the user explicitly requests
 
 **Build for what exists, not what might.** Every speculative `var`, slot, flag, condition, or abstraction is design surface you owe forever. Don't add module vars, optional slots, `when:`-style branches, or "what if this fails?" wrappers until a second concrete need has actually surfaced. This applies double to agent-driven changes: "extra checks and features" added to look thorough are the most common source of accidental complexity. Three identical modules beat one module with three variants; a component that handles the cases you've seen beats one that handles cases you've imagined.
 
+**The demo is not a usage census.** `apps/demo/` exists to exercise the modules, not to represent how production apps use them. Never argue a real-world use case from what the demo does or doesn't do — "no caller in the repo does X" or "the demo only ever does Y" is not evidence that production doesn't need X, because production apps live in other repos. A call-site audit of the demo can confirm a pattern is _possible_ or _wired correctly_, but it cannot prove a capability is _unneeded_. Decide design questions on the API's own merits (correctness, "one correct way", the cost of the surface), not on the demo's coverage.
+
 ## Project Structure
 
 ```
