@@ -76,29 +76,72 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   });
 
   // ── Build action cards ──
+  // form_meta comes from the validated action config (form-kind actions only).
+  function findActionConfig(type) {
+    return wfActionsConfig.find((c) => c.type === type);
+  }
+
   const actionCards = visibleActions.map(({ action, allowed, link, message, status }) => {
+    const actionConfig = findActionConfig(action.type);
+    const form_meta = actionConfig?.form_meta ?? null;
     return {
       type: action.type,
+      key: action.key ?? null,
       status,
       message,
       link,
       allowed,
+      form_meta,
     };
   });
 
   // ── Prune form_data to view-visible actions ──
-  const visibleKeys = new Set();
+  // form_data structure (per planFormDataMerge):
+  //   unkeyed action: form_data[type] = { ...values }
+  //   keyed action:   form_data[type] = { [key]: { ...values }, [key2]: { ...values } }
+  //
+  // For unkeyed visible actions → keep form_data[type] whole.
+  // For keyed visible actions → keep only the form_data[type][key] slices for
+  //   visible keys; rebuild the nested object with just those keys so denied
+  //   keyed siblings do not ship.
+  const rawFormData = wfDoc.form_data ?? {};
+
+  // Collect visible keys per type.
+  // visibleKeysByType: type → Set<key> | 'unkeyed' sentinel
+  const visibleKeysByType = new Map();
   for (const { action } of visibleActions) {
-    visibleKeys.add(action.type);
-    if (action.key != null) {
-      visibleKeys.add(`${action.type}.${action.key}`);
+    const type = action.type;
+    const key = action.key ?? null;
+    if (key == null) {
+      visibleKeysByType.set(type, 'unkeyed');
+    } else {
+      if (!visibleKeysByType.has(type) || visibleKeysByType.get(type) !== 'unkeyed') {
+        if (!visibleKeysByType.has(type)) {
+          visibleKeysByType.set(type, new Set());
+        }
+        visibleKeysByType.get(type).add(key);
+      }
     }
   }
-  const rawFormData = wfDoc.form_data ?? {};
+
   const prunedFormData = {};
-  for (const [k, v] of Object.entries(rawFormData)) {
-    if (visibleKeys.has(k)) {
-      prunedFormData[k] = v;
+  for (const [type, sentinel] of visibleKeysByType) {
+    if (!(type in rawFormData)) continue;
+    if (sentinel === 'unkeyed') {
+      prunedFormData[type] = rawFormData[type];
+    } else {
+      const typeSlice = rawFormData[type];
+      if (typeSlice != null && typeof typeSlice === 'object' && !Array.isArray(typeSlice)) {
+        const filtered = {};
+        for (const k of sentinel) {
+          if (k in typeSlice) {
+            filtered[k] = typeSlice[k];
+          }
+        }
+        if (Object.keys(filtered).length > 0) {
+          prunedFormData[type] = filtered;
+        }
+      }
     }
   }
 

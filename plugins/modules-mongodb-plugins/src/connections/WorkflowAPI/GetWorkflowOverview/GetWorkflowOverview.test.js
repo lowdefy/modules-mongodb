@@ -136,14 +136,14 @@ async function seedWorkflow({ _id = 'wf-1', entity_id = 'lead-1', form_data = {}
   });
 }
 
-async function seedAction({ _id, type, kind = 'check', action_group = null, stage = 'action-required', workflow_id = 'wf-1', sort_order = 0, extra = {} } = {}) {
+async function seedAction({ _id, type, kind = 'check', action_group = null, stage = 'action-required', workflow_id = 'wf-1', sort_order = 0, key = null, extra = {} } = {}) {
   await mongo.db.collection('actions').insertOne({
     _id,
     workflow_id,
     workflow_type: 'onboarding',
     type,
     kind,
-    key: null,
+    key,
     action_group,
     sort_order,
     status: [{ stage, event_id: 'e0', created: changeStamp }],
@@ -283,11 +283,12 @@ describe('access drop', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('form_data pruning', () => {
-  test('form_data is pruned to view-visible actions only', async () => {
+  test('form_data is pruned to view-visible actions only (unkeyed)', async () => {
     await seedWorkflow({
       form_data: {
         qualify: { answer: 'yes' },
-        secret_action: { sensitive: 'data' }, // type uses underscore in form_data key
+        // form_data key matches action type verbatim (per planFormDataMerge)
+        'secret-action': { sensitive: 'data' },
         kickoff: { note: 'done' },
       },
     });
@@ -308,10 +309,10 @@ describe('form_data pruning', () => {
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
 
-    // qualify and kickoff should be in form_data, secret_action should not
+    // qualify and kickoff should be in form_data, secret-action should not
     expect(result.workflow.form_data.qualify).toEqual({ answer: 'yes' });
     expect(result.workflow.form_data.kickoff).toEqual({ note: 'done' });
-    expect('secret_action' in result.workflow.form_data).toBe(false);
+    expect('secret-action' in result.workflow.form_data).toBe(false);
   });
 
   test('form_data is empty object when no visible actions have form data', async () => {
@@ -331,6 +332,65 @@ describe('form_data pruning', () => {
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
     expect(result.workflow.form_data).toEqual({});
+  });
+
+  test('keyed action: only visible key slices ship; denied sibling key does not leak', async () => {
+    // Two keyed actions of type 'qualify': key 'a' (visible) and key 'b' (denied).
+    // form_data.qualify = { a: { val: 1 }, b: { secret: 2 } }
+    // Only key 'a' survives access; form_data.qualify.b must not ship.
+    await seedWorkflow({
+      form_data: {
+        qualify: {
+          a: { val: 1 },
+          b: { secret: 2 },
+        },
+      },
+    });
+    // key 'a' — visible to account-manager
+    await seedAction({ _id: 'qa', type: 'qualify', action_group: 'phase-1', key: 'a' });
+    // key 'b' — denied (admin only)
+    await seedAction({
+      _id: 'qb',
+      type: 'qualify',
+      action_group: 'phase-1',
+      key: 'b',
+      extra: {
+        access: { 'test-app': { view: ['admin'] } },
+        'test-app': { links: { view: null, edit: null, review: null, error: null }, message: '' },
+      },
+    });
+
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: 'wf-1' } }),
+    );
+
+    // qualify subtree should only contain key 'a'
+    expect(result.workflow.form_data.qualify).toEqual({ a: { val: 1 } });
+    expect('b' in (result.workflow.form_data.qualify ?? {})).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// key field on action cards
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('key field on action cards', () => {
+  test('action card carries key for keyed actions', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1', key: 'slot-a' });
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: 'wf-1' } }),
+    );
+    expect(result.actions[0].key).toBe('slot-a');
+  });
+
+  test('action card key is null for unkeyed actions', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: 'wf-1' } }),
+    );
+    expect(result.actions[0].key).toBeNull();
   });
 });
 

@@ -31,6 +31,7 @@ function makeWorkflowsConfig() {
           type: 'qualify',
           kind: 'check',
           action_group: 'phase-1',
+          form_meta: { schema: { type: 'object' } },
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
         },
         {
@@ -135,14 +136,14 @@ async function seedWorkflow({ _id = 'wf-1', entity_id = 'lead-1', form_data = {}
   });
 }
 
-async function seedAction({ _id, type, kind = 'check', action_group = 'phase-1', stage = 'action-required', workflow_id = 'wf-1', sort_order = 0, extra = {} } = {}) {
+async function seedAction({ _id, type, kind = 'check', action_group = 'phase-1', stage = 'action-required', workflow_id = 'wf-1', sort_order = 0, key = null, extra = {} } = {}) {
   await mongo.db.collection('actions').insertOne({
     _id,
     workflow_id,
     workflow_type: 'onboarding',
     type,
     kind,
-    key: null,
+    key,
     action_group,
     sort_order,
     status: [{ stage, event_id: 'e0', created: changeStamp }],
@@ -288,6 +289,44 @@ describe('action card shape', () => {
     expect('_id' in card).toBe(false);
     expect('kind' in card).toBe(false);
   });
+
+  test('form_meta is populated from action config', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    const card = result.actions.find((c) => c.type === 'qualify');
+    expect(card.form_meta).toEqual({ schema: { type: 'object' } });
+  });
+
+  test('form_meta is null when action config has no form_meta', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a2', type: 'kickoff', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    const card = result.actions.find((c) => c.type === 'kickoff');
+    expect(card.form_meta).toBeNull();
+  });
+
+  test('action card carries key for keyed actions', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1', key: 'slot-a' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.actions[0].key).toBe('slot-a');
+  });
+
+  test('action card key is null for unkeyed actions', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.actions[0].key).toBeNull();
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -337,12 +376,13 @@ describe('not-required sinks last', () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('form_data pruning', () => {
-  test('form_data pruned to view-visible actions', async () => {
+  test('form_data pruned to view-visible actions (unkeyed)', async () => {
     await seedWorkflow({
       form_data: {
         qualify: { answer: 'yes' },
         kickoff: { note: 'ok' },
-        secret_action: { sensitive: 'leak' },
+        // form_data key matches action type verbatim (per planFormDataMerge)
+        'secret-action': { sensitive: 'leak' },
       },
     });
     await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
@@ -362,7 +402,39 @@ describe('form_data pruning', () => {
     );
     expect(result.workflow.form_data.qualify).toEqual({ answer: 'yes' });
     expect(result.workflow.form_data.kickoff).toEqual({ note: 'ok' });
-    expect('secret_action' in result.workflow.form_data).toBe(false);
+    expect('secret-action' in result.workflow.form_data).toBe(false);
+  });
+
+  test('keyed action: only visible key slices ship; denied sibling key does not leak', async () => {
+    // Two keyed actions of type 'qualify': key 'a' (visible) and key 'b' (denied).
+    await seedWorkflow({
+      form_data: {
+        qualify: {
+          a: { val: 1 },
+          b: { secret: 2 },
+        },
+      },
+    });
+    // key 'a' — visible
+    await seedAction({ _id: 'qa', type: 'qualify', action_group: 'phase-1', key: 'a' });
+    // key 'b' — denied (admin only)
+    await seedAction({
+      _id: 'qb',
+      type: 'qualify',
+      action_group: 'phase-1',
+      key: 'b',
+      extra: {
+        access: { 'test-app': { view: ['admin'] } },
+        'test-app': { links: { view: null, edit: null, review: null, error: null }, message: '' },
+      },
+    });
+
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+
+    expect(result.workflow.form_data.qualify).toEqual({ a: { val: 1 } });
+    expect('b' in (result.workflow.form_data.qualify ?? {})).toBe(false);
   });
 });
 

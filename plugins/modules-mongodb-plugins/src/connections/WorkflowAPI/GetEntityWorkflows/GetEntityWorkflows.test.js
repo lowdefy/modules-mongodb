@@ -220,7 +220,7 @@ describe('action cards include _id and kind', () => {
       buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
     );
     const groups = result.workflows[0].groups;
-    const phase1 = groups.find((g) => g.group_id === 'phase-1');
+    const phase1 = groups.find((g) => g.id === 'phase-1');
     expect(phase1).toBeDefined();
     expect(phase1.actions).toHaveLength(1);
     const card = phase1.actions[0];
@@ -355,7 +355,7 @@ describe('group display config', () => {
     const result = await GetEntityWorkflows(
       buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
     );
-    const phase1 = result.workflows[0].groups.find((g) => g.group_id === 'phase-1');
+    const phase1 = result.workflows[0].groups.find((g) => g.id === 'phase-1');
     expect(phase1.title).toBe('Phase 1');
     expect(phase1.icon).toBe('rocket');
   });
@@ -366,7 +366,7 @@ describe('group display config', () => {
     const result = await GetEntityWorkflows(
       buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
     );
-    const phase1 = result.workflows[0].groups.find((g) => g.group_id === 'phase-1');
+    const phase1 = result.workflows[0].groups.find((g) => g.id === 'phase-1');
     expect(phase1.link).toEqual({
       pageId: 'workflows/workflow-group-overview',
       urlQuery: { workflow_id: 'wf-1', group_id: 'phase-1' },
@@ -379,7 +379,7 @@ describe('group display config', () => {
     const result = await GetEntityWorkflows(
       buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
     );
-    const nullGroup = result.workflows[0].groups.find((g) => g.group_id === null);
+    const nullGroup = result.workflows[0].groups.find((g) => g.id === null);
     expect(nullGroup.link).toBeNull();
   });
 });
@@ -396,10 +396,89 @@ describe('not-required sinks last within a group', () => {
     const result = await GetEntityWorkflows(
       buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
     );
-    const phase1 = result.workflows[0].groups.find((g) => g.group_id === 'phase-1');
+    const phase1 = result.workflows[0].groups.find((g) => g.id === 'phase-1');
     // action-required should come first despite having a higher sort_order
     expect(phase1.actions[0].status).toBe('action-required');
     expect(phase1.actions[1].status).toBe('not-required');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group id field (Issue 2: spec uses 'id', not 'group_id')
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('group id field', () => {
+  test('each group has id field (not group_id)', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetEntityWorkflows(
+      buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
+    );
+    const groups = result.workflows[0].groups;
+    expect(groups[0].id).toBe('phase-1');
+    expect('group_id' in groups[0]).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Unseen-group order (Issue 4: undeclared groups sort AFTER declared ones)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('unseen group order', () => {
+  test('undeclared groups sort after all declared config groups', async () => {
+    await seedWorkflow();
+    // phase-1 and phase-2 are declared in config (indices 0 and 1).
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    // 'extra-group' is not in the config.
+    await seedAction({
+      _id: 'a2',
+      type: 'kickoff',
+      action_group: 'extra-group',
+      extra: {
+        'test-app': {
+          links: { view: { pageId: 'workflows/workflow-action-view', urlQuery: { action_id: 'a2' } }, edit: null, review: null, error: null },
+          message: 'kickoff message',
+        },
+      },
+    });
+    const result = await GetEntityWorkflows(
+      buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
+    );
+    const groups = result.workflows[0].groups;
+    const phase1 = groups.find((g) => g.id === 'phase-1');
+    const extraGroup = groups.find((g) => g.id === 'extra-group');
+    expect(phase1).toBeDefined();
+    expect(extraGroup).toBeDefined();
+    // extra-group must have a higher order than any declared config group (config has 2 entries: indices 0, 1)
+    expect(extraGroup.order).toBeGreaterThanOrEqual(2);
+    expect(phase1.order).toBe(0);
+  });
+
+  test('multiple undeclared groups sort stably after declared ones', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'undeclared-a' });
+    await seedAction({
+      _id: 'a2',
+      type: 'kickoff',
+      action_group: 'undeclared-b',
+      extra: {
+        'test-app': {
+          links: { view: { pageId: 'workflows/workflow-action-view', urlQuery: { action_id: 'a2' } }, edit: null, review: null, error: null },
+          message: 'kickoff message',
+        },
+      },
+    });
+    const result = await GetEntityWorkflows(
+      buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
+    );
+    const groups = result.workflows[0].groups;
+    // Both undeclared; config has 2 declared groups, so order should be >= 2 for all.
+    for (const g of groups) {
+      expect(g.order).toBeGreaterThanOrEqual(2);
+    }
+    // The two undeclared groups must have distinct orders.
+    const orders = groups.map((g) => g.order);
+    expect(new Set(orders).size).toBe(orders.length);
   });
 });
 

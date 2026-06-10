@@ -127,11 +127,19 @@ async function GetEntityWorkflows(lowdefyContext) {
     }
 
     // Build group entries with display config from wfConfig.
+    // Unseen groups (not in configGroups) get an insertion index so they sort
+    // AFTER all declared groups, stably.
+    let unseenInsertionIndex = 0;
     const groupEntries = [];
     for (const [groupIdKey, { group_id, actions: groupActions }] of groupMap) {
-      const configGroupIndex = groupOrderMap.has(groupIdKey)
-        ? groupOrderMap.get(groupIdKey)
-        : groupMap.size; // unseen groups sort after declared ones
+      let configGroupIndex;
+      if (groupOrderMap.has(groupIdKey)) {
+        configGroupIndex = groupOrderMap.get(groupIdKey);
+      } else {
+        // Unseen group: sort after all declared config groups.
+        configGroupIndex = configGroups.length + unseenInsertionIndex;
+        unseenInsertionIndex += 1;
+      }
 
       // Find the display config for this group from workflowConfig.
       const configGroup = configGroups.find((g) => g.id === group_id);
@@ -146,7 +154,7 @@ async function GetEntityWorkflows(lowdefyContext) {
         : null;
 
       groupEntries.push({
-        group_id,
+        id: group_id,
         order: configGroupIndex,
         title,
         icon,
