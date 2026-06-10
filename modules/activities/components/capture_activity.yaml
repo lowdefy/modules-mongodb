@@ -134,6 +134,11 @@ blocks:
                 - id: seed_prefill
                   type: SetState
                   params:
+                    # Stable id minted up front so consumer attachment fields
+                    # (fields.attributes) can bind their entity_id to the
+                    # activity before it's created; reused as the create _id.
+                    activity_id:
+                      _uuid: true
                     type:
                       _if_none:
                         - _var: prefill.type
@@ -190,7 +195,7 @@ blocks:
                           _module.endpointId: create-activity
                         payload:
                           _id:
-                            _uuid: true
+                            _state: activity_id
                           type:
                             _state: type
                           title:
@@ -227,6 +232,7 @@ blocks:
                 - id: reset_form
                   type: SetState
                   params:
+                    activity_id: null
                     type: null
                     title: null
                     description: null

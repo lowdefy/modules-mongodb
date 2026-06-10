@@ -24,6 +24,11 @@ _ref:
         - id: init_state
           type: SetState
           params:
+            # Stable id minted up front so consumer attachment fields
+            # (fields.attributes) can bind their entity_id to the activity
+            # before it's created; reused as the create _id.
+            activity_id:
+              _uuid: true
             type:
               _if_none:
                 - _url_query: type
@@ -108,7 +113,7 @@ _ref:
                           _module.endpointId: create-activity
                         payload:
                           _id:
-                            _uuid: true
+                            _state: activity_id
                           type:
                             _state: type
                           title:
