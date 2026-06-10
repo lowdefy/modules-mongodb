@@ -43,6 +43,8 @@ vars:
 - **`main_slots`** — `[]`. Extra blocks appended to the main column on the activity-detail page.
 - **`sidebar_slots`** — `[]`. Extra blocks appended to the sidebar.
 - **`download_columns`** — `[]`. Extra columns on the Excel export.
+- **`contact_card_extra_fields`** — `[]`. Extra `{ label, value }` rows under each linked contact's name/email on the activity-detail contact chips. `value` is a top-level key on the projected contact doc (extend `lookup_contacts.yaml`'s `$project` for nested source fields).
+- **`company_card_extra_fields`** — `[]`. Extra `{ label, value }` rows under each linked company's name on the activity-detail company chips. `value` is a top-level key on the projected company doc (extend `lookup_companies.yaml`'s `$project` for additional fields).
 
 ## `request_stages`
 
@@ -56,3 +58,14 @@ vars:
 ## `filter_requests`
 
 `array` — Default `[]`. Additional requests fetched alongside the custom `filters` blocks (e.g. dropdown option sources).
+
+## `lookup_collections`
+
+`object` — Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts and companies on activity detail/list pages. Override when an app points its contacts/companies connections at differently-named collections.
+
+- **`contacts`** — `user-contacts`. Collection joined by `lookup_contacts.yaml` (`contacts.contact_id` → `_id`).
+- **`companies`** — `companies`. Collection joined by `lookup_companies.yaml` (`company_ids` → `_id`).
+
+## `company_name_field`
+
+`string` — Default `name`. Field on company docs used as the display name in linked-company chips and the list-table company tags. Mirrors the companies module's `name_field` — set both to the same value when an app stores its company display name under a non-default field (e.g. `trading_name`). The `lookup_companies` stage projects this field under the stable alias `name`, so templates always read `company.name`.

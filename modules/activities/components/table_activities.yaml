@@ -94,7 +94,7 @@ properties:
               cancelled: "#8c8c8c"
             default: "#8c8c8c"
         - headerName: Contacts
-          field: contacts
+          field: contacts_enriched
           flex: 1
           minWidth: 160
           wrapText: true
@@ -108,7 +108,7 @@ properties:
                   {% else %}&mdash;{% endif %}
                 on:
                   contacts:
-                    __args: 0.data.contacts
+                    __args: 0.data.contacts_enriched
         - headerName: Companies
           field: companies
           flex: 1

@@ -48,9 +48,9 @@ _ref:
               _request: get_activity.0.title
             description:
               _request: get_activity.0.description
-            contact_ids:
+            contacts:
               _if_none:
-                - _request: get_activity.0.contact_ids
+                - _request: get_activity.0.contacts
                 - []
             company_ids:
               _if_none:
@@ -107,9 +107,9 @@ _ref:
                             _state: title
                           description:
                             _state: description
-                          contact_ids:
+                          contacts:
                             _if_none:
-                              - _state: contact_ids
+                              - _state: contacts
                               - []
                           company_ids:
                             _if_none:

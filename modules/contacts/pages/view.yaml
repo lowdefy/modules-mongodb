@@ -128,12 +128,20 @@ _ref:
                       module: activities
                       component: tile_activities
                       vars:
-                        reference_field: contact_ids
+                        reference_field: contacts
                         reference_value:
                           _url_query: _id
+                        # Prefill the capture form with this contact as a
+                        # reference object; the selector enriches name/email
+                        # on open. `contacts` is the activity-doc field.
                         prefill:
-                          contact_ids:
-                            - _url_query: _id
+                          contacts:
+                            - contact_id:
+                                _url_query: _id
+                              name:
+                                _request: get_contact.0.profile.name
+                              email:
+                                _request: get_contact.0.email
                         on_created:
                           - id: refetch_events
                             type: Request

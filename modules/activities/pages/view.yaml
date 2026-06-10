@@ -110,7 +110,7 @@ _ref:
               params:
                 contacts:
                   _if_none:
-                    - _request: get_activity.0.contacts
+                    - _request: get_activity.0.contacts_enriched
                     - []
                 companies:
                   _if_none:
@@ -169,7 +169,7 @@ _ref:
               params:
                 contacts:
                   _if_none:
-                    - _request: get_activity.0.contacts
+                    - _request: get_activity.0.contacts_enriched
                     - []
                 companies:
                   _if_none:
@@ -228,7 +228,7 @@ _ref:
               params:
                 contacts:
                   _if_none:
-                    - _request: get_activity.0.contacts
+                    - _request: get_activity.0.contacts_enriched
                     - []
                 companies:
                   _if_none:
@@ -279,7 +279,7 @@ _ref:
           params:
             contacts:
               _if_none:
-                - _request: get_activity.0.contacts
+                - _request: get_activity.0.contacts_enriched
                 - []
             companies:
               _if_none:

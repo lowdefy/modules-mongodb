@@ -4,15 +4,15 @@ call:
   icon: AiOutlinePhone
   default_stage: done
   type: basic
-meeting:
-  title: Meeting
-  color: "#722ed1"
-  icon: AiOutlineCalendar
-  default_stage: done
-  type: complex
 email:
   title: Email
   color: "#13c2c2"
   icon: AiOutlineMail
   default_stage: done
   type: basic
+meeting:
+  title: Meeting
+  color: "#722ed1"
+  icon: AiOutlineCalendar
+  default_stage: done
+  type: complex

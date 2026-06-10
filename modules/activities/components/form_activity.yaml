@@ -1,26 +1,177 @@
-# Shared activity form. Composes the core fields (type / title /
-# description), the linked-entity selectors (contacts + companies), and a
-# consumer-extension hook for app-level attribute fields.
+# Shared activity form.
+#
+# Structure (top to bottom):
+#   - Type picker rendered as a SegmentedSelector (Call / Email / Meeting
+#     tabs), options + icons sourced from the merged activity_types enum
+#     (built-ins + consumer-registered types).
+#   - A Date + (Duration | Direction) row. Duration shows for call and
+#     meeting; Direction shows for email. Both write to `attributes.*`.
+#   - Subject (title) and Notes (description).
+#   - Linked contacts, relabelled per type (Participants / CC / Attendees).
+#   - Linked companies — gated behind the `show_company` component var
+#     (default true) so full new/edit pages keep company linking while
+#     consumers that seed the company via prefill can hide it.
+#   - A consumer-extension hook (`fields.attributes`) for app-level fields.
 #
 # The form is stateless: it doesn't know whether it's creating or updating
 # an activity. The wrapping page or modal seeds initial state, runs
 # validation against `validate/activity.yaml`, and submits to
 # `create-activity` or `update-activity`.
+#
+# Vars (all optional):
+#   show_company — render the linked-companies selector. Default true.
 id: form_activity
 type: Box
 layout:
   gap: 16
 blocks:
   _build.array.concat:
-    # Core fields: type, title, description
-    - _ref: components/fields/core.yaml
-    # Linked entities: contacts + companies multi-selectors
-    - - id: divider_links
-        type: Divider
+    # Type tabs — Call / Email / Meeting (+ any consumer-registered types).
+    - - id: type
+        type: SegmentedSelector
+        required: true
+        layout:
+          flex: 0 0 auto
         properties:
-          title: Linked
-    - _ref: components/fields/links.yaml
-    # Consumer-defined attribute fields (only when provided)
+          style:
+            minWidth: 500
+          label:
+            disabled: true
+          block: true
+          options:
+            _build.array.map:
+              on:
+                _build.object.entries:
+                  _build.object.assign:
+                    - _ref: enums/activity_types.yaml
+                    - _module.var: activity_types
+              callback:
+                _build.function:
+                  value:
+                    __build.args: "0.0"
+                  label:
+                    __build.args: 0.1.title
+                  icon:
+                    __build.args: 0.1.icon
+      # Date + (Duration | Direction) row.
+      - id: activity_meta_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          - id: attributes.date
+            type: DateSelector
+            required: true
+            layout:
+              flex: 1 1 0
+            properties:
+              title: Date
+          - id: attributes.duration
+            type: Selector
+            visible:
+              _or:
+                - _eq:
+                    - _state: type
+                    - call
+                - _eq:
+                    - _state: type
+                    - meeting
+            layout:
+              flex: 1 1 0
+            properties:
+              title: Duration
+              options:
+                - label: 15 min
+                  value: 15 min
+                - label: 30 min
+                  value: 30 min
+                - label: 45 min
+                  value: 45 min
+                - label: 60 min
+                  value: 60 min
+                - label: 90 min
+                  value: 90 min
+          - id: attributes.direction
+            type: Selector
+            visible:
+              _eq:
+                - _state: type
+                - email
+            layout:
+              flex: 1 1 0
+            properties:
+              title: Direction
+              options:
+                - label: Sent
+                  value: Sent
+                - label: Received
+                  value: Received
+      # Subject (stored as `title`).
+      - id: title
+        type: TextInput
+        required: true
+        properties:
+          title: Subject
+          placeholder:
+            _if:
+              test:
+                _eq:
+                  - _state: type
+                  - email
+              then: e.g. Revised pricing proposal
+              else:
+                _if:
+                  test:
+                    _eq:
+                      - _state: type
+                      - meeting
+                  then: e.g. Quarterly review
+                  else: e.g. Pricing negotiation call
+      # Notes (stored as `description`).
+      - id: description
+        type: TiptapInput
+        properties:
+          title: Notes
+      # Linked contacts — Participants / CC / Attendees by type.
+      - _ref:
+          module: contacts
+          component: contact-selector
+          vars:
+            id: contacts
+            keyword: contact
+            label:
+              title:
+                _if:
+                  test:
+                    _eq:
+                      - _state: type
+                      - meeting
+                  then: Attendees
+                  else:
+                    _if:
+                      test:
+                        _eq:
+                          - _state: type
+                          - email
+                      then: CC
+                      else: Participants
+    # Linked companies — optional, on by default; consumers that seed the
+    # company via prefill can hide it.
+    - _build.if:
+        test:
+          _var:
+            key: show_company
+            default: true
+        then:
+          - _ref:
+              module: companies
+              component: company-selector
+              vars:
+                field_id: company_ids
+                mode: MultipleSelector
+                title: Linked Companies
+        else: []
+    # Consumer-defined attribute fields (only when provided).
     - _build.if:
         test:
           _build.gt:

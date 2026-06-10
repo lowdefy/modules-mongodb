@@ -1,5 +1,9 @@
+# `from` takes the real Mongo collection name (not a connectionId) — apps
+# that point the companies connection at a differently-named collection
+# must set the `lookup_collections.companies` module var to match.
 $lookup:
-  from: companies
+  from:
+    _module.var: lookup_collections.companies
   localField: company_ids
   foreignField: _id
   as: companies

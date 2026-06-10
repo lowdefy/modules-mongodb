@@ -8,9 +8,11 @@
 # the response is empty, otherwise renders a list of rows.
 #
 # Vars:
-#   reference_field — required — `contact_ids` | `company_ids` | future
+#   reference_field — required — `contacts` | `company_ids` | future
 #                                 `deal_ids`. The activity-doc field to
-#                                 filter on.
+#                                 filter on. For `contacts` (stored as
+#                                 reference objects) the match targets
+#                                 `contacts.contact_id` internally.
 #   reference_value — required — the entity ID to filter on. Typically
 #                                 `{ _url_query: _id }` for detail-page
 #                                 hosts.
@@ -38,10 +40,20 @@ requests:
             _object.assign:
               - deleted.timestamp:
                   $exists: false
+              # `contacts` is stored as reference objects, so the membership
+              # match targets the nested `contacts.contact_id`; `company_ids`
+              # (plain ids) matches directly.
               - _object.defineProperty:
                   on: {}
                   key:
-                    _payload: reference_field
+                    _if:
+                      test:
+                        _eq:
+                          - _payload: reference_field
+                          - contacts
+                      then: contacts.contact_id
+                      else:
+                        _payload: reference_field
                   descriptor:
                     value:
                       _payload: reference_value
@@ -140,7 +152,7 @@ blocks:
                   test:
                     _eq:
                       - _var: reference_field
-                      - contact_ids
+                      - contacts
                   then:
                     _var: reference_value
                   else: null

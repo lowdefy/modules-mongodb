@@ -76,7 +76,7 @@ properties:
                             - null
                         then:
                           - equals:
-                              path: contact_ids
+                              path: contacts.contact_id
                               value:
                                 _payload: filter.contact_id
                         else: []

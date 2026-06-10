@@ -9,8 +9,8 @@
 # The wrapping `pages/view.yaml` (Task 14) is responsible for two
 # pieces of state plumbing this component depends on:
 #   1. Triggering `get_activity` on mount.
-#   2. Mirroring `request.get_activity.0.contacts` into `state.contacts`
-#      and `request.get_activity.0.companies` into `state.companies`
+#   2. Mirroring `request.get_activity.0.contacts_enriched` into
+#      `state.contacts` and `request.get_activity.0.companies` into `state.companies`
 #      (the chip components read those state paths — see
 #      `contact_list_items.yaml` / `company_list_items.yaml` headers).
 #      A single `SetState` after the request resolves is sufficient.

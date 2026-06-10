@@ -65,6 +65,22 @@ vars:
       download_columns:
         default: []
         description: Extra columns appended to the Excel export.
+      contact_card_extra_fields:
+        type: array
+        default: []
+        description: >-
+          Extra `{ label, value }` rows rendered under each linked contact's
+          name/email on the activity-detail contact chips. `value` is a
+          top-level key on the projected contact doc — extend
+          `lookup_contacts.yaml`'s `$project` to surface nested source fields.
+      company_card_extra_fields:
+        type: array
+        default: []
+        description: >-
+          Extra `{ label, value }` rows rendered under each linked company's
+          name on the activity-detail company chips. `value` is a top-level
+          key on the projected company doc — extend `lookup_companies.yaml`'s
+          `$project` to surface additional fields.
   request_stages:
     type: object
     description: Pipeline overrides
@@ -91,6 +107,22 @@ vars:
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
+  lookup_collections:
+    type: object
+    description: >-
+      Real Mongo collection names used by the read-pipeline `$lookup` stages
+      that enrich linked contacts and companies on activity detail/list pages.
+      Override when an app points its contacts/companies connections at
+      differently-named collections.
+    properties:
+      contacts:
+        type: string
+        default: user-contacts
+        description: Collection joined by `lookup_contacts.yaml` (contacts.contact_id → _id).
+      companies:
+        type: string
+        default: companies
+        description: Collection joined by `lookup_companies.yaml` (company_ids → _id).
   company_name_field:
     default: name
     description: >-

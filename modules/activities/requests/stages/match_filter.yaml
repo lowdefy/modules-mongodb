@@ -27,7 +27,7 @@ $match:
               - _payload: filter.contact_id
               - null
           then:
-            - contact_ids:
+            - contacts.contact_id:
                 _payload: filter.contact_id
           else: []
       - _if:

@@ -1,6 +1,6 @@
 # HTML rendering of an activity's linked contacts. Reads from `_state:
 # contacts` — the wrapping page or block populates that state path
-# from the activity doc's lookup-joined `contacts` array (see
+# from the activity doc's lookup-joined `contacts_enriched` array (see
 # `requests/stages/lookup_contacts.yaml`). Differs from companies'
 # `contact_list_items.yaml`, which fires its own `get_company_contacts`
 # request — activities already have the joined contact data in hand on
