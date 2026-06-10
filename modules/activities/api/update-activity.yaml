@@ -20,9 +20,9 @@ routine:
                       _payload: title
                     description:
                       _payload: description
-                    contact_ids:
+                    contacts:
                       _if_none:
-                        - _payload: contact_ids
+                        - _payload: contacts
                         - []
                     company_ids:
                       _if_none:
@@ -62,9 +62,11 @@ routine:
                 _build.array.filter:
                   on:
                     _build.object.entries:
-                      _build.object.assign:
-                        - _ref: defaults/event_display.yaml
+                      _build.if_none:
                         - _module.var: event_display
+                        - _build.object.fromEntries:
+                            - - _module.var: app_name
+                              - _ref: defaults/event_display.yaml
                   callback:
                     _build.function:
                       __build.ne:
@@ -87,10 +89,17 @@ routine:
                     description: null
         references:
           _object.assign:
+            # Events store references as plain-id arrays for reverse lookups,
+            # so flatten the contact reference objects to ids.
             - contact_ids:
-                _if_none:
-                  - _payload: contact_ids
-                  - []
+                _array.map:
+                  on:
+                    _if_none:
+                      - _payload: contacts
+                      - []
+                  callback:
+                    _function:
+                      __args: 0.contact_id
               company_ids:
                 _if_none:
                   - _payload: company_ids

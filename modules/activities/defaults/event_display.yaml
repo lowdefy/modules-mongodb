@@ -1,7 +1,6 @@
-default:
-  create-activity: "{{ user.profile.name }} logged a {{ target.type_label }}: {{ target.title }}"
-  update-activity: "{{ user.profile.name }} updated a {{ target.type_label }}: {{ target.title }}"
-  complete-activity: "{{ user.profile.name }} completed a {{ target.type_label }}: {{ target.title }}"
-  cancel-activity: "{{ user.profile.name }} cancelled a {{ target.type_label }}: {{ target.title }}"
-  reopen-activity: "{{ user.profile.name }} reopened a {{ target.type_label }}: {{ target.title }}"
-  delete-activity: "{{ user.profile.name }} deleted a {{ target.type_label }}: {{ target.title }}"
+create-activity: "{{ user.profile.name }} logged a {{ target.type_label }}: {{ target.title }}"
+update-activity: "{{ user.profile.name }} updated a {{ target.type_label }}: {{ target.title }}"
+complete-activity: "{{ user.profile.name }} completed a {{ target.type_label }}: {{ target.title }}"
+cancel-activity: "{{ user.profile.name }} cancelled a {{ target.type_label }}: {{ target.title }}"
+reopen-activity: "{{ user.profile.name }} reopened a {{ target.type_label }}: {{ target.title }}"
+delete-activity: "{{ user.profile.name }} deleted a {{ target.type_label }}: {{ target.title }}"

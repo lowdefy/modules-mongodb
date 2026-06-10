@@ -1,5 +1,9 @@
 # Activities — Vars
 
+## `app_name`
+
+`string` — **Required.** App identifier used to key the event display titles written to the `log-events` collection. When `event_display` is not overridden, the shipped defaults render under `display.{app_name}` on each event document, and the events module's `display_key` must match this value to read them back. See [App name scoping](../../docs/idioms.md#app-name).
+
 ## `label` / `label_plural`
 
 `string` — Defaults `Activity` / `Activities`. Singular and plural display labels used in page titles, buttons, and selector placeholders.
@@ -22,7 +26,7 @@ vars:
 
 ## `event_display`
 
-`object` — See `defaults/event_display.yaml` for the shipped defaults. Per-app Nunjucks templates for the events this module emits (`create-activity`, `update-activity`, `complete-activity`, `cancel-activity`, `reopen-activity`, `delete-activity`). The `target` shape is `{ title, type, type_label }`, where `type_label` is resolved from the merged `activity_types` enum at runtime.
+`object` — Per-app Nunjucks templates for the events this module emits (`create-activity`, `update-activity`, `complete-activity`, `cancel-activity`, `reopen-activity`, `delete-activity`), keyed by app identifier. When unset, the shipped defaults in `defaults/event_display.yaml` render under `app_name`. When set, the override **fully replaces** the defaults — no merge — so list every app and event type you want rendered. The `target` shape is `{ title, type, type_label }`, where `type_label` is resolved from the merged `activity_types` enum at runtime. See [Event display](../../docs/idioms.md#event-display).
 
 ## `fields`
 

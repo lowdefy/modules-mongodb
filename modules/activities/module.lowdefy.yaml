@@ -15,6 +15,9 @@ dependencies:
     description: File attachments (optional)
 
 vars:
+  app_name:
+    required: true
+    description: App identifier used to key event_display titles when no override is supplied.
   label:
     default: Activity
     description: Singular display label
@@ -29,9 +32,7 @@ vars:
       event_types — keys are type strings, values have title, color, icon,
       default_stage.
   event_display:
-    default:
-      _ref: defaults/event_display.yaml
-    description: Per-app Nunjucks templates for emitted events
+    description: "Per-app event display templates. Keys are app identifiers, values map event types to Nunjucks title templates. When unset, the module's defaults render under app_name. When set, the override fully replaces the defaults — no merge."
   fields:
     type: object
     description: Field block arrays rendered in the edit form and SmartDescriptions view
