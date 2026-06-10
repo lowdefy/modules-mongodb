@@ -6,6 +6,7 @@ import SubmitWorkflowAction from './SubmitWorkflowAction/SubmitWorkflowAction.js
 import GetEntityWorkflows from './GetEntityWorkflows/GetEntityWorkflows.js';
 import GetWorkflowOverview from './GetWorkflowOverview/GetWorkflowOverview.js';
 import GetWorkflowActionGroupOverview from './GetWorkflowActionGroupOverview/GetWorkflowActionGroupOverview.js';
+import GetWorkflowAction from './GetWorkflowAction/GetWorkflowAction.js';
 
 const WorkflowAPI = {
   schema,
@@ -17,6 +18,7 @@ const WorkflowAPI = {
     GetEntityWorkflows,
     GetWorkflowOverview,
     GetWorkflowActionGroupOverview,
+    GetWorkflowAction,
   },
 };
 
