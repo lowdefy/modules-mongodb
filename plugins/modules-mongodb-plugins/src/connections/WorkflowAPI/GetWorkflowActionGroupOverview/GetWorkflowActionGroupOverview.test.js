@@ -1,0 +1,414 @@
+/**
+ * Integration tests for GetWorkflowActionGroupOverview (Part 46 task 4).
+ * Drives the real resolver against an in-memory Mongo.
+ */
+import { clearMongoClientCache } from '../../mongo/getMongoDb.js';
+import inMemoryMongo from '../../shared/inMemoryMongo.js';
+import GetWorkflowActionGroupOverview from './GetWorkflowActionGroupOverview.js';
+
+jest.setTimeout(60000);
+
+const changeStamp = {
+  timestamp: new Date('2026-05-20T00:00:00Z'),
+  user: { id: 'u1', name: 'Stamper' },
+};
+
+function makeWorkflowsConfig() {
+  return [
+    {
+      type: 'onboarding',
+      title: 'Onboarding',
+      entity_collection: 'leads-collection',
+      entity_ref_key: 'lead_ids',
+      display_order: 1,
+      starting_actions: [{ type: 'qualify', status: 'action-required' }],
+      action_groups: [
+        { id: 'phase-1', title: 'Phase 1', icon: 'rocket' },
+        { id: 'phase-2', title: 'Phase 2', icon: 'flag' },
+      ],
+      actions: [
+        {
+          type: 'qualify',
+          kind: 'check',
+          action_group: 'phase-1',
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+        },
+        {
+          type: 'kickoff',
+          kind: 'check',
+          action_group: 'phase-1',
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+        },
+        {
+          type: 'secret-action',
+          kind: 'check',
+          action_group: 'phase-1',
+          access: { 'test-app': { view: ['admin'], edit: ['admin'] } },
+        },
+      ],
+    },
+  ];
+}
+
+let mongo;
+
+beforeAll(async () => {
+  mongo = await inMemoryMongo();
+});
+
+afterAll(async () => {
+  await clearMongoClientCache();
+  await mongo.cleanup();
+});
+
+async function resetCollections() {
+  await mongo.db.collection('workflows').deleteMany({});
+  await mongo.db.collection('actions').deleteMany({});
+}
+
+beforeEach(async () => {
+  await clearMongoClientCache();
+  await resetCollections();
+});
+
+function buildContext({
+  request,
+  app_name = 'test-app',
+  user = {
+    id: 'U1',
+    profile: { name: 'Test User' },
+    apps: { 'test-app': { roles: ['account-manager'] } },
+  },
+  workflowsConfig = makeWorkflowsConfig(),
+  entities = {
+    'leads-collection': {
+      page_id: 'leads/lead-view',
+      id_query_key: 'lead_id',
+      title: 'Lead',
+    },
+  },
+} = {}) {
+  return {
+    request,
+    blockId: 'test-block',
+    connectionId: 'test-conn',
+    pageId: 'test-page',
+    requestId: 'test-req',
+    connection: {
+      databaseUri: mongo.uri,
+      useTransactions: false,
+      entry_id: 'workflows',
+      workflowsCollection: 'workflows',
+      actionsCollection: 'actions',
+      app_name,
+      endpoints: {
+        new_event: 'events/new-event',
+        send_notification: 'notifications/send-notification',
+      },
+      workflowsConfig,
+      changeStamp,
+      user,
+      entities,
+    },
+    callApi: async () => null,
+  };
+}
+
+async function seedWorkflow({ _id = 'wf-1', entity_id = 'lead-1', form_data = {}, overrides = {} } = {}) {
+  await mongo.db.collection('workflows').insertOne({
+    _id,
+    workflow_type: 'onboarding',
+    entity_id,
+    entity_collection: 'leads-collection',
+    entity_ref_key: 'lead_ids',
+    display_order: 1,
+    status: [{ stage: 'active', event_id: 'e0', created: changeStamp }],
+    summary: { done: 0, not_required: 0, total: 2 },
+    groups: [
+      { id: 'phase-1', status: 'in-progress', summary: { done: 0, not_required: 0, total: 2 } },
+      { id: 'phase-2', status: 'blocked', summary: { done: 0, not_required: 0, total: 0 } },
+    ],
+    form_data,
+    created: changeStamp,
+    updated: changeStamp,
+    ...overrides,
+  });
+}
+
+async function seedAction({ _id, type, kind = 'check', action_group = 'phase-1', stage = 'action-required', workflow_id = 'wf-1', sort_order = 0, extra = {} } = {}) {
+  await mongo.db.collection('actions').insertOne({
+    _id,
+    workflow_id,
+    workflow_type: 'onboarding',
+    type,
+    kind,
+    key: null,
+    action_group,
+    sort_order,
+    status: [{ stage, event_id: 'e0', created: changeStamp }],
+    access: { 'test-app': { view: true, edit: ['account-manager'] } },
+    'test-app': {
+      links: {
+        view: { pageId: 'workflows/workflow-action-view', urlQuery: { action_id: _id } },
+        edit: stage === 'action-required' ? { pageId: 'workflows/workflow-action-edit', urlQuery: { action_id: _id } } : null,
+        review: null,
+        error: null,
+      },
+      message: `${type} message`,
+    },
+    metadata: {},
+    created: changeStamp,
+    updated: changeStamp,
+    ...extra,
+  });
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Group null collapse
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('group null collapse', () => {
+  test('workflow null + group null when workflow not found', async () => {
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'no-such', group_id: 'phase-1' } }),
+    );
+    expect(result.workflow).toBeNull();
+    expect(result.group).toBeNull();
+    expect(result.actions).toEqual([]);
+  });
+
+  test('group is null when all actions in the group are dropped by access filter', async () => {
+    await seedWorkflow();
+    await seedAction({
+      _id: 'a-secret',
+      type: 'secret-action',
+      action_group: 'phase-1',
+      extra: {
+        access: { 'test-app': { view: ['admin'], edit: ['admin'] } },
+        'test-app': { links: { view: null, edit: null, review: null, error: null }, message: '' },
+      },
+    });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.workflow).not.toBeNull();
+    expect(result.group).toBeNull();
+    expect(result.actions).toEqual([]);
+  });
+
+  test('group is null when group_id not found in workflow.groups', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'unknown-group' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'unknown-group' } }),
+    );
+    expect(result.group).toBeNull();
+    // actions may or may not be returned — workflow was found and actions were visible
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Basic return shape
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('return shape', () => {
+  test('returns { workflow, group, actions } when workflow + group exist', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.workflow._id).toBe('wf-1');
+    expect(result.group).not.toBeNull();
+    expect(result.group.id).toBe('phase-1');
+    expect(result.actions).toHaveLength(1);
+  });
+
+  test('workflow carries title from config', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.workflow.title).toBe('Onboarding');
+  });
+
+  test('entity_link resolves from connection.entities', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.workflow.entity_link).toEqual({
+      pageId: 'leads/lead-view',
+      urlQuery: { lead_id: 'lead-1' },
+      title: 'Lead',
+    });
+  });
+
+  test('group carries title + icon from config but no link', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.group.title).toBe('Phase 1');
+    expect(result.group.icon).toBe('rocket');
+    expect('link' in result.group).toBe(false);
+  });
+
+  test('group carries status and summary from workflow doc', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.group.status).toBe('in-progress');
+    expect(result.group.summary).toEqual({ done: 0, not_required: 0, total: 2 });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Action card shape (no _id/kind on overview cards)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('action card shape', () => {
+  test('action card has type, status, message, link, allowed — no _id or kind', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    const card = result.actions[0];
+    expect(card.type).toBe('qualify');
+    expect(card.status).toBe('action-required');
+    expect(card.message).toBe('qualify message');
+    expect(card.allowed).toBeDefined();
+    expect(card.link).toBeDefined();
+    expect('_id' in card).toBe(false);
+    expect('kind' in card).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Access drop
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('access drop', () => {
+  test('action with no accessible verb for this user is dropped', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    await seedAction({
+      _id: 'a-secret',
+      type: 'secret-action',
+      action_group: 'phase-1',
+      extra: {
+        access: { 'test-app': { view: ['admin'], edit: ['admin'] } },
+        'test-app': { links: { view: null, edit: null, review: null, error: null }, message: '' },
+      },
+    });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.actions.find((c) => c.type === 'secret-action')).toBeUndefined();
+    expect(result.actions.find((c) => c.type === 'qualify')).toBeDefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Not-required sinks last
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('not-required sinks last', () => {
+  test('not-required actions appear after action-required within the group', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a-nr', type: 'kickoff', action_group: 'phase-1', stage: 'not-required', sort_order: 0 });
+    await seedAction({ _id: 'a-ar', type: 'qualify', action_group: 'phase-1', stage: 'action-required', sort_order: 1 });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.actions[0].status).toBe('action-required');
+    expect(result.actions[1].status).toBe('not-required');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// form_data pruning
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('form_data pruning', () => {
+  test('form_data pruned to view-visible actions', async () => {
+    await seedWorkflow({
+      form_data: {
+        qualify: { answer: 'yes' },
+        kickoff: { note: 'ok' },
+        secret_action: { sensitive: 'leak' },
+      },
+    });
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    await seedAction({ _id: 'a2', type: 'kickoff', action_group: 'phase-1' });
+    // secret-action dropped by access
+    await seedAction({
+      _id: 'a-secret',
+      type: 'secret-action',
+      action_group: 'phase-1',
+      extra: {
+        access: { 'test-app': { view: ['admin'] } },
+        'test-app': { links: { view: null, edit: null, review: null, error: null }, message: '' },
+      },
+    });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.workflow.form_data.qualify).toEqual({ answer: 'yes' });
+    expect(result.workflow.form_data.kickoff).toEqual({ note: 'ok' });
+    expect('secret_action' in result.workflow.form_data).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Only actions in the requested group are returned
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('group scoping', () => {
+  test('only actions in the requested group_id are included', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
+    // This action is in phase-2 and should not appear
+    await mongo.db.collection('actions').insertOne({
+      _id: 'a2',
+      workflow_id: 'wf-1',
+      workflow_type: 'onboarding',
+      type: 'kickoff',
+      kind: 'check',
+      key: null,
+      action_group: 'phase-2',
+      sort_order: 0,
+      status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }],
+      access: { 'test-app': { view: true, edit: ['account-manager'] } },
+      'test-app': {
+        links: { view: { pageId: 'workflows/workflow-action-view', urlQuery: { action_id: 'a2' } }, edit: null, review: null, error: null },
+        message: 'kickoff message',
+      },
+      metadata: {},
+      created: changeStamp,
+      updated: changeStamp,
+    });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.actions).toHaveLength(1);
+    expect(result.actions[0].type).toBe('qualify');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// meta
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('handler meta', () => {
+  test('has schema and meta with both check flags false', () => {
+    expect(GetWorkflowActionGroupOverview.schema).toEqual({});
+    expect(GetWorkflowActionGroupOverview.meta).toEqual({ checkRead: false, checkWrite: false });
+  });
+});
