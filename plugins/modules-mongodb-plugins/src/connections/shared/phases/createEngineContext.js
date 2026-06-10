@@ -34,7 +34,9 @@ import getMongoDb from '../../mongo/getMongoDb.js';
  * scope.
  *
  * @param {Object} lowdefyContext — the resolver's Lowdefy context: `request`,
- *   `connection`, `user`, `callApi`, and the request-context fields.
+ *   `connection`, `callApi`, and the request-context fields. The session user
+ *   is read from `connection.user` (wired via `_user: true` on the connection
+ *   YAML), not from a top-level `user` key.
  * @returns {Promise<Object>} the engine context consumed by load / pre-hook /
  *   plan / commit / post-hook.
  */
@@ -42,13 +44,14 @@ async function createEngineContext(lowdefyContext) {
   const {
     request: params = {},
     connection,
-    user,
     callApi,
     blockId,
     connectionId,
     pageId,
     requestId,
   } = lowdefyContext;
+
+  const user = connection?.user;
 
   const { mongoDb, mongoClient, useTransactions } = await getMongoDb(connection);
 
