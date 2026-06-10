@@ -91,6 +91,16 @@ vars:
   filter_requests:
     default: []
     description: Additional requests for the custom filters section
+  company_name_field:
+    default: name
+    description: >-
+      Field on company docs used as the display name in linked-company chips
+      (company_list_items) and the list-table company tags (table_activities).
+      Mirrors the companies module's `name_field` var — set both to the same
+      value when an app stores its company display name under a non-default
+      field (e.g. `trading_name`). The `lookup_companies` stage projects this
+      field under the stable alias `name`, so templates always read
+      `company.name` regardless of the source field.
 
 exports:
   pages:

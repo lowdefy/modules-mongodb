@@ -120,7 +120,7 @@ properties:
               __nunjucks:
                 template: |
                   {% if companies and companies.length %}
-                    {% for company in companies %}<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; background:var(--ant-color-fill-secondary); margin:2px 4px 2px 0">{{ company.trading_name or company._id }}</span>{% endfor %}
+                    {% for company in companies %}<span style="display:inline-block; padding:2px 8px; border-radius:999px; font-size:11px; background:var(--ant-color-fill-secondary); margin:2px 4px 2px 0">{{ company.name or company._id }}</span>{% endfor %}
                   {% else %}&mdash;{% endif %}
                 on:
                   companies:

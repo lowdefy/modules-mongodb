@@ -6,9 +6,10 @@
 # request — activities already have the joined company data in hand on
 # the read pipeline, so a separate request would be redundant.
 #
-# The lookup stage projects `_id` and `trading_name` only. The chip
-# renders `trading_name` as the display name (matching companies'
-# `name_field` default). To surface other company fields, extend
+# The lookup stage projects `_id` and the app-configured company name field
+# (companies' `name_field`, set here via the activities `company_name_field`
+# var, default `name`) under the stable alias `name`. The chip renders
+# `company.name` as the display name. To surface other company fields, extend
 # `lookup_companies.yaml`'s `$project` and add the field to
 # `components.company_card_extra_fields` in the consuming app's vars
 # (a list of { label, value } pairs):
@@ -31,7 +32,7 @@ properties:
           {% for company in companies %}
           <div style="padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}">
             <a href="/{{ company_detail_page }}?_id={{ company._id }}" style="color:inherit; text-decoration:none">
-              <div><b>{{ company.trading_name }}</b></div>
+              <div><b>{{ company.name }}</b></div>
               {% for field in extra_fields %}
                 {% if company[field.value] != null %}
                 <div style="color:var(--ant-color-text-secondary); font-size:11px">
