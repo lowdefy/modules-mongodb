@@ -91,11 +91,20 @@ Update the JSDoc that documents the `user` parameter to say it now comes off
 - `createEngineContext` reads the user from `connection.user`; `context.user` is
   populated on the real request path.
 - The shipped submit-gate behavior is now correct on the real path: an
-  array-gated submit passes when the user holds a matching role. Existing
-  `SubmitWorkflowAction.test.js` still passes (it hand-builds a context — confirm
-  it builds `connection.user` or top-level in a way that still flows; adjust the
-  test's context construction if it relied on the old top-level `user` and now
-  reads `undefined`).
+  array-gated submit passes when the user holds a matching role.
+- **All handler-test `buildContext` helpers are updated to nest `user` under
+  `connection`** (design Ripple "Shipped submit gate" / review-3 #3). Today every
+  handler test returns `user` as a **top-level sibling** of `connection`
+  (`StartWorkflow.test.js:161`, `CancelWorkflow.test.js:126`,
+  `CloseWorkflow.test.js:135`, `SubmitWorkflowAction.test.js:198`) — which is what
+  masks the latent bug. Once `createEngineContext` reads `connection.user`, those
+  fixtures must nest `user` under `connection` (mirroring the real
+  `user: { _user: true }` property), or `context.user` goes `undefined`,
+  `userRoles` collapses to `[]`, and every role-array-gated case fails (e.g. the
+  "No Edit"/role tests at `SubmitWorkflowAction.test.js:345`/`:364`/`:396`). The
+  shared `buildContext` pattern covers `StartWorkflow`, `CancelWorkflow`,
+  `CloseWorkflow`, `SubmitWorkflowAction`, and `SubmitWorkflowAction/dispatchNotifications`
+  — update all of them.
 - `pnpm --filter @lowdefy/modules-mongodb-plugins test` passes for the touched
   plugin tests.
 
@@ -104,7 +113,11 @@ Update the JSDoc that documents the `user` parameter to say it now comes off
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` — modify — declare top-level `user`, `entities`, and `eventsCollection` (default `"log-events"`) properties.
 - `modules/workflows/connections/workflow-api.yaml` — modify — add `user: { _user: true }` and `entities: { _module.var: entities }`.
 - `plugins/modules-mongodb-plugins/src/connections/shared/phases/createEngineContext.js` — modify — source the user from `connection.user`.
-- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/SubmitWorkflowAction.test.js` — modify (if needed) — ensure the hand-built context surfaces `user` via the new path.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/SubmitWorkflowAction.test.js` — modify — nest `user` under `connection` in `buildContext`.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.test.js` — modify — same `buildContext` fix.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.test.js` — modify — same `buildContext` fix.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CloseWorkflow/CloseWorkflow.test.js` — modify — same `buildContext` fix.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchNotifications.test.js` — modify (if it relies on the shared `buildContext` user pattern) — same fix.
 
 ## Notes
 

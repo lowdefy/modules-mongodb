@@ -58,8 +58,13 @@ actionConfig.allow_not_required })` (task 2). Per-signal booleans
    - **Engine fields:** `_id`, `type`, `kind`, `key`, `status`, `action_group`,
      `description`, `due_date`, `assignees`, `entity_id`, `entity_collection`,
      `created`, `updated`.
-   - **Config-derived display:** `title`, `required_after_close` (from the
-     validated action/workflow config).
+   - **Display copy:** `required_after_close` (config-derived) and `message` —
+     the current-stage copy the engine stamps onto `action.{app_name}.message`,
+     resolved by the connection's `app_name` (the same string the overview
+     methods + timeline already surface). **No action `title`** — the shared
+     detail header reuses `message` (review-5 #2). The earlier "config-derived
+     `title`" was unprovisioned (no authored field, no engine write, not in
+     `ACTION_FIELDS`); do not add one.
    - **Form-field values:** the author's submitted form data, **read from the
      parent workflow's `form_data[action.type]` slice** (keyed action:
      `form_data[action.type][action.key]`) via the step-2 second read — **not**
@@ -67,7 +72,14 @@ actionConfig.allow_not_required })` (task 2). Per-signal booleans
      not a passthrough: allowlist the slice by the validated form field keys (the
      same keys `form_meta`, task 3, is computed from). Knowing the keys lets the
      engine curate the values it reads from `workflow.form_data`.
-   - **Resolved fields:** `allowed`, `buttons`.
+   - **Resolved fields:** `allowed`, `buttons`, and `workflow_closed` — the
+     parent workflow's lifecycle state collapsed to a boolean
+     (`workflow.status?.[0]?.stage ∈ {completed, cancelled}`), computed from the
+     **step-2 parent-workflow read** (the same read that supplies the form
+     values). The two static detail pages render their workflow-closed banner +
+     `required_after_close` gate off this (review-5 #1, D8); the raw stage is
+     **not** shipped. (The view page has no banner — harmless that it ignores
+     the field.)
 
    Exclude everything else: `access` (raw input — superseded by `allowed`),
    `workflow_type`, `metadata`, `[slug].links`, `tracker`, `child_*`.
@@ -89,6 +101,8 @@ Add `GetWorkflowAction.test.js` (in-memory Mongo): assert the envelope allowlist
 - The envelope's form-field values come from the parent workflow's
   `form_data[type]` / `[type][key]` slice (the second read), allowlisted by the
   validated form keys — not from the action doc.
+- The envelope carries `workflow_closed` = parent workflow `completed`/`cancelled`
+  (from the second read); the raw workflow stage is not shipped.
 - `buttons.not_required` honors `allow_not_required` (false by default hides it).
 - `buttons` reflects the FSM source-stage × verb-gate AND for the action's
   current stage.

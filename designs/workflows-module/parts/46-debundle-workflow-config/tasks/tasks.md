@@ -71,5 +71,7 @@ orphaned manifest exports be deleted, and the full build + test suite verified.
 ## Scope
 
 **Source:** `designs/workflows-module/parts/46-debundle-workflow-config/design.md`
-**Context files considered:** none (the design folder contains only `design.md` and a `review/` folder).
-**Review files skipped:** `review/review-1.md`, `review/review-2.md`, `review/consistency-1.md`, `review/consistency-2.md`, `review/todo-discuss.md`.
+**Context files:** `open-questions.md` (the per-verb-page-title deferral — does not affect task scope).
+**Review corpus folded into these tasks:** `review/review-1.md`–`review/review-5.md`
+(reviews 3–5 and their resolutions were propagated into the tasks by the
+`consistency-1`–`consistency-3` passes; the design is the source of truth).

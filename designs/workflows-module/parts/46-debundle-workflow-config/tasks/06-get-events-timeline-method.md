@@ -98,4 +98,11 @@ actions; assert latest-event-per-action dedup, the access drop, resolved `link`,
   here — that happens in tasks 11/12 once the new surface (task 11) consumes this
   method.
 - Removing the unconditional inline lookup from the generic events timeline is a
-  behavior change, but **workflows has not shipped — no consumers to migrate.**
+  deliberate breaking change (D6 / review-5 #3). It splits the four shipped
+  `events-timeline` consumers two ways: for `contacts`/`companies` `tile_events`
+  and `activities/pages/view` it is a **no-op on current data** (no workflow
+  events reference those entities' actions today); the **demo lead-view is a real
+  consumer** — the onboarding workflow targets `leads-collection`/`lead_ids`, so
+  started workflows do put action cards on its timeline — and it **migrates to the
+  new workflows-provided timeline surface in task 11**, not here. The actual
+  splice removal + demo migration live in task 11; this task only adds the method.

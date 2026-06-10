@@ -34,8 +34,11 @@ submitted **values** off this one response, retiring the separate
 `get_action` → `get_workflow_action` (task 7) and `GetWorkflowAction` returns one
 object, not an array. Audit every `_request: get_action.0` / `_request:
 get_action.N` and `set_action` read and change to `_request: get_workflow_action`
-(object form, no `.0`). The view page already reads `_request: get_action.title`
-(object-style) — rename it too and confirm consistency across view/edit/review
+(object form, no `.0`). **The static view page's `action_title` header reads
+`_request: get_action.title` today — a broken read (no action `title` exists,
+review-5 #2). Repoint it at the envelope's `message`
+(`_request: get_workflow_action.message`), the current-stage display copy the
+engine resolves per `app_name`.** Confirm consistency across view/edit/review
 templates and pages.
 
 **1b. Drop the `get_workflow` second read; read form values off
@@ -48,9 +51,27 @@ form-field values in its envelope (task 5's parent-workflow read), so:
 - Remove the `get_workflow` request step / `onMount` call from all four templates.
 - Repoint every `get_workflow.form_data.{type}(.key)` read at the
   `get_workflow_action` response's form-field-values slice (object form).
-- **Delete `modules/workflows/requests/get_workflow.yaml`** — its only consumers
-  are these templates, and it is itself an ungated raw `$match` on the workflows
-  collection (removing it closes a second open read on the detail path).
+- **Delete `modules/workflows/requests/get_workflow.yaml`** — it is itself an
+  ungated raw `$match` on the workflows collection (removing it closes a second
+  open read on the detail path). It has **two** consumer sets, both rewired in
+  this task: the four templates (form-data, above) **and** the two static pages
+  (step 1c).
+
+**1c. Rewire the two static pages' workflow-closed banner to
+`action.workflow_closed` (D8 / review-5 #1).** `pages/workflow-action-edit.yaml`
+and `pages/workflow-action-review.yaml` also `_ref: requests/get_workflow.yaml`
+(both `:19`) and read `get_workflow.status.0.stage` to drive the **workflow-closed
+banner** and the `required_after_close` gate (edit `:96,99,180,183`; review
+`:80,83,165,168,193,196`). `GetWorkflowAction` now returns a resolved
+`workflow_closed` boolean (= parent workflow `completed`/`cancelled` — task 5), so:
+
+- Remove the `get_workflow` request step / `_ref` from both static pages.
+- Replace each `_or(_eq[get_workflow.status.0.stage, completed],
+_eq[…, cancelled])` disjunction with the single boolean
+  `_request: get_workflow_action.workflow_closed` (or `_state: action.workflow_closed`
+  after `set_action`).
+- The static **view** page has no closed banner and already omits the
+  `get_workflow` step — no change there.
 
 **2. Drop the client mirror.** Remove the `onMount` step
 `_ref: components/action_role_check.yaml` from all three static detail pages and
@@ -113,7 +134,9 @@ reads it server-side per task 2 — is decided in task 2 / cleaned in task 12.)
 - The detail request is read as `_request: get_workflow_action` (single object,
   no `.0`) everywhere; no `_request: get_action` reads remain.
 - No template fires the `get_workflow` request; submitted form values render from
-  the `get_workflow_action` envelope; `requests/get_workflow.yaml` is deleted and
+  the `get_workflow_action` envelope. No static page fires `get_workflow` either —
+  the edit/review closed banner + `required_after_close` gate read
+  `action.workflow_closed`. `requests/get_workflow.yaml` is deleted and
   unreferenced.
 - `not_required` button defaults to visible (opt-out), gated by the engine's
   `action.buttons.not_required` (which honors `allow_not_required`).
@@ -129,9 +152,9 @@ reads it server-side per task 2 — is decided in task 2 / cleaned in task 12.)
 - `modules/workflows/templates/review.yaml.njk` — modify — same.
 - `modules/workflows/templates/error.yaml.njk` — modify — same.
 - `modules/workflows/requests/get_workflow.yaml` — delete — subsumed by `GetWorkflowAction`'s parent-workflow read.
-- `modules/workflows/pages/workflow-action-view.yaml` — modify — drop `action_role_check`; read `allowed` from response; object-shape reads.
-- `modules/workflows/pages/workflow-action-edit.yaml` — modify — same.
-- `modules/workflows/pages/workflow-action-review.yaml` — modify — same.
+- `modules/workflows/pages/workflow-action-view.yaml` — modify — drop `action_role_check`; read `allowed` from response; object-shape reads. (No `get_workflow` step / closed banner — already omitted.)
+- `modules/workflows/pages/workflow-action-edit.yaml` — modify — same, **plus** drop the `get_workflow` step + `_ref` and repoint the closed-banner disjunction at `action.workflow_closed` (step 1c).
+- `modules/workflows/pages/workflow-action-review.yaml` — modify — same as edit.
 - `modules/workflows/components/action_role_check.yaml` — delete.
 - `modules/workflows/components/evaluateVerbGate.js` — delete.
 - `modules/workflows/components/evaluateVerbGate.test.js` — delete.
