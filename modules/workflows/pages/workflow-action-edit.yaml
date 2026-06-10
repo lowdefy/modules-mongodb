@@ -5,7 +5,6 @@
 # filter, role gate, required_after_close gate, and stale-URL redirect.
 #
 # Path-stub dependencies (won't build until other parts ship):
-#   - ../components/action_role_check.yaml       (part 18)
 #   - ../components/universal-fields/universal-fields.yaml  (part 24)
 _ref:
   module: layout
@@ -16,7 +15,6 @@ _ref:
     content_width: 750
     requests:
       - _ref: requests/get_workflow_action.yaml
-      - _ref: requests/get_workflow.yaml
     events:
       onMount:
         # Step 1: action_id presence guard.
@@ -50,17 +48,10 @@ _ref:
               _module.pageId: workflow-action-view
             urlQuery:
               _url_query: true
-        # Step 4: load workflow — needed for required_after_close gate.
-        - id: get_workflow
-          type: Request
-          params: get_workflow
+        # Step 4 (get_workflow) — omitted; workflow_closed + allowed resolved
+        # server-side into the get_workflow_action envelope.
         # Step 5 (get_entity) — intentionally omitted on all check pages (v1).
-        # Step 6: role check — sets _state.action_allowed.
-        - _ref:
-            path: components/action_role_check.yaml
-            vars:
-              action_config:
-                _request: get_workflow_action
+        # Step 6 (action_role_check) — omitted; allowed resolved server-side.
         # Step 7: prime form state.
         - id: prime_form_state
           type: SetState
@@ -91,13 +82,7 @@ _ref:
             type: Alert
             visible:
               _and:
-                - _or:
-                    - _eq:
-                        - _request: get_workflow.status.0.stage
-                        - completed
-                    - _eq:
-                        - _request: get_workflow.status.0.stage
-                        - cancelled
+                - _request: get_workflow_action.workflow_closed
                 - _ne:
                     - _request: get_workflow_action.required_after_close
                     - true
@@ -167,21 +152,13 @@ _ref:
               - id: button_submit_edit
                 type: Button
                 visible:
-                  _eq:
-                    - _state: action_allowed.edit
-                    - true
+                  _request: get_workflow_action.allowed.edit
                 properties:
                   title: Save
                   type: primary
                   disabled:
                     _and:
-                      - _or:
-                          - _eq:
-                              - _request: get_workflow.status.0.stage
-                              - completed
-                          - _eq:
-                              - _request: get_workflow.status.0.stage
-                              - cancelled
+                      - _request: get_workflow_action.workflow_closed
                       - _ne:
                           - _request: get_workflow_action.required_after_close
                           - true

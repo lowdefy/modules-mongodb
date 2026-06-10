@@ -35,7 +35,6 @@ _ref:
     requests:
       _build.array.concat:
         - - _ref: requests/get_workflow_action.yaml
-          - _ref: requests/get_workflow.yaml
           - _ref:
               path: requests/get_entity.yaml.njk
               vars:
@@ -63,31 +62,18 @@ _ref:
               type: SetState
               params:
                 action:
-                  _request: get_workflow_action.0
+                  _request: get_workflow_action
             # Step 3 (stale-URL guard) — intentionally omitted on view.
-            # Step 4: load the parent workflow (form_data lives here).
-            - id: get_workflow
-              type: Request
-              params: get_workflow
-            # Step 5: load the entity.
+            # Step 4: load the entity.
             - id: get_entity
               type: Request
               params: get_entity
-            # Step 6: role check — sets _state.action_allowed.
-            - _ref:
-                path: components/action_role_check.yaml
-                vars:
-                  action_config:
-                    _var: action_config
-            # Step 7: prime form state from workflow.form_data.{action_type}.
+            # Step 5: prime form state from envelope's form_values.
             - id: prime_form_state
               type: SetState
               params:
                 form:
-                  _request:
-                    _string.concat:
-                      - get_workflow.form_data.
-                      - _var: action_config.type
+                  _state: action.form_values
                 fields:
                   assignees:
                     _state: action.assignees
@@ -182,14 +168,7 @@ _ref:
                         - _var:
                             key: page_config.buttons.request_changes.visible
                             default: false
-                        - _array.includes:
-                            - _ref:
-                                path: enums/button_signal_sources.yaml
-                                key: request_changes
-                            - _state: action.status.0.stage
-                        - _eq:
-                            - _state: action_allowed.view
-                            - true
+                        - _state: action.buttons.request_changes
                     properties:
                       title: Request Changes
                       type: default

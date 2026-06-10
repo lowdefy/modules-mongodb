@@ -96,7 +96,7 @@ test('Save Draft persists partial form data without running validation (Part 39 
 
     // Re-open the page and confirm the saved notes field is pre-populated.
     await ldf.goto(`/workflows/onboarding-qualify-edit?action_id=${actionId}`);
-    await ldf.request('get_workflow').expect.toFinish();
+    await ldf.request('get_workflow_action').expect.toFinish();
     const notesLocator = page.getByLabel('Qualification notes');
     await expect(notesLocator).toHaveValue('Partial draft note');
   } finally {

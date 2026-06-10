@@ -5,7 +5,6 @@
 # adapted for plain YAML (no Nunjucks render-time vars).
 #
 # Path-stub dependencies (won't build until other parts ship):
-#   - ../components/action_role_check.yaml       (part 18)
 #   - ../components/universal-fields/universal-fields.yaml  (part 24)
 _ref:
   module: layout
@@ -39,14 +38,11 @@ _ref:
             status_history_list:
               _request: get_workflow_action.status
         # Step 3 (stale-URL guard) — intentionally omitted on view.
-        # Step 4 (get_workflow) — intentionally omitted on view (no form-state to prime).
+        # Step 4 (get_workflow) — omitted; workflow_closed + form_values resolved
+        # server-side into the get_workflow_action envelope.
         # Step 5 (get_entity) — intentionally omitted on all check pages (v1).
-        # Step 6: role check — sets _state.action_allowed.
-        - _ref:
-            path: components/action_role_check.yaml
-            vars:
-              action_config:
-                _request: get_workflow_action
+        # Step 6 (action_role_check) — omitted; allowed resolved server-side into
+        # the get_workflow_action envelope (action.allowed.{verb}).
         # Step 7: no-op SetState slot (kept for sequence parity).
         - id: prime_form_state
           type: SetState
@@ -72,7 +68,7 @@ _ref:
                 properties:
                   level: 4
                   content:
-                    _request: get_workflow_action.title
+                    _request: get_workflow_action.message
               - id: action_status_badge
                 type: Tag
                 properties:

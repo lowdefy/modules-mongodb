@@ -33,7 +33,6 @@ _ref:
     requests:
       _build.array.concat:
         - - _ref: requests/get_workflow_action.yaml
-          - _ref: requests/get_workflow.yaml
           - _ref:
               path: requests/get_entity.yaml.njk
               vars:
@@ -59,7 +58,7 @@ _ref:
               type: SetState
               params:
                 action:
-                  _request: get_workflow_action.0
+                  _request: get_workflow_action
             - id: redirect_stale_status
               type: Link
               skip:
@@ -73,30 +72,16 @@ _ref:
                     _var: page_ids.view
                 urlQuery:
                   _url_query: true
-            - id: get_workflow
-              type: Request
-              params: get_workflow
             - id: get_entity
               type: Request
               params: get_entity
-            - _ref:
-                path: components/action_role_check.yaml
-                vars:
-                  action_config:
-                    _var: action_config
             - id: prime_form_state
               type: SetState
               params:
                 form:
-                  _request:
-                    _string.concat:
-                      - get_workflow.form_data.
-                      - _var: action_config.type
+                  _state: action.form_values
                 form_review:
-                  _request:
-                    _string.concat:
-                      - get_workflow.form_data.
-                      - _var: action_config.type
+                  _state: action.form_values
                 fields:
                   assignees:
                     _state: action.assignees
@@ -159,9 +144,7 @@ _ref:
                             - _eq:
                                 - _state: action.status.0.stage
                                 - in-review
-                            - _eq:
-                                - _state: action_allowed.review
-                                - true
+                            - _state: action.allowed.review
                         blocks:
                           _build.array.concat:
                             - - id: form_review_divider
@@ -229,14 +212,7 @@ _ref:
                         - _var:
                             key: page_config.buttons.request_changes.visible
                             default: true
-                        - _array.includes:
-                            - _ref:
-                                path: enums/button_signal_sources.yaml
-                                key: request_changes
-                            - _state: action.status.0.stage
-                        - _eq:
-                            - _state: action_allowed.review
-                            - true
+                        - _state: action.buttons.request_changes
                     properties:
                       title: Request Changes
                       type: default
@@ -260,14 +236,7 @@ _ref:
                         - _var:
                             key: page_config.buttons.approve.visible
                             default: true
-                        - _array.includes:
-                            - _ref:
-                                path: enums/button_signal_sources.yaml
-                                key: approve
-                            - _state: action.status.0.stage
-                        - _eq:
-                            - _state: action_allowed.review
-                            - true
+                        - _state: action.buttons.approve
                     properties:
                       title: Approve
                       type: primary
