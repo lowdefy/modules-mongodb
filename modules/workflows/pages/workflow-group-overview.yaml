@@ -7,11 +7,10 @@
 #
 # Dependencies:
 #   - api/get-action-group-overview.yaml         (this part)
-#   - _module.var: workflows_config              (part 4)
-#   - _module.var: entities                      (part 20)
-#   - _module.var: app_name                      (part 20)
-#   - component action_form_configs              (part 15)
 #   - component action_statuses                  (part 4)
+#
+# Workflow/group titles, entity back-link, and per-action form metadata
+# ride the API response (part 46) — this page reads no module config vars.
 _ref:
   module: layout
   component: page

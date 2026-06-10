@@ -49,14 +49,6 @@ form:
     viewOnly: true
 ```
 
-### `makeActionFormConfigs.js` (part 15)
-
-- **Source:** [parts/15-resolver-form-builder/design.md](../../../../designs/workflows-module/parts/15-resolver-form-builder/design.md)
-- **Inputs:** `{ workflows: WorkflowYaml[] }`
-- **Output:** Object keyed by `action_type` (form actions only) carrying per-action metadata trees: `{ form, form_review?, form_error? }` where each value is an array of `{ component, key, required, title, validate, form? }` nodes. Structural components nest a recursive `form:` array. The output is metadata-only — the substituted block tree is rendered per-page by `makeActionsForm`, not stored here.
-- **Invocation:** Manifest scope, under `global.action_form_configs` (see [module.lowdefy.yaml](../module.lowdefy.yaml)).
-- **Tests:** [makeActionFormConfigs.test.js](makeActionFormConfigs.test.js)
-
 ## Patterns
 
 - **Signature.** All resolvers default-export a function `(refPath, vars, context) => result`. Most ignore the first argument and read everything from `vars`.
