@@ -179,12 +179,7 @@ blocks:
                 _module.var: fields.attributes
             - 0
         then:
-          _build.array.concat:
-            - - id: divider_attributes
-                type: Divider
-                properties:
-                  title: Additional Details
-            - _module.var: fields.attributes
+          _module.var: fields.attributes
         else: []
     # Attachments — upload files against the activity. The wrapping page/modal
     # seeds `activity_id` in state (reused as the create _id), so files link to
