@@ -82,13 +82,7 @@ _ref:
                 type: Paragraph
                 properties:
                   content:
-                    _get:
-                      from:
-                        _ref: components/workflows_config.yaml
-                      key:
-                        _string.concat:
-                          - _state: workflow.workflow_type
-                          - .title
+                    _state: workflow.title
               - id: group_overview_group_title
                 type: Html
                 layout:
@@ -100,23 +94,7 @@ _ref:
                         <h1 class="text-3xl font-semibold" style="margin: 0;">{{ title | default('Group') }}</h1>
                       on:
                         title:
-                          _js:
-                            args:
-                              workflow:
-                                _state: workflow
-                              group:
-                                _state: group
-                              workflowsConfig:
-                                _module.var: workflows_config
-                            fn: |
-                              const { workflow, group, workflowsConfig } = args;
-                              if (!group) return "";
-                              const wfConfig = (workflowsConfig || []).find(
-                                (w) => w && workflow && w.type === workflow.workflow_type
-                              ) || {};
-                              const groupsDef = wfConfig.action_groups || [];
-                              const def = groupsDef.find((d) => d.id === group.id);
-                              return (def && def.title) || group.id;
+                          _state: group.title
               - id: group_status_badge
                 type: Tag
                 layout:
@@ -156,14 +134,7 @@ _ref:
         type: Button
         properties:
           title:
-            _get:
-              from:
-                _module.var: entities
-              key:
-                _string.concat:
-                  - _state: workflow.entity_collection
-                  - .title
-              default: Entity
+            _state: workflow.entity_link.title
           type: link
           icon: AiOutlineArrowLeft
         events:
@@ -172,23 +143,9 @@ _ref:
               type: Link
               params:
                 pageId:
-                  _get:
-                    from:
-                      _module.var: entities
-                    key:
-                      _string.concat:
-                        - _state: workflow.entity_collection
-                        - .page_id
+                  _state: workflow.entity_link.pageId
                 urlQuery:
-                  _object.fromEntries:
-                    - - _get:
-                          from:
-                            _module.var: entities
-                          key:
-                            _string.concat:
-                              - _state: workflow.entity_collection
-                              - .id_query_key
-                      - _state: workflow.entity_id
+                  _state: workflow.entity_link.urlQuery
       - id: group_progress
         type: Progress
         properties:
@@ -328,12 +285,10 @@ _ref:
                     - null
                 properties:
                   formConfig:
-                    _get:
-                      from:
-                        _ref: components/action_form_configs.yaml
-                      key:
-                        _state: actions_list.$.type
-                      default: { form: [], form_review: [] }
+                    _if_none:
+                      - _state: actions_list.$.form_meta
+                      - form: []
+                        form_review: []
                   data:
                     form:
                       _get:

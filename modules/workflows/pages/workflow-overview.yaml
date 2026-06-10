@@ -71,11 +71,8 @@ _ref:
                   template: |
                     <h1 class="text-3xl font-semibold" style="margin: 0;">{{ title | default('Workflow') }}</h1>
                   on:
-                    _get:
-                      from:
-                        _ref: components/workflows_config.yaml
-                      key:
-                        _state: workflow.workflow_type
+                    title:
+                      _state: workflow.title
           - id: workflow_lifecycle_badge
             type: Tag
             layout:
@@ -142,14 +139,7 @@ _ref:
         type: Button
         properties:
           title:
-            _get:
-              from:
-                _module.var: entities
-              key:
-                _string.concat:
-                  - _state: workflow.entity_collection
-                  - .title
-              default: Entity
+            _state: workflow.entity_link.title
           type: link
           icon: AiOutlineArrowLeft
         events:
@@ -158,23 +148,9 @@ _ref:
               type: Link
               params:
                 pageId:
-                  _get:
-                    from:
-                      _module.var: entities
-                    key:
-                      _string.concat:
-                        - _state: workflow.entity_collection
-                        - .page_id
+                  _state: workflow.entity_link.pageId
                 urlQuery:
-                  _object.fromEntries:
-                    - - _get:
-                          from:
-                            _module.var: entities
-                          key:
-                            _string.concat:
-                              - _state: workflow.entity_collection
-                              - .id_query_key
-                      - _state: workflow.entity_id
+                  _state: workflow.entity_link.urlQuery
       - id: actions_list
         type: List
         blocks:
@@ -292,12 +268,10 @@ _ref:
                     - null
                 properties:
                   formConfig:
-                    _get:
-                      from:
-                        _ref: components/action_form_configs.yaml
-                      key:
-                        _state: actions_list.$.type
-                      default: { form: [], form_review: [] }
+                    _if_none:
+                      - _state: actions_list.$.form_meta
+                      - form: []
+                        form_review: []
                   data:
                     form:
                       _get:
