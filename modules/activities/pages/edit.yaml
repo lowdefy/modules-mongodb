@@ -42,6 +42,11 @@ _ref:
           params:
             _id:
               _request: get_activity.0._id
+            # Mirror of _id under the form's canonical id key, so the form's
+            # Attachments file-manager (bound to _state activity_id) resolves
+            # the same way it does on the new page and capture modal.
+            activity_id:
+              _request: get_activity.0._id
             type:
               _request: get_activity.0.type
             title:
