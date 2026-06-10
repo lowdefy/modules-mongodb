@@ -62,10 +62,12 @@ The body of a check action — header + universal fields + comment + the signal 
 | `mode`   | Renders                                                                                                   | Button bar                                   |
 | -------- | --------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
 | `edit`   | universal fields (editable) + comment                                                                     | `submit`, `progress`, `not_required`         |
-| `view`   | header + universal fields (read-only) + status-history (a List over `current_action.status` — no request) + comment (only at stage `error`, for the `resolve_error` recovery note — binds `current_action.comment`) | `resolve_error` (only at stage `error` — D4) |
-| `review` | header + universal fields (read-only) + comment                                                           | `approve`, `request_changes` (modal)         |
+| `view`   | header + universal fields (editable iff `allowed.edit`, else read-only — see below) + status-history (a List over `current_action.status` — no request) + comment (only at stage `error`, for the `resolve_error` recovery note — binds `current_action.comment`) | `resolve_error` (only at stage `error` — D4) |
+| `review` | header + universal fields (editable iff `allowed.edit`, else read-only) + comment                         | `approve`, `request_changes` (modal)         |
 
 The three `check-*` pages `_ref` it; the `check-action-modal` (D5) `_ref`s the same. One body, two containers — this DRY payoff is the reason the surface is extracted now rather than editing three pages in place.
+
+**Universal-fields editability is edit-verb-gated, not mode-gated.** The surface passes the [Part 24](../_next/24-universal-fields/design.md) universal-fields component `mode: edit` when the user holds the `edit` verb (`current_action.allowed.edit`) and `mode: display` otherwise — **independent of the surface's own mode**. So Part 24's Update operation (its own button, a write with no transition) is reachable on **every** surface the user can open — including the always-available `view` page — for whatever stages Part 24's operation permits. That is what makes reassign-without-transition reachable without routing through the stage-gated edit page: an `edit`-verb user opening a non-actionable action's view page (the canonical link target for `done`/`not-required`/`error`) sees editable fields + Update, while a pure viewer sees the read-only avatar display. The surface `mode` in the table governs only the **signal button bar** and the comment field, not field editability. (Whether the operation should be available on terminal stages such as `done` is [Part 24](../_next/24-universal-fields/design.md)'s open question, not decided here.)
 
 **The [Part 33](../_next/33-comment-rendering/design.md) events timeline is page-level chrome, not part of the surface** (review-2 #4). `workflow-action-view` renders the action-filtered timeline below the surface `_ref`; the modal omits it. Rationale: the modal's hosts are entity pages whose own entity timeline already shows the action's events and comments, so an in-modal copy duplicates what's directly behind the modal — and the full action-filtered stream lives on `workflow-action-view`, one navigation away (the modal is a shortcut, never the canonical surface). It also avoids a hard conflict: a second `events-timeline` instance on an entity page would collide on the component's fixed `get-events` request id (Lowdefy build throws `Duplicate requestId`; request ids are not `_ref`-scoped). Part 33's "the timeline rides the surface's `view` mode" line is amended to page-level accordingly.
 
@@ -75,16 +77,20 @@ The three `check-*` pages `_ref` it; the `check-action-modal` (D5) `_ref`s the s
 
 **Universal-fields namespace contract ([Part 24](../_next/24-universal-fields/design.md) — review-2 #5).** `Validate` matches state keys, and inputs bind state at their block IDs — so the renderer's edit-mode inputs must live at `current_action.fields.*` for the scoped `Validate` and the `fields` payload to see them. Part 24's renderer takes a `state_path` var (default `fields`, so the form sidebars and shared-page defaults are untouched); the surface passes `state_path: current_action.fields`, making the input block IDs `current_action.fields.{assignees, due_date, description}` (threading into the `user-multi-selector` id passthrough). Recorded on both sides — Part 24's design carries the var.
 
-Each button's `CallAPI` payload is nullary on target:
+Each button's `CallAPI` payload is nullary on target. The **base payload is identical for every signal**; only the two edit-mode content signals add `fields`:
 
 ```yaml
+# base — every signal
 payload:
   action_id: { _state: current_action._id }
-  signal: submit # or progress / not_required / approve / request_changes / resolve_error
+  signal: submit # submit / progress / not_required / approve / request_changes / resolve_error
   current_key: { _state: current_action.key }
-  fields: { _state: current_action.fields } # assignees / due_date / description
   comment: { _state: current_action.comment }
+  # submit + progress ONLY — the universal fields are this signal's live submission content:
+  fields: { _state: current_action.fields } # assignees / due_date / description
 ```
+
+**`fields` rides `submit` and `progress` only** (review-4 #7). The engine writes `payload.fields` onto the action doc on every check transition (Part 24's kind-based rule), so a signal carrying the open-time `fields` seed when the user can't edit it — `approve` / `request_changes` (review mode is read-only), `resolve_error` (recovery note in view mode), or `not_required` (a skip) — would silently revert a concurrent editor's field change. Those four send the base payload **without** `fields`; only `submit` and `progress`, where the edit-mode universal fields are the live content the user is entering, carry it. `comment` rides **every** signal — unlike `fields` it's a fresh per-transition note folded into that signal's event ([Part 33](../_next/33-comment-rendering/design.md)), never an overwrite. (Independent field edits without a transition — e.g. reassigning a `done` check action — go through Part 24's shared universal-fields Update operation, available for every kind, not through a signal.)
 
 No `form` / `form_review` (check actions have no form body), and **no `current_status` / `target_status`** — the v0 selector payload is gone ([state-machine "What disappears"](../../../workflows-module-concept/state-machine/design.md)). The endpoint resolves to `_module.endpointId: { _build.string.concat: [update-action-, <action type>] }`, aligning with the form templates. `progress` has no `Validate` step (a draft is intentionally partial) but, like the form template ([Part 39 D2](../_completed/39-form-submit-buttons/design.md)), fires its own author hook — `onProgress` — before the engine call; the engine-side `progress_saved` log event is Part 38 (scoped out below). `submit` keeps a `Validate` step, **scoped** to the surface's own field namespace — `params: { regex: ^current_action\.fields\. }` (the repo idiom for namespaced validation, cf. `^entity\.` on edit pages). The scope matters because the surface is rendered both as a page and inside the modal: an unscoped `Validate` inside the modal would validate the **entire host entity page** (every unrelated input). Scoping to `current_action.fields.*` makes validation identical in both containers and confined to this action's fields.
 
@@ -133,7 +139,7 @@ Two new pieces plus one generic block event.
 
 **`components/check-action-modal.yaml` (standalone, reusable).** A single **`Modal`** block, fixed blockId `check_action_modal`, whose body `_ref`s `check-action-surface` with `mode` derived from the action's stage. With the events timeline page-only (D1 / review-2 #4), every mode is light — universal fields, status history, comment, signal buttons — so a centred `Modal` fits the content better than a `Drawer` (an earlier draft chose a `Drawer` to hold a timeline-bearing `view` mode; that rationale died with the in-modal timeline). One block type for all modes keeps the one fixed blockId / one open contract intact (a runtime block cannot switch its type by mode, so two container types would mean two blockIds and break the contract).
 
-- stage `error` → `view` (surfaces `resolve_error`); stage `in-review` and `allowed.review` → `review`; an actionable stage with `allowed.edit` → `edit`; otherwise → `view`. (The per-verb bools come from the `GetWorkflowAction` response — `current_action.allowed` — see the open sequence in this decision.)
+- stage `error` → `view` (surfaces `resolve_error`); stage `in-review` and `allowed.review` → `review`; an actionable stage with `allowed.edit` → `edit`; otherwise → `view`. (The per-verb bools come from the `GetWorkflowAction` response — `current_action.allowed` — see the open sequence in this decision.) This derivation drives the **signal button bar** only; the universal-fields component's editability is the separate edit-verb gate (`allowed.edit ? edit : display`, D1), so a `done`/`not-required` action opened in the modal is still reassignable by an `edit`-verb user even though its derived mode is `view`.
 
 Open contract (fixed, so any host wires it the same way):
 

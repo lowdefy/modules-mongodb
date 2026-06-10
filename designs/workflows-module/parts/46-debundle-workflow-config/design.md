@@ -36,6 +36,8 @@ The display join + access/visibility resolution lives in **connection methods in
 
 ### D3 — The connection keeps the full validated config (the stub's Direction 2 is dropped)
 
+> **Narrowed by [Part 48](../48-render-config-off-connection/design.md).** The structural slice stays on the connection as decided here, but Part 48 D1 later moves `status_map` (the heavy render field) off the blob onto per-workflow write endpoints, and Part 48 D5 retires the generic Start/Cancel/Close endpoints in favour of per-workflow ones — deliberately accepting the endpoint-id-construction regression the third bullet below weighs against.
+
 The exploration stub proposed moving config off the connection onto per-endpoint properties. Verified facts killed it:
 
 - The connection copy is **server-side only and already pruned** — `makeWorkflowsConfig.js` picks `ACTION_FIELDS`/`WORKFLOW_FIELDS`; authored hook routines, forms, events never reach it (the stub's exposure claim was wrong for the connection; it is only true for the client raw embeds). The one routine class that does ride it is group `on_complete` (inside `action_groups`, picked whole) — server-side, by design.

@@ -5,11 +5,11 @@ The connection's `workflowsConfig` is loaded and **operator-evaluated whole on e
 This part introduces **per-workflow write endpoints** that carry a `render_config` bundle, and uses that one delivery vehicle for two distinct mechanisms:
 
 1. **De-bloat** — move `status_map` **off the connection blob** onto the endpoint that actually uses it. The lean structural config (`access`, `kind`, `tracker` linkage, status flow, `action_groups`) **stays on the connection** — it is small, and the engine needs it for any workflow the cascade touches. This is the per-request cost story.
-2. **Reach extension** — give `event_overrides` a path to the **lifecycle handlers** (Start/Cancel/Close) and the **tracker-mirror signals** (`internal_mirror_*`), which have no override channel today. This is net-new capability, not a de-bloat: `event_overrides` was never on the blob, it just only reached the submit endpoint. Tracker-mirror events in particular have no override channel at all today, so without this work an author wanting to customize a mirrored event has nowhere to put it.
+2. **Reach extension** — open override channels that don't exist today, on two events with no authoring path: the **tracker-mirror signals** (`internal_mirror_*`, D4) and the **lifecycle events** themselves (`workflow-started`/`-cancelled`/`-closed`, D8). This is net-new capability, not a de-bloat: neither was ever on the blob, and `event_overrides` reached only the submit endpoint. The two channels differ in authoring scope — tracker-mirror overrides are per-action (on the parent's tracker action, D4); lifecycle overrides are per-workflow (a workflow-level `event` map, D8, since a lifecycle event belongs to no single action). Start/Cancel/Close also gain `status_map`/render-config **delivery** for the stages they render (the de-bloat in item 1 applies to them too).
 
-Each write endpoint carries its own workflow's render config **plus its ancestors'**, derived at build time by tracing the **`tracker.child_workflow_type`** edge — the field that today is named `tracker.workflow_type` (an existing, live, type-declaring field), renamed here for clarity and disambiguation (see D2).
+Each write endpoint carries its own workflow's render config **plus its ancestors'**, derived at build time by tracing the **`tracker.child_workflow_type`** edge — the field that today is named `tracker.workflow_type` (an existing, live, type-declaring field), renamed here for clarity and disambiguation (see D2 for the trace, D6 for the rename).
 
-**Layer:** module build wiring (`makeWorkflowApis`) + config builder (`makeWorkflowsConfig`) + connection schema + engine load/render phases, plus a small cross-codebase rename (`tracker.workflow_type` → `tracker.child_workflow_type`; see D2). **Size:** L. **Repo:** `modules/workflows/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`.
+**Layer:** module build wiring (`makeWorkflowApis`) + config builder (`makeWorkflowsConfig`) + connection schema + engine load/render phases, plus a small cross-codebase rename (`tracker.workflow_type` → `tracker.child_workflow_type`; see D6). **Size:** L. **Repo:** `modules/workflows/`, `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/`.
 
 ## Proposed change
 
@@ -21,12 +21,16 @@ Each write endpoint carries its own workflow's render config **plus its ancestor
 
 4. **The engine merges the render slice onto the action config at load; structural fields stay read off the blob.** The planners are pure (no `params`/`context` access) and must stay that way — re-plumbing `params` through `planActionTransition` + `planAutoUnblock` + `planTrackerLevel` + `planSubmit` would reverse Part 38's design. Instead, `loadWorkflowState` — which already has `context` (hence `context.params.render_config`) and resolves `workflowConfig` from the blob — splices the whole render slice (`status_map` **and** `event_overrides`) from `params.render_config[workflow_type][actionType]` onto **every action** in `workflowConfig.actions` before returning. Not just the resolved `targetAction`: `planAutoUnblock` renders unblocked **siblings'** `status_map` (D3), so each sibling needs its render slice too. This is the **one seam** for all render config — `status_map` and `event_overrides` both arrive via the endpoint, get merged at load, and are read off `actionConfig` downstream. This runs on the originating load **and each cascade level** (same function); `params` is the originating write's params throughout the invocation, so every ancestor's render config is in scope at the level that loads it.
 
+   **Missing-key contract.** A missing `render_config[workflow_type]` or `[action_type]` is **legal** and means engine-default rendering — never a throw. The downstream reads are already optional-chained (`actionConfig.status_map?.[stage]`, `event_overrides?.[signal]`), so an absent slice falls through to the sticky-`status_map`/default-event-display behaviour of today. This is load-bearing: a runtime parent chain can outlive a config edge (retarget or remove a tracker's `child_workflow_type` and an existing child still cascades to a parent whose type is now absent from `params.render_config` — D6 validates edges, not live instances; same window as D6's stale-doc note). **The splice is an idempotent in-place merge.** `loadWorkflowState` returns the `workflowConfig` instance it `.find`s in `context.workflowsConfig` (`:110`, no clone), so the merge mutates that object — safe because `context.workflowsConfig` is freshly operator-evaluated per connection call (never shared across requests) and idempotent because CAS retries re-load the **same** object (`runTrackerCascade.js:93–110`) while `params.render_config` is constant for the invocation, so re-splicing writes identical values.
+
    Downstream reads off the merged `actionConfig`:
    - `planActionTransition.js:195` keeps reading `actionConfig.status_map` — unchanged.
    - `planSubmit` reads `actionConfig.event_overrides[signal]` instead of today's `params.event_overrides[signal]` — its override source moves onto the seam so `event_overrides` has exactly one path, not two.
    - `planTrackerLevel` reads the parent tracker action's `actionConfig.event_overrides[internal_mirror_child_*]` and passes it to `planEventDispatch` (D4).
 
-5. **`internal_mirror_*` signals gain an override channel.** With the parent's `event_overrides` merged onto its tracker `actionConfig` during the child's cascade (item 4), `planTrackerLevel` reads `actionConfig.event_overrides[internal_mirror_child_*]` and passes it to `planEventDispatch`, which has its override gate widened to fire on the `tracker-mirror` path (D4). An author can then replace the engine-default `"Tracker mirrored child {{ status_after }}"` with e.g. `"{{ ticket }} closed by {{ agent }}"`.
+5. **`internal_mirror_*` signals gain an override channel.** With the parent's `event_overrides` merged onto its tracker `actionConfig` during the child's cascade (item 4), `planTrackerLevel` reads `actionConfig.event_overrides[internal_mirror_child_*]` and passes it to `planEventDispatch`, whose `if (isSubmit)` merge gate is generalized to fire whenever an override slice is present (D4 — the same gate change item 6 relies on). An author can then replace the engine-default `"Tracker mirrored child {{ status_after }}"` with e.g. `"{{ ticket }} closed by {{ agent }}"`.
+
+6. **Lifecycle events (`workflow-started`/`-cancelled`/`-closed`) gain an override channel.** Authored as a **workflow-level** `event` map keyed by lifecycle signal (`started`/`cancelled`/`closed`) → app → `{ display }` — a lifecycle event belongs to no single action, so it can't ride the per-action seam (item 4). Each `{type}-start/cancel/close` endpoint carries a sibling `lifecycle_event_override` property = that workflow's `event[<the-one-signal-it-fires>]` slice (own workflow only — lifecycle events never cascade). The Start/Cancel/Close handlers pass `params.lifecycle_event_override` into `planEventDispatch` as `yamlEventOverrides` (they call it with no override arg today — `StartWorkflow.js:205`, `CancelWorkflow.js:117`, `CloseWorkflow.js:133`); the generalized merge gate (item 5) then applies it. Override templates render against `{ user, workflow, signal }` only — no `action`/`status_after`. See **D8**.
 
 ## Key decisions
 
@@ -40,7 +44,7 @@ Part 46 D3 keeps the **whole** validated config on the connection, on the ground
 
 The endpoint's static `properties` are evaluated into `params` per call — the same mechanism as `workflowsConfig`, but now bounded to **one workflow's render config plus its ancestors'** instead of all ~100. Because all four write operations cascade to ancestors and render `status_map` along the way (D3), the bundle must be the full ancestor set, transitively. The cascade merges each ancestor's render config from `params.render_config` onto that level's action config as it loads (the merge-at-load seam, item 4) — no file reads, no extra endpoint calls, no DB.
 
-**The trace edge.** Two distinct things must not be conflated. The parent↔child _instance link_ — `parent_workflow_id` / `parent_action_id` on the child workflow doc — is set at **runtime** when a child starts, and is genuinely not in config. But the parent↔child _type edge_ — "this tracker tracks workflow type X" — **already exists in config today**, as `tracker.workflow_type` on the parent's tracker action: the demo declares `tracker: { workflow_type: company-setup }`, `planActionTransition.js:186` denormalizes it onto the tracker doc, and `StartWorkflow.js:143` reads it back to validate that a started child matches (`parent.tracker?.workflow_type === params.workflow_type`). (`tracker.start_link` is the _other_ tracker field — `makeWorkflowsConfig.js:230–283` validates only `start_link`, which is what earlier framing mistook for "the tracker block carries only start_link"; the block also carries the unvalidated `workflow_type`.)
+**The trace edge.** Two distinct things must not be conflated. The parent↔child _instance link_ — `parent_workflow_id` / `parent_action_id` on the child workflow doc — is set at **runtime** when a child starts, and is genuinely not in config. But the parent↔child _type edge_ — "this tracker tracks workflow type X" — **already exists in config today**, as `tracker.workflow_type` on the parent's tracker action: the demo declares `tracker: { workflow_type: company-setup }`, `planActionTransition.js:186` denormalizes it onto the tracker doc, and `StartWorkflow.js:143` reads it back to validate that a started child matches (`parent.tracker?.workflow_type === params.workflow_type`). (`tracker.start_link` is the _other_ tracker field — `makeWorkflowsConfig.js:229–289` validates only `start_link`, which is what earlier framing mistook for "the tracker block carries only start_link"; the block also carries the unvalidated `workflow_type`.)
 
 So no new declaration is needed — only the build-time _collection_ of these edges is new. This part renames the field `tracker.child_workflow_type` (D6) and walks it: the build collects `parent_type → child_workflow_type` edges, and for each workflow `W` walks them upward to `W`'s ancestor set. The rename is the only schema change; the edge data was authored all along.
 
@@ -61,9 +65,9 @@ Consequence: to take render config off the blob, **every** write endpoint must c
 This is a **new capability**, not a by-product of the de-bloat (`event_overrides` was never on the blob — see Current state). Closing the gap needs **two concrete changes**, both of which are easy to miss behind "looks up … and uses it when present":
 
 1. **Thread the override into the mirror dispatch.** `planTrackerLevel` already resolves the parent tracker `actionConfig` (`planTrackerLevel.js:80–82`) but calls `planEventDispatch` with **no override argument** (`:140–151`). It must read `actionConfig.event_overrides[internal_mirror_child_*]` (now present via the item-4 merge) and pass it to `planEventDispatch` as the override slice.
-2. **Widen the merge gate.** `planEventDispatch` applies overrides only under `if (isSubmit)` (`planEventDispatch.js:197`); on the `tracker-mirror` path `mergedPayload` stays the engine default. The gate must be extended to fire on the `tracker-mirror` path too — otherwise the override is ignored even when passed.
+2. **Generalize the merge gate.** `planEventDispatch` applies overrides only under `if (isSubmit)` (`planEventDispatch.js:197`); on the `tracker-mirror` path `mergedPayload` stays the engine default. Rather than special-case the `tracker-mirror` path, generalize the gate to fire whenever an override slice is actually present (`if (yamlEventOverrides || preHookEventOverrides)`) — submit, tracker-mirror (here) and lifecycle (D8) then all merge through one gate. Absent any override it falls through to today's engine default for every path.
 
-With both in place, an author can replace the engine default; absent an override the gate falls through to the same default as today. This closes the long-standing "allow internal signal overrides" gap.
+With both in place, an author can replace the engine default; absent an override the gate falls through to the same default as today. This closes the long-standing "allow internal signal overrides" gap. (The gate generalization is shared with D8 — one change serves both reach extensions.)
 
 ### D5 — Per-workflow Start/Cancel/Close, no generic endpoint, no hybrid
 
@@ -102,13 +106,26 @@ Hooks do **not** ride `render_config`, and they do **not** ride the merge-at-loa
 
 So `hooks` becomes a sibling property keyed by action type (`hooks: { {action_type}: { {signal}: { pre, post } } }`), and `handleSubmit` re-slices `params.hooks = params.hooks?.[targetAction.type]` after `loadWorkflowState` resolves the target and before any phase runs (item 3). After the re-slice the consumers see today's signal-keyed shape unchanged — the re-slice is the entire engine change. This is Part 47's hooks treatment, carried over verbatim.
 
+### D8 — Lifecycle events get a per-workflow override channel
+
+The lifecycle events (`workflow-started`/`-cancelled`/`-closed`) render engine defaults with no override channel — `planEventDispatch`'s header comment names this alongside tracker-mirror ("no override channels exist for them"). D4 opens the tracker-mirror channel; D8 opens the lifecycle one. Both are net-new capability (neither was ever on the blob).
+
+A lifecycle event differs from an action event in a way that dictates its authoring home: it has **no target action** (`isActionEvent = false`; the render context is `{ user, workflow, signal }` with no `action` — `planEventDispatch.js`). So a per-action `event_overrides` slice has nowhere to attach, and the item-4 merge-at-load seam (which hangs render config on `actionConfig`) can't carry it. The override must therefore be authored and delivered at **workflow scope**.
+
+- **Authoring.** A workflow-level `event` map keyed by lifecycle signal (`started`/`cancelled`/`closed`) → app → `{ display: { title, description? } }` — the per-action `action.event` shape, one scope up. Validated in `makeWorkflowsConfig` against the three known lifecycle signals.
+- **Delivery.** Each `{type}-start/cancel/close` endpoint carries a sibling `lifecycle_event_override` property (not under `render_config`, same reason as `hooks` in D7) = that workflow's `event[<the one signal that endpoint fires>]` slice. **Own workflow only, no ancestor closure** — a lifecycle event fires exactly once, at the originating handler, for the originating workflow; it never fires during the tracker cascade (the cascade fires `tracker-mirror`, D4). This makes lifecycle delivery strictly simpler than `render_config`'s ancestor bundle.
+- **Engine.** `StartWorkflow`/`CancelWorkflow`/`CloseWorkflow` each fire exactly one lifecycle signal and today call `planEventDispatch` with no override arg (`StartWorkflow.js:205`, `CancelWorkflow.js:117`, `CloseWorkflow.js:133`). Each passes `params.lifecycle_event_override` as `yamlEventOverrides`; the generalized merge gate (D4) applies it. No pre-hook layer exists for lifecycle, so `preHookEventOverrides` stays undefined and the merge is default → YAML-override only.
+- **Constraint.** Override templates render against `{ user, workflow, signal }` only — they cannot reference `action`/`status_after`/`submitted_form` (there is no target action). This is the authoring contract for lifecycle overrides.
+
+This is a deliberate new surface (a workflow-level `event` map). It is justified by a concrete need — authors want to customise the workflow-level audit line ("Onboarding kicked off for X"), not just the per-action lines — and reuses the same gate change D4 already makes, so the engine cost is one shared generalization plus the per-handler override pass-through.
+
 ## Current state (verified)
 
-- **Config builder:** `makeWorkflowsConfig.js` `ACTION_FIELDS` (`:7–17`) includes `status_map` but **not** `event_overrides`; only `status_map` is picked per-action per-workflow into the connection blob.
+- **Config builder:** `makeWorkflowsConfig.js` `ACTION_FIELDS` (`:7–18`) includes `status_map` but **not** `event_overrides`; only `status_map` is picked per-action per-workflow into the connection blob.
 - **`event_overrides` is already off the blob:** it is emitted onto the **per-action submit endpoint** by `makeWorkflowApis.emitEventOverrides` (`:42`, attached `:68` as `event_overrides: eventMap`) and read back at runtime from `params.event_overrides` (`planSubmit.js:200`). It never appears in `makeWorkflowsConfig.js` and is never read off `context.workflowsConfig`/`actionConfig`. So it carries only one action's overrides — already lean, nothing to de-bloat — but it reaches **only** the submit endpoint today (the gap this part's reach extension closes).
 - **`hooks` is the submit endpoint's other per-action property:** emitted by `makeWorkflowApis.emitHooks` (`:18–40`, attached `:67`) as a signal → phase → pre-scoped-endpoint-ref map, read at runtime as `params.hooks?.[params.signal]?.{pre|post}` (`invokePreHook.js:82`, `invokePostHook.js:43`). Flat (signal-keyed) today because the endpoint is per-action — the collapse re-keys it by action type (D7).
 - **Shapes:** `status_map[stage][app] = { message?, link?, status_title? }`; `event_overrides[signal][app] = { display: { title, description }, … }`. Both per-app keyed, both Nunjucks; `status_map` is the one that is heavy _on the blob_ because the blob carries it for all ~100 workflows.
-- **Engine reads:** `loadWorkflowState.js:110` finds the workflow in `context.workflowsConfig`; `planActionTransition.js:195` reads `actionConfig.status_map?.[targetStage]` → `renderStatusMap`; `planSubmit.js:200` reads `params.event_overrides?.[signal]` and passes it into `planEventDispatch`; `planEventDispatch.js:22/43` renders the `tracker-mirror` default with no override path.
+- **Engine reads:** `loadWorkflowState.js:110` finds the workflow in `context.workflowsConfig`; `planActionTransition.js:195` reads `actionConfig.status_map?.[targetStage]` → `renderStatusMap`; `planSubmit.js:200` reads `params.event_overrides?.[signal]` and passes it into `planEventDispatch`; `planEventDispatch.js:22/43` renders the `tracker-mirror` **and** lifecycle (`workflow-started`/`-cancelled`/`-closed`) defaults with no override path — the `if (isSubmit)` merge gate (`:197`) fires for submit only. The lifecycle handlers call `planEventDispatch` with no override arg (`StartWorkflow.js:205`, `CancelWorkflow.js:117`, `CloseWorkflow.js:133`), and there is no workflow-level `event` authoring field today.
 - **Write handlers:** all four compose load → plan → commit → `runTrackerCascade`; all read `actionConfig` from `workflowsConfig` (above).
 - **Endpoints today:** submit is per-action (`{type}-{action}-submit`); Start/Cancel/Close are **generic** single endpoints taking `workflow_type` in the payload (`api/start-workflow.yaml` etc., Part 19).
 - **Trace edge:** **already authored** as `tracker.workflow_type` (renamed `child_workflow_type` by this part). The `tracker` block carries both `workflow_type` (the tracked child type) and `start_link`; `makeWorkflowsConfig` picks the whole block via `ACTION_FIELDS` but `validateTrackerStartLink` (`:229–289`) validates only `start_link`, leaving `workflow_type` unvalidated. Live consumers: `planActionTransition.js:181–191` writes `doc.tracker = { workflow_type, …start_link }` onto the tracker doc; `StartWorkflow.js:143` reads `parent.tracker?.workflow_type` to gate the child start (tested — `StartWorkflow.test.js:76,433`); `types.js:59` documents the shape as `{ workflow_type: string, start_link?: {…} } | null`. What is missing today is only the build-time _collection_ of `parent_type → child` edges, not the edge datum itself.
@@ -158,7 +175,33 @@ routine:
           submit: { pre: <pre-hook-id>, post: <post-hook-id> }
 ```
 
-(`hooks` is on `{type}-submit` only; the `{type}-start/cancel/close` endpoints carry `render_config` but no `hooks`.)
+(`hooks` is on `{type}-submit` only. The `{type}-start/cancel/close` endpoints carry `render_config` but no `hooks`; each also carries a `lifecycle_event_override` sibling — D8 — for the one lifecycle signal it fires:)
+
+```yaml
+id: onboarding-start
+type: Api
+routine:
+  - id: start
+    type: StartWorkflow
+    connectionId: workflow-api
+    properties:
+      # ...payload passthroughs...
+      render_config: { onboarding: { ... } } # own + ancestors, as above
+      lifecycle_event_override: # workflow-level (D8); the `started` slice only
+        team-app:
+          { display: { title: "Onboarding kicked off for {{ workflow.entity_id }}" } }
+```
+
+Workflow-level `event` authoring (D8) — sits on the workflow, not an action:
+
+```yaml
+workflow:
+  type: onboarding
+  event:
+    started: { team-app: { display: { title: "Onboarding kicked off for {{ workflow.entity_id }}" } } }
+    cancelled: { team-app: { display: { title: "..." } } }
+    closed: { team-app: { display: { title: "..." } } }
+```
 
 Renamed + newly-validated schema field (`makeWorkflowsConfig`). The field is `tracker.workflow_type` today; this part renames it and adds validation:
 

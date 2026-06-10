@@ -160,6 +160,8 @@ since it `_ref`s the same surface.)
 
 ### 7. One payload shape for all six signals lets review-verb submits overwrite concurrently edited fields
 
+> **Resolved.** Made the D1 payload per-signal: a base payload (`action_id`/`signal`/`current_key`/`comment`) on every signal, with `fields` added on `submit` and `progress` only — the two edit-mode signals where the universal fields are the live submission content. `approve`/`request_changes`/`resolve_error`/`not_required` omit `fields`, so a stale open-time seed can no longer clobber a concurrent editor's change. `comment` stays on all signals (fresh per-transition note, never an overwrite — contrasted explicitly in the design). **Related decision:** the reassign-without-transition need this surfaced is served by Part 24, not by adding fields back onto more signals — Part 24's shared universal-fields component now ships **one Update operation for every kind** (no check special-case), so independent field edits (e.g. reassigning a `done` check action) go through that operation. Part 24's design updated to capture the requirement. Downstream Part 40 follow-up (not in this finding): the check surfaces must expose that shared Update affordance so reassign-without-transition is reachable.
+
 D1 specifies a single nullary payload carrying `fields: { _state: current_action.fields }` for
 every signal, including `approve`, `request_changes`, and `resolve_error`. The engine applies
 `payload.fields` onto the doc on **every** transition (`planActionTransition.js:170` —

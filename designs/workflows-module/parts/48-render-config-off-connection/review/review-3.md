@@ -80,6 +80,8 @@ levels of committed cascade writes.
 
 ### 3. "A path to the lifecycle handlers" overpromises — lifecycle events get no override channel, and none is specified
 
+> **Resolved — by delivering the capability, not rewording.** The finding correctly identified that the design claimed a lifecycle override channel it didn't build. Rather than narrow the claim, the user opted to build it: added decision **D8** specifying lifecycle-event overrides. Authoring home is a **workflow-level** `event` map keyed by lifecycle signal (`started`/`cancelled`/`closed`) → app → `{ display }` (a lifecycle event has no target action, so it can't ride the per-action seam). Delivered via a `lifecycle_event_override` sibling property on each `{type}-start/cancel/close` endpoint (own workflow only — lifecycle events never cascade, so no ancestor closure). The Start/Cancel/Close handlers pass it to `planEventDispatch` as `yamlEventOverrides`. Crucially, this reuses the gate change D4 already makes: the `if (isSubmit)` gate is **generalized** to "fire when an override slice is present," so submit, tracker-mirror, and lifecycle all merge through one gate — D4's "widen the gate" became "generalize the gate," shared with D8. Constraint documented: lifecycle templates render against `{ user, workflow, signal }` only. Updated intro item 2, proposed-change items 5–6, D4, added D8, the endpoint-shape example, and the Current-state engine-reads bullet.
+
 Intro item 2 says this part gives `event_overrides` "a path to the **lifecycle
 handlers** (Start/Cancel/Close) and the **tracker-mirror signals**." The
 concrete changes deliver only the latter. D4 widens the
@@ -144,6 +146,8 @@ manifest `_ref` removals, and the downstream-consumer breaking note.
 ## Minor
 
 ### 5. The merge seam's missing-key contract should be stated — runtime parent chains can outlive config edges
+
+> **Resolved.** Added a "Missing-key contract" paragraph to the item-4 seam stating both halves, with the behaviour verified against the code. (1) A missing `render_config[workflow_type]`/`[action_type]` is legal → engine-default rendering, never a throw (downstream reads are already optional-chained); load-bearing because a runtime parent chain can outlive a config edge (D6 validates edges, not live instances). (2) The splice is an **idempotent in-place merge**: `loadWorkflowState` returns the `workflowConfig` instance from `context.workflowsConfig` (`:110`, no clone), safe because that blob is freshly operator-evaluated per connection call (never shared across requests) and idempotent because CAS retries re-load the same object (`runTrackerCascade.js:93–110`) while `params.render_config` is constant for the invocation.
 
 D2 asserts "every ancestor's render config is in scope at the level that loads
 it." That holds when runtime parent links agree with _current_ config edges —
