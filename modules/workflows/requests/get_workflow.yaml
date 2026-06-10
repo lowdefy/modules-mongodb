@@ -4,7 +4,7 @@ connectionId:
   _module.connectionId: workflows-collection
 payload:
   workflow_id:
-    _request: get_action.workflow_id
+    _request: get_workflow_action.workflow_id
 properties:
   pipeline:
     - $match:

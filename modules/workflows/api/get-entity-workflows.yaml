@@ -2,79 +2,15 @@ id: get-entity-workflows
 type: Api
 routine:
   - id: query
-    type: MongoDBAggregation
+    type: GetEntityWorkflows
     connectionId:
-      _module.connectionId: workflows-collection
+      _module.connectionId: workflow-api
     properties:
-      pipeline:
-        - $match:
-            entity_collection:
-              _payload: entity_collection
-            entity_id:
-              _payload: entity_id
-
-        - $sort:
-            display_order: 1
-            created.timestamp: -1
-
-        - $lookup:
-            from: actions
-            localField: _id
-            foreignField: workflow_id
-            as: actions
-            # Per-verb access projection + drop (Part 34 D12) spliced via
-            # _build.array.concat — the visible_verbs_filter ref resolves to a
-            # two-stage list (compute + $match drop) that concat flattens in,
-            # running per action doc before the $group. Same idiom as the
-            # api:/pages: composition in module.lowdefy.yaml.
-            pipeline:
-              _build.array.concat:
-                - - $addFields:
-                      status:
-                        $arrayElemAt:
-                          - $status.stage
-                          - 0
-                - _ref: api/stages/visible_verbs_filter.yaml
-                - - _ref: ../shared/workflow/resolve_action_link.yaml
-                - - $addFields:
-                      required_sort:
-                        $cond:
-                          - $eq:
-                              - $status
-                              - 'not-required'
-                          - 1
-                          - 0
-                      sort:
-                        $cond:
-                          - $eq:
-                              - $status
-                              - 'not-required'
-                          - 1
-                          - $sort_order
-                  - $sort:
-                      required_sort: 1
-                      sort: 1
-                      created.timestamp: 1
-                  - $group:
-                      _id: $action_group
-                      action_group:
-                        $first: $action_group
-                      workflow_type:
-                        $first: $workflow_type
-                      workflow_id:
-                        $first: $workflow_id
-                      actions:
-                        $push:
-                          type: $type
-                          status: $status
-                          visible_verbs: $visible_verbs
-                          message:
-                            _string.concat:
-                              - $
-                              - _module.var: app_name
-                              - .message
-                          link: $link
+      entity_collection:
+        _payload: entity_collection
+      entity_id:
+        _payload: entity_id
 
   - :return:
       workflows:
-        _step: query
+        _step: query.workflows

@@ -34,7 +34,7 @@ _ref:
         default: 750
     requests:
       _build.array.concat:
-        - - _ref: requests/get_action.yaml
+        - - _ref: requests/get_workflow_action.yaml
           - _ref: requests/get_workflow.yaml
           - _ref:
               path: requests/get_entity.yaml.njk
@@ -58,12 +58,12 @@ _ref:
             # Step 2: load the action.
             - id: get_action
               type: Request
-              params: get_action
+              params: get_workflow_action
             - id: set_action
               type: SetState
               params:
                 action:
-                  _request: get_action.0
+                  _request: get_workflow_action.0
             # Step 3 (stale-URL guard) — intentionally omitted on view.
             # Step 4: load the parent workflow (form_data lives here).
             - id: get_workflow

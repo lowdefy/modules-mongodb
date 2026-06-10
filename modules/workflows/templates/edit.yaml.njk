@@ -32,7 +32,7 @@ _ref:
         default: 750
     requests:
       _build.array.concat:
-        - - _ref: requests/get_action.yaml
+        - - _ref: requests/get_workflow_action.yaml
           - _ref: requests/get_workflow.yaml
           - _ref:
               path: requests/get_entity.yaml.njk
@@ -54,12 +54,12 @@ _ref:
                 back: true
             - id: get_action
               type: Request
-              params: get_action
+              params: get_workflow_action
             - id: set_action
               type: SetState
               params:
                 action:
-                  _request: get_action.0
+                  _request: get_workflow_action.0
             # Stale-URL guard: skip when status is in the allowlist OR
             # when the caller (review's Edit-link) opted out.
             - id: redirect_stale_status
