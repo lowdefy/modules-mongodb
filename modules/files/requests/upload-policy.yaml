@@ -9,19 +9,9 @@ connectionId:
   _module.connectionId: files-bucket
 payload:
   file_name:
-    _state:
-      _string.concat:
-        - _var:
-            key: block_id
-            default: file_upload
-        - .file.name
+    _event: file.name
   file_type:
-    _state:
-      _string.concat:
-        - _var:
-            key: block_id
-            default: file_upload
-        - .file.type
+    _event: file.type
   url:
     _location: href
 properties:
@@ -32,13 +22,14 @@ properties:
       - _dayjs.format:
           on:
             _date: now
-          params:
-            format: 'YYYYMMDD_HHmmssSSS'
+          format: 'YYYYMMDD_HHmmssSSS'
       - '/'
       - _uuid: true
       - '/'
       - _payload: file_name
   fields:
+    Content-Type:
+      _payload: file_type
     x-amz-meta-uploaded-by-id:
       _if_none:
         - _user: id
@@ -52,9 +43,6 @@ properties:
         - _payload: url
         - 'unknown'
   conditions:
-    - - eq
-      - $Content-Type
-      - _payload: file_type
     - - starts-with
       - $x-amz-meta-uploaded-by-id
       - ''
