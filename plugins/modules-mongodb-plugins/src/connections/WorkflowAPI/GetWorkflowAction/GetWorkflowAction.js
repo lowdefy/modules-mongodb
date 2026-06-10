@@ -45,12 +45,21 @@ const STRUCTURAL_COMPONENTS = new Set([
  * Collect the leaf form-field keys from a form array (same recursion as
  * makeWorkflowsConfig.js's `describeForm`/`toMetadataNode`). Structural
  * components recurse into their `form` sub-array; all other entries yield
- * their `key`. Returns a Set<string> of allowlisted keys.
+ * their `key`. Structural components also yield their own `key` when present
+ * (e.g. `file_upload` is structural but is itself a persisted leaf field;
+ * `controlled_list` owns the array value at its key). Returns a Set<string>
+ * of allowlisted dotted state-path keys (e.g. `'form.po_number'`).
  */
 function collectFormKeys(formArray) {
   const keys = new Set();
   for (const entry of formArray ?? []) {
     if (entry.component && STRUCTURAL_COMPONENTS.has(entry.component)) {
+      // Collect the structural entry's own key when present (e.g. file_upload,
+      // controlled_list — both are persisted at their own key).
+      if (entry.key != null) {
+        keys.add(entry.key);
+      }
+      // Also recurse into nested form entries.
       for (const k of collectFormKeys(entry.form ?? [])) {
         keys.add(k);
       }
@@ -62,17 +71,40 @@ function collectFormKeys(formArray) {
 }
 
 /**
- * Allowlist-project a form-data slice by a set of valid field keys.
- * Returns an object containing only the keys present in the allowlist.
+ * Map a dotted state-path key authored in form_meta (e.g. `'form.po_number'`,
+ * `'form.address.street'`) to the bare property name stored in the persisted
+ * `form_data[type]` slice (e.g. `'po_number'`, `'address'`).
+ *
+ * The edit template primes `state.form = form_data[type]` and submits
+ * `form: _state: form`, so state paths must start with `'form.'`. The slice
+ * stores the first path segment after that prefix — nested sub-paths collapse
+ * to their top-level container key (e.g. `form.address.street` → `address`).
+ * Keys not starting with `'form.'` are not persisted and contribute nothing.
+ */
+function formKeyToSliceProp(dotPath) {
+  if (!dotPath.startsWith('form.')) return null;
+  const rest = dotPath.slice('form.'.length);
+  const dot = rest.indexOf('.');
+  return dot === -1 ? rest : rest.slice(0, dot);
+}
+
+/**
+ * Allowlist-project a form-data slice by a set of valid dotted state-path keys.
+ * Each key is mapped to its slice property name before lookup.
+ * Returns an object containing only the matching properties.
  */
 function projectFormSlice(slice, allowedKeys) {
   if (slice == null || typeof slice !== 'object' || Array.isArray(slice)) {
     return {};
   }
   const projected = {};
+  const seen = new Set();
   for (const key of allowedKeys) {
-    if (key in slice) {
-      projected[key] = slice[key];
+    const prop = formKeyToSliceProp(key);
+    if (prop == null || seen.has(prop)) continue;
+    seen.add(prop);
+    if (prop in slice) {
+      projected[prop] = slice[prop];
     }
   }
   return projected;

@@ -130,3 +130,20 @@ Add `GetWorkflowAction.test.js` (in-memory Mongo): assert the envelope allowlist
   redundant. **It is deleted and the four form templates rewired to read
   submitted values off this single response in task 10** — delivering "one call,
   render dumb" and removing a second ungated read from the detail path.
+
+## Verified during implementation
+
+- **Validated form keys are `form.`-prefixed dotted state paths** (e.g.
+  `form.po_number`, `form.address.street`). Config authors always write keys
+  this way: the edit template primes `state.form = form_data[type]` and submits
+  `form: _state: form`, so all persisted fields live under the `form.` prefix.
+- **The persisted `form_data[type]` slice stores bare top-level keys** — only
+  the first path segment after the `form.` prefix (e.g. `form.po_number` →
+  `po_number`; `form.address.street` → `address`). The `projectFormSlice`
+  allowlist must map `form.`-prefixed config keys to these bare props before
+  lookup.
+- **Structural components (`file_upload`, `controlled_list`) carry their own
+  persisting key** and must have that key collected alongside any recursion into
+  nested form entries. `file_upload` is a leaf field with no nested form (key is
+  the persisted prop). `controlled_list` owns the array value at its key;
+  nested `$`-indexed leaf keys are not slice properties.

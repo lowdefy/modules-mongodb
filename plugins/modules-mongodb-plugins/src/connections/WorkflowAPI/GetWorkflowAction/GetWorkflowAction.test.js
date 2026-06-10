@@ -39,18 +39,27 @@ function makeWorkflowsConfig() {
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
           form_meta: {
             form: [
-              { component: 'text_input', key: 'company_name', required: true, title: 'Company' },
-              { component: 'text_area', key: 'notes', required: false, title: 'Notes' },
+              // Real-shaped keys: dotted state paths prefixed with 'form.'
+              { component: 'text_input', key: 'form.company_name', required: true, title: 'Company' },
+              { component: 'text_area', key: 'form.notes', required: false, title: 'Notes' },
               {
+                // section: structural container — own key 'form.details_section' is
+                // collected but maps to slice prop 'details_section' (which isn't
+                // stored); nested leaf 'form.phone' maps to slice prop 'phone'.
                 component: 'section',
-                key: 'details_section',
+                key: 'form.details_section',
                 form: [
-                  { component: 'text_input', key: 'phone', required: false, title: 'Phone' },
+                  { component: 'text_input', key: 'form.phone', required: false, title: 'Phone' },
                 ],
               },
+              // file_upload: structural component that IS a persisted leaf field
+              // (no nested form, own key must be collected).
+              { component: 'file_upload', key: 'form.attachment', title: 'Attachment' },
+              // Nested path: 'form.address.street' → slice prop 'address'
+              { component: 'text_input', key: 'form.address.street', title: 'Street' },
             ],
             form_review: [
-              { component: 'text_area', key: 'review_note', required: false, title: 'Review Note' },
+              { component: 'text_area', key: 'form.review_note', required: false, title: 'Review Note' },
             ],
           },
         },
@@ -70,7 +79,7 @@ function makeWorkflowsConfig() {
           access: { 'test-app': { view: true, edit: ['account-manager'] } },
           form_meta: {
             form: [
-              { component: 'text_input', key: 'slot_name', required: true, title: 'Slot Name' },
+              { component: 'text_input', key: 'form.slot_name', required: true, title: 'Slot Name' },
             ],
           },
         },
@@ -89,13 +98,33 @@ function makeWorkflowsConfig() {
           access: { 'test-app': { view: true, edit: ['account-manager'], review: ['reviewer'] } },
           form_meta: {
             form: [
-              { component: 'text_input', key: 'applicant', required: true, title: 'Applicant' },
+              { component: 'text_input', key: 'form.applicant', required: true, title: 'Applicant' },
             ],
             form_review: [
-              { component: 'text_area', key: 'decision', required: false, title: 'Decision' },
+              { component: 'text_area', key: 'form.decision', required: false, title: 'Decision' },
             ],
             form_error: [
-              { component: 'text_area', key: 'error_note', required: false, title: 'Error Note' },
+              { component: 'text_area', key: 'form.error_note', required: false, title: 'Error Note' },
+            ],
+          },
+        },
+        {
+          type: 'list-action',
+          kind: 'form',
+          action_group: 'phase-1',
+          allow_not_required: false,
+          access: { 'test-app': { view: true, edit: ['account-manager'] } },
+          form_meta: {
+            form: [
+              // controlled_list: structural component whose own key is where the
+              // array value lives — nested $-indexed leaf keys are not slice props.
+              {
+                component: 'controlled_list',
+                key: 'form.items',
+                form: [
+                  { component: 'text_input', key: 'form.items.$.name', title: 'Name' },
+                ],
+              },
             ],
           },
         },
@@ -621,6 +650,77 @@ describe('form_values — keyed action', () => {
       buildContext({ request: { action_id: 'a-ka' } }),
     );
     expect(result.form_values).toEqual({});
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Form key mapping — form.-prefixed paths to slice props
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('form key mapping — form.-prefixed paths', () => {
+  test('file_upload field key (form.attachment) survives: structural component own key is collected', async () => {
+    await seedWorkflow({
+      form_data: {
+        qualify: {
+          attachment: [{ name: 'doc.pdf', uid: 'f1' }],
+        },
+      },
+    });
+    await seedAction({ _id: 'a1', type: 'qualify' });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' } }),
+    );
+    expect(result.form_values.attachment).toEqual([{ name: 'doc.pdf', uid: 'f1' }]);
+  });
+
+  test('nested path form.address.street maps to first-segment prop (address)', async () => {
+    await seedWorkflow({
+      form_data: {
+        qualify: {
+          address: { street: '123 Main St', city: 'Springfield' },
+        },
+      },
+    });
+    await seedAction({ _id: 'a1', type: 'qualify' });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' } }),
+    );
+    // form.address.street → first segment after 'form.' = 'address'
+    expect(result.form_values.address).toEqual({ street: '123 Main St', city: 'Springfield' });
+  });
+
+  test('controlled_list own key (form.items) survives: array value at slice prop items', async () => {
+    await seedWorkflow({
+      form_data: {
+        'list-action': {
+          items: [{ name: 'Widget A' }, { name: 'Widget B' }],
+        },
+      },
+    });
+    await seedAction({ _id: 'a-list', type: 'list-action', kind: 'form' });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a-list' } }),
+    );
+    expect(result.form_values.items).toEqual([{ name: 'Widget A' }, { name: 'Widget B' }]);
+  });
+
+  test('keys not prefixed with form. are excluded from projection', async () => {
+    // The slice stores only bare keys from state.form submissions.
+    // Any slice property not covered by a form. key in the allowlist is dropped.
+    await seedWorkflow({
+      form_data: {
+        qualify: {
+          company_name: 'Acme',
+          internal_only: 'secret',
+        },
+      },
+    });
+    await seedAction({ _id: 'a1', type: 'qualify' });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' } }),
+    );
+    expect(result.form_values.company_name).toBe('Acme');
+    expect('internal_only' in result.form_values).toBe(false);
   });
 });
 
