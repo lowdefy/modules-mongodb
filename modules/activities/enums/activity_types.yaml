@@ -1,27 +1,19 @@
 # `icon` — AiOutline* name, rendered as a React Icon in the form selector.
-# `path` — inline SVG (own file) for the timeline badge, which renders raw
-#          HTML and can't mount the React Icon block.
 call:
   title: Call
   color: "#1890ff"
   icon: AiOutlinePhone
-  path:
-    _ref: icons/phone.yaml
   default_stage: done
   type: basic
 email:
   title: Email
   color: "#13c2c2"
   icon: AiOutlineMail
-  path:
-    _ref: icons/mail.yaml
   default_stage: done
   type: basic
 meeting:
   title: Meeting
   color: "#722ed1"
   icon: AiOutlineCalendar
-  path:
-    _ref: icons/calendar.yaml
   default_stage: done
   type: complex

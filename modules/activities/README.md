@@ -30,14 +30,9 @@ modules:
         # Built-in types: call (basic), meeting (complex), email (basic).
         # Schema per entry:
         #   title          — display label (string)
-        #   color          — hex colour for chips and the timeline icon badge
+        #   color          — hex colour for chips and the timeline type pill
         #   icon           — AiOutline* icon name. Rendered as a React Icon in
         #                    the form type selector.
-        #   path           — optional inline SVG (e.g. `_ref: icons/phone.yaml`)
-        #                    for the timeline badge, which renders raw HTML and
-        #                    can't mount the React Icon block. Built-in types
-        #                    ship their own; types that omit it render a
-        #                    default glyph.
         #   default_stage  — stage assigned on create (open | done | cancelled)
         #   type           — basic | complex; basic activities cannot transition
         #                    stage (created and locked in default_stage); complex

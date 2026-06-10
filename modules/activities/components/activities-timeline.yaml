@@ -96,12 +96,13 @@ blocks:
                 {% set entry = type_map[a.type] %}
                 {% set color = entry.color or '#8c8c8c' %}
                 {% set type_label = entry.title or a.type %}
-                {% set icon_svg = entry.path or default_icon %}
                 {% set stage_color = stage_colors[a.current_stage] or '#8c8c8c' %}
-                <a href="/{{ view_page }}?_id={{ a._id }}" style="display:flex; gap:10px; align-items:center; padding:8px 0{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}; color:inherit; text-decoration:none">
-                  <span title="{{ type_label }}" style="display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; color:{{ color }}; background:color-mix(in srgb, {{ color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ color }} 30%, transparent); flex:0 0 auto">{{ icon_svg | safe }}</span>
+                <a href="/{{ view_page }}?_id={{ a._id }}" style="display:flex; padding:8px 12px{% if not loop.last %}; border-bottom:1px solid var(--ant-color-border-secondary){% endif %}; color:inherit; text-decoration:none">
                   <div style="flex:1 1 auto; min-width:0">
-                    <div style="font-weight:500; word-break:break-word">{{ a.title or 'Untitled' }}</div>
+                    <div style="display:flex; gap:8px; align-items:center">
+                      <span style="font-weight:500; word-break:break-word; flex:1 1 auto; min-width:0">{{ a.title or 'Untitled' }}</span>
+                      <span style="display:inline-flex; align-items:center; padding:0 7px; border-radius:999px; font-size:10px; font-weight:600; line-height:16px; color:{{ color }}; background:color-mix(in srgb, {{ color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ color }} 30%, transparent); flex:0 0 auto">{{ type_label }}</span>
+                    </div>
                     <div style="display:flex; gap:8px; align-items:center; margin-top:2px">
                       <span style="display:inline-flex; align-items:center; padding:1px 8px; border-radius:999px; font-size:10px; font-weight:600; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 32%, transparent); text-transform:capitalize">{{ a.current_stage }}</span>
                       {% if a.updated and a.updated.timestamp %}
@@ -125,11 +126,6 @@ blocks:
               open: "#1890ff"
               done: "#52c41a"
               cancelled: "#8c8c8c"
-            # Fallback glyph for activity types whose `path` is unset (e.g.
-            # consumer-defined types in the `activity_types` var). Built-in
-            # types carry their own `path` ref from the enum.
-            default_icon:
-              _ref: icons/default.yaml
             view_page:
               _module.pageId: view
   - id: activities_timeline_view_all
