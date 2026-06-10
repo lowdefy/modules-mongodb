@@ -125,11 +125,11 @@ blocks:
               open: "#1890ff"
               done: "#52c41a"
               cancelled: "#8c8c8c"
-            # Fallback glyph for activity types whose `icon_svg` is unset
-            # (e.g. consumer-defined types). Built-in types carry their own
-            # `icon_svg` ref from the enum.
+            # Fallback glyph for activity types whose `path` is unset (e.g.
+            # consumer-defined types in the `activity_types` var). Built-in
+            # types carry their own `path` ref from the enum.
             default_icon:
-              _ref: icons/note.yaml
+              _ref: icons/default.yaml
             view_page:
               _module.pageId: view
   - id: activities_timeline_view_all

@@ -36,8 +36,8 @@ modules:
         #   path           — optional inline SVG (e.g. `_ref: icons/phone.yaml`)
         #                    for the timeline badge, which renders raw HTML and
         #                    can't mount the React Icon block. Built-in types
-        #                    ship their own; custom types without it fall back
-        #                    to a generic note glyph.
+        #                    ship their own; types that omit it render a
+        #                    default glyph.
         #   default_stage  — stage assigned on create (open | done | cancelled)
         #   type           — basic | complex; basic activities cannot transition
         #                    stage (created and locked in default_stage); complex
