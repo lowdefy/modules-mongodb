@@ -114,9 +114,6 @@ components:
   - id: action_role_check
     component:
       _ref: components/action_role_check.yaml
-  - id: workflows_config
-    component:
-      _ref: components/workflows_config.yaml
   - id: validated_workflows_config
     component:
       _ref: components/validated_workflows_config.yaml
