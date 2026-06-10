@@ -310,6 +310,59 @@ _ref:
                           _string.concat:
                             - _module.var: label
                             - " Information"
+                        header_buttons:
+                          - id: activity_type_stage_pills
+                            type: Html
+                            properties:
+                              html:
+                                _nunjucks:
+                                  template: |
+                                    <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+                                      {% if type_entry %}
+                                      <span style="display:inline-flex; align-items:center; gap:6px; padding:3px 11px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; line-height:1.5; color:{{ type_entry.color }}; background:color-mix(in srgb, {{ type_entry.color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ type_entry.color }} 28%, transparent)">
+                                        {{ type_entry.title or activity.type }}
+                                      </span>
+                                      {% elif activity.type %}
+                                      <span style="display:inline-flex; align-items:center; padding:3px 11px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; line-height:1.5; color:var(--ant-color-text-secondary); background:var(--ant-color-fill-secondary)">
+                                        {{ activity.type }}
+                                      </span>
+                                      {% endif %}
+                                      {% if stage and type_entry.type != 'basic' %}
+                                      <span style="display:inline-flex; align-items:center; gap:6px; padding:3px 11px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; line-height:1.5; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 28%, transparent)">
+                                        <span style="width:6px; height:6px; border-radius:50%; background:{{ stage_color }}"></span>{{ stage }}
+                                      </span>
+                                      {% endif %}
+                                    </div>
+                                  on:
+                                    activity:
+                                      _if_none:
+                                        - _request: get_activity.0
+                                        - {}
+                                    type_entry:
+                                      _get:
+                                        from:
+                                          _build.object.assign:
+                                            - _ref: enums/activity_types.yaml
+                                            - _module.var: activity_types
+                                        key:
+                                          _if_none:
+                                            - _request: get_activity.0.type
+                                            - ""
+                                    stage:
+                                      _if_none:
+                                        - _request: get_activity.0.current_stage
+                                        - null
+                                    stage_color:
+                                      _get:
+                                        from:
+                                          open: "#1890ff"
+                                          done: "#52c41a"
+                                          cancelled: "#8c8c8c"
+                                        key:
+                                          _if_none:
+                                            - _request: get_activity.0.current_stage
+                                            - ""
+                                        default: "#8c8c8c"
                         blocks:
                           - _ref: components/view_activity.yaml
                   - _ref:
