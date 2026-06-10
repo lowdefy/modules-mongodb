@@ -71,7 +71,7 @@ orphaned manifest exports be deleted, and the full build + test suite verified.
 ## Scope
 
 **Source:** `designs/workflows-module/parts/46-debundle-workflow-config/design.md`
-**Context files:** `open-questions.md` (the per-verb-page-title deferral — does not affect task scope).
+**Context files:** none (the per-verb-page-title question once held in `open-questions.md` was resolved against the reference implementation and folded into review-5 #2 — both display strings stand; does not affect task scope).
 **Review corpus folded into these tasks:** `review/review-1.md`–`review/review-5.md`
 (reviews 3–5 and their resolutions were propagated into the tasks by the
 `consistency-1`–`consistency-3` passes; the design is the source of truth).

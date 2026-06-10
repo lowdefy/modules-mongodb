@@ -4,7 +4,7 @@ A full review of `designs/workflows-module-concept/` conducted after the bulk of
 
 ## Overall assessment
 
-The design is strong and unusually disciplined. The signal/FSM model is the standout decision — four entangled mechanisms (priority rule, `force: true`, interaction→status table, fixed button vocabulary) collapsed into one legible primitive, with re-fire safety provided structurally by the table rather than by ordering rules. Part 38's load-plan-commit engine (CAS claim, conditional transactions) is materially stronger than the concept docs describe. The findings below are mostly about what sits *around* the engine — recovery stories, provenance, and doc drift — not the engine itself.
+The design is strong and unusually disciplined. The signal/FSM model is the standout decision — four entangled mechanisms (priority rule, `force: true`, interaction→status table, fixed button vocabulary) collapsed into one legible primitive, with re-fire safety provided structurally by the table rather than by ordering rules. Part 38's load-plan-commit engine (CAS claim, conditional transactions) is materially stronger than the concept docs describe. The findings below are mostly about what sits _around_ the engine — recovery stories, provenance, and doc drift — not the engine itself.
 
 A recurring theme: several v1 risk acceptances were justified by mitigations that were never built (the reconciliation job, the versioning discipline, the manual event re-fire API). This review replaces those justifications with an explicit position: **v1 accepts these risks unmitigated and ships; v2 designs the real solutions.** No ad-hoc interim patches.
 
@@ -30,7 +30,7 @@ A recurring theme: several v1 risk acceptances were justified by mitigations tha
 
 **Concern.** "Periodic reconciliation as the catch-all" is the named mitigation in at least five places (engine failure-mode story + risks, action-groups D4 + risks, parent spec risks) — including phrasing that implies it exists ("the same periodic reconciliation job that already covers summary drift"). No part designs or builds it.
 
-**Decision (Sam).** Reconciliation was aspirational in the original design and will not ship. Decisions hanging on it are wrong as justified. All five claims are replaced with the explicit position: *v1 ships with no reconciliation; these risks are accepted unmitigated; the general consistency mechanism is the headline v2 item* (which will decide whether reconciliation, transactions, outbox, or a combination is the right shape). See § Doc corrections.
+**Decision (Sam).** Reconciliation was aspirational in the original design and will not ship. Decisions hanging on it are wrong as justified. All five claims are replaced with the explicit position: _v1 ships with no reconciliation; these risks are accepted unmitigated; the general consistency mechanism is the headline v2 item_ (which will decide whether reconciliation, transactions, outbox, or a combination is the right shape). See § Doc corrections.
 
 ### F4 — `on_complete` is edge-triggered; a missed fire silently corrupts business state → v2, highest severity in the class
 
@@ -58,7 +58,7 @@ A recurring theme: several v1 risk acceptances were justified by mitigations tha
 
 ### F8 — Form library: structural components have no in-tree exercise ✅ covered by e2e suite
 
-**Concern.** All 27 field components shipped, but the demo exercises 5, none structural — `controlled_list`, `section`, `box`, the recursive walker, nested metadata, and keyed `form_data` paths had no end-to-end exercise. (The original recursion *spike* dissolved correctly: Part 15 made nesting plain JS recursion inside `makeActionsForm`; the only Lowdefy-machinery dependency is the outer template-scope `_ref: { resolver }`, exercised by every demo build.)
+**Concern.** All 27 field components shipped, but the demo exercises 5, none structural — `controlled_list`, `section`, `box`, the recursive walker, nested metadata, and keyed `form_data` paths had no end-to-end exercise. (The original recursion _spike_ dissolved correctly: Part 15 made nesting plain JS recursion inside `makeActionsForm`; the only Lowdefy-machinery dependency is the outer template-scope `_ref: { resolver }`, exercised by every demo build.)
 
 **Decision (Sam).** A full component inventory is specced as part of the e2e test suite (Part 22), in a dedicated app separate from the demo. Gap covered. The four stale "run a spike" open questions in the concept docs get updated to record the Part 15 resolution (§ Doc corrections).
 
@@ -98,19 +98,21 @@ The accumulated staleness/inconsistency ledger. The concept tree is the source o
 
 **Engine concurrency/atomicity sections (vs Part 38)** — the largest block:
 
-1. `engine/design.md` "Client and transaction model" still describes the community-plugin dispatcher with per-request `MongoClient`s; Part 38 D8 replaced it with an engine-owned cached client + native helpers (the "parallel raw-driver helper" the section says would be needed *was built*).
+1. `engine/design.md` "Client and transaction model" still describes the community-plugin dispatcher with per-request `MongoClient`s; Part 38 D8 replaced it with an engine-owned cached client + native helpers (the "parallel raw-driver helper" the section says would be needed _was built_).
 2. No mention of the CAS claim (D15) — the central concurrency mechanism — anywhere in the concept tree.
 3. `spec.md` "Deferred to separate designs — MongoDB transactions" — no longer deferred; conditional transactions shipped (Part 38 D11, replica-set detection, steps 1–2).
 4. `engine/design.md` D3 "caller retry is safe by construction… recommended recovery is resubmit" — no longer accurate: under Part 38 D13, user signals re-fired after a committed transition throw noisy invalid-transition errors. The retry story belongs to the old model.
 5. `engine/design.md` D1 notes `changeLog` is "owned by the community plugin"; Part 38 D7 reproduces it natively in the engine.
 
-**Reconciliation claims (F3):** replace at five sites — engine "Failure-mode story", engine Risks, action-groups D4, action-groups Risks, parent `spec.md` Risks — with: *v1 ships no reconciliation; risks accepted unmitigated; general consistency mechanism is v2 item 1.*
+**Reconciliation claims (F3):** replace at five sites — engine "Failure-mode story", engine Risks, action-groups D4, action-groups Risks, parent `spec.md` Risks — with: _v1 ships no reconciliation; risks accepted unmitigated; general consistency mechanism is v2 item 1._
 
 **Recursion-spike open questions (F8):** parent `design.md` OQ1, `action-authoring` OQ1, `ui` OQ1, `spec.md` cross-cutting risks all still instruct a future reader to run a spike that has been moot since Part 15 (JS-internal recursion; template-scope `_ref: { resolver }` shipped and exercised). Record the resolution.
 
 **Versioning notes (F5):** banner `review/versioning-and-dynamic-workflows.md`: the discipline described (stamps, markers, checklist, script) was **not adopted**; v1 ships latest-wins bare; proper versioning is v2 item 2.
 
-**`request_changes` verb contradiction (needs resolution, then doc alignment):** state-machine "Templates and buttons" and ui Decision 2 gate the opt-in view-bar `request_changes` on `action_allowed.view` — explicitly to serve actions with **no** `review` verb. But action-authoring's "Interaction → required verb" table (and Part 38's load-phase check, per D2/Part 34 D6) maps `request_changes → review`. As written, the view-bar button renders for users who pass `view` and is then rejected server-side for any action that doesn't declare `review` — i.e. exactly the case the button exists for. Verify what the shipped templates/handler do, pick one gate (either `request_changes` requires `review` always and the view-bar justification is dropped, or the required verb is context-dependent), and align both docs.
+**`request_changes` verb contradiction — VERIFIED, shipped, needs a fix:** the contradiction is live in the implementation. Engine: `loadWorkflowState.js`'s `SIGNAL_VERBS` maps `request_changes → 'review'`, fail-closed when the verb is absent. Template: `view.yaml.njk`'s `button_request_changes` (opt-in via `page_config.buttons.request_changes.visible`, default `false`) gates on `_state.action_allowed.view` — even though `action_role_check` populates `action_allowed.review` on the same page. Consequences when an author opts in: (a) on an action with **no** `review` verb — the exact case state-machine's "Templates and buttons" note uses to justify the view-gate — every click is rejected server-side; the button is a guaranteed dead-end (modal opens, mandatory comment validated, CallAPI rejected). (b) On an action **with** `review`, the button renders for every viewer (often `view: true` = everyone) but only review-role holders pass the engine — non-reviewers hit the same dead-end. Blast radius today is zero because the button is opt-in default-hidden; it is broken the day an author enables it.
+
+Recommended fix: change the template gate to `action_allowed.review` (one line) and align the docs — drop state-machine's "no review verb would dead-end" justification (it argues for granting a reviewer power on the broadest verb; the engine is right to refuse). The no-review-verb case keeps its re-open path via the edit page's `submit` from `done` (re-edit), and a `changes-required` landing on such actions remains reachable via pre-hook cascade (`request_changes`/`activate` from another action) — the view-bar path was never the only one. Aligning the engine to the template instead (accepting `view` for `request_changes`) is rejected: it would let any viewer regress `done`/`in-review` actions, a privilege escalation.
 
 **Stale tracker-lookup text:** `module-surface/design.md` Decision 4 still says the cancel path "looks up tracker actions whose `key` equals this `workflow_id`" — the key-overloading was removed; the subscription walks the child's `parent_action_id` by primary key. Rewrite the sentence.
 
@@ -121,5 +123,5 @@ The accumulated staleness/inconsistency ledger. The concept tree is the source o
 **Smaller recommended additions:**
 
 - State the design envelope (F7): workflows are designed for ~20–30 actions; larger fan-outs should become child workflows via trackers.
-- Document `post_commit_dispatch_failed` semantics where page authors will find it: it means *the writes landed and a side effect failed* — blind retry either errors or double-submits (F2). One paragraph; cheap honesty until v2 replaces the mechanism.
+- Document `post_commit_dispatch_failed` semantics where page authors will find it: it means _the writes landed and a side effect failed_ — blind retry either errors or double-submits (F2). One paragraph; cheap honesty until v2 replaces the mechanism.
 - README worklist guidance per F9-C: direct collection queries cannot enforce action access; supported v1 pattern is the assignees-scoped inbox; role-gated cross-entity lists wait for the tasks module.
