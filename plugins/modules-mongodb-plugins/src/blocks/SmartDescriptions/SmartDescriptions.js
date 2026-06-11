@@ -23,10 +23,6 @@ const SmartDescriptions = ({
     return fields ? processFields(data, fields) : processData(data);
   }, [data, fields]);
 
-  if (!items.length) {
-    return <div id={blockId}>No data to display</div>;
-  }
-
   const title = properties.title
     ? renderHtml({ html: properties.title, methods })
     : null;
@@ -44,6 +40,27 @@ const SmartDescriptions = ({
     style: styles.element,
     styles: { content: styles.content, label: styles.label },
   };
+
+  // Empty state — keep rendering the header (title / extra) so the
+  // section stays visible when no fields resolve.
+  if (!items.length) {
+    return (
+      <div id={blockId}>
+        <Descriptions
+          {...descProps}
+          bordered={false}
+          title={title}
+          extra={extra}
+        >
+          <Descriptions.Item span="filled">
+            <span className="dataview-value dataview-value-null">
+              No data to display
+            </span>
+          </Descriptions.Item>
+        </Descriptions>
+      </div>
+    );
+  }
 
   return (
     <div id={blockId}>
