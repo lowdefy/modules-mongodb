@@ -6,6 +6,8 @@ Second review, after review-1's five findings were resolved and `tasks/` was gen
 
 ### 1. Part 40 has not shipped, and the static check pages the suite drives still run the obsolete `interaction` model
 
+> **Resolved.** Sequencing is owned by `implementation-plan.md`, not this design — the design is intentionally written against the target state of in-flight parts 40/46/48, so no gating subsection was added. The false claim was fixed: "Depends on" now names shipped vs. in-flight parts and points to the plan, "Contract to neighbours" no longer calls 40 shipped, and part 22's row in the plan records "after 40/46".
+
 "Depends on" claims all listed parts "have shipped", and "Contract to neighbours" counts part 40 among the shipping parts (5–20, 23, **38–40**, 43). But part 40 lives in active `parts/40-simple-action-surfaces/` (not `_completed/`), is modified in the current working tree, and its own intro states the problem: the three shared `workflow-action-*` pages "still run the **old interaction model**". Verified — `modules/workflows/pages/workflow-action-edit.yaml:207` fires `interaction: submit_edit`, the wire field this design itself says no longer exists ("`signal` is the wire field; there is no `interaction`", § Fixture surface).
 
 Consequence: the `check-blocked-by` spine (click a button on a static check page → engine commits) **cannot go green against current behaviour** — the pages send a payload the rebuilt engine doesn't speak. The same applies to any `access-verbs` assertion that renders a static check page's buttons. This isn't a doc nit; it propagates into `tasks/tasks.md`, which declares "tasks 4–10 can run in parallel" immediately after `form-lifecycle` — task 04 would be authored against broken pages.
@@ -13,6 +15,8 @@ Consequence: the `check-blocked-by` spine (click a button on a static check page
 Fix: in "Depends on", split the list into *shipped* (38, 39, 43, 12/13/15, 19, 20a/b) and *prerequisite, in flight* (40 — required before `check-blocked-by` and the check-page portions of `access-verbs`). Add the same gate to "Implementation order within this part", and correct the "Contract to neighbours" parts list. The tasks file then needs its parallelism claim patched (a `/r:design-task` re-run or targeted edit after action-review).
 
 ### 2. Parts 46 and 48 (also in flight) delete the mechanisms two cluster stories are written against
+
+> **Resolved.** The two design-level touchpoints are now phrased in behaviour terms, stable across part 46: the `access-verbs` row no longer names `visible_verbs`/`action_allowed` (it states per-verb visibility, non-rendering of unfireable buttons, and endpoint rejection), and "What only e2e can prove" #1 drops `makeActionFormConfigs`, describing the seam instead. The `tracker.workflow_type` touchpoint needs nothing in the design — the field is only named in the generated task files, which are patched under finding 5 (the verified post-48 name is `tracker.child_workflow_type`).
 
 Part 46 (`46-debundle-workflow-config/`, size XL, actively edited) retires the client verb mirror: `components/action_role_check.yaml` and the `action_allowed` bag are **deleted**, the `visible_verbs` YAML stage collapses into plugin JS, and button visibility becomes server-resolved `GetWorkflowAction` `action.buttons`/`allowed`. It also deletes `makeActionFormConfigs.js`, extends the three overview API responses, and reshapes `get_action` from array to object. Part 48 renames `tracker.workflow_type` → `tracker.child_workflow_type` in authored config.
 

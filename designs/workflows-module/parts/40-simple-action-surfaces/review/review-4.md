@@ -180,6 +180,8 @@ rule (fields ride edit-verb signals only).
 
 ### 8. Minor: the review page's stale-URL allowlist still admits `error`, which is now a buttonless dead end
 
+> **Resolved.** Dropped `error` from the `workflow-action-review` stale-URL allowlist in D6 (`[in-review, error]` → `[in-review]`). A check action at `error` renders no review buttons (`approve`/`request_changes` are false outside `in-review`; `resolve_error` is view-mode only, D4) and the engine routes the `error` verb to `workflow-action-view`, so the guard now redirects an `error`-stage hit to the view page where recovery lives instead of stranding it on a buttonless render. Left the Current-state description of the shipped `[in-review, error]` guard intact (it documents pre-rewrite state).
+
 D6 carries the `workflow-action-review` stale-URL guard over unchanged with its shipped allowlist
 `[in-review, error]`. Under this part's own model, stage `error` on the review page renders no
 buttons at all (`buttons.approve`/`buttons.request_changes` are false outside `in-review`/`done`
@@ -194,6 +196,8 @@ deliberate carry-over rather than a leftover.
 ## Supporting-file staleness
 
 ### 9. The regenerated task files predate the Part 46 flip and contradict the current design
+
+> **Resolved.** Confirmed stale on every axis the flip changed, and now further out of sync after this session's findings 1–8 + the Part 24 reassign decoupling. Rather than hand-patch, **deleted all nine task files** (`tasks/tasks.md` + `tasks/01–08`) so no one works off them, and deferred to `/r:design-task` regeneration. Sequence: run `/r:design-consistency-review` first (design.md changed substantially this session), then regenerate tasks — with findings 1–8 as the spec for what the regenerated tasks must not carry.
 
 `tasks/tasks.md` and tasks 01–08 were regenerated against the pre-46 design and are stale on
 every axis the flip changed:
@@ -221,6 +225,8 @@ resolved; this finding plus findings 1–4 are the spec for what the regenerated
 carry.
 
 ### 10. `open-questions.md` records superseded positions on the three threads the 46 flip closed
+
+> **Resolved.** The whole file was a closed pause-pickup snapshot: §1/§4/§5 resolved, §2/§3 superseded by Part 46 (§2's "drop `buttons`" / "leave YAML stages on the timeline" amendments went the opposite way and were stale per #4), §6 housekeeping (its task-staleness item closed by #9). Live decisions now live in design.md + these annotations, and nothing references the file (verified against design.md, Part 46, and the parent). **Deleted `open-questions.md`** rather than keep a tombstone — same call as the task files (#9).
 
 The snapshot file contradicts the design it supports:
 
