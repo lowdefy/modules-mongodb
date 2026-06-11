@@ -26,6 +26,7 @@ Authoring reference for `blocked_by`: `onboarding/send-quote.yaml` (`blocked_by:
    - **Type dep**: from `/thing-view`, click through the `actions-on-entity` row for `first-check` to `/workflows/workflow-action-edit?action_id=...`; assert the static page renders the check action; complete it via its real button → `first-check` done, `needs-type` flips to `action-required` (DB + UI on thing-view), while `needs-group` stays `blocked` (second-check still open).
    - **Group dep**: complete `second-check` → group `prep` completes → `needs-group` flips to `action-required`. Assert the group recompute via `workflow.assertGroups`.
    - **Static page sweep**: assert `workflow-action-view?action_id=` renders for a done action and `workflow-action-review?action_id=` renders (or cleanly rejects) per the pages' contracts — the design's Verification requires every static shared check page proven reachable. If `review` requires the verb, give one action `review: true` to make the page reachable honestly.
+   - **Overview pages**: open the two static overview pages (`workflow-overview`, `workflow-group-overview`) for the started workflow and assert each renders its group-structured state — one render assertion each. This cluster is the suite's only coverage of these two pages (design § Cluster fixtures).
    - Blocked actions: assert the blocked state's UI affordance (no actionable button / blocked message from `status_map`).
 
 ## Acceptance Criteria
@@ -33,6 +34,7 @@ Authoring reference for `blocked_by`: `onboarding/send-quote.yaml` (`blocked_by:
 - Spec green in the full suite run.
 - Both dependency kinds proven: completing a type blocker and completing a group unblocks the respective dependent, asserted in DB **and** reflected on `thing-view`.
 - All three static shared pages (`workflow-action-edit`, `-view`, `-review`) get a render assertion against a check action in this app.
+- `workflow-overview` and `workflow-group-overview` each get a render assertion against the group-structured workflow.
 - No enumeration of FSM cells — representative transitions only.
 
 ## Files

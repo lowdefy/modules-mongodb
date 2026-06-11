@@ -4,12 +4,12 @@
 
 Follows the `form-lifecycle` template (task 3). Story: a parent workflow with a `kind: tracker` action mirroring a child workflow — start child → `internal_mirror_child_active` pulls the parent action to in-progress; child completes → parent done; child cancels → parent not-required; **terminal-row recovery** (child reactivates after the parent action already landed a terminal stage). Mode: **Spine + Tail**.
 
-Authoring reference: `apps/demo/modules/workflows/workflow_config/onboarding/track-company-setup.yaml` (`kind: tracker`, `tracker.workflow_type`, `tracker.start_link` with `action_id`/`entity_id` urlQuery → the tracker action `_id` becomes the child's `parent_action_id`). Tracker cascade logic (multi-level, depth guard, FSM no-op) is unit-owned (`runTrackerCascade.test.js`, tracker FSM table 6×7 in `fsm/tables.test.js`); this cluster proves the mirror fires through the wired app, including across **two workflow docs**.
+Authoring reference: `apps/demo/modules/workflows/workflow_config/onboarding/track-company-setup.yaml` (`kind: tracker`, `tracker.child_workflow_type` — part 48's rename of `tracker.workflow_type`, `tracker.start_link` with `action_id`/`entity_id` urlQuery → the tracker action `_id` becomes the child's `parent_action_id`). Tracker cascade logic (multi-level, depth guard, FSM no-op) is unit-owned (`runTrackerCascade.test.js`, tracker FSM table 6×7 in `fsm/tables.test.js`); this cluster proves the mirror fires through the wired app, including across **two workflow docs**.
 
 ## Task
 
 1. **Fixture workflows** `workflow_config/tracker-child/` — two workflow types:
-   - `tracker-parent` — entity `things-collection`. Actions: a `track-child` action, `kind: tracker`, starts `action-required`, `tracker.workflow_type: tracker-child-flow`, `tracker.start_link` pointing at `thing-view` (or the simplest page that can carry the query params), `access.test: { view: true, edit: true }`, `status_map` messages per stage (copy the demo tracker's stage list).
+   - `tracker-parent` — entity `things-collection`. Actions: a `track-child` action, `kind: tracker`, starts `action-required`, `tracker.child_workflow_type: tracker-child-flow`, `tracker.start_link` pointing at `thing-view` (or the simplest page that can carry the query params), `access.test: { view: true, edit: true }`, `status_map` messages per stage (copy the demo tracker's stage list).
    - `tracker-child-flow` — entity `things-collection`, one or two simple check actions so it can be completed quickly.
    - Both `_ref`'d from `workflows.yaml`.
 

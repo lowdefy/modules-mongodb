@@ -30,11 +30,15 @@ The cheapest structural fix covering 1+2: a short "Sequencing vs. in-flight part
 
 ### 3. Part 49 changes `request_changes` gating out from under two clusters
 
+> **Resolved.** Part 49 will ship before this suite is built (22 is queued behind 40/46), so the inversion window never opens — specs are authored against the post-49 view-or-review gate. Rather than pinning a probe signal in the design, part 49 was added to the "Depends on" in-flight list (the design is written against its target state). Task 10's probe phrasing is checked in the finding-5 task patch pass.
+
 `parts/_next/49-request-changes-verb-gate/` (untracked, queued) flips the engine gate for `request_changes` from `review` to `view` OR `review`. Two touchpoints: `form-lifecycle`'s `request_changes` resubmit loop, and `access-verbs`'s "role missing a signal's verb is rejected at the endpoint". If the rejection assertion is authored against `request_changes`, it inverts when 49 lands (a view-only role goes from rejected to accepted). Fix is one sentence in `access-verbs`: pick the gate-rejection probe from signals 49 doesn't touch (`approve` is the stable one — it stays `review`-only), and note the `request_changes` loop in `form-lifecycle` should exercise a role that holds the verb under both rules.
 
 ## Coverage
 
 ### 4. `get-action-group-overview` and the two overview pages are uncovered, but Verification claims total surface coverage
+
+> **Resolved.** Coverage added rather than narrowing the Verification claim: `get-action-group-overview` joins the `operational-lifecycle` API list, and `check-blocked-by` opens `workflow-overview` + `workflow-group-overview` against its group-structured workflow with one render assertion each. (Part 46 reshapes these surfaces; the design is written against its target state per finding 1's resolution.)
 
 Verification promises "each operational API returns its documented shape" and "every emitted surface is proven reachable". Two gaps:
 
@@ -46,5 +50,7 @@ Fix: add `get-action-group-overview` to the `operational-lifecycle` row, and giv
 ## Minor
 
 ### 5. Tasks were generated against the unreviewed design and inherit findings 1–4
+
+> **Resolved.** Targeted patch instead of regenerating: task 04 gains the two overview-page render assertions (finding 4); task 07 renames to `tracker.child_workflow_type` (part 48); task 09's story line adds `get-action-group-overview` (its body already included it); task 10 is rephrased in behaviour terms with the client verb mirror noted as retired by part 46, and its part-49 note now states post-49 gating as the baseline (the rejection probe already used the 49-stable `approve`). `tasks.md`'s "tasks 4–10 in parallel" stands — under finding 1's resolution the suite runs after parts 40/46 land, so no task is authored against the pre-40 pages.
 
 `tasks/tasks.md` records "Review files skipped: review/ (entire folder)" and was generated before this review. Concretely affected: the "tasks 4–10 can run in parallel" ordering (finding 1), task 09's API list (finding 4), task 10's mechanism phrasing (findings 2–3), and task 07's tracker field name (finding 2). After action-review, the task set needs a patch pass — not a finding against the design text itself, but flagged so it isn't missed.

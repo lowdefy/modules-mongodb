@@ -2,9 +2,9 @@
 
 ## Context
 
-Follows the `form-lifecycle` template (task 3). Story: per-verb button and page visibility under different roles — the `actions-on-entity` component renders per `visible_verbs`, buttons gate on the per-verb `action_allowed` bag, and a role missing a signal's verb is **rejected at the endpoint**. Mode: **Spine (UI)** with an endpoint-rejection tail.
+Follows the `form-lifecycle` template (task 3). Story: per-verb button and page visibility under different roles — the `actions-on-entity` component shows an action only for the verbs visible to the user's role, buttons a role cannot fire do not render, and a signal whose verb the role lacks is **rejected at the endpoint**. Mode: **Spine (UI)** with an endpoint-rejection tail.
 
-Access vocabulary (verified in `makeWorkflowsConfig.js`): per-app, per-verb gates under `access.{app_name}.{verb}`, where a gate is `true` (any role) or a non-empty array of role strings; an omitted verb key denies; the empty list `[]` is a build error. The test app's `app_name` is `test` and `user_schema.roles_path` is `roles`, so `ldf.user({ roles: [...] })` controls the caller's verb set. Gate evaluation lives in `modules/workflows/components/evaluateVerbGate.js` / `action_role_check.yaml`; endpoint-side enforcement is in the submit handler (unit-covered for logic — per-verb gates in `SubmitWorkflowAction` tests). This cluster proves the gates **bind through the wired app**: rendered UI and live endpoint, per role.
+Access vocabulary (verified in `makeWorkflowsConfig.js`): per-app, per-verb gates under `access.{app_name}.{verb}`, where a gate is `true` (any role) or a non-empty array of role strings; an omitted verb key denies; the empty list `[]` is a build error. The test app's `app_name` is `test` and `user_schema.roles_path` is `roles`, so `ldf.user({ roles: [...] })` controls the caller's verb set. Per part 46 (in flight — this design is written against its target state), verb visibility and button gating are **server-resolved** and delivered to pages by the read APIs; the client-side mirror (`action_role_check.yaml` / the `action_allowed` bag) is retired, so assert rendered behaviour, not those mechanisms. Endpoint-side enforcement is in the submit handler (unit-covered for logic — per-verb gates in `SubmitWorkflowAction` tests). This cluster proves the gates **bind through the wired app**: rendered UI and live endpoint, per role.
 
 ## Task
 
@@ -15,8 +15,8 @@ Access vocabulary (verified in `makeWorkflowsConfig.js`): per-app, per-verb gate
    - `_ref` from `workflows.yaml`.
 
 2. **Spec** `e2e/workflows/access-verbs.spec.js`. Three sessions via `ldf.user({ roles: [...] })`: a plain user (`roles: []` or `[user]`), a `reviewer`, an `admin`. For each:
-   - **`actions-on-entity` visibility**: on `/thing-view`, assert each action row renders (or is absent/inert) per that role's `visible_verbs` — e.g. `admin-only` is invisible (or shows no link) to the plain user, visible to admin.
-   - **Page + button gating**: `reviewer-gated`'s edit page renders its submit button for everyone with `edit`; its review page's approve/request-changes buttons render for the reviewer and **not** for the plain user (the per-verb `action_allowed` bag driving button render). Assert the page-level behaviour for a role without `view` on `admin-only` (no leak of action data — whatever the shipped behaviour is: redirect, empty, or 403 surface; assert it deliberately).
+   - **`actions-on-entity` visibility**: on `/thing-view`, assert each action row renders (or is absent/inert) per the verbs visible to that role — e.g. `admin-only` is invisible (or shows no link) to the plain user, visible to admin.
+   - **Page + button gating**: `reviewer-gated`'s edit page renders its submit button for everyone with `edit`; its review page's approve/request-changes buttons render for the reviewer and **not** for the plain user (button render driven by the server-resolved per-verb access — part 46). Assert the page-level behaviour for a role without `view` on `admin-only` (no leak of action data — whatever the shipped behaviour is: redirect, empty, or 403 surface; assert it deliberately).
    - **Endpoint rejection (tail)**: as the plain user, walk `reviewed-gated` to in-review through the UI, then fire `workflow.submit(action_id, { signal: 'approve', ... , expectError: true })` directly — the real endpoint rejects (role lacks `review`), and the action doc is unchanged. One positive control: the same call as `reviewer` succeeds.
 
 ## Acceptance Criteria
@@ -35,4 +35,4 @@ Access vocabulary (verified in `makeWorkflowsConfig.js`): per-app, per-verb gate
 ## Notes
 
 - Multi-**app** verb-filter coverage (role unions across `app_name`s) is explicitly deferred by the design — one `app_name` only. This cluster is multi-*role* within `test`.
-- If part 49 (`request-changes` verb gate, in `designs/workflows-module/parts/_next/`) lands before this task, re-read its design — the review-verb gating asserted here may gain a per-signal nuance. Assert shipped behaviour, and flag any design/code mismatch rather than encoding it.
+- Part 49 ships before this suite: `request_changes` fires under `view` OR `review`. Assert post-49 gating. The endpoint-rejection probe uses `approve`, whose `review`-only gate part 49 does not touch.

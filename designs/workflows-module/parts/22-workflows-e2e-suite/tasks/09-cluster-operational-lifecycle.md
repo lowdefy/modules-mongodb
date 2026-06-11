@@ -2,7 +2,7 @@
 
 ## Context
 
-Follows the harness patterns from tasks 2–3. Story: `start` / `cancel` / `close` / `get-entity-workflows` / `get-workflow-overview` end-to-end through the real operational APIs (part 19); the close sweep skips `required_after_close: true` actions; closing an already-completed workflow is a no-op; closing an already-cancelled workflow rejects. Mode: **Tail** — the one browser-free cluster: every call goes through `POST /api/endpoints/workflows/{api-id}` via the `workflow` fixture, assertions via `mdb`.
+Follows the harness patterns from tasks 2–3. Story: `start` / `cancel` / `close` / `get-entity-workflows` / `get-workflow-overview` / `get-action-group-overview` end-to-end through the real operational APIs (part 19); the close sweep skips `required_after_close: true` actions; closing an already-completed workflow is a no-op; closing an already-cancelled workflow rejects. Mode: **Tail** — the one browser-free cluster: every call goes through `POST /api/endpoints/workflows/{api-id}` via the `workflow` fixture, assertions via `mdb`.
 
 The API yamls are the contract: `modules/workflows/api/start-workflow.yaml`, `cancel-workflow.yaml`, `close-workflow.yaml`, `get-entity-workflows.yaml`, `get-workflow-overview.yaml` (there is also `get-action-group-overview.yaml` — the design's Verification says "each operational API returns its documented shape", so include it). Close-sweep semantics live in `CloseWorkflow.js` and its unit test (`plugins/.../WorkflowAPI/CloseWorkflow/CloseWorkflow.test.js`) — exhaustive logic is unit-owned; this spec proves each API is **wired and reachable in the running app** and returns its documented shape.
 
