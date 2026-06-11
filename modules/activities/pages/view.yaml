@@ -12,6 +12,10 @@
 #      arrays from `get_activity.0` so `contact_list_items` and
 #      `company_list_items` (which read from `_state`) render the chips
 #      without their own requests.
+#   3. `state.type` mirrors `get_activity.0.type` so consumer
+#      `fields.attributes` `visible` conditions written against
+#      `_state: type` (shared with the form pages, where a `type`
+#      input block exists) also work here.
 #
 # Files sidebar embeds `files.file-card` inline (per `decisions.md` §4
 # — no local `tile_files.yaml` wrapper).
@@ -261,6 +265,7 @@ _ref:
           params:
             contacts: []
             companies: []
+            type: null
       onMount:
         - id: fetch
           type: Request
@@ -285,6 +290,10 @@ _ref:
               _if_none:
                 - _request: get_activity.0.companies
                 - []
+            type:
+              _if_none:
+                - _request: get_activity.0.type
+                - null
     requests:
       - _ref: requests/get_activity.yaml
     blocks:

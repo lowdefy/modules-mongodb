@@ -7,7 +7,7 @@
 # pills live in the wrapping card's `extra` slot (see `pages/view.yaml`).
 # SmartDescriptions handles the change-stamp footer (created / updated).
 #
-# The wrapping `pages/view.yaml` (Task 14) is responsible for two
+# The wrapping `pages/view.yaml` (Task 14) is responsible for three
 # pieces of state plumbing this component depends on:
 #   1. Triggering `get_activity` on mount.
 #   2. Mirroring `request.get_activity.0.contacts_enriched` into
@@ -15,6 +15,9 @@
 #      (the chip components read those state paths — see
 #      `contact_list_items.yaml` / `company_list_items.yaml` headers).
 #      A single `SetState` after the request resolves is sufficient.
+#   3. Mirroring `request.get_activity.0.type` into `state.type` so
+#      consumer `fields.attributes` `visible` conditions written
+#      against `_state: type` work on this page too.
 #
 # Consumer-extension hooks:
 #   - `_module.var: components.main_slots` — extra blocks appended
