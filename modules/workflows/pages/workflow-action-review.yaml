@@ -5,7 +5,6 @@
 # status selector, no fields.* editing.
 #
 # Path-stub dependencies (won't build until other parts ship):
-#   - ../components/action_role_check.yaml       (part 18)
 #   - ../components/universal-fields/universal-fields.yaml  (part 24)
 _ref:
   module: layout
@@ -15,8 +14,7 @@ _ref:
     hide_title: true
     content_width: 750
     requests:
-      - _ref: requests/get_action.yaml
-      - _ref: requests/get_workflow.yaml
+      - _ref: requests/get_workflow_action.yaml
     events:
       onMount:
         # Step 1: action_id presence guard.
@@ -31,7 +29,7 @@ _ref:
         # Step 2: load the action.
         - id: get_action
           type: Request
-          params: get_action
+          params: get_workflow_action
         # Step 3: stale-URL guard. Allowlist mirrors part 16's review template
         # — `error` included so reviewers can see the action mid-recovery.
         - id: redirect_stale_status
@@ -40,23 +38,16 @@ _ref:
             _array.includes:
               - - in-review
                 - error
-              - _request: get_action.status.0.stage
+              - _request: get_workflow_action.status.0.stage
           params:
             pageId:
               _module.pageId: workflow-action-view
             urlQuery:
               _url_query: true
-        # Step 4: load workflow — needed for required_after_close gate.
-        - id: get_workflow
-          type: Request
-          params: get_workflow
+        # Step 4 (get_workflow) — omitted; workflow_closed + allowed resolved
+        # server-side into the get_workflow_action envelope.
         # Step 5 (get_entity) — intentionally omitted on all check pages (v1).
-        # Step 6: role check — sets _state.action_allowed.
-        - _ref:
-            path: components/action_role_check.yaml
-            vars:
-              action_config:
-                _request: get_action
+        # Step 6 (action_role_check) — omitted; allowed resolved server-side.
         # Step 7: prime comment state. Universal fields display from
         # get_action directly — no fields.* state binding needed.
         - id: prime_form_state
@@ -75,15 +66,9 @@ _ref:
             type: Alert
             visible:
               _and:
-                - _or:
-                    - _eq:
-                        - _request: get_workflow.status.0.stage
-                        - completed
-                    - _eq:
-                        - _request: get_workflow.status.0.stage
-                        - cancelled
+                - _request: get_workflow_action.workflow_closed
                 - _ne:
-                    - _request: get_action.required_after_close
+                    - _request: get_workflow_action.required_after_close
                     - true
             properties:
               type: warning
@@ -101,7 +86,7 @@ _ref:
                 properties:
                   level: 4
                   content:
-                    _request: get_action.title
+                    _request: get_workflow_action.message
               - id: action_status_badge
                 type: Tag
                 properties:
@@ -111,7 +96,7 @@ _ref:
                         statuses:
                           _ref: ../shared/enums/action_statuses.yaml
                         stage:
-                          _request: get_action.status.0.stage
+                          _request: get_workflow_action.status.0.stage
                       fn: |
                         const { statuses, stage } = args;
                         return statuses?.[stage]?.color;
@@ -121,7 +106,7 @@ _ref:
                         statuses:
                           _ref: ../shared/enums/action_statuses.yaml
                         stage:
-                          _request: get_action.status.0.stage
+                          _request: get_workflow_action.status.0.stage
                       fn: |
                         const { statuses, stage } = args;
                         return statuses?.[stage]?.title;
@@ -132,11 +117,11 @@ _ref:
                 kind: check
                 action_data:
                   assignees:
-                    _request: get_action.assignees
+                    _request: get_workflow_action.assignees
                   due_date:
-                    _request: get_action.due_date
+                    _request: get_workflow_action.due_date
                   description:
-                    _request: get_action.description
+                    _request: get_workflow_action.description
           - id: comment
             type: TiptapInput
             properties:
@@ -150,9 +135,7 @@ _ref:
               - id: button_request_changes
                 type: Button
                 visible:
-                  _eq:
-                    - _state: action_allowed.review
-                    - true
+                  _request: get_workflow_action.allowed.review
                 properties:
                   title: Request Changes
                   type: default
@@ -160,15 +143,9 @@ _ref:
                   ghost: true
                   disabled:
                     _and:
-                      - _or:
-                          - _eq:
-                              - _request: get_workflow.status.0.stage
-                              - completed
-                          - _eq:
-                              - _request: get_workflow.status.0.stage
-                              - cancelled
+                      - _request: get_workflow_action.workflow_closed
                       - _ne:
-                          - _request: get_action.required_after_close
+                          - _request: get_workflow_action.required_after_close
                           - true
                 events:
                   onClick:
@@ -180,23 +157,15 @@ _ref:
               - id: button_approve
                 type: Button
                 visible:
-                  _eq:
-                    - _state: action_allowed.review
-                    - true
+                  _request: get_workflow_action.allowed.review
                 properties:
                   title: Approve
                   type: primary
                   disabled:
                     _and:
-                      - _or:
-                          - _eq:
-                              - _request: get_workflow.status.0.stage
-                              - completed
-                          - _eq:
-                              - _request: get_workflow.status.0.stage
-                              - cancelled
+                      - _request: get_workflow_action.workflow_closed
                       - _ne:
-                          - _request: get_action.required_after_close
+                          - _request: get_workflow_action.required_after_close
                           - true
                 events:
                   onClick:
@@ -207,13 +176,13 @@ _ref:
                           _string.concat:
                             - _module.id: true
                             - /update-action-
-                            - _request: get_action.type
+                            - _request: get_workflow_action.type
                         payload:
                           action_id:
-                            _request: get_action._id
+                            _request: get_workflow_action._id
                           interaction: approve
                           current_key:
-                            _request: get_action.key
+                            _request: get_workflow_action.key
                           comment:
                             _state: comment
       - id: request_changes_modal
@@ -235,13 +204,13 @@ _ref:
                   _string.concat:
                     - _module.id: true
                     - /update-action-
-                    - _request: get_action.type
+                    - _request: get_workflow_action.type
                 payload:
                   action_id:
-                    _request: get_action._id
+                    _request: get_workflow_action._id
                   interaction: request_changes
                   current_key:
-                    _request: get_action.key
+                    _request: get_workflow_action.key
                   comment:
                     _state: comment
           onClose:

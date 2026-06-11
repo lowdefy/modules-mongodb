@@ -2,115 +2,19 @@ id: get-action-group-overview
 type: Api
 routine:
   - id: query
-    type: MongoDBAggregation
+    type: GetWorkflowActionGroupOverview
     connectionId:
-      _module.connectionId: workflows-collection
+      _module.connectionId: workflow-api
     properties:
-      pipeline:
-        - $match:
-            _id:
-              _payload: workflow_id
-        - $lookup:
-            from: actions
-            localField: _id
-            foreignField: workflow_id
-            # Per-verb access projection + drop (Part 34 D12) spliced via
-            # _build.array.concat — the visible_verbs_filter ref resolves to a
-            # two-stage list (compute + $match drop) that concat flattens in,
-            # before the whitelist $project carries visible_verbs through. Same
-            # idiom as module.lowdefy.yaml's api:/pages:.
-            pipeline:
-              _build.array.concat:
-                - - $match:
-                      action_group:
-                        _payload: group_id
-                  - $addFields:
-                      status:
-                        $arrayElemAt:
-                          - $status.stage
-                          - 0
-                - _ref: api/stages/visible_verbs_filter.yaml
-                - - _ref: ../shared/workflow/resolve_action_link.yaml
-                - - $addFields:
-                      required_sort:
-                        $cond:
-                          - $eq:
-                              - $status
-                              - 'not-required'
-                          - 1
-                          - 0
-                      sort:
-                        $cond:
-                          - $eq:
-                              - $status
-                              - 'not-required'
-                          - 1
-                          - $sort_order
-                  - $sort:
-                      required_sort: 1
-                      sort: 1
-                      created.timestamp: 1
-                  - $project:
-                      type: $type
-                      status: $status
-                      visible_verbs: $visible_verbs
-                      message:
-                        _string.concat:
-                          - $
-                          - _module.var: app_name
-                          - .message
-                      link: 1
-            as: actions
+      workflow_id:
+        _payload: workflow_id
+      group_id:
+        _payload: group_id
 
-  - :set_state:
-      workflow_doc:
-        _step: query.0
-
-  # `group` collapses to `null` alongside `workflow` (one deliberate divergence
-  # from get-workflow-overview): the group payload has no meaning without a
-  # visible workflow, and the access-vs-existence collapse stays consistent.
   - :return:
       workflow:
-        _state: workflow_doc
+        _step: query.workflow
       group:
-        _if:
-          test:
-            _and:
-              - _ne:
-                  - _state: workflow_doc
-                  - null
-              - _gt:
-                  - _array.length:
-                      _get:
-                        from:
-                          _state: workflow_doc
-                        key: actions
-                        default: []
-                  - 0
-          then:
-            _js:
-              args:
-                groups:
-                  _get:
-                    from:
-                      _state: workflow_doc
-                    key: groups
-                    default: []
-                groupId:
-                  _payload: group_id
-              fn: |
-                const { groups, groupId } = args;
-                const entry = (groups || []).find((g) => g.id === groupId);
-                if (!entry) return null;
-                return {
-                  id: entry.id,
-                  status: entry.status,
-                  summary: entry.summary,
-                };
-          else: null
+        _step: query.group
       actions:
-        _get:
-          from:
-            _state: workflow_doc
-          key: actions
-          default: []
+        _step: query.actions

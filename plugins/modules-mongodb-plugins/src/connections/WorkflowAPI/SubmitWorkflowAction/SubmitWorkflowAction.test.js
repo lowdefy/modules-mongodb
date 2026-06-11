@@ -193,9 +193,9 @@ function buildContext({
       },
       workflowsConfig,
       changeStamp,
+      user,
       ...(changeLog ? { changeLog } : {}),
     },
-    user,
     callApi: callApi ?? makeCallApi(),
   };
 }

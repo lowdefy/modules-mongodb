@@ -6,8 +6,6 @@
 #                            spliced into api:.
 #   makeActionPages        — per-action edit/view/review/error pages from
 #                            templates/{verb}.yaml.njk; spliced into pages:.
-#   makeActionFormConfigs  — per-action form metadata map; component
-#                            action_form_configs, consumed by the overview pages.
 #   makeActionsForm        — template-scope form-block substitution (already
 #                            wired from templates/{verb}.yaml.njk).
 #
@@ -113,18 +111,9 @@ components:
   - id: actions-on-entity
     component:
       _ref: components/actions-on-entity.yaml
-  - id: action_role_check
-    component:
-      _ref: components/action_role_check.yaml
-  - id: workflows_config
-    component:
-      _ref: components/workflows_config.yaml
   - id: validated_workflows_config
     component:
       _ref: components/validated_workflows_config.yaml
-  - id: action_form_configs
-    component:
-      _ref: components/action_form_configs.yaml
   - id: entity-workflows-refetch
     component:
       _ref: components/entity-workflows-refetch.yaml

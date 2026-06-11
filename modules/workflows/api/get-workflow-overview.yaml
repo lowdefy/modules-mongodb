@@ -2,64 +2,15 @@ id: get-workflow-overview
 type: Api
 routine:
   - id: query
-    type: MongoDBAggregation
+    type: GetWorkflowOverview
     connectionId:
-      _module.connectionId: workflows-collection
+      _module.connectionId: workflow-api
     properties:
-      pipeline:
-        - $match:
-            _id:
-              _payload: workflow_id
-
-        - $lookup:
-            from: actions
-            localField: _id
-            foreignField: workflow_id
-            let:
-              workflowId: $_id
-              groupIds:
-                $map:
-                  input:
-                    $ifNull:
-                      - $action_groups
-                      - $groups
-                      - []
-                  as: g
-                  in: $$g.id
-            # Per-verb access projection + drop (Part 34 D12) spliced via
-            # _build.array.concat — the visible_verbs_filter ref resolves to a
-            # two-stage list (compute + $match drop) that concat flattens in.
-            # visible_verbs stays on the doc (the $project only removes
-            # groupIndex). Same idiom as module.lowdefy.yaml's api:/pages:.
-            pipeline:
-              _build.array.concat:
-                - - $addFields:
-                      groupIndex:
-                        $indexOfArray:
-                          - $$groupIds
-                          - $action_group
-                      type: $type
-                      status:
-                        $arrayElemAt:
-                          - $status.stage
-                          - 0
-                      message:
-                        _string.concat:
-                          - $
-                          - _module.var: app_name
-                          - .message
-                - _ref: api/stages/visible_verbs_filter.yaml
-                - - _ref: ../shared/workflow/resolve_action_link.yaml
-                - - $sort:
-                      groupIndex: 1
-                      sort_order: 1
-                      _id: 1
-                  - $project:
-                      groupIndex: 0
-            as: actions
+      workflow_id:
+        _payload: workflow_id
 
   - :return:
       workflow:
-        _step: query.0
+        _step: query.workflow
       actions:
-        _step: query.0.actions
+        _step: query.actions

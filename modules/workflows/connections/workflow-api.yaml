@@ -12,6 +12,10 @@ properties:
     _ref: components/validated_workflows_config.yaml
   app_name:
     _module.var: app_name
+  user:
+    _user: true
+  entities:
+    _module.var: entities
   actionsEnum:
     _ref: ../shared/enums/action_statuses.yaml
   changeStamp:

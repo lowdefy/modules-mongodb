@@ -734,3 +734,199 @@ test("validateTrackerStartLink: rejects urlQuery with non-string static — bool
     /tracker\.start_link\.urlQuery\.flag must be a string/,
   );
 });
+
+// --- title (WORKFLOW_FIELDS) ------------------------------------------------
+
+test("makeWorkflowsConfig: title flows through to validated workflow", () => {
+  const workflow = { ...validWorkflow, title: "Onboarding" };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.title).toBe("Onboarding");
+});
+
+test("makeWorkflowsConfig: workflow without title has no title on output", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect("title" in out).toBe(false);
+});
+
+// --- form_meta (form-kind actions) ------------------------------------------
+
+const qualifyAction = {
+  type: "qualify",
+  kind: "form",
+  form: [
+    { component: "text_input", key: "contact_name", required: true, title: "Contact name" },
+    { component: "text_area", key: "notes", title: "Notes" },
+  ],
+};
+
+const sendQuoteAction = {
+  type: "send-quote",
+  kind: "form",
+  form: [{ component: "number", key: "quote_total", required: true }],
+  form_review: [{ component: "text_area", key: "approve_notes" }],
+};
+
+const proofOfInstallAction = {
+  type: "proof-of-installation",
+  kind: "form",
+  form: [
+    {
+      component: "controlled_list",
+      key: "form.devices",
+      required: true,
+      title: "Devices",
+      form: [
+        { component: "label_value", key: "form.devices.$._id", title: "Device Number" },
+        { component: "date_range_selector", key: "form.devices.$.warranty", required: true, title: "Warranty" },
+      ],
+    },
+  ],
+};
+
+function workflowWithFormActions(...actions) {
+  return {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: actions[0].type, status: "action-required" }],
+    actions,
+  };
+}
+
+test("makeWorkflowsConfig: form-kind action carries form_meta matching makeActionFormConfigs shape", () => {
+  const wf = workflowWithFormActions(qualifyAction);
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].form_meta).toEqual({
+    form: [
+      { component: "text_input", key: "contact_name", required: true, title: "Contact name" },
+      { component: "text_area", key: "notes", required: false, title: "Notes" },
+    ],
+  });
+});
+
+test("makeWorkflowsConfig: form_meta includes form_review when present", () => {
+  const wf = workflowWithFormActions(sendQuoteAction);
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].form_meta).toEqual({
+    form: [{ component: "number", key: "quote_total", required: true }],
+    form_review: [{ component: "text_area", key: "approve_notes", required: false }],
+  });
+  expect("form_error" in out.actions[0].form_meta).toBe(false);
+});
+
+test("makeWorkflowsConfig: form_meta includes form_error when present", () => {
+  const withError = {
+    type: "qualify-with-error",
+    kind: "form",
+    form: [{ component: "text_input", key: "name", required: true }],
+    form_error: [{ component: "text_area", key: "recovery_notes" }],
+  };
+  const wf = workflowWithFormActions(withError);
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].form_meta.form_error).toEqual([
+    { component: "text_area", key: "recovery_notes", required: false },
+  ]);
+});
+
+test("makeWorkflowsConfig: form_meta recurses into controlled_list structural component", () => {
+  const wf = workflowWithFormActions(proofOfInstallAction);
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].form_meta).toEqual({
+    form: [
+      {
+        component: "controlled_list",
+        key: "form.devices",
+        required: true,
+        title: "Devices",
+        form: [
+          { component: "label_value", key: "form.devices.$._id", required: false, title: "Device Number" },
+          { component: "date_range_selector", key: "form.devices.$.warranty", required: true, title: "Warranty" },
+        ],
+      },
+    ],
+  });
+});
+
+test("makeWorkflowsConfig: check-kind action has no form_meta", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect("form_meta" in out.actions[0]).toBe(false);
+});
+
+test("makeWorkflowsConfig: tracker-kind action has no form_meta", () => {
+  const wf = workflowWithTracker({ workflow_type: "device-installation" });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect("form_meta" in out.actions[0]).toBe(false);
+});
+
+// --- allow_not_required -----------------------------------------------------
+
+test("makeWorkflowsConfig: allow_not_required defaults to false when absent (check-kind)", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect(out.actions[0].allow_not_required).toBe(false);
+});
+
+test("makeWorkflowsConfig: allow_not_required: true flows through on a form-kind action", () => {
+  const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: true });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].allow_not_required).toBe(true);
+});
+
+test("makeWorkflowsConfig: allow_not_required: false flows through explicitly", () => {
+  const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: false });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].allow_not_required).toBe(false);
+});
+
+test("makeWorkflowsConfig: allow_not_required: true flows through on a tracker-kind action", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "install-device", status: "action-required" }],
+    actions: [
+      {
+        type: "install-device",
+        kind: "tracker",
+        tracker: { workflow_type: "device-installation" },
+        allow_not_required: true,
+      },
+    ],
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].allow_not_required).toBe(true);
+});
+
+test("makeWorkflowsConfig: non-boolean allow_not_required hard-errors with makeWorkflowsConfig: message", () => {
+  const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: "yes" });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /makeWorkflowsConfig:/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /allow_not_required must be a boolean/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /onboarding/,
+  );
+});
+
+test("makeWorkflowsConfig: non-boolean allow_not_required (number) hard-errors", () => {
+  const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: 1 });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /allow_not_required must be a boolean/,
+  );
+});
+
+test("makeWorkflowsConfig: allow_not_required works on check-kind action too", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "do-it", status: "action-required" }],
+    actions: [{ type: "do-it", kind: "check", allow_not_required: true }],
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect(out.actions[0].allow_not_required).toBe(true);
+});

@@ -141,6 +141,40 @@ const schema = {
         },
       },
     },
+    user: {
+      type: 'object',
+      description:
+        'Session user resolved per-request. Wire from `_user: true` on ' +
+        'connections/workflow-api.yaml. Lowdefy evaluates connection properties ' +
+        'per request, so this resolves to the current session user ' +
+        '(`{ apps: { [app_name]: { roles: [...] } }, ... }`) at handler entry. ' +
+        'The engine reads `user.apps.{app_name}.roles` for verb gate checks.',
+    },
+    entities: {
+      type: 'object',
+      description:
+        'Per-`entity_collection` host-app routing map. Wire from ' +
+        '`_module.var: entities` on connections/workflow-api.yaml. ' +
+        'The engine resolves `workflow.entity_link` from it when building ' +
+        'entity back-links in the overview read methods.',
+      additionalProperties: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          page_id: { type: 'string' },
+          id_query_key: { type: 'string' },
+          title: { type: 'string' },
+        },
+      },
+    },
+    eventsCollection: {
+      type: 'string',
+      default: 'log-events',
+      description:
+        'Events collection name queried by GetEventsTimeline (task 6). ' +
+        'Defaults to "log-events" (matching the events module\'s collection). ' +
+        'Host apps need only set this when overriding the collection name.',
+    },
   },
 };
 

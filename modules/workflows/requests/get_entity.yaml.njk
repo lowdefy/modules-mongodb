@@ -3,7 +3,7 @@ type: MongoDBAggregation
 connectionId: {{ entity_collection }}
 payload:
   entity_id:
-    _request: get_action.entity_id
+    _request: get_workflow_action.entity_id
 properties:
   pipeline:
     - $match:

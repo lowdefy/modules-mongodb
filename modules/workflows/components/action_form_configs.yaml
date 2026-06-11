@@ -1,7 +1,0 @@
-# Build-time per-action form metadata produced by makeActionFormConfigs.
-# Keyed by action_type; each value is { form, form_review?, form_error? }.
-_ref:
-  resolver: resolvers/makeActionFormConfigs.js
-  vars:
-    workflows:
-      _module.var: workflows_config

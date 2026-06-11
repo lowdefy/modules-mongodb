@@ -13,18 +13,57 @@ const ACTION_FIELDS = [
   'action_group',
   'sort_order',
   'required_after_close',
+  'allow_not_required',
   'access',
   'status_map',
 ];
 
 const WORKFLOW_FIELDS = [
   'type',
+  'title',
   'entity_collection',
   'entity_ref_key',
   'display_order',
   'starting_actions',
   'action_groups',
 ];
+
+// --- form_meta projection (ported from makeActionFormConfigs.js) ------------
+// Walks form arrays and emits { component, key, required, title, validate }
+// per node, recursing into structural components. Produces the same shape as
+// makeActionFormConfigs so the overview pages' inline submitted-data rendering
+// continues to work once they switch to reading from workflowsConfig.
+
+const STRUCTURAL_COMPONENTS = [
+  'controlled_list',
+  'section',
+  'box',
+  'label',
+  'file_upload',
+];
+
+const METADATA_FIELDS = ['component', 'key', 'required', 'title', 'validate'];
+
+function pickMetadata(entry) {
+  const node = {};
+  for (const field of METADATA_FIELDS) {
+    if (field in entry) node[field] = entry[field];
+  }
+  if (!('required' in node)) node.required = false;
+  return node;
+}
+
+function toMetadataNode(entry) {
+  const node = pickMetadata(entry);
+  if (entry.component && STRUCTURAL_COMPONENTS.includes(entry.component)) {
+    node.form = (entry.form ?? []).map(toMetadataNode);
+  }
+  return node;
+}
+
+function describeForm(formArray) {
+  return (formArray ?? []).map(toMetadataNode);
+}
 
 const ACTION_KINDS = ['form', 'check', 'tracker'];
 
@@ -369,6 +408,13 @@ function validateAction(workflow, action) {
     fail(workflow.type, `${where} cannot define both form: and tracker:.`);
   }
 
+  if ('allow_not_required' in action && typeof action.allow_not_required !== 'boolean') {
+    fail(
+      workflow.type,
+      `${where} allow_not_required must be a boolean (got: ${JSON.stringify(action.allow_not_required)}).`
+    );
+  }
+
   validateActionAccess(workflow, action);
   validateStatusMapCells(workflow, action);
   validateTrackerStartLink(workflow, action);
@@ -465,9 +511,30 @@ function makeWorkflowsConfig(_, vars) {
   return workflows.map((workflow) => {
     validateWorkflow(workflow);
 
-    const actions = (workflow.actions ?? []).map((action) =>
-      pick(action, ACTION_FIELDS)
-    );
+    const actions = (workflow.actions ?? []).map((action) => {
+      const picked = pick(action, ACTION_FIELDS);
+
+      // Default allow_not_required to false (opt-in; preserves Part 39 D3's
+      // safety rationale). Validation already rejected non-boolean values above.
+      picked.allow_not_required = action.allow_not_required === true;
+
+      // Attach form_meta for form-kind actions. Ported from makeActionFormConfigs
+      // so the per-action metadata rides the validated config directly (no
+      // cross-workflow action.type collision).
+      if (action.kind === 'form') {
+        picked.form_meta = {
+          form: describeForm(action.form),
+          ...(action.form_review
+            ? { form_review: describeForm(action.form_review) }
+            : {}),
+          ...(action.form_error
+            ? { form_error: describeForm(action.form_error) }
+            : {}),
+        };
+      }
+
+      return picked;
+    });
 
     return {
       ...pick(workflow, WORKFLOW_FIELDS),
