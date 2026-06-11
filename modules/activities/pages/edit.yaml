@@ -24,7 +24,10 @@ _ref:
             - "Edit "
             - _module.var: label
     events:
-      onMount:
+      # onInit (not onMount) — onInit completes before any block renders, so
+      # the file-manager's own onMount files fetch sees activity_id seeded.
+      # Block-level onMount fetches fire before the page root's onMount.
+      onInit:
         - id: fetch
           type: Request
           params: get_activity
