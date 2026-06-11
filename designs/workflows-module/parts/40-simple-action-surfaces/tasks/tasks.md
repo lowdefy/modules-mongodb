@@ -12,97 +12,102 @@ plus a generic `onActionClick(action)` block event on `ActionSteps`, converge
 
 ## Tasks
 
-| #   | File                                 | Summary                                                                                                   | Depends On    |
-| --- | ------------------------------------ | --------------------------------------------------------------------------------------------------------- | ------------- |
-| 1   | `01-actionsteps-onactionclick.md`    | `ActionSteps`: generic `onActionClick(action)` event, navigate-by-default, linkless suppression + tests   | —             |
-| 2   | `02-eventstimeline-converge.md`      | `EventsTimeline`: converge `onActionClick` onto the `ActionSteps` contract (action object + navigate default) | 1             |
-| 3   | `03-check-action-surface.md`         | New shared `check-action-surface` component — one body, signal button bar, `current_action` state contract | —             |
-| 4   | `04-edit-page-rewrite.md`            | `workflow-action-edit`: delete the selector, `_ref` the surface (`mode: edit`)                            | 3             |
-| 5   | `05-review-page-rewrite.md`          | `workflow-action-review`: `_ref` the surface (`mode: review`), guard → `[in-review]`                      | 3             |
-| 6   | `06-view-page-rewrite.md`            | `workflow-action-view`: `_ref` the surface (`mode: view`), `resolve_error` lands via the surface          | 3             |
-| 7   | `07-check-action-modal.md`           | New standalone `check-action-modal` component + manifest export                                            | 3             |
-| 8   | `08-actions-on-entity-wiring.md`     | `actions-on-entity`: bundle the modal, wire `ActionSteps.onActionClick` with the kind-branch              | 1, 7          |
-| 9   | `09-docs-and-parent-design.md`       | Module README, parent-design row, implementation-plan status, full build + test verification              | 4, 5, 6, 7, 8 |
-| 10  | `10-e2e-supplements.md`              | Part 22 e2e supplements: signal buttons, error recovery, modal open/submit, `allow_not_required`          | 2, 9          |
+| #   | File                              | Summary                                                                                                        | Depends On    |
+| --- | --------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | `01-actionsteps-onactionclick.md` | `ActionSteps`: generic `onActionClick(action)` event, navigate-by-default, linkless suppression                 | —             |
+| 2   | `02-eventstimeline-converge.md`   | `EventsTimeline`: converge `onActionClick` onto the `ActionSteps` contract (action object + navigate default)   | —             |
+| 3   | `03-check-action-surface.md`      | New shared `check-action-surface` component — one body, signal button bar, `current_action` state contract      | —             |
+| 4   | `04-edit-page-rewrite.md`         | `workflow-action-edit`: delete the selector, `_ref` the surface (`mode: edit`)                                  | 3             |
+| 5   | `05-review-page-rewrite.md`       | `workflow-action-review`: `_ref` the surface (`mode: review`), guard → `[in-review]`                            | 3             |
+| 6   | `06-view-page-rewrite.md`         | `workflow-action-view`: `_ref` the surface (`mode: view`), `resolve_error` lands via the surface                | 3             |
+| 7   | `07-check-action-modal.md`        | New standalone `check-action-modal` component + manifest export                                                  | 3             |
+| 8   | `08-actions-on-entity-wiring.md`  | `actions-on-entity`: bundle the modal + kind-branch; `workflows-events-timeline`: `on_action_click` passthrough | 1, 2, 7       |
+| 9   | `09-docs-and-parent-design.md`    | Module README, parent-design row, implementation-plan status, full build + test verification                    | 4, 5, 6, 7, 8 |
+| 10  | `10-e2e-supplements.md`           | Part 22 e2e supplements: signal buttons, error recovery, modal open/submit, `allow_not_required`                | 9             |
 
 ## Ordering Rationale
 
-Two independent foundations start the work:
+Three independent foundations start the work and can run in parallel:
 
-- **Tasks 1–2 (plugin blocks)** are self-contained JS changes. Task 1 also
-  bootstraps block-component test infrastructure (JSX in the jest transform +
-  jsdom), which task 2's tests reuse — hence 2 depends on 1.
+- **Tasks 1–2 (plugin blocks)** are self-contained JS changes — the
+  `onActionClick` contract on each block. (No unit tests ride them — see
+  "Decisions applied" #3.)
 - **Task 3 (the shared surface)** is the centrepiece every YAML consumer
   `_ref`s. It depends only on the already-shipped `GetWorkflowAction` contract
-  (Part 46 tasks 1–10, committed).
+  (Part 46, completed).
 
 The three page rewrites (**4, 5, 6**) and the modal (**7**) all consume the
 surface and are independent of each other — they can run in parallel after 3.
-Each page rewrite is kept as its own task because each carries distinct
-deletions and guards (edit: selector + payload; review: guard allowlist change
-+ `request_changes_modal` migration; view: status-history absorption +
+Each page rewrite is its own task because each carries distinct deletions and
+guards (edit: selector + payload; review: guard allowlist change +
+`request_changes_modal` migration; view: status-history absorption +
 `resolve_error`).
 
-**Task 8** composes the two plugin/component pieces (ActionSteps event + modal)
-inside `actions-on-entity`. **Task 9** is the docs/verification wrap-up once
-every file is in its final shape. **Task 10** is the e2e pass over the
-finished feature (it exercises the timeline convergence from task 2 and the
-demo wiring from task 8).
+**Task 8** composes the pieces: the modal + `ActionSteps` event inside
+`actions-on-entity`, and the `on_action_click` passthrough var on the
+`workflows-events-timeline` wrapper (shipped by Part 46 task 11) so timeline
+hosts can drive the same modal. **Task 9** is the docs/verification wrap-up.
+**Task 10** is the e2e pass over the finished feature.
+
+## Decisions applied (settled with Sam, 2026-06-11 — design amended accordingly)
+
+1. **Endpoint id — runtime concat.** The design's original
+   `_module.endpointId` + `_build.string.concat` form cannot evaluate on
+   shared pages (the action type is runtime-only there). The surface keeps the
+   shipped pattern — `_string.concat` of `{ _module.id: true }` +
+   `/update-action-` + `_state: current_action.type`. Design D1 now records
+   this.
+2. **No `onProgress` author hook on the check surface.** D1's hook sentence
+   contradicted D3's structural argument (shared static pages have no
+   per-action baking point); the `progress` button is `CallAPI` only. Design
+   D1 now records this.
+3. **Block component tests dropped.** The repo has no block-test
+   infrastructure (node-env jest, no JSX/jsdom) and bootstrapping React
+   testing inside this part was rejected. Behavioural coverage rides task 10's
+   e2e; per-block Playwright coverage is a separate repo-root **stub design**
+   at `designs/block-e2e-suite/design.md` (based on the Lowdefy repo's
+   `@lowdefy/block-dev-e2e` pattern), created alongside these tasks and not in
+   this part's scope.
+4. **`mode` lives in state (`current_action.mode`), not an `_ref` var.** Pages
+   set a literal in `onMount`; the modal sets the derived value in its open
+   handler; the surface gates on `_state: current_action.mode`. This removes
+   the "only use `_var: mode` in runtime positions" convention an operator-
+   valued var would have required — state is uniformly runtime and matches the
+   existing `current_action` contract. Design D1/D5 now record this.
 
 ## Cross-cutting state notes (read before implementing any task)
 
-These reflect the repo as of branch `workflows-module` (post Part 46 task 10)
-and are referenced from individual tasks:
+These reflect the repo as of branch `workflows-module` @ `1b5ab2b` (Part 46
+fully landed including tasks 11–12; Part 49 landed):
 
-1. **Part 46 tasks 11–12 are in flight** in the `part-46-tasks-11-12` worktree
-   (events-timeline surface migration + shared-stage cleanup). Land those
-   first, or rebase over them — task 2 touches `EventsTimeline.js` and task 10
-   touches `apps/demo/e2e/workflows/`, both of which that worktree also edits.
-2. **Part 24 (universal-fields) is not implemented** — the renderer is the
+1. **Part 46 is complete.** `GetWorkflowAction` returns `allowed`, `buttons`,
+   `workflow_closed`, `required_after_close`; the shared YAML stages and the
+   `button_signal_sources` enum are deleted; the module ships the
+   `workflows-events-timeline` wrapper component (task 8 extends it).
+2. **Part 49 landed** (`request_changes` gates on any of `view`/`edit`/
+   `review` via the single exported `SIGNAL_VERBS` map). No client impact —
+   button visibility is the server-resolved `buttons.request_changes`
+   boolean — but don't re-introduce a `review`-only claim in comments/docs.
+3. **Part 24 (universal-fields) is not implemented** — the renderer is the
    invisible stub at
    `modules/workflows/components/universal-fields/universal-fields.yaml`. The
    surface passes the Part 24 contract vars (`mode`, `kind`, `state_path`,
    `action_data`) per the design; the stub ignores them until Part 24 lands.
-   Field-level behaviour (editable inputs, scoped `Validate` actually matching
-   inputs) only becomes observable then.
-3. **Part 33 (comment rendering) is not implemented** — `workflow-action-view`
-   still carries its Comments card. The design assumes Part 33's
+   Field-level behaviour (editable inputs, scoped `Validate` matching inputs)
+   only becomes observable then.
+4. **Part 33 (comment rendering) is not implemented** — `workflow-action-view`
+   still carries its Comments card. The design assumed Part 33's
    events-timeline swap happened first; it hasn't, so task 6 keeps the
    Comments card page-level below the surface, untouched. Part 33 owns the
    swap.
-4. **Endpoint resolution deviation (flagged, design vs reality).** The design
-   says the surface's endpoint "resolves to `_module.endpointId:
-   { _build.string.concat: [update-action-, <action type>] }`, aligning with
-   the form templates". On the generated form templates the action type is a
-   build-time njk var, so `_build.string.concat` works. On the shared check
-   surface the action type is only known at **runtime** (from the
-   `GetWorkflowAction` response), so a `_build.*` concat cannot produce it.
-   The tasks keep the shipped runtime pattern (`_string.concat` of
-   `{ _module.id: true }` + `/update-action-` + the runtime type), which
-   produces the identical scoped endpoint id. If the design should be
-   amended to record this, do it as a one-line follow-up note in the design.
-5. **No `onProgress` author hook on the check surface (flagged).** D1 says
-   `progress` "fires its own author hook — `onProgress` — before the engine
-   call" by analogy to the form template's `page_config.events.onProgress`.
-   D3 of the same design establishes that shared static pages have **no
-   per-action baking point** for author config — which is exactly what an
-   author hook is. The form template's hook is njk-baked per action; the
-   check surface structurally cannot host one. Tasks omit it; the `progress`
-   button is `CallAPI` only (no `Validate`, per D1).
-6. **`mode` is an `_ref` var used only in runtime operator positions.** The
-   pages pass literal strings (`edit` / `view` / `review`); the modal passes a
-   runtime `_if` chain derived from the fetched action. Both work because
-   `_ref` vars substitute at build time and the substituted value is then
-   evaluated wherever it sits — so the surface must only consume
-   `_var: mode` inside runtime operators (`visible:` conditions via `_eq`),
-   never in `_build.*` operators or structural positions (block `type:` etc.).
 
 ## Scope
 
 **Source:** `designs/workflows-module/parts/40-simple-action-surfaces/design.md`
+(as amended 2026-06-11 per "Decisions applied" above).
 **Context files considered:** none — the design folder contains only
 `design.md` (concept-doc reconciliation was already applied 2026-06-10; the
-referenced sibling designs 46/34/38/39/42 and the shipped code were read as
+referenced sibling designs 46/34/38/39/42/49 and the shipped code were read as
 context).
 **Review files skipped:** `review/review-1.md`–`review-4.md`,
 `review/consistency-1.md`, `review/consistency-2.md` (already incorporated

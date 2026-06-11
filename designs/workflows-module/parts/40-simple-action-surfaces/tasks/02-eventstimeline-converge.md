@@ -9,7 +9,11 @@ The `EventAction` renderer (`:356–423`) currently:
 - fires `onActionClick` with `{ pageId: link.pageId, urlQuery: link.urlQuery }`
   (`:403–408`) — the resolved link, **not** the action object;
 - has **no navigate default** — when the event is unwired,
-  `methods.triggerEvent` is a no-op and the card's "Go" link does nothing;
+  `methods.triggerEvent` is a no-op, so on the shipped
+  `workflows-events-timeline` component (Part 46 task 11, which renders this
+  block with no event wiring) the card's "Go" affordance currently does
+  nothing. This task's navigate default is therefore a live fix, not just
+  contract alignment;
 - only renders the click affordance when `link && link.pageId` (`:399`), so
   linkless cards already show no link.
 
@@ -49,25 +53,14 @@ blocks identically.
      - **Linkless** (`!action.link || !action.link.pageId`): render no click
        affordance in either mode (current behaviour at `:399` — keep it).
 
-2. **`meta.js`** — the declared payload already says
+2. **`meta.js`** — the declared payload currently says
    `event: { action, event }`. Converge it exactly onto the ActionSteps
    contract: fire and declare `{ action }` only (drop the parent-`event` key
-   from the declaration so the two blocks' contracts read identically), and
-   note the unwired navigate-default in the event description.
+   so the two blocks' contracts read identically), and note the unwired
+   navigate-default in the event description.
 
 3. **`README.md`** (block README) — update the `onActionClick` section: action
    object payload, navigate-by-default when unwired, linkless suppression.
-
-4. **`EventsTimeline.test.js`** (new — no test file exists despite the design
-   table saying "update") — using the jsdom/JSX test setup from task 1:
-   - wired: clicking an action card fires `onActionClick` with the action
-     object;
-   - unwired: the card renders the `Link` component with
-     `action.link.pageId`/`urlQuery`;
-   - linkless: no click affordance rendered.
-   Scope the tests to the action-card behaviour (render a minimal event with
-   `actions` + `actionStatusConfig`); the rest of the timeline rendering is
-   out of scope.
 
 ## Acceptance Criteria
 
@@ -75,25 +68,24 @@ blocks identically.
   object — `_event.action.kind` / `_event.action._id` /
   `_event.action.link` are readable by host wiring.
 - With the event unwired, clicking the card's affordance navigates via the
-  Lowdefy `Link` to the server-resolved `action.link`.
+  Lowdefy `Link` to the server-resolved `action.link` — observable on the
+  shipped `workflows-events-timeline` component in the demo (the affordance
+  currently does nothing there).
 - Linkless cards render no affordance and fire nothing.
 - `meta.js` and the block README describe the converged contract.
-- `pnpm test` passes from the repo root; `pnpm build` in the plugin package
-  succeeds.
+- `pnpm build` in the plugin package succeeds; `pnpm test` (root) stays
+  green.
 
 ## Files
 
 - `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js` — modify — converge `EventAction` (fire action object; navigate default; linkless suppression)
 - `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/meta.js` — modify — payload `{ action }`, description notes the navigate default
 - `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/README.md` — modify — document the converged contract
-- `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.test.js` — create — wired / unwired / linkless coverage
 
 ## Notes
 
-- **Coordinate with Part 46 task 11** (`part-46-tasks-11-12` worktree): that
-  task migrates the module-side events-timeline *surface* onto
-  `GetEventsTimeline` and may touch this block's consumers. Land/rebase in
-  order; this task's block-side change is independent of the data migration.
-- Depends on task 1 only for the shared jest JSX/jsdom enablement.
+- **No unit/component tests in this task** — dropped by decision (tasks.md
+  "Decisions applied" #3); behavioural coverage rides task 10's e2e scenario
+  (g) and, later, the `designs/block-e2e-suite/` stub design.
 - The "Go" label / styling of the affordance can stay; only the payload and
   the unwired behaviour change.

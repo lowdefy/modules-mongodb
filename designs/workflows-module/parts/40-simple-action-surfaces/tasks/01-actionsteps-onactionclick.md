@@ -68,56 +68,31 @@ and knows nothing about modals or check actions.
    navigate semantics, the unwired navigate default, and linkless-row
    suppression.
 
-4. **`ActionSteps.test.js`** (new) — React component tests covering:
-   - wired: clicking an action row calls `methods.triggerEvent` with
-     `{ name: 'onActionClick', event: { action: <the clicked action object> } }`
-     and renders no navigating `Link` for that row;
-   - unwired: the row renders the `Link` component with the action's
-     `pageId`/`urlQuery` (navigate default preserved);
-   - linkless row: rendered disabled, click fires nothing in both modes.
-
-5. **Test infrastructure (one-time, shared with task 2).** The repo's jest
-   config (`jest.config.js`, root) uses `testEnvironment: "node"` and an swc
-   transform without JSX, and no block-component test exists yet anywhere
-   under `src/blocks/`. Enable component testing minimally:
-   - add `jsx: true` to the swc parser config (and a
-     `transform: { react: { runtime: 'automatic' } }` jsc transform) in
-     `jest.config.js` — harmless for the existing non-JSX connection tests;
-   - use a `/** @jest-environment jsdom */` docblock in the block test files
-     (keeps the global default `node` for connection tests); add
-     `jest-environment-jsdom` and `@testing-library/react` (+ `react` /
-     `react-dom` if not already resolvable in the workspace) as root
-     devDependencies.
-   - Mock the heavy collaborators where needed: the `Link` and `Icon`
-     components arrive via the `components` prop (inject simple stubs), and
-     `withTheme` / `withBlockDefaults` wrappers can be exercised as-is or the
-     unwrapped component exported for tests — prefer testing through the
-     default export with stub props if it renders under jsdom.
-
 ## Acceptance Criteria
 
 - With `events.onActionClick` present, clicking a linked action row triggers
-  the event with the full action object and does not render a `Link` for that
-  row; with it absent, the row renders the `Link` exactly as before (verified
-  by the new tests).
+  the event with the full action object and does not navigate; with it
+  absent, the row renders the `Link` exactly as before. (Manual check via the
+  demo entity page is sufficient here; automated coverage arrives with task
+  10's e2e scenarios (e)/(f) and, later, the `designs/block-e2e-suite/`
+  suite.)
 - Linkless rows never fire the event and keep the disabled styling.
 - `meta.js` declares `onActionClick`; the block README documents it.
-- `pnpm test` passes from the repo root — new block tests run green alongside
-  the existing connection tests (which must be unaffected by the jest config
-  change).
-- `pnpm build` in `plugins/modules-mongodb-plugins` succeeds.
+- `pnpm build` in `plugins/modules-mongodb-plugins` succeeds; `pnpm test`
+  (root) stays green.
 
 ## Files
 
 - `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js` — modify — `events` prop, conditional fire-vs-navigate per action row, linkless suppression
 - `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/meta.js` — modify — declare `onActionClick`
 - `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/README.md` — modify — document the event + default
-- `plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.test.js` — create — wired / unwired / linkless coverage
-- `jest.config.js` — modify — enable JSX in the swc transform (one-time block-test enablement)
-- `package.json` (root) — modify — add jsdom/testing-library devDependencies if missing
 
 ## Notes
 
+- **No unit/component tests in this task** — dropped by decision (tasks.md
+  "Decisions applied" #3): the repo has no block-test infrastructure, and
+  per-block Playwright coverage is the separate `designs/block-e2e-suite/`
+  stub design. Don't add jest/jsdom scaffolding here.
 - The fired `action` object must be passed through verbatim — hosts read
   `_event.action.kind`, `_event.action._id`, and `_event.action.link` in the
   kind-branch wiring (design D5), and `GetEntityWorkflows` already projects
