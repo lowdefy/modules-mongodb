@@ -28,6 +28,7 @@ const workflowsConfig = [
       {
         type: 'collect-docs',
         kind: 'form',
+        allow_not_required: true,
         access: {
           [APP]: {
             view: true,
@@ -275,6 +276,32 @@ test('an app absent from access fails closed with access_denied', async () => {
       { actionId: 'act-1', signal: 'submit' },
     ),
   ).rejects.toMatchObject({ code: 'access_denied' });
+});
+
+// --- `not_required` load-gate (Part 46 D5) ------------------------------------
+
+test('not_required without allow_not_required fails closed, even past an open edit gate', async () => {
+  await seedWorkflow();
+  // final-audit (check kind) has edit: true but no allow_not_required.
+  await expect(
+    loadWorkflowState(makeContext({ user: { apps: {} } }), {
+      actionId: 'act-2',
+      signal: 'not_required',
+    }),
+  ).rejects.toMatchObject({
+    code: 'access_denied',
+    message: expect.stringContaining('allow_not_required'),
+  });
+});
+
+test('allow_not_required: true admits not_required for the edit verb', async () => {
+  await seedWorkflow();
+  // collect-docs opts in via allow_not_required: true.
+  const loaded = await loadWorkflowState(rolesContext(['account-manager']), {
+    actionId: 'act-1',
+    signal: 'not_required',
+  });
+  expect(loaded.targetAction._id).toBe('act-1');
 });
 
 test('unknown user signal throws unknown_signal, not access_denied', async () => {

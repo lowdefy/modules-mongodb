@@ -178,6 +178,18 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
     );
   }
 
+  // `not_required` load-gate (Part 46 D5): the signal is opt-in per action via
+  // the root `allow_not_required` flag (every kind, default false). The FSM
+  // permits `not_required` from many stages, so without this gate a
+  // hand-crafted submission could mark any action not required even though
+  // the button is hidden (`resolveButtons` ANDs the same flag).
+  if (signal === 'not_required' && actionConfig.allow_not_required !== true) {
+    throw new WorkflowEngineError(
+      `loadWorkflowState: access denied — signal "not_required" requires allow_not_required: true on action type "${targetAction.type}"`,
+      { code: 'access_denied' },
+    );
+  }
+
   return { workflow, actions, workflowConfig, actionConfig, targetAction };
 }
 

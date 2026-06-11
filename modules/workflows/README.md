@@ -144,7 +144,7 @@ On top of the server booleans, form pages keep a client-side **author opt-out**:
 
 #### Mark not required (`allow_not_required:`)
 
-`allow_not_required` is an action-root boolean, valid on **every kind** (form + check), **default `false`** — "mark not required" is never on by default. It is read from live config and enforced server-side: `GetWorkflowAction` resolves `buttons.not_required` to `false` unless the flag is `true`, so the button never renders without the opt-in.
+`allow_not_required` is an action-root boolean, valid on **every kind** (form + check), **default `false`** — "mark not required" is never on by default. It is read from live config and enforced server-side twice: `GetWorkflowAction` resolves `buttons.not_required` to `false` unless the flag is `true` (the button never renders without the opt-in), and the engine's submit load phase rejects a `not_required` signal with `access_denied` unless the action opts in — a hand-crafted submission can't bypass the hidden button.
 
 ```yaml
 - type: qualify
