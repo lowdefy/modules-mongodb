@@ -79,7 +79,7 @@ routine:
 
 **Per-app emission:** The submit endpoint is emitted regardless of the action's `access.{app_name}` map — the handler enforces access at submit time via the interaction's required verb (`access.{current_app}.{required-verb}` against the caller's per-app roles; table below). Lowdefy's central `api.roles` glob over the endpoint id is the coarse outer fence (Part 34 D10–D11). (Per-page emission is still verb-filtered per ui spec.)
 
-**Interaction → accepted verbs (access).** The handler maps the button-surfaced interaction to the verbs whose gates can satisfy it — the gate passes when any listed verb's gate allows ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md)):
+**Interaction → accepted verbs (access).** The handler maps the button-surfaced interaction to the verbs whose gates can satisfy it — the gate passes when any listed verb's gate allows ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md)):
 
 | Interaction       | Accepted verbs (any)     |
 | ----------------- | ------------------------ |
@@ -107,7 +107,7 @@ Each button is a template-shipped block that, on click:
 | Template | Signals surfaced                          | Notes                                                                                       |
 | -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
 | `edit`   | `submit`, `progress`, `not_required`      | The submitter's working surface. `progress` is restored in v1.                              |
-| `view`   | Edit link (navigation), `request_changes` (opt-in) | Default landing for `done` actions. `request_changes` on view is opt-in (default hidden) and viewer-fireable by design — the engine accepts it on `view`, `edit`, OR `review` ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md) resolved review-1 finding 7 the other way). |
+| `view`   | Edit link (navigation), `request_changes` (opt-in) | Default landing for `done` actions. `request_changes` on view is opt-in (default hidden) and viewer-fireable by design — the engine accepts it on `view`, `edit`, OR `review` ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md) resolved review-1 finding 7 the other way). |
 | `review` | `approve`, `request_changes`              | The reviewer's surface.                                                                     |
 | `error`  | `resolve_error`                           | The error-handler's surface.                                                                |
 
@@ -345,7 +345,7 @@ The page never builds this manually — the template ships the button and the wi
 ## Open questions
 
 1. **Per-template button bars.** The default bars are settled in [state-machine](../state-machine/design.md) "Templates and buttons" (`edit`: `submit` / `progress` / `not_required`; `view`: Edit link + opt-in `request_changes`; `review`: `approve` / `request_changes`; `error`: `resolve_error`). Remaining edge cases to confirm during review:
-   - ~~`request_changes` on the `view` template — should default to reviewer-gated (state-machine review-1 finding 7).~~ **Resolved the other way ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md)):** viewer-fireable by design — the engine accepts `request_changes` on `view`, `edit`, OR `review`.
+   - ~~`request_changes` on the `view` template — should default to reviewer-gated (state-machine review-1 finding 7).~~ **Resolved the other way ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md)):** viewer-fireable by design — the engine accepts `request_changes` on `view`, `edit`, OR `review`.
    - A `cancel` button for workflow-level cancellation from an action context (out of scope for the v1 signal inventory).
    - How the shared check pages surface `error` recovery — a `check-error` page vs. a `resolve_error` button on `workflow-action-view` (ui follow-on).
 2. **Group `on_complete` mechanism.** Engine fans out one `context.callApi` per completed group's declared `on_complete` endpoint. Confirm during review.

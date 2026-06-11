@@ -152,7 +152,7 @@ A single timeline component can render events filtered by `action_id` for both s
 
 ### Timeline action cards are cross-stream — but task auth/links are the tasks module's job
 
-[Part 46](../../workflows-module/parts/46-debundle-workflow-config/design.md) ports the events-timeline action-card lookup into a cross-stream engine method (`GetEventsTimeline`): it enriches a card for *any* action referenced by an event, branching on `workflow_id`. Workflow actions get the full treatment (verb-gate access filter + engine link); non-workflow actions (`workflow_id: null` tasks) **pass through** on the shared display fields — `status` and `<app-slug>.message`, which Decision 1 already has tasks write into the same fields workflow actions use — so a task card renders with **zero** workflow logic.
+[Part 46](../../workflows-module/parts/_completed/46-debundle-workflow-config/design.md) ports the events-timeline action-card lookup into a cross-stream engine method (`GetEventsTimeline`): it enriches a card for *any* action referenced by an event, branching on `workflow_id`. Workflow actions get the full treatment (verb-gate access filter + engine link); non-workflow actions (`workflow_id: null` tasks) **pass through** on the shared display fields — `status` and `<app-slug>.message`, which Decision 1 already has tasks write into the same fields workflow actions use — so a task card renders with **zero** workflow logic.
 
 Part 46 deliberately does **not** build task-specific timeline behaviour (none exists yet, no task docs exist). Two things become the **tasks module's** responsibility when it ships, resolved on the tasks side and **not** injected into the workflows `GetEventsTimeline` method (so the two access models stay separate, per "Access model" below):
 

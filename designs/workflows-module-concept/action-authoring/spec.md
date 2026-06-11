@@ -162,7 +162,7 @@ Per-verb check for a present gate: `gate === true OR size(setIntersection(_user.
 | `approve`         | `review`                 |
 | `request_changes` | `view`, `edit`, `review` |
 
-`request_changes` passes on any of the three ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md)): `review` gates judgement power (`approve`, review-page access); `request_changes` is flag-a-problem — anyone who can see or work on the action may raise it.
+`request_changes` passes on any of the three ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md)): `review` gates judgement power (`approve`, review-page access); `request_changes` is flag-a-problem — anyone who can see or work on the action may raise it.
 
 `view` has no interaction of its own — it's the read affordance only.
 

@@ -84,12 +84,12 @@ Sequencing: this part should land **before or with** Parts 39/40's call-site wor
 ## Non-goals
 
 - Per-workflow Start/Cancel/Close endpoints (D2 — rejected).
-- Moving config off the connection, or any client-side config change — [Part 46](../../46-debundle-workflow-config/design.md)'s territory.
+- Moving config off the connection, or any client-side config change — [Part 46](../../_completed/46-debundle-workflow-config/design.md)'s territory.
 - Changing hook/on_complete endpoint emission (D3).
 
 ## Related
 
-- [Part 46 — Debundle workflows_config (client-side)](../../46-debundle-workflow-config/design.md) — sibling part from the same exploration; D3 there records why the connection keeps the full validated config, which D2 here relies on.
+- [Part 46 — Debundle workflows_config (client-side)](../../_completed/46-debundle-workflow-config/design.md) — sibling part from the same exploration; D3 there records why the connection keeps the full validated config, which D2 here relies on.
 - [Part 39 — Form submit buttons](../../_completed/39-form-submit-buttons/design.md) / [Part 40 — Simple-action surfaces](../../40-simple-action-surfaces/design.md) — own the submit call sites (see sequencing).
 - [Part 38 — Engine rebuild](../../_completed/38-engine-rebuild/design.md) — introduced the current `{workflow}-{action}-submit` naming this part collapses.
 - [Part 34 — Action access model](../../_completed/34-action-access-model/design.md) — D10 reserved-name constraint inherited by `{workflow_type}-submit`.

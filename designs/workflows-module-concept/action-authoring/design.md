@@ -235,7 +235,7 @@ The build-time validator **lint-warns (does not hard-error)** when an app block 
 | `approve`         | `review`                      |
 | `request_changes` | `view`, `edit`, `review`      |
 
-`request_changes` passes on any of the three ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md)): `review` gates the reviewer's _judgement_ power (`approve`, review-page access), while `request_changes` is "flag a problem, send it back" — anyone who can see or work on the action may raise it.
+`request_changes` passes on any of the three ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md)): `review` gates the reviewer's _judgement_ power (`approve`, review-page access), while `request_changes` is "flag a problem, send it back" — anyone who can see or work on the action may raise it.
 
 `view` has no interaction of its own — it's the read affordance, gated only on read paths (its appearance in the `request_changes` row grants the signal, not a read). Any future interaction (e.g. an `update_metadata` interaction from Part 24) adds a row here.
 
