@@ -20,59 +20,42 @@ requests:
         _var: reference_value
     properties:
       pipeline:
-        _build.array.concat:
-          - - $match:
-                _object.fromEntries:
-                  - - _var: reference_field
-                    - _payload: reference_value
-                  - - _var:
-                          key: display_key
-                          default:
-                            _module.var: display_key
-                    - $ne: null
-          - _ref:
-              path: ../shared/workflow/timeline_action_lookup.yaml
-              vars:
-                app_name:
-                  _var:
+        - $match:
+            _object.fromEntries:
+              - - _var: reference_field
+                - _payload: reference_value
+              - - _var:
+                      key: display_key
+                      default:
+                        _module.var: display_key
+                - $ne: null
+        - $sort:
+            date: -1
+        - $addFields:
+            title:
+              _string.concat:
+                - '$'
+                - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-          - - $addFields:
-                actions:
-                  $filter:
-                    input: $actions
-                    cond:
-                      $ne:
-                        - $$this._id
-                        - _payload: reference_value
-            - $sort:
-                date: -1
-            - $addFields:
-                title:
-                  _string.concat:
-                    - '$'
-                    - _var:
-                        key: display_key
-                        default:
-                          _module.var: display_key
-                    - '.title'
-                description:
-                  _string.concat:
-                    - '$'
-                    - _var:
-                        key: display_key
-                        default:
-                          _module.var: display_key
-                    - '.description'
-                info:
-                  _string.concat:
-                    - '$'
-                    - _var:
-                        key: display_key
-                        default:
-                          _module.var: display_key
-                    - '.info'
+                - '.title'
+            description:
+              _string.concat:
+                - '$'
+                - _var:
+                    key: display_key
+                    default:
+                      _module.var: display_key
+                - '.description'
+            info:
+              _string.concat:
+                - '$'
+                - _var:
+                    key: display_key
+                    default:
+                      _module.var: display_key
+                - '.info'
 
 blocks:
   - id: events_timeline_empty

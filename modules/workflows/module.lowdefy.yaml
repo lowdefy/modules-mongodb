@@ -100,6 +100,13 @@ exports:
         Aggregation fragment that enriches events with live action cards
         (status, message, access-resolved link); _ref into custom timeline
         pipelines via _build.array.concat.
+    - id: workflows-events-timeline
+      description: >
+        Action-enriched events timeline panel backed by the GetEventsTimeline
+        engine method — events with cross-stream action cards, workflow cards
+        verb-filtered and engine-linked server-side. Vars: reference_field,
+        reference_value (plus optional reverse, contact_page_url,
+        disable_contact_link, compact, s3GetPolicyRequestId).
 
 components:
   - id: action_statuses
@@ -120,6 +127,9 @@ components:
   - id: timeline-action-lookup
     component:
       _ref: ../shared/workflow/timeline_action_lookup.yaml
+  - id: workflows-events-timeline
+    component:
+      _ref: components/workflows-events-timeline.yaml
 
 connections:
   - _ref: connections/workflows-collection.yaml

@@ -107,9 +107,10 @@ _ref:
                     title: Activity
                     blocks:
                       - _ref:
-                          module: events
-                          component: events-timeline
+                          module: workflows
+                          component: workflows-events-timeline
                           vars:
                             reference_field: lead_ids
                             reference_value:
                               _url_query: _id
+                            contact_page_url: '/contacts/view?_id={id}'

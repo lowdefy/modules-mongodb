@@ -1,0 +1,90 @@
+# Action-enriched events timeline (Part 46 D6).
+#
+# Renders the same EventsTimeline surface as the events module's generic
+# events-timeline component, but its onMount request is backed by the
+# GetEventsTimeline engine method on the workflow-api connection instead of a
+# client-side aggregation: the engine reads the events, joins the referenced
+# actions cross-stream, verb-filters workflow cards against the session user,
+# and resolves each card's link server-side. Apps that want action cards on an
+# entity timeline opt into this component (consumer → workflows, the legal
+# dependency direction); the events module's events-timeline stays events-only.
+#
+# Vars:
+#   reference_field      — (required) events field to match, e.g. lead_ids.
+#   reference_value      — (required) runtime operator producing the matched
+#                          value, e.g. { _url_query: _id }.
+#   reverse              — newest-first ordering for the block (default true).
+#   contact_page_url     — URL template linking avatars/timestamps to a contact
+#                          page; {id} placeholder (default '' — no link).
+#   disable_contact_link — disable avatar/timestamp linking (default false).
+#   compact              — compact rendering (default false).
+#   s3GetPolicyRequestId — request id for attachment downloads (optional).
+id: workflows_events_timeline
+type: Box
+style:
+  maxHeight: 600
+  overflowY: auto
+
+events:
+  onMount:
+    - id: fetch_events_timeline
+      type: Request
+      params: get_events_timeline
+
+requests:
+  - _ref:
+      path: requests/get_events_timeline.yaml
+      vars:
+        reference_field:
+          _var: reference_field
+        reference_value:
+          _var: reference_value
+
+blocks:
+  - id: workflows_events_timeline_empty
+    type: Paragraph
+    visible:
+      _eq:
+        - _array.length:
+            _request: get_events_timeline
+        - 0
+    properties:
+      content: No activity
+      type: secondary
+      style:
+        fontSize: 12
+        fontStyle: italic
+  - id: workflows_events_timeline_list
+    type: EventsTimeline
+    visible:
+      _gt:
+        - _array.length:
+            _request: get_events_timeline
+        - 0
+    properties:
+      data:
+        _request: get_events_timeline
+      eventTypeConfig:
+        _ref:
+          module: events
+          component: event_types
+      actionStatusConfig:
+        _ref: components/action_statuses.yaml
+      reverse:
+        _var:
+          key: reverse
+          default: true
+      s3GetPolicyRequestId:
+        _var: s3GetPolicyRequestId
+      contactPageUrl:
+        _var:
+          key: contact_page_url
+          default: ''
+      disableContactLink:
+        _var:
+          key: disable_contact_link
+          default: false
+      compact:
+        _var:
+          key: compact
+          default: false
