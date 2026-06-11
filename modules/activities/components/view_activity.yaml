@@ -1,8 +1,9 @@
 # Detail-page main column for an activity.
 #
 # Renders the activity doc returned by `requests/get_activity.yaml` —
-# a header block (title + rich-text description), the duration
-# SmartDescriptions, linked contact / company chips, status history,
+# a header block (title + rich-text description), the activity-meta
+# SmartDescriptions (date / duration / direction, sharing the form's
+# field defs), linked contact / company chips, status history,
 # and consumer-extension `main_slots` blocks. The type + current-stage
 # pills live in the wrapping card's `extra` slot (see `pages/view.yaml`).
 # SmartDescriptions handles the change-stamp footer (created / updated).
@@ -58,15 +59,18 @@ blocks:
                   _if_none:
                     - _request: get_activity.0.description.html
                     - ""
-      # Duration — field-driven SmartDescriptions over the activity's own
-      # `attributes` (only shown when a duration was captured; the form
-      # records it for call / meeting types).
-      - id: duration_view
+      # Activity meta — field-driven SmartDescriptions over the activity's
+      # own `attributes`, sharing the form's meta-row field defs
+      # (`activity_meta_fields.yaml`): date (all types), duration
+      # (call / meeting), direction (email). The per-field `visible`
+      # conditions read the `state.type` mirror set by `pages/view.yaml`.
+      # Hidden entirely for legacy docs with no captured date.
+      - id: activity_meta_view
         type: SmartDescriptions
         visible:
           _ne:
             - _if_none:
-                - _request: get_activity.0.attributes.duration
+                - _request: get_activity.0.attributes.date
                 - ""
             - ""
         properties:
@@ -76,10 +80,7 @@ blocks:
             attributes:
               _request: get_activity.0.attributes
           fields:
-            - id: attributes.duration
-              type: Selector
-              properties:
-                title: Duration
+            _ref: components/activity_meta_fields.yaml
     # Consumer-defined attribute fields (only when provided)
     - _build.if:
         test:
