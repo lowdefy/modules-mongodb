@@ -85,17 +85,17 @@ blocks:
                 _module.var: fields.attributes
             - 0
         then:
-          - - id: attributes_view
-              type: SmartDescriptions
-              properties:
-                title: Additional Details
-                column: 1
-                size: small
-                data:
-                  attributes:
-                    _request: get_activity.0.attributes
-                fields:
-                  _module.var: fields.attributes
+          - id: attributes_view
+            type: SmartDescriptions
+            properties:
+              title: Additional Details
+              column: 1
+              size: small
+              data:
+                attributes:
+                  _request: get_activity.0.attributes
+              fields:
+                _module.var: fields.attributes
         else: []
     # Consumer main-slot extension
     - _module.var: components.main_slots
