@@ -13,22 +13,9 @@
  *   - `resolveButtons`   — six-key button visibility map based on stage + access
  */
 
-import { gateAllows } from '../phases/loadWorkflowState.js';
+import { gateAllows, SIGNAL_VERBS } from '../phases/loadWorkflowState.js';
 
 export { gateAllows };
-
-/**
- * The required verb for each user-facing signal. Faithfully copied from
- * `SIGNAL_VERBS` in `loadWorkflowState.js` (Part 34 D6 / design D16).
- */
-const SIGNAL_VERBS = {
-  submit: 'edit',
-  progress: 'edit',
-  not_required: 'edit',
-  resolve_error: 'error',
-  approve: 'review',
-  request_changes: 'review',
-};
 
 /**
  * Source-stages for each of the six user-facing button signals. Faithfully
@@ -98,7 +85,8 @@ export function collapseLink({ links, allowed }) {
  *
  * For each signal, a button is visible (true) only when ALL of:
  *   1. The action's current `stage` is in that signal's source-stage list.
- *   2. `allowed[SIGNAL_VERBS[signal]]` is true (the user has the required verb).
+ *   2. `allowed` is true for at least one of `SIGNAL_VERBS[signal]` (Part 49:
+ *      `request_changes` accepts `view`, `edit`, or `review`).
  *   3. For `not_required` only: `allow_not_required === true`.
  *
  * Internal signals (`activate`, `block`, `internal_mirror_*`) never appear in
@@ -111,8 +99,9 @@ export function resolveButtons({ stage, allowed, allow_not_required }) {
   const result = {};
   for (const signal of Object.keys(BUTTON_SIGNAL_SOURCES)) {
     const sources = BUTTON_SIGNAL_SOURCES[signal];
-    const verb = SIGNAL_VERBS[signal];
-    let visible = sources.includes(stage) && allowed[verb];
+    const verbs = SIGNAL_VERBS[signal];
+    let visible =
+      sources.includes(stage) && verbs.some((verb) => allowed[verb]);
     if (signal === 'not_required') {
       visible = visible && allow_not_required === true;
     }

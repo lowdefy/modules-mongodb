@@ -1,6 +1,9 @@
 import gateCases from '../../../../../../modules/workflows/resolvers/__fixtures__/gates.fixtures.js';
 import inMemoryMongo from '../inMemoryMongo.js';
-import loadWorkflowState, { gateAllows } from './loadWorkflowState.js';
+import loadWorkflowState, {
+  gateAllows,
+  SIGNAL_VERBS,
+} from './loadWorkflowState.js';
 
 let mongo;
 
@@ -43,6 +46,14 @@ const workflowsConfig = [
         required_after_close: true,
         access: { [APP]: { view: true, edit: true } },
       },
+      {
+        // edit + review without view — legal but lint-warned (Part 34 D4).
+        type: 'compliance-signoff',
+        kind: 'check',
+        access: {
+          [APP]: { edit: ['account-manager'], review: ['compliance-officer'] },
+        },
+      },
     ],
   },
 ];
@@ -78,6 +89,13 @@ async function seedWorkflow({ stage = 'in-progress' } = {}) {
       kind: 'check',
       status: [{ stage: 'action-required' }],
     },
+    {
+      _id: 'act-3',
+      workflow_id: 'wf-1',
+      type: 'compliance-signoff',
+      kind: 'check',
+      status: [{ stage: 'in-review' }],
+    },
   ]);
 }
 
@@ -87,7 +105,11 @@ test('lifecycle load returns workflow + actions + workflowConfig, no actionConfi
   await seedWorkflow();
   const loaded = await loadWorkflowState(makeContext(), { workflowId: 'wf-1' });
   expect(loaded.workflow._id).toBe('wf-1');
-  expect(loaded.actions.map((a) => a._id).sort()).toEqual(['act-1', 'act-2']);
+  expect(loaded.actions.map((a) => a._id).sort()).toEqual([
+    'act-1',
+    'act-2',
+    'act-3',
+  ]);
   expect(loaded.workflowConfig.type).toBe('onboarding');
   expect(loaded.actionConfig).toBeUndefined();
   expect(loaded.targetAction).toBeUndefined();
@@ -222,24 +244,77 @@ test.each(['submit', 'progress', 'not_required'])(
   },
 );
 
-test.each(['approve', 'request_changes'])(
-  'signal %s requires the review verb',
-  async (signal) => {
-    await seedWorkflow();
-    await expect(
-      loadWorkflowState(rolesContext(['compliance-officer']), {
-        actionId: 'act-1',
-        signal,
-      }),
-    ).resolves.toBeDefined();
-    await expect(
-      loadWorkflowState(rolesContext(['account-manager']), {
-        actionId: 'act-1',
-        signal,
-      }),
-    ).rejects.toMatchObject({ code: 'access_denied' });
-  },
-);
+test('signal approve requires the review verb', async () => {
+  await seedWorkflow();
+  await expect(
+    loadWorkflowState(rolesContext(['compliance-officer']), {
+      actionId: 'act-1',
+      signal: 'approve',
+    }),
+  ).resolves.toBeDefined();
+  await expect(
+    loadWorkflowState(rolesContext(['account-manager']), {
+      actionId: 'act-1',
+      signal: 'approve',
+    }),
+  ).rejects.toMatchObject({ code: 'access_denied' });
+});
+
+// --- request_changes passes on view OR edit OR review (Part 49) ----------------
+
+test('request_changes passes with a view-only gate match', async () => {
+  await seedWorkflow();
+  // collect-docs: view is `true`; the edit/review role arrays don't match a
+  // role-less caller, so view is the only arm that passes.
+  await expect(
+    loadWorkflowState(rolesContext([]), {
+      actionId: 'act-1',
+      signal: 'request_changes',
+    }),
+  ).resolves.toBeDefined();
+});
+
+test('request_changes passes with an edit-only gate match (no view declared)', async () => {
+  await seedWorkflow();
+  // compliance-signoff declares edit + review without view (the lint-warned
+  // edge); account-manager matches edit only.
+  await expect(
+    loadWorkflowState(rolesContext(['account-manager']), {
+      actionId: 'act-3',
+      signal: 'request_changes',
+    }),
+  ).resolves.toBeDefined();
+});
+
+test('request_changes passes with a review-only gate match (no view declared)', async () => {
+  await seedWorkflow();
+  await expect(
+    loadWorkflowState(rolesContext(['compliance-officer']), {
+      actionId: 'act-3',
+      signal: 'request_changes',
+    }),
+  ).resolves.toBeDefined();
+});
+
+test('request_changes rejects with access_denied when the caller matches no accepted verb', async () => {
+  await seedWorkflow();
+  await expect(
+    loadWorkflowState(rolesContext(['support-rep']), {
+      actionId: 'act-3',
+      signal: 'request_changes',
+    }),
+  ).rejects.toMatchObject({
+    code: 'access_denied',
+    message: expect.stringContaining('"view"/"edit"/"review"'),
+  });
+});
+
+test('every SIGNAL_VERBS entry is a non-empty verb array (uniform .some(gateAllows) path)', () => {
+  for (const verbs of Object.values(SIGNAL_VERBS)) {
+    expect(Array.isArray(verbs)).toBe(true);
+    expect(verbs.length).toBeGreaterThan(0);
+  }
+});
 
 test('signal resolve_error requires the error verb', async () => {
   await seedWorkflow();

@@ -324,8 +324,8 @@ test('resolveButtons: submit at done stage with edit allowed', () => {
   expect(result.progress).toBe(false);
   // not_required: done is NOT in the not_required source list
   expect(result.not_required).toBe(false);
-  // request_changes: done IS in the source list but review denied
-  expect(result.request_changes).toBe(false);
+  // request_changes: done IS in the source list; view allowed suffices (Part 49)
+  expect(result.request_changes).toBe(true);
 });
 
 test('resolveButtons: request_changes at done stage with review allowed', () => {
@@ -337,6 +337,39 @@ test('resolveButtons: request_changes at done stage with review allowed', () => 
   expect(result.submit).toBe(true);
   expect(result.request_changes).toBe(true);
   expect(result.approve).toBe(false);
+});
+
+// request_changes passes on view OR edit OR review (Part 49); approve stays
+// review-only.
+
+test('resolveButtons: request_changes visible with view-only access at in-review', () => {
+  const result = resolveButtons({
+    stage: 'in-review',
+    allowed: { view: true, edit: false, review: false, error: false },
+    allow_not_required: false,
+  });
+  expect(result.request_changes).toBe(true);
+  expect(result.approve).toBe(false);
+});
+
+test('resolveButtons: request_changes visible with edit-only access (no view — the lint-warned edge)', () => {
+  const result = resolveButtons({
+    stage: 'in-review',
+    allowed: { view: false, edit: true, review: false, error: false },
+    allow_not_required: false,
+  });
+  expect(result.request_changes).toBe(true);
+  expect(result.approve).toBe(false);
+});
+
+test('resolveButtons: request_changes visible with review-only access (no view — the lint-warned edge)', () => {
+  const result = resolveButtons({
+    stage: 'in-review',
+    allowed: { view: false, edit: false, review: true, error: false },
+    allow_not_required: false,
+  });
+  expect(result.request_changes).toBe(true);
+  expect(result.approve).toBe(true);
 });
 
 test('resolveButtons: output never contains internal signals', () => {

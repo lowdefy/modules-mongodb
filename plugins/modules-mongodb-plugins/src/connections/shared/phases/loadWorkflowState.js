@@ -2,17 +2,24 @@ import findDocs from '../../mongo/findDocs.js';
 import { WorkflowEngineError } from '../errors.js';
 
 /**
- * The required verb for each user signal (Part 34 D6 / design D16). This
- * resolves the verb the access gate authorizes against — a separate concern
- * from `hasReview`, which resolves the landing stage.
+ * The accepted verbs for each user signal (Part 34 D6 / design D16; arrays
+ * since Part 49). The access gate passes when ANY listed verb's gate allows —
+ * a separate concern from `hasReview`, which resolves the landing stage.
+ *
+ * `request_changes` accepts `view` OR `edit` OR `review` (Part 49): `review`
+ * gates the reviewer's judgement power (`approve`, review-page access);
+ * `request_changes` is "flag a problem, send it back" — anyone who can see or
+ * work on the action may raise it. The `edit`/`review` arms cover the
+ * lint-warned no-`view` edges, so a caller on their own edit or review page is
+ * never rejected.
  */
-const SIGNAL_VERBS = {
-  submit: 'edit',
-  progress: 'edit',
-  not_required: 'edit',
-  resolve_error: 'error',
-  approve: 'review',
-  request_changes: 'review',
+export const SIGNAL_VERBS = {
+  submit: ['edit'],
+  progress: ['edit'],
+  not_required: ['edit'],
+  resolve_error: ['error'],
+  approve: ['review'],
+  request_changes: ['view', 'edit', 'review'],
 };
 
 /**
@@ -159,19 +166,21 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
   // Per-verb access gate (design D16 / Part 34 D6). A signal outside the user
   // vocabulary has no verb to authorize — surface it as the unknown-signal
   // error (D13 (1)), not a misleading access denial.
-  const verb = SIGNAL_VERBS[signal];
-  if (verb === undefined) {
+  const verbs = SIGNAL_VERBS[signal];
+  if (verbs === undefined) {
     throw new WorkflowEngineError(
       `loadWorkflowState: unknown signal "${signal}"`,
       { code: 'unknown_signal' },
     );
   }
   const currentApp = connection?.app_name;
-  const gate = actionConfig.access?.[currentApp]?.[verb];
   const userRoles = context.user?.apps?.[currentApp]?.roles ?? [];
-  if (!gateAllows(gate, userRoles)) {
+  const allowed = verbs.some((verb) =>
+    gateAllows(actionConfig.access?.[currentApp]?.[verb], userRoles),
+  );
+  if (!allowed) {
     throw new WorkflowEngineError(
-      `loadWorkflowState: access denied — signal "${signal}" requires the "${verb}" verb on access.${currentApp} for action type "${targetAction.type}"`,
+      `loadWorkflowState: access denied — signal "${signal}" requires one of the ${verbs.map((verb) => `"${verb}"`).join('/')} verbs on access.${currentApp} for action type "${targetAction.type}"`,
       { code: 'access_denied' },
     );
   }
