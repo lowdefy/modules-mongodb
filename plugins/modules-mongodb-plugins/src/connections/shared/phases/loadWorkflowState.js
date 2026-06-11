@@ -16,10 +16,12 @@ const SIGNAL_VERBS = {
 };
 
 /**
- * `(gate, userRoles) → bool` role-gate semantics (Part 34). Must agree with
- * the query-time aggregation (`visible_verbs_filter.yaml`) and the client
- * component (`action_role_check`) — the three runtimes can't share code, so
- * each is tested against the shared `gates.fixtures.js` oracle.
+ * `(gate, userRoles) → bool` role-gate semantics (Part 34). The single
+ * canonical implementation — the read methods consume it via `computeAllowed`
+ * (resolveActionAccess.js re-exports it). Tested against the shared
+ * `gates.fixtures.js` oracle. (The former YAML/client runtimes —
+ * `visible_verbs_filter.yaml`, `action_role_check.yaml` — were deleted in
+ * Part 46.)
  *
  *   - `true` gate                  → pass, for ANY user roles (incl. none).
  *   - array gate ∩ user roles ≠ ∅  → pass.

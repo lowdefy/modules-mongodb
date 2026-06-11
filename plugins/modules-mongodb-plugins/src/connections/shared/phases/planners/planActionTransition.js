@@ -174,9 +174,10 @@ function planActionTransition({
 
   // Persisted denormalisation (Part 34 / Part 30 salvage / Part 44):
   // `access`, `workflow_type`, and `tracker` are written onto the doc on every
-  // plan — visible_verbs_filter.yaml resolves verbs off the persisted access,
-  // and computeEngineLinks reads all three off the composed doc, never a
-  // synthesized view. `tracker.start_link` is included when declared in config
+  // plan — the read methods resolve verbs off the persisted access
+  // (computeAllowed in resolveActionAccess.js), and computeEngineLinks reads
+  // all three off the composed doc, never a synthesized view.
+  // `tracker.start_link` is included when declared in config
   // so the engine arm (Part 44) sees the navigation target at link-compute time.
   doc.access = actionConfig.access;
   doc.workflow_type = loadedWorkflow.workflow_type;

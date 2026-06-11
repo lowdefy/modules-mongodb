@@ -31,12 +31,14 @@ const SIGNAL_VERBS = {
 };
 
 /**
- * Source-stages for each of the six user-facing button signals. Faithfully
- * copied from `modules/workflows/enums/button_signal_sources.yaml`.
- * Restricted to the six signals that map to user-initiated buttons — internal
- * signals (`activate`, `block`, `internal_mirror_*`) are intentionally absent.
+ * Source-stages for each of the six user-facing button signals. A faithful
+ * inversion of `FSM_TABLES.form` (../fsm/tables.js) restricted to the six
+ * user-initiated signals — internal signals (`activate`, `block`,
+ * `internal_mirror_*`) are intentionally absent, and the transient `none`
+ * sentinel stage is excluded. Guarded against FSM drift by the consistency
+ * suite in resolveActionAccess.test.js (set equality per signal).
  */
-const BUTTON_SIGNAL_SOURCES = {
+export const BUTTON_SIGNAL_SOURCES = {
   submit: ['action-required', 'in-progress', 'changes-required', 'done'],
   progress: ['action-required', 'in-progress'],
   not_required: [

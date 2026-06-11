@@ -95,11 +95,6 @@ vars:
 
 exports:
   components:
-    - id: timeline-action-lookup
-      description: >
-        Aggregation fragment that enriches events with live action cards
-        (status, message, access-resolved link); _ref into custom timeline
-        pipelines via _build.array.concat.
     - id: workflows-events-timeline
       description: >
         Action-enriched events timeline panel backed by the GetEventsTimeline
@@ -124,9 +119,6 @@ components:
   - id: entity-workflows-refetch
     component:
       _ref: components/entity-workflows-refetch.yaml
-  - id: timeline-action-lookup
-    component:
-      _ref: ../shared/workflow/timeline_action_lookup.yaml
   - id: workflows-events-timeline
     component:
       _ref: components/workflows-events-timeline.yaml
