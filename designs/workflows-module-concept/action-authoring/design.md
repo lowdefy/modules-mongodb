@@ -223,19 +223,21 @@ The build-time validator **lint-warns (does not hard-error)** when an app block 
 
 - **Build-time** (`makeActionPages`): emits a verb page iff the verb key is present in `access.{host_app_name}`. Role gates don't matter at build time — presence of the key alone gates page generation. Applies uniformly to all four verbs including `error`.
 - **Query-time** (`get-entity-workflows`): for each action visible to the host app, evaluates every declared verb's gate against `_user.apps.{app_name}.roles` and returns `visible_verbs: { view, edit, review, error }` (four bools, defaulting to `false` for any undeclared verb) on the action payload. If every bool is `false`, the action drops from the response (preserves the old "no role intersection → invisible" outcome).
-- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's required verb (table below), checks `access.{current_app}.{required_verb}` against `_user.apps.{current_app}.roles`, rejects with a structured error if the gate fails. Rechecked after the action-doc lookup, before any writes. This is the authoritative gate; the central `api.roles` glob over the submit endpoint id (Decision 6, [Part 34 § D10–D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)) is the coarse outer fence.
+- **Submit-time** (the `SubmitWorkflowAction` handler): reads the interaction's accepted verbs (table below), passes when any listed verb's gate in `access.{current_app}` allows the caller's `_user.apps.{current_app}.roles`, rejects with a structured error naming the full accepted set if every gate fails. Rechecked after the action-doc lookup, before any writes. This is the authoritative gate; the central `api.roles` glob over the submit endpoint id (Decision 6, [Part 34 § D10–D11](../../workflows-module/parts/_completed/34-action-access-model/design.md)) is the coarse outer fence.
 
-### Interaction → required verb
+### Interaction → accepted verbs
 
-| Interaction       | Required verb |
-| ----------------- | ------------- |
-| `submit_edit`     | `edit`        |
-| `not_required`    | `edit`        |
-| `resolve_error`   | `error`       |
-| `approve`         | `review`      |
-| `request_changes` | `review`      |
+| Interaction       | Accepted verbs (any)          |
+| ----------------- | ----------------------------- |
+| `submit_edit`     | `edit`                        |
+| `not_required`    | `edit`                        |
+| `resolve_error`   | `error`                       |
+| `approve`         | `review`                      |
+| `request_changes` | `view`, `edit`, `review`      |
 
-`view` has no interaction — it's the read affordance, gated only on read paths. Any future interaction (e.g. an `update_metadata` interaction from Part 24) adds a row here.
+`request_changes` passes on any of the three ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md)): `review` gates the reviewer's _judgement_ power (`approve`, review-page access), while `request_changes` is "flag a problem, send it back" — anyone who can see or work on the action may raise it.
+
+`view` has no interaction of its own — it's the read affordance, gated only on read paths (its appearance in the `request_changes` row grants the signal, not a read). Any future interaction (e.g. an `update_metadata` interaction from Part 24) adds a row here.
 
 The `action_role_check` component (ui sub-design) is a thin client-side mirror of the query-time check — it populates a per-verb `_state.action_allowed: { view, edit, review, error }` so entity pages can render verb affordances without re-implementing the logic. It is defence in depth; the server-side query/submit checks are the real gate.
 

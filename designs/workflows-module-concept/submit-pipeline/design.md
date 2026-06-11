@@ -148,7 +148,7 @@ Each page template declares which signals it surfaces as buttons. A button click
 | Template | Signals surfaced                                  | Notes                                                              |
 | -------- | ------------------------------------------------- | ----------------------------------------------------------------- |
 | `edit`   | `submit`, `progress`, `not_required`       | The submitter's working surface. `progress` is restored in v1.  |
-| `view`   | `request_changes` (modal for comment), Edit link  | Default landing for `done` actions. "Edit" is navigation, not a signal — and `request_changes` here should be gated to reviewers (see state-machine review-1 finding 7). |
+| `view`   | `request_changes` (opt-in; modal for comment), Edit link  | Default landing for `done` actions. "Edit" is navigation, not a signal. `request_changes` is viewer-fireable by design — the engine accepts it on `view`, `edit`, OR `review` ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md) resolved review-1 finding 7 the other way). |
 | `review` | `approve`, `request_changes`                      | The reviewer's surface.                                           |
 | `error`  | `resolve_error`                                   | The error-handler's surface.                                      |
 
@@ -401,7 +401,7 @@ Submit-pipeline is gated on call-api landing first.
 ## Open Questions
 
 1. **Button bars per template.** The default bars are settled in [state-machine](../state-machine/design.md) "Templates and buttons" (`edit`: `submit` / `progress` / `not_required`; `view`: `request_changes` + Edit link; `review`: `approve` / `request_changes`; `error`: `resolve_error`). Remaining edge cases to confirm during review:
-   - `request_changes` on the `view` template — should default to reviewer-gated (state-machine review-1 finding 7).
+   - ~~`request_changes` on the `view` template — should default to reviewer-gated (state-machine review-1 finding 7).~~ **Resolved the other way ([Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md)):** viewer-fireable by design — the engine accepts `request_changes` on `view`, `edit`, OR `review`. `review` gates judgement power (`approve`), not flagging problems.
    - Should there be a `cancel` button for workflow-level cancellation from an action context? (Out of scope for v1 signal inventory.)
    - How the shared check pages surface `error` *recovery* — a `check-error` page vs. a `resolve_error` button on `workflow-action-view` (ui follow-on; the check `error` row is reachable via cascade but no check page ships an error surface yet).
 2. **Group `on_complete` mechanism.** Action-groups Decision 6 defers the fan-out mechanism. With CallApi primitive in place, the engine fans out one call per declared `on_complete` endpoint id. Confirm during review.

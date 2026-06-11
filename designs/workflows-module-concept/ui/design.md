@@ -126,7 +126,7 @@ Each form-action template declares a button bar over the signal namespace ([stat
 | `resolve_error`   | `error.yaml.njk`         | `resolve_error`   | `onSubmit`                 | `in-review` (recovery returns the action to its normal flow)               |
 | `approve`         | `review.yaml.njk`        | `approve`         | `onApprove`                | `done`                                                                     |
 | `request_changes` | `review.yaml.njk`        | `request_changes` | `onRequestChanges`         | `changes-required`                                                         |
-| `request_changes` | `view.yaml.njk` (opt-in) | `request_changes` | `onRequestChanges`         | `changes-required` (opt-in default hidden; gated on `action_allowed.view`) |
+| `request_changes` | `view.yaml.njk` (opt-in) | `request_changes` | `onRequestChanges`         | `changes-required` (opt-in default hidden; passes on `view`/`edit`/`review` — [Part 49](../../workflows-module/parts/49-request-changes-verb-gate/design.md)) |
 
 These are the *button-surfaced* signals (the "interactions"); the FSM also accepts engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) that no template surfaces. The author event handlers (`onSubmit`, `onProgress`, `onApprove`, `onRequestChanges`) are unchanged from action-authoring Decision 8 and stay separate from the engine call (Decision 4 above lists the five-verb event vocabulary). Authors who need pre-write logic register a pre-hook on the action YAML (`hooks.{signal}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
 
