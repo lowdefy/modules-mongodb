@@ -3,7 +3,9 @@ import {
   computeAllowed,
   collapseLink,
   resolveButtons,
+  BUTTON_SIGNAL_SOURCES,
 } from './resolveActionAccess.js';
+import { FSM_TABLES } from '../fsm/tables.js';
 import gateCases from '../../../../../../modules/workflows/resolvers/__fixtures__/gates.fixtures.js';
 
 // ---------------------------------------------------------------------------
@@ -399,3 +401,43 @@ test('resolveButtons: changes-required stage shows submit and not_required (with
   expect(result.approve).toBe(false);
   expect(result.request_changes).toBe(false);
 });
+
+// ---------------------------------------------------------------------------
+// BUTTON_SIGNAL_SOURCES — FSM consistency guard
+//
+// Ported from the deleted modules/workflows/enums/button_signal_sources.test.js
+// (Part 46 task 12): the source-stage table must stay a faithful inversion of
+// FSM_TABLES.form, restricted to the six user-facing signals. The `none` row is
+// excluded because `none` is a transient resolution-time sentinel — never a
+// stored status (tables.js header: "never a stored status"). Without this
+// exclusion the `request_changes` signal would incorrectly include `none` (its
+// upsert-spawn entry) and the set comparison would fail.
+// ---------------------------------------------------------------------------
+
+const BUTTON_SIGNALS = [
+  'submit',
+  'progress',
+  'not_required',
+  'approve',
+  'request_changes',
+  'resolve_error',
+];
+
+function deriveSourceStages(signal) {
+  return Object.keys(FSM_TABLES.form).filter(
+    (stage) => stage !== 'none' && signal in FSM_TABLES.form[stage],
+  );
+}
+
+test('BUTTON_SIGNAL_SOURCES contains exactly the six button-surfaced signals', () => {
+  expect(Object.keys(BUTTON_SIGNAL_SOURCES).sort()).toEqual([...BUTTON_SIGNALS].sort());
+});
+
+test.each(BUTTON_SIGNALS)(
+  'BUTTON_SIGNAL_SOURCES: %s source-stages match FSM table (set equality, none excluded)',
+  (signal) => {
+    const tableStages = new Set(BUTTON_SIGNAL_SOURCES[signal]);
+    const derivedStages = new Set(deriveSourceStages(signal));
+    expect(tableStages).toEqual(derivedStages);
+  },
+);

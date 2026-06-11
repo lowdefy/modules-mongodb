@@ -85,7 +85,7 @@ At runtime the engine resolves each submission as a **signal** against the actio
 
 ## Authoring actions
 
-Every action declares a `kind:` — `form`, `check`, or `tracker` — and an `access:` block. The action-level fields the engine reads at runtime are `type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `sort_order`, `required_after_close`, `access`, and `status_map`. Build-time-only fields (`form`, `hooks`, `event`, `pages`) are consumed by the resolvers. Schema source of truth: [`makeWorkflowsConfig.js`](resolvers/makeWorkflowsConfig.js) and [`action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md).
+Every action declares a `kind:` — `form`, `check`, or `tracker` — and an `access:` block. The action-level fields the engine reads at runtime are `type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `sort_order`, `required_after_close`, `allow_not_required`, `access`, and `status_map`. Build-time-only fields (`form`, `hooks`, `event`, `pages`) are consumed by the resolvers. Schema source of truth: [`makeWorkflowsConfig.js`](resolvers/makeWorkflowsConfig.js) and [`action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md).
 
 ### Access (`access:`)
 
@@ -121,31 +121,46 @@ The buttons each page template ships emit fixed signals:
 
 | Template | Buttons → signals |
 |---|---|
-| `edit` | Submit → `submit`, Save draft → `progress`, Mark not required → `not_required` (opt-in) |
+| `edit` | Submit → `submit`, Save draft → `progress`, Mark not required → `not_required` (opt-in via `allow_not_required`) |
 | `view` | Request changes → `request_changes` (opt-in), Edit → navigation Link |
 | `review` | Approve → `approve`, Request changes → `request_changes` |
 | `error` | Resolve → `resolve_error` |
 
 The only author-controlled branch is the `submit` split: `submit` resolves to **`in-review`** when the action grants a `review` verb to any app in its `access:` block (someone must approve), and to **`done`** otherwise. The split is action-global — one action doc is shared across every app, so whether a review step exists is a property of the action, not the submitting app. The engine also fires internal signals authors never send directly — `unblock` (from `blocked_by` re-evaluation), `internal_cancel_action` (the cancel sweep), and `internal_mirror_child_*` (tracker subscription).
 
-If a signal doesn't apply to the action's current stage, a user-driven submission **throws** (the page surfaced a button it shouldn't have); engine-internal cascade signals no-op silently instead. A submission is also rejected up front unless the signal's required verb (`submit`/`progress`/`not_required` → `edit`, `approve`/`request_changes` → `review`, `resolve_error` → `error`, `request_changes` on `view` → `view`) is granted to the caller by `access.{app_name}` — the access check runs before any hook fires.
+If a signal doesn't apply to the action's current stage, a user-driven submission **throws** (the page surfaced a button it shouldn't have); engine-internal cascade signals no-op silently instead. A submission is also rejected up front unless the signal's required verb (`submit`/`progress`/`not_required` → `edit`, `approve`/`request_changes` → `review`, `resolve_error` → `error`) is granted to the caller by `access.{app_name}` — the access check runs before any hook fires.
 
 #### Button visibility rules
 
-Each template-shipped button renders only when **all three** conditions hold:
+Button visibility is **resolved server-side**. On mount each action detail page calls the `GetWorkflowAction` engine method, which collapses the policy into a per-signal boolean map — `action.buttons: { submit, progress, not_required, approve, request_changes, resolve_error }` — and the page renders the booleans dumb. For each signal the server boolean is true only when **all** of the following hold:
 
-1. **Author opt-out** — `pages.{verb}.buttons.{name}.visible`, default `true`, except for the two opt-in buttons: `not_required` (on `edit`) and `request_changes` (on `view`), which default `false`. Accepts a boolean **or any operator expression** (e.g. `_eq: [{ _state: show_revise }, true]`). Because it AND-combines with the other two gates, an author can only further *restrict* visibility — not show a button that the FSM or role gate would reject.
+1. **FSM source-stage** — the action's current stage is in the signal's source-stage list (`BUTTON_SIGNAL_SOURCES` in [`resolveActionAccess.js`](../../plugins/modules-mongodb-plugins/src/connections/shared/render/resolveActionAccess.js), a faithful inversion of the engine FSM restricted to the six user-facing signals and guarded by a unit test). This is why a button disappears rather than throwing: the engine rejects user-driven signals with no FSM entry for the current stage, and the page hides the button before the user can reach that path.
 
-2. **FSM source-stage** — the action's current stage must be in the signal's source-stage list (`enums/button_signal_sources.yaml`, derived from the engine FSM and guarded by a unit test). This is why a button disappears rather than throwing: the engine rejects user-driven signals with no FSM entry for the current state, and the page hides the button before the user can reach that path.
+2. **Per-verb role gate** — `allowed.{verb}` for the signal's required verb, computed server-side from `access.{app_name}` against the caller's roles. The same `allowed` bag rides the `GetWorkflowAction` response, and the response is denied outright when `allowed.view` is false.
 
-3. **Per-verb role gate** — `action_allowed.{verb}` for the page's own verb (`edit` page → `action_allowed.edit`, `review` → `action_allowed.review`, `error` → `action_allowed.error`, `view` → `action_allowed.view`). The `action_role_check` component writes this bag on mount by comparing the current user's per-app roles against `access.{app_name}` on the action config.
+3. **`allow_not_required`** (the `not_required` signal only) — the action-root boolean must be `true`. See below.
+
+On top of the server booleans, form pages keep a client-side **author opt-out**: `pages.{verb}.buttons.{name}.visible`, default `true` for every edit-page button (including `not_required`), and default `false` for the one remaining opt-in, `request_changes` on `view`. It accepts a boolean **or any operator expression** (e.g. `_eq: [{ _state: show_revise }, true]`) and AND-combines with the server boolean — an author can only further *restrict* visibility, never show a button the FSM, role gate, or `allow_not_required` would reject.
+
+#### Mark not required (`allow_not_required:`)
+
+`allow_not_required` is an action-root boolean, valid on **every kind** (form + check), **default `false`** — "mark not required" is never on by default. It is read from live config and enforced server-side twice: `GetWorkflowAction` resolves `buttons.not_required` to `false` unless the flag is `true` (the button never renders without the opt-in), and the engine's submit load phase rejects a `not_required` signal with `access_denied` unless the action opts in — a hand-crafted submission can't bypass the hidden button.
+
+```yaml
+- type: qualify
+  kind: form
+  allow_not_required: true # opt in to the "Mark Not Required" button
+  access: { ... }
+```
+
+**Migration note.** Before Part 46 the not-required button was page-config opt-in (`pages.edit.buttons.not_required.visible`, default `false`). That page-config flag is now a default-`true` opt-out like every other edit-page button, and the opt-in moved to the action root: form actions that previously surfaced the button via `pages.edit.buttons.not_required.visible: true` must add `allow_not_required: true` (the stale `visible: true` is harmless but no longer sufficient).
 
 #### `view` page button bar
 
 The `view` template ships two affordances:
 
 - **Edit-nav Link** — renders when `page_ids.edit` is set (i.e. an edit page was emitted for this action in the current app). Carries `skip_status_redirect: true` so following an in-progress save back to edit doesn't redirect to view. This is navigation, not a signal — it does not call the submit endpoint.
-- **`request_changes` button** (opt-in, default hidden) — sends `signal: request_changes`, fires `onRequestChanges`, targets `changes-required`. Enable via `pages.view.buttons.request_changes.visible: true`. Gated on `action_allowed.view`. Intended for the revise-after-`done` path in actions that have no `review` verb — when there is no review page, the view bar is the only surface that can send the action back to `changes-required`.
+- **`request_changes` button** (opt-in, default hidden) — sends `signal: request_changes`, fires `onRequestChanges`, targets `changes-required`. Enable via `pages.view.buttons.request_changes.visible: true`; also gated on the server-resolved `action.buttons.request_changes` (which requires the `review` verb). Intended for the revise-after-`done` path — when no review page surfaces it, the view bar is the only place that can send the action back to `changes-required`.
 
 ### Hooks
 
@@ -293,27 +308,22 @@ The `workflow-` prefix marks the module's fixed page space: `{entry_id}/workflow
 
 - **`action_statuses`** — Action status enum (8 canonical statuses) merged with `vars.action_statuses_display` overrides. UI consumers only; the engine reads the canonical enum directly from the manifest via the `workflow-api` connection.
 - **`workflow_lifecycle_stages`** — Workflow lifecycle stage enum (`active`, `completed`, `cancelled`) merged with `vars.workflow_lifecycle_stages_display` overrides.
-- **`actions-on-entity`** — Entity-page widget surfacing every workflow attached to one entity with its action list. Takes `entity_id` + `entity_collection` vars.
+- **`actions-on-entity`** — Entity-page widget surfacing every workflow attached to one entity with its action list. Takes `entity_id` + `entity_collection` vars. Each action row renders the server-resolved status, message, and single navigation link from the `get-entity-workflows` response.
 - **`workflow-header`** — Per-workflow strip with title, lifecycle badge, summary counts, milestone label, workflow-overview link button. Used internally by `actions-on-entity` and `workflow-overview`.
-- **`action_role_check`** — Client-side per-verb role-gate action sequence. Composed into a page's `onMount`; writes the four-key bag `_state.action_allowed: { view, edit, review, error }` by evaluating each `access.{app}.{verb}` gate against the user's app roles (Part 34 D8). Page templates read the verb-specific bool (e.g. `_state: action_allowed.edit`). Defence in depth only — the server-side `visible_verbs` query filter and the submit-time gate are authoritative.
 - **`entity-workflows-refetch`** — Reusable action sequence (`CallAPI` `get-entity-workflows` → `SetState` `entity_workflows`) that any page mutating workflows on an entity can `_ref` into its event chain to refresh `actions-on-entity` without knowing the endpoint id or state key. Takes `entity_id` + `entity_collection` vars.
-
-- **`timeline-action-lookup`** — Aggregation pipeline fragment that enriches events with live action cards (status, message, access-resolved link). Consumed internally by the events module's timeline; also exported so app developers building custom history pipelines can splice it in rather than re-authoring the de-duplication logic.
-
-  **It is a multi-stage fragment — splice it with `_build.array.concat`, not a bare `- _ref:`.** A bare `- _ref:` nests the fragment as a single pipeline element instead of flattening its stages into the surrounding array.
+- **`workflows-events-timeline`** — Action-enriched events timeline panel backed by the `GetEventsTimeline` engine method: events for one entity with cross-stream live action cards (status, message, access-resolved link), verb-filtered and link-collapsed server-side. Drop into a sidebar tile:
 
   ```yaml
-  pipeline:
-    _build.array.concat:
-      - - $match: { ... }           # entity + category-chip filtering, app-authored
-      - _ref:
-          module: workflows
-          component: timeline-action-lookup
-          vars: { app_name: my-app }
-      - - $facet: { ... }           # pagination, app-authored
+  - _ref:
+      module: workflows
+      component: workflows-events-timeline
+      vars:
+        reference_field: lead_ids
+        reference_value:
+          _state: lead_id
   ```
 
-  The fragment reads `action.{app_name}.message` and resolves a single navigation link via the priority **edit > review > error > view**. Category-chip filtering (pre-`$match` on event type) and pagination (post-`$facet`) stay app-authored — these are non-goals for the shared fragment. See [Live action cards](../../docs/idioms.md#live-action-cards).
+  Required vars: `reference_field` (the event-references key to match, e.g. `lead_ids`) and `reference_value`. Optional vars: `reverse`, `contact_page_url`, `disable_contact_link`, `compact`, `s3GetPolicyRequestId`. Event-type display comes from the events module's `event_types` export; action-card status display from this module's `action_statuses` component. This replaces the events module's former inline action-card lookup — the generic [events timeline](../events/README.md) is events-only; use this surface wherever action cards are wanted. See [Live action cards](../../docs/idioms.md#live-action-cards).
 
 ### API Endpoints
 
@@ -324,9 +334,9 @@ The `workflow-` prefix marks the module's fixed page space: `{entry_id}/workflow
 | `start-workflow` | Instantiate a workflow on an entity; emits a `workflow-started` event. The optional `actions` payload override seeds actions at a declared status — `{ type, status }` grammar, legal seeds `action-required` \| `blocked` (signals are submit-time grammar only and don't apply at start). Optional `metadata` merges onto every seeded action doc; optional `parent_action_id` links the new workflow as a child of an existing tracker action |
 | `cancel-workflow` | Push `cancelled` to workflow status; sweep remaining open actions to `not-required` (the internal `internal_cancel_action` signal); emits a `workflow-cancelled` event |
 | `close-workflow` | User-initiated normal termination: push `completed`; sweep non-terminal actions honoring `required_after_close`; emits a `workflow-closed` event. Idempotent no-op on an already-completed workflow; rejected on a cancelled one |
-| `get-entity-workflows` | Return workflows + actions for one entity. Each action carries a per-user `visible_verbs` bag (`{ view, edit, review, error }`); actions with no visible verb are dropped. Consumed by `actions-on-entity` |
-| `get-workflow-overview` | Return one workflow + ordered + verb-filtered actions for the `workflow-overview` page |
-| `get-action-group-overview` | Return one workflow + one action group's metadata + ordered + verb-filtered actions in that group |
+| `get-entity-workflows` | Return workflows + grouped action cards for one entity via the `GetEntityWorkflows` engine method. Each card carries the server-resolved `allowed` bag (`{ view, edit, review, error }`), per-app `message`/`status`, and a single collapsed navigation `link`; actions with no visible verb are dropped. Consumed by `actions-on-entity` |
+| `get-workflow-overview` | Return one workflow + ordered, verb-filtered, link-collapsed actions via the `GetWorkflowOverview` engine method, for the `workflow-overview` page |
+| `get-action-group-overview` | Return one workflow + one action group's metadata + ordered, verb-filtered actions in that group via the `GetWorkflowActionGroupOverview` engine method |
 
 **Per-action submit endpoints** (resolver-emitted by `makeWorkflowApis`):
 
@@ -418,6 +428,7 @@ The `actions` collection must remain free of any collection-level required-field
 ## Notes
 
 - **Prerelease (0.x).** Pin to an exact version or commit SHA in production.
+- **Server-resolved reads (Part 46).** All read-side rendering data is resolved server-side by five `WorkflowAPI` read methods — `GetEntityWorkflows`, `GetWorkflowOverview`, `GetWorkflowActionGroupOverview`, `GetWorkflowAction`, and `GetEventsTimeline` — which read the validated config off the `workflow-api` connection and collapse access (`allowed`), navigation (`link`), and button visibility (`buttons`) into plain values the client renders dumb. There is no client-side access or visibility computation, and no runtime `_module.var: workflows_config` reads — the config var feeds only the build-time resolvers (`makeWorkflowsConfig` / `validated_workflows_config`, `makeWorkflowApis`, `makeActionPages`).
 - **Runtime dependencies.** Per-signal pre/post hooks are invoked by the engine. Navigation links are engine-derived from each action's `access:` verbs and emitted pages — authors don't write `link:` blocks. Group `on_complete` fan-out is the remaining unlanded engine piece (Part 11): declared `on_complete` routines are authored but inert until it ships.
 - **Event types.** Every engine invocation emits exactly one timeline event: `action-{signal}` for submits, `workflow-started` / `workflow-cancelled` / `workflow-closed` for the lifecycle handlers, and `action-internal-mirror-{state}` per tracker-mirror level. Apps that subscribe to events (notifications, external syncs) should explicitly route or ignore the lifecycle and mirror types.
 - **Transactions and atomicity.** On a replica set the engine commits each invocation's workflow + action writes in one transaction; on a standalone `mongod` it falls back to ordered writes guarded by the same compare-and-swap claim (the detected mode is logged at connection init). Event, notification, and change-log dispatches happen after the commit — a dispatch failure never rolls back a committed submit; it surfaces as a `post_commit_dispatch_failed` error after the invocation completes.

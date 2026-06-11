@@ -1,12 +1,14 @@
 // Shared role-gate oracle (Part 38 task 5 / Part 34 D12).
 //
-// The `(gate, user-roles) → bool` semantic is evaluated in three runtimes that
-// cannot share code: the query-time aggregation (`visible_verbs_filter.yaml`,
-// task 7), the submit-time load gate (task 9), and the client component
-// (`action_role_check`, task 8). This table is the single source of truth those
-// three implementations are each tested against, so a future change to the gate
-// shape (e.g. a `*` wildcard or a deny-list) is expressed in one place and
-// divergence between runtimes fails CI.
+// The `(gate, user-roles) → bool` semantic is owned by the plugin's
+// `gateAllows` (loadWorkflowState.js), consumed at submit time (the load
+// gate) and at read time (`computeAllowed` in resolveActionAccess.js, Part
+// 46). This table is the single source of truth those paths are tested
+// against (resolveActionAccess.test.js), so a future change to the gate shape
+// (e.g. a `*` wildcard or a deny-list) is expressed in one place and
+// divergence fails CI. The former YAML/client runtimes it also guarded
+// (`visible_verbs_filter.yaml`, `action_role_check.yaml`) were deleted in
+// Part 46 — access is now resolved server-side only.
 //
 // Gate shape (Part 34): `true | [roles]`. An *absent* verb key resolves as if
 // the gate were missing — no access. This file is pure data: no assertions, no

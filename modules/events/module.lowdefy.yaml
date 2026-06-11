@@ -59,11 +59,11 @@ vars:
     type: object
     default: {}
     description: >
-      Per-status display overrides for the shared action_statuses enum, merged onto
-      the shared base for the timeline's live action cards. Keep in sync with the
-      workflows module's `action_statuses_display` by pointing both module entries
-      at one app-local file, e.g.
-      `action_statuses_display: { _ref: <app>/action_statuses_display.yaml }`.
+      Per-status display overrides for the shared action_statuses enum.
+      Currently unused: the events timeline is events-only (no workflow action
+      cards), so this var no longer affects anything — retained for manifest
+      compatibility. Action-card display overrides belong on the workflows
+      module's `action_statuses_display` var.
 
 components:
   - id: change_stamp
