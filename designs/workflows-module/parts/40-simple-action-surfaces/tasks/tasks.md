@@ -24,6 +24,7 @@ plus a generic `onActionClick(action)` block event on `ActionSteps`, converge
 | 8   | `08-actions-on-entity-wiring.md`  | `actions-on-entity`: bundle the modal + kind-branch; `workflows-events-timeline`: `on_action_click` passthrough | 1, 2, 7       |
 | 9   | `09-docs-and-parent-design.md`    | Module README, parent-design row, implementation-plan status, full build + test verification                    | 4, 5, 6, 7, 8 |
 | 10  | `10-e2e-supplements.md`           | Part 22 e2e supplements: signal buttons, error recovery, modal open/submit, `allow_not_required`                | 9             |
+| 11  | `11-repoint-surface-to-per-workflow-submit.md` | Re-point the surface's 6 signal buttons to `{workflow_type}-submit`; ship `workflow_type` from `GetWorkflowAction` (resolves Blocker 1's UI half) | Part 48 merged |
 
 ## Ordering Rationale
 
@@ -48,6 +49,16 @@ guards (edit: selector + payload; review: guard allowlist change +
 `workflows-events-timeline` wrapper (shipped by Part 46 task 11) so timeline
 hosts can drive the same modal. **Task 9** is the docs/verification wrap-up.
 **Task 10** is the e2e pass over the finished feature.
+
+**Task 11** is a post-Part-48 cleanup (added post-implementation) that resolves
+the UI half of Blocker 1: it re-points the surface's six signal buttons from the
+stale `update-action-{type}` to the post-Part-48 `{workflow_type}-submit`, and
+ships `workflow_type` from `GetWorkflowAction` so the surface can build that id.
+It **runs after Part 48 merges** into `workflows-module` (Part 48 is in flight in
+a sibling worktree and cannot be coordinated with), and reconciles whatever Part
+48 leaves — its task 11 re-points the `.njk` templates and demo callers but its
+file list never reaches the Part 40 surface or the `GetWorkflowAction` envelope.
+Step 0 audits Part 48's actual end state before editing.
 
 ## Decisions applied (settled with Sam, 2026-06-11 — design amended accordingly)
 
