@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures.js';
-import { ObjectId } from 'mongodb';
 
 // Cluster: check-blocked-by (Part 22 task 4). Mode: Spine.
 //
@@ -23,10 +22,12 @@ import { ObjectId } from 'mongodb';
 
 const WORKFLOW_TYPE = 'check-blocked-by';
 
+// Engine `_id`s and id refs are UUID strings (createEngineContext:
+// newId: randomUUID), so query by the raw `workflow_id` — no ObjectId coercion.
 function actionByType(mdb, workflowId, type) {
   return mdb
     .collection('actions')
-    .findOne({ workflow_id: new ObjectId(String(workflowId)), type });
+    .findOne({ workflow_id: String(workflowId), type });
 }
 
 function groupSummary(wf, groupId) {
@@ -111,7 +112,7 @@ test('completing a type blocker and completing a group both unblock their depend
       async () => {
         const wf = await mdb
           .collection('workflows')
-          .findOne({ _id: new ObjectId(String(workflow_id)) });
+          .findOne({ _id: String(workflow_id) });
         return groupSummary(wf, 'prep')?.status;
       },
       { timeout: 10_000 }

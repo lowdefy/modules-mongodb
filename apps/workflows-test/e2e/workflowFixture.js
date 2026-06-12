@@ -1,5 +1,4 @@
 import { test as base } from '@lowdefy/e2e-utils/fixtures';
-import { ObjectId } from 'mongodb';
 
 // The `workflow` fixture: thin wire drivers + DB readers, NOT a DSL. Every
 // helper either POSTs a real emitted Lowdefy endpoint (the per-workflow write
@@ -24,14 +23,16 @@ import { ObjectId } from 'mongodb';
 // Wire envelope: the built server serves `POST /api/endpoints/{endpointId}`
 // with JSON body `{ blockId, payload, pageId }` and responds with
 // `{ error, response, status, success }`. `response` is the routine's
-// `:return:` object (dates serialize to `{ '~d': ... }`; ObjectIds come back
-// as plain hex strings). `success` is false when status is error/reject.
+// `:return:` object (dates serialize to `{ '~d': ... }`; ids are UUID strings
+// — the engine mints `_id`s with randomUUID, so they come back, and are stored,
+// as plain strings). `success` is false when status is error/reject.
 
 const ENDPOINT_BASE = '/api/endpoints/';
 
-// Convert a wire id (hex string) back to an ObjectId for querying by `_id`.
-function toObjectId(id) {
-  return new ObjectId(String(id));
+// Engine `_id`s are UUID strings (createEngineContext: newId: randomUUID), so
+// query by `_id` with the raw wire id — no ObjectId coercion.
+function toId(id) {
+  return String(id);
 }
 
 export const workflowTest = base.extend({
@@ -69,7 +70,7 @@ export const workflowTest = base.extend({
     async function workflowTypeOf(workflowId) {
       const wf = await mdb
         .collection('workflows')
-        .findOne({ _id: toObjectId(workflowId) });
+        .findOne({ _id: toId(workflowId) });
       if (!wf) {
         throw new Error(`workflow: no workflow doc for workflow_id ${workflowId}`);
       }
@@ -84,7 +85,7 @@ export const workflowTest = base.extend({
     async function submitEndpointId(actionId) {
       const action = await mdb
         .collection('actions')
-        .findOne({ _id: toObjectId(actionId) });
+        .findOne({ _id: toId(actionId) });
       if (!action) {
         throw new Error(`workflow.submit: no action doc for action_id ${actionId}`);
       }
@@ -97,7 +98,7 @@ export const workflowTest = base.extend({
 
       // POSTs the per-workflow start endpoint `workflows/{workflow_type}-start`
       // (Part 48 D5). Returns the parsed `response`: { workflow_id, action_ids,
-      // event_id }. `action_ids` is an ARRAY of ObjectId hex strings
+      // event_id }. `action_ids` is an ARRAY of UUID strings
       // (commitPlan.js: plan.actions.map((a) => a.doc._id)), NOT a map keyed by
       // action type — handle it as an array at call sites. `overrides` may carry
       // actions / references / metadata / parent_action_id.
@@ -179,7 +180,7 @@ export const workflowTest = base.extend({
         await expect
           .poll(
             () =>
-              mdb.collection('workflows').findOne({ _id: toObjectId(workflow_id) }),
+              mdb.collection('workflows').findOne({ _id: toId(workflow_id) }),
             { timeout: 10_000 }
           )
           .toEqual(expect.objectContaining(expected));
@@ -194,7 +195,7 @@ export const workflowTest = base.extend({
         await expect
           .poll(
             () =>
-              mdb.collection('workflows').findOne({ _id: toObjectId(workflow_id) }),
+              mdb.collection('workflows').findOne({ _id: toId(workflow_id) }),
             { timeout: 10_000 }
           )
           .toEqual(expect.objectContaining(expected));
@@ -209,7 +210,7 @@ export const workflowTest = base.extend({
               async () => {
                 const doc = await mdb
                   .collection('actions')
-                  .findOne({ _id: toObjectId(action_id) });
+                  .findOne({ _id: toId(action_id) });
                 return doc?.status?.[0]?.stage;
               },
               { timeout: 10_000 }
@@ -220,7 +221,7 @@ export const workflowTest = base.extend({
         await expect
           .poll(
             () =>
-              mdb.collection('actions').findOne({ _id: toObjectId(action_id) }),
+              mdb.collection('actions').findOne({ _id: toId(action_id) }),
             { timeout: 10_000 }
           )
           .toEqual(expect.objectContaining(expected));
@@ -236,7 +237,7 @@ export const workflowTest = base.extend({
         await mdb
           .collection('actions')
           .updateOne(
-            { _id: toObjectId(action_id) },
+            { _id: toId(action_id) },
             { $set: { 'status.0.stage': stage } }
           );
       },

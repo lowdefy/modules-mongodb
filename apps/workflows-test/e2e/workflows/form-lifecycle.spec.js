@@ -1,5 +1,4 @@
 import { test, expect } from '../fixtures.js';
-import { ObjectId } from 'mongodb';
 
 // Cluster: form-lifecycle (Part 22 task 3) — the TEMPLATE cluster.
 //
@@ -21,12 +20,13 @@ import { ObjectId } from 'mongodb';
 
 const WORKFLOW_TYPE = 'form-lifecycle';
 
-// Read an action doc by its type within a started workflow. workflow_id comes
-// back from `start` as a hex string; action docs store it as an ObjectId.
+// Read an action doc by its type within a started workflow. Engine `_id`s and
+// id refs are UUID strings (createEngineContext: newId: randomUUID), so query
+// by the raw `workflow_id` — no ObjectId coercion.
 function actionByType(mdb, workflowId, type) {
   return mdb
     .collection('actions')
-    .findOne({ workflow_id: new ObjectId(String(workflowId)), type });
+    .findOne({ workflow_id: String(workflowId), type });
 }
 
 // Fill a Lowdefy TiptapInput (ProseMirror contenteditable) — `.do.fill` targets
@@ -82,7 +82,7 @@ test('the review lifecycle: a draft saves without validation, submit enters revi
       async () => {
         const wf = await mdb
           .collection('workflows')
-          .findOne({ _id: new ObjectId(String(workflowId)) });
+          .findOne({ _id: String(workflowId) });
         return wf?.form_data?.['reviewed-form']?.notes;
       },
       { timeout: 10_000 }
@@ -175,7 +175,7 @@ test('not_required marks the optional action not-required and the group summary 
       async () => {
         const wf = await mdb
           .collection('workflows')
-          .findOne({ _id: new ObjectId(String(workflowId)) });
+          .findOne({ _id: String(workflowId) });
         return wf?.groups?.find((g) => g.id === 'lifecycle')?.summary
           ?.not_required;
       },
