@@ -1,0 +1,37 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: things
+    title: Things
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_things
+    requests:
+      - id: get_things
+        type: MongoDBAggregation
+        connectionId: things-collection
+        properties:
+          pipeline:
+            - $sort:
+                title: 1
+    blocks:
+      - id: things_list
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <ul id="things-list">
+                {% for thing in things %}
+                  <li><a href="/thing-view?_id={{ thing._id }}">{{ thing.title }}</a></li>
+                {% endfor %}
+                </ul>
+              on:
+                things:
+                  _if_none:
+                    - _request: get_things
+                    - []
