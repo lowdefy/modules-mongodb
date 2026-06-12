@@ -543,6 +543,17 @@ test("validateStatusMapCells: accepts a message-only cell and a status_title", (
   expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).not.toThrow();
 });
 
+test("makeWorkflowsConfig: status_map is validated but NOT carried on the returned blob (Part 48)", () => {
+  // status_map now arrives per-request via render_config and is spliced at load
+  // time (loadWorkflowState seam), so the connection blob must not carry it.
+  const wf = workflowWithStatusMap({
+    "action-required": { demo: { message: "Qualify the lead." }, status_title: "Qualifying" },
+    done: { status_title: null },
+  });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
+  expect("status_map" in out.actions[0]).toBe(false);
+});
+
 test("validateStatusMapCells: rejects link: on a built-in kind", () => {
   const wf = workflowWithStatusMap({
     done: { demo: { message: "Done.", link: { pageId: "x" } } },

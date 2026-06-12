@@ -40,7 +40,7 @@ const STATUS_MAP = {
   },
 };
 
-function makeWorkflowsConfig({ withGroups = false } = {}) {
+function makeWorkflowsConfig({ withGroups = false, withStatusMap = true } = {}) {
   return [
     {
       type: 'onboarding',
@@ -52,7 +52,9 @@ function makeWorkflowsConfig({ withGroups = false } = {}) {
           type: 'qualify',
           kind: 'form',
           ...(withGroups ? { action_group: 'g1' } : {}),
-          status_map: STATUS_MAP.qualify,
+          // Part 48: the blob no longer carries status_map; the render_config
+          // describe below drives it via the endpoint slice instead.
+          ...(withStatusMap ? { status_map: STATUS_MAP.qualify } : {}),
           // review-app declares review; ops-app declares edit only.
           access: {
             'test-app': { view: true, edit: ['account-manager'], review: ['reviewer'], error: true },
@@ -296,6 +298,51 @@ describe('Part 30 worked example', () => {
     );
     const doc = await mongo.db.collection('actions').findOne({ _id: 'A1' });
     expect(doc.status_title).toBe('In Review');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Part 48: status_map delivered via render_config, not the blob
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The connection blob no longer carries status_map (dropped from
+// makeWorkflowsConfig's ACTION_FIELDS, task 10). The write endpoints deliver it
+// per-request as `request.render_config` (→ context.params.render_config), which
+// loadWorkflowState splices onto the action config. These tests exercise the
+// end-to-end render with the blob slice absent.
+
+describe('Part 48: status_map from render_config (blob slice absent)', () => {
+  test('blob carries no status_map but render_config delivers the cell → rendered onto the doc', async () => {
+    await seed();
+    await SubmitWorkflowAction(
+      buildContext({
+        workflowsConfig: makeWorkflowsConfig({ withStatusMap: false }),
+        request: {
+          action_id: 'A1',
+          signal: 'submit',
+          render_config: { onboarding: { qualify: { status_map: STATUS_MAP.qualify } } },
+        },
+      }),
+    );
+    const doc = await mongo.db.collection('actions').findOne({ _id: 'A1' });
+    expect(doc.status[0].stage).toBe('in-review'); // hasReview → in-review
+    expect(doc.status_title).toBe('In Review');
+    expect(doc['test-app'].message).toBe('qualify submitted');
+  });
+
+  test('blob slice absent AND no render_config → falls through to default (no status_title, no message)', async () => {
+    await seed();
+    await SubmitWorkflowAction(
+      buildContext({
+        workflowsConfig: makeWorkflowsConfig({ withStatusMap: false }),
+        request: { action_id: 'A1', signal: 'submit' },
+      }),
+    );
+    const doc = await mongo.db.collection('actions').findOne({ _id: 'A1' });
+    expect(doc.status[0].stage).toBe('in-review'); // transition still resolves
+    // No cell anywhere — no rendered status_title/message is written.
+    expect(doc.status_title).toBeUndefined();
+    expect(doc['test-app']?.message).toBeUndefined();
   });
 });
 

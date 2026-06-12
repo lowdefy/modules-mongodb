@@ -87,9 +87,10 @@ export function gateAllows(gate, userRoles) {
  *     the invocation — re-splicing writes identical values. Do not clone.
  *
  *   - Runs in both modes (submit and `{ workflowId }`), so every cascade
- *     level merges its own workflow's slice. Until task 8 lands, no endpoint
- *     emits `render_config`, so this seam is dormant — the blob still carries
- *     `status_map` and rendering is unchanged.
+ *     level merges its own workflow's slice. As of Part 48 task 10 the blob no
+ *     longer carries `status_map` (dropped from makeWorkflowsConfig's
+ *     ACTION_FIELDS), so the spliced slice is the sole runtime source — a
+ *     missing slice falls through to sticky-`status_map`/default rendering.
  *
  * All throws are `WorkflowEngineError`s discriminated by `code` (design D13):
  * `workflow_not_found` / `action_not_found` / `stage_rejects_submit` /

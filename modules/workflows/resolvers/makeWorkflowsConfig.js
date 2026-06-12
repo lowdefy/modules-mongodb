@@ -5,6 +5,14 @@ import { collectTrackerEdges } from './trackerEdges.js';
 // (form, form_review, form_error, pages, hooks, event) are excluded —
 // they're consumed by build-time resolvers (parts 12, 13, 15) against
 // the raw workflow YAML, not via workflowsConfig at runtime.
+//
+// `status_map` is deliberately NOT picked here (Part 48): it's the blob's one
+// heavy per-stage × per-app field, paid for all workflows on every connection
+// call. It now arrives per-request via the write endpoints' `render_config`
+// and is spliced onto the action config at load time (loadWorkflowState seam,
+// task 3). Build-time validation of `status_map` cells (validateStatusMapCells)
+// still runs against the raw workflow — the field is validated here even though
+// it's no longer carried on the blob.
 const ACTION_FIELDS = [
   'type',
   'kind',
@@ -16,7 +24,6 @@ const ACTION_FIELDS = [
   'required_after_close',
   'allow_not_required',
   'access',
-  'status_map',
 ];
 
 const WORKFLOW_FIELDS = [
