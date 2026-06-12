@@ -1,5 +1,7 @@
 # Lowdefy `_app` — requirements from the modules-mongodb migration
 
+> **Status: both requirements shipped** in `lowdefy@0.0.0-experimental-20260611` (the version this repo pins). Requirement 1 → `_app` now runs at build time too (`env: Client, Server and Build`), with `_build.app` as the form to use inside `_build.*` operator arguments. Requirement 2 → `slug` is "required when referenced in string form", so `_app: slug` fails the build when `slug` is undeclared. This document is retained as a record of what was asked; see [design.md §Upstream status](./design.md#upstream-status--resolved) for how each was answered.
+
 This document describes two capabilities the modules-mongodb repo needs from Lowdefy's `_app` operator before the `_app` migration in this repo can ship. It states the use cases and required behaviour only — implementation in Lowdefy is for the Lowdefy team to design.
 
 ## Context

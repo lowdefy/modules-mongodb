@@ -4,50 +4,52 @@
 
 These tasks migrate `modules-mongodb` from a per-module `app_name` manifest var to Lowdefy's built-in `_app` operator. The implementation derives from [`designs/app-operator/design.md`](../design.md).
 
-## Prerequisite
+## No upstream prerequisite — both capabilities have shipped
 
-Both upstream Lowdefy changes from [`lowdefy-requirements.md`](../lowdefy-requirements.md) must be available in the pinned Lowdefy version before any of these tasks ship:
+The two Lowdefy changes this design originally waited on are live in the pinned version (`lowdefy@0.0.0-experimental-20260611`): `_app` evaluates at build time as well as runtime, and `slug` is required-when-referenced (a missing `slug:` fails the build). See [design.md §Upstream status](../design.md#upstream-status--resolved). The migration is implementable today; no task is gated on Lowdefy.
 
-1. `_app` (or `_build.app`) is evaluable at build time, resolving to the values declared at the root of `lowdefy.yaml`.
-2. The build fails fast when a referenced `_app: slug` would resolve to `null`.
+## The one rule that governs every swap
 
-Tasks below assume both have landed. If only (1) is available, the migration can proceed but a build-time slug guard must be re-added separately.
+Replace each `_module.var: app_name` per its **position**, not uniformly:
+
+- **`_app: slug`** — every runtime site (MongoDB filters, change-stamp templates, payload fields, Nunjucks vars, connection props) and every ordinary build position. This is the large majority (~60 of ~72 sites).
+- **`_build.app: slug`** — **only** when the operator is a direct argument to a `_build.*` operator. In this repo that is exactly:
+  - the `- - _module.var: app_name` key under `_build.object.fromEntries` (event-display maps) in the `create`/`update` APIs of `companies`, `contacts`, `user-account`, and in `user-admin`'s `update-user`/`invite-user`/`resend-invite`;
+  - the `makeActionPages.js` resolver vars in `workflows`;
+  - the `user-admin.app_title` var **default** (consumed inside `_build.string.concat`), which becomes `{ _build.app: name }`.
+
+When unsure, grep the surrounding lines: if an enclosing operator key starts with `_build.`, use `_build.app`; otherwise `_app`. Counts in this design are indicative — re-grep each module at implementation time rather than trusting a frozen number.
+
+The stored MongoDB field name `created.app_name` does **not** rename — only the *value expression* changes.
+
+## The `app_name` → `slug` identifier rename (Task 4 only)
+
+Separately from the `_app` swap, the `app_name`/`appName` *identifier* is renamed to `slug` everywhere it names the slug value — but only in the **workflows subsystem** (`modules/workflows/resolvers/` and `plugins/modules-mongodb-plugins/`), where it's currently pervasive. The other modules have no `app_name` code identifier left once their manifest var is dropped, so they need no rename. This is **Part B of Task 4** and stays in that one task because the `WorkflowAPI` connection property rename must change `workflow-api.yaml` and the plugin `schema.js` in lockstep. Boundary to respect: rename variables/properties/YAML keys/params/JSDoc/tests; never the stored field `created.app_name` or stored keys indexed *by the slug value* (`action[slug]`, `access[slug]`, `user.apps[slug]`).
 
 ## Tasks
 
-| #   | File                                                                                  | Summary                                                                       | Depends On |
-| --- | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ---------- |
-| 1   | [`01-add-slug-to-demo-app-root.md`](01-add-slug-to-demo-app-root.md)                  | Add `slug: demo` and rename `name:` on `apps/demo/lowdefy.yaml`.              | —          |
-| 2   | [`02-relax-events-display-key-default.md`](02-relax-events-display-key-default.md)    | Make `events.display_key` optional with default `{ _app: slug }`.             | 1          |
-| 3   | [`03-migrate-contacts-module.md`](03-migrate-contacts-module.md)                      | Drop `app_name` var, swap to `_app: slug` in contacts module + demo vars.     | 1          |
-| 4   | [`04-migrate-companies-module.md`](04-migrate-companies-module.md)                    | Drop `app_name` var, swap to `_app: slug` in companies module + demo vars.    | 1          |
-| 5   | [`05-migrate-notifications-module.md`](05-migrate-notifications-module.md)            | Drop `app_name` var, swap to `_app: slug` in notifications + demo vars.       | 1          |
-| 6   | [`06-migrate-user-account-module.md`](06-migrate-user-account-module.md)              | Drop `app_name` var, swap to `_app: slug` in user-account + demo vars.        | 1          |
-| 7   | [`07-migrate-user-admin-module.md`](07-migrate-user-admin-module.md)                  | Drop `app_name`, swap to `_app: slug`, default `app_title` to `_app: name`.   | 1          |
-| 8   | [`08-migrate-workflows-module.md`](08-migrate-workflows-module.md)                    | Drop `app_name`, swap to `_app: slug` incl. resolver vars + workflow-api.     | 1          |
-| 9   | [`09-update-demo-events-vars.md`](09-update-demo-events-vars.md)                      | Demo `events` vars: `change_stamp.app_name: _app: slug`, drop `display_key`.  | 2          |
-| 10  | [`10-migrate-demo-chrome-to-app-name.md`](10-migrate-demo-chrome-to-app-name.md)      | Home page title + layout footer read `_app: name` via Nunjucks.               | 1          |
-| 11  | [`11-delete-app-config-yaml.md`](11-delete-app-config-yaml.md)                        | Delete `apps/demo/app_config.yaml` once nothing references it.                | 3, 4, 5, 6, 7, 8, 9 |
-| 12  | [`12-update-repo-docs.md`](12-update-repo-docs.md)                                    | Rewrite README, `docs/idioms.md`, `CLAUDE.md` references and anchors.         | 3, 4, 5, 6, 7, 8 |
-| 13  | [`13-sweep-workflows-design-docs.md`](13-sweep-workflows-design-docs.md)              | Standardise design prose to "slug" across in-flight workflows designs.        | —          |
-| 14  | [`14-verify-build-and-tests.md`](14-verify-build-and-tests.md)                        | Build the demo, run lint/tests, and exercise event/notification flows.        | 11, 12     |
+| #   | File                                                              | Summary                                                                                              | Depends On    |
+| --- | ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ------------- |
+| 1   | [`01-declare-slug-and-events-default.md`](01-declare-slug-and-events-default.md) | Add `slug: demo` + rename `name:` on `apps/demo/lowdefy.yaml`; relax `events.display_key` to `default: { _app: slug }`. | —             |
+| 2   | [`02-migrate-simple-modules.md`](02-migrate-simple-modules.md)   | Migrate `contacts`, `companies`, `notifications`, `user-account`: drop `app_name` var, swap sites, clean demo vars. | 1             |
+| 3   | [`03-migrate-user-admin.md`](03-migrate-user-admin.md)           | Migrate `user-admin`; default `app_title` to `{ _build.app: name }`.                                 | 1             |
+| 4   | [`04-migrate-workflows.md`](04-migrate-workflows.md)             | Workflows subsystem: `_app` migration **+** rename `app_name`→`slug` across resolvers and the plugin engine (incl. the `WorkflowAPI` connection property). Largest task; lockstep, so it stays whole. | 1             |
+| 5   | [`05-demo-cleanup.md`](05-demo-cleanup.md)                       | Demo events vars (`change_stamp` + drop `display_key`), demo chrome (`_app: name`), delete `app_config.yaml`. | 1, 2, 3, 4    |
+| 6   | [`06-update-repo-docs.md`](06-update-repo-docs.md)               | Rewrite README, `docs/idioms.md`, `CLAUDE.md` references and anchors.                                | 2, 3, 4       |
+| 7   | [`07-verify-build-and-tests.md`](07-verify-build-and-tests.md)   | Build the demo, run lint/tests, exercise event/notification/action-page flows.                       | 5, 6          |
+| 8   | [`08-sweep-design-docs-optional.md`](08-sweep-design-docs-optional.md) | **Optional / deferrable** — standardise "slug" prose across in-flight workflows designs.       | —             |
 
-## Ordering Rationale
+## Ordering rationale
 
-- **Task 1 is foundational.** `_app: slug` only resolves once the demo's `lowdefy.yaml` declares `slug:`. Every other task that touches module YAML, demo vars, or page chrome depends on it. Putting it first means the rest of the work runs against a build that already knows the slug.
-- **Task 2 unblocks task 9.** The events manifest needs the new `display_key` default before the demo events vars file can drop its explicit setting.
-- **Tasks 3–8 are independent per-module migrations.** Each migrates one module's manifest, YAML, and demo vars file. They can be implemented in parallel after task 1. They are listed in dependency-light order (smallest first, workflows last because it carries the resolver var change).
-- **Task 9 finalises the demo events wiring** after tasks 2 and 3–8 land. It removes the literal `app_name:` in the change-stamp template (replaced with `{ _app: slug }`) and drops the redundant `display_key:` line.
-- **Task 10 is independent display-only work** on the demo chrome — it only needs task 1's `slug`/`name` declarations.
-- **Task 11 cleans up `app_config.yaml`.** It must run after every reader has migrated; tasks 3–9 each remove a reference, so 11 depends on all of them.
-- **Task 12 documents the new pattern.** Idiom + README updates land after the modules they describe have actually changed.
-- **Task 13 is a documentation sweep** of in-flight workflows designs. It is mechanically independent of the code migration but is part of the same PR per the design's "one canonical term" decision.
-- **Task 14 verifies the full migration** end-to-end before merge.
-
-Tasks 3–8 and 10 can run concurrently after task 1.
+- **Task 1 is foundational.** `_app: slug` only resolves once `lowdefy.yaml` declares `slug:`, and it now *fails the build* if referenced while undeclared — so the slug must land before any swap. The events-manifest default change rides along here because it's the same tiny prep step and unblocks Task 5's `display_key` drop.
+- **Tasks 2–4 are the migrations**, parallelisable after Task 1. They're split by blast-radius, not module count: the four simple modules (Task 2) are near-identical mechanical swaps with a single `_build.app` site each; `user-admin` (Task 3) is the largest surface and carries the `app_title` default change; `workflows` (Task 4) carries the resolver `_build.app` site whose failure mode (silent page loss) needs its own verification.
+- **Task 5 is demo cleanup**, after every module reader has migrated: rewrite the demo events vars, point chrome at `_app: name`, then delete `app_config.yaml` once nothing references it.
+- **Task 6 documents** the new pattern after the code it describes has changed.
+- **Task 7 verifies** end-to-end before merge.
+- **Task 8 is optional.** The design-doc prose sweep is pure documentation churn over workflows designs that are themselves in flux; it can ship later (or as those designs are next touched) without affecting the code migration. Kept separate so it never blocks the PR.
 
 ## Scope
 
 **Source:** `designs/app-operator/design.md`
-**Context files considered:** `designs/app-operator/lowdefy-requirements.md`
-**Review files skipped:** `designs/app-operator/review/review-1.md`
+**Context files considered:** `designs/app-operator/lowdefy-requirements.md` (now historical — requirements shipped)
+**Review files applied:** `designs/app-operator/review/review-1.md`, `designs/app-operator/review/review-2.md`
