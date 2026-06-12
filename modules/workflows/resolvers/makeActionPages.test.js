@@ -47,7 +47,7 @@ const trackInstallationAction = {
   access: {
     "my-team-app": { view: true, edit: ["account-manager"], review: ["account-manager"] },
   },
-  tracker: { workflow_type: "device-installation" },
+  tracker: { child_workflow_type: "device-installation" },
 };
 
 function workflow(actions) {

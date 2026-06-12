@@ -140,9 +140,9 @@ async function StartWorkflow(lowdefyContext) {
         { code: 'invalid_seed' },
       );
     }
-    if (parent.tracker?.workflow_type !== params.workflow_type) {
+    if (parent.tracker?.child_workflow_type !== params.workflow_type) {
       throw new WorkflowEngineError(
-        'StartWorkflow: workflow_type does not match parent tracker.workflow_type',
+        'StartWorkflow: workflow_type does not match parent tracker.child_workflow_type',
         { code: 'invalid_seed' },
       );
     }

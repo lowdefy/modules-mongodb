@@ -1,4 +1,5 @@
 import { HOOK_SIGNALS, HOOK_PHASES } from './hookSignals.js';
+import { collectTrackerEdges } from './trackerEdges.js';
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
@@ -255,6 +256,35 @@ function validateActionAccess(workflow, action) {
   }
 }
 
+// Part 48 D6: tracker.child_workflow_type validation. Every kind: tracker action
+// must declare a non-empty string child_workflow_type. Cross-workflow resolution
+// (does the value match a declared workflow type?) and cycle detection are
+// performed after all per-workflow validation in makeWorkflowsConfig (they
+// require the full workflow set). The legacy key tracker.workflow_type
+// hard-errors with a rename hint.
+function validateTrackerChildWorkflowType(workflow, action) {
+  if (action.kind !== 'tracker') return;
+  const where = `action "${action.type}"`;
+  const tracker = action.tracker;
+
+  if ('workflow_type' in tracker) {
+    fail(
+      workflow.type,
+      `${where} tracker.workflow_type is renamed — use tracker.child_workflow_type (Part 48 D6).`
+    );
+  }
+
+  if (
+    typeof tracker.child_workflow_type !== 'string' ||
+    tracker.child_workflow_type === ''
+  ) {
+    fail(
+      workflow.type,
+      `${where} tracker.child_workflow_type must be a non-empty string (got: ${JSON.stringify(tracker.child_workflow_type)}).`
+    );
+  }
+}
+
 // Part 44: tracker.start_link validation. An optional engine-link shape
 // { pageId: string, urlQuery?: object }. Reserved urlQuery keys action_id /
 // entity_id are sentinel-only (value must be exactly true); all other keys
@@ -417,6 +447,7 @@ function validateAction(workflow, action) {
 
   validateActionAccess(workflow, action);
   validateStatusMapCells(workflow, action);
+  validateTrackerChildWorkflowType(workflow, action);
   validateTrackerStartLink(workflow, action);
   validateHooks(workflow, action);
   validateEvent(workflow, action);
@@ -505,10 +536,64 @@ function validateWorkflow(workflow) {
   }
 }
 
+// Part 48 D6: Cross-workflow tracker edge validation. Runs after per-workflow
+// validation so all workflow types are known. Checks:
+//   1. Every child_workflow_type resolves to a declared workflow type.
+//   2. No tracker cycle exists across the workflow set.
+function validateTrackerEdges(workflows) {
+  const declaredTypes = new Set(workflows.map((wf) => wf.type));
+  const edges = collectTrackerEdges(workflows);
+
+  // Resolution check: child must be a declared workflow type.
+  for (const { parentType, childType } of edges) {
+    if (!declaredTypes.has(childType)) {
+      throw new Error(
+        `makeWorkflowsConfig: workflow "${parentType}": tracker action declares child_workflow_type "${childType}" which is not a declared workflow type.`
+      );
+    }
+  }
+
+  // Acyclicity check: walk the edge graph and detect cycles using DFS.
+  // Build adjacency list (parent → [children]).
+  const children = new Map();
+  for (const { parentType, childType } of edges) {
+    if (!children.has(parentType)) children.set(parentType, []);
+    children.get(parentType).push(childType);
+  }
+
+  // DFS with three-colour marking: white (unvisited), grey (in-stack), black (done).
+  const WHITE = 0, GREY = 1, BLACK = 2;
+  const colour = new Map();
+
+  function dfs(node, stack) {
+    colour.set(node, GREY);
+    for (const child of children.get(node) ?? []) {
+      if (colour.get(child) === GREY) {
+        // Cycle detected — reconstruct the cycle path from the stack.
+        const cycleStart = stack.indexOf(child);
+        const cyclePath = [...stack.slice(cycleStart), child].join(' → ');
+        throw new Error(
+          `makeWorkflowsConfig: tracker cycle: ${cyclePath}`
+        );
+      }
+      if ((colour.get(child) ?? WHITE) === WHITE) {
+        dfs(child, [...stack, child]);
+      }
+    }
+    colour.set(node, BLACK);
+  }
+
+  for (const type of declaredTypes) {
+    if ((colour.get(type) ?? WHITE) === WHITE) {
+      dfs(type, [type]);
+    }
+  }
+}
+
 function makeWorkflowsConfig(_, vars) {
   const { workflows } = vars;
 
-  return workflows.map((workflow) => {
+  const result = workflows.map((workflow) => {
     validateWorkflow(workflow);
 
     const actions = (workflow.actions ?? []).map((action) => {
@@ -541,6 +626,11 @@ function makeWorkflowsConfig(_, vars) {
       actions,
     };
   });
+
+  // Cross-workflow checks: edge resolution + acyclicity (require full set).
+  validateTrackerEdges(workflows);
+
+  return result;
 }
 
 export default makeWorkflowsConfig;

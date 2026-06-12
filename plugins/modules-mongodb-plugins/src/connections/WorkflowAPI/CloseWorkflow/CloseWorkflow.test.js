@@ -47,7 +47,7 @@ function makeWorkflowsConfig() {
         {
           type: 'track-child',
           kind: 'tracker',
-          tracker: { workflow_type: 'onboarding' },
+          tracker: { child_workflow_type: 'onboarding' },
           access: { 'test-app': { view: true } },
         },
       ],
@@ -330,7 +330,7 @@ describe('tracker cascade', () => {
       kind: 'tracker',
       key: null,
       action_group: null,
-      tracker: { workflow_type: 'onboarding' },
+      tracker: { child_workflow_type: 'onboarding' },
       child_workflow_id: 'wf-child',
       access: { 'test-app': { view: true } },
       workflow_type: 'onboarding',

@@ -73,7 +73,7 @@ function makeParentChildConfig() {
         {
           type: 'track-child',
           kind: 'tracker',
-          tracker: { workflow_type: 'onboarding' },
+          tracker: { child_workflow_type: 'onboarding' },
           access: { 'test-app': { view: true } },
         },
       ],
@@ -430,7 +430,7 @@ describe('started as a tracker child', () => {
       kind: 'tracker',
       key: null,
       action_group: null,
-      tracker: { workflow_type: 'onboarding' },
+      tracker: { child_workflow_type: 'onboarding' },
       child_workflow_id: null,
       child_entity_id: null,
       child_entity_collection: null,

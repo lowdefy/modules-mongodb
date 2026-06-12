@@ -51,7 +51,7 @@ const trackInstallationAction = {
   kind: "tracker",
   access: { "my-team-app": { view: ["ops-lead"] } },
   action_group: "phase-3",
-  tracker: { workflow_type: "installation" },
+  tracker: { child_workflow_type: "installation" },
 };
 
 const workedExample = {
@@ -277,7 +277,7 @@ test("makeWorkflowApis: tracker-only workflow emits zero Apis", () => {
         type: "track-installation",
         kind: "tracker",
         access: { "my-team-app": { view: ["ops-lead"] } },
-        tracker: { workflow_type: "installation" },
+        tracker: { child_workflow_type: "installation" },
       },
     ],
   };

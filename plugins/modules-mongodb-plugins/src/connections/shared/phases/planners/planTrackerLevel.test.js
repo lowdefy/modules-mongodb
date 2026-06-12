@@ -20,7 +20,7 @@ function makeTrackerAction({ _id = 'track-1', stage = 'in-progress', child_workf
     key: null,
     action_group: null,
     child_workflow_id,
-    tracker: { workflow_type: 'child' },
+    tracker: { child_workflow_type: 'child' },
     status: [{ stage, event_id: 'e0', created: now }],
     metadata: {},
   };
@@ -50,7 +50,7 @@ function makeConfig({ actions } = {}) {
     entity_collection: 'parents',
     entity_ref_key: 'parent_ids',
     action_groups: [],
-    actions: actions ?? [{ type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } }],
+    actions: actions ?? [{ type: 'track-child', kind: 'tracker', tracker: { child_workflow_type: 'child' } }],
   };
 }
 
@@ -109,7 +109,7 @@ test('no next-level fire when the parent does not auto-complete', () => {
   const config = makeConfig({
     actions: [
       { type: 'qualify', kind: 'form' },
-      { type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } },
+      { type: 'track-child', kind: 'tracker', tracker: { child_workflow_type: 'child' } },
     ],
   });
   const actions = [
