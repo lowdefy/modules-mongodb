@@ -111,7 +111,9 @@ exports:
         engine method — events with cross-stream action cards, workflow cards
         verb-filtered and engine-linked server-side. Vars: reference_field,
         reference_value (plus optional reverse, contact_page_url,
-        disable_contact_link, compact, s3GetPolicyRequestId).
+        disable_contact_link, compact, s3GetPolicyRequestId, and on_action_click
+        — events-passthrough onto the wrapped EventsTimeline block's
+        onActionClick; absent → action cards navigate via action.link).
 
 components:
   - id: action_statuses
