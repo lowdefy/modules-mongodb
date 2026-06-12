@@ -66,6 +66,31 @@ export function gateAllows(gate, userRoles) {
  * set up at handler entry), `context.connection` (`app_name`, collection
  * names), `context.workflowsConfig`, `context.user`.
  *
+ * Part 48 render-config seam: after resolving `workflowConfig`, this function
+ * splices `context.params?.render_config?.[workflow.workflow_type]` onto every
+ * action config in-place. Contract:
+ *
+ *   - **Missing-key contract:** an absent `render_config`, absent
+ *     `[workflow_type]`, or absent `[action_type]` key is legal and never
+ *     throws. Downstream reads are optional-chained and fall through to
+ *     sticky-`status_map`/default-event-display behavior. This is
+ *     load-bearing: a runtime parent chain can outlive a config edge (a
+ *     retargeted/removed `child_workflow_type` leaves an existing child
+ *     cascading to a parent type absent from `params.render_config`).
+ *
+ *   - **Idempotent in-place merge:** `loadWorkflowState` returns the
+ *     `workflowConfig` instance it `.find`s in `context.workflowsConfig` (no
+ *     clone), so the merge mutates that object. Safe because
+ *     `context.workflowsConfig` is freshly operator-evaluated per connection
+ *     call (never shared across requests); idempotent because CAS retries
+ *     re-load the same object while `params.render_config` is constant for
+ *     the invocation — re-splicing writes identical values. Do not clone.
+ *
+ *   - Runs in both modes (submit and `{ workflowId }`), so every cascade
+ *     level merges its own workflow's slice. Until task 8 lands, no endpoint
+ *     emits `render_config`, so this seam is dormant — the blob still carries
+ *     `status_map` and rendering is unchanged.
+ *
  * All throws are `WorkflowEngineError`s discriminated by `code` (design D13):
  * `workflow_not_found` / `action_not_found` / `stage_rejects_submit` /
  * `access_denied` / `unknown_signal`.
@@ -124,6 +149,19 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
       `loadWorkflowState: workflow_type "${workflow.workflow_type}" not in workflowsConfig`,
       { code: 'workflow_not_found' },
     );
+  }
+
+  // Part 48 merge-at-load seam: splice the endpoint-delivered render slice
+  // (status_map + event_overrides) onto every action config. A missing
+  // render_config / workflow / action key is legal — engine-default rendering.
+  const renderSlice = context.params?.render_config?.[workflow.workflow_type];
+  if (renderSlice) {
+    for (const actionCfg of workflowConfig.actions ?? []) {
+      const slice = renderSlice[actionCfg.type];
+      if (!slice) continue;
+      if ('status_map' in slice) actionCfg.status_map = slice.status_map;
+      if ('event_overrides' in slice) actionCfg.event_overrides = slice.event_overrides;
+    }
   }
 
   if (!isSubmit) {

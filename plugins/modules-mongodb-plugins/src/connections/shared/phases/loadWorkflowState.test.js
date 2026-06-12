@@ -400,3 +400,181 @@ test.each(gateCases)(
     expect(gateAllows(gate, userRoles)).toBe(expected);
   },
 );
+
+// --- Part 48: render_config seam (merge at load) ------------------------------
+
+function makeContextWithRenderConfig(renderConfig) {
+  return {
+    mongoDb: mongo.db,
+    connection: { app_name: APP },
+    workflowsConfig: [
+      {
+        type: 'onboarding',
+        entity_collection: 'companies',
+        starting_actions: [{ type: 'collect-docs', status: 'action-required' }],
+        actions: [
+          {
+            type: 'collect-docs',
+            kind: 'form',
+            allow_not_required: true,
+            status_map: { 'action-required': 'original-label' },
+            access: {
+              [APP]: {
+                view: true,
+                edit: ['account-manager'],
+                review: ['compliance-officer'],
+                error: ['support-rep'],
+              },
+            },
+          },
+          {
+            type: 'final-audit',
+            kind: 'check',
+            required_after_close: true,
+            access: { [APP]: { view: true, edit: true } },
+          },
+          {
+            type: 'compliance-signoff',
+            kind: 'check',
+            access: {
+              [APP]: { edit: ['account-manager'], review: ['compliance-officer'] },
+            },
+          },
+        ],
+      },
+    ],
+    user: { apps: { [APP]: { roles: ['account-manager'] } } },
+    params: renderConfig !== undefined ? { render_config: renderConfig } : undefined,
+  };
+}
+
+test('submit mode: render_config splices status_map + event_overrides onto matching action configs', async () => {
+  await seedWorkflow();
+  const renderConfig = {
+    onboarding: {
+      'collect-docs': {
+        status_map: { 'action-required': 'Docs Required' },
+        event_overrides: { submit: 'Upload Documents' },
+      },
+      'final-audit': {
+        status_map: { 'action-required': 'Audit Pending' },
+      },
+    },
+  };
+  const ctx = makeContextWithRenderConfig(renderConfig);
+  const loaded = await loadWorkflowState(ctx, {
+    actionId: 'act-1',
+    signal: 'submit',
+  });
+
+  // targetAction's actionConfig carries the spliced values
+  expect(loaded.actionConfig.status_map).toEqual({ 'action-required': 'Docs Required' });
+  expect(loaded.actionConfig.event_overrides).toEqual({ submit: 'Upload Documents' });
+
+  // sibling action config also received its slice
+  const finalAuditCfg = loaded.workflowConfig.actions.find((a) => a.type === 'final-audit');
+  expect(finalAuditCfg.status_map).toEqual({ 'action-required': 'Audit Pending' });
+
+  // action with no matching slice is untouched
+  const signoffCfg = loaded.workflowConfig.actions.find((a) => a.type === 'compliance-signoff');
+  expect(signoffCfg.status_map).toBeUndefined();
+  expect(signoffCfg.event_overrides).toBeUndefined();
+});
+
+test('workflowId mode: render_config splices onto action configs', async () => {
+  await seedWorkflow();
+  const renderConfig = {
+    onboarding: {
+      'collect-docs': {
+        status_map: { 'action-required': 'Docs Needed' },
+      },
+    },
+  };
+  const ctx = makeContextWithRenderConfig(renderConfig);
+  const loaded = await loadWorkflowState(ctx, { workflowId: 'wf-1' });
+
+  const collectDocsCfg = loaded.workflowConfig.actions.find((a) => a.type === 'collect-docs');
+  expect(collectDocsCfg.status_map).toEqual({ 'action-required': 'Docs Needed' });
+});
+
+test('no render_config on params leaves action configs unchanged', async () => {
+  await seedWorkflow();
+  const ctx = makeContextWithRenderConfig(undefined);
+  const loaded = await loadWorkflowState(ctx, { workflowId: 'wf-1' });
+
+  const collectDocsCfg = loaded.workflowConfig.actions.find((a) => a.type === 'collect-docs');
+  // original status_map from workflowsConfig fixture is preserved
+  expect(collectDocsCfg.status_map).toEqual({ 'action-required': 'original-label' });
+  expect(collectDocsCfg.event_overrides).toBeUndefined();
+});
+
+test('render_config missing the loaded workflow_type leaves configs unchanged', async () => {
+  await seedWorkflow();
+  const renderConfig = {
+    'other-type': { 'collect-docs': { status_map: { 'action-required': 'Other' } } },
+  };
+  const ctx = makeContextWithRenderConfig(renderConfig);
+  const loaded = await loadWorkflowState(ctx, { workflowId: 'wf-1' });
+
+  const collectDocsCfg = loaded.workflowConfig.actions.find((a) => a.type === 'collect-docs');
+  expect(collectDocsCfg.status_map).toEqual({ 'action-required': 'original-label' });
+});
+
+test('render_config missing the action type key leaves that action config unchanged', async () => {
+  await seedWorkflow();
+  const renderConfig = {
+    onboarding: {
+      // only final-audit; collect-docs is absent
+      'final-audit': { status_map: { 'action-required': 'Audit Pending' } },
+    },
+  };
+  const ctx = makeContextWithRenderConfig(renderConfig);
+  const loaded = await loadWorkflowState(ctx, { workflowId: 'wf-1' });
+
+  const collectDocsCfg = loaded.workflowConfig.actions.find((a) => a.type === 'collect-docs');
+  expect(collectDocsCfg.status_map).toEqual({ 'action-required': 'original-label' });
+
+  const finalAuditCfg = loaded.workflowConfig.actions.find((a) => a.type === 'final-audit');
+  expect(finalAuditCfg.status_map).toEqual({ 'action-required': 'Audit Pending' });
+});
+
+test('CAS retry simulation: calling twice with same context yields identical configs (idempotent)', async () => {
+  await seedWorkflow();
+  const renderConfig = {
+    onboarding: {
+      'collect-docs': { status_map: { 'action-required': 'Spliced' } },
+    },
+  };
+  const ctx = makeContextWithRenderConfig(renderConfig);
+
+  const loaded1 = await loadWorkflowState(ctx, { workflowId: 'wf-1' });
+  const cfg1 = loaded1.workflowConfig.actions.find((a) => a.type === 'collect-docs');
+  expect(cfg1.status_map).toEqual({ 'action-required': 'Spliced' });
+
+  // second call on same context — idempotent re-splice
+  const loaded2 = await loadWorkflowState(ctx, { workflowId: 'wf-1' });
+  const cfg2 = loaded2.workflowConfig.actions.find((a) => a.type === 'collect-docs');
+  expect(cfg2.status_map).toEqual({ 'action-required': 'Spliced' });
+
+  // same object instances (no cloning)
+  expect(cfg1).toBe(cfg2);
+});
+
+test('blob status_map is overwritten (not merged) when endpoint slice carries one', async () => {
+  await seedWorkflow();
+  const renderConfig = {
+    onboarding: {
+      'collect-docs': {
+        // endpoint value completely replaces the blob's status_map
+        status_map: { 'in-review': 'Under Review' },
+      },
+    },
+  };
+  const ctx = makeContextWithRenderConfig(renderConfig);
+  const loaded = await loadWorkflowState(ctx, { workflowId: 'wf-1' });
+
+  const collectDocsCfg = loaded.workflowConfig.actions.find((a) => a.type === 'collect-docs');
+  // original key 'action-required' is gone — endpoint value is authoritative
+  expect(collectDocsCfg.status_map).toEqual({ 'in-review': 'Under Review' });
+  expect(collectDocsCfg.status_map['action-required']).toBeUndefined();
+});
