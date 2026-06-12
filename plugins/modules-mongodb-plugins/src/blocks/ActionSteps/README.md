@@ -112,7 +112,33 @@ The group's effective status is derived from its actions in this order:
 
 ## Events
 
-The block doesn't fire its own events. Action rows use the bundled `Link` component, so navigation happens via `pageId` / `urlQuery` on each `action.link`.
+| Event | Fires with | When |
+|---|---|---|
+| `onActionClick` | `{ action }` — the full action object that was clicked (`{ _id, kind, status, link, message, … }`) | A linked action row is clicked **and** the event is wired. |
+
+### `onActionClick` — fire instead of navigate
+
+`onActionClick` lets a host page handle a clicked action in-context (e.g. open a check action in a modal) rather than navigating to the action's link.
+
+- **When wired** (the event appears on the block's `events`), clicking a linked action row fires `onActionClick` with the clicked `action` object passed through verbatim and **does not navigate**. Hosts branch on `_event.action.kind` / `_event.action._id` / `_event.action.link`. The clicked row renders as an `<a>` with the same `classNames.link` / secondary-text treatment as the default `Link`, so the visual appearance is identical — only the click behaviour differs.
+- **When not wired** (no `onActionClick` registered — the default), behaviour is unchanged: each action row is a `Link` to its server-resolved `action.link` (`pageId` / `urlQuery`). This keeps notifications, overviews, and deep-links working with zero host changes.
+- **Linkless rows stay inert in both modes.** A row whose `action.link` is missing or has `disabled: true` keeps the disabled rendering and **never fires the event** — so a host's `Link`-fallback wiring never sees a null link.
+
+Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionClick` is per-action, not per-group.
+
+```yaml
+- id: gate_steps
+  type: ActionSteps
+  events:
+    onActionClick:
+      - id: open_action
+        type: SetState
+        params:
+          active_action:
+            _event: action
+  properties:
+    # …
+```
 
 ## CSS Keys
 
