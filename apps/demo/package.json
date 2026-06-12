@@ -5,7 +5,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "ldf:b": "lowdefy build",
+    "ldf:b": "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-build-only-not-a-real-secret} lowdefy build",
     "ldf:d": "lowdefy dev --log-level=debug --no-open",
     "ldf": "lowdefy dev --no-open",
     "ldf:b:i": "infisical run --env=dev --path=/apps/demo -- lowdefy build",

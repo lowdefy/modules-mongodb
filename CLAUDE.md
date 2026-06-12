@@ -35,6 +35,16 @@ plugins/            — Custom Lowdefy plugins
 docs/               — Repo-level docs (idioms shared across modules)
 ```
 
+## Building & Running the App
+
+Agents almost always want to **verify config compiles**, not run a live server. Reach for the right command:
+
+- **Build check (default):** `pnpm ldf:b` from `apps/demo` (or `pnpm --filter @lowdefy/modules-demo ldf:b` from the root). This is the only command needed to confirm YAML/config compiles. It needs **no secrets, no Infisical, and no network beyond npm** — the script supplies a build-only `NEXTAUTH_SECRET` placeholder (and respects a real `NEXTAUTH_SECRET` if one is exported). Build failures here are real config errors; act on them.
+- **Never run servers in the foreground.** `lowdefy dev` (`pnpm ldf` / `pnpm ldf:d`), `lowdefy start`, and `pnpm e2e` are long-running processes that **never exit** — a plain foreground call blocks until timeout and looks like a hang. If you genuinely need one, start it in the background and poll its health URL (`/api/auth/session`); otherwise don't run it for a build check.
+- **The `:i` (Infisical) variants don't work in the sandbox.** `ldf:b:i` / `ldf:d:i` / `ldf:i` fetch secrets from `app.infisical.com`, which the sandbox network blocks (TLS rejected). Use plain `ldf:b` for build checks.
+- **A build check is not a smoke test.** Running the app (dev server, e2e) needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate.
+- **`pnpm build` at the repo root does *not* build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
+
 ## Documentation
 
 Consumer-facing documentation for this repo follows a fixed layout. When adding or changing a module, plugin, or block, update the relevant doc.
