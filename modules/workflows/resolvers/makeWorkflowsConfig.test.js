@@ -1098,3 +1098,144 @@ test("validateTrackerEdges: longer cycle (a → b → c → a) hard-errors namin
     /tracker cycle/,
   );
 });
+
+// --- validateEvent: mirror signals (Part 48 D4) --------------------------------
+
+test("makeWorkflowsConfig: tracker action with mirror-signal event key passes", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "install-device", status: "action-required" }],
+    actions: [
+      {
+        type: "install-device",
+        kind: "tracker",
+        tracker: { child_workflow_type: "device-installation" },
+        event: {
+          internal_mirror_child_completed: { display: { demo: { title: "Child completed" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: form action with mirror-signal event key hard-errors with kind-restriction message", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        form: [],
+        event: {
+          internal_mirror_child_completed: { display: { demo: { title: "x" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/mirror signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/kind: tracker/);
+});
+
+test("makeWorkflowsConfig: check action with mirror-signal event key hard-errors with kind-restriction message", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "check",
+        event: {
+          internal_mirror_child_active: { display: { demo: { title: "x" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/mirror signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/kind: tracker/);
+});
+
+test("makeWorkflowsConfig: tracker action with unknown event key still hard-errors", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "install-device", status: "action-required" }],
+    actions: [
+      {
+        type: "install-device",
+        kind: "tracker",
+        tracker: { child_workflow_type: "device-installation" },
+        event: {
+          completely_unknown_signal: { display: { demo: { title: "x" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/is not a known signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/completely_unknown_signal/);
+});
+
+// --- validateWorkflowEvent: workflow-level event map (Part 48 D8) ------------
+
+test("makeWorkflowsConfig: workflow-level event with lifecycle signal keys passes", () => {
+  const wf = {
+    ...validWorkflow,
+    event: {
+      started: { display: { demo: { title: "Onboarding started" } } },
+      cancelled: { display: { demo: { title: "Onboarding cancelled" } } },
+      closed: { display: { demo: { title: "Onboarding closed" } } },
+    },
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf] })
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: workflow-level event with unknown key hard-errors", () => {
+  const wf = {
+    ...validWorkflow,
+    event: {
+      started: { display: { demo: { title: "x" } } },
+      submit: { display: { demo: { title: "x" } } },
+    },
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf] })
+  ).toThrow(/is not a known lifecycle signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf] })
+  ).toThrow(/submit/);
+});
+
+test("makeWorkflowsConfig: workflow-level event is not present on the returned config blob", () => {
+  const wf = {
+    ...validWorkflow,
+    event: {
+      started: { display: { demo: { title: "x" } } },
+    },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect("event" in out).toBe(false);
+});

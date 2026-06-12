@@ -20,3 +20,15 @@ export const HOOK_SIGNALS = [
 ];
 
 export const HOOK_PHASES = ['pre', 'post'];
+
+// Mirror signals fired against tracker actions when a child workflow reaches
+// a terminal state. Only valid as event: keys on kind: tracker actions (D4).
+export const MIRROR_SIGNALS = [
+  'internal_mirror_child_active',
+  'internal_mirror_child_completed',
+  'internal_mirror_child_cancelled',
+];
+
+// Workflow-level lifecycle signals. Valid as keys in the workflow.event map
+// (D8). Delivered via {type}-start/cancel/close endpoints (task 9).
+export const LIFECYCLE_SIGNALS = ['started', 'cancelled', 'closed'];

@@ -1,4 +1,4 @@
-import { HOOK_SIGNALS, HOOK_PHASES } from './hookSignals.js';
+import { HOOK_SIGNALS, HOOK_PHASES, MIRROR_SIGNALS, LIFECYCLE_SIGNALS } from './hookSignals.js';
 import { collectTrackerEdges } from './trackerEdges.js';
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
@@ -147,13 +147,20 @@ function validateHooks(workflow, action) {
 function validateEvent(workflow, action) {
   if (!action.event) return;
   const where = `action "${action.type}"`;
+  const isTracker = action.kind === 'tracker';
   for (const signal of Object.keys(action.event)) {
-    if (!HOOK_SIGNALS.includes(signal)) {
+    if (HOOK_SIGNALS.includes(signal)) continue;
+    if (isTracker && MIRROR_SIGNALS.includes(signal)) continue;
+    if (!isTracker && MIRROR_SIGNALS.includes(signal)) {
       fail(
         workflow.type,
-        `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}).`
+        `${where} event key "${signal}" is a mirror signal and is only valid on kind: tracker actions (allowed for tracker: ${[...HOOK_SIGNALS, ...MIRROR_SIGNALS].join(', ')}; allowed for non-tracker: ${HOOK_SIGNALS.join(', ')}).`
       );
     }
+    fail(
+      workflow.type,
+      `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}${isTracker ? `, ${MIRROR_SIGNALS.join(', ')}` : ''}).`
+    );
   }
 }
 
@@ -453,6 +460,28 @@ function validateAction(workflow, action) {
   validateEvent(workflow, action);
 }
 
+// Part 48 D8: workflow-level event map. Keys must be LIFECYCLE_SIGNALS
+// (started / cancelled / closed). Payload internals are not validated here —
+// depth matches validateEvent (signal keys only).
+function validateWorkflowEvent(workflow) {
+  if (!workflow.event) return;
+  const event = workflow.event;
+  if (event === null || typeof event !== 'object' || Array.isArray(event)) {
+    fail(
+      workflow.type,
+      `workflow event must be a plain object keyed by lifecycle signals (expected keys: ${LIFECYCLE_SIGNALS.join(', ')}).`
+    );
+  }
+  for (const signal of Object.keys(event)) {
+    if (!LIFECYCLE_SIGNALS.includes(signal)) {
+      fail(
+        workflow.type,
+        `workflow event key "${signal}" is not a known lifecycle signal (expected one of: ${LIFECYCLE_SIGNALS.join(', ')}).`
+      );
+    }
+  }
+}
+
 function validateWorkflow(workflow) {
   if ('entity_type' in workflow) {
     fail(
@@ -470,6 +499,8 @@ function validateWorkflow(workflow) {
       'missing required "entity_ref_key" — the event-references key for the workflow\'s entity (e.g. "lead_ids"), written into event docs so events surface on the entity.'
     );
   }
+
+  validateWorkflowEvent(workflow);
 
   const actions = workflow.actions ?? [];
   const groups = workflow.action_groups ?? [];
