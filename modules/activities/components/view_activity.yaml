@@ -101,5 +101,53 @@ blocks:
               fields:
                 _module.var: fields.attributes
         else: []
+    # Agenda topics — rendered from the agenda-tasks lookup (tasks in the
+    # actions collection linked via activity_ids), not from the activity
+    # doc. Tasks marked not-required are already filtered out by the
+    # lookup stage. Hidden when the activity has none.
+    - - id: agenda_tasks_view
+        type: Html
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _request: get_activity.0.agenda_tasks
+                  - []
+            - 0
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div>
+                  <div style="font-size:14px; font-weight:600; color:var(--ant-color-text-heading); margin-bottom:8px">Agenda Topics</div>
+                  {% for task in tasks %}
+                  <div style="border:1px solid var(--ant-color-border-secondary); border-radius:8px; padding:12px 14px; margin-bottom:8px">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap">
+                      <span style="font-size:14px; font-weight:600; color:var(--ant-color-text-heading)">{{ task.title }}</span>
+                      {% set stage_color = {'action-required': '#1890ff', 'in-progress': '#fa8c16', 'done': '#52c41a'}[task.current_stage] or '#8c8c8c' %}
+                      <span style="display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; line-height:1.5; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 28%, transparent)">
+                        <span style="width:6px; height:6px; border-radius:50%; background:{{ stage_color }}"></span>{{ task.current_stage | replace('-', ' ') }}
+                      </span>
+                    </div>
+                    {% if task.description %}
+                    <div style="font-size:13px; color:var(--ant-color-text-secondary); margin-top:6px; white-space:pre-wrap">{{ task.description }}</div>
+                    {% endif %}
+                    {% if task.attributes.action %}
+                    <div style="font-size:13px; color:var(--ant-color-text-secondary); margin-top:6px; white-space:pre-wrap"><strong>Action:</strong> {{ task.attributes.action }}</div>
+                    {% endif %}
+                    {% if task.assignees[0] or task.due_date %}
+                    <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--ant-color-text-tertiary); margin-top:8px">
+                      {% if task.assignees[0] %}<span>Responsible: {{ task.assignees[0].name }}</span>{% endif %}
+                      {% if task.due_date %}<span>Due: {{ task.due_date | date('D MMM YYYY') }}</span>{% endif %}
+                    </div>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                </div>
+              on:
+                tasks:
+                  _if_none:
+                    - _request: get_activity.0.agenda_tasks
+                    - []
     # Consumer main-slot extension
     - _module.var: components.main_slots

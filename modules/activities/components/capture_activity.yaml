@@ -175,6 +175,7 @@ blocks:
                       _if_none:
                         - _var: prefill.references
                         - {}
+                    agenda_topics: []
                     # Companies' company-selector cycle-check state — init
                     # so its get_companies_for_selector request doesn't
                     # ConfigWarning on hosts that don't otherwise declare it.
@@ -185,9 +186,15 @@ blocks:
                   - - id: validate
                       type: Validate
                       params:
-                        - type
-                        - title
-                        - attributes.date
+                        blockIds:
+                          - type
+                          - title
+                          - attributes.date
+                        # Agenda topic rows render with array indices in
+                        # their block ids (agenda_topics.0.topic, …) — the
+                        # topic is required to create the row's task.
+                        regex:
+                          - '^agenda_topics\.\d+\.topic$'
                     - id: create
                       type: CallAPI
                       params:
@@ -214,6 +221,10 @@ blocks:
                             _if_none:
                               - _state: attributes
                               - {}
+                          agenda_topics:
+                            _if_none:
+                              - _state: agenda_topics
+                              - []
                           references:
                             _if_none:
                               - _state: references
@@ -239,6 +250,7 @@ blocks:
                     contacts: []
                     company_ids: []
                     attributes: {}
+                    agenda_topics: []
                     references: {}
                     cycle_check_self_id: null
                     cycle_check_ids: []

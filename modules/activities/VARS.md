@@ -61,10 +61,19 @@ vars:
 
 ## `lookup_collections`
 
-`object` — Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts and companies on activity detail/list pages. Override when an app points its contacts/companies connections at differently-named collections.
+`object` — Real Mongo collection names used by the read-pipeline `$lookup` stages that enrich linked contacts, companies, and agenda tasks on activity detail/list pages. Override when an app points its connections at differently-named collections.
 
 - **`contacts`** — `user-contacts`. Collection joined by `lookup_contacts.yaml` (`contacts.contact_id` → `_id`).
 - **`companies`** — `companies`. Collection joined by `lookup_companies.yaml` (`company_ids` → `_id`).
+- **`actions`** — `actions`. Collection joined by `lookup_agenda_tasks.yaml` (`_id` → `activity_ids`) to fetch the tasks created from meeting agenda topics. Set to the same real collection name the `actions-collection` connection is mapped to.
+
+## Agenda topics
+
+Meeting activities carry a built-in Agenda Topics section in the form (topic, details, action, person responsible, due date). Topics are **not** stored on the activity doc — `create-activity` / `update-activity` persist each one as a task document in the actions collection (`kind: task`, `title` = topic, `description` = details, `attributes.action`, `assignees`, `due_date`, `{app_name}.message`, initial stage `action-required`), linked back via `activity_ids` and stamped with the activity's `company_ids` and `references` payload (e.g. `deal_ids`) so they surface in host-app task lists. Topics removed in the edit form get a `not-required` status entry pushed (never deleted); deleting an activity marks its open tasks `not-required`. The `create-activity` / `update-activity` / `delete-activity` events carry the affected task ids in `references.action_ids`, and task status entries reference that event's id.
+
+## `disable_company_edit`
+
+`boolean` — Default `false`. Render the linked-companies selector read-only (disabled) on the edit page, so linked companies stay visible but can't be changed after creation. The new page and quick-capture prefill still set companies, and display-only company chips on the detail page are unaffected.
 
 ## `company_name_field`
 

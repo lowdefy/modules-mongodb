@@ -1,0 +1,15 @@
+# Tasks created from meeting agenda topics are written here. The collection
+# is shared with the host app's adhoc tasks and workflow-engine actions —
+# agenda-topic docs are scoped with `kind: task` + `activity_ids`.
+id: actions-collection
+type: MongoDBCollection
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  collection: actions
+  changeLog:
+    collection: log-changes
+    meta:
+      user:
+        _user: true
+  write: true

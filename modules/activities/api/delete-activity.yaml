@@ -24,6 +24,38 @@ routine:
             company_ids: 1
             updated: 1
 
+  # Open agenda-topic tasks for this activity — marked not-required below
+  # so deleting a meeting doesn't leave orphan open tasks in the host
+  # app's task lists. Done tasks are left as they are.
+  - id: find-agenda-tasks
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      query:
+        kind: task
+        activity_ids:
+          _payload: activity_id
+      options:
+        projection:
+          _id: 1
+          status: 1
+  - :set_state:
+      open_task_ids:
+        _array.map:
+          on:
+            _array.filter:
+              on:
+                _step: find-agenda-tasks
+              callback:
+                _function:
+                  __eq:
+                    - __args: 0.status.0.stage
+                    - action-required
+          callback:
+            _function:
+              __args: 0._id
+
   - id: soft-delete
     type: MongoDBUpdateOne
     connectionId:
@@ -123,9 +155,42 @@ routine:
             _step: load.0.company_ids
           activity_ids:
             - _payload: activity_id
+          # Open agenda tasks marked not-required below with this event's
+          # id on the status entry they gain.
+          action_ids:
+            _state: open_task_ids
         metadata:
           activity_id:
             _payload: activity_id
+
+  # One set-based update; an empty $in simply matches nothing.
+  - id: mark-open-tasks-not-required
+    type: MongoDBUpdateMany
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      filter:
+        _id:
+          $in:
+            _state: open_task_ids
+        kind: task
+      update:
+        $push:
+          status:
+            $position: 0
+            $each:
+              - stage: not-required
+                event_id:
+                  _step: new-event.eventId
+                created:
+                  _ref:
+                    module: events
+                    component: change_stamp
+        $set:
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
 
   - :return:
       success: true

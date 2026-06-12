@@ -45,7 +45,7 @@ vars:
           they bind to `state.attributes.*`.
   components:
     type: object
-    description: 'Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns'
+    description: "Page slot overrides: table_columns, filters, main_slots, sidebar_slots, download_columns"
     properties:
       table_columns:
         default: []
@@ -111,8 +111,8 @@ vars:
     type: object
     description: >-
       Real Mongo collection names used by the read-pipeline `$lookup` stages
-      that enrich linked contacts and companies on activity detail/list pages.
-      Override when an app points its contacts/companies connections at
+      that enrich linked contacts, companies, and agenda tasks on activity
+      detail/list pages. Override when an app points its connections at
       differently-named collections.
     properties:
       contacts:
@@ -123,6 +123,22 @@ vars:
         type: string
         default: companies
         description: Collection joined by `lookup_companies.yaml` (company_ids → _id).
+      actions:
+        type: string
+        default: actions
+        description: >-
+          Collection joined by `lookup_agenda_tasks.yaml` (_id → activity_ids)
+          to fetch the tasks created from meeting agenda topics. Set to the
+          same real collection name the `actions-collection` connection is
+          mapped to.
+  disable_company_edit:
+    type: boolean
+    default: false
+    description: >-
+      Render the linked-companies selector read-only (disabled) on the edit
+      page, so linked companies stay visible but can't be changed after
+      creation. The new page and quick-capture prefill still set companies,
+      and display-only company chips on the detail page are unaffected.
   company_name_field:
     default: name
     description: >-
@@ -147,6 +163,8 @@ exports:
   connections:
     - id: activities-collection
       description: MongoDB connection for activity records
+    - id: actions-collection
+      description: MongoDB connection for the actions collection where meeting agenda topics are stored as tasks
   api:
     - id: create-activity
       description: Insert activity, emit create-activity event
@@ -173,6 +191,7 @@ exports:
 
 connections:
   - _ref: connections/activities-collection.yaml
+  - _ref: connections/actions-collection.yaml
 
 api:
   - _ref: api/create-activity.yaml
@@ -218,9 +237,9 @@ secrets:
     description: MongoDB connection URI
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: '^3'
-  - name: '@lowdefy/community-plugin-xlsx'
-    version: '^1'
-  - name: '@lowdefy/modules-mongodb-plugins'
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^3"
+  - name: "@lowdefy/community-plugin-xlsx"
+    version: "^1"
+  - name: "@lowdefy/modules-mongodb-plugins"
     version: "^0.7.0"

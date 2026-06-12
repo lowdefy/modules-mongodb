@@ -10,8 +10,12 @@
 #   - Linked contacts, relabelled per type (Participants / CC / Attendees).
 #   - Linked companies — gated behind the `show_company` component var
 #     (default true) so full new/edit pages keep company linking while
-#     consumers that seed the company via prefill can hide it.
+#     consumers that seed the company via prefill can hide it. The edit
+#     page passes `disable_company` (from the module-level
+#     `disable_company_edit` var) to render the selector read-only.
 #   - A consumer-extension hook (`fields.attributes`) for app-level fields.
+#   - Agenda topics (meeting only) — saved as tasks in the actions
+#     collection by the create/update APIs, not on the activity doc.
 #
 # The form is stateless: it doesn't know whether it's creating or updating
 # an activity. The wrapping page or modal seeds initial state, runs
@@ -20,6 +24,8 @@
 #
 # Vars (all optional):
 #   show_company — render the linked-companies selector. Default true.
+#   disable_company — render the linked-companies selector read-only.
+#     Default false.
 id: form_activity
 type: Box
 layout:
@@ -125,6 +131,10 @@ blocks:
                 field_id: company_ids
                 mode: MultipleSelector
                 title: Linked Companies
+                disabled:
+                  _var:
+                    key: disable_company
+                    default: false
         else: []
     # Consumer-defined attribute fields (only when provided).
     - _build.if:
@@ -136,6 +146,87 @@ blocks:
         then:
           _module.var: fields.attributes
         else: []
+    # Agenda topics — meeting only. Topics are not stored on the activity:
+    # create-activity / update-activity persist each one as a task doc in
+    # the actions collection (kind: task, activity_ids link). Items seeded
+    # by the edit page carry a hidden `_id` (the task _id) that round-trips
+    # through the ControlledList so saves update the right task; items
+    # added in the form have no `_id` and the API mints one.
+    - - id: agenda_topics_alert
+        type: Alert
+        visible:
+          _eq:
+            - _state: type
+            - meeting
+        properties:
+          type: warning
+          showIcon: false
+          message: >-
+            Adding, editing, or removing agenda topics will create or update
+            tasks linked to this activity and its deal or company. Removed
+            topics are marked as not required.
+      - id: agenda_topics
+        type: ControlledList
+        visible:
+          _eq:
+            - _state: type
+            - meeting
+        layout:
+          gap: 8
+        properties:
+          title: Agenda Topics
+          addItemButton:
+            title: Add Agenda Topic
+          noDataTitle: No Agenda Topics
+        blocks:
+          - id: agenda_topics.$.topic
+            type: TextInput
+            required: true
+            layout:
+              span: 12
+            properties:
+              title: Topic
+              placeholder: Topic name
+          - id: agenda_topics.$.details
+            type: TextArea
+            layout:
+              span: 16
+            properties:
+              title: Details
+          - id: agenda_topics.$.action
+            type: TextArea
+            layout:
+              span: 8
+            properties:
+              title: Action
+          - id: agenda_topics.$.person_responsible
+            type: Selector
+            layout:
+              span: 12
+            properties:
+              title: Person Responsible
+              # Options built with _mql.aggregate (not _array.map/_function) so the
+              # option value objects are created fresh by mingo — runtime-evaluated
+              # config objects carry hidden ~k source markers that break the
+              # Selector's stable-serialize value↔option match on edit/reload.
+              options:
+                _mql.aggregate:
+                  on:
+                    _if_none:
+                      - _state: contacts
+                      - []
+                  pipeline:
+                    - $project:
+                        label: $name
+                        value:
+                          contact_id: $contact_id
+                          name: $name
+          - id: agenda_topics.$.due_date
+            type: DateSelector
+            layout:
+              span: 12
+            properties:
+              title: Due Date
     # Attachments — upload files against the activity. The wrapping page/modal
     # seeds `activity_id` in state (reused as the create _id), so files link to
     # the activity before it exists. Requires the host app to register the
