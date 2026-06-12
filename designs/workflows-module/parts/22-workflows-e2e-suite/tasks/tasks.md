@@ -6,21 +6,36 @@ These tasks implement `designs/workflows-module/parts/22-workflows-e2e-suite/des
 
 ## Tasks
 
-| #   | File                                    | Summary                                                                                               | Depends On |
-| --- | --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-test-app-scaffold.md`               | Create `apps/workflows-test/`: module wiring, `things` entity, empty workflow_config; builds & serves | —          |
-| 2   | `02-e2e-harness-and-workflow-fixture.md`| Playwright harness (port 3001) + `workflow` fixture driving real Lowdefy APIs + boot smoke spec       | 1          |
-| 3   | `03-cluster-form-lifecycle.md`          | Template cluster: review-verb form lifecycle (submit/approve/request_changes/progress/not_required)   | 2          |
-| 4   | `04-cluster-check-blocked-by.md`        | Check actions with type dep + group-id dep; blocker completion unblocks dependents                    | 3          |
-| 5   | `05-cluster-cascade-keyed.md`           | Pre-hook cascade `block`/`error`/`activate` at siblings + `upsert: true` keyed spawn                  | 3          |
-| 6   | `06-cluster-error-recovery.md`          | Error-verb path: cascade to error stage, event + notification, `-error` page, resolve → done          | 3          |
-| 7   | `07-cluster-tracker-child.md`           | Parent tracker mirrors child workflow lifecycle, incl. terminal-row recovery                          | 3          |
-| 8   | `08-cluster-field-gallery.md`           | Render sweep over all 27 field components + behaviors spec on one representative per family           | 3          |
-| 9   | `09-cluster-operational-lifecycle.md`   | Tail-only: start/cancel/close/get-* operational APIs end-to-end, close-sweep edge cases               | 3          |
-| 10  | `10-cluster-access-verbs.md`            | Per-verb button/page visibility per role; endpoint rejects signal whose verb the role lacks           | 3          |
-| 11  | `11-demo-e2e-cleanup.md`                | Delete the two skipped demo specs; settle `form-submit-buttons.spec.js` disposition                   | 6          |
-| 12  | `12-ci-e2e-lane.md`                     | CI lane building + serving both apps and running their e2e suites                                     | 3–10       |
-| 13  | `13-unit-test-backfill.md`              | Verify audit-flagged unit gaps against existing jest files; add the missing tests                     | —          |
+| #   | File                                    | Summary                                                                                               | Depends On | Status |
+| --- | --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------- | ------ |
+| 1   | `01-test-app-scaffold.md`               | Create `apps/workflows-test/`: module wiring, `things` entity, empty workflow_config; builds & serves | —          | ✅ Done (`2ef8d36`) |
+| 2   | `02-e2e-harness-and-workflow-fixture.md`| Playwright harness (port 3001) + `workflow` fixture driving real Lowdefy APIs + boot smoke spec       | 1          | ✅ Done (`2197fbb`) |
+| 3   | `03-cluster-form-lifecycle.md`          | Template cluster: review-verb form lifecycle (submit/approve/request_changes/progress/not_required)   | 2          | ✅ Done (`2f97a7e`) |
+| 4   | `04-cluster-check-blocked-by.md`        | Check actions with type dep + group-id dep; blocker completion unblocks dependents                    | 3          | ✅ Done (`0a6ec7d`) |
+| 5   | `05-cluster-cascade-keyed.md`           | Pre-hook cascade `block`/`error`/`activate` at siblings + `upsert: true` keyed spawn                  | 3          | ⬜ To do |
+| 6   | `06-cluster-error-recovery.md`          | Error-verb path: cascade to error stage, event + notification, `-error` page, resolve → done          | 3          | ⬜ To do |
+| 7   | `07-cluster-tracker-child.md`           | Parent tracker mirrors child workflow lifecycle, incl. terminal-row recovery                          | 3          | ⬜ To do |
+| 8   | `08-cluster-field-gallery.md`           | Render sweep over all 27 field components + behaviors spec on one representative per family           | 3          | ⬜ To do |
+| 9   | `09-cluster-operational-lifecycle.md`   | Tail-only: start/cancel/close/get-* operational APIs end-to-end, close-sweep edge cases               | 3          | ⬜ To do |
+| 10  | `10-cluster-access-verbs.md`            | Per-verb button/page visibility per role; endpoint rejects signal whose verb the role lacks           | 3          | ⬜ To do |
+| 11  | `11-demo-e2e-cleanup.md`                | Delete the two skipped demo specs; settle `form-submit-buttons.spec.js` disposition                   | 6          | ⬜ To do |
+| 12  | `12-ci-e2e-lane.md`                     | CI lane building + serving both apps and running their e2e suites                                     | 3–10       | ⬜ To do |
+| 13  | `13-unit-test-backfill.md`              | Verify audit-flagged unit gaps against existing jest files; add the missing tests                     | —          | ⬜ To do |
+
+## Progress
+
+**Tasks 1–4 complete** (branch `part-22-e2e-tasks-1-4`). Tasks 5–13 remain.
+
+**⚠️ Target-state pivot — read before implementing tasks 5–10.** This suite is written against the **target state of the in-flight parts 40/46/48**, not current `main`. Two facts the remaining cluster tasks must follow (tasks 3–4 already do):
+
+1. **Per-workflow write endpoints (Part 48 D5).** All write endpoints are per-workflow: `workflows/{type}-submit`, `{type}-start`, `{type}-cancel`, `{type}-close`. Submit is per-**workflow** (not per-action `{type}-{action}-submit`); the action is identified by `action_id` in the payload. The `workflow` fixture already drives these target ids. The generic `start-workflow`/`cancel-workflow`/`close-workflow` are retired.
+2. **Check rows open the in-context modal (Part 40 D5).** Clicking a `kind:check` row in `actions-on-entity` opens the modal, it does **not** navigate. Specs that need the static `workflow-action-{edit,view,review}` pages reach them by their canonical `?action_id=` URLs.
+
+**Expected-failing by design.** `lowdefy build` validates the workflow configs cleanly, but the build (and any e2e run) currently **fails on the pre-48 gap**: the module form templates still reference the stale `update-action-{type}` endpoint, which Part 48 repoints to `{type}-submit`. This is the intended "suite is the spec" state — do **not** "fix" it inside Part 22; it resolves when Parts 40/48 land. (Per the implementer's standing instruction: the system is unvalidated, tests guide the in-flight implementation; do not chase green.)
+
+**Self-contained Mongo (task 2 deviation, kept).** The harness boots `mongodb-memory-server` (single-node replica set, for the engine's transactions) via `configureMdb` + the mdb plugin `globalSetup` — no external Mongo, overridable via `LOWDEFY_E2E_MONGODB_URI`. This is a deliberate improvement over the task text's "copy the demo's `.env.e2e`" (better for CI and local runs). The `mdb` fixture wipes all collections between tests, so cluster specs need no manual teardown.
+
+**Open assumption for Part 40 (flag in its task).** The post-40 check-action-surface edit button id is assumed to be `button_submit` (matching the form edit template, per Part 40's "same nullary signal button bar"). The current static `workflow-action-edit.yaml` emits `button_submit_edit`; Part 40 must rename it (and repoint to `{type}-submit` with `signal: submit`) for the check spec's completion clicks to land.
 
 ## Ordering Rationale
 
