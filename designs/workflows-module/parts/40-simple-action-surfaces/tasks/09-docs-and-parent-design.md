@@ -16,6 +16,9 @@ design's reconciliation table was applied 2026-06-10.
      blockId + open contract in one or two sentences, the
      "bundled by `actions-on-entity`; host pages compose it with
      `EventsTimeline.onActionClick`" rule, the `on_complete` var).
+   - Exports: update the `workflows-events-timeline` entry with the new
+     `on_action_click` var (task 8 Part B — optional actions array; absent →
+     action cards navigate).
    - Pages: update the `workflow-action-edit` / `-view` / `-review`
      descriptions to the signal model (no status selector; signal button bar
      resolved server-side via `GetWorkflowAction`; error recovery =
@@ -40,7 +43,8 @@ design's reconciliation table was applied 2026-06-10.
    the other rows.
 5. **Full verification**:
    - `pnpm build` (repo root — plugin + module packages);
-   - `pnpm test` (root jest — connection tests + the new block tests);
+   - `pnpm test` (root jest — connection/engine tests; no block tests exist —
+     dropped per tasks.md "Decisions applied" #3);
    - the demo app's lowdefy build (`apps/demo`, per its package scripts)
      completes with no missing-`_ref`, duplicate-requestId, or operator
      errors.

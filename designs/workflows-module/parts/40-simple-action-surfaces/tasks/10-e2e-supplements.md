@@ -55,10 +55,12 @@ moved to Part 46 and is **not** in scope here.
      `actions-on-entity` navigates to its action page (no modal).
    - (g) **Timeline card**: an event-timeline action card opens the modal
      for a `check` action and navigates for other kinds — on a demo page
-     composing the timeline with the modal (if no demo page wires
-     `EventsTimeline.onActionClick` after Part 46 task 11, add the wiring on
-     the demo entity page hosting the timeline, per the design's
-     host-composition contract).
+     composing the timeline with the modal. If no demo page wires the
+     timeline yet, add the wiring on the demo entity page hosting
+     `workflows-events-timeline`, passing the kind-branch actions via its
+     `on_action_click` var (task 8 Part B). The page already has the modal
+     instance if it embeds `actions-on-entity` — target that one; otherwise
+     drop `check-action-modal` once (the design's host-composition contract).
    - **`allow_not_required` supplement**: Mark Not Required is hidden by
      default on the check edit surface; on the action authored
      `allow_not_required: true` it renders (server-resolved
@@ -84,9 +86,9 @@ moved to Part 46 and is **not** in scope here.
 
 ## Notes
 
-- **Coordinate with the `part-46-tasks-11-12` worktree** — Part 46 task 11
-  migrates the demo's events-timeline surface and its specs; run this task
-  against the post-46 tree.
+- Part 46 (including tasks 11–12, the events-timeline migration) is fully
+  landed on `workflows-module` — run against the current tree; no worktree
+  coordination needed.
 - Universal-fields assertions ((a)'s due-date persistence) depend on
   **Part 24** shipping the real renderer. If Part 24 hasn't landed when this
   task runs, assert the stage/status outcomes and mark the field-persistence

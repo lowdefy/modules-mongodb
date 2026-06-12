@@ -34,8 +34,10 @@ Rewrite `modules/workflows/pages/workflow-action-review.yaml`:
    - Replace `prime_form_state` (`:53–56`) with the same two SetState steps
      as task 4 (`set_current_action` spreading the response;
      `seed_working_state` seeding `current_action.fields.{assignees, due_date,
-     description}` from the response and `current_action.comment: null`).
-     Seeding `fields` on the review page is deliberate: universal-fields
+     description}` from the response, `current_action.comment: null`, and the
+     mode literal **`current_action.mode: review`** — tasks.md "Decisions
+     applied" #4). Seeding `fields` on the review page is deliberate:
+     universal-fields
      editability is edit-verb-gated (design D1), so an `edit`-verb reviewer
      gets live inputs bound at `current_action.fields.*`.
 2. **Body** — replace the `action_card` (`:60–129`), the floating-actions
@@ -45,11 +47,11 @@ Rewrite `modules/workflows/pages/workflow-action-review.yaml`:
    blocks:
      - _ref:
          path: components/check-action-surface.yaml
-         vars:
-           mode: review
    ```
 
-   The request-changes modal now lives inside the surface (task 3 block 7) —
+   No `mode` var — the surface reads `_state: current_action.mode`, set in
+   `onMount` above. The request-changes modal now lives inside the surface
+   (task 3 block 7) —
    "keep `request_changes_modal`" from the design's Files table is satisfied
    there, not on the page.
 3. **Deletions to verify gone**: `interaction:`, the page-level

@@ -6,9 +6,11 @@ The live working surfaces (`actions-on-entity`, the event-timeline action
 cards) should open a **check** action in place, without a full page
 navigation. Design D5 ships this as a standalone, reusable component: a single
 `Modal` block with a **fixed blockId `check_action_modal`** and a fixed open
-contract, wrapping task 3's `check-action-surface` with `mode` **derived from
-the fetched action at open time**. The modal is an in-app shortcut layered on
-hosts — never a replacement for the canonical pages.
+contract, wrapping task 3's `check-action-surface`. The open handler **sets
+the derived `current_action.mode`** from the fetched action (the surface
+reads mode from state — tasks.md "Decisions applied" #4). The modal is an
+in-app shortcut layered on hosts — never a replacement for the canonical
+pages.
 
 Fixed open contract (any host wires it the same way — design D5):
 
@@ -54,17 +56,18 @@ D1) — `view` mode's status history (stateful List, no request) is modal-safe.
    - **`onOpen`**: `Request get_workflow_action` → `set_current_action`
      (spread the response into `current_action`) → `seed_working_state`
      (`current_action.fields.{assignees, due_date, description}` from the
-     response; `current_action.comment: null`) — the same population
+     response; `current_action.comment: null`) → **`set_mode`** — a SetState
+     writing `current_action.mode` via the derivation chain above (nested
+     `_if`s reading `_state: current_action.status.0.stage`,
+     `_state: current_action.allowed.review`,
+     `_state: current_action.allowed.edit`, with `_array.includes` for the
+     actionable-stage test). This is the modal-side half of the mode contract
+     (tasks.md "Decisions applied" #4): pages write a literal, the modal
+     writes the derived value — the surface reads
+     `_state: current_action.mode` either way. Otherwise the same population
      convention as the pages (tasks 4–6). One read convention, two writers
      (design D1).
    - **Body**: `_ref` `components/check-action-surface.yaml` with:
-     - `mode`: the runtime `_if` chain above, reading
-       `_state: current_action.status.0.stage`,
-       `_state: current_action.allowed.review`,
-       `_state: current_action.allowed.edit` (and
-       `_array.includes` for the actionable-stage test). Remember the surface
-       only evaluates `mode` in runtime positions (tasks.md note 6) — this is
-       why a derived mode works at all.
      - `on_complete`:
 
        ```yaml
@@ -121,17 +124,15 @@ D1) — `view` mode's status history (stateful List, no request) is modal-safe.
 
 ## Notes
 
-- **`setOpen` vs `open`:** the design's contract says
-  `method: setOpen, args: [{ open: true }]`; the shipped review page calls
-  `method: open` on its modal (`workflow-action-review.yaml:152–156`). Verify
-  which methods the Modal block actually registers in this repo's Lowdefy
-  version and use that consistently in the modal, its header-comment
-  contract, and task 8's wiring — if it's `open`/`close` rather than
-  `setOpen`, keep the design's intent (a fixed, documented method call) and
-  note the method-name substitution in the component header.
-- If the Modal block exposes no `onOpen` event, fall back to documenting the
-  fetch as part of the open contract (SetState → CallMethod → the host fires
-  nothing else; the modal's own `onOpen` is strongly preferred — check the
-  block's events before restructuring).
+- **`setOpen` confirmed** (resolved at task time): the installed
+  `@lowdefy/blocks-antd` (`0.0.0-experimental-20260526123919`) Modal
+  registers exactly `setOpen({ open })` and `toggleOpen` — the design's
+  `method: setOpen, args: [{ open: true }]` contract is correct as written.
+  The shipped review page's `method: open`
+  (`workflow-action-review.yaml:153–156`) is a latent bug, fixed by task 3's
+  surface migration — do not imitate it.
+- **`onOpen` confirmed** (resolved at task time): the Modal block fires
+  `onOpen` / `onClose` from its `triggerSetOpen` path, so the fetch belongs
+  on the modal's own `onOpen` as specced — no contract restructuring needed.
 - `mode: view` inside the modal still renders the status history — by design
   (stateful List, no request, no duplicate-requestId hazard).

@@ -52,9 +52,13 @@ Rewrite `modules/workflows/pages/workflow-action-edit.yaml`:
            description:
              _request: get_workflow_action.description
          current_action.comment: null
+         current_action.mode: edit
      ```
 
-     No `status:` state key — the selector is gone.
+     The literal `current_action.mode` is how the page tells the surface its
+     mode (tasks.md "Decisions applied" #4 — `mode` is state, not an `_ref`
+     var; tasks 5/6 set `review`/`view`). No `status:` state key — the
+     selector is gone.
 2. **Body** — replace everything (`action_card` `:73–146` and the
    `floating-actions` `_ref` `:147–192`) with a single `_ref`:
 
@@ -62,9 +66,10 @@ Rewrite `modules/workflows/pages/workflow-action-edit.yaml`:
    blocks:
      - _ref:
          path: components/check-action-surface.yaml
-         vars:
-           mode: edit
    ```
+
+   No `mode` var — the surface reads `_state: current_action.mode`, set in
+   `onMount` above.
 
 3. **Deletions to verify gone** (grep the file): the status `Selector` and
    its `_js` priority filter, the `status_no_transitions` `Alert`,
@@ -83,7 +88,7 @@ Rewrite `modules/workflows/pages/workflow-action-edit.yaml`:
 - The page contains no `Selector`, no `interaction:`, no `current_status`,
   and no button definitions — `grep -E "interaction|current_status|Selector"` is empty.
 - `onMount` is exactly: guard → request → stale guard → `set_current_action`
-  → `seed_working_state`.
+  → `seed_working_state` (which sets `current_action.mode: edit`).
 - The rendered page (edit mode, `edit`-verb user, stage `action-required`)
   shows Submit / Mark Started — and Mark Not Required only when the server
   resolves `buttons.not_required: true` — all driven by the surface.

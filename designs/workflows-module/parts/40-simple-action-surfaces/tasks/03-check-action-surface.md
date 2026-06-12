@@ -29,6 +29,11 @@ working inputs:
 - working inputs on sub-keys: `current_action.fields.{assignees, due_date,
   description}` (seeded from the response) and `current_action.comment`
   (seeded `null`).
+- **`current_action.mode`** — `edit` | `view` | `review`, set by the container
+  (tasks.md "Decisions applied" #4 / design D1): pages set a literal in
+  `onMount`; the modal sets the derived value in its open handler (task 7).
+  The surface gates every mode-dependent block on
+  `_state: current_action.mode` — `mode` is **not** an `_ref` var.
 
 **Existing reference material** (the bodies being absorbed):
 
@@ -48,11 +53,6 @@ Create `modules/workflows/components/check-action-surface.yaml`.
 
 ### Vars
 
-- `mode` — `edit` | `view` | `review`. May arrive as a **literal string**
-  (pages) or as a **runtime operator** (the modal derives mode from the
-  fetched action). Therefore use `_var: mode` **only inside runtime operator
-  positions** — e.g. `visible: { _eq: [{ _var: mode }, edit] }` — never in
-  `_build.*` operators or structural config.
 - `on_complete` — optional array of actions appended after each signal
   button's `CallAPI` (default `[]`). Compose with
   `_build.array.concat: [[ <validate/callapi actions> ], { _var: { key: on_complete, default: [] } }]`
@@ -72,7 +72,8 @@ Create `modules/workflows/components/check-action-surface.yaml`.
    (`_ref: ../shared/enums/action_statuses.yaml`, same `_js` lookups as
    `workflow-action-view.yaml:72–115`, reading
    `_state: current_action.status.0.stage`). Visible in `view` and `review`
-   modes only (D1 table — edit has no header today).
+   modes only (D1 table — edit has no header today); mode gates read
+   `_state: current_action.mode`.
 3. **Universal fields** — `_ref` the Part 24 component:
 
    ```yaml
@@ -118,11 +119,14 @@ Create `modules/workflows/components/check-action-surface.yaml`.
    layout-module `floating-actions` — note this deviation from the shipped
    pages in the component header comment). Every button:
    - `visible`: `_and` of the mode gate
-     (`_eq: [{ _var: mode }, <mode>]`) and the server-resolved boolean
-     `_state: current_action.buttons.{signal}` — nothing else (D2).
+     (`_eq: [{ _state: current_action.mode }, <mode>]`) and the
+     server-resolved boolean `_state: current_action.buttons.{signal}` —
+     nothing else (D2).
    - `disabled`: `_and: [{ _state: current_action.workflow_closed }, { _ne: [{ _state: current_action.required_after_close }, true] }]`
      (the `required_after_close` gate, uniform across all signal buttons).
-   - `CallAPI` endpoint (runtime — see tasks.md note 4):
+   - `CallAPI` endpoint (runtime — tasks.md "Decisions applied" #1; the
+     shipped pages already use this pattern, e.g.
+     `workflow-action-edit.yaml:176–180`):
 
      ```yaml
      endpointId:
@@ -155,7 +159,7 @@ Create `modules/workflows/components/check-action-surface.yaml`.
    | `button_submit`          | edit   | Submit            | primary         | `Validate` (`params: { regex: ^current_action\.fields\. }`) → `CallAPI` `signal: submit` (+ `fields`) → on_complete |
    | `button_progress`        | edit   | Mark Started      | default         | `CallAPI` `signal: progress` (+ `fields`) → on_complete — **no Validate** (draft is intentionally partial)         |
    | `button_not_required`    | edit   | Mark Not Required | default         | `CallAPI` `signal: not_required` → on_complete                                                                     |
-   | `button_request_changes` | review | Request Changes   | default, danger ghost | `CallMethod` open `request_changes_modal`                                                                    |
+   | `button_request_changes` | review | Request Changes   | default, danger ghost | `CallMethod` `{ blockId: request_changes_modal, method: setOpen, args: [{ open: true }] }`                   |
    | `button_approve`         | review | Approve           | primary         | `CallAPI` `signal: approve` → on_complete                                                                          |
    | `button_resolve_error`   | view   | Resolve Error     | primary         | `CallAPI` `signal: resolve_error` → on_complete                                                                    |
 
@@ -182,15 +186,16 @@ payload keys, no `_js` visibility/priority lookups for buttons, no
 
 ## Acceptance Criteria
 
-- The component reads **only** `_state.current_action.*` (plus `_var: mode` /
-  `on_complete` and the `action_statuses` enum `_ref`); grep confirms no
-  `_request:` reads inside the file.
+- The component reads **only** `_state.current_action.*` (plus the
+  `on_complete` var and the `action_statuses` enum `_ref`); grep confirms no
+  `_request:` reads and no `_var: mode` inside the file.
 - All six signal buttons exist with `visible` = mode gate ∧
   `current_action.buttons.{signal}`, and payloads match the D1 contract
   (`fields` on `submit`/`progress` only; `comment` on every signal).
 - `Validate` appears exactly twice: scoped `^current_action\.fields\.` on
   submit, and the request-changes comment check.
-- `_var: mode` appears only inside runtime operators.
+- Every mode gate reads `_state: current_action.mode` (tasks.md "Decisions
+  applied" #4) — the component declares no `mode` var.
 - The demo app builds (`apps/demo`) once a consumer references the component
   (full verification lands with task 4; a temporary scratch `_ref` is fine to
   smoke-test the build during development but must not be committed).
@@ -208,6 +213,10 @@ payload keys, no `_js` visibility/priority lookups for buttons, no
   page-like component files (`actions-on-entity.yaml`,
   `entity-workflows-refetch.yaml`) — `check-action-surface.yaml` follows.
 - Header comment should record: the `current_action` state contract (what the
-  container must populate), the two container types, the banner-in-view and
-  in-flow-buttons normalisations, and that `mode` must stay
-  runtime-operator-only.
+  container must populate — including `current_action.mode`), the two
+  container types, and the banner-in-view and in-flow-buttons normalisations.
+- **`setOpen`, not `open`** (resolved at task time): the installed
+  `@lowdefy/blocks-antd` Modal registers only `setOpen({ open })` and
+  `toggleOpen` — the shipped review page's `method: open`
+  (`workflow-action-review.yaml:153–156`) is a latent bug; do not carry it
+  into the migrated `request_changes_modal` open call.

@@ -37,8 +37,10 @@ Rewrite `modules/workflows/pages/workflow-action-view.yaml`:
      `current_action.status` from the spread response.
    - Replace `prime_form_state` (the no-op at `:47–49`) with the same two
      SetState steps as tasks 4–5 (`set_current_action` spread +
-     `seed_working_state` for `current_action.fields.*` and
-     `current_action.comment: null`). The fields seed matters here too:
+     `seed_working_state` for `current_action.fields.*`,
+     `current_action.comment: null`, and the mode literal
+     **`current_action.mode: view`** — tasks.md "Decisions applied" #4).
+     The fields seed matters here too:
      an `edit`-verb user opening a non-actionable action's view page gets
      editable universal fields (Part 24's Update path, design D1); the
      comment seed backs the `resolve_error` recovery note.
@@ -49,11 +51,12 @@ Rewrite `modules/workflows/pages/workflow-action-view.yaml`:
    blocks:
      - _ref:
          path: components/check-action-surface.yaml
-         vars:
-           mode: view
      - id: comments_card        # unchanged — Part 33 will replace this
        …                        # (keep :196–282 verbatim, page-level, below the surface)
    ```
+
+   No `mode` var — the surface reads `_state: current_action.mode`, set in
+   `onMount` above.
 
    Delete the `action_card` header/fields blocks (`:55–127`) and the
    `status_history_card` (`:128–195`) — both absorbed. Keep the
