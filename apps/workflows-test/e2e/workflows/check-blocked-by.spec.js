@@ -1,0 +1,143 @@
+import { test, expect } from '../fixtures.js';
+import { ObjectId } from 'mongodb';
+
+// Cluster: check-blocked-by (Part 22 task 4). Mode: Spine.
+//
+// Proves both blocked_by dependency kinds fire through the wired app — a TYPE
+// dep (needs-type ← first-check) and a GROUP dep (needs-group ← prep group) —
+// and is the suite's coverage home for the STATIC shared check pages
+// (workflow-action-{edit,view,review}) and the two overview pages
+// (workflow-overview, workflow-group-overview) rendering in a running app.
+//
+// TARGET STATE (parts 40/46/48):
+//   - kind:check actions render on the static shared pages via ?action_id=
+//     (Part 40 rewrites them to the signal model: button_submit / button_approve).
+//   - Per Part 40 D5, clicking a check row in actions-on-entity opens the
+//     in-context MODAL rather than navigating, so this spec reaches the static
+//     pages by their canonical ?action_id= URLs (their addressable target) — the
+//     modal path is Part 40's own e2e supplement, not this cluster's.
+//   - submit endpoint is per-workflow check-blocked-by-submit (Part 48).
+// These tests fail against pre-40/48 code by design — the suite is the spec.
+//
+// The `mdb` fixture wipes all collections between tests.
+
+const WORKFLOW_TYPE = 'check-blocked-by';
+
+function actionByType(mdb, workflowId, type) {
+  return mdb
+    .collection('actions')
+    .findOne({ workflow_id: new ObjectId(String(workflowId)), type });
+}
+
+function groupSummary(wf, groupId) {
+  return wf?.groups?.find((g) => g.id === groupId);
+}
+
+test('completing a type blocker and completing a group both unblock their dependents — committed in the DB and reflected on the entity surface', async ({
+  ldf,
+  mdb,
+  page,
+  workflow,
+}) => {
+  await ldf.user({
+    name: 'Test User',
+    email: 'test-user@example.com',
+    roles: ['admin'],
+  });
+
+  const thingId = 'thing-check-blocked-by';
+  await mdb.seed('things', [{ _id: thingId, title: 'Blocked-by Thing' }]);
+
+  const { workflow_id } = await workflow.start({
+    workflow_type: WORKFLOW_TYPE,
+    entity_id: thingId,
+    entity_collection: 'things-collection',
+  });
+
+  const firstCheck = await actionByType(mdb, workflow_id, 'first-check');
+  const secondCheck = await actionByType(mdb, workflow_id, 'second-check');
+  const needsType = await actionByType(mdb, workflow_id, 'needs-type');
+  const needsGroup = await actionByType(mdb, workflow_id, 'needs-group');
+
+  // ── initial stages: two action-required, two blocked ───────────────────────
+  expect(firstCheck.status[0].stage).toBe('action-required');
+  expect(secondCheck.status[0].stage).toBe('action-required');
+  expect(needsType.status[0].stage).toBe('blocked');
+  expect(needsGroup.status[0].stage).toBe('blocked');
+
+  // Blocked UI affordance: the entity surface shows the blocked status messages
+  // (no actionable affordance) for the two blocked actions.
+  await ldf.goto(`/thing-view?_id=${thingId}`);
+  await expect(page.getByText('Waiting on the first prep check.')).toBeVisible();
+  await expect(page.getByText('Waiting on the prep group.')).toBeVisible();
+
+  // ── TYPE dep: completing first-check unblocks needs-type ───────────────────
+  // Reach the static edit page by its canonical ?action_id= URL and assert it
+  // renders the check action (its current-stage message), then complete it.
+  await ldf.goto(
+    `/workflows/workflow-action-edit?action_id=${firstCheck._id.toString()}`
+  );
+  await expect(page.getByText('Complete the first prep check.')).toBeVisible();
+  await ldf.block('button_submit').do.click();
+
+  await workflow.assertStatus(firstCheck._id.toString(), 'done');
+  // needs-type (blocked_by [first-check]) flips to action-required…
+  await workflow.assertStatus(needsType._id.toString(), 'action-required');
+  // …while needs-group stays blocked (second-check still open, prep incomplete).
+  expect(
+    (await actionByType(mdb, workflow_id, 'needs-group')).status[0].stage
+  ).toBe('blocked');
+
+  // ── GROUP dep: completing the prep group unblocks needs-group ──────────────
+  // second-check has the review verb: submit → in-review.
+  await ldf.goto(
+    `/workflows/workflow-action-edit?action_id=${secondCheck._id.toString()}`
+  );
+  await ldf.block('button_submit').do.click();
+  await workflow.assertStatus(secondCheck._id.toString(), 'in-review');
+
+  // The static review page serves the in-review check action; approve → done.
+  await ldf.goto(
+    `/workflows/workflow-action-review?action_id=${secondCheck._id.toString()}`
+  );
+  await expect(page).toHaveURL(/workflow-action-review/);
+  await ldf.block('button_approve').do.click();
+  await workflow.assertStatus(secondCheck._id.toString(), 'done');
+
+  // prep group now complete (both checks done) → needs-group → action-required.
+  await workflow.assertStatus(needsGroup._id.toString(), 'action-required');
+  await expect
+    .poll(
+      async () => {
+        const wf = await mdb
+          .collection('workflows')
+          .findOne({ _id: new ObjectId(String(workflow_id)) });
+        return groupSummary(wf, 'prep')?.status;
+      },
+      { timeout: 10_000 }
+    )
+    .toBe('done');
+
+  // ── static page sweep: the view page renders for a done check action ───────
+  await ldf.goto(
+    `/workflows/workflow-action-view?action_id=${firstCheck._id.toString()}`
+  );
+  await expect(page).toHaveURL(/workflow-action-view/);
+  await expect(page.getByText('First prep check complete.')).toBeVisible();
+
+  // ── overview pages render against the group-structured workflow ────────────
+  await ldf.goto(`/workflows/workflow-overview?workflow_id=${workflow_id}`);
+  await expect(page.getByText('Check blocked-by')).toBeVisible(); // workflow.title
+
+  await ldf.goto(
+    `/workflows/workflow-group-overview?workflow_id=${workflow_id}&group_id=prep`
+  );
+  await expect(page.getByText('Prep')).toBeVisible(); // group.title
+
+  // ── SPINE CLOSURE: the entity surface reflects both committed unblocks ─────
+  await ldf.goto(`/thing-view?_id=${thingId}`);
+  await expect(
+    page.getByText('Unblocked by the first prep check.')
+  ).toBeVisible();
+  await expect(page.getByText('Unblocked by the prep group.')).toBeVisible();
+});

@@ -1,3 +1,4 @@
 # Workflow fixture index — cluster tasks (Part 22 tasks 3–10) append
 # `_ref` entries to this list, one per cluster workflow.
 - _ref: modules/workflows/workflow_config/form-lifecycle/form-lifecycle.yaml
+- _ref: modules/workflows/workflow_config/check-blocked-by/check-blocked-by.yaml
