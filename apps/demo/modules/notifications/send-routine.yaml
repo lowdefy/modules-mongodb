@@ -18,12 +18,15 @@
               _payload: event_ids
           type: action-approve
           metadata.action_type: send-quote
-      # ── join the send-quote action (references.action_ids may include
+      # ── join the send-quote action (action_ids may include
       #    cascade-touched actions, so filter by type) ──
+      # The new-event endpoint flattens the `references` payload onto the event
+      # doc's top level (_object.assign), so reference arrays are top-level
+      # fields (action_ids, lead_ids, …), not nested under `references`.
       - $lookup:
           from: actions
           let:
-            action_ids: $references.action_ids
+            action_ids: $action_ids
           pipeline:
             - $match:
                 $expr:
@@ -85,7 +88,7 @@
               pageId: lead-view
               urlQuery:
                 _id:
-                  $first: $references.lead_ids
+                  $first: $lead_ids
           type: quote-approved
           event_type: action-approve
           event_id: $_id
@@ -122,7 +125,7 @@
               - resend-user-invite
       - $set:
           recipient_id:
-            $first: $references.contact_ids
+            $first: $contact_ids
       - $project:
           _id:
             $function:

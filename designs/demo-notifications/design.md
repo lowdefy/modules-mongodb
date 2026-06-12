@@ -72,14 +72,14 @@ No `:if` plumbing — an empty `$match` merges nothing, so non-matching dispatch
 
 ```
 $match  { _id: { $in: <event_ids> }, type: 'action-approve', 'metadata.action_type': 'send-quote' }
-$lookup actions (raw collection name) on references.action_ids → the send-quote action
+$lookup actions (raw collection name) on action_ids → the send-quote action
 recipient = the action's status history entry whose stage == 'in-review',
             field created.user.id   (the submit transition = the quote submitter)
 $project the notification doc:
   title: 'Quote approved'
   description: $concat of the event's created.user.name + ' approved your quote.'
   body: '<p>Your quote was approved.</p>'
-  links.button: { pageId: 'lead-view', urlQuery: { _id: references.lead_ids.0 } }
+  links.button: { pageId: 'lead-view', urlQuery: { _id: lead_ids.0 } }
   type: 'quote-approved', event_type: 'action-approve', event_id: event _id
 $merge
 ```
@@ -90,7 +90,7 @@ Recipient policy carries over from Part 45 task 06 unchanged: the quote submitte
 
 ```
 $match  { _id: { $in: <event_ids> }, type: { $in: ['invite-user', 'resend-user-invite'] } }
-recipient = references.contact_ids.0   (the invited contact, set by both invite APIs)
+recipient = contact_ids.0   (the invited contact, set by both invite APIs)
 $project the notification doc:
   title: $cond on type — 'You've been invited to the demo app' / 'Your demo app invite was resent'
   description: 'Sign in with your email address to get started.'

@@ -31,7 +31,7 @@ Append a second `MongoDBAggregation` step to `apps/demo/modules/notifications/se
               - resend-user-invite
       - $set:
           recipient_id:
-            $first: $references.contact_ids
+            $first: $contact_ids
       - $project:
           _id:
             $function:
@@ -87,7 +87,7 @@ Append a second `MongoDBAggregation` step to `apps/demo/modules/notifications/se
 
 Shape notes:
 
-- **Recipient** is `references.contact_ids.0` — the invited contact, set by both invite APIs. No status-history derivation needed in this branch.
+- **Recipient** is the top-level `contact_ids.0` — the invited contact, set by both invite APIs. (The APIs send it under the `references` payload, but the new-event endpoint flattens `references` onto the doc's top level, so the routine reads `$contact_ids`, not `$references.contact_ids`.) No status-history derivation needed in this branch.
 - **`event_type` is the event doc's `type`** (`$type` field path — distinguishes invite from resend), while **`type` is the literal template name `user-invite`** for both. The link page and inbox surfaces branch on `event_type`.
 - **`links.button` has `pageId` only, no `urlQuery`** — the deep-link target is the login page, resolved config-side via `_module.pageId: { id: login, module: user-account }` (the user-account module's exported `login` page; resolves at app level since the routine is entry-vars config, design-resolved).
 - The `created` change stamp's runtime operators evaluate per request — the stamp's user is the **inviter** (the admin session calling the invite API).

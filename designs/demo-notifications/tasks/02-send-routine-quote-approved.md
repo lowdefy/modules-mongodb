@@ -12,7 +12,7 @@ In the demo app, `apps/demo/modules/notifications/vars.yaml:5-6` has the `send_r
 
 This task rewrites the routine file with the first of two branches: **`action-approve` × `send-quote`** — approving the demo onboarding workflow's quote inserts one unread inbox notification for the quote submitter, deep-linking to the lead. (Task 3 adds the invite branch as a second step in the same file.)
 
-**Event doc shape** (engine-committed, see `planEventDispatch.js`): events live in the events module's collection (raw name `log-events`); an approve event carries `_id` (string), `type: 'action-approve'`, `display`, `references: { workflow_ids, action_ids, lead_ids }` (`lead_ids` is the demo onboarding config's `entity_ref_key`), `metadata: { action_type, workflow_type, signal, ... }`, and `created` (events-module change stamp incl. `user.name` / `user.id` / `timestamp`).
+**Event doc shape** (as *stored*, not as the planner builds it): the engine planner (`planEventDispatch.js`) returns a doc with nested `display` and `references` objects, but the events module's single writer (`modules/events/api/new-event.yaml`) flattens both onto the top level via `_object.assign` before insert. So the *stored* doc in the events collection (raw name `log-events`) carries `_id` (string), `type: 'action-approve'`, the reference arrays **as top-level fields** — `workflow_ids`, `action_ids`, `lead_ids` (`lead_ids` is the demo onboarding config's `entity_ref_key`) — the display block keyed by app name at the top level (`demo: { title }`), `metadata: { action_type, workflow_type, signal, ... }` (the only nested sub-doc), and `created` (events-module change stamp incl. `user.name` / `user.id` / `timestamp`). Read reference arrays as `$action_ids` / `$lead_ids`, **not** `$references.*`. This matches how `GetEventsTimeline` joins (`localField: 'action_ids'`) and matches the app display block (`{ [app_name]: { $ne: null } }`).
 
 **Action doc shape**: the `actions` collection (raw name `actions`); each action has `type` (e.g. `send-quote`) and a `status` history array of `{ stage, event_id, created: <change stamp> }` entries. The entry with `stage: 'in-review'` is the submit transition — its `created.user.id` is the quote submitter (the notification recipient).
 
@@ -38,12 +38,12 @@ This task rewrites the routine file with the first of two branches: **`action-ap
                  _payload: event_ids
              type: action-approve
              metadata.action_type: send-quote
-         # ── join the send-quote action (references.action_ids may include
+         # ── join the send-quote action (action_ids may include
          #    cascade-touched actions, so filter by type) ──
          - $lookup:
              from: actions
              let:
-               action_ids: $references.action_ids
+               action_ids: $action_ids
              pipeline:
                - $match:
                    $expr:
@@ -105,7 +105,7 @@ This task rewrites the routine file with the first of two branches: **`action-ap
                  pageId: lead-view
                  urlQuery:
                    _id:
-                     $first: $references.lead_ids
+                     $first: $lead_ids
              type: quote-approved
              event_type: action-approve
              event_id: $_id

@@ -97,7 +97,7 @@ update-company: "{{ user.profile.name }} updated {{ target.name }}"
 - Keys are event types (matching the `type` field on event documents).
 - Values are Nunjucks templates rendered against the event payload.
 
-When the consumer doesn't override `event_display`, the build wraps these templates under the module's `app_name` var. So an event document written by a module with `app_name: my-app` ends up with `display.my-app.title` set to the rendered template — and `display_key: my-app` on the events module reads it back.
+When the consumer doesn't override `event_display`, the build wraps these templates under the module's `app_name` var. The `new-event` endpoint flattens the rendered display block onto the event document's top level (keyed by app name), so an event written by a module with `app_name: my-app` ends up with a top-level `my-app.title` field set to the rendered template — and `display_key: my-app` on the events module reads it back (`$my-app.title`, not `$display.my-app.title`).
 
 ### Variables available to templates
 
