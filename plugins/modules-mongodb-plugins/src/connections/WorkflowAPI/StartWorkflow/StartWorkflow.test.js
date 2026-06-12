@@ -236,6 +236,56 @@ describe('handler return payload', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Lifecycle event override (params.lifecycle_event_override)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('lifecycle event override', () => {
+  test('lifecycle_event_override.display overrides the event title for the named app; non-overridden apps fall through to default', async () => {
+    const calls = [];
+    const result = await StartWorkflow(
+      buildContext({
+        request: {
+          workflow_type: 'onboarding',
+          entity_id: 'lead-1',
+          entity_collection: 'leads-collection',
+          lifecycle_event_override: {
+            display: {
+              'test-app': { title: 'Onboarding kicked off for {{ workflow.entity_id }}' },
+            },
+          },
+        },
+        callApi: makeCallApi({ calls }),
+      }),
+    );
+    const eventDoc = await mongo.db
+      .collection('events')
+      .findOne({ _id: result.event_id });
+    expect(eventDoc).not.toBeNull();
+    // Override title rendered against lifecycle context ({ user, workflow, signal }).
+    expect(eventDoc.display['test-app'].title).toBe('Onboarding kicked off for lead-1');
+  });
+
+  test('no lifecycle_event_override → engine default title unchanged', async () => {
+    const calls = [];
+    const result = await StartWorkflow(
+      buildContext({
+        request: {
+          workflow_type: 'onboarding',
+          entity_id: 'lead-1',
+          entity_collection: 'leads-collection',
+        },
+        callApi: makeCallApi({ calls }),
+      }),
+    );
+    const eventDoc = await mongo.db
+      .collection('events')
+      .findOne({ _id: result.event_id });
+    expect(eventDoc).not.toBeNull();
+    expect(eventDoc.display['test-app'].title).toBe('Test User started onboarding');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Seeded drafts (planActionTransition seedStage mode)
 // ─────────────────────────────────────────────────────────────────────────────
 
