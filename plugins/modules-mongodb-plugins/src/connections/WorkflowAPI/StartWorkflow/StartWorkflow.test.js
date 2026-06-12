@@ -73,7 +73,7 @@ function makeParentChildConfig() {
         {
           type: 'track-child',
           kind: 'tracker',
-          tracker: { workflow_type: 'onboarding' },
+          tracker: { child_workflow_type: 'onboarding' },
           access: { 'test-app': { view: true } },
         },
       ],
@@ -232,6 +232,56 @@ describe('handler return payload', () => {
     expect(wf.status[0].stage).toBe('active');
     expect(wf.status[0].event_id).toBe(result.event_id);
     expect(wf.entity_ref_key).toBe('lead_ids');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Lifecycle event override (params.lifecycle_event_override)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('lifecycle event override', () => {
+  test('lifecycle_event_override.display overrides the event title for the named app; non-overridden apps fall through to default', async () => {
+    const calls = [];
+    const result = await StartWorkflow(
+      buildContext({
+        request: {
+          workflow_type: 'onboarding',
+          entity_id: 'lead-1',
+          entity_collection: 'leads-collection',
+          lifecycle_event_override: {
+            display: {
+              'test-app': { title: 'Onboarding kicked off for {{ workflow.entity_id }}' },
+            },
+          },
+        },
+        callApi: makeCallApi({ calls }),
+      }),
+    );
+    const eventDoc = await mongo.db
+      .collection('events')
+      .findOne({ _id: result.event_id });
+    expect(eventDoc).not.toBeNull();
+    // Override title rendered against lifecycle context ({ user, workflow, signal }).
+    expect(eventDoc.display['test-app'].title).toBe('Onboarding kicked off for lead-1');
+  });
+
+  test('no lifecycle_event_override → engine default title unchanged', async () => {
+    const calls = [];
+    const result = await StartWorkflow(
+      buildContext({
+        request: {
+          workflow_type: 'onboarding',
+          entity_id: 'lead-1',
+          entity_collection: 'leads-collection',
+        },
+        callApi: makeCallApi({ calls }),
+      }),
+    );
+    const eventDoc = await mongo.db
+      .collection('events')
+      .findOne({ _id: result.event_id });
+    expect(eventDoc).not.toBeNull();
+    expect(eventDoc.display['test-app'].title).toBe('Test User started onboarding');
   });
 });
 
@@ -430,7 +480,7 @@ describe('started as a tracker child', () => {
       kind: 'tracker',
       key: null,
       action_group: null,
-      tracker: { workflow_type: 'onboarding' },
+      tracker: { child_workflow_type: 'onboarding' },
       child_workflow_id: null,
       child_entity_id: null,
       child_entity_collection: null,

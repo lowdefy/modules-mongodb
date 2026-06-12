@@ -130,6 +130,8 @@ async function CloseWorkflow(lowdefyContext) {
   const plannedWorkflowDoc = { ...recomputed, ...safeReferences };
 
   // ── Plan: lifecycle event (workflow-closed) ──────────────────────────────
+  // Lifecycle override context: { user, workflow, signal } only — no action,
+  // status_after, or submitted_form; see planEventDispatch.js:168–175.
   const event = planEventDispatch({
     event_id,
     user,
@@ -138,6 +140,7 @@ async function CloseWorkflow(lowdefyContext) {
     plannedWorkflowDoc,
     allTouchedActionDocs: sweepEntries.map((e) => e.doc),
     connection,
+    yamlEventOverrides: params.lifecycle_event_override,
   });
 
   // ── Plan: change-log ─────────────────────────────────────────────────────

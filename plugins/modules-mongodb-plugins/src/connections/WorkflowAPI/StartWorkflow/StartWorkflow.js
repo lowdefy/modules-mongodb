@@ -33,7 +33,10 @@ const LEGAL_SEED_STATUSES = ['action-required', 'blocked'];
  * workflow-doc composition site), and the initial action drafts are seeded
  * directly at their declared stage by `planActionTransition` in `seedStage`
  * mode (creation is not a transition). Event = `workflow-started`
- * (workflow-lifecycle render context).
+ * (workflow-lifecycle render context). Override templates for lifecycle events
+ * render against `{ user, workflow, signal }` only — no `action`,
+ * `status_after`, or `submitted_form`; pass via `params.lifecycle_event_override`
+ * as a `{ display: { {app}: { title, description? } }, … }` slice.
  *
  * Commit — through `commitPlan` (`Plan.workflow.operation: 'insert'` → no CAS
  * filter). When started as a tracker child, the parent-tracker mirror runs as a
@@ -140,9 +143,9 @@ async function StartWorkflow(lowdefyContext) {
         { code: 'invalid_seed' },
       );
     }
-    if (parent.tracker?.workflow_type !== params.workflow_type) {
+    if (parent.tracker?.child_workflow_type !== params.workflow_type) {
       throw new WorkflowEngineError(
-        'StartWorkflow: workflow_type does not match parent tracker.workflow_type',
+        'StartWorkflow: workflow_type does not match parent tracker.child_workflow_type',
         { code: 'invalid_seed' },
       );
     }
@@ -202,6 +205,8 @@ async function StartWorkflow(lowdefyContext) {
   });
 
   // ── Plan: the lifecycle event (workflow-started) ─────────────────────────
+  // Lifecycle override context: { user, workflow, signal } only — no action,
+  // status_after, or submitted_form; see planEventDispatch.js:168–175.
   const event = planEventDispatch({
     event_id,
     user,
@@ -210,6 +215,7 @@ async function StartWorkflow(lowdefyContext) {
     plannedWorkflowDoc,
     allTouchedActionDocs: seededDrafts,
     connection,
+    yamlEventOverrides: params.lifecycle_event_override,
   });
 
   // ── Plan: change-log (workflow insert + each seeded action insert) ───────

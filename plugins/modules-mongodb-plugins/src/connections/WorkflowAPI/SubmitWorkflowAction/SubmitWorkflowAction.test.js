@@ -40,7 +40,7 @@ const STATUS_MAP = {
   },
 };
 
-function makeWorkflowsConfig({ withGroups = false } = {}) {
+function makeWorkflowsConfig({ withGroups = false, withStatusMap = true } = {}) {
   return [
     {
       type: 'onboarding',
@@ -52,7 +52,9 @@ function makeWorkflowsConfig({ withGroups = false } = {}) {
           type: 'qualify',
           kind: 'form',
           ...(withGroups ? { action_group: 'g1' } : {}),
-          status_map: STATUS_MAP.qualify,
+          // Part 48: the blob no longer carries status_map; the render_config
+          // describe below drives it via the endpoint slice instead.
+          ...(withStatusMap ? { status_map: STATUS_MAP.qualify } : {}),
           // review-app declares review; ops-app declares edit only.
           access: {
             'test-app': { view: true, edit: ['account-manager'], review: ['reviewer'], error: true },
@@ -300,6 +302,51 @@ describe('Part 30 worked example', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Part 48: status_map delivered via render_config, not the blob
+// ─────────────────────────────────────────────────────────────────────────────
+//
+// The connection blob no longer carries status_map (dropped from
+// makeWorkflowsConfig's ACTION_FIELDS, task 10). The write endpoints deliver it
+// per-request as `request.render_config` (→ context.params.render_config), which
+// loadWorkflowState splices onto the action config. These tests exercise the
+// end-to-end render with the blob slice absent.
+
+describe('Part 48: status_map from render_config (blob slice absent)', () => {
+  test('blob carries no status_map but render_config delivers the cell → rendered onto the doc', async () => {
+    await seed();
+    await SubmitWorkflowAction(
+      buildContext({
+        workflowsConfig: makeWorkflowsConfig({ withStatusMap: false }),
+        request: {
+          action_id: 'A1',
+          signal: 'submit',
+          render_config: { onboarding: { qualify: { status_map: STATUS_MAP.qualify } } },
+        },
+      }),
+    );
+    const doc = await mongo.db.collection('actions').findOne({ _id: 'A1' });
+    expect(doc.status[0].stage).toBe('in-review'); // hasReview → in-review
+    expect(doc.status_title).toBe('In Review');
+    expect(doc['test-app'].message).toBe('qualify submitted');
+  });
+
+  test('blob slice absent AND no render_config → falls through to default (no status_title, no message)', async () => {
+    await seed();
+    await SubmitWorkflowAction(
+      buildContext({
+        workflowsConfig: makeWorkflowsConfig({ withStatusMap: false }),
+        request: { action_id: 'A1', signal: 'submit' },
+      }),
+    );
+    const doc = await mongo.db.collection('actions').findOne({ _id: 'A1' });
+    expect(doc.status[0].stage).toBe('in-review'); // transition still resolves
+    // No cell anywhere — no rendered status_title/message is written.
+    expect(doc.status_title).toBeUndefined();
+    expect(doc['test-app']?.message).toBeUndefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // event_id round trip (named block — folded from event-id-round-trip.test.js)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -425,7 +472,11 @@ describe('concurrent submit (CAS)', () => {
     await expect(
       SubmitWorkflowAction(
         buildContext({
-          request: { action_id: 'A1', signal: 'submit', hooks: { submit: { pre: 'hooks/pre' } } },
+          request: {
+            action_id: 'A1',
+            signal: 'submit',
+            hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
+          },
           callApi,
         }),
       ),
@@ -450,7 +501,11 @@ describe('concurrent submit (CAS)', () => {
 
     const ctx = () =>
       buildContext({
-        request: { action_id: 'A1', signal: 'submit', hooks: { submit: { pre: 'hooks/pre' } } },
+        request: {
+          action_id: 'A1',
+          signal: 'submit',
+          hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
+        },
         callApi,
       });
 
@@ -479,7 +534,7 @@ describe('pre-hook auxiliary signal flows', () => {
         request: {
           action_id: 'A1',
           signal: 'submit',
-          hooks: { submit: { pre: 'hooks/pre' } },
+          hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
         },
         callApi: async ({ endpointId, payload }) => {
           if (endpointId === 'hooks/pre') return { actions: [{ type: 'kickoff', signal: 'submit' }] };
@@ -499,7 +554,7 @@ describe('pre-hook auxiliary signal flows', () => {
         request: {
           action_id: 'A1',
           signal: 'submit',
-          hooks: { submit: { pre: 'hooks/pre' } },
+          hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
         },
         callApi: async ({ endpointId, payload }) => {
           if (endpointId === 'hooks/pre') {
@@ -518,6 +573,68 @@ describe('pre-hook auxiliary signal flows', () => {
     expect(spawned.status[0].stage).toBe('action-required');
     expect(spawned.description).toBe('spawned');
     expect(result.action_ids).toContain(spawned._id);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-workflow hooks re-slice (Part 48 D7): params.hooks arrives keyed by
+// action type; handleSubmit re-slices to the loaded action's signal-keyed map.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('action-type-keyed hooks re-slice', () => {
+  test('an action with no hooks entry skips hooks entirely', async () => {
+    await seed();
+    const calls = [];
+    // hooks keyed for kickoff only; target A1 is qualify → no hook call.
+    const result = await SubmitWorkflowAction(
+      buildContext({
+        request: {
+          action_id: 'A1',
+          signal: 'submit',
+          hooks: { kickoff: { submit: { pre: 'hooks/pre' } } },
+        },
+        callApi: makeCallApi({ calls }),
+      }),
+    );
+    expect(calls.some((c) => c.endpointId === 'hooks/pre')).toBe(false);
+    expect(result.pre_hook_response).toEqual({ actions: [], event_overrides: {}, form_overrides: {} });
+  });
+
+  test('two actions hooked on the same signal do not collide — each fires its own', async () => {
+    const hooks = {
+      qualify: { submit: { pre: 'hooks/pre-qualify' } },
+      kickoff: { submit: { pre: 'hooks/pre-kickoff' } },
+    };
+    const makeHookAwareCallApi = (calls) => async ({ endpointId, payload }) => {
+      if (endpointId === 'hooks/pre-qualify' || endpointId === 'hooks/pre-kickoff') {
+        calls.push({ endpointId, payload });
+        return null;
+      }
+      return makeCallApi({ calls })({ endpointId, payload });
+    };
+
+    // Submit qualify (A1) → only the qualify hook fires.
+    await seed({ extraActions: [{ _id: 'A2', type: 'kickoff', status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }] }] });
+    const qualifyCalls = [];
+    await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: 'A1', signal: 'submit', hooks },
+        callApi: makeHookAwareCallApi(qualifyCalls),
+      }),
+    );
+    expect(qualifyCalls.some((c) => c.endpointId === 'hooks/pre-qualify')).toBe(true);
+    expect(qualifyCalls.some((c) => c.endpointId === 'hooks/pre-kickoff')).toBe(false);
+
+    // Submit kickoff (A2) → only the kickoff hook fires.
+    const kickoffCalls = [];
+    await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: 'A2', signal: 'submit', hooks },
+        callApi: makeHookAwareCallApi(kickoffCalls),
+      }),
+    );
+    expect(kickoffCalls.some((c) => c.endpointId === 'hooks/pre-kickoff')).toBe(true);
+    expect(kickoffCalls.some((c) => c.endpointId === 'hooks/pre-qualify')).toBe(false);
   });
 });
 
@@ -571,7 +688,11 @@ describe('post-commit dispatch failure', () => {
     await expect(
       SubmitWorkflowAction(
         buildContext({
-          request: { action_id: 'A1', signal: 'submit', hooks: { submit: { post: 'hooks/post' } } },
+          request: {
+            action_id: 'A1',
+            signal: 'submit',
+            hooks: { qualify: { submit: { post: 'hooks/post' } } },
+          },
           callApi,
         }),
       ),

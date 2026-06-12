@@ -10,7 +10,7 @@ access:
     view: true
     edit: true # the start link
 tracker:
-  workflow_type: company-setup
+  child_workflow_type: company-setup
   start_link:
     pageId:
       _module.pageId: { id: new, module: companies }

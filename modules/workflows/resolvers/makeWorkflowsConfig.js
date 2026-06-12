@@ -1,9 +1,18 @@
-import { HOOK_SIGNALS, HOOK_PHASES } from './hookSignals.js';
+import { HOOK_SIGNALS, HOOK_PHASES, MIRROR_SIGNALS, LIFECYCLE_SIGNALS } from './hookSignals.js';
+import { collectTrackerEdges } from './trackerEdges.js';
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
 // they're consumed by build-time resolvers (parts 12, 13, 15) against
 // the raw workflow YAML, not via workflowsConfig at runtime.
+//
+// `status_map` is deliberately NOT picked here (Part 48): it's the blob's one
+// heavy per-stage × per-app field, paid for all workflows on every connection
+// call. It now arrives per-request via the write endpoints' `render_config`
+// and is spliced onto the action config at load time (loadWorkflowState seam,
+// task 3). Build-time validation of `status_map` cells (validateStatusMapCells)
+// still runs against the raw workflow — the field is validated here even though
+// it's no longer carried on the blob.
 const ACTION_FIELDS = [
   'type',
   'kind',
@@ -15,7 +24,6 @@ const ACTION_FIELDS = [
   'required_after_close',
   'allow_not_required',
   'access',
-  'status_map',
 ];
 
 const WORKFLOW_FIELDS = [
@@ -146,13 +154,20 @@ function validateHooks(workflow, action) {
 function validateEvent(workflow, action) {
   if (!action.event) return;
   const where = `action "${action.type}"`;
+  const isTracker = action.kind === 'tracker';
   for (const signal of Object.keys(action.event)) {
-    if (!HOOK_SIGNALS.includes(signal)) {
+    if (HOOK_SIGNALS.includes(signal)) continue;
+    if (isTracker && MIRROR_SIGNALS.includes(signal)) continue;
+    if (!isTracker && MIRROR_SIGNALS.includes(signal)) {
       fail(
         workflow.type,
-        `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}).`
+        `${where} event key "${signal}" is a mirror signal and is only valid on kind: tracker actions (allowed for tracker: ${[...HOOK_SIGNALS, ...MIRROR_SIGNALS].join(', ')}; allowed for non-tracker: ${HOOK_SIGNALS.join(', ')}).`
       );
     }
+    fail(
+      workflow.type,
+      `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}${isTracker ? `, ${MIRROR_SIGNALS.join(', ')}` : ''}).`
+    );
   }
 }
 
@@ -252,6 +267,35 @@ function validateActionAccess(workflow, action) {
         `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${appName} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`
       );
     }
+  }
+}
+
+// Part 48 D6: tracker.child_workflow_type validation. Every kind: tracker action
+// must declare a non-empty string child_workflow_type. Cross-workflow resolution
+// (does the value match a declared workflow type?) and cycle detection are
+// performed after all per-workflow validation in makeWorkflowsConfig (they
+// require the full workflow set). The legacy key tracker.workflow_type
+// hard-errors with a rename hint.
+function validateTrackerChildWorkflowType(workflow, action) {
+  if (action.kind !== 'tracker') return;
+  const where = `action "${action.type}"`;
+  const tracker = action.tracker;
+
+  if ('workflow_type' in tracker) {
+    fail(
+      workflow.type,
+      `${where} tracker.workflow_type is renamed — use tracker.child_workflow_type (Part 48 D6).`
+    );
+  }
+
+  if (
+    typeof tracker.child_workflow_type !== 'string' ||
+    tracker.child_workflow_type === ''
+  ) {
+    fail(
+      workflow.type,
+      `${where} tracker.child_workflow_type must be a non-empty string (got: ${JSON.stringify(tracker.child_workflow_type)}).`
+    );
   }
 }
 
@@ -417,9 +461,32 @@ function validateAction(workflow, action) {
 
   validateActionAccess(workflow, action);
   validateStatusMapCells(workflow, action);
+  validateTrackerChildWorkflowType(workflow, action);
   validateTrackerStartLink(workflow, action);
   validateHooks(workflow, action);
   validateEvent(workflow, action);
+}
+
+// Part 48 D8: workflow-level event map. Keys must be LIFECYCLE_SIGNALS
+// (started / cancelled / closed). Payload internals are not validated here —
+// depth matches validateEvent (signal keys only).
+function validateWorkflowEvent(workflow) {
+  if (!workflow.event) return;
+  const event = workflow.event;
+  if (event === null || typeof event !== 'object' || Array.isArray(event)) {
+    fail(
+      workflow.type,
+      `workflow event must be a plain object keyed by lifecycle signals (expected keys: ${LIFECYCLE_SIGNALS.join(', ')}).`
+    );
+  }
+  for (const signal of Object.keys(event)) {
+    if (!LIFECYCLE_SIGNALS.includes(signal)) {
+      fail(
+        workflow.type,
+        `workflow event key "${signal}" is not a known lifecycle signal (expected one of: ${LIFECYCLE_SIGNALS.join(', ')}).`
+      );
+    }
+  }
 }
 
 function validateWorkflow(workflow) {
@@ -439,6 +506,8 @@ function validateWorkflow(workflow) {
       'missing required "entity_ref_key" — the event-references key for the workflow\'s entity (e.g. "lead_ids"), written into event docs so events surface on the entity.'
     );
   }
+
+  validateWorkflowEvent(workflow);
 
   const actions = workflow.actions ?? [];
   const groups = workflow.action_groups ?? [];
@@ -505,10 +574,64 @@ function validateWorkflow(workflow) {
   }
 }
 
+// Part 48 D6: Cross-workflow tracker edge validation. Runs after per-workflow
+// validation so all workflow types are known. Checks:
+//   1. Every child_workflow_type resolves to a declared workflow type.
+//   2. No tracker cycle exists across the workflow set.
+function validateTrackerEdges(workflows) {
+  const declaredTypes = new Set(workflows.map((wf) => wf.type));
+  const edges = collectTrackerEdges(workflows);
+
+  // Resolution check: child must be a declared workflow type.
+  for (const { parentType, childType } of edges) {
+    if (!declaredTypes.has(childType)) {
+      throw new Error(
+        `makeWorkflowsConfig: workflow "${parentType}": tracker action declares child_workflow_type "${childType}" which is not a declared workflow type.`
+      );
+    }
+  }
+
+  // Acyclicity check: walk the edge graph and detect cycles using DFS.
+  // Build adjacency list (parent → [children]).
+  const children = new Map();
+  for (const { parentType, childType } of edges) {
+    if (!children.has(parentType)) children.set(parentType, []);
+    children.get(parentType).push(childType);
+  }
+
+  // DFS with three-colour marking: white (unvisited), grey (in-stack), black (done).
+  const WHITE = 0, GREY = 1, BLACK = 2;
+  const colour = new Map();
+
+  function dfs(node, stack) {
+    colour.set(node, GREY);
+    for (const child of children.get(node) ?? []) {
+      if (colour.get(child) === GREY) {
+        // Cycle detected — reconstruct the cycle path from the stack.
+        const cycleStart = stack.indexOf(child);
+        const cyclePath = [...stack.slice(cycleStart), child].join(' → ');
+        throw new Error(
+          `makeWorkflowsConfig: tracker cycle: ${cyclePath}`
+        );
+      }
+      if ((colour.get(child) ?? WHITE) === WHITE) {
+        dfs(child, [...stack, child]);
+      }
+    }
+    colour.set(node, BLACK);
+  }
+
+  for (const type of declaredTypes) {
+    if ((colour.get(type) ?? WHITE) === WHITE) {
+      dfs(type, [type]);
+    }
+  }
+}
+
 function makeWorkflowsConfig(_, vars) {
   const { workflows } = vars;
 
-  return workflows.map((workflow) => {
+  const result = workflows.map((workflow) => {
     validateWorkflow(workflow);
 
     const actions = (workflow.actions ?? []).map((action) => {
@@ -541,6 +664,11 @@ function makeWorkflowsConfig(_, vars) {
       actions,
     };
   });
+
+  // Cross-workflow checks: edge resolution + acyclicity (require full set).
+  validateTrackerEdges(workflows);
+
+  return result;
 }
 
 export default makeWorkflowsConfig;

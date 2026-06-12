@@ -328,3 +328,56 @@ test('submitted metadata lands on the planned action doc (params.metadata thread
   });
   expect(plan.actions[0].doc.metadata).toMatchObject({ reviewer: 'U2', note: 'approved' });
 });
+
+test('event override: actionConfig.event_overrides[signal] is applied to the planned event display', () => {
+  // actionConfig carries the override map (spliced on by loadWorkflowState in Part 48).
+  // The planned event display should reflect the merged title.
+  const config = makeConfig({
+    actions: [
+      {
+        type: 'qualify',
+        kind: 'form',
+        access: { 'test-app': { view: true, edit: true } },
+        event_overrides: {
+          submit: {
+            display: { 'test-app': { title: 'Custom submit title' } },
+          },
+        },
+      },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ config }),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.event.doc.display['test-app'].title).toBe('Custom submit title');
+});
+
+test('event override: params.event_overrides set but actionConfig.event_overrides absent → no YAML override applied', () => {
+  // The old read path (params.event_overrides) is dead after Part 48.
+  // Setting only params.event_overrides must NOT affect the planned event.
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext({
+      params: {
+        action_id: 'A1',
+        signal: 'submit',
+        event_overrides: { submit: { display: { 'test-app': { title: 'Should not appear' } } } },
+      },
+    }),
+  });
+  // Engine-default title template is used (not the params override).
+  expect(plan.event.doc.display['test-app'].title).not.toBe('Should not appear');
+});
+
+test('event override: no overrides anywhere → engine default display title is used', () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  // Engine default: "{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"
+  expect(plan.event.doc.display['test-app'].title).toBe('Test User marked qualify as done');
+});

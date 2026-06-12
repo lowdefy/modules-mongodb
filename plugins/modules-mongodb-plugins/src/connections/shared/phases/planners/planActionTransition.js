@@ -184,7 +184,7 @@ function planActionTransition({
   doc.tracker =
     actionConfig.kind === 'tracker'
       ? {
-          workflow_type: actionConfig.tracker.workflow_type,
+          child_workflow_type: actionConfig.tracker.child_workflow_type,
           ...(actionConfig.tracker.start_link != null
             ? { start_link: actionConfig.tracker.start_link }
             : {}),

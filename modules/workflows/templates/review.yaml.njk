@@ -273,10 +273,7 @@ _ref:
                                   type: CallAPI
                                   params:
                                     endpointId:
-                                      _module.endpointId:
-                                        _build.string.concat:
-                                          - update-action-
-                                          - _var: action_config.type
+                                      _module.endpointId: {{ workflow_type }}-submit
                                     payload:
                                       action_id:
                                         _state: action._id
@@ -310,10 +307,7 @@ _ref:
                       type: CallAPI
                       params:
                         endpointId:
-                          _module.endpointId:
-                            _build.string.concat:
-                              - update-action-
-                              - _var: action_config.type
+                          _module.endpointId: {{ workflow_type }}-submit
                         payload:
                           action_id:
                             _state: action._id
@@ -382,10 +376,7 @@ _ref:
                           type: CallAPI
                           params:
                             endpointId:
-                              _module.endpointId:
-                                _build.string.concat:
-                                  - update-action-
-                                  - _var: action_config.type
+                              _module.endpointId: {{ workflow_type }}-submit
                             payload:
                               action_id:
                                 _state: action._id

@@ -39,9 +39,10 @@ const DEFAULT_TITLES = {
  * name bound to `signal` in both context and metadata.
  *
  * The three-source override merge (engine default → YAML override → pre-hook
- * return) applies only to SubmitWorkflowAction events. Lifecycle events and
- * tracker-mirror events render engine default only — no override channels exist
- * for them (design: "build for what exists").
+ * return) fires for any handler type whenever an override slice is present.
+ * Absent overrides, every path falls through to today's engine defaults.
+ * Originally applied only to SubmitWorkflowAction; generalized in Part 48 to
+ * serve tracker-mirror (D4) and lifecycle (D8) channels as well.
  *
  * No `metadata.comment` is written — the old `buildDefaultLogEventPayload`
  * comment fold is superseded by Part 33's `foldCommentIntoEvent` (Part 38
@@ -70,10 +71,12 @@ const DEFAULT_TITLES = {
  * @param {Object} args.connection — engine connection config; reads
  *   `connection.app_name` (required — throws if absent) and optionally
  *   `connection.changeLog` (for meta, unused by this planner directly).
- * @param {Object} [args.yamlEventOverrides] — Submit only: the YAML
- *   `event_overrides[signal]` entry baked at config time.
- * @param {Object} [args.preHookEventOverrides] — Submit only: the pre-hook
- *   `event_overrides` return.
+ * @param {Object} [args.yamlEventOverrides] — the YAML override slice for this
+ *   invocation: submit YAML `event_overrides[signal]`, a parent tracker action's
+ *   `event_overrides[internal_mirror_child_*]` (task 5), or a workflow-level
+ *   lifecycle override (task 6). When absent, engine defaults apply.
+ * @param {Object} [args.preHookEventOverrides] — the pre-hook `event_overrides`
+ *   return (submit path only; no pre-hook layer exists for other paths).
  * @returns {{ doc: Object }} — the fully rendered event doc.
  */
 function planEventDispatch({
@@ -192,9 +195,9 @@ function planEventDispatch({
     metadata: buildMetadata({ isActionEvent, plannedActionDoc, signal, status_before, status_after, workflow }),
   };
 
-  // ── Apply override layers (Submit path only) ─────────────────────────────
+  // ── Apply override layers (any path that supplies an override slice) ────────
   let mergedPayload = defaultPayload;
-  if (isSubmit) {
+  if (yamlEventOverrides || preHookEventOverrides) {
     mergedPayload = mergeEventOverrides({
       defaultPayload,
       yamlOverride: yamlEventOverrides,

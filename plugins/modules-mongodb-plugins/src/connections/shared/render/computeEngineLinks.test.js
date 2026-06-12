@@ -201,7 +201,7 @@ test('tracker start_link: edit null when no start_link declared', () => {
       status: [{ stage: 'action-required' }],
       child_workflow_id: null,
       access: { demo: { view: true, edit: true } },
-      tracker: { workflow_type: 'device-installation' },
+      tracker: { child_workflow_type: 'device-installation' },
     },
   });
   expect(links.demo.edit).toBeNull();

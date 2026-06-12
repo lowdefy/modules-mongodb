@@ -79,7 +79,7 @@ test('tracker kind: unblock from blocked lands action-required', () => {
   const result = plan({
     action: makeAction({ kind: 'tracker', stage: 'blocked' }),
     signal: 'unblock',
-    actionConfig: makeConfig({ kind: 'tracker', tracker: { workflow_type: 'child-type' } }),
+    actionConfig: makeConfig({ kind: 'tracker', tracker: { child_workflow_type: 'child-type' } }),
   });
   expect(result.doc.status[0].stage).toBe('action-required');
 });
@@ -168,18 +168,18 @@ test('update path refreshes tracker block incl. start_link from config', () => {
   // Loaded doc has a stale tracker without start_link; config declares one —
   // the denorm refresh must write the full block from config.
   const result = plan({
-    action: makeAction({ kind: 'tracker', stage: 'blocked', tracker: { workflow_type: 'child-type' } }),
+    action: makeAction({ kind: 'tracker', stage: 'blocked', tracker: { child_workflow_type: 'child-type' } }),
     signal: 'unblock',
     actionConfig: makeConfig({
       kind: 'tracker',
       tracker: {
-        workflow_type: 'child-type',
+        child_workflow_type: 'child-type',
         start_link: { pageId: 'start-child', urlQuery: { action_id: true } },
       },
     }),
   });
   expect(result.doc.tracker).toEqual({
-    workflow_type: 'child-type',
+    child_workflow_type: 'child-type',
     start_link: { pageId: 'start-child', urlQuery: { action_id: true } },
   });
 });
@@ -187,13 +187,13 @@ test('update path refreshes tracker block incl. start_link from config', () => {
 test('end-to-end: tracker with start_link + edit verb materialises links.edit on action-required', () => {
   // Exercises task 2's computeEngineLinks tracker arm through the planner.
   const result = planActionTransition({
-    action: makeAction({ kind: 'tracker', stage: 'blocked', entity_id: 'ent-1', tracker: { workflow_type: 'child-type' } }),
+    action: makeAction({ kind: 'tracker', stage: 'blocked', entity_id: 'ent-1', tracker: { child_workflow_type: 'child-type' } }),
     signal: 'unblock',
     actionConfig: makeConfig({
       kind: 'tracker',
       access: { demo: { view: true, edit: true } },
       tracker: {
-        workflow_type: 'child-type',
+        child_workflow_type: 'child-type',
         start_link: {
           pageId: 'start-child',
           urlQuery: { action_id: true, entity_id: true, ref: 'static-val' },
@@ -322,12 +322,12 @@ describe('upsert spawn', () => {
     const trackerConfig = makeConfig({
       type: 'child-flow',
       kind: 'tracker',
-      tracker: { workflow_type: 'child-type' },
+      tracker: { child_workflow_type: 'child-type' },
     });
     const result = spawn({ signal: 'block', actionConfig: trackerConfig });
     expect(result.operation).toBe('insert');
     expect(result.doc.status).toEqual([{ stage: 'blocked', event_id, created: now }]);
-    expect(result.doc.tracker).toEqual({ workflow_type: 'child-type' });
+    expect(result.doc.tracker).toEqual({ child_workflow_type: 'child-type' });
     // Non-birth signals still no-op from none.
     expect(
       spawn({ signal: 'internal_mirror_child_active', actionConfig: trackerConfig }),

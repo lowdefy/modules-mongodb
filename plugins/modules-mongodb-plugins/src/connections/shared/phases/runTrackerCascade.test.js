@@ -26,7 +26,7 @@ const oneTrackerParent = {
   entity_collection: 'parents',
   entity_ref_key: 'parent_ids',
   action_groups: [],
-  actions: [{ type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } }],
+  actions: [{ type: 'track-child', kind: 'tracker', tracker: { child_workflow_type: 'child' } }],
 };
 // Two-action parent: stays active (the form action keeps it non-terminal).
 const twoActionParent = {
@@ -36,7 +36,7 @@ const twoActionParent = {
   action_groups: [],
   actions: [
     { type: 'qualify', kind: 'form' },
-    { type: 'track-child', kind: 'tracker', tracker: { workflow_type: 'child' } },
+    { type: 'track-child', kind: 'tracker', tracker: { child_workflow_type: 'child' } },
   ],
 };
 
@@ -142,7 +142,7 @@ async function seedAction({
     key: null,
     action_group: null,
     child_workflow_id,
-    tracker: kind === 'tracker' ? { workflow_type: 'child' } : null,
+    tracker: kind === 'tracker' ? { child_workflow_type: 'child' } : null,
     status: [{ stage, event_id: 'e0', created: changeStamp }],
     metadata: {},
     created: changeStamp,

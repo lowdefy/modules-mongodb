@@ -5,7 +5,7 @@
  * Layer ordering:
  *   1+3. defaultPayload (engine default + runtime comment already folded
  *        into metadata.comment by buildDefaultLogEventPayload — Task 9).
- *   2.   yamlOverride — params.event_overrides[interaction], baked by Part 13.
+ *   2.   yamlOverride — actionConfig.event_overrides[signal], spliced onto actionConfig by loadWorkflowState (Part 48).
  *   4.   preHookOverride — pre-hook return `event_overrides`.
  *
  * Merge depth: one level deep on `display` / `references` / `metadata`. Within

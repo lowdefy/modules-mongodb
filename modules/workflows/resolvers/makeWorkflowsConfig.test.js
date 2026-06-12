@@ -410,6 +410,14 @@ test("makeWorkflowsConfig: legacy string on_complete fails with migration messag
   );
 });
 
+// Stub child workflow used in tracker tests so that tracker.child_workflow_type
+// "device-installation" resolves to a declared type in the workflows array.
+const deviceInstallationStub = {
+  type: "device-installation",
+  entity_collection: "installations-collection",
+  entity_ref_key: "installation_ids",
+};
+
 // --- validateActionAccess (Part 34 D4) -------------------------------------
 
 function workflowWithAccess(access) {
@@ -428,26 +436,26 @@ test("validateActionAccess: accepts the verb→gate map (true and array gates)",
     demo: { view: true, edit: ["account-manager"], review: ["account-manager"] },
     support: { view: ["support-rep"] },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).not.toThrow();
 });
 
 test("validateActionAccess: rejects the empty-list gate []", () => {
   const wf = workflowWithAccess({ demo: { view: true, edit: [] } });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /empty list \[\] — invalid/,
   );
 });
 
 test("validateActionAccess: rejects the shorthand list form access.{app}: [verbs]", () => {
   const wf = workflowWithAccess({ demo: ["view", "edit"] });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /removed shorthand list form/,
   );
 });
 
 test("validateActionAccess: rejects the removed action-wide access.roles", () => {
   const wf = workflowWithAccess({ demo: { view: true }, roles: ["admin"] });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /access\.roles .* is removed/,
   );
 });
@@ -457,21 +465,21 @@ test("validateActionAccess: rejects notification_roles nested under access", () 
     demo: { view: true },
     notification_roles: ["admin"],
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /notification_roles lives at the action root/,
   );
 });
 
 test("validateActionAccess: rejects an unknown verb key", () => {
   const wf = workflowWithAccess({ demo: { view: true, delete: true } });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /unknown verb key "delete"/,
   );
 });
 
 test("validateActionAccess: rejects a gate that is neither true nor a role array", () => {
   const wf = workflowWithAccess({ demo: { view: "admin" } });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /gate must be true or a non-empty array of role strings/,
   );
 });
@@ -493,13 +501,13 @@ test("validateActionAccess: notification_roles at the action root is valid", () 
       },
     ],
   };
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).not.toThrow();
 });
 
 test("validateActionAccess: lint-warns (does not throw) on edit/review/error without view", () => {
   const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
   const wf = workflowWithAccess({ demo: { edit: ["account-manager"] } });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).not.toThrow();
   expect(warn).toHaveBeenCalledWith(
     expect.stringMatching(/declares edit\/review\/error without view/),
   );
@@ -532,28 +540,39 @@ test("validateStatusMapCells: accepts a message-only cell and a status_title", (
     "action-required": { demo: { message: "Qualify the lead." }, status_title: "Qualifying" },
     done: { status_title: null },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).not.toThrow();
+});
+
+test("makeWorkflowsConfig: status_map is validated but NOT carried on the returned blob (Part 48)", () => {
+  // status_map now arrives per-request via render_config and is spliced at load
+  // time (loadWorkflowState seam), so the connection blob must not carry it.
+  const wf = workflowWithStatusMap({
+    "action-required": { demo: { message: "Qualify the lead." }, status_title: "Qualifying" },
+    done: { status_title: null },
+  });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
+  expect("status_map" in out.actions[0]).toBe(false);
 });
 
 test("validateStatusMapCells: rejects link: on a built-in kind", () => {
   const wf = workflowWithStatusMap({
     done: { demo: { message: "Done.", link: { pageId: "x" } } },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /link is engine-managed for kind: form/,
   );
 });
 
 test("validateStatusMapCells: rejects an invalid stage key", () => {
   const wf = workflowWithStatusMap({ "not-a-stage": { demo: { message: "x" } } });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /is not a member of action_statuses/,
   );
 });
 
 test("validateStatusMapCells: rejects a non-string/null status_title", () => {
   const wf = workflowWithStatusMap({ done: { status_title: 42 } });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /status_title must be a string or null/,
   );
 });
@@ -573,7 +592,7 @@ function workflowWithTracker(tracker) {
 
 test("validateTrackerStartLink: full shape (pageId + urlQuery with sentinels and static string) passes and flows through", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: {
       pageId: "ticket-new",
       urlQuery: {
@@ -583,7 +602,7 @@ test("validateTrackerStartLink: full shape (pageId + urlQuery with sentinels and
       },
     },
   });
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].tracker.start_link).toEqual({
     pageId: "ticket-new",
     urlQuery: { action_id: true, entity_id: true, source: "onboarding" },
@@ -592,145 +611,145 @@ test("validateTrackerStartLink: full shape (pageId + urlQuery with sentinels and
 
 test("validateTrackerStartLink: minimal shape (pageId only, no urlQuery) passes", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new" },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).not.toThrow();
 });
 
 test("validateTrackerStartLink: tracker block with no start_link passes (regression guard)", () => {
-  const wf = workflowWithTracker({ workflow_type: "device-installation" });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+  const wf = workflowWithTracker({ child_workflow_type: "device-installation" });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).not.toThrow();
 });
 
 test("validateTrackerStartLink: rejects missing pageId", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { urlQuery: { source: "onboarding" } },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.pageId must be a non-empty string/,
   );
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /onboarding/,
   );
 });
 
 test("validateTrackerStartLink: rejects non-string pageId", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: 42 },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.pageId must be a non-empty string/,
   );
 });
 
 test("validateTrackerStartLink: rejects empty-string pageId", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "" },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.pageId must be a non-empty string/,
   );
 });
 
 test("validateTrackerStartLink: rejects unknown key — specifically title:", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new", title: "Create ticket" },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link has unknown key "title"/,
   );
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /only pageId and urlQuery are allowed/,
   );
 });
 
 test("validateTrackerStartLink: rejects start_link that is a string", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: "ticket-new",
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link must be a plain object/,
   );
 });
 
 test("validateTrackerStartLink: rejects start_link that is an array", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: [{ pageId: "ticket-new" }],
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link must be a plain object/,
   );
 });
 
 test("validateTrackerStartLink: rejects urlQuery that is not an object", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new", urlQuery: "not-an-object" },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.urlQuery must be a plain object/,
   );
 });
 
 test("validateTrackerStartLink: rejects urlQuery with true on a non-sentinel key (source: true)", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new", urlQuery: { source: true } },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.urlQuery\.source must be a string/,
   );
 });
 
 test("validateTrackerStartLink: rejects urlQuery with static string on reserved key action_id", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new", urlQuery: { action_id: "some-id" } },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.urlQuery\.action_id is a reserved sentinel key/,
   );
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /value must be exactly true/,
   );
 });
 
 test("validateTrackerStartLink: rejects urlQuery with static string on reserved key entity_id", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new", urlQuery: { entity_id: "foo" } },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.urlQuery\.entity_id is a reserved sentinel key/,
   );
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /value must be exactly true/,
   );
 });
 
 test("validateTrackerStartLink: rejects urlQuery with non-string static — number (count: 3)", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new", urlQuery: { count: 3 } },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.urlQuery\.count must be a string/,
   );
 });
 
 test("validateTrackerStartLink: rejects urlQuery with non-string static — boolean false (flag: false)", () => {
   const wf = workflowWithTracker({
-    workflow_type: "device-installation",
+    child_workflow_type: "device-installation",
     start_link: { pageId: "ticket-new", urlQuery: { flag: false } },
   });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /tracker\.start_link\.urlQuery\.flag must be a string/,
   );
 });
@@ -796,7 +815,7 @@ function workflowWithFormActions(...actions) {
 
 test("makeWorkflowsConfig: form-kind action carries form_meta matching makeActionFormConfigs shape", () => {
   const wf = workflowWithFormActions(qualifyAction);
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].form_meta).toEqual({
     form: [
       { component: "text_input", key: "contact_name", required: true, title: "Contact name" },
@@ -807,7 +826,7 @@ test("makeWorkflowsConfig: form-kind action carries form_meta matching makeActio
 
 test("makeWorkflowsConfig: form_meta includes form_review when present", () => {
   const wf = workflowWithFormActions(sendQuoteAction);
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].form_meta).toEqual({
     form: [{ component: "number", key: "quote_total", required: true }],
     form_review: [{ component: "text_area", key: "approve_notes", required: false }],
@@ -823,7 +842,7 @@ test("makeWorkflowsConfig: form_meta includes form_error when present", () => {
     form_error: [{ component: "text_area", key: "recovery_notes" }],
   };
   const wf = workflowWithFormActions(withError);
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].form_meta.form_error).toEqual([
     { component: "text_area", key: "recovery_notes", required: false },
   ]);
@@ -831,7 +850,7 @@ test("makeWorkflowsConfig: form_meta includes form_error when present", () => {
 
 test("makeWorkflowsConfig: form_meta recurses into controlled_list structural component", () => {
   const wf = workflowWithFormActions(proofOfInstallAction);
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].form_meta).toEqual({
     form: [
       {
@@ -854,8 +873,8 @@ test("makeWorkflowsConfig: check-kind action has no form_meta", () => {
 });
 
 test("makeWorkflowsConfig: tracker-kind action has no form_meta", () => {
-  const wf = workflowWithTracker({ workflow_type: "device-installation" });
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const wf = workflowWithTracker({ child_workflow_type: "device-installation" });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect("form_meta" in out.actions[0]).toBe(false);
 });
 
@@ -868,13 +887,13 @@ test("makeWorkflowsConfig: allow_not_required defaults to false when absent (che
 
 test("makeWorkflowsConfig: allow_not_required: true flows through on a form-kind action", () => {
   const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: true });
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].allow_not_required).toBe(true);
 });
 
 test("makeWorkflowsConfig: allow_not_required: false flows through explicitly", () => {
   const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: false });
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].allow_not_required).toBe(false);
 });
 
@@ -889,31 +908,31 @@ test("makeWorkflowsConfig: allow_not_required: true flows through on a tracker-k
       {
         type: "install-device",
         kind: "tracker",
-        tracker: { workflow_type: "device-installation" },
+        tracker: { child_workflow_type: "device-installation" },
         allow_not_required: true,
       },
     ],
   };
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].allow_not_required).toBe(true);
 });
 
 test("makeWorkflowsConfig: non-boolean allow_not_required hard-errors with makeWorkflowsConfig: message", () => {
   const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: "yes" });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /makeWorkflowsConfig:/,
   );
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /allow_not_required must be a boolean/,
   );
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /onboarding/,
   );
 });
 
 test("makeWorkflowsConfig: non-boolean allow_not_required (number) hard-errors", () => {
   const wf = workflowWithFormActions({ ...qualifyAction, allow_not_required: 1 });
-  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })).toThrow(
     /allow_not_required must be a boolean/,
   );
 });
@@ -927,6 +946,307 @@ test("makeWorkflowsConfig: allow_not_required works on check-kind action too", (
     starting_actions: [{ type: "do-it", status: "action-required" }],
     actions: [{ type: "do-it", kind: "check", allow_not_required: true }],
   };
-  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] });
   expect(out.actions[0].allow_not_required).toBe(true);
+});
+
+// --- validateTrackerChildWorkflowType + validateTrackerEdges (Part 48 D6) ---
+
+function trackerWorkflow(overrides = {}) {
+  return {
+    type: "parent",
+    entity_collection: "parents-collection",
+    entity_ref_key: "parent_ids",
+    starting_actions: [{ type: "track-it", status: "action-required" }],
+    actions: [
+      {
+        type: "track-it",
+        kind: "tracker",
+        tracker: { child_workflow_type: "child" },
+        ...overrides,
+      },
+    ],
+  };
+}
+
+const childStub = {
+  type: "child",
+  entity_collection: "children-collection",
+  entity_ref_key: "child_ids",
+};
+
+test("validateTrackerChildWorkflowType: valid child_workflow_type resolving to a declared type passes", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [trackerWorkflow(), childStub] })
+  ).not.toThrow();
+});
+
+test("validateTrackerChildWorkflowType: missing child_workflow_type hard-errors", () => {
+  const wf = {
+    type: "parent",
+    entity_collection: "parents-collection",
+    entity_ref_key: "parent_ids",
+    starting_actions: [{ type: "track-it", status: "action-required" }],
+    actions: [{ type: "track-it", kind: "tracker", tracker: {} }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, childStub] })).toThrow(
+    /tracker\.child_workflow_type must be a non-empty string/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, childStub] })).toThrow(
+    /parent/,
+  );
+});
+
+test("validateTrackerChildWorkflowType: empty-string child_workflow_type hard-errors", () => {
+  const wf = {
+    type: "parent",
+    entity_collection: "parents-collection",
+    entity_ref_key: "parent_ids",
+    starting_actions: [{ type: "track-it", status: "action-required" }],
+    actions: [{ type: "track-it", kind: "tracker", tracker: { child_workflow_type: "" } }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, childStub] })).toThrow(
+    /tracker\.child_workflow_type must be a non-empty string/,
+  );
+});
+
+test("validateTrackerChildWorkflowType: non-string child_workflow_type hard-errors", () => {
+  const wf = {
+    type: "parent",
+    entity_collection: "parents-collection",
+    entity_ref_key: "parent_ids",
+    starting_actions: [{ type: "track-it", status: "action-required" }],
+    actions: [{ type: "track-it", kind: "tracker", tracker: { child_workflow_type: 42 } }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, childStub] })).toThrow(
+    /tracker\.child_workflow_type must be a non-empty string/,
+  );
+});
+
+test("validateTrackerChildWorkflowType: legacy tracker.workflow_type key hard-errors with rename hint", () => {
+  const wf = {
+    type: "parent",
+    entity_collection: "parents-collection",
+    entity_ref_key: "parent_ids",
+    starting_actions: [{ type: "track-it", status: "action-required" }],
+    actions: [
+      { type: "track-it", kind: "tracker", tracker: { workflow_type: "child" } },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, childStub] })).toThrow(
+    /tracker\.workflow_type is renamed/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, childStub] })).toThrow(
+    /tracker\.child_workflow_type/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf, childStub] })).toThrow(
+    /Part 48 D6/,
+  );
+});
+
+test("validateTrackerEdges: child_workflow_type not matching any declared workflow type hard-errors", () => {
+  const wf = trackerWorkflow(); // references "child" which is not in the workflows array
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /child_workflow_type "child" which is not a declared workflow type/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /parent/,
+  );
+});
+
+test("validateTrackerEdges: no cycle — linear parent → child passes", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [trackerWorkflow(), childStub] })
+  ).not.toThrow();
+});
+
+test("validateTrackerEdges: direct cycle (a → b → a) hard-errors naming the path", () => {
+  const a = {
+    type: "a",
+    entity_collection: "a-collection",
+    entity_ref_key: "a_ids",
+    starting_actions: [{ type: "track-b", status: "action-required" }],
+    actions: [{ type: "track-b", kind: "tracker", tracker: { child_workflow_type: "b" } }],
+  };
+  const b = {
+    type: "b",
+    entity_collection: "b-collection",
+    entity_ref_key: "b_ids",
+    starting_actions: [{ type: "track-a", status: "action-required" }],
+    actions: [{ type: "track-a", kind: "tracker", tracker: { child_workflow_type: "a" } }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [a, b] })).toThrow(
+    /tracker cycle/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [a, b] })).toThrow(
+    /a.*b.*a|b.*a.*b/,
+  );
+});
+
+test("validateTrackerEdges: longer cycle (a → b → c → a) hard-errors naming the path", () => {
+  const a = {
+    type: "a",
+    entity_collection: "a-collection",
+    entity_ref_key: "a_ids",
+    starting_actions: [{ type: "track-b", status: "action-required" }],
+    actions: [{ type: "track-b", kind: "tracker", tracker: { child_workflow_type: "b" } }],
+  };
+  const b = {
+    type: "b",
+    entity_collection: "b-collection",
+    entity_ref_key: "b_ids",
+    starting_actions: [{ type: "track-c", status: "action-required" }],
+    actions: [{ type: "track-c", kind: "tracker", tracker: { child_workflow_type: "c" } }],
+  };
+  const c = {
+    type: "c",
+    entity_collection: "c-collection",
+    entity_ref_key: "c_ids",
+    starting_actions: [{ type: "track-a", status: "action-required" }],
+    actions: [{ type: "track-a", kind: "tracker", tracker: { child_workflow_type: "a" } }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [a, b, c] })).toThrow(
+    /tracker cycle/,
+  );
+});
+
+// --- validateEvent: mirror signals (Part 48 D4) --------------------------------
+
+test("makeWorkflowsConfig: tracker action with mirror-signal event key passes", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "install-device", status: "action-required" }],
+    actions: [
+      {
+        type: "install-device",
+        kind: "tracker",
+        tracker: { child_workflow_type: "device-installation" },
+        event: {
+          internal_mirror_child_completed: { display: { demo: { title: "Child completed" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: form action with mirror-signal event key hard-errors with kind-restriction message", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        form: [],
+        event: {
+          internal_mirror_child_completed: { display: { demo: { title: "x" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/mirror signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/kind: tracker/);
+});
+
+test("makeWorkflowsConfig: check action with mirror-signal event key hard-errors with kind-restriction message", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "check",
+        event: {
+          internal_mirror_child_active: { display: { demo: { title: "x" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/mirror signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/kind: tracker/);
+});
+
+test("makeWorkflowsConfig: tracker action with unknown event key still hard-errors", () => {
+  const wf = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    starting_actions: [{ type: "install-device", status: "action-required" }],
+    actions: [
+      {
+        type: "install-device",
+        kind: "tracker",
+        tracker: { child_workflow_type: "device-installation" },
+        event: {
+          completely_unknown_signal: { display: { demo: { title: "x" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/is not a known signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] })
+  ).toThrow(/completely_unknown_signal/);
+});
+
+// --- validateWorkflowEvent: workflow-level event map (Part 48 D8) ------------
+
+test("makeWorkflowsConfig: workflow-level event with lifecycle signal keys passes", () => {
+  const wf = {
+    ...validWorkflow,
+    event: {
+      started: { display: { demo: { title: "Onboarding started" } } },
+      cancelled: { display: { demo: { title: "Onboarding cancelled" } } },
+      closed: { display: { demo: { title: "Onboarding closed" } } },
+    },
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf] })
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: workflow-level event with unknown key hard-errors", () => {
+  const wf = {
+    ...validWorkflow,
+    event: {
+      started: { display: { demo: { title: "x" } } },
+      submit: { display: { demo: { title: "x" } } },
+    },
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf] })
+  ).toThrow(/is not a known lifecycle signal/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf] })
+  ).toThrow(/submit/);
+});
+
+test("makeWorkflowsConfig: workflow-level event is not present on the returned config blob", () => {
+  const wf = {
+    ...validWorkflow,
+    event: {
+      started: { display: { demo: { title: "x" } } },
+    },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  expect("event" in out).toBe(false);
 });

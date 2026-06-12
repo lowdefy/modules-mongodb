@@ -197,7 +197,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
     submitted_form,
     allTouchedActionDocs: allActionEntries.map((e) => e.doc),
     connection,
-    yamlEventOverrides: params.event_overrides?.[params.signal],
+    yamlEventOverrides: actionConfig.event_overrides?.[params.signal],
     preHookEventOverrides: preHookResult.event_overrides,
   });
 
