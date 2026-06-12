@@ -425,7 +425,11 @@ describe('concurrent submit (CAS)', () => {
     await expect(
       SubmitWorkflowAction(
         buildContext({
-          request: { action_id: 'A1', signal: 'submit', hooks: { submit: { pre: 'hooks/pre' } } },
+          request: {
+            action_id: 'A1',
+            signal: 'submit',
+            hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
+          },
           callApi,
         }),
       ),
@@ -450,7 +454,11 @@ describe('concurrent submit (CAS)', () => {
 
     const ctx = () =>
       buildContext({
-        request: { action_id: 'A1', signal: 'submit', hooks: { submit: { pre: 'hooks/pre' } } },
+        request: {
+          action_id: 'A1',
+          signal: 'submit',
+          hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
+        },
         callApi,
       });
 
@@ -479,7 +487,7 @@ describe('pre-hook auxiliary signal flows', () => {
         request: {
           action_id: 'A1',
           signal: 'submit',
-          hooks: { submit: { pre: 'hooks/pre' } },
+          hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
         },
         callApi: async ({ endpointId, payload }) => {
           if (endpointId === 'hooks/pre') return { actions: [{ type: 'kickoff', signal: 'submit' }] };
@@ -499,7 +507,7 @@ describe('pre-hook auxiliary signal flows', () => {
         request: {
           action_id: 'A1',
           signal: 'submit',
-          hooks: { submit: { pre: 'hooks/pre' } },
+          hooks: { qualify: { submit: { pre: 'hooks/pre' } } },
         },
         callApi: async ({ endpointId, payload }) => {
           if (endpointId === 'hooks/pre') {
@@ -518,6 +526,68 @@ describe('pre-hook auxiliary signal flows', () => {
     expect(spawned.status[0].stage).toBe('action-required');
     expect(spawned.description).toBe('spawned');
     expect(result.action_ids).toContain(spawned._id);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Per-workflow hooks re-slice (Part 48 D7): params.hooks arrives keyed by
+// action type; handleSubmit re-slices to the loaded action's signal-keyed map.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('action-type-keyed hooks re-slice', () => {
+  test('an action with no hooks entry skips hooks entirely', async () => {
+    await seed();
+    const calls = [];
+    // hooks keyed for kickoff only; target A1 is qualify → no hook call.
+    const result = await SubmitWorkflowAction(
+      buildContext({
+        request: {
+          action_id: 'A1',
+          signal: 'submit',
+          hooks: { kickoff: { submit: { pre: 'hooks/pre' } } },
+        },
+        callApi: makeCallApi({ calls }),
+      }),
+    );
+    expect(calls.some((c) => c.endpointId === 'hooks/pre')).toBe(false);
+    expect(result.pre_hook_response).toEqual({ actions: [], event_overrides: {}, form_overrides: {} });
+  });
+
+  test('two actions hooked on the same signal do not collide — each fires its own', async () => {
+    const hooks = {
+      qualify: { submit: { pre: 'hooks/pre-qualify' } },
+      kickoff: { submit: { pre: 'hooks/pre-kickoff' } },
+    };
+    const makeHookAwareCallApi = (calls) => async ({ endpointId, payload }) => {
+      if (endpointId === 'hooks/pre-qualify' || endpointId === 'hooks/pre-kickoff') {
+        calls.push({ endpointId, payload });
+        return null;
+      }
+      return makeCallApi({ calls })({ endpointId, payload });
+    };
+
+    // Submit qualify (A1) → only the qualify hook fires.
+    await seed({ extraActions: [{ _id: 'A2', type: 'kickoff', status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }] }] });
+    const qualifyCalls = [];
+    await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: 'A1', signal: 'submit', hooks },
+        callApi: makeHookAwareCallApi(qualifyCalls),
+      }),
+    );
+    expect(qualifyCalls.some((c) => c.endpointId === 'hooks/pre-qualify')).toBe(true);
+    expect(qualifyCalls.some((c) => c.endpointId === 'hooks/pre-kickoff')).toBe(false);
+
+    // Submit kickoff (A2) → only the kickoff hook fires.
+    const kickoffCalls = [];
+    await SubmitWorkflowAction(
+      buildContext({
+        request: { action_id: 'A2', signal: 'submit', hooks },
+        callApi: makeHookAwareCallApi(kickoffCalls),
+      }),
+    );
+    expect(kickoffCalls.some((c) => c.endpointId === 'hooks/pre-kickoff')).toBe(true);
+    expect(kickoffCalls.some((c) => c.endpointId === 'hooks/pre-qualify')).toBe(false);
   });
 });
 
@@ -571,7 +641,11 @@ describe('post-commit dispatch failure', () => {
     await expect(
       SubmitWorkflowAction(
         buildContext({
-          request: { action_id: 'A1', signal: 'submit', hooks: { submit: { post: 'hooks/post' } } },
+          request: {
+            action_id: 'A1',
+            signal: 'submit',
+            hooks: { qualify: { submit: { post: 'hooks/post' } } },
+          },
           callApi,
         }),
       ),

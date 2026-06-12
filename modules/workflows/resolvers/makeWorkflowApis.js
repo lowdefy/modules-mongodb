@@ -1,6 +1,12 @@
-import { HOOK_SIGNALS, HOOK_PHASES } from './hookSignals.js';
+import { HOOK_SIGNALS, HOOK_PHASES, MIRROR_SIGNALS } from './hookSignals.js';
+import { collectTrackerEdges } from './trackerEdges.js';
 
 const EVENT_OVERRIDE_FIELDS = ['type', 'display', 'references', 'metadata'];
+
+// Signals whose `event:` overrides ride render_config: submit-time hook
+// signals plus tracker mirror signals (Part 48 task 7 made the latter
+// authorable on kind: tracker actions).
+const EVENT_OVERRIDE_SIGNALS = [...HOOK_SIGNALS, ...MIRROR_SIGNALS];
 
 // Hooks are engine-only by design: a built `Api` endpoint is HTTP-callable,
 // and a direct HTTP call to the predictable hook id
@@ -42,7 +48,7 @@ function emitHooks(workflow, action) {
 function emitEventOverrides(action) {
   if (!action.event) return undefined;
   const map = {};
-  for (const signal of HOOK_SIGNALS) {
+  for (const signal of EVENT_OVERRIDE_SIGNALS) {
     const e = action.event[signal];
     if (!e) continue;
     const slot = {};
@@ -54,7 +60,60 @@ function emitEventOverrides(action) {
   return Object.keys(map).length > 0 ? map : undefined;
 }
 
-function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
+// One render slice per action: raw status_map (already validated by
+// makeWorkflowsConfig) + event_overrides. Empty slices are omitted.
+function emitWorkflowRenderSlices(workflow) {
+  const slices = {};
+  for (const action of workflow.actions ?? []) {
+    const slice = {};
+    if (action.status_map && Object.keys(action.status_map).length > 0) {
+      slice.status_map = action.status_map;
+    }
+    const eventMap = emitEventOverrides(action);
+    if (eventMap) slice.event_overrides = eventMap;
+    if (Object.keys(slice).length > 0) slices[action.type] = slice;
+  }
+  return Object.keys(slices).length > 0 ? slices : undefined;
+}
+
+// Ancestors of `type`: the transitive closure of tracker child→parent edges
+// walked upward. The submit's write operations cascade to ancestors and render
+// status_map/mirror events along the way (Part 48 D6), so every ancestor's
+// render slices must ride the endpoint. No cycle guard — makeWorkflowsConfig
+// hard-errors on cycles at build time (and the visited set terminates anyway).
+function collectAncestorTypes(type, edges) {
+  const ancestors = new Set();
+  let frontier = [type];
+  while (frontier.length > 0) {
+    const next = [];
+    for (const { parentType, childType } of edges) {
+      if (frontier.includes(childType) && !ancestors.has(parentType)) {
+        ancestors.add(parentType);
+        next.push(parentType);
+      }
+    }
+    frontier = next;
+  }
+  return [...ancestors];
+}
+
+// render_config bundle: workflow_type → action_type → { status_map?,
+// event_overrides? } for the workflow's own actions plus every ancestor's.
+// Static build output — values are raw display config, no _module.* refs.
+// Duplication of a shared ancestor's config across descendant endpoints is
+// accepted: build artifacts are cheap, per-request evaluation is what hurts.
+function emitRenderConfig(workflow, workflowsByType, edges) {
+  const config = {};
+  for (const type of [workflow.type, ...collectAncestorTypes(workflow.type, edges)]) {
+    const target = workflowsByType.get(type);
+    if (!target) continue;
+    const slices = emitWorkflowRenderSlices(target);
+    if (slices) config[type] = slices;
+  }
+  return Object.keys(config).length > 0 ? config : undefined;
+}
+
+function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
   const properties = {
     action_id: { _payload: 'action_id' },
     signal: { _payload: 'signal' },
@@ -64,12 +123,16 @@ function emitActionEndpoint(workflow, action, hooksMap, eventMap) {
     form_review: { _payload: 'form_review' },
     comment: { _payload: 'comment' },
     metadata: { _payload: 'metadata' },
-    ...(hooksMap ? { hooks: hooksMap } : {}),
-    ...(eventMap ? { event_overrides: eventMap } : {}),
+    // hooks is a sibling of render_config, not nested under it: hook values
+    // are build-resolved endpoint refs consumed off params, not Nunjucks
+    // display config. Keyed by action type (Part 48 D7) — handleSubmit
+    // re-slices to the signal-keyed shape the hook phases consume.
+    ...(hooksByAction ? { hooks: hooksByAction } : {}),
+    ...(renderConfig ? { render_config: renderConfig } : {}),
   };
 
   return {
-    id: `${workflow.type}-${action.type}-submit`,
+    id: `${workflow.type}-submit`,
     type: 'Api',
     routine: [
       {
@@ -102,7 +165,7 @@ function emitGroupOnCompleteApi(workflow, group) {
   };
 }
 
-function emitForWorkflow(workflow) {
+function emitForWorkflow(workflow, { workflowsByType, edges }) {
   // `workflow` is reserved (Part 34 D10): a type named `workflow` would emit
   // derived ids (`workflow-{action}-…`) that collide with the module's fixed
   // `workflow-*` page space.
@@ -114,12 +177,27 @@ function emitForWorkflow(workflow) {
 
   const apis = [];
 
+  // One submit endpoint per workflow (Part 48); hook InternalApis stay
+  // per-action with unchanged ids. Trackers are skipped — an all-tracker
+  // workflow emits no submit endpoint.
+  const hooksByAction = {};
+  let hasSubmittableAction = false;
   for (const action of workflow.actions ?? []) {
     if (action.kind === 'tracker') continue;
+    hasSubmittableAction = true;
     const { apis: hookApis, map: hooksMap } = emitHooks(workflow, action);
     apis.push(...hookApis);
-    const eventMap = emitEventOverrides(action);
-    apis.push(emitActionEndpoint(workflow, action, hooksMap, eventMap));
+    if (hooksMap) hooksByAction[action.type] = hooksMap;
+  }
+
+  if (hasSubmittableAction) {
+    apis.push(
+      emitSubmitEndpoint(
+        workflow,
+        Object.keys(hooksByAction).length > 0 ? hooksByAction : undefined,
+        emitRenderConfig(workflow, workflowsByType, edges),
+      ),
+    );
   }
 
   for (const group of workflow.action_groups ?? []) {
@@ -132,9 +210,11 @@ function emitForWorkflow(workflow) {
 
 function makeWorkflowApis(_, vars) {
   const { workflows } = vars;
+  const edges = collectTrackerEdges(workflows);
+  const workflowsByType = new Map(workflows.map((w) => [w.type, w]));
   const apis = [];
   for (const workflow of workflows) {
-    apis.push(...emitForWorkflow(workflow));
+    apis.push(...emitForWorkflow(workflow, { workflowsByType, edges }));
   }
   return apis;
 }

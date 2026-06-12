@@ -54,6 +54,10 @@ async function handleSubmit(context) {
   // commitPlan pins loadedState.workflow.updated.timestamp as the CAS anchor.
   context.loadedState = loadedState;
 
+  // Per-workflow endpoints key hooks by action type (Part 48 D7); re-slice to
+  // the signal-keyed shape the hook phases consume (params.hooks[signal].{pre|post}).
+  params.hooks = params.hooks?.[loadedState.targetAction.type];
+
   // ── Pre-hook (D5; external side effects only after access is granted) ────
   const preHookResult = await invokePreHook(loadedState, params, user, callApi);
 
