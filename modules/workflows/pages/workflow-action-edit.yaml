@@ -8,7 +8,7 @@
 # `current_action.mode: edit` in onMount.
 #
 # Signal model (Part 38 FSM): the surface's buttons fire `signal`
-# (submit / progress / not_required) at the `update-action-{type}` endpoint —
+# (submit / progress / not_required) at the `{workflow_type}-submit` endpoint —
 # there is no client-side status selector, `interaction`, or `current_status`.
 # Visibility of each signal button is driven by the server-resolved
 # `current_action.buttons.{signal}` booleans in the response.

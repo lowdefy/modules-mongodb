@@ -99,6 +99,41 @@ This sits between the **engine resolver (Part 38/46)** and the **whole UI wave
 **Recommend resolving once Parts 46-followers / 22 and the resolver naming are
 all on one branch.**
 
+**✅ Resolved — post-Part-48, by Part 40 task 11 (`tasks/11-repoint-surface-to-per-workflow-submit.md`).**
+
+Part 48 (merged into `workflows-module`, supersedes the rejected Part 47)
+collapsed submit emission to **one `{workflow_type}-submit` endpoint per
+workflow** (not the per-action `{workflow_type}-{action_type}-submit` named in
+the options above) for the ~500-endpoint scaling reason. The wave landed
+resolution option 2's spirit on the new per-workflow shape:
+
+- **`GetWorkflowAction` ships `workflow_type`** (done by Part 48 itself —
+  `GetWorkflowAction.js:203`, envelope "Engine fields"; header comment
+  `:31-34` records the deliberate, scoped reversal of the Part 46 read
+  contract for this one field; `access`/`metadata`/`tracker`/`child_*` stay
+  excluded). Its test now asserts presence (`GetWorkflowAction.test.js:399`,
+  `workflow_type IS in the envelope`). Part 48 also re-pointed the Part 39
+  `.njk` templates and the demo start callers.
+- **Part 48 did not reach the Part 40 surfaces** (its task 11 file list
+  targeted the pre-Part-40 page topology — inline buttons that no longer exist;
+  its page edits to `workflow-action-edit/-review.yaml` were superseded when the
+  Part 40 thin-container topology merged). Task 11 re-pointed the **six**
+  `endpointId` refs in `components/check-action-surface.yaml` from
+  `{_module.id}/update-action-{current_action.type}` to
+  `{_module.id}/{current_action.workflow_type}-submit`. Payloads are unchanged —
+  each still sends `action_id` + the per-button `signal`; no payload carries
+  `workflow_type` (the endpoint sets its own type statically). `current_action.workflow_type`
+  arrives via the existing `current_action: { _request: get_workflow_action }`
+  spread on all three pages and the modal, so no page/modal change was needed.
+  The stale `update-action-{type}` mention in `workflow-action-edit.yaml`'s
+  header comment was corrected to `{workflow_type}-submit`.
+
+`grep -c "update-action-"` in `check-action-surface.yaml` → **0**. The UI now
+targets the exact id the post-48 resolver emits. Plugin suite green (2901
+tests). Demo build verification deferred to the build owner (the NEXTAUTH_SECRET
+env gate blocks a clean local build run here); no `update-action-` or other
+dangling submit refs remain in the surface.
+
 ## Task 10 disposition — defer to Part 22
 
 Part 40 task 10 ("Part 22 e2e supplements") overlaps the e2e suite Part 22 owns,

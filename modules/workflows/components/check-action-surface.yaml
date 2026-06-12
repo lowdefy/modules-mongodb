@@ -277,8 +277,9 @@ blocks:
                     endpointId:
                       _string.concat:
                         - _module.id: true
-                        - /update-action-
-                        - _state: current_action.type
+                        - /
+                        - _state: current_action.workflow_type
+                        - -submit
                     payload:
                       action_id:
                         _state: current_action._id
@@ -318,8 +319,9 @@ blocks:
                     endpointId:
                       _string.concat:
                         - _module.id: true
-                        - /update-action-
-                        - _state: current_action.type
+                        - /
+                        - _state: current_action.workflow_type
+                        - -submit
                     payload:
                       action_id:
                         _state: current_action._id
@@ -359,8 +361,9 @@ blocks:
                     endpointId:
                       _string.concat:
                         - _module.id: true
-                        - /update-action-
-                        - _state: current_action.type
+                        - /
+                        - _state: current_action.workflow_type
+                        - -submit
                     payload:
                       action_id:
                         _state: current_action._id
@@ -426,8 +429,9 @@ blocks:
                     endpointId:
                       _string.concat:
                         - _module.id: true
-                        - /update-action-
-                        - _state: current_action.type
+                        - /
+                        - _state: current_action.workflow_type
+                        - -submit
                     payload:
                       action_id:
                         _state: current_action._id
@@ -465,8 +469,9 @@ blocks:
                     endpointId:
                       _string.concat:
                         - _module.id: true
-                        - /update-action-
-                        - _state: current_action.type
+                        - /
+                        - _state: current_action.workflow_type
+                        - -submit
                     payload:
                       action_id:
                         _state: current_action._id
@@ -506,8 +511,9 @@ blocks:
                 endpointId:
                   _string.concat:
                     - _module.id: true
-                    - /update-action-
-                    - _state: current_action.type
+                    - /
+                    - _state: current_action.workflow_type
+                    - -submit
                 payload:
                   action_id:
                     _state: current_action._id
