@@ -353,7 +353,7 @@ function EventInfoModal({
   );
 }
 
-function EventAction({ action, actionStatusConfig, methods }) {
+function EventAction({ action, actionStatusConfig, methods, events, components }) {
   if (!action || !actionStatusConfig) return null;
 
   const statusConf = actionStatusConfig[action.status] || {};
@@ -362,6 +362,50 @@ function EventAction({ action, actionStatusConfig, methods }) {
   if (action.status === "blocked") return null;
 
   const link = action.link;
+  const hasLink = !!(link && link.pageId);
+  const wired = !!events.onActionClick;
+  const Link = components?.Link;
+
+  const affordanceStyle = {
+    fontSize: 12,
+    marginLeft: "auto",
+    cursor: "pointer",
+  };
+  const affordanceTitle = (link && link.title) || "Go";
+
+  let affordance = null;
+  if (hasLink) {
+    if (wired) {
+      // Host-wired: fire the action object instead of navigating.
+      affordance = (
+        <a
+          onClick={(e) => {
+            e.preventDefault();
+            if (methods && methods.triggerEvent) {
+              methods.triggerEvent({
+                name: "onActionClick",
+                event: { action },
+              });
+            }
+          }}
+          style={affordanceStyle}
+        >
+          {affordanceTitle}
+        </a>
+      );
+    } else if (Link) {
+      // Unwired: navigate via the Lowdefy Link to the server-resolved link.
+      affordance = (
+        <Link
+          pageId={link.pageId}
+          urlQuery={link.urlQuery}
+          style={affordanceStyle}
+        >
+          {affordanceTitle}
+        </Link>
+      );
+    }
+  }
 
   return (
     <div style={{ marginTop: 6 }}>
@@ -396,26 +440,7 @@ function EventAction({ action, actionStatusConfig, methods }) {
               />
             }
           />
-          {link && link.pageId && (
-            <a
-              onClick={(e) => {
-                e.preventDefault();
-                if (methods && methods.triggerEvent) {
-                  methods.triggerEvent({
-                    name: "onActionClick",
-                    event: { pageId: link.pageId, urlQuery: link.urlQuery },
-                  });
-                }
-              }}
-              style={{
-                fontSize: 12,
-                marginLeft: "auto",
-                cursor: "pointer",
-              }}
-            >
-              {link.title || "Go"}
-            </a>
-          )}
+          {affordance}
         </div>
       </Card>
     </div>
@@ -466,6 +491,7 @@ function EventTimelineItem({
   disableContactLink,
   compact,
   methods,
+  events,
   components,
 }) {
   const [modalVisible, setModalVisible] = useState(false);
@@ -544,6 +570,8 @@ function EventTimelineItem({
             action={action}
             actionStatusConfig={actionStatusConfig}
             methods={methods}
+            events={events}
+            components={components}
           />
         ))}
 
@@ -567,6 +595,7 @@ const EventsTimeline = ({
   classNames = {},
   properties,
   methods,
+  events = {},
   components,
   styles = {},
 }) => {
@@ -611,6 +640,7 @@ const EventsTimeline = ({
             disableContactLink={disableContactLink}
             compact={compact}
             methods={methods}
+            events={events}
             components={components}
           />
         ),
@@ -635,6 +665,7 @@ const EventsTimeline = ({
     disableContactLink,
     compact,
     methods,
+    events,
     components,
   ]);
 
