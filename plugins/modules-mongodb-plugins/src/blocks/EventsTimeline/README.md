@@ -41,10 +41,12 @@ Used by the [`events` module](../../../../../modules/events/README.md) to back i
         type: Link
         params:
           pageId:
-            _event: pageId
+            _event: action.link.pageId
           urlQuery:
-            _event: urlQuery
+            _event: action.link.urlQuery
 ```
+
+`onActionClick` is optional. When it's **not** wired, the block navigates to the action's server-resolved `action.link` by itself via the Lowdefy `Link` component — so the "Go" affordance works with zero host wiring. Wire `onActionClick` only when the host needs to intercept the click (e.g. open an in-context modal) instead of navigating.
 
 The matching request resolves each event against its per-app display template — so `event.title`, `event.description`, and `event.info` arrive as already-rendered HTML strings (sanitized client-side). See [Event display](../../../../../docs/idioms.md#event-display) for the upstream template pipeline.
 
@@ -94,7 +96,9 @@ The avatar uses `created.user.picture` if available, otherwise falls back to ini
 
 | Event | When | Payload |
 |---|---|---|
-| `onActionClick` | An action's link is clicked. | `{ pageId, urlQuery }` from `action.link`. |
+| `onActionClick` | A linked action card's affordance is clicked **and** the event is wired. | `{ action }` — the full action object (`{ _id, kind, status, link, message, … }`). |
+
+When `onActionClick` is **wired**, clicking the affordance fires the action object instead of navigating, letting the host route the click (e.g. open a modal). When it's **unwired**, the affordance renders as a Lowdefy `Link` that navigates to the action's server-resolved `action.link` (`pageId` / `urlQuery`). **Linkless** actions (no `action.link.pageId`) render no affordance and fire nothing in either mode.
 
 ## CSS Keys
 

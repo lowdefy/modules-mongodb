@@ -71,6 +71,7 @@ const ActionSteps = ({
   blockId,
   classNames = {},
   components: { Icon, Link },
+  events = {},
   methods,
   properties,
   styles = {},
@@ -147,6 +148,20 @@ const ActionSteps = ({
                       const secondaryText = ["blocked", "not-required"].includes(
                         action.status,
                       );
+                      const linkClassName = cn(
+                        secondaryText && "action-steps-link-secondary",
+                        linkDisabled && "action-steps-link-disabled",
+                        classNames.link,
+                      );
+                      const messageHtml = renderHtml({
+                        html:
+                          action.status === "not-required"
+                            ? `<strike>${action?.message}</strike>`
+                            : action?.message,
+                        methods,
+                      });
+                      const fireEvent =
+                        events.onActionClick !== undefined && !linkDisabled;
                       return (
                         <Fragment key={action.id ?? actionIdx}>
                           <Badge
@@ -159,28 +174,36 @@ const ActionSteps = ({
                                 : "default"
                             }
                             text={
-                              <Link
-                                id={`${blockId}_link_${itemIdx}_${actionIdx}`}
-                                className={cn(
-                                  secondaryText && "action-steps-link-secondary",
-                                  linkDisabled && "action-steps-link-disabled",
-                                  classNames.link,
-                                )}
-                                style={styles.link}
-                                disabled={linkDisabled}
-                                pageId={action?.link?.pageId}
-                                urlQuery={action?.link?.urlQuery}
-                                input={action?.link?.input}
-                                newTab={action?.link?.newTab ?? false}
-                              >
-                                {renderHtml({
-                                  html:
-                                    action.status === "not-required"
-                                      ? `<strike>${action?.message}</strike>`
-                                      : action?.message,
-                                  methods,
-                                })}
-                              </Link>
+                              fireEvent ? (
+                                <a
+                                  id={`${blockId}_link_${itemIdx}_${actionIdx}`}
+                                  className={linkClassName}
+                                  style={styles.link}
+                                  href=""
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    methods.triggerEvent({
+                                      name: "onActionClick",
+                                      event: { action },
+                                    });
+                                  }}
+                                >
+                                  {messageHtml}
+                                </a>
+                              ) : (
+                                <Link
+                                  id={`${blockId}_link_${itemIdx}_${actionIdx}`}
+                                  className={linkClassName}
+                                  style={styles.link}
+                                  disabled={linkDisabled}
+                                  pageId={action?.link?.pageId}
+                                  urlQuery={action?.link?.urlQuery}
+                                  input={action?.link?.input}
+                                  newTab={action?.link?.newTab ?? false}
+                                >
+                                  {messageHtml}
+                                </Link>
+                              )
                             }
                           />
                         </Fragment>
