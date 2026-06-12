@@ -176,8 +176,9 @@ _ref:
                         endpointId:
                           _string.concat:
                             - _module.id: true
-                            - /update-action-
-                            - _request: get_workflow_action.type
+                            - /
+                            - _request: get_workflow_action.workflow_type
+                            - -submit
                         payload:
                           action_id:
                             _request: get_workflow_action._id

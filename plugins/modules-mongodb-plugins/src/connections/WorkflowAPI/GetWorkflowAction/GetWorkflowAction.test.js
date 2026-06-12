@@ -324,6 +324,7 @@ describe('envelope shape', () => {
     );
     expect(result._id).toBe('a1');
     expect(result.type).toBe('qualify');
+    expect(result.workflow_type).toBe('onboarding');
     expect(result.kind).toBe('form');
     expect(result.key).toBeNull();
     expect(result.status).toBeDefined();
@@ -395,13 +396,13 @@ describe('excluded fields (allowlist enforcement)', () => {
     expect('metadata' in result).toBe(false);
   });
 
-  test('workflow_type is NOT in the envelope', async () => {
+  test('workflow_type IS in the envelope (drives the {workflow_type}-submit endpoint id)', async () => {
     await seedWorkflow();
     await seedAction({ _id: 'a1', type: 'qualify' });
     const result = await GetWorkflowAction(
       buildContext({ request: { action_id: 'a1' } }),
     );
-    expect('workflow_type' in result).toBe(false);
+    expect(result.workflow_type).toBe('onboarding');
   });
 
   test('slug links (app-name slug) are NOT in the envelope', async () => {

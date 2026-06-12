@@ -45,10 +45,9 @@ routine:
     properties:
       endpointId:
         _module.endpointId:
-          id: start-workflow
+          id: onboarding-start
           module: workflows
       payload:
-        workflow_type: onboarding
         entity_id:
           _payload: _id
         entity_collection: leads-collection

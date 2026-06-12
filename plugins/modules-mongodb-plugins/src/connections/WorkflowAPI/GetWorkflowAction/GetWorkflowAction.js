@@ -16,7 +16,7 @@ import { computeAllowed, resolveButtons } from '../../shared/render/resolveActio
  * client reads accordingly: `_request: get_action.0` → `_request: get_workflow_action`).
  *
  *   {
- *     _id, type, kind, key, status, action_group, description, due_date,
+ *     _id, type, workflow_type, kind, key, status, action_group, description, due_date,
  *     assignees, entity_id, entity_collection, created, updated,
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
@@ -28,7 +28,9 @@ import { computeAllowed, resolveButtons } from '../../shared/render/resolveActio
  * Returns null when: the action doc is missing, workflow_id is null (task-kind
  * doc with no FSM), or allowed.view is false (access gate).
  *
- * Raw engine internals are NOT shipped: access, workflow_type, metadata,
+ * `workflow_type` is shipped so the action detail pages can build the
+ * per-workflow submit endpoint id (`{workflow_type}-submit`) at runtime.
+ * Other raw engine internals are NOT shipped: access, metadata,
  * [slug].links, tracker, child_* are all excluded from the response.
  */
 
@@ -198,6 +200,7 @@ async function GetWorkflowAction(lowdefyContext) {
     // Engine fields
     _id: action._id,
     type: action.type,
+    workflow_type: action.workflow_type,
     kind: action.kind,
     key: action.key ?? null,
     status: action.status,

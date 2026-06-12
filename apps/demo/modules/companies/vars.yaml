@@ -31,9 +31,8 @@ on_create_routine:
     type: CallApi
     properties:
       endpointId:
-        _module.endpointId: { id: start-workflow, module: workflows }
+        _module.endpointId: { id: company-setup-start, module: workflows }
       payload:
-        workflow_type: company-setup
         entity_id:
           _step: insert.insertedId
         entity_collection:
