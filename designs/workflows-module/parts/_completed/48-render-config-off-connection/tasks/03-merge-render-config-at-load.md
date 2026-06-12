@@ -56,3 +56,20 @@ Tests (`loadWorkflowState.test.js`):
 
 - Until task 8 lands, no endpoint emits `render_config`, so this seam is dormant in the running app — the blob still carries `status_map` (dropped in task 10) and rendering is unchanged. That's the intended compatibility bridge.
 - Do **not** plumb `params` into any planner — the seam exists precisely so planners stay pure.
+
+## Deviation (post-completion, 2026-06-12)
+
+This task treated `loadWorkflowState` as **the** seam, on the premise that every
+write path flows through it. `StartWorkflow` does **not** — it has no workflow to
+load, so it resolves `workflowConfig` from `context.workflowsConfig` directly and
+seeds drafts via `planActionTransition` (`seedStage` mode). With `status_map`
+dropped from the blob (task 10), seeded drafts were planned against
+`status_map`-less configs and written with **no `<app_name>.message`** — both the
+"actions on entity" and timeline surfaces rendered blank for freshly-started
+workflows (messages only appeared after the first submit ran the action through
+`loadWorkflowState`).
+
+Fix: the splice is extracted to `shared/phases/applyRenderConfig.js` and called by
+**both** `loadWorkflowState` and `StartWorkflow` (right after each resolves its
+`workflowConfig`). One helper, identical merge at every site. Regression test:
+`StartWorkflow.test.js` → "render_config status_map is spliced onto seeded drafts".

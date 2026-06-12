@@ -359,6 +359,35 @@ describe('seeded drafts', () => {
     }
   });
 
+  test('render_config status_map is spliced onto seeded drafts (Part 48 — Start has no load phase)', async () => {
+    // Regression: status_map is stripped from workflowsConfig (Part 48) and
+    // arrives per-request on params.render_config. Start must apply the same
+    // merge loadWorkflowState runs, or seeded drafts land with no
+    // `<app_name>.message` and the entity/timeline surfaces render blank.
+    await StartWorkflow(
+      buildContext({
+        request: {
+          workflow_type: 'onboarding',
+          entity_id: 'lead-1',
+          entity_collection: 'leads-collection',
+          render_config: {
+            onboarding: {
+              a: {
+                status_map: {
+                  'action-required': {
+                    'test-app': { message: 'Kick-off task for {{ entity_id }}.' },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+    );
+    const a = await mongo.db.collection('actions').findOne({ type: 'a' });
+    expect(a['test-app'].message).toBe('Kick-off task for lead-1.');
+  });
+
   test('groups[] composed via planWorkflowRecompute in declaration order', async () => {
     await StartWorkflow(
       buildContext({

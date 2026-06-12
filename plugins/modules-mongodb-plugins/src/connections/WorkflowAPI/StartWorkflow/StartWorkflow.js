@@ -1,4 +1,5 @@
 import createEngineContext from '../../shared/phases/createEngineContext.js';
+import applyRenderConfig from '../../shared/phases/applyRenderConfig.js';
 import findDocs from '../../mongo/findDocs.js';
 import planActionTransition from '../../shared/phases/planners/planActionTransition.js';
 import planWorkflowRecompute from '../../shared/phases/planners/planWorkflowRecompute.js';
@@ -75,6 +76,16 @@ async function StartWorkflow(lowdefyContext) {
       { code: 'unknown_workflow_type' },
     );
   }
+
+  // Part 48 render-config seam: Start has no load phase, so it must apply the
+  // endpoint-delivered render slice itself — otherwise the seeded drafts below
+  // plan against status_map-less configs and are written with no
+  // `<slug>.message` (same splice loadWorkflowState runs for every other path).
+  applyRenderConfig({
+    workflowConfig,
+    renderConfig: params.render_config,
+    workflowType: params.workflow_type,
+  });
 
   const actionsConfig = workflowConfig.actions ?? [];
   const findActionConfig = (type) => actionsConfig.find((c) => c.type === type);

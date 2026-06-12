@@ -1,5 +1,6 @@
 import findDocs from '../../mongo/findDocs.js';
 import { WorkflowEngineError } from '../errors.js';
+import applyRenderConfig from './applyRenderConfig.js';
 
 /**
  * The accepted verbs for each user signal (Part 34 D6 / design D16; arrays
@@ -155,15 +156,11 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
   // Part 48 merge-at-load seam: splice the endpoint-delivered render slice
   // (status_map + event_overrides) onto every action config. A missing
   // render_config / workflow / action key is legal — engine-default rendering.
-  const renderSlice = context.params?.render_config?.[workflow.workflow_type];
-  if (renderSlice) {
-    for (const actionCfg of workflowConfig.actions ?? []) {
-      const slice = renderSlice[actionCfg.type];
-      if (!slice) continue;
-      if ('status_map' in slice) actionCfg.status_map = slice.status_map;
-      if ('event_overrides' in slice) actionCfg.event_overrides = slice.event_overrides;
-    }
-  }
+  applyRenderConfig({
+    workflowConfig,
+    renderConfig: context.params?.render_config,
+    workflowType: workflow.workflow_type,
+  });
 
   if (!isSubmit) {
     return { workflow, actions, workflowConfig };
