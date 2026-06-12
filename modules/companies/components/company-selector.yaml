@@ -24,6 +24,10 @@ properties:
       - _if_none:
           - _var: title
           - _module.var: label
+  disabled:
+    _var:
+      key: disabled
+      default: false
   options:
     _request: get_companies_for_selector
   label:

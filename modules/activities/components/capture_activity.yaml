@@ -10,7 +10,7 @@
 #                   multiple instances on a page don't collide. Default
 #                   `capture_activity`. Pass a unique value per
 #                   instance (e.g. `header_capture`, `tile_capture`).
-#   prefill       — { type, title, description, contact_ids, company_ids }
+#   prefill       — { type, title, description, contacts, company_ids }
 #                   seeded into form state when the modal opens (modal
 #                   mode) or carried in urlQuery (page mode, except
 #                   `description` — see design.md / decisions.md §8).
@@ -23,11 +23,16 @@
 #                   (used by `tile_activities` to refetch its timeline).
 #                   Default `[]`.
 #
-# Multi-instance state: the modal's open/close is driven by the Modal
-# block's own method (`CallMethod blockId: <id>_modal method: setOpen`)
-# so each instance carries independent visibility. The embedded
-# `form_activity` writes to top-level state; users open one capture
-# modal at a time, so this matches form_activity's existing contract.
+# Modal mechanics: the button opens the modal with the Modal block's own
+# `toggleOpen` method (no args) so each instance carries independent
+# visibility. The modal uses its built-in footer — `okText` is the
+# create button (runs `onOk`: validate + create; the modal auto-closes on
+# success and stays open if validation fails) and the built-in Cancel
+# button just closes it. `onClose` fires on every close path (create,
+# Cancel, X, mask) and resets only this form's own state keys — never the
+# whole page. The embedded `form_activity` writes to top-level state;
+# users open one capture modal at a time, so this matches form_activity's
+# existing contract.
 id:
   _var:
     key: id
@@ -83,8 +88,8 @@ blocks:
                         _var: prefill.type
                       title:
                         _var: prefill.title
-                      contact_ids:
-                        _var: prefill.contact_ids
+                      contacts:
+                        _var: prefill.contacts
                       company_ids:
                         _var: prefill.company_ids
               else:
@@ -97,9 +102,7 @@ blocks:
                             key: id
                             default: capture_activity
                         - _modal
-                    method: setOpen
-                    args:
-                      - open: true
+                    method: toggleOpen
     - _build.if:
         test:
           _build.eq:
@@ -120,17 +123,26 @@ blocks:
                 _string.concat:
                   - "New "
                   - _module.var: label
-              footer: false
               width: 720
+              okText:
+                _string.concat:
+                  - "Create "
+                  - _module.var: label
+              cancelText: Cancel
             events:
               onOpen:
                 - id: seed_prefill
                   type: SetState
                   params:
+                    # Stable id minted up front so consumer attachment fields
+                    # (fields.attributes) can bind their entity_id to the
+                    # activity before it's created; reused as the create _id.
+                    activity_id:
+                      _uuid: true
                     type:
                       _if_none:
                         - _var: prefill.type
-                        - null
+                        - call
                     title:
                       _if_none:
                         - _var: prefill.title
@@ -139,100 +151,114 @@ blocks:
                       _if_none:
                         - _var: prefill.description
                         - null
-                    contact_ids:
+                    contacts:
                       _if_none:
-                        - _var: prefill.contact_ids
+                        - _var: prefill.contacts
                         - []
                     company_ids:
                       _if_none:
                         - _var: prefill.company_ids
                         - []
-                    attributes: {}
-              onCancel:
+                    # Seed sensible defaults (today's date, a typical call
+                    # duration, outbound email direction); let any
+                    # consumer-prefilled attributes win.
+                    attributes:
+                      _object.assign:
+                        - date:
+                            _date: now
+                          duration: 45 min
+                          direction: Sent
+                        - _if_none:
+                            - _var: prefill.attributes
+                            - {}
+                    references:
+                      _if_none:
+                        - _var: prefill.references
+                        - {}
+                    agenda_topics: []
+                    # Companies' company-selector cycle-check state — init
+                    # so its get_companies_for_selector request doesn't
+                    # ConfigWarning on hosts that don't otherwise declare it.
+                    cycle_check_self_id: null
+                    cycle_check_ids: []
+              onOk:
+                _build.array.concat:
+                  - - id: validate
+                      type: Validate
+                      params:
+                        blockIds:
+                          - type
+                          - title
+                          - attributes.date
+                        # Agenda topic rows render with array indices in
+                        # their block ids (agenda_topics.0.topic, …) — the
+                        # topic is required to create the row's task.
+                        regex:
+                          - '^agenda_topics\.\d+\.topic$'
+                    - id: create
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _module.endpointId: create-activity
+                        payload:
+                          _id:
+                            _state: activity_id
+                          type:
+                            _state: type
+                          title:
+                            _state: title
+                          description:
+                            _state: description
+                          contacts:
+                            _if_none:
+                              - _state: contacts
+                              - []
+                          company_ids:
+                            _if_none:
+                              - _state: company_ids
+                              - []
+                          attributes:
+                            _if_none:
+                              - _state: attributes
+                              - {}
+                          agenda_topics:
+                            _if_none:
+                              - _state: agenda_topics
+                              - []
+                          references:
+                            _if_none:
+                              - _state: references
+                              - {}
+                      messages:
+                        success:
+                          _string.concat:
+                            - _module.var: label
+                            - " created."
+                  - _var:
+                      key: on_created
+                      default: []
+              # Fires on every close path (create success, Cancel, X, mask).
+              # Reset only this form's own state keys — never the whole page.
+              onClose:
                 - id: reset_form
-                  type: Reset
+                  type: SetState
+                  params:
+                    activity_id: null
+                    type: null
+                    title: null
+                    description: null
+                    contacts: []
+                    company_ids: []
+                    attributes: {}
+                    agenda_topics: []
+                    references: {}
+                    cycle_check_self_id: null
+                    cycle_check_ids: []
             slots:
               content:
                 blocks:
-                  - id:
-                      _build.string.concat:
-                        - _var:
-                            key: id
-                            default: capture_activity
-                        - _body
-                    type: Box
-                    layout:
-                      gap: 24
-                    blocks:
-                      - _ref: components/form_activity.yaml
-                      - id:
-                          _build.string.concat:
-                            - _var:
-                                key: id
-                                default: capture_activity
-                            - _save
-                        type: Button
-                        layout:
-                          flex: 0 0 auto
-                        properties:
-                          title:
-                            _string.concat:
-                              - "Create "
-                              - _module.var: label
-                          icon: AiOutlineSave
-                          type: primary
-                          block: true
-                        events:
-                          onClick:
-                            _build.array.concat:
-                              - - id: validate
-                                  type: Validate
-                                - id: create
-                                  type: CallAPI
-                                  params:
-                                    endpointId:
-                                      _module.endpointId: create-activity
-                                    payload:
-                                      _id:
-                                        _uuid: true
-                                      type:
-                                        _state: type
-                                      title:
-                                        _state: title
-                                      description:
-                                        _state: description
-                                      contact_ids:
-                                        _if_none:
-                                          - _state: contact_ids
-                                          - []
-                                      company_ids:
-                                        _if_none:
-                                          - _state: company_ids
-                                          - []
-                                      attributes:
-                                        _if_none:
-                                          - _state: attributes
-                                          - {}
-                                  messages:
-                                    success:
-                                      _string.concat:
-                                        - _module.var: label
-                                        - " created."
-                                - id: close_modal
-                                  type: CallMethod
-                                  params:
-                                    blockId:
-                                      _build.string.concat:
-                                        - _var:
-                                            key: id
-                                            default: capture_activity
-                                        - _modal
-                                    method: setOpen
-                                    args:
-                                      - open: false
-                                - id: reset_form
-                                  type: Reset
-                              - _var:
-                                  key: on_created
-                                  default: []
+                  - _ref:
+                      path: components/form_activity.yaml
+                      vars:
+                        show_company: false
         else: []

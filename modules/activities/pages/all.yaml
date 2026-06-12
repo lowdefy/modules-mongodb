@@ -10,7 +10,7 @@
 # tile builds `?contact_id=<uuid>` / `?company_id=<uuid>`, the list
 # page hydrates the filter from the URL, and the `get_activities`
 # pipeline scopes results via Atlas Search `equals` clauses on
-# `contact_ids` / `company_ids`.
+# `contacts.contact_id` / `company_ids`.
 _ref:
   module: layout
   component: page

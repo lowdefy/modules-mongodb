@@ -16,6 +16,7 @@ function processFields(data, fields) {
 
   for (const field of fields) {
     if (!field || !field.id) continue;
+    if (field.visible === false) continue;
 
     // 1. Resolve data value
     const value = getByDotNotation(data, field.id);

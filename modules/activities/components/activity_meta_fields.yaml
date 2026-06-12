@@ -1,0 +1,60 @@
+# Shared field definitions for the activity meta row: date (all types),
+# duration (call / meeting), direction (email).
+#
+# Referenced by both `form_activity.yaml` (as input blocks in the meta
+# row) and `view_activity.yaml` (as the `fields` config of a
+# SmartDescriptions, which reads `id` / `type` / `visible` /
+# `properties.title` and ignores form-only keys like `required` and
+# `layout`).
+#
+# The duration / direction `visible` conditions read `_state: type` —
+# set by the type input on form pages and mirrored from
+# `get_activity.0.type` by `pages/view.yaml`, so the same conditions
+# work in both contexts.
+- id: attributes.date
+  type: DateSelector
+  required: true
+  layout:
+    flex: 1 1 0
+  properties:
+    title: Date
+- id: attributes.duration
+  type: Selector
+  visible:
+    _or:
+      - _eq:
+          - _state: type
+          - call
+      - _eq:
+          - _state: type
+          - meeting
+  layout:
+    flex: 1 1 0
+  properties:
+    title: Duration
+    options:
+      - label: 15 min
+        value: 15 min
+      - label: 30 min
+        value: 30 min
+      - label: 45 min
+        value: 45 min
+      - label: 60 min
+        value: 60 min
+      - label: 90 min
+        value: 90 min
+- id: attributes.direction
+  type: Selector
+  visible:
+    _eq:
+      - _state: type
+      - email
+  layout:
+    flex: 1 1 0
+  properties:
+    title: Direction
+    options:
+      - label: Sent
+        value: Sent
+      - label: Received
+        value: Received

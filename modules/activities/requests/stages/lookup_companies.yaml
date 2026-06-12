@@ -1,5 +1,9 @@
+# `from` takes the real Mongo collection name (not a connectionId) — apps
+# that point the companies connection at a differently-named collection
+# must set the `lookup_collections.companies` module var to match.
 $lookup:
-  from: companies
+  from:
+    _module.var: lookup_collections.companies
   localField: company_ids
   foreignField: _id
   as: companies
@@ -9,4 +13,9 @@ $lookup:
           $exists: false
     - $project:
         _id: 1
-        trading_name: 1
+        # Project the app-configured display field under the stable alias
+        # `name` (mirrors companies' `name_field`; default `name`). Templates
+        # read `company.name` and stay agnostic of the source field.
+        name:
+          $getField:
+            _module.var: company_name_field

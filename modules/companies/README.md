@@ -45,7 +45,7 @@ Defaults work out of the box. To add custom fields, table columns, sidebar tiles
 
 ### Components
 
-- **`company-selector`** — `Selector` / `MultipleSelector` block over all companies. Use via `_ref`:
+- **`company-selector`** — `Selector` / `MultipleSelector` block over all companies. Vars: `field_id` (state path, default `company`), `mode` (`Selector` / `MultipleSelector`), `title`, `label`, `disabled` (render read-only, default `false`). Use via `_ref`:
 
   ```yaml
   _ref:

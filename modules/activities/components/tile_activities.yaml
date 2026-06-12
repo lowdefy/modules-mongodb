@@ -11,7 +11,7 @@
 # rather than in consumer-side wrappers.
 #
 # Vars (consumer-passed):
-#   reference_field — required — `contact_ids` | `company_ids` | future
+#   reference_field — required — `contacts` | `company_ids` | future
 #                                 `deal_ids`.
 #   reference_value — required — the host entity's id; typically
 #                                 `{ _url_query: _id }`.

@@ -1,8 +1,18 @@
+# `from` takes the real Mongo collection name (not a connectionId) — apps
+# that point the contacts connection at a differently-named collection
+# must set the `lookup_collections.contacts` module var to match.
+#
+# `contacts` is stored as an array of contact reference objects
+# ({ contact_id, name, email, verified }) written by the contact-selector,
+# so the join key is the nested `contacts.contact_id`. The enriched docs
+# land in a separate `contacts_enriched` field so the stored references
+# (which the edit form round-trips back into the selector) stay intact.
 $lookup:
-  from: user-contacts
-  localField: contact_ids
+  from:
+    _module.var: lookup_collections.contacts
+  localField: contacts.contact_id
   foreignField: _id
-  as: contacts
+  as: contacts_enriched
   pipeline:
     - $match:
         deleted.timestamp:

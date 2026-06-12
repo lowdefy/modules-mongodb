@@ -13,7 +13,7 @@
 # `open_capture` = navigate. See decisions.md §8.
 #
 # Vars (all optional):
-#   prefill — { type, title, contact_ids, company_ids }
+#   prefill — { type, title, contacts, company_ids }
 #             Forwarded as URL query params. `description` is NOT
 #             URL-prefillable (Tiptap rich-text HTML doesn't round-trip
 #             through URL params cleanly — see design.md "Capture
@@ -28,8 +28,9 @@
 #         vars:
 #           prefill:
 #             type: call
-#             contact_ids:
-#               - _url_query: _id
+#             contacts:
+#               - contact_id:
+#                   _url_query: _id
 - id: open_capture
   type: Link
   params:
@@ -40,7 +41,7 @@
         _var: prefill.type
       title:
         _var: prefill.title
-      contact_ids:
-        _var: prefill.contact_ids
+      contacts:
+        _var: prefill.contacts
       company_ids:
         _var: prefill.company_ids

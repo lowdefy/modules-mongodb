@@ -24,11 +24,22 @@ _ref:
         - id: init_state
           type: SetState
           params:
+            # Stable id minted up front so consumer attachment fields
+            # (fields.attributes) can bind their entity_id to the activity
+            # before it's created; reused as the create _id.
+            activity_id:
+              _uuid: true
             type:
-              _url_query: type
+              _if_none:
+                - _url_query: type
+                - call
             title:
               _url_query: title
-            contact_ids:
+            # `contacts` holds contact reference objects for the selector. A
+            # singular `contact_id` url param (e.g. "log activity for this
+            # contact") is wrapped into a { contact_id } object; the selector
+            # enriches name/email from the contacts collection on open.
+            contacts:
               _array.concat:
                 - _if:
                     test:
@@ -36,10 +47,11 @@ _ref:
                         - _url_query: contact_id
                         - null
                     then:
-                      - _url_query: contact_id
+                      - contact_id:
+                          _url_query: contact_id
                     else: []
                 - _if_none:
-                    - _url_query: contact_ids
+                    - _url_query: contacts
                     - []
             company_ids:
               _array.concat:
@@ -54,13 +66,20 @@ _ref:
                 - _if_none:
                     - _url_query: company_ids
                     - []
-            attributes: {}
+            # Seed defaults so the tabbed form opens populated.
+            attributes:
+              date:
+                _date: now
+              duration: 45 min
+              direction: Sent
+            agenda_topics: []
             # Init companies' cycle-check state keys so the company-selector
             # request (get_companies_for_selector) doesn't fire ConfigWarning
             # for unreferenced _state on this page. Runtime behaviour unchanged
             # — the selector's `_if_none` defaults already handle null/empty.
             cycle_check_self_id: null
             cycle_check_ids: []
+            references: {}
     blocks:
       - id: card
         type: Card
@@ -110,16 +129,16 @@ _ref:
                           _module.endpointId: create-activity
                         payload:
                           _id:
-                            _uuid: true
+                            _state: activity_id
                           type:
                             _state: type
                           title:
                             _state: title
                           description:
                             _state: description
-                          contact_ids:
+                          contacts:
                             _if_none:
-                              - _state: contact_ids
+                              - _state: contacts
                               - []
                           company_ids:
                             _if_none:
@@ -128,6 +147,14 @@ _ref:
                           attributes:
                             _if_none:
                               - _state: attributes
+                              - {}
+                          agenda_topics:
+                            _if_none:
+                              - _state: agenda_topics
+                              - []
+                          references:
+                            _if_none:
+                              - _state: references
                               - {}
                       messages:
                         success:

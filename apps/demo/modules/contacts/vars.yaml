@@ -20,7 +20,7 @@ components:
         module: activities
         component: tile_activities
         vars:
-          reference_field: contact_ids
+          reference_field: contacts
           reference_value:
             _url_query: _id
           prefill:
@@ -29,7 +29,7 @@ components:
             # search_contacts.yaml's $project + getContactsData.js. Prefill
             # must match that shape so the block's data-enrichment hook can
             # extract `contact_id` and populate the display.
-            contact_ids:
+            contacts:
               - contact_id:
                   _url_query: _id
           on_created:

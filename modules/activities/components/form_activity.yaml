@@ -1,26 +1,142 @@
-# Shared activity form. Composes the core fields (type / title /
-# description), the linked-entity selectors (contacts + companies), and a
-# consumer-extension hook for app-level attribute fields.
+# Shared activity form.
+#
+# Structure (top to bottom):
+#   - Type picker rendered as a SegmentedSelector (Call / Email / Meeting
+#     tabs), options + icons sourced from the merged activity_types enum
+#     (built-ins + consumer-registered types).
+#   - A Date + (Duration | Direction) row. Duration shows for call and
+#     meeting; Direction shows for email. Both write to `attributes.*`.
+#   - Subject (title) and Notes (description).
+#   - Linked contacts, relabelled per type (Participants / CC / Attendees).
+#   - Linked companies — gated behind the `show_company` component var
+#     (default true) so full new/edit pages keep company linking while
+#     consumers that seed the company via prefill can hide it. The edit
+#     page passes `disable_company` (from the module-level
+#     `disable_company_edit` var) to render the selector read-only.
+#   - A consumer-extension hook (`fields.attributes`) for app-level fields.
+#   - Agenda topics (meeting only) — saved as tasks in the actions
+#     collection by the create/update APIs, not on the activity doc.
 #
 # The form is stateless: it doesn't know whether it's creating or updating
 # an activity. The wrapping page or modal seeds initial state, runs
 # validation against `validate/activity.yaml`, and submits to
 # `create-activity` or `update-activity`.
+#
+# Vars (all optional):
+#   show_company — render the linked-companies selector. Default true.
+#   disable_company — render the linked-companies selector read-only.
+#     Default false.
 id: form_activity
 type: Box
 layout:
   gap: 16
 blocks:
   _build.array.concat:
-    # Core fields: type, title, description
-    - _ref: components/fields/core.yaml
-    # Linked entities: contacts + companies multi-selectors
-    - - id: divider_links
-        type: Divider
+    # Type tabs — Call / Email / Meeting (+ any consumer-registered types).
+    - - id: type
+        type: SegmentedSelector
+        required: true
+        layout:
+          flex: 0 0 auto
         properties:
-          title: Linked
-    - _ref: components/fields/links.yaml
-    # Consumer-defined attribute fields (only when provided)
+          style:
+            minWidth: 500
+          label:
+            disabled: true
+          block: true
+          options:
+            _build.array.map:
+              on:
+                _build.object.entries:
+                  _build.object.assign:
+                    - _ref: enums/activity_types.yaml
+                    - _module.var: activity_types
+              callback:
+                _build.function:
+                  value:
+                    __build.args: "0.0"
+                  label:
+                    __build.args: 0.1.title
+                  icon:
+                    __build.args: 0.1.icon
+      # Date + (Duration | Direction) row — field defs shared with the
+      # view page (see `activity_meta_fields.yaml`).
+      - id: activity_meta_row
+        type: Box
+        layout:
+          gap: 16
+        blocks:
+          _ref: components/activity_meta_fields.yaml
+      # Subject (stored as `title`).
+      - id: title
+        type: TextInput
+        required: true
+        properties:
+          title: Subject
+          placeholder:
+            _if:
+              test:
+                _eq:
+                  - _state: type
+                  - email
+              then: e.g. Revised pricing proposal
+              else:
+                _if:
+                  test:
+                    _eq:
+                      - _state: type
+                      - meeting
+                  then: e.g. Quarterly review
+                  else: e.g. Pricing negotiation call
+      # Notes (stored as `description`).
+      - id: description
+        type: TiptapInput
+        properties:
+          title: Notes
+      # Linked contacts — Participants / CC / Attendees by type.
+      - _ref:
+          module: contacts
+          component: contact-selector
+          vars:
+            id: contacts
+            keyword: contact
+            label:
+              title:
+                _if:
+                  test:
+                    _eq:
+                      - _state: type
+                      - meeting
+                  then: Attendees
+                  else:
+                    _if:
+                      test:
+                        _eq:
+                          - _state: type
+                          - email
+                      then: CC
+                      else: Participants
+    # Linked companies — optional, on by default; consumers that seed the
+    # company via prefill can hide it.
+    - _build.if:
+        test:
+          _var:
+            key: show_company
+            default: true
+        then:
+          - _ref:
+              module: companies
+              component: company-selector
+              vars:
+                field_id: company_ids
+                mode: MultipleSelector
+                title: Linked Companies
+                disabled:
+                  _var:
+                    key: disable_company
+                    default: false
+        else: []
+    # Consumer-defined attribute fields (only when provided).
     - _build.if:
         test:
           _build.gt:
@@ -28,10 +144,107 @@ blocks:
                 _module.var: fields.attributes
             - 0
         then:
-          _build.array.concat:
-            - - id: divider_attributes
-                type: Divider
-                properties:
-                  title: Additional Details
-            - _module.var: fields.attributes
+          _module.var: fields.attributes
         else: []
+    # Agenda topics — meeting only. Topics are not stored on the activity:
+    # create-activity / update-activity persist each one as a task doc in
+    # the actions collection (kind: task, activity_ids link). Items seeded
+    # by the edit page carry a hidden `_id` (the task _id) that round-trips
+    # through the ControlledList so saves update the right task; items
+    # added in the form have no `_id` and the API mints one.
+    - - id: agenda_topics_alert
+        type: Alert
+        visible:
+          _eq:
+            - _state: type
+            - meeting
+        properties:
+          type: warning
+          showIcon: false
+          message: >-
+            Adding, editing, or removing agenda topics will create or update
+            tasks linked to this activity and its deal or company. Removed
+            topics are marked as not required.
+      - id: agenda_topics
+        type: ControlledList
+        visible:
+          _eq:
+            - _state: type
+            - meeting
+        layout:
+          gap: 8
+        properties:
+          title: Agenda Topics
+          addItemButton:
+            title: Add Agenda Topic
+          noDataTitle: No Agenda Topics
+        blocks:
+          - id: agenda_topics.$.topic
+            type: TextInput
+            required: true
+            layout:
+              span: 12
+            properties:
+              title: Topic
+              placeholder: Topic name
+          - id: agenda_topics.$.details
+            type: TextArea
+            layout:
+              span: 16
+            properties:
+              title: Details
+          - id: agenda_topics.$.action
+            type: TextArea
+            layout:
+              span: 8
+            properties:
+              title: Action
+          - id: agenda_topics.$.person_responsible
+            type: Selector
+            layout:
+              span: 12
+            properties:
+              title: Person Responsible
+              # Options built with _mql.aggregate (not _array.map/_function) so the
+              # option value objects are created fresh by mingo — runtime-evaluated
+              # config objects carry hidden ~k source markers that break the
+              # Selector's stable-serialize value↔option match on edit/reload.
+              options:
+                _mql.aggregate:
+                  on:
+                    _if_none:
+                      - _state: contacts
+                      - []
+                  pipeline:
+                    - $project:
+                        label: $name
+                        value:
+                          contact_id: $contact_id
+                          name: $name
+          - id: agenda_topics.$.due_date
+            type: DateSelector
+            layout:
+              span: 12
+            properties:
+              title: Due Date
+    # Attachments — upload files against the activity. The wrapping page/modal
+    # seeds `activity_id` in state (reused as the create _id), so files link to
+    # the activity before it exists. Requires the host app to register the
+    # files module.
+    - - id: divider_attachments
+        type: Divider
+        properties:
+          title: Attachments
+          style:
+            margin: 4
+      - _ref:
+          module: files
+          component: file-manager
+          vars:
+            block_id: activity_files
+            entity_type: activity
+            entity_id:
+              _state: activity_id
+            file_category: activity-attachment
+            single_file: false
+            hint: Click or drag to attach a file

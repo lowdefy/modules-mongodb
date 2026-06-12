@@ -1,19 +1,24 @@
 # Detail-page main column for an activity.
 #
 # Renders the activity doc returned by `requests/get_activity.yaml` —
-# type chip, title, current-stage badge, rich-text description, linked
-# contact / company chips, status history, and consumer-extension
-# `main_slots` blocks. SmartDescriptions handles the change-stamp
-# footer (created / updated).
+# a header block (title + rich-text description), the activity-meta
+# SmartDescriptions (date / duration / direction, sharing the form's
+# field defs), linked contact / company chips, status history,
+# and consumer-extension `main_slots` blocks. The type + current-stage
+# pills live in the wrapping card's `extra` slot (see `pages/view.yaml`).
+# SmartDescriptions handles the change-stamp footer (created / updated).
 #
-# The wrapping `pages/view.yaml` (Task 14) is responsible for two
+# The wrapping `pages/view.yaml` (Task 14) is responsible for three
 # pieces of state plumbing this component depends on:
 #   1. Triggering `get_activity` on mount.
-#   2. Mirroring `request.get_activity.0.contacts` into `state.contacts`
-#      and `request.get_activity.0.companies` into `state.companies`
+#   2. Mirroring `request.get_activity.0.contacts_enriched` into
+#      `state.contacts` and `request.get_activity.0.companies` into `state.companies`
 #      (the chip components read those state paths — see
 #      `contact_list_items.yaml` / `company_list_items.yaml` headers).
 #      A single `SetState` after the request resolves is sufficient.
+#   3. Mirroring `request.get_activity.0.type` into `state.type` so
+#      consumer `fields.attributes` `visible` conditions written
+#      against `_state: type` work on this page too.
 #
 # Consumer-extension hooks:
 #   - `_module.var: components.main_slots` — extra blocks appended
@@ -29,95 +34,53 @@ layout:
   gap: 16
 blocks:
   _build.array.concat:
-    # Type + current-stage chips (header row)
-    - - id: header_chips
-        type: Html
-        properties:
-          html:
-            _nunjucks:
-              template: |
-                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px">
-                  {% if type_entry %}
-                  <span style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:{{ type_entry.color }}; background:color-mix(in srgb, {{ type_entry.color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ type_entry.color }} 30%, transparent)">
-                    {{ type_entry.title or activity.type }}
-                  </span>
-                  {% elif activity.type %}
-                  <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:var(--ant-color-text-secondary); background:var(--ant-color-fill-secondary)">
-                    {{ activity.type }}
-                  </span>
-                  {% endif %}
-                  {% if stage and type_entry.type != 'basic' %}
-                  <span style="display:inline-flex; align-items:center; padding:4px 10px; border-radius:999px; font-size:12px; font-weight:600; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 14%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 32%, transparent); text-transform:capitalize">
-                    {{ stage }}
-                  </span>
-                  {% endif %}
-                </div>
-              on:
-                activity:
-                  _if_none:
-                    - _request: get_activity.0
-                    - {}
-                type_entry:
-                  _get:
-                    from:
-                      _build.object.assign:
-                        - _ref: enums/activity_types.yaml
-                        - _module.var: activity_types
-                    key:
-                      _if_none:
-                        - _request: get_activity.0.type
-                        - ""
-                stage:
-                  _if_none:
-                    - _request: get_activity.0.current_stage
-                    - null
-                stage_color:
-                  _get:
-                    from:
-                      open: "#1890ff"
-                      done: "#52c41a"
-                      cancelled: "#8c8c8c"
-                    key:
-                      _if_none:
-                        - _request: get_activity.0.current_stage
-                        - ""
-                    default: "#8c8c8c"
-      # Title
-      - id: title_block
+    # Single header block: type + current-stage chips, title, and the
+    # rendered Tiptap description.
+    - - id: activity_header
         type: Html
         properties:
           html:
             _nunjucks:
               template: |
                 {% if title %}
-                <h2 style="margin:0 0 12px 0; font-size:20px; font-weight:600">{{ title }}</h2>
+                <h2 style="margin:0 0 10px 0; font-size:24px; line-height:1.25; font-weight:600; letter-spacing:-0.01em; color:var(--ant-color-text-heading)">{{ title }}</h2>
                 {% else %}
-                <h2 style="margin:0 0 12px 0; font-size:20px; font-weight:600; color:var(--ant-color-text-secondary); font-style:italic">Untitled</h2>
+                <h2 style="margin:0 0 10px 0; font-size:24px; line-height:1.25; font-weight:600; letter-spacing:-0.01em; color:var(--ant-color-text-quaternary); font-style:italic">Untitled</h2>
+                {% endif %}
+                {% if description %}
+                <div class="tiptap-rendered" style="font-size:14px; line-height:1.7; color:var(--ant-color-text-secondary)">{{ description | safe }}</div>
                 {% endif %}
               on:
                 title:
                   _if_none:
                     - _request: get_activity.0.title
                     - ""
-      # Description (rendered Tiptap HTML)
-      - id: description_block
-        type: Html
-        visible:
-          _ne:
-            - _if_none:
-                - _request: get_activity.0.description.html
-                - ""
-            - ""
-        properties:
-          html:
-            _nunjucks:
-              template: |
-                <div class="tiptap-rendered" style="line-height:1.55">{{ description | safe }}</div>
-              on:
                 description:
                   _if_none:
                     - _request: get_activity.0.description.html
                     - ""
+      # Activity meta — field-driven SmartDescriptions over the activity's
+      # own `attributes`, sharing the form's meta-row field defs
+      # (`activity_meta_fields.yaml`): date (all types), duration
+      # (call / meeting), direction (email). The per-field `visible`
+      # conditions read the `state.type` mirror set by `pages/view.yaml`.
+      # Hidden entirely for legacy docs with no captured date.
+      - id: activity_meta_view
+        type: SmartDescriptions
+        visible:
+          _ne:
+            - _if_none:
+                - _request: get_activity.0.attributes.date
+                - ""
+            - ""
+        properties:
+          column: 1
+          size: small
+          data:
+            attributes:
+              _request: get_activity.0.attributes
+          fields:
+            _ref: components/activity_meta_fields.yaml
     # Consumer-defined attribute fields (only when provided)
     - _build.if:
         test:
@@ -126,17 +89,65 @@ blocks:
                 _module.var: fields.attributes
             - 0
         then:
-          - - id: attributes_view
-              type: SmartDescriptions
-              properties:
-                title: Additional Details
-                column: 1
-                size: small
-                data:
-                  attributes:
-                    _request: get_activity.0.attributes
-                fields:
-                  _module.var: fields.attributes
+          - id: attributes_view
+            type: SmartDescriptions
+            properties:
+              title: Additional Details
+              column: 1
+              size: small
+              data:
+                attributes:
+                  _request: get_activity.0.attributes
+              fields:
+                _module.var: fields.attributes
         else: []
+    # Agenda topics — rendered from the agenda-tasks lookup (tasks in the
+    # actions collection linked via activity_ids), not from the activity
+    # doc. Tasks marked not-required are already filtered out by the
+    # lookup stage. Hidden when the activity has none.
+    - - id: agenda_tasks_view
+        type: Html
+        visible:
+          _gt:
+            - _array.length:
+                _if_none:
+                  - _request: get_activity.0.agenda_tasks
+                  - []
+            - 0
+        properties:
+          html:
+            _nunjucks:
+              template: |
+                <div>
+                  <div style="font-size:14px; font-weight:600; color:var(--ant-color-text-heading); margin-bottom:8px">Agenda Topics</div>
+                  {% for task in tasks %}
+                  <div style="border:1px solid var(--ant-color-border-secondary); border-radius:8px; padding:12px 14px; margin-bottom:8px">
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap">
+                      <span style="font-size:14px; font-weight:600; color:var(--ant-color-text-heading)">{{ task.title }}</span>
+                      {% set stage_color = {'action-required': '#1890ff', 'in-progress': '#fa8c16', 'done': '#52c41a'}[task.current_stage] or '#8c8c8c' %}
+                      <span style="display:inline-flex; align-items:center; gap:6px; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase; line-height:1.5; color:{{ stage_color }}; background:color-mix(in srgb, {{ stage_color }} 12%, transparent); border:1px solid color-mix(in srgb, {{ stage_color }} 28%, transparent)">
+                        <span style="width:6px; height:6px; border-radius:50%; background:{{ stage_color }}"></span>{{ task.current_stage | replace('-', ' ') }}
+                      </span>
+                    </div>
+                    {% if task.description %}
+                    <div style="font-size:13px; color:var(--ant-color-text-secondary); margin-top:6px; white-space:pre-wrap">{{ task.description }}</div>
+                    {% endif %}
+                    {% if task.attributes.action %}
+                    <div style="font-size:13px; color:var(--ant-color-text-secondary); margin-top:6px; white-space:pre-wrap"><strong>Action:</strong> {{ task.attributes.action }}</div>
+                    {% endif %}
+                    {% if task.assignees[0] or task.due_date %}
+                    <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:var(--ant-color-text-tertiary); margin-top:8px">
+                      {% if task.assignees[0] %}<span>Responsible: {{ task.assignees[0].name }}</span>{% endif %}
+                      {% if task.due_date %}<span>Due: {{ task.due_date | date('D MMM YYYY') }}</span>{% endif %}
+                    </div>
+                    {% endif %}
+                  </div>
+                  {% endfor %}
+                </div>
+              on:
+                tasks:
+                  _if_none:
+                    - _request: get_activity.0.agenda_tasks
+                    - []
     # Consumer main-slot extension
     - _module.var: components.main_slots
