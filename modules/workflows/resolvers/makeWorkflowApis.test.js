@@ -437,7 +437,7 @@ test("makeWorkflowApis: a workflow type named `workflow` is rejected (reserved �
   );
 });
 
-test("makeWorkflowApis: tracker-only workflow emits zero Apis", () => {
+test("makeWorkflowApis: tracker-only workflow emits start/cancel/close but no submit (task 8 invariant)", () => {
   const workflow = {
     type: "installation",
     entity_collection: "installations-collection",
@@ -453,5 +453,133 @@ test("makeWorkflowApis: tracker-only workflow emits zero Apis", () => {
     ],
   };
   const apis = makeWorkflowApis(null, { workflows: [workflow] });
-  expect(apis).toEqual([]);
+  expect(apis.map((a) => a.id).sort()).toEqual([
+    "installation-cancel",
+    "installation-close",
+    "installation-start",
+  ]);
+  expect(findApi(apis, "installation-submit")).toBeUndefined();
+});
+
+test("makeWorkflowApis: each workflow emits exactly one {type}-start/cancel/close, type Api", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  const ids = apis.map((a) => a.id);
+  for (const verb of ["start", "cancel", "close"]) {
+    expect(ids.filter((id) => id === `onboarding-${verb}`)).toHaveLength(1);
+    // HTTP-callable like the generic endpoints they replace — not InternalApi.
+    expect(findApi(apis, `onboarding-${verb}`).type).toBe("Api");
+  }
+});
+
+test("makeWorkflowApis: {type}-start — StartWorkflow step, static workflow_type, passthroughs, :return", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  const start = findApi(apis, "onboarding-start");
+  const step = start.routine[0];
+
+  expect(step.id).toBe("start");
+  expect(step.type).toBe("StartWorkflow");
+  expect(step.connectionId).toEqual({ "_module.connectionId": "workflow-api" });
+
+  // workflow_type is a static literal — the endpoint is type-scoped, callers
+  // no longer pass it in the payload.
+  expect(step.properties.workflow_type).toBe("onboarding");
+  expect(step.properties.entity_id).toEqual({ _payload: "entity_id" });
+  expect(step.properties.entity_collection).toEqual({
+    _payload: "entity_collection",
+  });
+  expect(step.properties.parent_action_id).toEqual({
+    _payload: "parent_action_id",
+  });
+  expect(step.properties.actions).toEqual({ _payload: "actions" });
+  expect(step.properties.references).toEqual({ _payload: "references" });
+  expect(step.properties.metadata).toEqual({ _payload: "metadata" });
+
+  expect(start.routine[1][":return"]).toEqual({
+    workflow_id: { _step: "start.workflow_id" },
+    action_ids: { _step: "start.action_ids" },
+    event_id: { _step: "start.event_id" },
+  });
+});
+
+test("makeWorkflowApis: {type}-cancel/{type}-close — step types, passthroughs, :return", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  for (const [verb, stepType] of [
+    ["cancel", "CancelWorkflow"],
+    ["close", "CloseWorkflow"],
+  ]) {
+    const api = findApi(apis, `onboarding-${verb}`);
+    const step = api.routine[0];
+    expect(step.id).toBe(verb);
+    expect(step.type).toBe(stepType);
+    expect(step.connectionId).toEqual({
+      "_module.connectionId": "workflow-api",
+    });
+    expect(step.properties.workflow_id).toEqual({ _payload: "workflow_id" });
+    expect(step.properties.reason).toEqual({ _payload: "reason" });
+    expect(step.properties.references).toEqual({ _payload: "references" });
+    expect(api.routine[1][":return"]).toEqual({
+      action_ids: { _step: `${verb}.action_ids` },
+      event_id: { _step: `${verb}.event_id` },
+      tracker_fired: { _step: `${verb}.tracker_fired` },
+    });
+  }
+});
+
+test("makeWorkflowApis: lifecycle endpoints carry the same render_config bundle as submit", () => {
+  const apis = makeWorkflowApis(null, {
+    workflows: [workedExample, onboardingTrackerWorkflow],
+  });
+  const submitConfig = propsOf(findApi(apis, "onboarding-submit")).render_config;
+  expect(submitConfig).toBeDefined();
+  for (const verb of ["start", "cancel", "close"]) {
+    expect(propsOf(findApi(apis, `onboarding-${verb}`)).render_config).toEqual(
+      submitConfig,
+    );
+  }
+});
+
+test("makeWorkflowApis: lifecycle_event_override — started on start, closed on close, none on cancel", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    display_order: 1,
+    starting_actions: [{ type: "kickoff", status: "action-required" }],
+    actions: [{ type: "kickoff", kind: "check" }],
+    event: {
+      started: { display: { "my-team-app": { title: "Onboarding started" } } },
+      closed: { display: { "my-team-app": { title: "Onboarding closed" } } },
+    },
+  };
+  const apis = makeWorkflowApis(null, { workflows: [workflow] });
+  expect(propsOf(findApi(apis, "onboarding-start")).lifecycle_event_override).toEqual({
+    display: { "my-team-app": { title: "Onboarding started" } },
+  });
+  expect(propsOf(findApi(apis, "onboarding-close")).lifecycle_event_override).toEqual({
+    display: { "my-team-app": { title: "Onboarding closed" } },
+  });
+  // No event.cancelled entry — the property is omitted, not emitted empty.
+  expect(propsOf(findApi(apis, "onboarding-cancel"))).not.toHaveProperty(
+    "lifecycle_event_override",
+  );
+});
+
+test("makeWorkflowApis: lifecycle_event_override absent when the workflow declares no event map", () => {
+  // workedExample has no workflow-level event.
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  for (const verb of ["start", "cancel", "close"]) {
+    expect(propsOf(findApi(apis, `onboarding-${verb}`))).not.toHaveProperty(
+      "lifecycle_event_override",
+    );
+  }
+});
+
+test("makeWorkflowApis: no hooks property on start/cancel/close", () => {
+  // workedExample's qualify action declares hooks — they ride submit only.
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  expect(propsOf(findApi(apis, "onboarding-submit")).hooks).toBeDefined();
+  for (const verb of ["start", "cancel", "close"]) {
+    expect(propsOf(findApi(apis, `onboarding-${verb}`))).not.toHaveProperty(
+      "hooks",
+    );
+  }
 });

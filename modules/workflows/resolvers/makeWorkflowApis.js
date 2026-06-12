@@ -155,6 +155,97 @@ function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
   };
 }
 
+// Part 48 D5: per-workflow lifecycle endpoints replace the generic
+// start-workflow/cancel-workflow/close-workflow Apis — a generic endpoint
+// can't carry a bounded render_config because it doesn't know its workflow
+// type until runtime. Callers construct the endpoint id from the type
+// ({type}-start etc.) — D5's accepted ergonomic regression.
+//
+// lifecycle_event_override is a sibling of render_config, not nested under
+// it (same reasoning as hooks on the submit endpoint): it's consumed off
+// params by the handler, not Nunjucks display config keyed by workflow/
+// action type. It carries the workflow-level event[<signal>] slice for the
+// one lifecycle signal this endpoint fires — own workflow only, since
+// lifecycle events fire exactly once at the originating handler and never
+// cascade. Omitted when the workflow declares no `event` or no entry for
+// the signal. No hooks — start/cancel/close have no user-action hooks.
+function emitStartEndpoint(workflow, renderConfig) {
+  return {
+    id: `${workflow.type}-start`,
+    type: 'Api',
+    routine: [
+      {
+        id: 'start',
+        type: 'StartWorkflow',
+        connectionId: { '_module.connectionId': 'workflow-api' },
+        properties: {
+          // Static literal — the endpoint is type-scoped, so callers no
+          // longer pass workflow_type in the payload.
+          workflow_type: workflow.type,
+          entity_id: { _payload: 'entity_id' },
+          entity_collection: { _payload: 'entity_collection' },
+          parent_action_id: { _payload: 'parent_action_id' },
+          // actions: override seeds actions directly at a declared status.
+          // Grammar: { type, key?, status } where status is one of
+          // action-required | blocked (enforced at runtime); key for keyed
+          // action types. Per-entry fields/references are not part of the
+          // contract — payload-level metadata merges onto every seeded
+          // draft, and payload-level references lands on the workflow doc.
+          // Signals are the submit-time grammar only and do not apply at
+          // workflow start.
+          actions: { _payload: 'actions' },
+          references: { _payload: 'references' },
+          metadata: { _payload: 'metadata' },
+          ...(renderConfig ? { render_config: renderConfig } : {}),
+          ...(workflow.event?.started
+            ? { lifecycle_event_override: workflow.event.started }
+            : {}),
+        },
+      },
+      {
+        ':return': {
+          workflow_id: { _step: 'start.workflow_id' },
+          action_ids: { _step: 'start.action_ids' },
+          event_id: { _step: 'start.event_id' },
+        },
+      },
+    ],
+  };
+}
+
+// Cancel and close share a shape; only the step type and lifecycle signal
+// differ. See emitStartEndpoint for the D5 rationale and the
+// lifecycle_event_override contract.
+function emitTerminalEndpoint(workflow, renderConfig, { verb, stepType, signal }) {
+  return {
+    id: `${workflow.type}-${verb}`,
+    type: 'Api',
+    routine: [
+      {
+        id: verb,
+        type: stepType,
+        connectionId: { '_module.connectionId': 'workflow-api' },
+        properties: {
+          workflow_id: { _payload: 'workflow_id' },
+          reason: { _payload: 'reason' },
+          references: { _payload: 'references' },
+          ...(renderConfig ? { render_config: renderConfig } : {}),
+          ...(workflow.event?.[signal]
+            ? { lifecycle_event_override: workflow.event[signal] }
+            : {}),
+        },
+      },
+      {
+        ':return': {
+          action_ids: { _step: `${verb}.action_ids` },
+          event_id: { _step: `${verb}.event_id` },
+          tracker_fired: { _step: `${verb}.tracker_fired` },
+        },
+      },
+    ],
+  };
+}
+
 // Engine-only for the same reason as hook Apis (see emitHookApi).
 function emitGroupOnCompleteApi(workflow, group) {
   if (!group.on_complete) return null;
@@ -167,8 +258,9 @@ function emitGroupOnCompleteApi(workflow, group) {
 
 function emitForWorkflow(workflow, { workflowsByType, edges }) {
   // `workflow` is reserved (Part 34 D10): a type named `workflow` would emit
-  // derived ids (`workflow-{action}-…`) that collide with the module's fixed
-  // `workflow-*` page space.
+  // derived ids (`workflow-{action}-…`, and since Part 48 also
+  // `workflow-start/cancel/close`) that collide with the module's fixed
+  // `workflow-*` page/endpoint space.
   if (workflow.type === 'workflow') {
     throw new Error(
       'makeWorkflowApis: "workflow" is a reserved workflow type name — its derived ids would collide with the module\'s fixed workflow-* page space (Part 34 D10). Rename the workflow type.'
@@ -176,6 +268,7 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
   }
 
   const apis = [];
+  const renderConfig = emitRenderConfig(workflow, workflowsByType, edges);
 
   // One submit endpoint per workflow (Part 48); hook InternalApis stay
   // per-action with unchanged ids. Trackers are skipped — an all-tracker
@@ -195,10 +288,27 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
       emitSubmitEndpoint(
         workflow,
         Object.keys(hooksByAction).length > 0 ? hooksByAction : undefined,
-        emitRenderConfig(workflow, workflowsByType, edges),
+        renderConfig,
       ),
     );
   }
+
+  // Lifecycle endpoints for every workflow — including all-tracker ones,
+  // which can still be started/cancelled/closed even though they emit no
+  // submit endpoint.
+  apis.push(
+    emitStartEndpoint(workflow, renderConfig),
+    emitTerminalEndpoint(workflow, renderConfig, {
+      verb: 'cancel',
+      stepType: 'CancelWorkflow',
+      signal: 'cancelled',
+    }),
+    emitTerminalEndpoint(workflow, renderConfig, {
+      verb: 'close',
+      stepType: 'CloseWorkflow',
+      signal: 'closed',
+    }),
+  );
 
   for (const group of workflow.action_groups ?? []) {
     const api = emitGroupOnCompleteApi(workflow, group);

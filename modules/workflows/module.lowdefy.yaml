@@ -2,8 +2,9 @@
 #   makeWorkflowsConfig    — engine config validation; component
 #                            validated_workflows_config, consumed by
 #                            connections/workflow-api.yaml.
-#   makeWorkflowApis       — per-action update-action-{type} APIs;
-#                            spliced into api:.
+#   makeWorkflowApis       — per-workflow {type}-submit/start/cancel/close
+#                            APIs plus engine-only hook / group on-complete
+#                            InternalApis; spliced into api:.
 #   makeActionPages        — per-action edit/view/review/error pages from
 #                            templates/{verb}.yaml.njk; spliced into pages:.
 #   makeActionsForm        — template-scope form-block substitution (already
@@ -130,10 +131,7 @@ connections:
 
 api:
   _build.array.concat:
-    - - _ref: api/start-workflow.yaml
-      - _ref: api/cancel-workflow.yaml
-      - _ref: api/close-workflow.yaml
-      - _ref: api/get-entity-workflows.yaml
+    - - _ref: api/get-entity-workflows.yaml
       - _ref: api/get-workflow-overview.yaml
       - _ref: api/get-action-group-overview.yaml
     - _ref:
