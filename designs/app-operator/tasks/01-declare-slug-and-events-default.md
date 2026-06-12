@@ -13,6 +13,7 @@ The `events.display_key` var is `required: true` today and is set by every consu
 1. **Demo app root** — edit `apps/demo/lowdefy.yaml`:
    - Add `slug: demo` immediately after the `lowdefy:` version line.
    - Change `name: Module Demo App` → `name: Modules Demo` (reads cleanly as the `app_title` label prefix "Modules Demo User Admin").
+   - **Auth adapter `appName`** (~line 48) — rewrite the `MultiAppMongoDBAdapter`'s `appName` value from `{ _ref: { path: app_config.yaml, key: app_name } }` to `{ _build.app: slug }`. This is the auth partition key (it scopes `user-accounts` / `user-contacts` / `user-sessions` by app), so it must reproduce today's literal `"demo"` exactly. Use `_build.app`, **not** `_app`: the current `_ref`-with-`key` bakes a literal at build time, and the auth-adapter init path is not a normal page/request context where a runtime `_app` object is known to evaluate — `_build.app` resolves to the literal string in place, matching today's behaviour. The property *key* `appName:` is the external plugin's schema name and stays; only the value expression changes. Doing this here (rather than Task 5) keeps the adapter migrated before Task 5's deletion of `app_config.yaml`, so its "expect zero results" grep stays clean.
 
 2. **Events manifest** — edit `modules/events/module.lowdefy.yaml`, `vars.display_key`:
    - Remove `required: true`.
@@ -23,13 +24,13 @@ Do **not** delete `apps/demo/app_config.yaml` or touch demo vars files yet — l
 
 ## Acceptance Criteria
 
-- `apps/demo/lowdefy.yaml` declares `slug: demo` and `name: Modules Demo` at the root.
+- `apps/demo/lowdefy.yaml` declares `slug: demo` and `name: Modules Demo` at the root, and the auth adapter's `appName` reads `{ _build.app: slug }` (no `app_config.yaml` `_ref`).
 - `modules/events/module.lowdefy.yaml` `display_key` is optional with `default: { _app: slug }` and no longer `required: true`.
 - `pnpm ldf:b` succeeds without slug-format errors.
 
 ## Files
 
-- `apps/demo/lowdefy.yaml` — modify — add `slug: demo`, rename `name:`.
+- `apps/demo/lowdefy.yaml` — modify — add `slug: demo`, rename `name:`, rewrite auth adapter `appName` → `{ _build.app: slug }`.
 - `modules/events/module.lowdefy.yaml` — modify — `display_key` → optional, `default: { _app: slug }`.
 
 ## Notes

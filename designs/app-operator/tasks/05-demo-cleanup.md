@@ -22,7 +22,7 @@ Leave the rest of `change_stamp` (`timestamp`, `user.*`, `version.app`, `version
 
 ### 3. Delete `app_config.yaml`
 
-- Run `grep -rln "app_config.yaml" apps/ modules/ docs/ README.md CLAUDE.md`. Expect zero results.
+- Run `grep -rln "app_config.yaml" apps/ modules/ docs/ README.md CLAUDE.md`. Expect zero results. (The auth adapter's `appName` read was migrated to `{ _build.app: slug }` in Task 01; the six module `vars.yaml` `_ref`s were dropped in Tasks 2–4; the two `events/vars.yaml` reads are handled in step 1 above. Nothing should remain.)
 - If any reference remains, migrate it first — do not delete while a consumer reads it.
 - Delete `apps/demo/app_config.yaml`.
 

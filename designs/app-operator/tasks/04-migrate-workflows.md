@@ -20,11 +20,20 @@ The careful build-time site is the `makeActionPages.js` resolver: it consumes th
 
 3. **Connection property (lockstep — both sides in this task):**
    - `modules/workflows/connections/workflow-api.yaml`: rename the property key `app_name:` → `slug:`, and set its value to `{ _app: slug }` (server-evaluated connection prop, runtime).
-   - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` (~line 112): rename the `app_name` property definition to `slug`; update its description.
+   - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` (~line 112): rename the `app_name` property definition to `slug`. Also update the `description` text that narrates the old wiring — the (renamed) `slug` property's "Apps wire this from `_module.var: app_name`" (~line 117) becomes `{ _app: slug }`, and the `user` property's `{ apps: { [app_name]: { roles } } }` / `user.apps.{app_name}.roles` placeholders (~lines 150-151) become `{slug}` (matching the design's `apps.{app_name}.roles` → `apps.{slug}.roles` prose rule). These are consumer-facing schema docs, not stored keys.
 
 4. **Resolver vars + resolvers:**
    - `module.lowdefy.yaml` `makeActionPages.js` `_ref`: rename the resolver var key `app_name:` → `slug:`, value `{ _build.app: slug }`.
-   - `modules/workflows/resolvers/makeActionPages.js`: `vars.app_name` → `vars.slug`; rename the `appName` local → `slug`; update messages.
+   - `modules/workflows/resolvers/makeActionPages.js`: `vars.app_name` → `vars.slug`; rename the `appName` local → `slug`; update messages. **Harden the guard while you're in it** — change the falsy-only `if (!slug)` to reject non-strings too, so an unevaluated `{ _app: slug }` object (which is truthy, and would make `access?.[{…}]` `undefined` → every per-action page silently dropped) fails the build loudly instead:
+
+     ```js
+     const { workflows, slug } = vars;
+     if (typeof slug !== "string" || !slug) {
+       fail(`vars.slug is required and must be a non-empty string (got: ${JSON.stringify(slug)}).`);
+     }
+     ```
+
+     This is cheap insurance over the unverified `_build.app: slug` resolver form: if it ever fails to deliver a string, the build breaks rather than shipping a workflows app with zero action pages.
    - `modules/workflows/resolvers/makeWorkflowsConfig.js`: rename the `appName` loop variable (over `Object.entries(access)`) → `slug`; update `{app_name}` placeholders in error strings → `{slug}`.
    - `modules/workflows/resolvers/makeActionPages.test.js`: `app_name:` fixtures → `slug:`.
    - `modules/workflows/resolvers/README.md`, `modules/workflows/README.md`: update prose/inputs.
@@ -36,8 +45,8 @@ The careful build-time site is the `makeActionPages.js` resolver: it consumes th
    - Confirm no literal stored key is touched: `created.app_name` (if present in fixtures) and any document-shape key keyed by the slug value stay as-is.
 
 6. **Plugin version + manifest constraint:**
-   - Bump `plugins/modules-mongodb-plugins/package.json` `version` (breaking schema change; minor bump per the 0.x policy, e.g. `0.7.0` → `0.8.0`).
-   - Update the `version:` constraint for `@lowdefy/modules-mongodb-plugins` in `modules/workflows/module.lowdefy.yaml`'s `plugins:` list to match.
+   - Bump `plugins/modules-mongodb-plugins/package.json` `version` from `0.7.0` → `0.8.0` (breaking schema change; minor bump per the 0.x policy).
+   - Update the `version:` constraint for `@lowdefy/modules-mongodb-plugins` in `modules/workflows/module.lowdefy.yaml`'s `plugins:` list from `^0.6.0` → `^0.8.0`. (Note the constraint is **already stale**: `^0.6.0` resolves to `>=0.6.0 <0.7.0`, which excludes the `0.7.0` the package already declares — so this isn't a clean increment, it's a correction. `^0.8.0` admits the new package.)
    - Rebuild `dist/`: `pnpm --filter @lowdefy/modules-mongodb-plugins build` (or the repo's build). `dist/` is a build artifact — never hand-edit it.
 
 7. **Demo vars** — `apps/demo/modules/workflows/vars.yaml`: delete the top-level `app_name:` block.
