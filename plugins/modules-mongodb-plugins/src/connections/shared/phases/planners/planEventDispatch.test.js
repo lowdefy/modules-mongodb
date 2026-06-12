@@ -354,30 +354,88 @@ test('Submit: YAML override on display replaces default display for that app key
   expect(doc.display.demo.title).toBe('Custom submit title');
 });
 
-test('StartWorkflow: overrides are NOT consulted (lifecycle event)', () => {
-  // Even if we pass override args, lifecycle events must not apply them.
-  // We verify by passing a yamlOverride that would clobber the type — it
-  // must be silently ignored.
+test('StartWorkflow: yamlEventOverrides display override is applied', () => {
   const { doc } = dispatch({
     handlerType: 'StartWorkflow',
     allTouchedActionDocs: [],
-    yamlEventOverrides: { type: 'SHOULD_BE_IGNORED' },
-    preHookEventOverrides: { type: 'ALSO_IGNORED' },
+    yamlEventOverrides: { display: { demo: { title: 'Workflow kicked off by {{ user.profile.name }}' } } },
   });
-  expect(doc.type).toBe('workflow-started');
+  expect(doc.display.demo.title).toBe('Workflow kicked off by Alice');
 });
 
-test('tracker-mirror: overrides are NOT consulted', () => {
+test('StartWorkflow: yamlEventOverrides metadata override is merged, non-overridden keys preserved', () => {
+  const { doc } = dispatch({
+    handlerType: 'StartWorkflow',
+    signal: 'start',
+    allTouchedActionDocs: [],
+    yamlEventOverrides: { metadata: { custom_field: 'lifecycle-value' } },
+  });
+  expect(doc.metadata.custom_field).toBe('lifecycle-value');
+  expect(doc.metadata.workflow_type).toBe('onboarding'); // default preserved
+});
+
+test('StartWorkflow: no override → engine default title', () => {
+  const { doc } = dispatch({ handlerType: 'StartWorkflow', allTouchedActionDocs: [] });
+  expect(doc.display.demo.title).toBe('Alice started onboarding');
+});
+
+test('CancelWorkflow: yamlEventOverrides display override is applied', () => {
+  const { doc } = dispatch({
+    handlerType: 'CancelWorkflow',
+    allTouchedActionDocs: [],
+    yamlEventOverrides: { display: { demo: { title: 'Cancelled by {{ user.profile.name }}' } } },
+  });
+  expect(doc.display.demo.title).toBe('Cancelled by Alice');
+});
+
+test('CloseWorkflow: yamlEventOverrides display override is applied', () => {
+  const { doc } = dispatch({
+    handlerType: 'CloseWorkflow',
+    allTouchedActionDocs: [],
+    yamlEventOverrides: { display: { demo: { title: 'Closed: {{ workflow.workflow_type }}' } } },
+  });
+  expect(doc.display.demo.title).toBe('Closed: onboarding');
+});
+
+test('tracker-mirror: yamlEventOverrides display override wins; non-overridden keys fall through', () => {
+  const action = makeAction({ type: 'tracker-task' });
+  const { doc } = dispatch({
+    handlerType: 'tracker-mirror',
+    signal: 'internal_mirror_child_completed',
+    plannedActionDoc: action,
+    allTouchedActionDocs: [action],
+    status_after: 'done',
+    yamlEventOverrides: { display: { demo: { title: 'Mirror: {{ status_after }}' } } },
+  });
+  expect(doc.display.demo.title).toBe('Mirror: done');
+  // type and references are not overridden — engine defaults fall through
+  expect(doc.type).toBe('action-internal-mirror-completed');
+  expect(doc.references.workflow_ids).toEqual(['wf-1']);
+});
+
+test('tracker-mirror: no override → engine default title', () => {
+  const { doc } = dispatch({
+    handlerType: 'tracker-mirror',
+    signal: 'internal_mirror_child_completed',
+    plannedActionDoc: makeAction(),
+    allTouchedActionDocs: [makeAction()],
+    status_after: 'done',
+  });
+  expect(doc.display.demo.title).toBe('Tracker mirrored child done');
+});
+
+test('tracker-mirror: yamlEventOverrides metadata override is merged, non-overridden keys preserved', () => {
+  const action = makeAction({ type: 'tracker-task', key: 'device-1' });
   const { doc } = dispatch({
     handlerType: 'tracker-mirror',
     signal: 'internal_mirror_child_active',
-    plannedActionDoc: makeAction(),
-    allTouchedActionDocs: [makeAction()],
+    plannedActionDoc: action,
+    allTouchedActionDocs: [action],
     status_after: 'action-required',
-    yamlEventOverrides: { type: 'SHOULD_NOT_APPLY' },
-    preHookEventOverrides: { type: 'ALSO_NOT' },
+    yamlEventOverrides: { metadata: { mirror_note: 'from-yaml' } },
   });
-  expect(doc.type).toBe('action-internal-mirror-active');
+  expect(doc.metadata.mirror_note).toBe('from-yaml');
+  expect(doc.metadata.action_type).toBe('tracker-task'); // default preserved
 });
 
 test('Submit: no overrides → uses engine default', () => {
@@ -391,4 +449,21 @@ test('Submit: no overrides → uses engine default', () => {
     preHookEventOverrides: undefined,
   });
   expect(doc.display.demo.title).toBe('Alice marked qualify as done');
+});
+
+test('Submit: empty-object preHookEventOverrides ({}) produces output identical to no override', () => {
+  // invokePreHook returns event_overrides: {} on the no-hook path — the gate
+  // fires (truthy) but mergeEventOverrides must be a no-op for {}.
+  const action = makeAction({ type: 'qualify' });
+  const { doc } = dispatch({
+    handlerType: 'SubmitWorkflowAction',
+    signal: 'submit',
+    plannedActionDoc: action,
+    status_after: 'done',
+    yamlEventOverrides: undefined,
+    preHookEventOverrides: {},
+  });
+  expect(doc.display.demo.title).toBe('Alice marked qualify as done');
+  expect(doc.type).toBe('action-submit');
+  expect(doc.metadata.action_type).toBe('qualify');
 });
