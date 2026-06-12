@@ -1,0 +1,540 @@
+# Shared check-action surface (Part 40 — D1).
+#
+# One body for every check-action container: the three shared pages
+# (workflow-action-edit / -view / -review) and the in-context check-action
+# modal all `_ref` this file. One body, two container types (a full page or a
+# Modal block on an entity page).
+#
+# State contract — the surface reads exclusively from `_state.current_action.*`.
+# The container (page `onMount` / modal open handler) spreads the
+# `GetWorkflowAction` response into `current_action` and seeds the working
+# inputs:
+#   - response top-level: current_action._id, .key, .type, .message,
+#     .status (array; status.0.stage = current stage), .allowed
+#     ({ view, edit, review, error }), .buttons ({ submit, progress,
+#     not_required, approve, request_changes, resolve_error } booleans, all
+#     AND-ed server-side per Part 46 D5), .workflow_closed, .required_after_close.
+#   - working inputs: current_action.fields.{assignees, due_date, description}
+#     (seeded from the response) and current_action.comment (seeded null).
+#   - current_action.mode — `edit` | `view` | `review`, set by the container
+#     (pages set a literal in onMount; the modal sets the derived value in its
+#     open handler). The surface gates every mode-dependent block on
+#     `_state: current_action.mode` — mode is NOT an `_ref` var.
+#
+# The surface computes no visibility client-side: each signal button reads its
+# single server-resolved `current_action.buttons.{signal}` boolean (D2).
+#
+# Normalisations vs the shipped pages:
+#   - Workflow-closed banner renders in ALL modes (the shipped view page had no
+#     banner; rendering it read-only is informative and keeps one body).
+#   - The signal button bar is an in-flow, right-aligned Box at the bottom of
+#     the card — NOT the layout module's `floating-actions` — because the
+#     surface also renders inside a Modal, where a page-level floating bar is
+#     wrong.
+id: check_action_surface
+type: Card
+layout:
+  gap: 16
+blocks:
+  # 1. Workflow-closed banner — all modes; gated on workflow_closed AND not
+  #    required_after_close.
+  - id: workflow_closed_banner
+    type: Alert
+    visible:
+      _and:
+        - _state: current_action.workflow_closed
+        - _ne:
+            - _state: current_action.required_after_close
+            - true
+    properties:
+      type: warning
+      showIcon: true
+      message: Workflow closed
+      description: This workflow is closed. Updates to this action are no longer accepted.
+  # 2. Header — Title + status Tag styled from the action_statuses enum.
+  #    view / review modes only.
+  - id: action_header
+    type: Box
+    visible:
+      _or:
+        - _eq:
+            - _state: current_action.mode
+            - view
+        - _eq:
+            - _state: current_action.mode
+            - review
+    layout:
+      gap: 8
+      align: middle
+    blocks:
+      - id: action_title
+        type: Title
+        properties:
+          level: 4
+          content:
+            _state: current_action.message
+      - id: action_status_badge
+        type: Tag
+        properties:
+          color:
+            _js:
+              args:
+                statuses:
+                  _ref: ../shared/enums/action_statuses.yaml
+                stage:
+                  _state: current_action.status.0.stage
+              fn: |
+                const { statuses, stage } = args;
+                return statuses?.[stage]?.color;
+          style:
+            color:
+              _js:
+                args:
+                  statuses:
+                    _ref: ../shared/enums/action_statuses.yaml
+                  stage:
+                    _state: current_action.status.0.stage
+                fn: |
+                  const { statuses, stage } = args;
+                  return statuses?.[stage]?.titleColor;
+            borderColor:
+              _js:
+                args:
+                  statuses:
+                    _ref: ../shared/enums/action_statuses.yaml
+                  stage:
+                    _state: current_action.status.0.stage
+                fn: |
+                  const { statuses, stage } = args;
+                  return statuses?.[stage]?.borderColor;
+          content:
+            _js:
+              args:
+                statuses:
+                  _ref: ../shared/enums/action_statuses.yaml
+                stage:
+                  _state: current_action.status.0.stage
+              fn: |
+                const { statuses, stage } = args;
+                return statuses?.[stage]?.title;
+  # 3. Universal fields — Part 24 component. Editability is edit-verb-gated
+  #    (current_action.allowed.edit), not mode-gated. Pass the vars through; the
+  #    component is the Part 24 stub today and ignores them until Part 24 ships.
+  - _ref:
+      path: components/universal-fields/universal-fields.yaml
+      vars:
+        kind: check
+        state_path: current_action.fields
+        mode:
+          _if:
+            test:
+              _eq:
+                - _state: current_action.allowed.edit
+                - true
+            then: edit
+            else: display
+        action_data:
+          assignees:
+            _state: current_action.fields.assignees
+          due_date:
+            _state: current_action.fields.due_date
+          description:
+            _state: current_action.fields.description
+  # 4. Status history — view mode only. The List binds state at its block id;
+  #    the spread response already holds the status array at
+  #    current_action.status, so there is no request and no extra SetState.
+  - id: status_history_card
+    type: Card
+    visible:
+      _eq:
+        - _state: current_action.mode
+        - view
+    properties:
+      title: Status History
+    layout:
+      gap: 16
+    blocks:
+      - id: current_action.status
+        type: List
+        visible:
+          _gt:
+            - _array.length:
+                _state: current_action.status
+            - 0
+        blocks:
+          - id: current_action.status.$.row
+            type: Box
+            layout:
+              gap: 8
+              align: middle
+            blocks:
+              - id: current_action.status.$.badge
+                type: Tag
+                properties:
+                  color:
+                    _js:
+                      args:
+                        statuses:
+                          _ref: ../shared/enums/action_statuses.yaml
+                        stage:
+                          _state: current_action.status.$.stage
+                      fn: |
+                        const { statuses, stage } = args;
+                        return statuses?.[stage]?.color;
+                  content:
+                    _js:
+                      args:
+                        statuses:
+                          _ref: ../shared/enums/action_statuses.yaml
+                        stage:
+                          _state: current_action.status.$.stage
+                      fn: |
+                        const { statuses, stage } = args;
+                        return statuses?.[stage]?.title;
+              - id: current_action.status.$.timestamp
+                type: Paragraph
+                properties:
+                  type: secondary
+                  style:
+                    fontSize: 12
+                  content:
+                    _dayjs.format:
+                      on:
+                        _state: current_action.status.$.created.timestamp
+                      params:
+                        format: YYYY-MM-DD HH:mm
+              - id: current_action.status.$.error
+                type: Paragraph
+                visible:
+                  _ne:
+                    - _state: current_action.status.$.error_message
+                    - null
+                properties:
+                  type: danger
+                  style:
+                    fontSize: 12
+                  content:
+                    _state: current_action.status.$.error_message
+  # 5. Comment — edit / review modes always; view mode only when the current
+  #    stage is `error` (the resolve_error recovery note).
+  - id: current_action.comment
+    type: TiptapInput
+    visible:
+      _or:
+        - _eq:
+            - _state: current_action.mode
+            - edit
+        - _eq:
+            - _state: current_action.mode
+            - review
+        - _and:
+            - _eq:
+                - _state: current_action.mode
+                - view
+            - _eq:
+                - _state: current_action.status.0.stage
+                - error
+    properties:
+      title: Comment
+      placeholder: Add a comment (optional).
+  # 6. Signal button bar — right-aligned in-flow Box. Each button's `visible`
+  #    is the AND of the mode gate and its server-resolved boolean; `disabled`
+  #    is the uniform required_after_close gate. Endpoint and base payload are
+  #    identical across signals; `fields` rides submit and progress only.
+  - id: signal_button_bar
+    type: Box
+    layout:
+      justify: flex-end
+      gap: 8
+    blocks:
+      - id: button_submit
+        type: Button
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - edit
+            - _state: current_action.buttons.submit
+        properties:
+          title: Submit
+          type: primary
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: validate
+                  type: Validate
+                  params:
+                    regex: ^current_action\.fields\.
+                - id: submit
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _string.concat:
+                        - _module.id: true
+                        - /update-action-
+                        - _state: current_action.type
+                    payload:
+                      action_id:
+                        _state: current_action._id
+                      signal: submit
+                      current_key:
+                        _state: current_action.key
+                      comment:
+                        _state: current_action.comment
+                      fields:
+                        _state: current_action.fields
+              - _var:
+                  key: on_complete
+                  default: []
+      - id: button_progress
+        type: Button
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - edit
+            - _state: current_action.buttons.progress
+        properties:
+          title: Mark Started
+          type: default
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: progress
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _string.concat:
+                        - _module.id: true
+                        - /update-action-
+                        - _state: current_action.type
+                    payload:
+                      action_id:
+                        _state: current_action._id
+                      signal: progress
+                      current_key:
+                        _state: current_action.key
+                      comment:
+                        _state: current_action.comment
+                      fields:
+                        _state: current_action.fields
+              - _var:
+                  key: on_complete
+                  default: []
+      - id: button_not_required
+        type: Button
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - edit
+            - _state: current_action.buttons.not_required
+        properties:
+          title: Mark Not Required
+          type: default
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: not_required
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _string.concat:
+                        - _module.id: true
+                        - /update-action-
+                        - _state: current_action.type
+                    payload:
+                      action_id:
+                        _state: current_action._id
+                      signal: not_required
+                      current_key:
+                        _state: current_action.key
+                      comment:
+                        _state: current_action.comment
+              - _var:
+                  key: on_complete
+                  default: []
+      - id: button_request_changes
+        type: Button
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - review
+            - _state: current_action.buttons.request_changes
+        properties:
+          title: Request Changes
+          type: default
+          danger: true
+          ghost: true
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            - id: open_request_changes_modal
+              type: CallMethod
+              params:
+                blockId: request_changes_modal
+                method: setOpen
+                args:
+                  - open: true
+      - id: button_approve
+        type: Button
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - review
+            - _state: current_action.buttons.approve
+        properties:
+          title: Approve
+          type: primary
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: approve
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _string.concat:
+                        - _module.id: true
+                        - /update-action-
+                        - _state: current_action.type
+                    payload:
+                      action_id:
+                        _state: current_action._id
+                      signal: approve
+                      current_key:
+                        _state: current_action.key
+                      comment:
+                        _state: current_action.comment
+              - _var:
+                  key: on_complete
+                  default: []
+      - id: button_resolve_error
+        type: Button
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - view
+            - _state: current_action.buttons.resolve_error
+        properties:
+          title: Resolve Error
+          type: primary
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: resolve_error
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _string.concat:
+                        - _module.id: true
+                        - /update-action-
+                        - _state: current_action.type
+                    payload:
+                      action_id:
+                        _state: current_action._id
+                      signal: resolve_error
+                      current_key:
+                        _state: current_action.key
+                      comment:
+                        _state: current_action.comment
+              - _var:
+                  key: on_complete
+                  default: []
+  # 7. Request-changes modal — review mode only. Required comment binds
+  #    current_action.comment; onOk validates the comment then fires the
+  #    request_changes signal (base payload, no fields) and runs on_complete;
+  #    onClose resets the comment. Opened via setOpen({ open: true }).
+  - id: request_changes_modal
+    type: Modal
+    visible:
+      _eq:
+        - _state: current_action.mode
+        - review
+    properties:
+      width: 600
+      title: Request Changes
+      maskClosable: false
+      okText: Request Changes
+    events:
+      onOk:
+        _build.array.concat:
+          - - id: validate_comment
+              type: Validate
+              params:
+                regex: ^current_action\.comment$
+            - id: submit_request_changes
+              type: CallAPI
+              params:
+                endpointId:
+                  _string.concat:
+                    - _module.id: true
+                    - /update-action-
+                    - _state: current_action.type
+                payload:
+                  action_id:
+                    _state: current_action._id
+                  signal: request_changes
+                  current_key:
+                    _state: current_action.key
+                  comment:
+                    _state: current_action.comment
+          - _var:
+              key: on_complete
+              default: []
+      onClose:
+        - id: reset_comment
+          type: SetState
+          params:
+            current_action.comment: null
+    blocks:
+      - id: current_action.comment
+        type: TiptapInput
+        required: true
+        validate:
+          - message: A comment is required to request changes
+            status: error
+            pass:
+              _ne:
+                - _state: current_action.comment
+                - null
+        properties:
+          title: Change Description
+          placeholder: Please provide a description of the changes you would like.
