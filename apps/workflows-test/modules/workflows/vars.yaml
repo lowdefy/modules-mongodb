@@ -1,0 +1,13 @@
+workflows_config:
+  _ref: modules/workflows/workflow_config/workflows.yaml
+app_name:
+  _ref:
+    path: app_config.yaml
+    key: app_name
+user_schema:
+  roles_path: roles
+entities:
+  things-collection:
+    page_id: thing-view
+    id_query_key: _id
+    title: Thing

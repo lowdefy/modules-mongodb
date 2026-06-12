@@ -1,0 +1,43 @@
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: thing-view
+    title:
+      _request: get_thing.0.title
+    events:
+      onMount:
+        - id: fetch
+          type: Request
+          params:
+            - get_thing
+    requests:
+      - id: get_thing
+        type: MongoDBAggregation
+        connectionId: things-collection
+        payload:
+          _id:
+            _url_query: _id
+        properties:
+          pipeline:
+            - $match:
+                _id:
+                  _payload: _id
+            - $limit: 1
+    blocks:
+      - id: thing_title
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: '<h2 id="thing-title">{{ title }}</h2>'
+              on:
+                title:
+                  _request: get_thing.0.title
+      - _ref:
+          module: workflows
+          component: actions-on-entity
+          vars:
+            entity_id:
+              _url_query: _id
+            entity_collection: things-collection

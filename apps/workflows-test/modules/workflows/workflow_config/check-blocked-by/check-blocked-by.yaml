@@ -1,0 +1,41 @@
+# check-blocked-by (Part 22 task 4) — kind:check actions with blocked_by deps.
+#
+# Two dependency kinds (an action's blocked_by entry may name either):
+#   - a TYPE dep:  needs-type blocked_by [first-check]   (an action type)
+#   - a GROUP dep: needs-group blocked_by [prep]         (a group id — groups are
+#                  blocked_by *targets*, never carriers)
+# Completing a blocker fires the engine's auto-unblock fixpoint and the dependent
+# becomes action-required. The fixpoint itself is unit-owned
+# (planAutoUnblock.test.js); this cluster proves it fires through the wired app.
+#
+# kind:check actions render on the STATIC shared pages
+# (workflow-action-{edit,view,review}), addressed by ?action_id= — this cluster
+# is the suite's coverage home for those pages serving check actions.
+type: check-blocked-by
+title: Check blocked-by
+entity_collection: things-collection
+entity_ref_key: thing_ids
+
+starting_actions:
+  - type: first-check
+    status: action-required
+  - type: second-check
+    status: action-required
+  - type: needs-type
+    status: blocked
+  - type: needs-group
+    status: blocked
+
+action_groups:
+  - id: prep
+    title: Prep
+    icon: AiOutlineCheckSquare
+  - id: launch
+    title: Launch
+    icon: AiOutlineRocket
+
+actions:
+  - _ref: modules/workflows/workflow_config/check-blocked-by/first-check.yaml
+  - _ref: modules/workflows/workflow_config/check-blocked-by/second-check.yaml
+  - _ref: modules/workflows/workflow_config/check-blocked-by/needs-type.yaml
+  - _ref: modules/workflows/workflow_config/check-blocked-by/needs-group.yaml

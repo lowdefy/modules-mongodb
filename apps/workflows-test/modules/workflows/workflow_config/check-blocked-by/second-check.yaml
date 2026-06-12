@@ -1,0 +1,25 @@
+# A check in group `prep` WITH the review verb — so submit → in-review and an
+# approve is needed to reach done. This is what makes the static
+# workflow-action-review page reachable honestly for a check action (the review
+# page only serves an in-review stage). Completing both prep checks completes the
+# `prep` group, unblocking needs-group (GROUP dep: blocked_by [prep]).
+type: second-check
+kind: check
+action_group: prep
+sort_order: 20
+description: The second prep check, reviewed before completing.
+access:
+  test:
+    view: true
+    edit: true
+    review: true
+status_map:
+  action-required:
+    test:
+      message: Complete the second prep check.
+  in-review:
+    test:
+      message: Second prep check awaiting review.
+  done:
+    test:
+      message: Second prep check complete.

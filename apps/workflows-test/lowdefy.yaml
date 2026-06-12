@@ -1,0 +1,30 @@
+lowdefy: 0.0.0-experimental-20260526123919
+name: Workflows Test App
+
+config:
+  homePageId: things
+
+plugins:
+  - name: '@lowdefy/community-plugin-mongodb'
+    version: 3.0.0
+  - name: '@lowdefy/modules-mongodb-plugins'
+    version: workspace:*
+
+modules:
+  _ref: modules.yaml
+
+menus:
+  _ref: menus.yaml
+
+connections:
+  - id: things-collection
+    type: MongoDBCollection
+    properties:
+      databaseUri:
+        _secret: MONGODB_URI
+      collection: things
+
+pages:
+  - _ref: pages/router.yaml
+  - _ref: pages/things.yaml
+  - _ref: pages/thing-view.yaml

@@ -1,0 +1,18 @@
+# A plain check in group `prep`. Completing it (submit → done, no review verb)
+# unblocks needs-type (TYPE dep: blocked_by [first-check]).
+type: first-check
+kind: check
+action_group: prep
+sort_order: 10
+description: The first prep check.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Complete the first prep check.
+  done:
+    test:
+      message: First prep check complete.

@@ -1,0 +1,22 @@
+# Blocked on an action TYPE: unblocks when first-check is done.
+type: needs-type
+kind: check
+action_group: launch
+sort_order: 30
+blocked_by:
+  - first-check
+description: Blocked until the first prep check is done.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  blocked:
+    test:
+      message: Waiting on the first prep check.
+  action-required:
+    test:
+      message: Unblocked by the first prep check.
+  done:
+    test:
+      message: Type-dependent check complete.
