@@ -29,5 +29,5 @@ const base = createConfig({
 
 export default {
   ...base,
-  globalSetup: './e2e/global-setup.js',
+  globalSetup: './global-setup.js',
 };
