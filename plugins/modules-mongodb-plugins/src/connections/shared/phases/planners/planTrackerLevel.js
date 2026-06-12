@@ -27,7 +27,9 @@ import planChangeLog from './planChangeLog.js';
  *     skips `commitPlan` entirely (D3: empty plans never reach commit).
  *   - The event is an action event of type `action-internal-mirror-{state}`
  *     (planEventDispatch `handlerType: 'tracker-mirror'`), referencing the one
- *     mirrored action.
+ *     mirrored action. The parent tracker action's `event_overrides[mirror signal]`
+ *     is forwarded as `yamlEventOverrides` when present (D4), so the mirror event
+ *     honors the parent's configured display override for that mirror signal.
  *   - The returned Plan carries a `fired` entry — today's shape
  *     `{ parent_action_id, parent_workflow_id, new_status }` — so the cascade
  *     can accumulate it without re-deriving the FSM-resolved stage.
@@ -148,6 +150,7 @@ function planTrackerLevel(
     status_after,
     allTouchedActionDocs: [targetEntry.doc],
     connection,
+    yamlEventOverrides: actionConfig.event_overrides?.[signal],
   });
 
   // ── Change-log ───────────────────────────────────────────────────────────

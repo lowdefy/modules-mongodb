@@ -167,3 +167,34 @@ test('throws missing_target when the action type has no config entry', () => {
     planTrackerLevel(makeLoaded({ config }), baseArgs),
   ).toThrow(expect.objectContaining({ code: 'missing_target' }));
 });
+
+test('event_overrides on tracker actionConfig → mirror event display reflects the override', () => {
+  // The parent tracker action config carries an override for the completed mirror signal.
+  const config = makeConfig({
+    actions: [
+      {
+        type: 'track-child',
+        kind: 'tracker',
+        tracker: { child_workflow_type: 'child' },
+        event_overrides: {
+          internal_mirror_child_completed: {
+            display: { 'test-app': { title: 'Child done — status: {{ status_after }}' } },
+          },
+        },
+      },
+    ],
+  });
+  const plan = planTrackerLevel(makeLoaded({ config }), baseArgs);
+  expect(plan).not.toBeNull();
+  // Override title rendered — {{ status_after }} resolves to the FSM-resolved stage.
+  expect(plan.event.doc.display['test-app'].title).toBe('Child done — status: done');
+  // Type is still the engine default for this signal.
+  expect(plan.event.doc.type).toBe('action-internal-mirror-completed');
+});
+
+test('no event_overrides on tracker actionConfig → mirror event uses engine default title', () => {
+  // Baseline: no event_overrides key on the config — engine default applies.
+  const plan = planTrackerLevel(makeLoaded(), baseArgs);
+  expect(plan).not.toBeNull();
+  expect(plan.event.doc.display['test-app'].title).toBe('Tracker mirrored child done');
+});
