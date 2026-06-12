@@ -9394,7 +9394,7 @@ snapshots:
   '@lowdefy/connection-mongodb@4.7.3(next-auth@4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
     dependencies:
       '@lowdefy/helpers': 4.7.3
-      '@next-auth/mongodb-adapter': 1.1.3(mongodb@6.3.0)(next-auth@4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
+      '@next-auth/mongodb-adapter': 1.1.3(mongodb@6.3.0)(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
       mongodb: 6.3.0
       saslprep: 1.0.3
     transitivePeerDependencies:
@@ -9410,7 +9410,7 @@ snapshots:
   '@lowdefy/connection-mongodb@4.7.3(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
     dependencies:
       '@lowdefy/helpers': 4.7.3
-      '@next-auth/mongodb-adapter': 1.1.3(mongodb@6.3.0)(next-auth@4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
+      '@next-auth/mongodb-adapter': 1.1.3(mongodb@6.3.0)(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
       mongodb: 6.3.0
       saslprep: 1.0.3
     transitivePeerDependencies:
@@ -9701,7 +9701,7 @@ snapshots:
       mongodb: 6.3.0
       next-auth: 4.24.10(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
 
-  '@next-auth/mongodb-adapter@1.1.3(mongodb@6.3.0)(next-auth@4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
+  '@next-auth/mongodb-adapter@1.1.3(mongodb@6.3.0)(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
     dependencies:
       mongodb: 6.3.0
       next-auth: 4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)

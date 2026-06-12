@@ -7,9 +7,11 @@
   "scripts": {
     "ldf:b": "NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-build-only-not-a-real-secret} lowdefy build",
     "ldf:d": "lowdefy dev --log-level=debug --no-open",
+    "ldf:s": "lowdefy start",
     "ldf": "lowdefy dev --no-open",
     "ldf:b:i": "infisical run --env=dev --path=/apps/demo -- lowdefy build",
     "ldf:d:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --log-level=debug --no-open",
+    "ldf:s:i": "infisical run --env=dev --path=/apps/demo -- lowdefy start",
     "ldf:i": "infisical run --env=dev --path=/apps/demo -- lowdefy dev --no-open",
     "e2e": "playwright test --config=e2e/playwright.config.js",
     "e2e:headed": "SLOW_MO=500 playwright test --headed --workers=1 --config=e2e/playwright.config.js",
