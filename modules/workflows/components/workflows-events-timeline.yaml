@@ -19,6 +19,11 @@
 #   disable_contact_link — disable avatar/timestamp linking (default false).
 #   compact              — compact rendering (default false).
 #   s3GetPolicyRequestId — request id for attachment downloads (optional).
+#   on_action_click      — optional actions array wired to the timeline's
+#                          `onActionClick` (the host supplies the kind-branch /
+#                          modal wiring — see `check-action-modal`); absent by
+#                          default → action cards navigate via the
+#                          server-resolved `action.link`.
 id: workflows_events_timeline
 type: Box
 style:
@@ -56,6 +61,21 @@ blocks:
         fontStyle: italic
   - id: workflows_events_timeline_list
     type: EventsTimeline
+    # The `_build.if` is load-bearing: an unset `on_action_click` resolves to
+    # null (not an absent key), and the engine registers every key on a block's
+    # `events` object — so a naive `onActionClick: { _var: on_action_click }`
+    # would register a null event and break the navigate fallback. The key must
+    # be absent from the built config when the var is unset.
+    events:
+      _build.if:
+        test:
+          _build.eq:
+            - _var: on_action_click
+            - null
+        then: {}
+        else:
+          onActionClick:
+            _var: on_action_click
     visible:
       _gt:
         - _array.length:
