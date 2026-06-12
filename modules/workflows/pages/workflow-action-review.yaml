@@ -1,11 +1,20 @@
-# Shared check-action review page (part 17).
+# Shared check-action review page (Part 40 — D1).
 #
-# Addressed by ?action_id=<id>. Mirrors part 16's review.yaml.njk adapted for
-# static (non-Nunjucks) emission. Reviewers approve or request changes; no
-# status selector, no fields.* editing.
+# Thin container: addressed by ?action_id=<id>, it loads the action, primes
+# `current_action.*` state, and renders the shared check-action surface in
+# review mode. All review UI — header, universal fields, comment, the
+# Approve / Request Changes buttons, and the request-changes modal — lives in
+# components/check-action-surface.yaml; this page owns only the guards and the
+# state seed.
+#
+# Stale-URL guard allowlist is `[in-review]` only (NOT `error`). A check action
+# at `error` renders no review buttons, and the engine routes its `error` verb
+# to workflow-action-view (where resolve_error lives), so an `error`-stage hit
+# is redirected to the view page rather than stranding the reviewer on a
+# buttonless review render.
 #
 # Path-stub dependencies (won't build until other parts ship):
-#   - ../components/universal-fields/universal-fields.yaml  (part 24)
+#   - components/check-action-surface.yaml -> universal-fields (part 24)
 _ref:
   module: layout
   component: page
@@ -30,14 +39,14 @@ _ref:
         - id: get_action
           type: Request
           params: get_workflow_action
-        # Step 3: stale-URL guard. Allowlist mirrors part 16's review template
-        # — `error` included so reviewers can see the action mid-recovery.
+        # Step 3: stale-URL guard. Allowlist is `[in-review]` only — an
+        # `error`-stage action has no review buttons and resolves via the
+        # view page, so redirect it to workflow-action-view.
         - id: redirect_stale_status
           type: Link
           skip:
             _array.includes:
               - - in-review
-                - error
               - _request: get_workflow_action.status.0.stage
           params:
             pageId:
@@ -48,187 +57,30 @@ _ref:
         # server-side into the get_workflow_action envelope.
         # Step 5 (get_entity) — intentionally omitted on all check pages (v1).
         # Step 6 (action_role_check) — omitted; allowed resolved server-side.
-        # Step 7: prime comment state. Universal fields display from
-        # get_action directly — no fields.* state binding needed.
-        - id: prime_form_state
+        # Step 7: prime current_action state for the surface. Spread the
+        # response envelope, then seed the working inputs and the mode literal.
+        - id: set_current_action
           type: SetState
           params:
-            comment: null
+            current_action:
+              _request: get_workflow_action
+        - id: seed_working_state
+          type: SetState
+          params:
+            # Seed fields even on review: universal-fields editability is
+            # edit-verb-gated, so an edit-verb reviewer gets live inputs bound
+            # at current_action.fields.*.
+            current_action.fields:
+              assignees:
+                _request: get_workflow_action.assignees
+              due_date:
+                _request: get_workflow_action.due_date
+              description:
+                _request: get_workflow_action.description
+            current_action.comment: null
+            current_action.mode: review
         # Step 8 (author-supplied pages.review.events.onMount) — omitted on
         # shared check pages; same gap as workflow-action-view / workflow-action-edit.
     blocks:
-      - id: action_card
-        type: Card
-        layout:
-          gap: 16
-        blocks:
-          - id: workflow_closed_banner
-            type: Alert
-            visible:
-              _and:
-                - _request: get_workflow_action.workflow_closed
-                - _ne:
-                    - _request: get_workflow_action.required_after_close
-                    - true
-            properties:
-              type: warning
-              showIcon: true
-              message: Workflow closed
-              description: This workflow is closed. Updates to this action are no longer accepted.
-          - id: action_header
-            type: Box
-            layout:
-              gap: 8
-              align: middle
-            blocks:
-              - id: action_title
-                type: Title
-                properties:
-                  level: 4
-                  content:
-                    _request: get_workflow_action.message
-              - id: action_status_badge
-                type: Tag
-                properties:
-                  color:
-                    _js:
-                      args:
-                        statuses:
-                          _ref: ../shared/enums/action_statuses.yaml
-                        stage:
-                          _request: get_workflow_action.status.0.stage
-                      fn: |
-                        const { statuses, stage } = args;
-                        return statuses?.[stage]?.color;
-                  content:
-                    _js:
-                      args:
-                        statuses:
-                          _ref: ../shared/enums/action_statuses.yaml
-                        stage:
-                          _request: get_workflow_action.status.0.stage
-                      fn: |
-                        const { statuses, stage } = args;
-                        return statuses?.[stage]?.title;
-          - _ref:
-              path: components/universal-fields/universal-fields.yaml
-              vars:
-                mode: display
-                kind: check
-                action_data:
-                  assignees:
-                    _request: get_workflow_action.assignees
-                  due_date:
-                    _request: get_workflow_action.due_date
-                  description:
-                    _request: get_workflow_action.description
-          - id: comment
-            type: TiptapInput
-            properties:
-              title: Comment
-              placeholder: Add a comment (optional).
       - _ref:
-          module: layout
-          component: floating-actions
-          vars:
-            actions:
-              - id: button_request_changes
-                type: Button
-                visible:
-                  _request: get_workflow_action.allowed.review
-                properties:
-                  title: Request Changes
-                  type: default
-                  danger: true
-                  ghost: true
-                  disabled:
-                    _and:
-                      - _request: get_workflow_action.workflow_closed
-                      - _ne:
-                          - _request: get_workflow_action.required_after_close
-                          - true
-                events:
-                  onClick:
-                    - id: open_request_changes_modal
-                      type: CallMethod
-                      params:
-                        method: open
-                        blockId: request_changes_modal
-              - id: button_approve
-                type: Button
-                visible:
-                  _request: get_workflow_action.allowed.review
-                properties:
-                  title: Approve
-                  type: primary
-                  disabled:
-                    _and:
-                      - _request: get_workflow_action.workflow_closed
-                      - _ne:
-                          - _request: get_workflow_action.required_after_close
-                          - true
-                events:
-                  onClick:
-                    - id: submit_approve
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _string.concat:
-                            - _module.id: true
-                            - /update-action-
-                            - _request: get_workflow_action.type
-                        payload:
-                          action_id:
-                            _request: get_workflow_action._id
-                          interaction: approve
-                          current_key:
-                            _request: get_workflow_action.key
-                          comment:
-                            _state: comment
-      - id: request_changes_modal
-        type: Modal
-        properties:
-          width: 600
-          title: Request Changes
-          maskClosable: false
-          okText: Request Changes
-        events:
-          onOk:
-            - id: validate_comment
-              type: Validate
-              params: comment
-            - id: submit_request_changes
-              type: CallAPI
-              params:
-                endpointId:
-                  _string.concat:
-                    - _module.id: true
-                    - /update-action-
-                    - _request: get_workflow_action.type
-                payload:
-                  action_id:
-                    _request: get_workflow_action._id
-                  interaction: request_changes
-                  current_key:
-                    _request: get_workflow_action.key
-                  comment:
-                    _state: comment
-          onClose:
-            - id: reset_comment
-              type: SetState
-              params:
-                comment: null
-        blocks:
-          - id: comment
-            type: TiptapInput
-            required: true
-            validate:
-              - message: A comment is required to request changes
-                status: error
-                pass:
-                  _ne:
-                    - _state: comment
-                    - null
-            properties:
-              title: Change Description
-              placeholder: Please provide a description of the changes you would like.
+          path: components/check-action-surface.yaml
