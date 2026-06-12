@@ -95,6 +95,16 @@ vars:
 
 exports:
   components:
+    - id: check-action-modal
+      description: >
+        Standalone in-context check-action modal — a single Modal block (fixed
+        blockId check_action_modal) wrapping the shared check-action surface.
+        Host pages compose it with EventsTimeline.onActionClick; actions-on-entity
+        bundles it. Opened exclusively via the documented SetState +
+        CallMethod(setOpen, [{ open: true }]) contract. Optional var:
+        on_complete (host refetch actions, default []). One instance per page;
+        never drop it on a page that already defines a get_workflow_action
+        request (the workflow-action-* pages).
     - id: workflows-events-timeline
       description: >
         Action-enriched events timeline panel backed by the GetEventsTimeline
@@ -113,6 +123,9 @@ components:
   - id: actions-on-entity
     component:
       _ref: components/actions-on-entity.yaml
+  - id: check-action-modal
+    component:
+      _ref: components/check-action-modal.yaml
   - id: validated_workflows_config
     component:
       _ref: components/validated_workflows_config.yaml

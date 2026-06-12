@@ -1,0 +1,141 @@
+# Standalone in-context check-action modal (Part 40 — D5).
+#
+# A single Modal block with a FIXED blockId `check_action_modal` wrapping the
+# shared check-action surface (components/check-action-surface.yaml). It lets a
+# host (actions-on-entity, the events-timeline action cards) open a check action
+# in place — no full-page navigation — and is an in-app shortcut layered on
+# hosts, never a replacement for the canonical workflow-action-* pages.
+#
+# Open contract — every host wires it the same way (verbatim):
+#   - type: SetState
+#     params: { check_action_modal: { action_id: <id> } }
+#   - type: CallMethod
+#     params: { blockId: check_action_modal, method: setOpen, args: [{ open: true }] }
+#
+# One instance per page. The modal is dropped exactly once per page, and
+# `actions-on-entity` is what drops it when present. Hosts that compose it
+# directly (e.g. via EventsTimeline.onActionClick) must not drop a second copy —
+# the blockId is fixed and global.
+#
+# Fixed-request-id constraint. This component defines a component-local Request
+# with id `get_workflow_action`. NEVER drop this component on a page that already
+# defines a `get_workflow_action` request — i.e. the workflow-action-* pages
+# (workflow-action-edit / -view / -review), which each carry their own
+# URL-bound `get_workflow_action`. A duplicate request id would collide. This
+# modal is for entity/host pages only.
+#
+# On open the modal runs the SAME fetch the pages' `onMount` runs — one
+# GetWorkflowAction read for `check_action_modal.action_id` (fresh; the
+# list/timeline data may be stale), spread into `current_action` plus the
+# working seeds. There is no separate workflow read or role check: `allowed`,
+# `buttons`, `workflow_closed`, and `required_after_close` all arrive on the one
+# response.
+#
+# Mode derivation (D5) — drives the surface's signal button bar only; field
+# editability is the separate `allowed.edit` gate inside the surface. Pages
+# write a literal `current_action.mode` in onMount; this modal writes the
+# derived value in its open handler. The surface reads `_state:
+# current_action.mode` either way (one read convention, two writers — D1):
+#
+#   | # | condition                                                   | mode   |
+#   |---|-------------------------------------------------------------|--------|
+#   | 1 | status.0.stage == error                                     | view   |
+#   | 2 | status.0.stage == in-review AND allowed.review              | review |
+#   | 3 | status.0.stage in [action-required, in-progress,           | edit   |
+#   |   |   changes-required] AND allowed.edit                        |        |
+#   | 4 | otherwise                                                   | view   |
+#
+# The events timeline is NOT rendered in the modal (page-level only, D1).
+# `view` mode's status history (a stateful List, no request) is modal-safe.
+id: check_action_modal
+type: Modal
+properties:
+  width: 750
+  footer: false
+requests:
+  - id: get_workflow_action
+    type: GetWorkflowAction
+    connectionId:
+      _module.connectionId: workflow-api
+    payload:
+      action_id:
+        _state: check_action_modal.action_id
+    properties:
+      action_id:
+        _payload: action_id
+events:
+  onOpen:
+    # Step 1: fetch the action fresh.
+    - id: get_action
+      type: Request
+      params: get_workflow_action
+    # Step 2: spread the GetWorkflowAction response into current_action.
+    - id: set_current_action
+      type: SetState
+      params:
+        current_action:
+          _request: get_workflow_action
+    # Step 3: seed the working inputs.
+    - id: seed_working_state
+      type: SetState
+      params:
+        current_action.fields:
+          assignees:
+            _request: get_workflow_action.assignees
+          due_date:
+            _request: get_workflow_action.due_date
+          description:
+            _request: get_workflow_action.description
+        current_action.comment: null
+    # Step 4: derive and write the mode (modal-side half of the mode contract).
+    - id: set_mode
+      type: SetState
+      params:
+        current_action.mode:
+          _if:
+            test:
+              _eq:
+                - _state: current_action.status.0.stage
+                - error
+            then: view
+            else:
+              _if:
+                test:
+                  _and:
+                    - _eq:
+                        - _state: current_action.status.0.stage
+                        - in-review
+                    - _eq:
+                        - _state: current_action.allowed.review
+                        - true
+                then: review
+                else:
+                  _if:
+                    test:
+                      _and:
+                        - _array.includes:
+                            - - action-required
+                              - in-progress
+                              - changes-required
+                            - _state: current_action.status.0.stage
+                        - _eq:
+                            - _state: current_action.allowed.edit
+                            - true
+                    then: edit
+                    else: view
+blocks:
+  - _ref:
+      path: components/check-action-surface.yaml
+      vars:
+        on_complete:
+          _build.array.concat:
+            - _var:
+                key: on_complete
+                default: []
+            - - id: close_check_action_modal
+                type: CallMethod
+                params:
+                  blockId: check_action_modal
+                  method: setOpen
+                  args:
+                    - open: false
