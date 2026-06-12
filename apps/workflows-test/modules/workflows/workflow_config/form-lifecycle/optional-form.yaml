@@ -1,0 +1,33 @@
+# A form action with no `review` verb (so `submit` → `done` directly) and
+# `allow_not_required: true`. The opt-in flag is what makes the `not_required`
+# signal/button available — without it the engine load-gate rejects the signal
+# and GetWorkflowAction resolves `buttons.not_required: false` (Part 46 D5,
+# Part 40 D3). It exists so the spec can exercise `not_required` without undoing
+# reviewed-form's terminal state.
+type: optional-form
+kind: form
+action_group: lifecycle
+sort_order: 20
+allow_not_required: true
+description: An optional form action that can be marked not required.
+access:
+  test:
+    view: true
+    edit: true
+form:
+  - key: form.detail
+    component: text_input
+    title: Detail
+status_map:
+  action-required:
+    test:
+      message: Optional — complete or mark not required.
+  in-progress:
+    test:
+      message: Draft saved.
+  done:
+    test:
+      message: Completed.
+  not-required:
+    test:
+      message: Marked not required.
