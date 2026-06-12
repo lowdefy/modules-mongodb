@@ -55,17 +55,16 @@ _ref:
     doc:
       _request: get_contact.0
     events:
-      # TEMPORARY onInit — paired with the inline activities tile below.
-      # The tile's capture modal uses company-selector, whose request reads
-      # `_state.cycle_check_*` and trips ConfigWarning on pages that don't
-      # declare those keys. Runtime behaviour unchanged (the request's
-      # `_if_none` defaults already handle null/empty). Remove this entire
-      # onInit block alongside the inline-tile workaround once the framework
-      # limitation (decisions.md §7) is fixed.
       onInit:
         - id: init_state
           type: SetState
           params:
+            # company-selector (used by any sidebar slot that includes
+            # activities' tile_activities → capture modal → form_activity)
+            # reads _state.cycle_check_* via get_companies_for_selector.
+            # Init to null/[] here so the build's _state validator doesn't
+            # warn on this page. Runtime unchanged — the request's _if_none
+            # defaults already cover null/empty.
             cycle_check_self_id: null
             cycle_check_ids: []
       onMount:
@@ -118,33 +117,5 @@ _ref:
             blocks:
               _build.array.concat:
                 - - _ref: components/tile_companies.yaml
-                  # TEMPORARY inline — intended pattern is app-level slot wiring
-                  # via components.sidebar_slots (decisions.md §7); blocked by
-                  # framework limitation. Move back to app vars once fixed.
-                  # Paired with the activities module dep (module.lowdefy.yaml)
-                  # and the cycle_check_* onInit state init above — revert all
-                  # three together.
-                  - _ref:
-                      module: activities
-                      component: tile_activities
-                      vars:
-                        reference_field: contacts
-                        reference_value:
-                          _url_query: _id
-                        # Prefill the capture form with this contact as a
-                        # reference object; the selector enriches name/email
-                        # on open. `contacts` is the activity-doc field.
-                        prefill:
-                          contacts:
-                            - contact_id:
-                                _url_query: _id
-                              name:
-                                _request: get_contact.0.profile.name
-                              email:
-                                _request: get_contact.0.email
-                        on_created:
-                          - id: refetch_events
-                            type: Request
-                            params: get-events
                   - _ref: components/tile_events.yaml
                 - _module.var: components.sidebar_slots
