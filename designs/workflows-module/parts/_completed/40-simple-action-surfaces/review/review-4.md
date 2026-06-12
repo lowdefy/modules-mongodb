@@ -1,7 +1,7 @@
 # Review 4 — The post-46-flip design vs. the actual Part 46 contract
 
 Reviews 1–3 verified the pre-46 design; the design has since been rewritten to consume
-[Part 46](../../_completed/46-debundle-workflow-config/design.md)'s server-resolved read contract
+[Part 46](../../46-debundle-workflow-config/design.md)'s server-resolved read contract
 (`GetAction`, per-signal `buttons`, no client role-check, namespace `surface` → `current_action`).
 This pass verifies that rewrite against Part 46's **current design** (which itself went through
 reviews 1–4 + consistency 1–3 after Part 40's open-questions snapshot was written), against

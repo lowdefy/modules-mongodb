@@ -1,6 +1,6 @@
 # Part 47 — Per-workflow submit endpoints
 
-> **Superseded / parked by [Part 48](../../48-render-config-off-connection/design.md).** This part collapsed *submit* endpoints from per-action to per-workflow as an endpoint-count play. Part 48 makes **all four** write endpoints per-workflow as the carrier for render config taken off the connection blob, subsuming this collapse. The per-workflow-vs-global analysis below (D1) remains useful context, but the work is folded into Part 48; do not implement this part standalone.
+> **Superseded / parked by [Part 48](../../_completed/48-render-config-off-connection/design.md).** This part collapsed *submit* endpoints from per-action to per-workflow as an endpoint-count play. Part 48 makes **all four** write endpoints per-workflow as the carrier for render config taken off the connection blob, subsuming this collapse. The per-workflow-vs-global analysis below (D1) remains useful context, but the work is folded into Part 48; do not implement this part standalone.
 
 `makeWorkflowApis` generates one submit endpoint per action (`{workflow_type}-{action_type}-submit`). At the target scale (~100 workflows × ~5 actions in a production app) that is ~500 generated endpoints, each carrying that action's hook refs and event-overrides — config that is **not small**: `event.{signal}.display` is per-signal × per-app Nunjucks (`event_overrides` is deliberately excluded from the connection's `workflowsConfig`, see [D4](#d4--what-rides-on-the-endpoint-vs-workflowsconfig)). This part collapses them to **one submit endpoint per workflow** (`{workflow_type}-submit`), with those maps keyed by action type — cutting generated endpoint count ~5× **and** bounding each submit call's resolved config payload to a single workflow's actions, with no externally observable behaviour change.
 
@@ -90,6 +90,6 @@ Sequencing: this part should land **before or with** Parts 39/40's call-site wor
 ## Related
 
 - [Part 46 — Debundle workflows_config (client-side)](../../_completed/46-debundle-workflow-config/design.md) — sibling part from the same exploration; D3 there records why the connection keeps the full validated config, which D2 here relies on.
-- [Part 39 — Form submit buttons](../../_completed/39-form-submit-buttons/design.md) / [Part 40 — Simple-action surfaces](../../40-simple-action-surfaces/design.md) — own the submit call sites (see sequencing).
+- [Part 39 — Form submit buttons](../../_completed/39-form-submit-buttons/design.md) / [Part 40 — Simple-action surfaces](../../_completed/40-simple-action-surfaces/design.md) — own the submit call sites (see sequencing).
 - [Part 38 — Engine rebuild](../../_completed/38-engine-rebuild/design.md) — introduced the current `{workflow}-{action}-submit` naming this part collapses.
 - [Part 34 — Action access model](../../_completed/34-action-access-model/design.md) — D10 reserved-name constraint inherited by `{workflow_type}-submit`.

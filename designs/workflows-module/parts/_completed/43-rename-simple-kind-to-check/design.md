@@ -8,7 +8,7 @@ The workflow-action kind currently spelled `simple` is renamed to `check`. `simp
 
 1. **Rename the kind value `simple` → `check`** across the config-schema validator (`ACTION_KINDS`), the engine FSM kind tables and resolver branches, the `ActionKind` typedef, the demo `workflow_config`, tests, and the README/concept terminology. The mental model is "check off": you *fill in* a form, you *check off* a check.
 2. **Record the tasks-module page boundary**: adhoc tasks get their own `/tasks/*` pages in the future tasks module; the shared read-only detail surface is reused as a **component** (`_ref`), never as a cross-module shared page. Captured in [tasks-module-plan](../../../../workflows-module-concept/tasks-module-plan/design.md); no code here.
-3. **Sequence as a discrete part after [Part 40](../../40-simple-action-surfaces/design.md)** — so the sweep runs once against a stable tree, modelled on Part 35.
+3. **Sequence as a discrete part after [Part 40](../40-simple-action-surfaces/design.md)** — so the sweep runs once against a stable tree, modelled on Part 35.
 
 ## Why `check` (not `simple`)
 
@@ -79,6 +79,6 @@ None. (Open Question 1 — fold the page-ID move into Part 40? — was resolved 
 - The decision that moved the page renames out of this part: [Part 38 review-14 #1](../38-engine-rebuild/review/review-14.md) → [Part 38 task 18](../38-engine-rebuild/tasks/18-display-surface-renames.md).
 - Source decision and boundary contract: [workflows-module-concept/tasks-module-plan/design.md](../../../../workflows-module-concept/tasks-module-plan/design.md).
 - The previous rename this models on: [Part 35 — rename-task-kind-to-simple](../35-rename-task-kind-to-simple/design.md).
-- The part that rewrites the simple-action surfaces (this part sequences after it): [Part 40 — simple-action-surfaces](../../40-simple-action-surfaces/design.md).
+- The part that rewrites the simple-action surfaces (this part sequences after it): [Part 40 — simple-action-surfaces](../40-simple-action-surfaces/design.md).
 - Engine rebuild that owns the FSM kind tables and per-verb `links` map: [Part 38 — engine-rebuild](../38-engine-rebuild/design.md).
 - Implementation tracker: [designs/workflows-module/implementation-plan.md](../../../implementation-plan.md).

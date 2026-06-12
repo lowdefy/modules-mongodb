@@ -237,8 +237,8 @@ This part changes **every** write-endpoint id: per-action `{type}-{action}-submi
 
 ## Related
 
-- [Part 46 — Debundle workflow config](../_completed/46-debundle-workflow-config/design.md) — D1 here narrows its D3 (structure stays, render leaves); D7 there is the dynamic-config future this bridges toward.
-- [Part 47 — Per-workflow submit endpoints](../_rejected/47-per-workflow-submit-endpoints/design.md) — **superseded** (parked): this part makes all four write endpoints per-workflow, subsuming the submit-only collapse.
-- [Part 44 — Tracker start_link](../_completed/44-tracker-start-link/design.md) — the `tracker:` block whose `workflow_type` field this renames to `child_workflow_type` (and validates + traces).
-- [Part 19 — Operational APIs](../_completed/19-operational-apis/design.md) — the generic `start/cancel/close-workflow` endpoints D5 retires in favour of per-workflow ones.
-- [Part 38 — Engine rebuild](../_completed/38-engine-rebuild/design.md) — the load → plan → commit → cascade shape and `planActionTransition`/`planEventDispatch`/`planAutoUnblock` this re-points to `params.render_config`.
+- [Part 46 — Debundle workflow config](../46-debundle-workflow-config/design.md) — D1 here narrows its D3 (structure stays, render leaves); D7 there is the dynamic-config future this bridges toward.
+- [Part 47 — Per-workflow submit endpoints](../../_rejected/47-per-workflow-submit-endpoints/design.md) — **superseded** (parked): this part makes all four write endpoints per-workflow, subsuming the submit-only collapse.
+- [Part 44 — Tracker start_link](../44-tracker-start-link/design.md) — the `tracker:` block whose `workflow_type` field this renames to `child_workflow_type` (and validates + traces).
+- [Part 19 — Operational APIs](../19-operational-apis/design.md) — the generic `start/cancel/close-workflow` endpoints D5 retires in favour of per-workflow ones.
+- [Part 38 — Engine rebuild](../38-engine-rebuild/design.md) — the load → plan → commit → cascade shape and `planActionTransition`/`planEventDispatch`/`planAutoUnblock` this re-points to `params.render_config`.

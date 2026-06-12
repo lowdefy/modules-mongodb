@@ -70,7 +70,7 @@ drop "default unchanged" — Part 38 changes the doc shape out from under the cu
 > the doc copy is never authoritative, mirroring the `access` security model), closing
 > Part 39's client-only gap on forms. Form templates align (`page_config.buttons.not_required.visible`
 > becomes a plain opt-out, default `true`). Part 46 OQ4 records the outcome; the broader
-> raw-config-embed problem this finding surfaced is now [Part 46 — debundle-workflow-config](../../_completed/46-debundle-workflow-config/design.md).
+> raw-config-embed problem this finding surfaced is now [Part 46 — debundle-workflow-config](../../46-debundle-workflow-config/design.md).
 
 D3 and Files-changed say *"the `makeWorkflowsConfig` resolver emits a per-simple-action button
 map into `global.simple_action_buttons.{action_type}`"*, read via `_global`. Two problems:
