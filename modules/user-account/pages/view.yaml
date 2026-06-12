@@ -37,20 +37,6 @@ _ref:
               component: floating-actions
               vars:
                 actions:
-                  - id: edit_profile_button
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    properties:
-                      title: Edit Profile
-                      icon: AiOutlineEdit
-                    events:
-                      onClick:
-                        - id: edit_profile_link
-                          type: Link
-                          params:
-                            pageId:
-                              _module.pageId: edit
                   - id: logout_button
                     type: Button
                     layout:
@@ -67,3 +53,17 @@ _ref:
                             callbackUrl:
                               pageId:
                                 _module.pageId: logout
+                  - id: edit_profile_button
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    properties:
+                      title: Edit Profile
+                      icon: AiOutlineEdit
+                    events:
+                      onClick:
+                        - id: edit_profile_link
+                          type: Link
+                          params:
+                            pageId:
+                              _module.pageId: edit

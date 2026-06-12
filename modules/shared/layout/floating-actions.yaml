@@ -8,7 +8,9 @@ blocks:
     properties:
       size: small
     layout:
-      direction: row-reverse
+      direction: row
+      justify: end
+      wrap: nowrap
       gap: 8
     blocks:
       _var:

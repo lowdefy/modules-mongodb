@@ -42,12 +42,7 @@ _ref:
           module: layout
           component: floating-actions
           vars:
-            width: 700
             actions:
-              - id: spacer
-                type: Box
-                layout:
-                  flex: 1 0 auto
               - id: cancel_btn
                 type: Button
                 layout:

@@ -244,11 +244,100 @@ blocks:
   - id: signal_button_bar
     type: Box
     layout:
-      justify: flex-end
+      justify: end
+      wrap: nowrap
       gap: 8
     blocks:
+      - id: button_progress
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - edit
+            - _state: current_action.buttons.progress
+        properties:
+          title: Mark Started
+          type: default
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: progress
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _string.concat:
+                        - _module.id: true
+                        - /
+                        - _state: current_action.workflow_type
+                        - -submit
+                    payload:
+                      action_id:
+                        _state: current_action._id
+                      signal: progress
+                      current_key:
+                        _state: current_action.key
+                      comment:
+                        _state: current_action.comment
+                      fields:
+                        _state: current_action.fields
+              - _var:
+                  key: on_complete
+                  default: []
+      - id: button_not_required
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - edit
+            - _state: current_action.buttons.not_required
+        properties:
+          title: Mark Not Required
+          type: default
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            _build.array.concat:
+              - - id: not_required
+                  type: CallAPI
+                  params:
+                    endpointId:
+                      _string.concat:
+                        - _module.id: true
+                        - /
+                        - _state: current_action.workflow_type
+                        - -submit
+                    payload:
+                      action_id:
+                        _state: current_action._id
+                      signal: not_required
+                      current_key:
+                        _state: current_action.key
+                      comment:
+                        _state: current_action.comment
+              - _var:
+                  key: on_complete
+                  default: []
       - id: button_submit
         type: Button
+        layout:
+          flex: 0 1 auto
         visible:
           _and:
             - _eq:
@@ -293,90 +382,10 @@ blocks:
               - _var:
                   key: on_complete
                   default: []
-      - id: button_progress
-        type: Button
-        visible:
-          _and:
-            - _eq:
-                - _state: current_action.mode
-                - edit
-            - _state: current_action.buttons.progress
-        properties:
-          title: Mark Started
-          type: default
-          disabled:
-            _and:
-              - _state: current_action.workflow_closed
-              - _ne:
-                  - _state: current_action.required_after_close
-                  - true
-        events:
-          onClick:
-            _build.array.concat:
-              - - id: progress
-                  type: CallAPI
-                  params:
-                    endpointId:
-                      _string.concat:
-                        - _module.id: true
-                        - /
-                        - _state: current_action.workflow_type
-                        - -submit
-                    payload:
-                      action_id:
-                        _state: current_action._id
-                      signal: progress
-                      current_key:
-                        _state: current_action.key
-                      comment:
-                        _state: current_action.comment
-                      fields:
-                        _state: current_action.fields
-              - _var:
-                  key: on_complete
-                  default: []
-      - id: button_not_required
-        type: Button
-        visible:
-          _and:
-            - _eq:
-                - _state: current_action.mode
-                - edit
-            - _state: current_action.buttons.not_required
-        properties:
-          title: Mark Not Required
-          type: default
-          disabled:
-            _and:
-              - _state: current_action.workflow_closed
-              - _ne:
-                  - _state: current_action.required_after_close
-                  - true
-        events:
-          onClick:
-            _build.array.concat:
-              - - id: not_required
-                  type: CallAPI
-                  params:
-                    endpointId:
-                      _string.concat:
-                        - _module.id: true
-                        - /
-                        - _state: current_action.workflow_type
-                        - -submit
-                    payload:
-                      action_id:
-                        _state: current_action._id
-                      signal: not_required
-                      current_key:
-                        _state: current_action.key
-                      comment:
-                        _state: current_action.comment
-              - _var:
-                  key: on_complete
-                  default: []
       - id: button_request_changes
         type: Button
+        layout:
+          flex: 0 1 auto
         visible:
           _and:
             - _eq:
@@ -405,6 +414,8 @@ blocks:
                   - open: true
       - id: button_approve
         type: Button
+        layout:
+          flex: 0 1 auto
         visible:
           _and:
             - _eq:
@@ -445,6 +456,8 @@ blocks:
                   default: []
       - id: button_resolve_error
         type: Button
+        layout:
+          flex: 0 1 auto
         visible:
           _and:
             - _eq:

@@ -124,16 +124,6 @@ _ref:
           component: floating-actions
           vars:
             actions:
-              - id: save_button
-                type: Button
-                layout:
-                  flex: 0 1 auto
-                properties:
-                  title: Send Invite
-                  icon: RiMailSendLine
-                events:
-                  onClick:
-                    _ref: actions/invite_user.yaml
               - id: cancel_button
                 type: Button
                 layout:
@@ -149,3 +139,13 @@ _ref:
                       params:
                         pageId:
                           _module.pageId: all
+              - id: save_button
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                properties:
+                  title: Send Invite
+                  icon: RiMailSendLine
+                events:
+                  onClick:
+                    _ref: actions/invite_user.yaml

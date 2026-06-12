@@ -128,11 +128,39 @@ _ref:
               component: floating-actions
               vars:
                 actions:
+                  - id: button_request_changes
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.request_changes.visible
+                            default: false
+                        - _state: action.buttons.request_changes
+                    properties:
+                      title: Request Changes
+                      type: default
+                      danger: true
+                      ghost: true
+                      disabled:
+                        _var:
+                          key: page_config.buttons.request_changes.disabled
+                          default: false
+                    events:
+                      onClick:
+                        - id: open_request_changes_modal
+                          type: CallMethod
+                          params:
+                            method: open
+                            blockId: request_changes_modal
                   # Edit (navigation) — not gated on action_allowed; edit page
                   # gates its own writes. Sets skip_status_redirect so edit's
                   # stale-URL guard lets `done` actions through to re-open.
                   - id: button_edit
                     type: Button
+                    layout:
+                      flex: 0 1 auto
                     visible:
                       _var:
                         key: page_config.buttons.edit.visible
@@ -161,30 +189,6 @@ _ref:
                               _url_query: true
                             input:
                               skip_status_redirect: true
-                  - id: button_request_changes
-                    type: Button
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.request_changes.visible
-                            default: false
-                        - _state: action.buttons.request_changes
-                    properties:
-                      title: Request Changes
-                      type: default
-                      danger: true
-                      ghost: true
-                      disabled:
-                        _var:
-                          key: page_config.buttons.request_changes.disabled
-                          default: false
-                    events:
-                      onClick:
-                        - id: open_request_changes_modal
-                          type: CallMethod
-                          params:
-                            method: open
-                            blockId: request_changes_modal
         # Mandatory Request Changes modal — carries the required comment input.
         - - id: request_changes_modal
             type: Modal

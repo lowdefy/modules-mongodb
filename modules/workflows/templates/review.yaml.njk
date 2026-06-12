@@ -177,6 +177,8 @@ _ref:
                   # edit's stale-URL guard lets `in-review` actions through.
                   - id: button_edit
                     type: Button
+                    layout:
+                      flex: 0 1 auto
                     visible:
                       _var:
                         key: page_config.buttons.edit.visible
@@ -207,6 +209,8 @@ _ref:
                               skip_status_redirect: true
                   - id: button_request_changes
                     type: Button
+                    layout:
+                      flex: 0 1 auto
                     visible:
                       _and:
                         - _var:
@@ -231,6 +235,8 @@ _ref:
                             blockId: request_changes_modal
                   - id: button_approve
                     type: Button
+                    layout:
+                      flex: 0 1 auto
                     visible:
                       _and:
                         - _var:

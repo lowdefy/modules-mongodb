@@ -184,8 +184,96 @@ _ref:
               component: floating-actions
               vars:
                 actions:
+                  - id: button_not_required
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.not_required.visible
+                            default: true
+                        - _state: action.buttons.not_required
+                    properties:
+                      title: Mark Not Required
+                      type: default
+                      disabled:
+                        _var:
+                          key: page_config.buttons.not_required.disabled
+                          default: false
+                    events:
+                      onClick:
+                        _build.if:
+                          test:
+                            _build.ne:
+                              - _var:
+                                  key: page_config.buttons.not_required.modal
+                                  default: null
+                              - null
+                          then:
+                            - id: open_not_required_modal
+                              type: CallMethod
+                              params:
+                                method: open
+                                blockId: not_required_modal
+                          else:
+                            _build.array.concat:
+                              - _var:
+                                  key: page_config.events.onSubmit
+                                  default: []
+                              - - id: submit_not_required
+                                  type: CallAPI
+                                  params:
+                                    endpointId:
+                                      _module.endpointId: {{ workflow_type }}-submit
+                                    payload:
+                                      action_id:
+                                        _state: action._id
+                                      signal: not_required
+                                      current_key:
+                                        _state: action.key
+                                      comment:
+                                        _state: comment
+                  - id: button_progress
+                    type: Button
+                    layout:
+                      flex: 0 1 auto
+                    visible:
+                      _and:
+                        - _var:
+                            key: page_config.buttons.progress.visible
+                            default: true
+                        - _state: action.buttons.progress
+                    properties:
+                      title: Save Draft
+                      type: default
+                      disabled:
+                        _var:
+                          key: page_config.buttons.progress.disabled
+                          default: false
+                    events:
+                      onClick:
+                        _build.array.concat:
+                          - _var:
+                              key: page_config.events.onProgress
+                              default: []
+                          - - id: progress
+                              type: CallAPI
+                              params:
+                                endpointId:
+                                  _module.endpointId: {{ workflow_type }}-submit
+                                payload:
+                                  action_id:
+                                    _state: action._id
+                                  signal: progress
+                                  current_key:
+                                    _state: action.key
+                                  form:
+                                    _state: form
                   - id: button_submit
                     type: Button
+                    layout:
+                      flex: 0 1 auto
                     visible:
                       _and:
                         - _var:
@@ -237,88 +325,6 @@ _ref:
                                         _state: action.key
                                       form:
                                         _state: form
-                                      comment:
-                                        _state: comment
-                  - id: button_progress
-                    type: Button
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.progress.visible
-                            default: true
-                        - _state: action.buttons.progress
-                    properties:
-                      title: Save Draft
-                      type: default
-                      disabled:
-                        _var:
-                          key: page_config.buttons.progress.disabled
-                          default: false
-                    events:
-                      onClick:
-                        _build.array.concat:
-                          - _var:
-                              key: page_config.events.onProgress
-                              default: []
-                          - - id: progress
-                              type: CallAPI
-                              params:
-                                endpointId:
-                                  _module.endpointId: {{ workflow_type }}-submit
-                                payload:
-                                  action_id:
-                                    _state: action._id
-                                  signal: progress
-                                  current_key:
-                                    _state: action.key
-                                  form:
-                                    _state: form
-                  - id: button_not_required
-                    type: Button
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.not_required.visible
-                            default: true
-                        - _state: action.buttons.not_required
-                    properties:
-                      title: Mark Not Required
-                      type: default
-                      disabled:
-                        _var:
-                          key: page_config.buttons.not_required.disabled
-                          default: false
-                    events:
-                      onClick:
-                        _build.if:
-                          test:
-                            _build.ne:
-                              - _var:
-                                  key: page_config.buttons.not_required.modal
-                                  default: null
-                              - null
-                          then:
-                            - id: open_not_required_modal
-                              type: CallMethod
-                              params:
-                                method: open
-                                blockId: not_required_modal
-                          else:
-                            _build.array.concat:
-                              - _var:
-                                  key: page_config.events.onSubmit
-                                  default: []
-                              - - id: submit_not_required
-                                  type: CallAPI
-                                  params:
-                                    endpointId:
-                                      _module.endpointId: {{ workflow_type }}-submit
-                                    payload:
-                                      action_id:
-                                        _state: action._id
-                                      signal: not_required
-                                      current_key:
-                                        _state: action.key
                                       comment:
                                         _state: comment
         # Confirm modals — render iff page_config.buttons.{name}.modal is set.
