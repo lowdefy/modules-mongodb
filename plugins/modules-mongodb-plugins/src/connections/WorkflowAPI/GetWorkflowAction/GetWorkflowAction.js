@@ -117,7 +117,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const { params, mongoDb, connection, workflowsConfig } = context;
   const { action_id } = params;
   const app_name = connection.app_name;
-  const userRoles = context.user?.apps?.[app_name]?.roles;
+  const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? 'workflows';
   const actionsCollection = connection.actionsCollection ?? 'actions';
 

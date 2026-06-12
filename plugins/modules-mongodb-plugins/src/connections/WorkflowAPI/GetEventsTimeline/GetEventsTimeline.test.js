@@ -40,7 +40,7 @@ function buildContext({
   user = {
     id: 'U1',
     profile: { name: 'Test User' },
-    apps: { 'test-app': { roles: ['account-manager'] } },
+    roles: ['account-manager'],
   },
 } = {}) {
   return {
@@ -361,7 +361,7 @@ describe('workflow card access drop', () => {
     const result = await GetEventsTimeline(
       buildContext({
         request: { reference_field: 'lot_ids', reference_value: 'lot-1' },
-        user: { id: 'U2', apps: { 'test-app': { roles: ['reviewer'] } } },
+        user: { id: 'U2', roles: ['reviewer'] },
       }),
     );
     expect(result[0].actions).toHaveLength(0);

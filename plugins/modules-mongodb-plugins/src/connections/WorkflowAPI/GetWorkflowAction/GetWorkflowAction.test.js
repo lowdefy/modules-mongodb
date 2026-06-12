@@ -160,7 +160,7 @@ function buildContext({
   user = {
     id: 'U1',
     profile: { name: 'Test User' },
-    apps: { 'test-app': { roles: ['account-manager'] } },
+    roles: ['account-manager'],
   },
   workflowsConfig = makeWorkflowsConfig(),
 } = {}) {
@@ -782,7 +782,7 @@ describe('allowed resolution', () => {
         request: { action_id: 'a-approve' },
         user: {
           id: 'U2',
-          apps: { 'test-app': { roles: ['reviewer'] } },
+          roles: ['reviewer'],
         },
       }),
     );

@@ -171,7 +171,7 @@ function makeCallApi({ failOn = null, calls = [] } = {}) {
 function buildContext({
   request,
   app_name = 'test-app',
-  user = { id: 'U1', profile: { name: 'Test User' }, apps: { 'test-app': { roles: ['account-manager', 'reviewer'] } }, roles: ['account-manager', 'reviewer'] },
+  user = { id: 'U1', profile: { name: 'Test User' }, roles: ['account-manager', 'reviewer'] },
   callApi,
   workflowsConfig = makeWorkflowsConfig(),
   changeLog,
@@ -389,7 +389,7 @@ describe('per-verb access gate', () => {
       SubmitWorkflowAction(
         buildContext({
           request: { action_id: 'A1', signal: 'submit' },
-          user: { id: 'U2', profile: { name: 'No Edit' }, apps: { 'test-app': { roles: ['reviewer'] } } },
+          user: { id: 'U2', profile: { name: 'No Edit' }, roles: ['reviewer'] },
         }),
       ),
     ).rejects.toMatchObject({ code: 'access_denied' });
@@ -408,7 +408,7 @@ describe('per-verb access gate', () => {
       SubmitWorkflowAction(
         buildContext({
           request: { action_id: 'A1', signal: 'approve' },
-          user: { id: 'U3', profile: { name: 'AM only' }, apps: { 'test-app': { roles: ['account-manager'] } } },
+          user: { id: 'U3', profile: { name: 'AM only' }, roles: ['account-manager'] },
         }),
       ),
     ).rejects.toMatchObject({ code: 'access_denied' });
@@ -440,7 +440,7 @@ describe('hasReview resolution is action-global', () => {
       buildContext({
         request: { action_id: 'A1', signal: 'submit' },
         app_name: 'ops-app',
-        user: { id: 'U4', profile: { name: 'Ops User' }, apps: { 'ops-app': { roles: ['ops'] } } },
+        user: { id: 'U4', profile: { name: 'Ops User' }, roles: ['ops'] },
       }),
     );
     const doc = await mongo.db.collection('actions').findOne({ _id: 'A1' });

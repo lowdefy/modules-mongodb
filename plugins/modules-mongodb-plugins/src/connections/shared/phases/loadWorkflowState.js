@@ -212,7 +212,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
     );
   }
   const currentApp = connection?.app_name;
-  const userRoles = context.user?.apps?.[currentApp]?.roles ?? [];
+  const userRoles = context.user?.roles ?? [];
   const allowed = verbs.some((verb) =>
     gateAllows(actionConfig.access?.[currentApp]?.[verb], userRoles),
   );

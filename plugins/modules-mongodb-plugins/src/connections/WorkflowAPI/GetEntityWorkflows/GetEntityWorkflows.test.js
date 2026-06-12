@@ -77,7 +77,7 @@ function buildContext({
   user = {
     id: 'U1',
     profile: { name: 'Test User' },
-    apps: { 'test-app': { roles: ['account-manager'] } },
+    roles: ['account-manager'],
   },
   workflowsConfig = makeWorkflowsConfig(),
   entities = {
@@ -271,7 +271,7 @@ describe('access drop', () => {
     const result = await GetEntityWorkflows(
       buildContext({
         request: { entity_collection: 'leads-collection', entity_id: 'lead-1' },
-        user: { id: 'U2', profile: { name: 'Reviewer' }, apps: { 'test-app': { roles: ['reviewer'] } } },
+        user: { id: 'U2', profile: { name: 'Reviewer' }, roles: ['reviewer'] },
       }),
     );
     // qualify has view: true (always visible) and edit: ['account-manager'] (not for reviewer)

@@ -64,7 +64,7 @@ function makeContext({ user, connection } = {}) {
     mongoDb: mongo.db,
     connection: { app_name: APP, ...connection },
     workflowsConfig,
-    user: user ?? { apps: { [APP]: { roles: ['account-manager'] } } },
+    user: user ?? { roles: ['account-manager'] },
   };
 }
 
@@ -223,7 +223,7 @@ test('completed workflow allows submit on a required_after_close action', async 
 // --- Per-verb access gate (design D16 / Part 34 D6) ---------------------------
 
 const rolesContext = (roles) =>
-  makeContext({ user: { apps: { [APP]: { roles } } } });
+  makeContext({ user: { roles } });
 
 test.each(['submit', 'progress', 'not_required'])(
   'signal %s requires the edit verb',
@@ -337,7 +337,7 @@ test('a `true` gate passes a user with no roles for the app', async () => {
   await seedWorkflow();
   // final-audit's edit gate is `true`.
   const loaded = await loadWorkflowState(
-    makeContext({ user: { apps: {} } }),
+    makeContext({ user: { roles: [] } }),
     { actionId: 'act-2', signal: 'submit' },
   );
   expect(loaded.targetAction._id).toBe('act-2');
@@ -359,7 +359,7 @@ test('not_required without allow_not_required fails closed, even past an open ed
   await seedWorkflow();
   // final-audit (check kind) has edit: true but no allow_not_required.
   await expect(
-    loadWorkflowState(makeContext({ user: { apps: {} } }), {
+    loadWorkflowState(makeContext({ user: { roles: [] } }), {
       actionId: 'act-2',
       signal: 'not_required',
     }),
@@ -443,7 +443,7 @@ function makeContextWithRenderConfig(renderConfig) {
         ],
       },
     ],
-    user: { apps: { [APP]: { roles: ['account-manager'] } } },
+    user: { roles: ['account-manager'] },
     params: renderConfig !== undefined ? { render_config: renderConfig } : undefined,
   };
 }

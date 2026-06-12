@@ -25,8 +25,6 @@ modules:
         _ref:
           path: app_config.yaml
           key: app_name
-      user_schema:
-        roles_path: roles
       entities:
         leads-collection:
           page_id: lead-view
@@ -40,7 +38,6 @@ modules:
 
 - **`workflows_config`** — the app's workflow YAML (one entry per workflow type, with actions and `action_groups`). Validated at build time by `makeWorkflowsConfig`.
 - **`app_name`** — host app's deployment name. Filters per-action access via `access.{app_name}` and keys the default log event's display block. See [App name scoping](../../docs/idioms.md#app-name).
-- **`user_schema`** — where the engine reads the caller's roles from on the session/user object. Defaults to `{ roles_path: roles }`.
 - **`entities`** — map keyed by `entity_collection` → `{ page_id, id_query_key, title }`. Used for back-link URLs from `workflow-overview` / `workflow-header` and entity-kind labels. **Every `entity_collection` referenced in `workflows_config` must have a matching key here** — the part-4 build validator fails the build if any are missing.
 
 See `apps/demo/modules/workflows/vars.yaml` for a worked example.
@@ -403,10 +400,6 @@ The `actions` collection must remain free of any collection-level required-field
 ### `entities` (required)
 
 `object` — Map keyed by workflow `entity_collection` → `{ page_id, id_query_key, title }`. The module deep-links into host-app entity pages using these entries. Per-key shape is not statically validated by Lowdefy; the part-4 build validator confirms every `entity_collection` referenced in `workflows_config` has a matching key here.
-
-### `user_schema`
-
-`object` — Defaults to `{ roles_path: roles }`. Tells the engine where to read the caller's roles from on the session/user object.
 
 ### `action_statuses_display`
 

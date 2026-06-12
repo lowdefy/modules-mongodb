@@ -147,8 +147,8 @@ const schema = {
         'Session user resolved per-request. Wire from `_user: true` on ' +
         'connections/workflow-api.yaml. Lowdefy evaluates connection properties ' +
         'per request, so this resolves to the current session user ' +
-        '(`{ apps: { [app_name]: { roles: [...] } }, ... }`) at handler entry. ' +
-        'The engine reads `user.apps.{app_name}.roles` for verb gate checks.',
+        '(`{ roles: [...], ... }`) at handler entry. ' +
+        'The engine reads `user.roles` for verb gate checks.',
     },
     entities: {
       type: 'object',

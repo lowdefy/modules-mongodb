@@ -55,13 +55,6 @@ vars:
       projection); and (3) keys the per-app action display the engine writes
       onto each action doc — display surfaces read `action.{app_name}.message`
       and `action.{app_name}.links` for the current app's slug.
-  user_schema:
-    type: object
-    default:
-      roles_path: roles
-    description: >
-      Where the engine reads the caller's roles from on the session/user object.
-      Defaults to `{ roles_path: roles }`.
   entities:
     type: object
     required: true

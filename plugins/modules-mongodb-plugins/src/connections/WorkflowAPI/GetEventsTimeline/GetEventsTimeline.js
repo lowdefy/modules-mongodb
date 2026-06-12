@@ -29,7 +29,7 @@ async function GetEventsTimeline(lowdefyContext) {
   const { params, mongoDb, connection } = context;
   const { reference_field, reference_value } = params;
   const app_name = connection.app_name;
-  const userRoles = context.user?.apps?.[app_name]?.roles;
+  const userRoles = context.user?.roles;
   const eventsCollection = connection.eventsCollection ?? 'log-events';
   const actionsCollection = connection.actionsCollection ?? 'actions';
 

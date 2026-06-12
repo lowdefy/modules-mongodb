@@ -78,7 +78,7 @@ function buildContext({
   user = {
     id: 'U1',
     profile: { name: 'Test User' },
-    apps: { 'test-app': { roles: ['account-manager'] } },
+    roles: ['account-manager'],
   },
   workflowsConfig = makeWorkflowsConfig(),
   entities = {

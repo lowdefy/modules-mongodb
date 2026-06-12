@@ -22,7 +22,7 @@ async function GetWorkflowOverview(lowdefyContext) {
   const { workflow_id } = params;
   const app_name = connection.app_name;
   const entry_id = connection.entry_id;
-  const userRoles = context.user?.apps?.[app_name]?.roles;
+  const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? 'workflows';
   const actionsCollection = connection.actionsCollection ?? 'actions';
   const entities = connection.entities ?? {};

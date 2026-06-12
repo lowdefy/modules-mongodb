@@ -4,8 +4,6 @@ app_name:
   _ref:
     path: app_config.yaml
     key: app_name
-user_schema:
-  roles_path: roles
 entities:
   things-collection:
     page_id: thing-view
