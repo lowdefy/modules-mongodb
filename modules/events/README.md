@@ -116,6 +116,16 @@ The operators (`_date: now`, `_user: profile.name`) are runtime operators. See [
 
 `object` — Default `{}`. Additional event-type display metadata merged with the built-in types in `modules/shared/enums/event_types.yaml`. Keys are event type strings; values are `{ title, color, icon }`.
 
+### `action_status`
+
+`object` — Default `{}`. Additional action (task) status display metadata merged with the built-in stages in `modules/shared/enums/action_status.yaml`. Keys are status stages; values are `{ title, color, card_color, border_color }`. Used to render the action cards the timeline looks up from each event's `action_ids`.
+
+### `lookup_collections`
+
+`object` — Real Mongo collection names used by the events-timeline read-pipeline `$lookup` stages.
+
+- **`actions`** — `string`, default `actions`. Collection the timeline joins (event `action_ids` → action `_id`) to populate each event's action cards. Set to the same real collection name the activities module's `actions-collection` connection is mapped to, otherwise no actions will resolve.
+
 ## Secrets
 
 | Name | Used for |
