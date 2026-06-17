@@ -3,6 +3,7 @@ import { type } from "@lowdefy/helpers";
 import { S3Download } from "@lowdefy/plugin-aws/blocks";
 import { DangerousHtml } from "@lowdefy/blocks-basic/blocks";
 import formatValue from "../utils/formatValue.js";
+import formatFieldName from "../utils/formatFieldName.js";
 
 function lookupLabel(value, options) {
   if (!options || !options.length) return null;
@@ -329,6 +330,47 @@ export const fieldTypeRegistry = {
     },
     fullWidth: false,
     componentHints: ["phone_number_input"],
+  },
+
+  // generic object — fallback for plain objects that matched no specific
+  // shape above. Renders key-value rows, sending each value back through
+  // the pipeline via the injected renderNested callback. Arrays of
+  // objects render item-by-item through the typed-array path.
+  object: {
+    priority: 99,
+    detect: (value) => type.isObject(value),
+    render: ({ value, renderNested }) => {
+      // Reference-style objects (e.g. selector values like
+      // { contact_id, name }) display their label field only.
+      const display = value.name ?? value.label ?? value.title;
+      if (display !== undefined && display !== null && display !== "") {
+        return renderNested(display);
+      }
+
+      const entries = Object.entries(value).filter(
+        ([, v]) => v !== null && v !== undefined && v !== "",
+      );
+      if (!entries.length) {
+        return (
+          <span className="dataview-value dataview-value-null">Not set</span>
+        );
+      }
+
+      return (
+        <div className="dataview-object">
+          {entries.map(([key, v]) => (
+            <div className="dataview-object-entry" key={key}>
+              <span className="dataview-object-label">
+                {formatFieldName(key)}
+              </span>
+              {renderNested(v)}
+            </div>
+          ))}
+        </div>
+      );
+    },
+    fullWidth: true,
+    componentHints: [],
   },
 
   // string types (check specific before generic)

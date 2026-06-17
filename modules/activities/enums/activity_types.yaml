@@ -1,7 +1,14 @@
+# `icon` — AiOutline* name, rendered as a React Icon in the form selector.
 call:
   title: Call
   color: "#1890ff"
   icon: AiOutlinePhone
+  default_stage: done
+  type: basic
+email:
+  title: Email
+  color: "#13c2c2"
+  icon: AiOutlineMail
   default_stage: done
   type: basic
 meeting:
@@ -10,9 +17,3 @@ meeting:
   icon: AiOutlineCalendar
   default_stage: done
   type: complex
-email:
-  title: Email
-  color: "#13c2c2"
-  icon: AiOutlineMail
-  default_stage: done
-  type: basic

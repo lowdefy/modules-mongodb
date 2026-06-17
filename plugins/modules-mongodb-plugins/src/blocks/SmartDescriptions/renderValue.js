@@ -1,5 +1,6 @@
 import React from "react";
 import { getFieldTypeConfig } from "./fieldTypes/getFieldTypeConfig.js";
+import detectFieldType from "./fieldTypes/detectFieldType.js";
 
 function renderValue(item, Icon, methods, properties) {
   const { value, fieldType, isArray, options } = item;
@@ -17,6 +18,24 @@ function renderValue(item, Icon, methods, properties) {
 
   const config = getFieldTypeConfig(fieldType);
 
+  // Renders a nested raw value through detection and the full
+  // renderValue pipeline. Injected into registry renderers so container
+  // types (e.g. object) can recurse without importing this module.
+  const renderNested = (nestedValue) => {
+    const typeInfo = detectFieldType(nestedValue);
+    return renderValue(
+      {
+        value: nestedValue,
+        fieldType: typeInfo?.type ?? "string",
+        isArray: typeInfo?.isArray ?? false,
+        options: null,
+      },
+      Icon,
+      methods,
+      properties,
+    );
+  };
+
   // Handle arrays
   if (isArray && Array.isArray(value)) {
     // Custom array rendering (if field type defines renderArray)
@@ -28,6 +47,7 @@ function renderValue(item, Icon, methods, properties) {
         properties,
         fieldType,
         options,
+        renderNested,
       });
     }
 
@@ -41,6 +61,7 @@ function renderValue(item, Icon, methods, properties) {
           properties,
           fieldType,
           options,
+          renderNested,
         });
       }
 
@@ -55,6 +76,7 @@ function renderValue(item, Icon, methods, properties) {
                 properties,
                 fieldType,
                 options,
+                renderNested,
               })}
             </div>
           ))}
@@ -72,6 +94,7 @@ function renderValue(item, Icon, methods, properties) {
       properties,
       fieldType,
       options,
+      renderNested,
     });
   }
 

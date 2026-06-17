@@ -1,6 +1,139 @@
 id: update-activity
 type: Api
 routine:
+  # Map payload agenda topics straight into task docs in their final DB
+  # shape — rows seeded from the agenda lookup carry the task _id; rows
+  # added in the form get one minted here (double-underscore operators in
+  # the map callback re-evaluate per item, so __uuid mints a fresh id
+  # each time). The topic (the task title) is required client-side by the
+  # form, so rows arrive complete. The initial status entry (which needs
+  # the update event's id) and the activity's stored references are
+  # applied in the upsert below.
+  - :set_state:
+      agenda_tasks:
+        _array.map:
+          on:
+            _if_none:
+              - _payload: agenda_topics
+              - []
+          callback:
+            _function:
+              __object.assign:
+                - _id:
+                    __if_none:
+                      - __args: 0._id
+                      - __uuid: true
+                  kind: task
+                  workflow_id: null
+                  title:
+                    __args: 0.topic
+                  description:
+                    __if_none:
+                      - __args: 0.details
+                      - null
+                  attributes:
+                    action:
+                      __if_none:
+                        - __args: 0.action
+                        - null
+                  assignees:
+                    __if:
+                      test:
+                        __eq:
+                          - __args: 0.person_responsible
+                          - null
+                      then: []
+                      else:
+                        - contact_id:
+                            __args: 0.person_responsible.contact_id
+                          name:
+                            __args: 0.person_responsible.name
+                  due_date:
+                    __if_none:
+                      - __args: 0.due_date
+                      - null
+                  activity_ids:
+                    - _payload: _id
+                  company_ids:
+                    _if_none:
+                      - _payload: company_ids
+                      - []
+                  created:
+                    _ref:
+                      module: events
+                      component: change_stamp
+                  updated:
+                    _ref:
+                      module: events
+                      component: change_stamp
+                  deleted: null
+                # App-keyed task message read by host-app task lists.
+                - _build.object.fromEntries:
+                    - - _module.var: app_name
+                      - message:
+                          __args: 0.topic
+  - :set_state:
+      incoming_task_ids:
+        _array.map:
+          on:
+            _state: agenda_tasks
+          callback:
+            _function:
+              __args: 0._id
+
+  # Existing agenda tasks for this activity — needed to work out which
+  # topics were removed in the form. Removed tasks are never deleted; they
+  # get a not-required status entry pushed below (which also drops them
+  # from the agenda lookup and the host app's open-task lists).
+  - id: find-agenda-tasks
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      query:
+        kind: task
+        activity_ids:
+          _payload: _id
+      options:
+        projection:
+          _id: 1
+          status: 1
+  - :set_state:
+      removed_task_ids:
+        _array.map:
+          on:
+            _array.filter:
+              on:
+                _step: find-agenda-tasks
+              callback:
+                _function:
+                  __and:
+                    - __not:
+                        __eq:
+                          - __args: 0.status.0.stage
+                          - not-required
+                    - __not:
+                        __array.includes:
+                          - _state: incoming_task_ids
+                          - __args: 0._id
+          callback:
+            _function:
+              __args: 0._id
+
+  # The stored references (deal_ids etc.) — stamped onto agenda tasks
+  # added from the edit page, where the payload can't rebuild them.
+  - id: load-activity
+    type: MongoDBFindOne
+    connectionId:
+      _module.connectionId: activities-collection
+    properties:
+      query:
+        _id:
+          _payload: _id
+      options:
+        projection:
+          references: 1
+
   - id: update
     type: MongoDBUpdateOne
     connectionId:
@@ -15,30 +148,34 @@ routine:
         _build.array.concat:
           # Stage 1: Overwrite scalars + arrays, merge attributes
           - - $set:
-                title:
-                  _payload: title
-                description:
-                  _payload: description
-                contact_ids:
-                  _if_none:
-                    - _payload: contact_ids
-                    - []
-                company_ids:
-                  _if_none:
-                    - _payload: company_ids
-                    - []
-                attributes:
-                  $mergeObjects:
-                    - $ifNull:
-                        - "$$ROOT.attributes"
-                        - {}
-                    - $ifNull:
-                        - _payload: attributes
-                        - {}
-                updated:
-                  _ref:
-                    module: events
-                    component: change_stamp
+                _object.assign:
+                  - title:
+                      _payload: title
+                    description:
+                      _payload: description
+                    contacts:
+                      _if_none:
+                        - _payload: contacts
+                        - []
+                    company_ids:
+                      _if_none:
+                        - _payload: company_ids
+                        - []
+                    attributes:
+                      $mergeObjects:
+                        - $ifNull:
+                            - "$$ROOT.attributes"
+                            - {}
+                        - $ifNull:
+                            - _payload: attributes
+                            - {}
+                    updated:
+                      _ref:
+                        module: events
+                        component: change_stamp
+                  - _if_none:
+                      - _payload: references
+                      - {}
           # Consumer pipeline stages
           - _module.var: request_stages.write
 
@@ -58,9 +195,11 @@ routine:
                 _build.array.filter:
                   on:
                     _build.object.entries:
-                      _build.object.assign:
-                        - _ref: defaults/event_display.yaml
+                      _build.if_none:
                         - _module.var: event_display
+                        - _build.object.fromEntries:
+                            - - _module.var: app_name
+                              - _ref: defaults/event_display.yaml
                   callback:
                     _build.function:
                       __build.ne:
@@ -82,19 +221,138 @@ routine:
                             _ref: defaults/event_target.yaml
                     description: null
         references:
-          contact_ids:
-            _if_none:
-              - _payload: contact_ids
-              - []
-          company_ids:
-            _if_none:
-              - _payload: company_ids
-              - []
-          activity_ids:
-            - _payload: _id
+          _object.assign:
+            # Events store references as plain-id arrays for reverse lookups,
+            # so flatten the contact reference objects to ids.
+            - contact_ids:
+                _array.map:
+                  on:
+                    _if_none:
+                      - _payload: contacts
+                      - []
+                  callback:
+                    _function:
+                      __args: 0.contact_id
+              company_ids:
+                _if_none:
+                  - _payload: company_ids
+                  - []
+              activity_ids:
+                - _payload: _id
+              # Agenda tasks touched by this save — upserted/marked below
+              # with this event's id on any status entry they gain.
+              action_ids:
+                _array.concat:
+                  - _state: incoming_task_ids
+                  - _state: removed_task_ids
+            - _if_none:
+                - _payload: references
+                - {}
         metadata:
           activity_id:
             _payload: _id
+
+  # Upsert one task per agenda topic still in the form, picking values off
+  # the final-shape docs built above. Existing tasks get field edits only
+  # (status untouched, like the host app's task edit flow); topics added
+  # in the form insert a full task doc carrying the update-activity
+  # event's id on their initial status entry, plus the activity's stored
+  # references (deal_ids etc.) so they surface in the same task lists as
+  # tasks created with the activity. A per-item loop (not UpdateMany)
+  # because each task gets different $set values.
+  - :for: task
+    :in:
+      _state: agenda_tasks
+    :do:
+      - id: upsert-agenda-task
+        type: MongoDBUpdateOne
+        connectionId:
+          _module.connectionId: actions-collection
+        properties:
+          filter:
+            _id:
+              _item: task._id
+            kind: task
+          update:
+            $set:
+              _object.assign:
+                - title:
+                    _item: task.title
+                  description:
+                    _item: task.description
+                  attributes.action:
+                    _item: task.attributes.action
+                  assignees:
+                    _item: task.assignees
+                  due_date:
+                    _item: task.due_date
+                  company_ids:
+                    _item: task.company_ids
+                  updated:
+                    _item: task.updated
+                # App-keyed task message read by host-app task lists —
+                # dotted path so other keys under the app object survive.
+                - _build.object.fromEntries:
+                    - - _build.string.concat:
+                          - _module.var: app_name
+                          - .message
+                      - _item: task.title
+            # _id and kind are merged in from the filter on insert.
+            $setOnInsert:
+              _object.assign:
+                - workflow_id:
+                    _item: task.workflow_id
+                  status:
+                    - stage: action-required
+                      event_id:
+                        _step: new-event.eventId
+                      created:
+                        _ref:
+                          module: events
+                          component: change_stamp
+                  activity_ids:
+                    _item: task.activity_ids
+                  created:
+                    _item: task.created
+                  deleted:
+                    _item: task.deleted
+                - _if_none:
+                    - _step: load-activity.references
+                    - {}
+          options:
+            upsert: true
+
+  # Topics removed in the form — push a not-required status entry instead
+  # of deleting (mirrors the workflow-engine convention; open-task lists
+  # and the agenda lookup both filter it out). One set-based update; an
+  # empty $in simply matches nothing.
+  - id: mark-removed-tasks-not-required
+    type: MongoDBUpdateMany
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      filter:
+        _id:
+          $in:
+            _state: removed_task_ids
+        kind: task
+      update:
+        $push:
+          status:
+            $position: 0
+            $each:
+              - stage: not-required
+                event_id:
+                  _step: new-event.eventId
+                created:
+                  _ref:
+                    module: events
+                    component: change_stamp
+        $set:
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
 
   - :return:
       success: true

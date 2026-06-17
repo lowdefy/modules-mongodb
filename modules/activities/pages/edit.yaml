@@ -24,7 +24,10 @@ _ref:
             - "Edit "
             - _module.var: label
     events:
-      onMount:
+      # onInit (not onMount) — onInit completes before any block renders, so
+      # the file-manager's own onMount files fetch sees activity_id seeded.
+      # Block-level onMount fetches fire before the page root's onMount.
+      onInit:
         - id: fetch
           type: Request
           params: get_activity
@@ -42,15 +45,20 @@ _ref:
           params:
             _id:
               _request: get_activity.0._id
+            # Mirror of _id under the form's canonical id key, so the form's
+            # Attachments file-manager (bound to _state activity_id) resolves
+            # the same way it does on the new page and capture modal.
+            activity_id:
+              _request: get_activity.0._id
             type:
               _request: get_activity.0.type
             title:
               _request: get_activity.0.title
             description:
               _request: get_activity.0.description
-            contact_ids:
+            contacts:
               _if_none:
-                - _request: get_activity.0.contact_ids
+                - _request: get_activity.0.contacts
                 - []
             company_ids:
               _if_none:
@@ -60,6 +68,29 @@ _ref:
               _if_none:
                 - _request: get_activity.0.attributes
                 - {}
+            # Agenda tasks mapped back to form rows. Items keep the task
+            # _id so saving updates the right task; rows added in the form
+            # have none and update-activity mints one. Mapped with
+            # _mql.aggregate (not _array.map/_function) so the
+            # person_responsible value objects stay free of ~k source
+            # markers that break the Selector's value↔option match.
+            agenda_topics:
+              _mql.aggregate:
+                on:
+                  _if_none:
+                    - _request: get_activity.0.agenda_tasks
+                    - []
+                pipeline:
+                  - $project:
+                      _id: $_id
+                      topic: $title
+                      details: $description
+                      action: $attributes.action
+                      person_responsible:
+                        $arrayElemAt:
+                          - $assignees
+                          - 0
+                      due_date: $due_date
             updated:
               _request: get_activity.0.updated
             # Init companies' cycle-check state keys so the company-selector
@@ -75,7 +106,11 @@ _ref:
         layout:
           gap: 16
         blocks:
-          - _ref: components/form_activity.yaml
+          - _ref:
+              path: components/form_activity.yaml
+              vars:
+                disable_company:
+                  _module.var: disable_company_edit
       - _ref:
           module: layout
           component: floating-actions
@@ -107,9 +142,9 @@ _ref:
                             _state: title
                           description:
                             _state: description
-                          contact_ids:
+                          contacts:
                             _if_none:
-                              - _state: contact_ids
+                              - _state: contacts
                               - []
                           company_ids:
                             _if_none:
@@ -119,6 +154,10 @@ _ref:
                             _if_none:
                               - _state: attributes
                               - {}
+                          agenda_topics:
+                            _if_none:
+                              - _state: agenda_topics
+                              - []
                           updated:
                             _state: updated
                       messages:

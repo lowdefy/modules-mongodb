@@ -16,7 +16,7 @@ routine:
             _id: 1
             type: 1
             title: 1
-            contact_ids: 1
+            contacts: 1
             company_ids: 1
             status: 1
             updated: 1
@@ -105,9 +105,11 @@ routine:
                     _build.array.filter:
                       on:
                         _build.object.entries:
-                          _build.object.assign:
-                            - _ref: defaults/event_display.yaml
+                          _build.if_none:
                             - _module.var: event_display
+                            - _build.object.fromEntries:
+                                - - _module.var: app_name
+                                  - _ref: defaults/event_display.yaml
                       callback:
                         _build.function:
                           __build.ne:
@@ -158,9 +160,11 @@ routine:
                         _build.array.filter:
                           on:
                             _build.object.entries:
-                              _build.object.assign:
-                                - _ref: defaults/event_display.yaml
+                              _build.if_none:
                                 - _module.var: event_display
+                                - _build.object.fromEntries:
+                                    - - _module.var: app_name
+                                      - _ref: defaults/event_display.yaml
                           callback:
                             _build.function:
                               __build.ne:
@@ -205,9 +209,11 @@ routine:
                         _build.array.filter:
                           on:
                             _build.object.entries:
-                              _build.object.assign:
-                                - _ref: defaults/event_display.yaml
+                              _build.if_none:
                                 - _module.var: event_display
+                                - _build.object.fromEntries:
+                                    - - _module.var: app_name
+                                      - _ref: defaults/event_display.yaml
                           callback:
                             _build.function:
                               __build.ne:
@@ -246,8 +252,17 @@ routine:
                                           _step: load.0.type
                             description: null
         references:
+          # Events store references as plain-id arrays for reverse lookups,
+          # so flatten the contact reference objects to ids.
           contact_ids:
-            _step: load.0.contact_ids
+            _array.map:
+              on:
+                _if_none:
+                  - _step: load.0.contacts
+                  - []
+              callback:
+                _function:
+                  __args: 0.contact_id
           company_ids:
             _step: load.0.company_ids
           activity_ids:

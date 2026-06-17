@@ -56,6 +56,54 @@ requests:
                     default:
                       _module.var: display_key
                 - '.info'
+        # Populate each event's action cards from its `action_ids` array.
+        # Action ids reference docs in the actions collection; the sub-pipeline
+        # reshapes each into the shape the EventsTimeline block's action
+        # renderer expects: { id, status, message, link }. The current status
+        # stage is the first element of the action status array, and message
+        # and link are read from the app-keyed display object (same display_key
+        # the event titles use) — so apps that scope per-app action display
+        # (mirroring prp's `<app_name>.message`/`<app_name>.link`) render the
+        # right text and link button. Agenda-topic tasks have no link field, so
+        # `link` comes through missing and the block renders no button — only
+        # actions that store an app-scoped link get a button. Actions whose
+        # current stage is not-required (e.g. topics removed after capture) are
+        # dropped.
+        - $lookup:
+            from:
+              _module.var: lookup_collections.actions
+            localField: action_ids
+            foreignField: _id
+            as: actions
+            pipeline:
+              - $addFields:
+                  current_stage:
+                    $arrayElemAt:
+                      - $status.stage
+                      - 0
+              - $match:
+                  current_stage:
+                    $ne: not-required
+              - $project:
+                  _id: 0
+                  id: $_id
+                  status: $current_stage
+                  message:
+                    _string.concat:
+                      - '$'
+                      - _var:
+                          key: display_key
+                          default:
+                            _module.var: display_key
+                      - '.message'
+                  link:
+                    _string.concat:
+                      - '$'
+                      - _var:
+                          key: display_key
+                          default:
+                            _module.var: display_key
+                      - '.link'
 
 blocks:
   - id: events_timeline_empty
@@ -78,6 +126,16 @@ blocks:
         - _array.length:
             _request: get-events
         - 0
+    events:
+      # Navigate when an action card's link button is clicked. The block
+      # forwards the action link's { pageId, urlQuery } as the event payload,
+      # which maps directly onto the Link action's params (mirrors prp's
+      # __onActionLink → Link with `params: { _event: true }`).
+      onActionClick:
+        - id: link_action
+          type: Link
+          params:
+            _event: true
     properties:
       data:
         _request: get-events
@@ -85,6 +143,10 @@ blocks:
         _build.object.assign:
           - _ref: ../shared/enums/event_types.yaml
           - _module.var: event_types
+      actionStatusConfig:
+        _build.object.assign:
+          - _ref: ../shared/enums/action_status.yaml
+          - _module.var: action_status
       reverse:
         _var:
           key: reverse

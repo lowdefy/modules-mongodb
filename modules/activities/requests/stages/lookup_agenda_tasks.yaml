@@ -1,0 +1,36 @@
+# `from` takes the real Mongo collection name (not a connectionId) — apps
+# that map the actions-collection connection to a differently-named
+# collection must set the `lookup_collections.actions` module var to match.
+#
+# Agenda topics captured on meeting activities are stored as task docs in
+# the actions collection (kind: task, activity_ids: [<activity _id>]) by
+# create-activity / update-activity. Topics removed in the edit form are
+# never deleted — they get a `not-required` status entry pushed, so the
+# stage filter here is what makes them disappear from the view/edit pages.
+$lookup:
+  from:
+    _module.var: lookup_collections.actions
+  localField: _id
+  foreignField: activity_ids
+  as: agenda_tasks
+  pipeline:
+    - $match:
+        kind: task
+    - $addFields:
+        current_stage:
+          $arrayElemAt:
+            - $status.stage
+            - 0
+    - $match:
+        current_stage:
+          $ne: not-required
+    - $sort:
+        created.timestamp: 1
+    - $project:
+        _id: 1
+        title: 1
+        description: 1
+        attributes: 1
+        assignees: 1
+        due_date: 1
+        current_stage: 1

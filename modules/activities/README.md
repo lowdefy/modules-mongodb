@@ -30,8 +30,9 @@ modules:
         # Built-in types: call (basic), meeting (complex), email (basic).
         # Schema per entry:
         #   title          — display label (string)
-        #   color          — hex colour for chips and timeline dots
-        #   icon           — AiOutline* icon name
+        #   color          — hex colour for chips and the timeline type pill
+        #   icon           — AiOutline* icon name. Rendered as a React Icon in
+        #                    the form type selector.
         #   default_stage  — stage assigned on create (open | done | cancelled)
         #   type           — basic | complex; basic activities cannot transition
         #                    stage (created and locked in default_stage); complex
@@ -106,4 +107,4 @@ See [`VARS.md`](./VARS.md) for the full list with defaults and descriptions.
 
 Activities use plain UUIDs (`_id` generated client-side). No human-readable consecutive ID is issued — activities are high-volume and rarely referenced by humans individually.
 
-Reverse lookups (activities-for-this-contact / activities-for-this-company) are served by indexes on `contact_ids` / `company_ids` on the activity doc. There is no denormalized `activity_ids` list on contact/company docs — a deliberate departure from the contact ↔ company linking pattern.
+Reverse lookups (activities-for-this-contact / activities-for-this-company) are served by indexes on `contacts.contact_id` / `company_ids` on the activity doc. `contacts` is stored as an array of contact reference objects (`{ contact_id, name, email, verified }`) written by the contact-selector, so the index and all membership matches target the nested `contacts.contact_id`; `company_ids` stays a plain id array. The read pipeline `$lookup`-joins enriched contact docs into a separate `contacts_enriched` field, leaving the stored references intact for the edit form to round-trip back into the selector. Emitted events still carry plain-id `references.contact_ids` (flattened from `contacts`) for event-side reverse lookups. There is no denormalized `activity_ids` list on contact/company docs — a deliberate departure from the contact ↔ company linking pattern.

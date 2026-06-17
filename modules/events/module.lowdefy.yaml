@@ -45,6 +45,29 @@ vars:
     description: >
       Additional event type display metadata. Merged with built-in types.
       Keys are type strings, values have color, title, icon.
+  action_status:
+    type: object
+    default: {}
+    description: >
+      Additional action (task) status display metadata. Merged with the
+      built-in action_status enum. Keys are status stages, values have
+      color, title, card_color, border_color — used to render the action
+      cards looked up onto each event from `action_ids`.
+  lookup_collections:
+    type: object
+    description: >-
+      Real Mongo collection names used by the events-timeline read-pipeline
+      `$lookup` stages. Override when an app points its connections at
+      differently-named collections.
+    properties:
+      actions:
+        type: string
+        default: actions
+        description: >-
+          Collection the events-timeline pipeline joins (event `action_ids`
+          → action `_id`) to populate each event's action cards. Set to the
+          same real collection name the activities module's `actions-collection`
+          connection is mapped to.
   contact_page_url:
     type: string
     default: ""

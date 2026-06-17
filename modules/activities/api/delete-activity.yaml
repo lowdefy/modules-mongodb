@@ -1,7 +1,7 @@
 id: delete-activity
 type: Api
 routine:
-  # Load needed for references (contact_ids, company_ids) and target fields
+  # Load needed for references (contacts, company_ids) and target fields
   # (type, title) on the emitted event, since the payload only carries
   # activity_id. Filter excludes already-deleted docs — a second delete on
   # the same id finds nothing here, so the soft-delete and emit steps no-op.
@@ -20,9 +20,41 @@ routine:
             _id: 1
             type: 1
             title: 1
-            contact_ids: 1
+            contacts: 1
             company_ids: 1
             updated: 1
+
+  # Open agenda-topic tasks for this activity — marked not-required below
+  # so deleting a meeting doesn't leave orphan open tasks in the host
+  # app's task lists. Done tasks are left as they are.
+  - id: find-agenda-tasks
+    type: MongoDBFind
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      query:
+        kind: task
+        activity_ids:
+          _payload: activity_id
+      options:
+        projection:
+          _id: 1
+          status: 1
+  - :set_state:
+      open_task_ids:
+        _array.map:
+          on:
+            _array.filter:
+              on:
+                _step: find-agenda-tasks
+              callback:
+                _function:
+                  __eq:
+                    - __args: 0.status.0.stage
+                    - action-required
+          callback:
+            _function:
+              __args: 0._id
 
   - id: soft-delete
     type: MongoDBUpdateOne
@@ -65,9 +97,11 @@ routine:
                 _build.array.filter:
                   on:
                     _build.object.entries:
-                      _build.object.assign:
-                        - _ref: defaults/event_display.yaml
+                      _build.if_none:
                         - _module.var: event_display
+                        - _build.object.fromEntries:
+                            - - _module.var: app_name
+                              - _ref: defaults/event_display.yaml
                   callback:
                     _build.function:
                       __build.ne:
@@ -106,15 +140,57 @@ routine:
                                   _step: load.0.type
                     description: null
         references:
+          # Events store references as plain-id arrays for reverse lookups,
+          # so flatten the contact reference objects to ids.
           contact_ids:
-            _step: load.0.contact_ids
+            _array.map:
+              on:
+                _if_none:
+                  - _step: load.0.contacts
+                  - []
+              callback:
+                _function:
+                  __args: 0.contact_id
           company_ids:
             _step: load.0.company_ids
           activity_ids:
             - _payload: activity_id
+          # Open agenda tasks marked not-required below with this event's
+          # id on the status entry they gain.
+          action_ids:
+            _state: open_task_ids
         metadata:
           activity_id:
             _payload: activity_id
+
+  # One set-based update; an empty $in simply matches nothing.
+  - id: mark-open-tasks-not-required
+    type: MongoDBUpdateMany
+    connectionId:
+      _module.connectionId: actions-collection
+    properties:
+      filter:
+        _id:
+          $in:
+            _state: open_task_ids
+        kind: task
+      update:
+        $push:
+          status:
+            $position: 0
+            $each:
+              - stage: not-required
+                event_id:
+                  _step: new-event.eventId
+                created:
+                  _ref:
+                    module: events
+                    component: change_stamp
+        $set:
+          updated:
+            _ref:
+              module: events
+              component: change_stamp
 
   - :return:
       success: true

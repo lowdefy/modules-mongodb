@@ -64,8 +64,11 @@ properties:
                             - _payload: filter.stage
                             - null
                         then:
+                          # Atlas Search can't address array elements by
+                          # position, so filter on `status.stage` (all history
+                          # entries) rather than `status.0.stage`.
                           - equals:
-                              path: status.0.stage
+                              path: status.stage
                               value:
                                 _payload: filter.stage
                         else: []
@@ -76,7 +79,7 @@ properties:
                             - null
                         then:
                           - equals:
-                              path: contact_ids
+                              path: contacts.contact_id
                               value:
                                 _payload: filter.contact_id
                         else: []
