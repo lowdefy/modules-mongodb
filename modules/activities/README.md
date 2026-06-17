@@ -21,7 +21,7 @@ Companies and contacts do **not** depend on activities. Apps that want activity 
 ```yaml
 modules:
   - id: activities
-    source: "github:lowdefy/modules-mongodb/modules/activities@v0.7.0"
+    source: "github:lowdefy/modules-mongodb/modules/activities@v0.8.0"
     vars:
       label: Activity
       label_plural: Activities
