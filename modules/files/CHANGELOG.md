@@ -1,5 +1,15 @@
 # @lowdefy/modules-mongodb-files
 
+## 0.8.0
+
+### Patch Changes
+
+- [#79](https://github.com/lowdefy/modules-mongodb/pull/79) [`6936a5c`](https://github.com/lowdefy/modules-mongodb/commit/6936a5ccaee39e0dd4d6a85d3b90c7a4fe4fb8a8) Thanks [@Saiby100](https://github.com/Saiby100)! - Files: read upload metadata from the file event and set the S3 `Content-Type` field directly.
+
+  - `upload-policy` now reads `file_name` / `file_type` from `_event: file.name` / `_event: file.type` instead of reconstructing the upload block's state path via `block_id`. This decouples the request from the consuming block's id and avoids a brittle `_state` lookup.
+  - The S3 POST policy now sets `Content-Type` as a fixed field (`_payload: file_type`) and drops the equivalent `eq $Content-Type` condition — the value is asserted by the field rather than gated by a policy condition.
+  - `file-manager` migrates its fetch/refresh Request actions to the `requestIds` array form with `holdValue: true`, matching the current Request action API.
+
 ## 0.7.0
 
 ### Minor Changes
