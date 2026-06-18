@@ -34,7 +34,10 @@ properties:
                                         _payload: filter.search
                                     path:
                                       - title
-                                      - description
+                                      # `description` is Tiptap rich text
+                                      # stored as `{ html, text }`; search the
+                                      # plain-text subpath, not the html markup.
+                                      - description.text
                                 - wildcard:
                                     query:
                                       _string.concat:
@@ -44,7 +47,7 @@ properties:
                                         - "*"
                                     path:
                                       - title
-                                      - description
+                                      - description.text
                                     allowAnalyzedField: true
                         else: []
                     - _if:

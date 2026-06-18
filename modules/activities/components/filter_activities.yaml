@@ -5,20 +5,15 @@
 # resets pagination and refetches `get_activities` so the table
 # reflects the new filter set immediately.
 #
-# Linked-contact / linked-company filtering. The list request also
+# Linked-contact / linked-company filtering. The list request still
 # honours `state.filter.contact_id` and `state.filter.company_id`, but
-# this panel does NOT render entity selectors for them. The contacts
-# `basic-contact-selector` and companies `company-selector` exports
-# don't forward an `events.onChange` var, so embedding them here would
-# write filter state silently without refetching the list. Those two
-# filters are surfaced two other ways:
-#   1. URL-param hydration on `pages/all.yaml` (Task 14) seeds them
-#      from `_url_query.contact_id` / `_url_query.company_id` — the
-#      contract used by `tile_activities`'s "View all" link and any
-#      external deep-link.
-#   2. Consumers wanting an in-page picker add it via
-#      `components.filters` (and pair it with their own
-#      `Reset + Request get_activities` onChange wiring).
+# this panel does NOT render entity selectors for them, and they are NOT
+# fed from url-query params (silently scoping a table with no visible
+# control is bad UX). They are surfaced one way only:
+#   - Consumers wanting in-page entity scoping add a *visible* picker via
+#     `components.filters` (paired with their own
+#     `Reset + Request get_activities` onChange wiring), which writes
+#     `state.filter.contact_id` / `company_id`.
 #
 # Consumer-extension hook:
 #   - `_module.var: components.filters` — extra filter blocks rendered
