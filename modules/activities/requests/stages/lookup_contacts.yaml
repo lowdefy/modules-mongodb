@@ -9,7 +9,11 @@
 # (which the edit form round-trips back into the selector) stay intact.
 $lookup:
   from:
-    _module.var: lookup_collections.contacts
+    _build.if_none:
+      - _module.var: lookup_collections.contacts
+      - _module.connectionId:
+          id: contacts-collection
+          module: contacts
   localField: contacts.contact_id
   foreignField: _id
   as: contacts_enriched

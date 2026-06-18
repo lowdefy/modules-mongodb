@@ -151,24 +151,10 @@ blocks:
         - id: go_activities_all
           type: Link
           params:
+            # Navigate to the full activities list. The list page has no
+            # visible entity (contact/company/deal) filter control, so we do
+            # NOT scope it via url-query params — a silently filtered table the
+            # user can't see or clear is bad UX. The entity-scoped subset is
+            # already shown in this timeline tile.
             pageId:
               _module.pageId: all
-            urlQuery:
-              contact_id:
-                _if:
-                  test:
-                    _eq:
-                      - _var: reference_field
-                      - contacts
-                  then:
-                    _var: reference_value
-                  else: null
-              company_id:
-                _if:
-                  test:
-                    _eq:
-                      - _var: reference_field
-                      - company_ids
-                  then:
-                    _var: reference_value
-                  else: null
