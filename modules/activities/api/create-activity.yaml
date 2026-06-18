@@ -25,7 +25,13 @@ routine:
                       - __args: 0._id
                       - __uuid: true
                   kind: task
-                  workflow_id: null
+                  # No parent workflow, but the (workflow_id, type, key)
+                  # unique index treats null as a value — standalone tasks
+                  # would all collide on (null, null, null). Mint a unique
+                  # workflow_id per task (__uuid re-evaluates per item) to
+                  # keep the tuple unique without touching the index.
+                  workflow_id:
+                    __uuid: true
                   title:
                     __args: 0.topic
                   description:
