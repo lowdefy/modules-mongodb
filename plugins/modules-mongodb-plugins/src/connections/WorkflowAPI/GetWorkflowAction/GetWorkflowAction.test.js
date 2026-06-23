@@ -163,6 +163,13 @@ function buildContext({
     roles: ['account-manager'],
   },
   workflowsConfig = makeWorkflowsConfig(),
+  entities = {
+    'leads-collection': {
+      page_id: 'leads/lead-view',
+      id_query_key: 'lead_id',
+      title: 'Lead',
+    },
+  },
 } = {}) {
   return {
     request,
@@ -180,6 +187,7 @@ function buildContext({
       workflowsConfig,
       changeStamp,
       user,
+      entities,
     },
     callApi: async () => null,
   };
@@ -333,6 +341,28 @@ describe('envelope shape', () => {
     expect(result.updated).toBeDefined();
     expect(result.entity_id).toBe('lead-1');
     expect(result.entity_collection).toBe('leads-collection');
+  });
+
+  test('entity_link resolves from connection.entities', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify' });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' } }),
+    );
+    expect(result.entity_link).toEqual({
+      pageId: 'leads/lead-view',
+      urlQuery: { lead_id: 'lead-1' },
+      title: 'Lead',
+    });
+  });
+
+  test('entity_link is null when entity_collection has no entities entry', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a1', type: 'qualify' });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' }, entities: {} }),
+    );
+    expect(result.entity_link).toBeNull();
   });
 
   test('envelope carries message and required_after_close', async () => {

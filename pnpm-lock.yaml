@@ -58,7 +58,7 @@ importers:
         version: 0.41.2(nodemailer@6.9.7)
       '@hono/auth-js':
         specifier: 1.1.1
-        version: 1.1.1(@auth/core@0.41.2)(hono@4.12.25)(react@18.2.0)
+        version: 1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)
       '@hono/node-server':
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
@@ -166,7 +166,7 @@ importers:
         version: 0.0.0-experimental-20260611102401(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2)
+        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))
       '@tailwindcss/postcss':
         specifier: 4.2.1
         version: 4.2.1
@@ -251,7 +251,7 @@ importers:
         version: 0.41.2(nodemailer@6.9.7)
       '@hono/auth-js':
         specifier: 1.1.1
-        version: 1.1.1(@auth/core@0.41.2)(hono@4.12.25)(react@18.2.0)
+        version: 1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)
       '@hono/node-server':
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
@@ -338,7 +338,7 @@ importers:
         version: 0.0.0-experimental-20260611102401(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2)
+        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))
       '@sentry/browser':
         specifier: ^10.57.0
         version: 10.57.0
@@ -422,6 +422,12 @@ importers:
       '@ant-design/x':
         specifier: 2.7.0
         version: 2.7.0(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+      '@auth/core':
+        specifier: 0.41.2
+        version: 0.41.2(nodemailer@6.9.7)
+      '@hono/auth-js':
+        specifier: 1.1.1
+        version: 1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)
       '@hono/node-server':
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
@@ -463,13 +469,7 @@ importers:
         version: 0.0.0-experimental-20260611102401(moment@2.29.4)
       '@lowdefy/community-plugin-mongodb':
         specifier: 3.0.0
-        version: 3.0.0(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      '@lowdefy/connection-axios-http':
-        specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401
-      '@lowdefy/connection-mongodb':
-        specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401
+        version: 3.0.0(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/errors':
         specifier: 0.0.0-experimental-20260611102401
         version: 0.0.0-experimental-20260611102401
@@ -488,24 +488,21 @@ importers:
       '@lowdefy/node-utils':
         specifier: 0.0.0-experimental-20260611102401
         version: 0.0.0-experimental-20260611102401
-      '@lowdefy/operators-dayjs':
-        specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401
       '@lowdefy/operators-js':
         specifier: 0.0.0-experimental-20260611102401
         version: 0.0.0-experimental-20260611102401
-      '@lowdefy/operators-mql':
+      '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401
-      '@lowdefy/operators-nunjucks':
-        specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401
-      '@lowdefy/operators-uuid':
-        specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401
-      '@lowdefy/plugin-aws':
-        specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))
+      '@sentry/browser':
+        specifier: ^10.57.0
+        version: 10.57.0
+      '@sentry/node':
+        specifier: ^10.57.0
+        version: 10.57.0
+      '@sentry/vite-plugin':
+        specifier: ^5.3.0
+        version: 5.3.0(rollup@3.29.5)
       '@tailwindcss/postcss':
         specifier: 4.2.1
         version: 4.2.1
@@ -543,18 +540,9 @@ importers:
         specifier: 8.0.16
         version: 8.0.16(@types/node@25.9.1)(jiti@2.7.0)(terser@5.48.0)(yaml@2.9.0)
     devDependencies:
-      '@jest/globals':
-        specifier: 28.1.3
-        version: 28.1.3
       '@lowdefy/build':
         specifier: 0.0.0-experimental-20260611102401
         version: 0.0.0-experimental-20260611102401(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(zod@4.4.3)
-      '@next/eslint-plugin-next':
-        specifier: 16.1.6
-        version: 16.1.6
-      jest:
-        specifier: 28.1.3
-        version: 28.1.3(@types/node@25.9.1)
       webpack:
         specifier: 5.94.0
         version: 5.94.0(@swc/core@1.11.24)
@@ -767,11 +755,6 @@ packages:
         optional: true
       nodemailer:
         optional: true
-
-  '@auth/mongodb-adapter@3.11.2':
-    resolution: {integrity: sha512-3yKYvPB/7NjDN5VW6iymEdQEKQOezqVpev4heAhN+zxz5G/jOIQdxBu8iF8nIomF8ggY+FRDqysSNwb72JM6dw==}
-    peerDependencies:
-      mongodb: ^6
 
   '@aws-crypto/crc32@5.2.0':
     resolution: {integrity: sha512-nLbCWqQNgUiwwtFsen1AdzAtvuLRsQS8rYgMuxCrdKf9kOssamGLuPwyTY9wyYblNr9+1XM8v6zoDTPPSIeANg==}
@@ -1661,9 +1644,6 @@ packages:
 
   '@lowdefy/connection-axios-http@0.0.0-experimental-20260611102401':
     resolution: {integrity: sha512-u5xfnR5RWgfsYHLX0qFSLzV/EhziVBEJ513PjulbGsXTUk5+vRTX3I8TJyY39NI/Y/HloSZ2GO8XLTz/uzuhVQ==}
-
-  '@lowdefy/connection-mongodb@0.0.0-experimental-20260611102401':
-    resolution: {integrity: sha512-9fRmXVcM2bHESohF+UxvMvfSFZO+A/3Pae9cL2H4J9yjDh5mRnM3LFh+wrQ7B8jEPMGpUmTEv8AFboXUytTUhA==}
 
   '@lowdefy/connection-mongodb@4.7.3':
     resolution: {integrity: sha512-rLFMWgxU+MEonL4rCwJQtkd3CwaoaO1kk/lMCu3DpsJBD4gfqgYL9v0EzY1MVq+83Me7ytDDstDMhX4ry+v+ng==}
@@ -7571,15 +7551,6 @@ snapshots:
     optionalDependencies:
       nodemailer: 6.9.7
 
-  '@auth/mongodb-adapter@3.11.2(mongodb@6.3.0)':
-    dependencies:
-      '@auth/core': 0.41.2(nodemailer@6.9.7)
-      mongodb: 6.3.0
-    transitivePeerDependencies:
-      - '@simplewebauthn/browser'
-      - '@simplewebauthn/server'
-      - nodemailer
-
   '@aws-crypto/crc32@5.2.0':
     dependencies:
       '@aws-crypto/util': 5.2.0
@@ -8453,7 +8424,7 @@ snapshots:
 
   '@formatjs/icu-skeleton-parser@2.1.9': {}
 
-  '@hono/auth-js@1.1.1(@auth/core@0.41.2)(hono@4.12.25)(react@18.2.0)':
+  '@hono/auth-js@1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)':
     dependencies:
       '@auth/core': 0.41.2(nodemailer@6.9.7)
       hono: 4.12.25
@@ -9287,28 +9258,6 @@ snapshots:
       - snappy
       - socks
 
-  '@lowdefy/community-plugin-mongodb@3.0.0(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
-    dependencies:
-      '@lowdefy/connection-mongodb': 4.7.3(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
-      '@lowdefy/helpers': 4.7.3
-      mongodb: 6.3.0
-      next-auth: 4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
-      saslprep: 1.0.3
-      uuid: 9.0.1
-    transitivePeerDependencies:
-      - '@auth/core'
-      - '@aws-sdk/credential-providers'
-      - '@mongodb-js/zstd'
-      - gcp-metadata
-      - kerberos
-      - mongodb-client-encryption
-      - next
-      - nodemailer
-      - react
-      - react-dom
-      - snappy
-      - socks
-
   '@lowdefy/community-plugin-mongodb@3.0.0(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(nodemailer@6.9.7)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)':
     dependencies:
       '@lowdefy/connection-mongodb': 4.7.3(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))(nodemailer@6.9.7)(react-dom@19.2.6(react@19.2.6))(react@19.2.6))
@@ -9369,24 +9318,6 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  '@lowdefy/connection-mongodb@0.0.0-experimental-20260611102401':
-    dependencies:
-      '@auth/mongodb-adapter': 3.11.2(mongodb@6.3.0)
-      '@lowdefy/helpers': 0.0.0-experimental-20260611102401
-      mongodb: 6.3.0
-      saslprep: 1.0.3
-    transitivePeerDependencies:
-      - '@aws-sdk/credential-providers'
-      - '@mongodb-js/zstd'
-      - '@simplewebauthn/browser'
-      - '@simplewebauthn/server'
-      - gcp-metadata
-      - kerberos
-      - mongodb-client-encryption
-      - nodemailer
-      - snappy
-      - socks
-
   '@lowdefy/connection-mongodb@4.7.3(next-auth@4.24.10(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
     dependencies:
       '@lowdefy/helpers': 4.7.3
@@ -9406,23 +9337,7 @@ snapshots:
   '@lowdefy/connection-mongodb@4.7.3(next-auth@4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
     dependencies:
       '@lowdefy/helpers': 4.7.3
-      '@next-auth/mongodb-adapter': 1.1.3(mongodb@6.3.0)(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
-      mongodb: 6.3.0
-      saslprep: 1.0.3
-    transitivePeerDependencies:
-      - '@aws-sdk/credential-providers'
-      - '@mongodb-js/zstd'
-      - gcp-metadata
-      - kerberos
-      - mongodb-client-encryption
-      - next-auth
-      - snappy
-      - socks
-
-  '@lowdefy/connection-mongodb@4.7.3(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
-    dependencies:
-      '@lowdefy/helpers': 4.7.3
-      '@next-auth/mongodb-adapter': 1.1.3(mongodb@6.3.0)(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
+      '@next-auth/mongodb-adapter': 1.1.3(mongodb@6.3.0)(next-auth@4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))
       mongodb: 6.3.0
       saslprep: 1.0.3
     transitivePeerDependencies:
@@ -9614,7 +9529,7 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@lowdefy/plugin-next-auth@0.0.0-experimental-20260611102401(@auth/core@0.41.2)':
+  '@lowdefy/plugin-next-auth@0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))':
     dependencies:
       '@auth/core': 0.41.2(nodemailer@6.9.7)
 
@@ -9728,7 +9643,7 @@ snapshots:
       mongodb: 6.3.0
       next-auth: 4.24.10(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
 
-  '@next-auth/mongodb-adapter@1.1.3(mongodb@6.3.0)(next-auth@4.24.10(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
+  '@next-auth/mongodb-adapter@1.1.3(mongodb@6.3.0)(next-auth@4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0))':
     dependencies:
       mongodb: 6.3.0
       next-auth: 4.24.10(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)

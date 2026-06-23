@@ -18,6 +18,7 @@ import { computeAllowed, resolveButtons } from '../../shared/render/resolveActio
  *   {
  *     _id, type, workflow_type, kind, key, status, action_group, description, due_date,
  *     assignees, entity_id, entity_collection, created, updated,
+ *     entity_link,          // { pageId, urlQuery, title } from connection.entities, or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
  *     allowed,              // { view, edit, review, error }
@@ -120,6 +121,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? 'workflows';
   const actionsCollection = connection.actionsCollection ?? 'actions';
+  const entities = connection.entities ?? {};
 
   // ── Step 1: Read the action doc ──
   const [action] = await findDocs({
@@ -192,6 +194,18 @@ async function GetWorkflowAction(lowdefyContext) {
     }
   }
 
+  // ── Entity link (mirrors GetWorkflowOverview) — resolved from the
+  //    connection's entities config so submit/back nav can return to the
+  //    entity page. Null when the entity_collection has no entities entry.
+  const entityConfig = entities[action.entity_collection];
+  const entity_link = entityConfig
+    ? {
+        pageId: entityConfig.page_id,
+        urlQuery: { [entityConfig.id_query_key]: action.entity_id },
+        title: entityConfig.title ?? null,
+      }
+    : null;
+
   // ── Step 6: Curated envelope (explicit allowlist — no spread of raw doc) ──
   const message = action[app_name]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
@@ -210,6 +224,7 @@ async function GetWorkflowAction(lowdefyContext) {
     assignees: action.assignees ?? null,
     entity_id: action.entity_id ?? null,
     entity_collection: action.entity_collection ?? null,
+    entity_link,
     created: action.created ?? null,
     updated: action.updated ?? null,
     // Display copy

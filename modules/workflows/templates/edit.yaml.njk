@@ -322,6 +322,31 @@ _ref:
                                         _state: form
                                       comment:
                                         _state: comment
+                                # Submit succeeded (CallAPI halts the chain on
+                                # error): confirm, then return to the entity.
+                                - id: submit_success_message
+                                  type: DisplayMessage
+                                  params:
+                                    status: success
+                                    content:
+                                      _var:
+                                        key: page_config.buttons.submit.successMessage
+                                        default: Submitted successfully.
+                                - id: return_to_entity
+                                  type: Link
+                                  params:
+                                    _if:
+                                      test:
+                                        _ne:
+                                          - _state: action.entity_link.pageId
+                                          - null
+                                      then:
+                                        pageId:
+                                          _state: action.entity_link.pageId
+                                        urlQuery:
+                                          _state: action.entity_link.urlQuery
+                                      else:
+                                        back: true
         # Confirm modals — render iff page_config.buttons.{name}.modal is set.
         - _build.if:
             test:
@@ -370,6 +395,31 @@ _ref:
                                 _state: form
                               comment:
                                 _state: comment
+                        # Submit succeeded (CallAPI halts the chain on error):
+                        # confirm, then return to the entity.
+                        - id: submit_success_message
+                          type: DisplayMessage
+                          params:
+                            status: success
+                            content:
+                              _var:
+                                key: page_config.buttons.submit.successMessage
+                                default: Submitted successfully.
+                        - id: return_to_entity
+                          type: Link
+                          params:
+                            _if:
+                              test:
+                                _ne:
+                                  - _state: action.entity_link.pageId
+                                  - null
+                              then:
+                                pageId:
+                                  _state: action.entity_link.pageId
+                                urlQuery:
+                                  _state: action.entity_link.urlQuery
+                              else:
+                                back: true
             else: []
         - _build.if:
             test:
