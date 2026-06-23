@@ -43,6 +43,7 @@ afterAll(async () => {
 async function resetCollections() {
   await mongo.db.collection('log-events').deleteMany({});
   await mongo.db.collection('actions').deleteMany({});
+  await mongo.db.collection('user-contacts').deleteMany({});
 }
 
 beforeEach(async () => {
@@ -98,6 +99,7 @@ async function seedEvent({
   action_ids = [],
   date = new Date('2026-05-01T10:00:00Z'),
   created_timestamp = new Date('2026-05-01T10:00:00Z'),
+  user_id = 'u1',
   app_name = 'test-app',
   title = 'Event Title',
   description = 'Event Description',
@@ -108,8 +110,20 @@ async function seedEvent({
     [reference_field]: reference_value,
     action_ids,
     date,
-    created: { timestamp: created_timestamp, user: { id: 'u1' } },
+    created: { timestamp: created_timestamp, user: { id: user_id } },
     [app_name]: { title, description, info },
+  });
+}
+
+/**
+ * Seed a contact doc in the shared user-contacts collection. `picture` is
+ * stored under `profile.picture` (the field GetEventsTimeline joins onto the
+ * event author's created.user.picture).
+ */
+async function seedContact({ _id, picture = null, name = 'Contact Name' } = {}) {
+  await mongo.db.collection('user-contacts').insertOne({
+    _id,
+    profile: { name, picture },
   });
 }
 
@@ -630,5 +644,41 @@ describe('events without app_name display block are excluded', () => {
       buildContext({ request: { reference_field: 'lot_ids', reference_value: 'lot-1' } }),
     );
     expect(result.find((e) => e._id === 'ev-null-display')).toBeUndefined();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Event author avatar resolution (created.user.picture join, F7)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('event author avatar resolution', () => {
+  test('resolves created.user.picture from the matching contact', async () => {
+    await seedContact({ _id: 'u1', picture: 'https://cdn.example/u1.png' });
+    await seedEvent({ _id: 'ev-1', user_id: 'u1' });
+
+    const result = await GetEventsTimeline(
+      buildContext({ request: { reference_field: 'lot_ids', reference_value: 'lot-1' } }),
+    );
+    expect(result[0].created.user.picture).toBe('https://cdn.example/u1.png');
+  });
+
+  test('leaves created.user.picture null when no contact matches', async () => {
+    // No contact seeded for u1 → unmatched join degrades to no picture.
+    await seedEvent({ _id: 'ev-1', user_id: 'u1' });
+
+    const result = await GetEventsTimeline(
+      buildContext({ request: { reference_field: 'lot_ids', reference_value: 'lot-1' } }),
+    );
+    expect(result[0].created.user.picture).toBeNull();
+  });
+
+  test('leaves created.user.picture null when the contact has no profile.picture', async () => {
+    await seedContact({ _id: 'u1', picture: null });
+    await seedEvent({ _id: 'ev-1', user_id: 'u1' });
+
+    const result = await GetEventsTimeline(
+      buildContext({ request: { reference_field: 'lot_ids', reference_value: 'lot-1' } }),
+    );
+    expect(result[0].created.user.picture).toBeNull();
   });
 });

@@ -34,6 +34,7 @@ async function GetEventsTimeline(lowdefyContext) {
   const userRoles = context.user?.roles;
   const eventsCollection = connection.eventsCollection ?? 'log-events';
   const actionsCollection = connection.actionsCollection ?? 'actions';
+  const contactsCollection = connection.contactsCollection ?? 'user-contacts';
 
   // ── Step 1: Events $match + actions $lookup in ONE aggregation ──
   //
@@ -211,6 +212,31 @@ async function GetEventsTimeline(lowdefyContext) {
         info: `$${app_name}.info`,
       },
     },
+
+    // ── Resolve the event author's avatar from the contacts collection ──
+    // Events store created.user.{id,name} only; the timeline avatar wants a
+    // picture src. Join the contact by _id === created.user.id and project
+    // profile.picture onto created.user.picture. The EventsTimeline block
+    // reads user.picture and falls back to initials when it is absent, so an
+    // unmatched join (system events, deleted contacts) degrades gracefully.
+    // A user IS a contact — shared collection, shared _id space.
+    {
+      $lookup: {
+        from: contactsCollection,
+        localField: 'created.user.id',
+        foreignField: '_id',
+        as: 'author_contact',
+        pipeline: [{ $project: { _id: 0, picture: '$profile.picture' } }],
+      },
+    },
+    {
+      $addFields: {
+        'created.user.picture': {
+          $ifNull: [{ $arrayElemAt: ['$author_contact.picture', 0] }, null],
+        },
+      },
+    },
+    { $project: { author_contact: 0 } },
   ];
 
   const rawEvents = await mongoDb
