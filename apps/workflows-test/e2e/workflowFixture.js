@@ -1,4 +1,5 @@
 import { test as base } from '@lowdefy/e2e-utils/fixtures';
+import { expect } from '@playwright/test';
 
 // The `workflow` fixture: thin wire drivers + DB readers, NOT a DSL. Every
 // helper either POSTs a real emitted Lowdefy endpoint (the per-workflow write

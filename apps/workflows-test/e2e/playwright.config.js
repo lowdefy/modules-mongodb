@@ -30,4 +30,11 @@ const base = createConfig({
 export default {
   ...base,
   globalSetup: './global-setup.js',
+  // The `mdb` fixture wipes ALL collections after every test, and every worker
+  // shares the SAME ephemeral database (configureMdb sets one port + db name, and
+  // the served app boots against a single MONGODB_URI). Under `fullyParallel`
+  // that wipe races across workers — one test's teardown deletes another test's
+  // in-flight data. Pin to a single worker so the shared DB has one writer.
+  workers: 1,
+  fullyParallel: false,
 };

@@ -40,7 +40,7 @@ importers:
         version: 1.1.0(@playwright/test@1.60.0)
       '@lowdefy/e2e-utils':
         specifier: latest
-        version: 5.3.0(@playwright/test@1.60.0)
+        version: 5.4.0(@playwright/test@1.60.0)
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.60.0
@@ -106,10 +106,10 @@ importers:
         version: 0.0.0-experimental-20260611102401(moment@2.29.4)
       '@lowdefy/community-plugin-mongodb':
         specifier: 3.0.0
-        version: 3.0.0(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 3.0.0(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-nodemailer':
         specifier: 1.1.4
-        version: 1.1.4(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 1.1.4(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
@@ -293,10 +293,10 @@ importers:
         version: 0.0.0-experimental-20260611102401(moment@2.29.4)
       '@lowdefy/community-plugin-mongodb':
         specifier: 3.0.0
-        version: 3.0.0(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 3.0.0(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-nodemailer':
         specifier: 1.1.4
-        version: 1.1.4(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 1.1.4(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
@@ -408,8 +408,8 @@ importers:
         specifier: latest
         version: 1.1.0(@playwright/test@1.60.0)
       '@lowdefy/e2e-utils':
-        specifier: latest
-        version: 5.3.0(@playwright/test@1.60.0)
+        specifier: 0.0.0-experimental-20260611102401
+        version: 0.0.0-experimental-20260611102401(@playwright/test@1.60.0)
       '@playwright/test':
         specifier: ^1.50.0
         version: 1.60.0
@@ -1668,8 +1668,14 @@ packages:
   '@lowdefy/connection-mongodb@4.7.3':
     resolution: {integrity: sha512-rLFMWgxU+MEonL4rCwJQtkd3CwaoaO1kk/lMCu3DpsJBD4gfqgYL9v0EzY1MVq+83Me7ytDDstDMhX4ry+v+ng==}
 
-  '@lowdefy/e2e-utils@5.3.0':
-    resolution: {integrity: sha512-Y09ra6mM9pNEB19tDFbCyZNV6yPoR4gtgjquf68u0Nc3arYAhkya6lcmFLCeCYSsWINWATXOCAWRHJ4n4dYJoQ==}
+  '@lowdefy/e2e-utils@0.0.0-experimental-20260611102401':
+    resolution: {integrity: sha512-OHpZConF7RZ5l5UUcMsPZEi32wBcZuCz4CBnn9xKLotOXOTVjtNb4REYZcHDMWTi4sC3pirG8S7lYyyZZHjFtw==}
+    hasBin: true
+    peerDependencies:
+      '@playwright/test': 1.50.1
+
+  '@lowdefy/e2e-utils@5.4.0':
+    resolution: {integrity: sha512-nU4Fq0N52kXJBnBhicTC9+Y3I3lTP8GXvqcr5cB+g5bDdjQgkRlKeMSVCUv9l4fuZo46HGLAIYI3GyynXn3kAw==}
     hasBin: true
     peerDependencies:
       '@playwright/test': 1.50.1
@@ -1686,6 +1692,9 @@ packages:
   '@lowdefy/errors@5.3.0':
     resolution: {integrity: sha512-lVGX8SG0GaitPLwzojN3mlewg+WeIGEpPyh97661HvdYRRvWy3hmpn/ppJ2XxDMr90VyTcwJYKh4JzfOYa6mDA==}
 
+  '@lowdefy/errors@5.4.0':
+    resolution: {integrity: sha512-A0o4MXGBM3EFKTZaAxbQm7QCLfi+k9UojpXf/Z4tvA83IxUZUMAjHyIEHS026RgYDorkwZ6XjfVng28OIggsFQ==}
+
   '@lowdefy/helpers@0.0.0-experimental-20260611102401':
     resolution: {integrity: sha512-9rYTQqAV++xRqF/DM6eBMsfRYyW43htSifnSj2MQThOkA0qbQJ79IZIxxJ8G07N+h3w80sMoTDzA2zTibOo8qQ==}
 
@@ -1694,6 +1703,9 @@ packages:
 
   '@lowdefy/helpers@5.3.0':
     resolution: {integrity: sha512-+LyX6AaqgSZ5mgEZtUHXMmEPOEkpzakrOWRbrzAOuPHNWb9ADwmRtMjJovZNm0+5Dkv98JhN+uQknMpFQ8cPcw==}
+
+  '@lowdefy/helpers@5.4.0':
+    resolution: {integrity: sha512-yTAoqmUGpQwPJ/3r3EXW46h7c3wnJsK/+HKX7BRlCP6oYK9Rvk1ozsFdZWic++Y1C8SxK6ROaQZYl8TfDkJrfA==}
 
   '@lowdefy/layout@0.0.0-experimental-20260611102401':
     resolution: {integrity: sha512-RlwxVJn+G1KhCoMAbBaBDm8qUzohS5wfDVuJahijIsZsn2IPQYJn7h/oKEzObWjbefV9okZcpNPM9rRiC8zJnA==}
@@ -9439,9 +9451,16 @@ snapshots:
       - snappy
       - socks
 
-  '@lowdefy/e2e-utils@5.3.0(@playwright/test@1.60.0)':
+  '@lowdefy/e2e-utils@0.0.0-experimental-20260611102401(@playwright/test@1.60.0)':
     dependencies:
-      '@lowdefy/helpers': 5.3.0
+      '@lowdefy/helpers': 0.0.0-experimental-20260611102401
+      '@playwright/test': 1.60.0
+      js-yaml: 4.1.0
+      prompts: 2.4.2
+
+  '@lowdefy/e2e-utils@5.4.0(@playwright/test@1.60.0)':
+    dependencies:
+      '@lowdefy/helpers': 5.4.0
       '@playwright/test': 1.60.0
       js-yaml: 4.1.0
       prompts: 2.4.2
@@ -9458,6 +9477,8 @@ snapshots:
 
   '@lowdefy/errors@5.3.0': {}
 
+  '@lowdefy/errors@5.4.0': {}
+
   '@lowdefy/helpers@0.0.0-experimental-20260611102401':
     dependencies:
       '@lowdefy/errors': 0.0.0-experimental-20260611102401
@@ -9472,6 +9493,12 @@ snapshots:
   '@lowdefy/helpers@5.3.0':
     dependencies:
       '@lowdefy/errors': 5.3.0
+      lodash.merge: 4.6.2
+
+  '@lowdefy/helpers@5.4.0':
+    dependencies:
+      '@lowdefy/errors': 5.4.0
+      intl-messageformat: 11.2.7
       lodash.merge: 4.6.2
 
   '@lowdefy/layout@0.0.0-experimental-20260611102401':
