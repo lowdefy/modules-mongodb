@@ -71,38 +71,7 @@ blocks:
         type: ActionSteps
         events:
           onActionClick:
-            - id: set_check_action_modal_action
-              type: SetState
-              skip:
-                _ne:
-                  - _event: action.kind
-                  - check
-              params:
-                check_action_modal:
-                  action_id:
-                    _event: action._id
-            - id: open_check_action_modal
-              type: CallMethod
-              skip:
-                _ne:
-                  - _event: action.kind
-                  - check
-              params:
-                blockId: check_action_modal
-                method: setOpen
-                args:
-                  - open: true
-            - id: link_to_action_page
-              type: Link
-              skip:
-                _eq:
-                  - _event: action.kind
-                  - check
-              params:
-                pageId:
-                  _event: action.link.pageId
-                urlQuery:
-                  _event: action.link.urlQuery
+            _ref: components/check-action-click.yaml
         properties:
           direction: vertical
           actionStatusConfig:

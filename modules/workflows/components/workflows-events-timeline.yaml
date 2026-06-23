@@ -22,11 +22,16 @@
 #   disable_contact_link — disable avatar/timestamp linking (default false).
 #   compact              — compact rendering (default false).
 #   s3GetPolicyRequestId — request id for attachment downloads (optional).
-#   on_action_click      — optional actions array wired to the timeline's
-#                          `onActionClick` (the host supplies the kind-branch /
-#                          modal wiring — see `check-action-modal`); absent by
-#                          default → action cards navigate via the
-#                          server-resolved `action.link`.
+#   include_modal        — bundle a check-action modal in this wrapper
+#                          (default false). Set true ONLY on a timeline-only
+#                          page with no other action surface (no
+#                          actions-on-entity): the modal blockId
+#                          `check_action_modal` is fixed and global, so a page
+#                          that already mounts actions-on-entity must leave this
+#                          false to avoid a duplicate.
+#   on_action_complete   — extra actions appended after the bundled modal's
+#                          built-in timeline refetch on a successful signal
+#                          (default []; only used when include_modal is true).
 id: workflows_events_timeline
 type: Box
 style:
@@ -48,66 +53,82 @@ requests:
         reference_value:
           _var: reference_value
 
+# `include_modal` (default false) bundles the shared check-action modal in this
+# wrapper so a timeline-only page (no actions-on-entity) can open `check` cards
+# in place. The modal blockId `check_action_modal` is fixed and global, so the
+# `_build.if` keeps it absent by default — a page already mounting
+# actions-on-entity must NOT set include_modal true. The bundled modal always
+# refetches this timeline on a successful signal, then runs the caller's
+# `on_action_complete` extras.
 blocks:
-  - id: workflows_events_timeline_empty
-    type: Paragraph
-    visible:
-      _eq:
-        - _array.length:
+  _build.array.concat:
+    - - id: workflows_events_timeline_empty
+        type: Paragraph
+        visible:
+          _eq:
+            - _array.length:
+                _request: get_events_timeline
+            - 0
+        properties:
+          content: No activity
+          type: secondary
+          style:
+            fontSize: 12
+            fontStyle: italic
+      - id: workflows_events_timeline_list
+        type: EventsTimeline
+        events:
+          onActionClick:
+            _ref: components/check-action-click.yaml
+        visible:
+          _gt:
+            - _array.length:
+                _request: get_events_timeline
+            - 0
+        properties:
+          data:
             _request: get_events_timeline
-        - 0
-    properties:
-      content: No activity
-      type: secondary
-      style:
-        fontSize: 12
-        fontStyle: italic
-  - id: workflows_events_timeline_list
-    type: EventsTimeline
-    # The `_build.if` is load-bearing: an unset `on_action_click` resolves to
-    # null (not an absent key), and the engine registers every key on a block's
-    # `events` object — so a naive `onActionClick: { _var: on_action_click }`
-    # would register a null event and break the navigate fallback. The key must
-    # be absent from the built config when the var is unset.
-    events:
-      _build.if:
+          eventTypeConfig:
+            _ref:
+              module: events
+              component: event_types
+          actionStatusConfig:
+            _ref: components/action_statuses.yaml
+          reverse:
+            _var:
+              key: reverse
+              default: false
+          s3GetPolicyRequestId:
+            _var: s3GetPolicyRequestId
+          contactPageUrl:
+            _var:
+              key: contact_page_url
+              default: ''
+          disableContactLink:
+            _var:
+              key: disable_contact_link
+              default: false
+          compact:
+            _var:
+              key: compact
+              default: false
+    - _build.if:
         test:
           _build.eq:
-            - _var: on_action_click
-            - null
-        then: {}
-        else:
-          onActionClick:
-            _var: on_action_click
-    visible:
-      _gt:
-        - _array.length:
-            _request: get_events_timeline
-        - 0
-    properties:
-      data:
-        _request: get_events_timeline
-      eventTypeConfig:
-        _ref:
-          module: events
-          component: event_types
-      actionStatusConfig:
-        _ref: components/action_statuses.yaml
-      reverse:
-        _var:
-          key: reverse
-          default: false
-      s3GetPolicyRequestId:
-        _var: s3GetPolicyRequestId
-      contactPageUrl:
-        _var:
-          key: contact_page_url
-          default: ''
-      disableContactLink:
-        _var:
-          key: disable_contact_link
-          default: false
-      compact:
-        _var:
-          key: compact
-          default: false
+            - _var:
+                key: include_modal
+                default: false
+            - true
+        then:
+          - _ref:
+              path: components/check-action-modal.yaml
+              vars:
+                on_complete:
+                  _build.array.concat:
+                    - - id: refetch_events_timeline
+                        type: Request
+                        params: get_events_timeline
+                    - _var:
+                        key: on_action_complete
+                        default: []
+        else: []

@@ -1,0 +1,41 @@
+# Shared action-card click handler (Part 51 — F22).
+#
+# A reusable action sequence wired into the `onActionClick` of every action
+# surface — `actions-on-entity` (ActionSteps) and `workflows-events-timeline`
+# (EventsTimeline). Both blocks fire the identical `{ action }` event, so one
+# handler serves both: a `check`-kind card opens the shared check-action modal
+# in place (the fixed `check_action_modal` blockId); every other kind navigates
+# via the server-resolved `action.link`. Consumers never write their own click
+# handler — it is baked into both hosts by default.
+- id: set_check_action_modal_action
+  type: SetState
+  skip:
+    _ne:
+      - _event: action.kind
+      - check
+  params:
+    check_action_modal:
+      action_id:
+        _event: action._id
+- id: open_check_action_modal
+  type: CallMethod
+  skip:
+    _ne:
+      - _event: action.kind
+      - check
+  params:
+    blockId: check_action_modal
+    method: setOpen
+    args:
+      - open: true
+- id: link_to_action_page
+  type: Link
+  skip:
+    _eq:
+      - _event: action.kind
+      - check
+  params:
+    pageId:
+      _event: action.link.pageId
+    urlQuery:
+      _event: action.link.urlQuery
