@@ -12,8 +12,31 @@ _ref:
   component: page
   vars:
     id: workflow-overview
-    hide_title: true
     content_width: 1100
+    title:
+      _state: workflow.title
+    show_back_button: true
+    back_link:
+      pageId:
+        _state: workflow.entity_link.pageId
+      urlQuery:
+        _state: workflow.entity_link.urlQuery
+    badge_text:
+      _get:
+        from:
+          _ref: components/workflow_lifecycle_stages.yaml
+        key:
+          _string.concat:
+            - _state: workflow.status.0.stage
+            - .title
+    badge_color:
+      _get:
+        from:
+          _ref: components/workflow_lifecycle_stages.yaml
+        key:
+          _string.concat:
+            - _state: workflow.status.0.stage
+            - .titleColor
     events:
       onMount:
         # workflow_id presence guard.
@@ -54,47 +77,16 @@ _ref:
         #   params:
         #     back: true
     blocks:
-      - id: workflow_header
+      - id: workflow_progress_row
         type: Box
         layout:
           gap: 8
           align: middle
         blocks:
-          - id: workflow_title
-            type: Html
-            layout:
-              flex: 1 1 auto
-            properties:
-              html:
-                _nunjucks:
-                  template: |
-                    <h1 class="text-3xl font-semibold" style="margin: 0;">{{ title | default('Workflow') }}</h1>
-                  on:
-                    title:
-                      _state: workflow.title
-          - id: workflow_lifecycle_badge
-            type: Tag
-            layout:
-              flex: 0 0 auto
-            properties:
-              color:
-                _get:
-                  from:
-                    _ref: components/workflow_lifecycle_stages.yaml
-                  key:
-                    _string.concat:
-                      - _state: workflow.status.0.stage
-                      - .titleColor
-              title:
-                _get:
-                  from:
-                    _ref: components/workflow_lifecycle_stages.yaml
-                  key:
-                    _string.concat:
-                      - _state: workflow.status.0.stage
-                      - .title
           - id: workflow_progress
             type: Progress
+            layout:
+              flex: 1 1 auto
             properties:
               type: line
               percent:
@@ -111,6 +103,8 @@ _ref:
                     return Math.round((filled / total) * 100);
           - id: workflow_summary
             type: Paragraph
+            layout:
+              flex: 0 0 auto
             properties:
               type: secondary
               content:
@@ -134,22 +128,6 @@ _ref:
                       key: summary.total
                       default: 0
                   - ' done'
-      - id: entity_back_button
-        type: Button
-        properties:
-          title:
-            _state: workflow.entity_link.title
-          type: link
-          icon: AiOutlineArrowLeft
-        events:
-          onClick:
-            - id: link_to_entity
-              type: Link
-              params:
-                pageId:
-                  _state: workflow.entity_link.pageId
-                urlQuery:
-                  _state: workflow.entity_link.urlQuery
       - id: actions_list
         type: List
         blocks:
@@ -267,10 +245,13 @@ _ref:
                     - null
                 properties:
                   formConfig:
-                    _if_none:
-                      - _state: actions_list.$.form_meta
-                      - form: []
-                        form_review: []
+                    _array.concat:
+                      - _if_none:
+                          - _state: actions_list.$.form_meta.form
+                          - []
+                      - _if_none:
+                          - _state: actions_list.$.form_meta.form_review
+                          - []
                   data:
                     form:
                       _get:

@@ -18,15 +18,68 @@ blocks:
             style:
               marginRight: 8
             properties:
+              hideTitle: true
               icon: AiOutlineArrowLeft
               type: text
               size: large
             events:
               onClick:
+                # Explicit back target when `back_link` ({ pageId, urlQuery })
+                # is supplied; otherwise browser history back.
                 - id: back
                   type: Link
                   params:
-                    back: true
+                    _build.if:
+                      test:
+                        _build.ne:
+                          - _var:
+                              key: back_link
+                              default: null
+                          - null
+                      then:
+                        _var: back_link
+                      else:
+                        back: true
+        else: []
+    # Optional status badge — caller supplies text + colour; rendered as a
+    # full-height pill to the left of the title.
+    - _build.if:
+        test:
+          _build.ne:
+            - _var:
+                key: badge_text
+                default: null
+            - null
+        then:
+          - id: title-badge
+            type: Tag
+            layout:
+              flex: 0 0 auto
+              selfAlign: stretch
+            # Hidden until the badge text resolves — avoids a grey
+            # placeholder pill (and the block-id fallback) during load.
+            visible:
+              _ne:
+                - _var: badge_text
+                - null
+            style:
+              .element:
+                display: flex
+                alignItems: center
+                height: 100%
+                marginRight: 12
+                fontSize: 15
+                fontWeight: 500
+                lineHeight: 1
+                paddingInline: 12
+                borderRadius: 6
+            properties:
+              color:
+                _var:
+                  key: badge_color
+                  default: default
+              title:
+                _var: badge_text
         else: []
     - - id: title
         type: Html
@@ -51,7 +104,7 @@ blocks:
                   _var: title
                 doc:
                   _var: doc
-      - id: page-actions
+    - - id: page-actions
         type: Box
         layout:
           flex: 0 1 auto

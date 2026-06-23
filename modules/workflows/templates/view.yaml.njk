@@ -2,7 +2,7 @@
 #
 # Build-time vars (from makeActionPages.js):
 #   action_config: { type, kind, key, tracker, blocked_by, action_group,
-#                    sort_order, required_after_close, access, status_map,
+#                    required_after_close, access, status_map,
 #                    form, form_review, form_error, hooks, interactions, event }
 #   page_config:   per-verb chrome lifted from action.pages.view
 #                  ({ title, requests, events, formHeader, formFooter,
@@ -22,12 +22,7 @@ _ref:
       _var:
         key: page_config.title
         default: null
-    hide_title:
-      _build.eq:
-        - _var:
-            key: page_config.title
-            default: null
-        - null
+    show_back_button: true
     content_width:
       _var:
         key: page_config.maxWidth

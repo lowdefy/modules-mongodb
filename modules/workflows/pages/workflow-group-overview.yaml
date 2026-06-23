@@ -16,8 +16,45 @@ _ref:
   component: page
   vars:
     id: workflow-group-overview
-    hide_title: true
     content_width: 1100
+    title:
+      _state: group.title
+    show_back_button: true
+    back_link:
+      pageId:
+        _state: workflow.entity_link.pageId
+      urlQuery:
+        _state: workflow.entity_link.urlQuery
+    badge_text:
+      _if:
+        test:
+          _eq:
+            - _state: group.status
+            - done
+        then: Done
+        else:
+          _if:
+            test:
+              _eq:
+                - _state: group.status
+                - in-progress
+            then: In progress
+            else: Blocked
+    badge_color:
+      _if:
+        test:
+          _eq:
+            - _state: group.status
+            - done
+        then: green
+        else:
+          _if:
+            test:
+              _eq:
+                - _state: group.status
+                - in-progress
+            then: blue
+            else: default
     events:
       onMount:
         # workflow_id + group_id presence guard.
@@ -67,84 +104,14 @@ _ref:
         #   params:
         #     back: true
     blocks:
-      - id: group_overview_header
-        type: Box
-        layout:
-          gap: 8
-        blocks:
-          - id: group_overview_titles
-            type: Box
-            layout:
-              gap: 4
-            blocks:
-              - id: group_overview_workflow_title
-                type: Paragraph
-                properties:
-                  content:
-                    _state: workflow.title
-              - id: group_overview_group_title
-                type: Html
-                layout:
-                  flex: 1 1 auto
-                properties:
-                  html:
-                    _nunjucks:
-                      template: |
-                        <h1 class="text-3xl font-semibold" style="margin: 0;">{{ title | default('Group') }}</h1>
-                      on:
-                        title:
-                          _state: group.title
-              - id: group_status_badge
-                type: Tag
-                layout:
-                  flex: 0 0 auto
-                properties:
-                  color:
-                    _if:
-                      test:
-                        _eq:
-                          - _state: group.status
-                          - done
-                      then: green
-                      else:
-                        _if:
-                          test:
-                            _eq:
-                              - _state: group.status
-                              - in-progress
-                          then: blue
-                          else: default
-                  title:
-                    _if:
-                      test:
-                        _eq:
-                          - _state: group.status
-                          - done
-                      then: Done
-                      else:
-                        _if:
-                          test:
-                            _eq:
-                              - _state: group.status
-                              - in-progress
-                          then: In progress
-                          else: Blocked
-      - id: entity_back_button
-        type: Button
+      # Workflow context line — the title-block carries the group title +
+      # status badge + back link; this names the parent workflow beneath it.
+      - id: group_overview_workflow_title
+        type: Paragraph
         properties:
-          title:
-            _state: workflow.entity_link.title
-          type: link
-          icon: AiOutlineArrowLeft
-        events:
-          onClick:
-            - id: link_to_entity
-              type: Link
-              params:
-                pageId:
-                  _state: workflow.entity_link.pageId
-                urlQuery:
-                  _state: workflow.entity_link.urlQuery
+          type: secondary
+          content:
+            _state: workflow.title
       - id: group_progress
         type: Progress
         properties:
@@ -284,10 +251,13 @@ _ref:
                     - null
                 properties:
                   formConfig:
-                    _if_none:
-                      - _state: actions_list.$.form_meta
-                      - form: []
-                        form_review: []
+                    _array.concat:
+                      - _if_none:
+                          - _state: actions_list.$.form_meta.form
+                          - []
+                      - _if_none:
+                          - _state: actions_list.$.form_meta.form_review
+                          - []
                   data:
                     form:
                       _get:

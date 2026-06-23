@@ -219,10 +219,22 @@ blocks:
                               _var:
                                 key: page_actions
                                 default: []
+                            badge_text:
+                              _var:
+                                key: badge_text
+                                default: null
+                            badge_color:
+                              _var:
+                                key: badge_color
+                                default: default
                             show_back_button:
                               _var:
                                 key: show_back_button
                                 default: false
+                            back_link:
+                              _var:
+                                key: back_link
+                                default: null
             else: []
         # Consumer content
         - _var: blocks
