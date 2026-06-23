@@ -105,6 +105,8 @@ blocks:
                   _event: action.link.urlQuery
         properties:
           direction: vertical
+          actionStatusConfig:
+            _ref: components/action_statuses.yaml
           actionGroupConfig:
             _object.fromEntries:
               _array.map:

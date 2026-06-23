@@ -13,7 +13,10 @@
 #   reference_field      — (required) events field to match, e.g. lead_ids.
 #   reference_value      — (required) runtime operator producing the matched
 #                          value, e.g. { _url_query: _id }.
-#   reverse              — newest-first ordering for the block (default true).
+#   reverse              — flip the engine's newest-first order to oldest-first
+#                          (default false). The GetEventsTimeline engine already
+#                          sorts events date-desc, so the default keeps the
+#                          latest entry at the top; set true to reverse.
 #   contact_page_url     — URL template linking avatars/timestamps to a contact
 #                          page; {id} placeholder (default '' — no link).
 #   disable_contact_link — disable avatar/timestamp linking (default false).
@@ -93,7 +96,7 @@ blocks:
       reverse:
         _var:
           key: reverse
-          default: true
+          default: false
       s3GetPolicyRequestId:
         _var: s3GetPolicyRequestId
       contactPageUrl:
