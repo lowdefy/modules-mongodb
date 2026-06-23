@@ -15,11 +15,12 @@
 */
 
 import React, { useState, useMemo } from "react";
-import { Timeline, Modal, Badge, Tooltip, Card } from "antd";
+import { Timeline, Modal, Badge, Tooltip, Card, Button } from "antd";
 import { withBlockDefaults } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
 import DOMPurify from "dompurify";
+import "./style.module.css";
 
 dayjs.extend(duration);
 
@@ -353,7 +354,13 @@ function EventInfoModal({
   );
 }
 
-function EventAction({ action, actionStatusConfig, methods, events, components }) {
+function EventAction({
+  action,
+  actionStatusConfig,
+  methods,
+  events,
+  components,
+}) {
   if (!action || !actionStatusConfig) return null;
 
   const statusConf = actionStatusConfig[action.status] || {};
@@ -367,18 +374,34 @@ function EventAction({ action, actionStatusConfig, methods, events, components }
   const Link = components?.Link;
 
   const affordanceStyle = {
-    fontSize: 12,
     marginLeft: "auto",
-    cursor: "pointer",
+    flexShrink: 0,
   };
-  const affordanceTitle = (link && link.title) || "Go";
+  // Tint the button from the action's status palette (see design D3) so the CTA
+  // reinforces its status rather than the app's (black) primary: a light fill
+  // (`color`) with the accent (`titleColor`) as text + border. Falls back to
+  // the default button styling when the status has no enum colour.
+  const accent = statusConf.titleColor;
+  const tintStyle = accent
+    ? {
+        backgroundColor: statusConf.borderColor || accent,
+        borderColor: statusConf.borderColor || accent,
+        color: accent,
+      }
+    : null;
+  const buttonStyle = tintStyle
+    ? { ...affordanceStyle, ...tintStyle }
+    : affordanceStyle;
+  const affordanceTitle = (link && link.title) || "View";
 
   let affordance = null;
   if (hasLink) {
     if (wired) {
       // Host-wired: fire the action object instead of navigating.
       affordance = (
-        <a
+        <Button
+          size="small"
+          style={buttonStyle}
           onClick={(e) => {
             e.preventDefault();
             if (methods && methods.triggerEvent) {
@@ -388,10 +411,9 @@ function EventAction({ action, actionStatusConfig, methods, events, components }
               });
             }
           }}
-          style={affordanceStyle}
         >
           {affordanceTitle}
-        </a>
+        </Button>
       );
     } else if (Link) {
       // Unwired: navigate via the Lowdefy Link to the server-resolved link.
@@ -401,7 +423,9 @@ function EventAction({ action, actionStatusConfig, methods, events, components }
           urlQuery={link.urlQuery}
           style={affordanceStyle}
         >
-          {affordanceTitle}
+          <Button size="small" style={tintStyle || undefined}>
+            {affordanceTitle}
+          </Button>
         </Link>
       );
     }

@@ -25,6 +25,7 @@
   ],
   "scripts": {
     "build": "swc src --out-dir dist --config-file ../../.swcrc --delete-dir-on-start --copy-files --strip-leading-paths",
+    "build:watch": "swc src --out-dir dist --config-file ../../.swcrc --copy-files --strip-leading-paths --watch",
     "clean": "rm -rf dist",
     "prepare": "pnpm build"
   },

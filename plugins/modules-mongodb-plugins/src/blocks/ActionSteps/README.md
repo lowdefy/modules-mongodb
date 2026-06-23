@@ -12,6 +12,8 @@ Useful for showing a checklist-style progression where each stage has multiple s
   properties:
     title: Gate progression
     direction: vertical
+    actionStatusConfig:
+      _ref: components/action_statuses.yaml
     actionGroupConfig:
       kickoff:
         order: 1
@@ -61,6 +63,7 @@ Useful for showing a checklist-style progression where each stage has multiple s
 | `progressDot` | boolean | `false` | Render progress dots instead of icons. |
 | `items` | array | `[]` | Action groups. Each item: `{ action_group, actions[] }`. |
 | `actionGroupConfig` | object | — | Map of `action_group` key → `{ order, title, icon, link? }`. Required — items without a matching entry won't render correctly. `link` (optional) wraps the group title in a clickable Link. |
+| `actionStatusConfig` | object | — | Map of action status key → display config from the shared `action_statuses` enum. The enum's `titleColor` drives the badge-dot and group-icon colour — the single source of truth for status colours. Pass `_ref: components/action_statuses.yaml`. Without it, badges/icons render uncoloured. |
 | `theme` | object | — | Antd `Steps` design-token overrides — forwarded to `ConfigProvider` as `theme.components.Steps` for this block only. See the [Steps design tokens](https://ant.design/components/steps#design-token). |
 
 ### Item shape
@@ -86,18 +89,27 @@ Useful for showing a checklist-style progression where each stage has multiple s
 
 ### Action statuses
 
-Badge colors resolve through antd v6 design tokens, so they re-skin with the app theme.
+Badge-dot and group-icon colours come from `actionStatusConfig` — the shared
+`action_statuses` enum — using each status' `titleColor`. This is the single
+source of truth for status colour across the workflows surfaces (overview cards,
+check surface, timeline), so the palette stays consistent and is changed in one
+place. The block no longer hardcodes its own colour map.
 
-| Status | Step status | Badge color | Notes |
-|---|---|---|---|
-| `blocked` | `wait` | `--ant-color-text-disabled` | Greyed, secondary text. |
-| `action-required` | `process` | `--ant-color-primary` | |
-| `in-progress` | `process` | `--ant-color-info` | Badge animates (`processing`). |
-| `in-review` | `wait` | `--ant-purple-6` (fallback `#722ed1`) | No standard token; uses the antd purple scale. |
-| `changes-required` | `error` | `--ant-color-warning` | |
-| `done` | `finish` | `--ant-color-success` | Step icon overridden to `AiOutlineCheckCircle`. |
-| `error` | `error` | `--ant-color-error` | |
-| `not-required` | `wait` | `--ant-color-text-secondary` | Message and group title rendered with `<strike>`. |
+| Status | Step status | Notes |
+|---|---|---|
+| `blocked` | `wait` | Greyed, secondary text. |
+| `action-required` | `process` | |
+| `in-progress` | `process` | Badge animates (`processing`); enum colour is a distinct teal. |
+| `in-review` | `wait` | |
+| `changes-required` | `error` | |
+| `done` | `finish` | Step icon overridden to `AiOutlineCheckCircle`. |
+| `error` | `error` | |
+| `not-required` | `wait` | Message and group title rendered with `<strike>`. |
+
+The **step connector** (the rail between steps) is kept neutral: antd tints the
+rail of finished/process steps with `colorPrimary`, which clashes with the
+per-status colours, so the block scopes a neutral `colorPrimary` (the theme's
+`colorBorder`) to its own `Steps` instance via `ConfigProvider`.
 
 ### Group status rollup
 
@@ -153,7 +165,8 @@ Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionCli
 
 ## Built-in classes
 
-The block ships these global CSS classes via `style.less` and applies them automatically:
+The block ships these global CSS classes via `style.module.css` (imported by the
+component, `:global`-scoped) and applies them automatically:
 
 | Class | Where | What it does |
 |---|---|---|
@@ -163,7 +176,9 @@ The block ships these global CSS classes via `style.less` and applies them autom
 
 Override by raising specificity in your app's CSS or by passing `classNames.badge` / `classNames.link` to ensure your class wins.
 
-The block also overrides `.ant-steps-item-title { width: 100%; }` so each step's title fills the row.
+The block also sets `.ant-steps-item-title { width: 100%; }` so each step's title
+fills the row. This rule is scoped under the block's own `.action-steps` root
+class so it can't affect other antd `Steps` blocks on the same page.
 
 ## Notes
 

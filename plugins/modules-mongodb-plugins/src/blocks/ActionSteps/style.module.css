@@ -1,9 +1,9 @@
-/* antd v6 uses CSS-in-JS — no less imports needed. We add a handful of
-   global selectors here so that ActionSteps' visual contract is shared
-   across instances without depending on inline styles in JS (which break
-   theming and CSS-variable overrides). */
+/* ActionSteps visual contract — shared across instances without relying on
+   inline styles in JS (which break theming and CSS-variable overrides). */
 
-.ant-steps-item-title {
+/* Each step's title fills the row. Scoped to the block's own root so it can't
+   reach other antd `Steps` blocks on the same page. */
+:global(.action-steps .ant-steps-item-title) {
   width: 100%;
 }
 

@@ -1,7 +1,6 @@
 export default {
   category: "display",
   icons: [],
-  styles: ["blocks/EventsTimeline/style.less"],
   cssKeys: {
     element: 'The outer EventsTimeline container.',
     timeline: 'The antd Timeline component.',

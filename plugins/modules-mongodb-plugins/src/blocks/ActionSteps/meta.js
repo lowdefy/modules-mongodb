@@ -1,7 +1,6 @@
 export default {
   category: "display",
   icons: [],
-  styles: ["blocks/ActionSteps/style.less"],
   cssKeys: {
     element: "The outer ActionSteps container.",
     title: "The Typography.Title heading above the steps.",

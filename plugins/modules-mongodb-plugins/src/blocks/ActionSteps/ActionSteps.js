@@ -1,8 +1,9 @@
 import React, { Fragment } from "react";
-import { Badge, Steps, Typography } from "antd";
+import { Badge, ConfigProvider, Steps, Typography, theme } from "antd";
 import { cn, renderHtml, withBlockDefaults } from "@lowdefy/block-utils";
 import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import { type } from "@lowdefy/helpers";
+import "./style.module.css";
 
 const actionStepStatusMap = {
   blocked: "wait",
@@ -15,16 +16,12 @@ const actionStepStatusMap = {
   "changes-required": "error",
 };
 
-const actionStatusColorMap = {
-  blocked: "var(--ant-color-text-disabled)",
-  "action-required": "var(--ant-color-primary)",
-  "in-progress": "var(--ant-color-info)",
-  done: "var(--ant-color-success)",
-  error: "var(--ant-color-error)",
-  "not-required": "var(--ant-color-text-secondary)",
-  "in-review": "var(--ant-purple-6, #722ed1)",
-  "changes-required": "var(--ant-color-warning)",
-};
+// Resolve a status' display colour from the shared `action_statuses` enum
+// (passed via the `actionStatusConfig` property). Single source of truth —
+// see design Part 51 / D3. The enum's `titleColor` is the saturated swatch
+// used for badge dots and group icons.
+const statusColor = (actionStatusConfig, status) =>
+  actionStatusConfig?.[status]?.titleColor;
 
 const setActionGroupStatus = (actions) => {
   if (!type.isArray(actions)) {
@@ -58,8 +55,13 @@ const setActionGroupStatus = (actions) => {
     return "done";
 };
 
-const setActionGroupIcon = ({ actionGroupStatus, item, actionGroupConfig }) => {
-  const color = actionStatusColorMap[actionGroupStatus];
+const setActionGroupIcon = ({
+  actionGroupStatus,
+  item,
+  actionGroupConfig,
+  actionStatusConfig,
+}) => {
+  const color = statusColor(actionStatusConfig, actionGroupStatus);
   const name =
     actionGroupStatus === "done"
       ? "AiOutlineCheckCircle"
@@ -76,9 +78,15 @@ const ActionSteps = ({
   properties,
   styles = {},
 }) => {
-  const { actionGroupConfig = {}, items = [] } = properties;
+  const { actionGroupConfig = {}, actionStatusConfig = {}, items = [] } =
+    properties;
+  const { token } = theme.useToken();
   return (
-    <div id={blockId} className={cn(classNames.element)} style={styles.element}>
+    <div
+      id={blockId}
+      className={cn("action-steps", classNames.element)}
+      style={styles.element}
+    >
       {properties.title && (
         <Typography.Title
           level={5}
@@ -88,6 +96,14 @@ const ActionSteps = ({
           {properties.title}
         </Typography.Title>
       )}
+      {/* antd colours the Steps rail (the connector between steps) from
+          colorPrimary for process/finish steps. These steps use our own
+          enum-coloured icons and never rely on the app primary, so scope a
+          neutral colorPrimary to this Steps instance to keep the connector
+          neutral. colorBorder is read live so it tracks the active theme. */}
+      <ConfigProvider
+        theme={{ components: { Steps: { colorPrimary: token.colorBorder } } }}
+      >
       <Steps
         progressDot={properties.progressDot ?? false}
         direction={properties.direction ?? "vertical"}
@@ -136,6 +152,7 @@ const ActionSteps = ({
                     actionGroupStatus,
                     item,
                     actionGroupConfig,
+                    actionStatusConfig,
                   })}
                 />
               ),
@@ -167,7 +184,10 @@ const ActionSteps = ({
                           <Badge
                             className={cn("action-steps-badge", classNames.badge)}
                             style={styles.badge}
-                            color={actionStatusColorMap[action.status]}
+                            color={statusColor(
+                              actionStatusConfig,
+                              action.status,
+                            )}
                             status={
                               action.status === "in-progress"
                                 ? "processing"
@@ -212,6 +232,7 @@ const ActionSteps = ({
             };
           })}
       />
+      </ConfigProvider>
     </div>
   );
 };

@@ -96,6 +96,20 @@
         }
       }
     },
+    "actionStatusConfig": {
+      "type": "object",
+      "description": "Map of action status key → display config from the shared `action_statuses` enum. The enum's `titleColor` is used as the badge-dot and group-icon colour. Single source of truth for status colours (see Part 51 / D3); pass `_ref: components/action_statuses.yaml`.",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": true,
+        "properties": {
+          "color": { "type": "string" },
+          "borderColor": { "type": "string" },
+          "titleColor": { "type": "string" },
+          "title": { "type": "string" }
+        }
+      }
+    },
     "linkStyle": {
       "description": "Style object merged into each action's Link via makeCssClass. Use `classNames.link` / `styles.link` for the same purpose if you prefer the standard Lowdefy theming surface."
     },
