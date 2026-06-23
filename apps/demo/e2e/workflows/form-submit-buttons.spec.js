@@ -71,8 +71,8 @@ test('Save Draft persists partial form data without running validation (Part 39 
     // Open the qualify edit page.
     await ldf.goto(`/workflows/onboarding-qualify-edit?action_id=${actionId}`);
 
-    // Leave the required field `contact_name` empty; fill only optional notes.
-    // (qualify.form: contact_name required:true, notes not required)
+    // Leave the required field `contact` (contact selector) empty; fill only
+    // optional notes. (qualify.form: contact required:true, notes not required)
     await page.getByLabel('Qualification notes').fill('Partial draft note');
 
     // Click Save Draft — must NOT run form validation.

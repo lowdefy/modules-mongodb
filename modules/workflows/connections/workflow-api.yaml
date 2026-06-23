@@ -16,6 +16,11 @@ properties:
     _user: true
   entities:
     _module.var: entities
+  # TODO: this re-declares the contacts module's collection name. Ideally derive
+  # it from the contacts module instead of carrying a parallel var. A host app
+  # using a custom contacts collection sets `contacts_collection` to match.
+  contactsCollection:
+    _module.var: contacts_collection
   actionsEnum:
     _ref: ../shared/enums/action_statuses.yaml
   changeStamp:
