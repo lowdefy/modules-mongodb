@@ -115,7 +115,7 @@ test('the review lifecycle: a draft saves without validation, submit enters revi
   await ldf.goto(reviewUrl);
   await ldf.block('button_request_changes').do.click();
   // The mandatory Request Changes modal carries a required comment.
-  await fillTiptap(page, 'comment', 'Please expand the summary.');
+  await fillTiptap(page, 'change_request_comment', 'Please expand the summary.');
   // Scope to the dialog: both the trigger button and the modal's OK button are
   // labelled "Request Changes" — confirm via the modal's OK control only.
   await page
