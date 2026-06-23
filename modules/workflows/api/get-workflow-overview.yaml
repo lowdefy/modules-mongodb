@@ -12,5 +12,5 @@ routine:
   - :return:
       workflow:
         _step: query.workflow
-      actions:
-        _step: query.actions
+      groups:
+        _step: query.groups

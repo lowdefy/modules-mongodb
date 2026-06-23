@@ -10,13 +10,14 @@ import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOr
  * Reads a single workflow by _id, joins its actions in declaration order
  * (group position in action_groups[], then action position in actions[]),
  * applies per-user access filtering, resolves links, enriches with display config,
- * and prunes form_data to view-visible actions only.
+ * groups the cards by action_group, and prunes form_data to view-visible actions only.
  *
  * Params: { workflow_id }
  *
- * Response: { workflow, actions }
- *   workflow: { ...doc, title, entity_link, form_data (pruned), groups enriched }
- *   actions: [ { type, status, message, link, allowed, form_meta } ]
+ * Response: { workflow, groups }
+ *   workflow: { ...doc, title, entity_link, form_data (pruned) }
+ *   groups: [ { id, order, title, icon, actions: [...] } ]  (declaration order)
+ *     action card: { type, key, status, message, link, allowed, form_meta }
  */
 async function GetWorkflowOverview(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
@@ -37,7 +38,7 @@ async function GetWorkflowOverview(lowdefyContext) {
   });
 
   if (!wfDoc) {
-    return { workflow: null, actions: [] };
+    return { workflow: null, groups: [] };
   }
 
   const wfConfig = (workflowsConfig ?? []).find((wc) => wc.type === wfDoc.workflow_type);
@@ -66,26 +67,63 @@ async function GetWorkflowOverview(lowdefyContext) {
   const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
   visibleActions.sort((a, b) => compareOrder(a.action, b.action));
 
-  // ── Build action cards ──
+  // ── Build action cards, grouped by action_group ──
   // form_meta comes from the validated action config (the workflowConfig.actions entry).
+  // The group id is stamped on each action doc (planActionTransition); the group's
+  // display config (title, icon) lives in the workflow config's action_groups[].
+  // Mirrors GetEntityWorkflows' grouping so the overview renders the same shape.
   const wfActionsConfig = wfConfig?.actions ?? [];
   function findActionConfig(type) {
     return wfActionsConfig.find((c) => c.type === type);
   }
 
-  const actionCards = visibleActions.map(({ action, allowed, link, message, status }) => {
+  const configGroups = wfConfig?.action_groups ?? [];
+  const groupOrderMap = new Map(configGroups.map((g, i) => [g.id, i]));
+
+  // Collect cards per group. visibleActions is already in declaration order, so
+  // first-seen insertion order already matches config order; the explicit sort
+  // below keeps null/unseen groups deterministic at the bottom.
+  const groupMap = new Map(); // String(group_id) → { group_id, actions: [card] }
+  for (const { action, allowed, link, message, status } of visibleActions) {
+    const groupId = action.action_group ?? null;
+    const groupIdKey = String(groupId);
+    if (!groupMap.has(groupIdKey)) {
+      groupMap.set(groupIdKey, { group_id: groupId, actions: [] });
+    }
     const actionConfig = findActionConfig(action.type);
-    const form_meta = actionConfig?.form_meta ?? null;
-    return {
+    groupMap.get(groupIdKey).actions.push({
       type: action.type,
       key: action.key ?? null,
       status,
       message,
       link,
       allowed,
-      form_meta,
-    };
-  });
+      form_meta: actionConfig?.form_meta ?? null,
+    });
+  }
+
+  // Build group entries with display config from wfConfig; unseen / null groups
+  // sort after all declared groups, stably.
+  let unseenInsertionIndex = 0;
+  const groups = [];
+  for (const [groupIdKey, { group_id, actions: groupActions }] of groupMap) {
+    let order;
+    if (groupOrderMap.has(groupIdKey)) {
+      order = groupOrderMap.get(groupIdKey);
+    } else {
+      order = configGroups.length + unseenInsertionIndex;
+      unseenInsertionIndex += 1;
+    }
+    const configGroup = configGroups.find((g) => g.id === group_id);
+    groups.push({
+      id: group_id,
+      order,
+      title: configGroup?.title ?? null,
+      icon: configGroup?.icon ?? null,
+      actions: groupActions,
+    });
+  }
+  groups.sort((a, b) => a.order - b.order);
 
   // ── Prune form_data to view-visible actions ──
   // form_data structure (per planFormDataMerge):
@@ -159,7 +197,7 @@ async function GetWorkflowOverview(lowdefyContext) {
     form_data: prunedFormData,
   };
 
-  return { workflow, actions: actionCards };
+  return { workflow, groups };
 }
 
 GetWorkflowOverview.schema = {};

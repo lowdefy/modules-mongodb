@@ -29,7 +29,7 @@ action_groups:
     icon: AiOutlineUserAdd
   - id: quoting
     title: Quote
-    icon: GrDocumentText
+    icon: AiOutlineFileText
   - id: order
     title: Purchase order
     icon: AiOutlineFileDone

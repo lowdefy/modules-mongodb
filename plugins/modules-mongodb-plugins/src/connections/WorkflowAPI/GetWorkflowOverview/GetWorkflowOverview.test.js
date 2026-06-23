@@ -8,6 +8,11 @@ import GetWorkflowOverview from './GetWorkflowOverview.js';
 
 jest.setTimeout(60000);
 
+// Flatten the grouped response back to a single ordered card list. Groups are
+// emitted in declaration order and cards within a group keep declaration order,
+// so flatMap reproduces the canonical action order.
+const cards = (result) => (result.groups ?? []).flatMap((g) => g.actions);
+
 const changeStamp = {
   timestamp: new Date('2026-05-20T00:00:00Z'),
   user: { id: 'u1', name: 'Stamper' },
@@ -168,14 +173,14 @@ async function seedAction({ _id, type, kind = 'check', action_group = null, stag
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe('GetWorkflowOverview return shape', () => {
-  test('returns { workflow: null, actions: [] } when workflow not found', async () => {
+  test('returns { workflow: null, groups: [] } when workflow not found', async () => {
     const result = await GetWorkflowOverview(
       buildContext({ request: { workflow_id: 'no-such' } }),
     );
-    expect(result).toEqual({ workflow: null, actions: [] });
+    expect(result).toEqual({ workflow: null, groups: [] });
   });
 
-  test('returns { workflow, actions } when workflow exists', async () => {
+  test('returns { workflow, groups } when workflow exists', async () => {
     await seedWorkflow();
     await seedAction({ _id: 'a1', type: 'qualify', action_group: 'phase-1' });
     const result = await GetWorkflowOverview(
@@ -183,7 +188,7 @@ describe('GetWorkflowOverview return shape', () => {
     );
     expect(result.workflow).toBeDefined();
     expect(result.workflow._id).toBe('wf-1');
-    expect(result.actions).toHaveLength(1);
+    expect(cards(result)).toHaveLength(1);
   });
 
   test('workflow carries title from config', async () => {
@@ -208,6 +213,57 @@ describe('GetWorkflowOverview return shape', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// grouping — cards grouped by action_group, group display config from config
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('grouping', () => {
+  const adminUser = { id: 'U2', profile: { name: 'Admin' }, roles: ['admin', 'account-manager'] };
+
+  test('groups carry id/title/icon/order in config declaration order', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a-kickoff', type: 'kickoff', action_group: 'phase-2' });
+    await seedAction({ _id: 'a-qualify', type: 'qualify', action_group: 'phase-1' });
+
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: 'wf-1' } }),
+    );
+
+    expect(result.groups).toEqual([
+      {
+        id: 'phase-1',
+        order: 0,
+        title: 'Phase 1',
+        icon: 'rocket',
+        actions: [expect.objectContaining({ type: 'qualify' })],
+      },
+      {
+        id: 'phase-2',
+        order: 1,
+        title: 'Phase 2',
+        icon: 'flag',
+        actions: [expect.objectContaining({ type: 'kickoff' })],
+      },
+    ]);
+  });
+
+  test('actions land in their declared group', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'a-qualify', type: 'qualify', action_group: 'phase-1' });
+    await seedAction({ _id: 'a-secret', type: 'secret-action', action_group: 'phase-1' });
+    await seedAction({ _id: 'a-kickoff', type: 'kickoff', action_group: 'phase-2' });
+
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: 'wf-1' }, user: adminUser }),
+    );
+
+    const phase1 = result.groups.find((g) => g.id === 'phase-1');
+    const phase2 = result.groups.find((g) => g.id === 'phase-2');
+    expect(phase1.actions.map((c) => c.type)).toEqual(['qualify', 'secret-action']);
+    expect(phase2.actions.map((c) => c.type)).toEqual(['kickoff']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Action card shape: no _id/kind (per spec), has form_meta
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -218,7 +274,7 @@ describe('action card shape', () => {
     const result = await GetWorkflowOverview(
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
-    const card = result.actions[0];
+    const card = cards(result)[0];
     expect(card.type).toBe('qualify');
     expect(card.status).toBe('action-required');
     expect(card.message).toBe('qualify message');
@@ -235,7 +291,7 @@ describe('action card shape', () => {
     const result = await GetWorkflowOverview(
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
-    const card = result.actions.find((c) => c.type === 'qualify');
+    const card = cards(result).find((c) => c.type === 'qualify');
     expect(card.form_meta).toEqual({ schema: { type: 'object' } });
   });
 
@@ -245,7 +301,7 @@ describe('action card shape', () => {
     const result = await GetWorkflowOverview(
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
-    const card = result.actions.find((c) => c.type === 'kickoff');
+    const card = cards(result).find((c) => c.type === 'kickoff');
     expect(card.form_meta).toBeNull();
   });
 });
@@ -271,9 +327,9 @@ describe('access drop', () => {
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
     // secret-action not visible to account-manager
-    expect(result.actions.find((c) => c.type === 'secret-action')).toBeUndefined();
+    expect(cards(result).find((c) => c.type === 'secret-action')).toBeUndefined();
     // qualify is visible
-    expect(result.actions.find((c) => c.type === 'qualify')).toBeDefined();
+    expect(cards(result).find((c) => c.type === 'qualify')).toBeDefined();
   });
 });
 
@@ -380,7 +436,7 @@ describe('key field on action cards', () => {
     const result = await GetWorkflowOverview(
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
-    expect(result.actions[0].key).toBe('slot-a');
+    expect(cards(result)[0].key).toBe('slot-a');
   });
 
   test('action card key is null for unkeyed actions', async () => {
@@ -389,7 +445,7 @@ describe('key field on action cards', () => {
     const result = await GetWorkflowOverview(
       buildContext({ request: { workflow_id: 'wf-1' } }),
     );
-    expect(result.actions[0].key).toBeNull();
+    expect(cards(result)[0].key).toBeNull();
   });
 });
 
@@ -413,7 +469,7 @@ describe('action ordering', () => {
       buildContext({ request: { workflow_id: 'wf-1' }, user: adminUser }),
     );
     // phase-1 (qualify decl 0, secret-action decl 2) then phase-2 (kickoff decl 1).
-    expect(result.actions.map((c) => c.type)).toEqual([
+    expect(cards(result).map((c) => c.type)).toEqual([
       'qualify',
       'secret-action',
       'kickoff',
@@ -432,7 +488,7 @@ describe('action ordering', () => {
     );
     // within phase-1, the not-required qualify sinks below secret-action;
     // phase-2's kickoff still follows the whole phase-1 group.
-    expect(result.actions.map((c) => c.type)).toEqual([
+    expect(cards(result).map((c) => c.type)).toEqual([
       'secret-action',
       'qualify',
       'kickoff',
