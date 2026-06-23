@@ -1,7 +1,6 @@
 type: site-visit
 kind: check
 action_group: quoting
-sort_order: 10
 description: Visit the site before quoting.
 access:
   demo:

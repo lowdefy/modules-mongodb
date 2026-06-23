@@ -13,6 +13,22 @@ const changeStamp = {
   user: { id: 'u1', name: 'Stamper' },
 };
 
+// Declaration order: groups [phase-1, phase-2];
+//   actions [qualify (phase-1, 0), kickoff (phase-2, 1), site-visit (phase-1, 2)]
+function makeWorkflowsConfig() {
+  return [
+    {
+      type: 'onboarding',
+      action_groups: [{ id: 'phase-1' }, { id: 'phase-2' }],
+      actions: [
+        { type: 'qualify', action_group: 'phase-1' },
+        { type: 'kickoff', action_group: 'phase-2' },
+        { type: 'site-visit', action_group: 'phase-1' },
+      ],
+    },
+  ];
+}
+
 let mongo;
 
 beforeAll(async () => {
@@ -42,6 +58,7 @@ function buildContext({
     profile: { name: 'Test User' },
     roles: ['account-manager'],
   },
+  workflowsConfig = makeWorkflowsConfig(),
 } = {}) {
   return {
     request,
@@ -57,7 +74,7 @@ function buildContext({
       actionsCollection: 'actions',
       eventsCollection: 'log-events',
       app_name,
-      workflowsConfig: [],
+      workflowsConfig,
       changeStamp,
       user,
       endpoints: {
@@ -103,10 +120,12 @@ async function seedEvent({
 async function seedAction({
   _id,
   workflow_id = 'wf-1',
+  workflow_type, // defaults below: 'onboarding' for workflow cards, null otherwise
+  type = 'qualify',
+  action_group = 'phase-1',
   kind = 'check',
   status_history = null, // full status array override
   stage = 'action-required',
-  sort_order = 0,
   updated_timestamp = new Date('2026-05-01T09:00:00Z'),
   app_name = 'test-app',
   message = 'Action message',
@@ -127,8 +146,10 @@ async function seedAction({
   await mongo.db.collection('actions').insertOne({
     _id,
     workflow_id,
+    workflow_type: workflow_type ?? (workflow_id == null ? null : 'onboarding'),
+    type,
+    action_group,
     kind,
-    sort_order,
     status: status_history ?? [{ stage, event_id: 'e0', created: changeStamp }],
     [app_name]: {
       links: links ?? defaultLinks,
@@ -519,30 +540,39 @@ describe('non-workflow card pass-through (workflow_id null)', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Action card sort order within an event
+// Action card order within an event — declaration order
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('action card sort order within an event', () => {
-  test('cards are sorted by sort_order ascending within an event', async () => {
-    await seedAction({
-      _id: 'a-second',
-      stage: 'action-required',
-      sort_order: 2,
-      updated_timestamp: new Date('2026-05-01T09:00:00Z'),
-    });
-    await seedAction({
-      _id: 'a-first',
-      stage: 'action-required',
-      sort_order: 1,
-      updated_timestamp: new Date('2026-05-01T09:00:00Z'),
-    });
-    await seedEvent({ _id: 'ev-1', action_ids: ['a-second', 'a-first'] });
+describe('action card order within an event', () => {
+  // config: groups [phase-1, phase-2];
+  //   actions [qualify (phase-1, 0), kickoff (phase-2, 1), site-visit (phase-1, 2)]
+  test('cards follow declaration order (group index, then action index)', async () => {
+    // Seed in scrambled order; the engine must re-order by declaration.
+    await seedAction({ _id: 'a-kickoff', type: 'kickoff', action_group: 'phase-2' });
+    await seedAction({ _id: 'a-site-visit', type: 'site-visit', action_group: 'phase-1' });
+    await seedAction({ _id: 'a-qualify', type: 'qualify', action_group: 'phase-1' });
+    await seedEvent({ _id: 'ev-1', action_ids: ['a-kickoff', 'a-site-visit', 'a-qualify'] });
 
     const result = await GetEventsTimeline(
       buildContext({ request: { reference_field: 'lot_ids', reference_value: 'lot-1' } }),
     );
-    const ids = result[0].actions.map((a) => a._id);
-    expect(ids).toEqual(['a-first', 'a-second']);
+    // phase-1 (qualify decl 0, site-visit decl 2) then phase-2 (kickoff decl 1).
+    expect(result[0].actions.map((a) => a._id)).toEqual([
+      'a-qualify',
+      'a-site-visit',
+      'a-kickoff',
+    ]);
+  });
+
+  test('non-workflow cards (no workflow_type) sort after workflow cards', async () => {
+    await seedAction({ _id: 'a-task', workflow_id: null, type: 'misc', action_group: null });
+    await seedAction({ _id: 'a-qualify', type: 'qualify', action_group: 'phase-1' });
+    await seedEvent({ _id: 'ev-1', action_ids: ['a-task', 'a-qualify'] });
+
+    const result = await GetEventsTimeline(
+      buildContext({ request: { reference_field: 'lot_ids', reference_value: 'lot-1' } }),
+    );
+    expect(result[0].actions.map((a) => a._id)).toEqual(['a-qualify', 'a-task']);
   });
 });
 

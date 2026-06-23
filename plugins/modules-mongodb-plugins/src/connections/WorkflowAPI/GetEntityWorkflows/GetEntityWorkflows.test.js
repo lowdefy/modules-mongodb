@@ -135,16 +135,15 @@ async function seedWorkflow({ _id = 'wf-1', workflow_type = 'onboarding', entity
   });
 }
 
-async function seedAction({ _id, type, kind = 'check', action_group = null, stage = 'action-required', workflow_id = 'wf-1', sort_order = 0, extra = {} } = {}) {
+async function seedAction({ _id, type, kind = 'check', action_group = null, stage = 'action-required', workflow_id = 'wf-1', key = null, extra = {} } = {}) {
   await mongo.db.collection('actions').insertOne({
     _id,
     workflow_id,
     workflow_type: 'onboarding',
     type,
     kind,
-    key: null,
+    key,
     action_group,
-    sort_order,
     status: [{ stage, event_id: 'e0', created: changeStamp }],
     access: { 'test-app': { view: true, edit: ['account-manager'] } },
     'test-app': {
@@ -385,21 +384,48 @@ describe('group display config', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Sort: not-required sinks last
+// Sort: declaration order within a group, not-required sinks last
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('not-required sinks last within a group', () => {
-  test('not-required actions sort after action-required within the same group', async () => {
+describe('within-group action ordering', () => {
+  // config actions: [qualify (phase-1, decl 0), kickoff (phase-2, decl 1), review-only (phase-1, decl 2)]
+  test('orders by action declaration index within a group', async () => {
     await seedWorkflow();
-    await seedAction({ _id: 'a-nr', type: 'kickoff', action_group: 'phase-1', stage: 'not-required', sort_order: 0 });
-    await seedAction({ _id: 'a-ar', type: 'qualify', action_group: 'phase-1', stage: 'action-required', sort_order: 1 });
+    // both placed in phase-1; seed in reverse declaration order.
+    await seedAction({ _id: 'a-kickoff', type: 'kickoff', action_group: 'phase-1' });
+    await seedAction({ _id: 'a-qualify', type: 'qualify', action_group: 'phase-1' });
     const result = await GetEntityWorkflows(
       buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
     );
     const phase1 = result.workflows[0].groups.find((g) => g.id === 'phase-1');
-    // action-required should come first despite having a higher sort_order
+    // qualify (decl 0) before kickoff (decl 1), regardless of seed/insert order.
+    expect(phase1.actions.map((a) => a.type)).toEqual(['qualify', 'kickoff']);
+  });
+
+  test('not-required sinks below action-required even when it declares earlier', async () => {
+    await seedWorkflow();
+    // qualify declares first (decl 0) but is not-required → must sink below kickoff (decl 1).
+    await seedAction({ _id: 'a-qualify', type: 'qualify', action_group: 'phase-1', stage: 'not-required' });
+    await seedAction({ _id: 'a-kickoff', type: 'kickoff', action_group: 'phase-1', stage: 'action-required' });
+    const result = await GetEntityWorkflows(
+      buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
+    );
+    const phase1 = result.workflows[0].groups.find((g) => g.id === 'phase-1');
+    // sink overrides declaration order within the group.
+    expect(phase1.actions.map((a) => a.type)).toEqual(['kickoff', 'qualify']);
     expect(phase1.actions[0].status).toBe('action-required');
     expect(phase1.actions[1].status).toBe('not-required');
+  });
+
+  test('keyed siblings (same type/group) order by key', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'q-beta', type: 'qualify', action_group: 'phase-1', key: 'beta' });
+    await seedAction({ _id: 'q-alpha', type: 'qualify', action_group: 'phase-1', key: 'alpha' });
+    const result = await GetEntityWorkflows(
+      buildContext({ request: { entity_collection: 'leads-collection', entity_id: 'lead-1' } }),
+    );
+    const phase1 = result.workflows[0].groups.find((g) => g.id === 'phase-1');
+    expect(phase1.actions.map((a) => a._id)).toEqual(['q-alpha', 'q-beta']);
   });
 });
 

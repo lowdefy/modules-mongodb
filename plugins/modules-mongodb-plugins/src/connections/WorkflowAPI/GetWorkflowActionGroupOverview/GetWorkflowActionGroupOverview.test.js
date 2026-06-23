@@ -136,7 +136,7 @@ async function seedWorkflow({ _id = 'wf-1', entity_id = 'lead-1', form_data = {}
   });
 }
 
-async function seedAction({ _id, type, kind = 'check', action_group = 'phase-1', stage = 'action-required', workflow_id = 'wf-1', sort_order = 0, key = null, extra = {} } = {}) {
+async function seedAction({ _id, type, kind = 'check', action_group = 'phase-1', stage = 'action-required', workflow_id = 'wf-1', key = null, extra = {} } = {}) {
   await mongo.db.collection('actions').insertOne({
     _id,
     workflow_id,
@@ -145,7 +145,6 @@ async function seedAction({ _id, type, kind = 'check', action_group = 'phase-1',
     kind,
     key,
     action_group,
-    sort_order,
     status: [{ stage, event_id: 'e0', created: changeStamp }],
     access: { 'test-app': { view: true, edit: ['account-manager'] } },
     'test-app': {
@@ -355,19 +354,43 @@ describe('access drop', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Not-required sinks last
+// Within-group ordering: declaration order, not-required sinks last
 // ─────────────────────────────────────────────────────────────────────────────
 
-describe('not-required sinks last', () => {
-  test('not-required actions appear after action-required within the group', async () => {
+describe('within-group action ordering', () => {
+  // config actions (all phase-1): qualify (decl 0), kickoff (decl 1), secret-action (decl 2)
+  test('orders by action declaration index', async () => {
     await seedWorkflow();
-    await seedAction({ _id: 'a-nr', type: 'kickoff', action_group: 'phase-1', stage: 'not-required', sort_order: 0 });
-    await seedAction({ _id: 'a-ar', type: 'qualify', action_group: 'phase-1', stage: 'action-required', sort_order: 1 });
+    // seed in reverse declaration order.
+    await seedAction({ _id: 'a-kickoff', type: 'kickoff' });
+    await seedAction({ _id: 'a-qualify', type: 'qualify' });
     const result = await GetWorkflowActionGroupOverview(
       buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
     );
+    expect(result.actions.map((c) => c.type)).toEqual(['qualify', 'kickoff']);
+  });
+
+  test('not-required sinks below action-required even when it declares earlier', async () => {
+    await seedWorkflow();
+    // qualify declares first (decl 0) but is not-required → must sink below kickoff (decl 1).
+    await seedAction({ _id: 'a-qualify', type: 'qualify', stage: 'not-required' });
+    await seedAction({ _id: 'a-kickoff', type: 'kickoff', stage: 'action-required' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.actions.map((c) => c.type)).toEqual(['kickoff', 'qualify']);
     expect(result.actions[0].status).toBe('action-required');
     expect(result.actions[1].status).toBe('not-required');
+  });
+
+  test('keyed siblings (same type) order by key', async () => {
+    await seedWorkflow();
+    await seedAction({ _id: 'q-beta', type: 'qualify', key: 'beta' });
+    await seedAction({ _id: 'q-alpha', type: 'qualify', key: 'alpha' });
+    const result = await GetWorkflowActionGroupOverview(
+      buildContext({ request: { workflow_id: 'wf-1', group_id: 'phase-1' } }),
+    );
+    expect(result.actions.map((c) => c.key)).toEqual(['alpha', 'beta']);
   });
 });
 
@@ -455,7 +478,6 @@ describe('group scoping', () => {
       kind: 'check',
       key: null,
       action_group: 'phase-2',
-      sort_order: 0,
       status: [{ stage: 'action-required', event_id: 'e0', created: changeStamp }],
       access: { 'test-app': { view: true, edit: ['account-manager'] } },
       'test-app': {

@@ -1,7 +1,6 @@
 type: billing-details
 kind: form
 action_group: setup
-sort_order: 10
 description: Capture the company's billing details.
 access:
   demo:

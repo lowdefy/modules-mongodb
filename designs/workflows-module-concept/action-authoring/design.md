@@ -267,12 +267,13 @@ The fields are added to the actions schema and to the reserved-keys list (engine
 
 ### Display-positioning fields
 
-Two more optional fields are universal across kinds. They affect how the action surfaces in the entity-page UI but have no engine semantics:
+One more optional field is universal across kinds. It affects how the action surfaces in the entity-page UI:
 
 | Field          | Type     | Description                                                                                                      |
 | -------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
 | `action_group` | `String` | Group ID referenced from the workflow's `action_groups:` list. Drives entity-page grouping and progress rollup.  |
-| `sort_order`   | `Number` | Display order among siblings within an `action_group` (or within the workflow when no group). Lower comes first. |
+
+> **Superseded by [Part 54 — Workflow action ordering](../../workflows-module/parts/54-action-ordering/design.md).** Display order is **declaration order**: group position in `action_groups[]`, then action position in `actions[]`, computed server-side at read time. `sort_order` is retired (it was never written onto action docs, so its sort was dead), and the `blocked_by` topological-order fallback described below was **never implemented** and is explicitly rejected — declaration order is the model, not a fallback. The paragraph below is retained only as historical context.
 
 `sort_order` is a v0 carry-over: the UI needs a deterministic display order that's cheaper to author than computing topological order from `blocked_by` and stable across status changes. Without `sort_order`, the UI falls back to `blocked_by` topological order with ties broken by `actions[]` declaration order; with `sort_order` set, the integer wins.
 
@@ -307,7 +308,6 @@ A tracker action declares a `tracker:` block with the child `workflow_type` it m
 type: track-installation
 kind: tracker
 action_group: setup
-sort_order: 40
 description: Tracks the device-installation workflow on the linked installation ticket.
 blocked_by: [schedule-followup]
 access:
@@ -869,7 +869,6 @@ Authors choose based on whether the child has its own lifecycle (then tracker) o
 type: proof-of-installation
 kind: form
 key: $device_id # the instance discriminator — symbolic; resolved at start time
-sort_order: 140
 form:
   - component: file_upload
     key: form.installation_files

@@ -1,7 +1,6 @@
 type: upload-po
 kind: form
 action_group: order
-sort_order: 10
 blocked_by:
   - quoting
 description: Upload the signed purchase order to proceed with the order.

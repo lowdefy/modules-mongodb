@@ -187,9 +187,11 @@ Reserved on `references` payloads — apps can't claim these field names.
 | Field          | Type     | Default | Effect                                                                                                            |
 | -------------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------- |
 | `action_group` | `string` | `null`  | Group ID; must reference a declared `action_groups[].id`. Drives entity-page grouping and group-status rollup.    |
-| `sort_order`   | `number` | `null`  | Display order within an `action_group` (or workflow when no group). Lower comes first; ties broken by decl order. |
 
-Engine treats these as opaque display metadata; UI consumes them.
+Display order is **declaration order** — group position in `action_groups[]`, then
+action position in `actions[]` — computed server-side at read time (see
+[Part 54 — Workflow action ordering](../../workflows-module/parts/54-action-ordering/design.md)).
+There is no `sort_order` field.
 
 ### Terminal-behaviour field
 
@@ -340,7 +342,6 @@ Actions with `key:` exist as N instances per workflow, one action doc per `(work
 type: proof-of-installation
 kind: form
 key: $device_id # symbolic — concrete values supplied at spawn time
-sort_order: 140
 form:
   - { component: file_upload, key: form.installation_files, required: true }
 status_map:
@@ -375,7 +376,6 @@ status_map:
 type: qualify
 kind: form
 action_group: discovery
-sort_order: 10
 description: Confirm the lead's contact details and capture qualification notes.
 hooks: # optional; per-signal pre/post routines (inline), keyed by button-surfaced signal
   submit:
@@ -414,7 +414,6 @@ status_map:
 type: schedule-followup
 kind: check
 action_group: follow-up
-sort_order: 30
 description: Schedule a follow-up call with the lead within a week of qualification.
 blocked_by: [send-quote]
 access:
@@ -443,7 +442,6 @@ No `hooks:` declared — engine runs the default lifecycle. The shared `workflow
 type: track-installation
 kind: tracker
 action_group: setup
-sort_order: 40
 description: Tracks the device-installation workflow on the linked installation ticket.
 blocked_by: [schedule-followup]
 access:

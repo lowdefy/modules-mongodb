@@ -1,7 +1,6 @@
 type: assign-account-manager
 kind: check
 action_group: setup
-sort_order: 20
 description: Assign an account manager to the company.
 access:
   demo:

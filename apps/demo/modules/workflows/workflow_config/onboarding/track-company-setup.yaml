@@ -1,7 +1,6 @@
 type: track-company-setup
 kind: tracker
 action_group: conversion
-sort_order: 10
 blocked_by:
   - upload-po
 description: Tracks the company-setup workflow on the converted company.

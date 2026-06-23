@@ -1,12 +1,14 @@
 import createEngineContext from '../../shared/phases/createEngineContext.js';
 import findDocs from '../../mongo/findDocs.js';
 import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
+import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
 
 /**
  * GetWorkflowOverview — server-side replacement for the get-workflow-overview.yaml
  * aggregation (Part 46 task 4).
  *
- * Reads a single workflow by _id, joins its actions in group/sort_order order,
+ * Reads a single workflow by _id, joins its actions in declaration order
+ * (group position in action_groups[], then action position in actions[]),
  * applies per-user access filtering, resolves links, enriches with display config,
  * and prunes form_data to view-visible actions only.
  *
@@ -40,20 +42,6 @@ async function GetWorkflowOverview(lowdefyContext) {
 
   const wfConfig = (workflowsConfig ?? []).find((wc) => wc.type === wfDoc.workflow_type);
 
-  // Build a map from group_id to its index in the config's action_groups array
-  // (for sort: groupIndex order from the config).
-  const configGroups = wfConfig?.action_groups ?? [];
-  // Also support the legacy `groups` field on the workflow doc (from the original aggregation).
-  const wfDocGroupIds = (wfDoc.action_groups ?? wfDoc.groups ?? []).map((g) => g.id ?? g);
-  const groupIdList = configGroups.length > 0
-    ? configGroups.map((g) => g.id)
-    : wfDocGroupIds;
-
-  function groupIndex(group_id) {
-    const idx = groupIdList.indexOf(group_id);
-    return idx === -1 ? groupIdList.length : idx;
-  }
-
   // ── Load: all actions for this workflow ──
   const rawActions = await findDocs({
     mongoDb,
@@ -74,19 +62,9 @@ async function GetWorkflowOverview(lowdefyContext) {
     visibleActions.push({ action, allowed, link, message, status });
   }
 
-  // ── Sort: by groupIndex, then sort_order, then _id (matches original pipeline) ──
-  visibleActions.sort((a, b) => {
-    const ai = groupIndex(a.action.action_group);
-    const bi = groupIndex(b.action.action_group);
-    if (ai !== bi) return ai - bi;
-    const as = a.action.sort_order ?? 0;
-    const bs = b.action.sort_order ?? 0;
-    if (as !== bs) return as - bs;
-    // _id sort: use string comparison
-    const aid = String(a.action._id);
-    const bid = String(b.action._id);
-    return aid < bid ? -1 : aid > bid ? 1 : 0;
-  });
+  // ── Sort: declaration order (group, not-required sink, action, key, _id) ──
+  const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
+  visibleActions.sort((a, b) => compareOrder(a.action, b.action));
 
   // ── Build action cards ──
   // form_meta comes from the validated action config (the workflowConfig.actions entry).

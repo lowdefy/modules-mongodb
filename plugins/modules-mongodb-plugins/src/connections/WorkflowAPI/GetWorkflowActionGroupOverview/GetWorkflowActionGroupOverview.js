@@ -1,6 +1,7 @@
 import createEngineContext from '../../shared/phases/createEngineContext.js';
 import findDocs from '../../mongo/findDocs.js';
 import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
+import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
 
 /**
  * GetWorkflowActionGroupOverview — server-side replacement for the
@@ -62,18 +63,9 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     visibleActions.push({ action, allowed, link, message, status });
   }
 
-  // ── Sort: not-required sinks last, then by sort_order, then created.timestamp ──
-  visibleActions.sort((a, b) => {
-    const aNotRequired = a.status === 'not-required' ? 1 : 0;
-    const bNotRequired = b.status === 'not-required' ? 1 : 0;
-    if (aNotRequired !== bNotRequired) return aNotRequired - bNotRequired;
-    const aSort = aNotRequired ? 1 : (a.action.sort_order ?? 0);
-    const bSort = bNotRequired ? 1 : (b.action.sort_order ?? 0);
-    if (aSort !== bSort) return aSort - bSort;
-    const aTs = a.action.created?.timestamp ?? 0;
-    const bTs = b.action.created?.timestamp ?? 0;
-    return aTs < bTs ? -1 : aTs > bTs ? 1 : 0;
-  });
+  // ── Sort: declaration order (group, not-required sink, action, key, _id) ──
+  const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
+  visibleActions.sort((a, b) => compareOrder(a.action, b.action));
 
   // ── Build action cards ──
   // form_meta comes from the validated action config (form-kind actions only).

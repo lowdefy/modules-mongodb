@@ -1,6 +1,7 @@
 import createEngineContext from '../../shared/phases/createEngineContext.js';
 import findDocs from '../../mongo/findDocs.js';
 import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
+import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
 
 /**
  * GetEntityWorkflows — server-side replacement for the get-entity-workflows.yaml
@@ -64,6 +65,9 @@ async function GetEntityWorkflows(lowdefyContext) {
     return (workflowsConfig ?? []).find((wc) => wc.type === workflow_type);
   }
 
+  // Shared declaration-order comparator (resolves config per action).
+  const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
+
   // Helper: build the group-overview page link (matches computeEngineLinks scoped convention).
   function buildGroupLink(workflow_id, group_id) {
     return {
@@ -89,18 +93,8 @@ async function GetEntityWorkflows(lowdefyContext) {
       visibleActions.push({ action, allowed, link, message, status });
     }
 
-    // ── Sort: not-required sinks last, then by sort_order, then by created.timestamp ──
-    visibleActions.sort((a, b) => {
-      const aNotRequired = a.status === 'not-required' ? 1 : 0;
-      const bNotRequired = b.status === 'not-required' ? 1 : 0;
-      if (aNotRequired !== bNotRequired) return aNotRequired - bNotRequired;
-      const aSort = aNotRequired ? 1 : (a.action.sort_order ?? 0);
-      const bSort = bNotRequired ? 1 : (b.action.sort_order ?? 0);
-      if (aSort !== bSort) return aSort - bSort;
-      const aTs = a.action.created?.timestamp ?? 0;
-      const bTs = b.action.created?.timestamp ?? 0;
-      return aTs < bTs ? -1 : aTs > bTs ? 1 : 0;
-    });
+    // ── Sort: declaration order (group, not-required sink, action, key, _id) ──
+    visibleActions.sort((a, b) => compareOrder(a.action, b.action));
 
     // ── Group actions by action_group ──
     // Preserve declaration order from config's action_groups, then append unseen groups.

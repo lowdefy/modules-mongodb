@@ -1,5 +1,6 @@
 import createEngineContext from '../../shared/phases/createEngineContext.js';
 import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
+import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
 
 /**
  * GetEventsTimeline — cross-stream events timeline method (Part 46 task 6).
@@ -16,17 +17,18 @@ import { computeAllowed, collapseLink } from '../../shared/render/resolveActionA
  *   - workflow_id null  → pass through status + <app_name>.message only;
  *     no access/link logic (safety valve for future task-kind docs).
  *
- * Card-worthiness, latest-event-per-action dedup, and sort order faithfully
- * port the YAML behaviour of timeline_action_lookup.yaml.
+ * Card-worthiness and latest-event-per-action dedup faithfully port the YAML
+ * behaviour of timeline_action_lookup.yaml. Card order within an event is
+ * declaration order, computed in JS (see compareActionOrder.js).
  *
  * Params: { reference_field, reference_value }
  *
  * Response: array of event docs with { actions[], title, description, info }
- *   Each event.action card: { _id, kind, status, link, message, sort_order, updated }
+ *   Each event.action card: { _id, kind, status, link, message, updated }
  */
 async function GetEventsTimeline(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection } = context;
+  const { params, mongoDb, connection, workflowsConfig } = context;
   const { reference_field, reference_value } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
@@ -165,24 +167,14 @@ async function GetEventsTimeline(lowdefyContext) {
     },
 
     // Filter nulls out of the actions array (non-latest events contribute null).
+    // Action cards are ordered in JS post-processing (declaration order needs
+    // the workflowsConfig, which is unavailable inside the aggregation pipeline).
     {
       $addFields: {
         'event.actions': {
           $filter: {
             input: '$actions',
             cond: { $ne: ['$$this', null] },
-          },
-        },
-      },
-    },
-
-    // Sort action cards within each event by sort_order asc, updated.timestamp asc.
-    {
-      $addFields: {
-        'event.actions': {
-          $sortArray: {
-            input: '$event.actions',
-            sortBy: { sort_order: 1, 'updated.timestamp': 1 },
           },
         },
       },
@@ -232,8 +224,17 @@ async function GetEventsTimeline(lowdefyContext) {
   // roles, which are not available inside a MongoDB aggregation pipeline.
   // The aggregation produces raw action docs; JS applies the access policy here.
 
+  const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
+
   const events = rawEvents.map((event) => {
     const rawActions = Array.isArray(event.actions) ? event.actions : [];
+
+    // Order raw action docs by declaration order BEFORE the enrichment loop
+    // trims them — the loop drops type/action_group/workflow_type, which the
+    // comparator needs. The $lookup already rewrote status to a scalar stage,
+    // which the comparator tolerates. Non-workflow cards have no config and
+    // sort last by _id.
+    rawActions.sort(compareOrder);
 
     const enrichedActions = [];
     for (const action of rawActions) {
@@ -255,7 +256,6 @@ async function GetEventsTimeline(lowdefyContext) {
           status: action.status ?? null,
           link,
           message,
-          sort_order: action.sort_order ?? null,
           updated: action.updated ?? null,
         };
       } else {
@@ -267,7 +267,6 @@ async function GetEventsTimeline(lowdefyContext) {
           status: action.status ?? null,
           link: null,
           message: action[app_name]?.message ?? null,
-          sort_order: action.sort_order ?? null,
           updated: action.updated ?? null,
         };
       }

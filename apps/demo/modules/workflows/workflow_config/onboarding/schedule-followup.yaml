@@ -1,7 +1,6 @@
 type: schedule-followup
 kind: check
 action_group: quoting
-sort_order: 30
 blocked_by:
   - qualify
 description: Schedule a follow-up call with the lead within a week of qualification.

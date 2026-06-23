@@ -20,7 +20,6 @@ const ACTION_FIELDS = [
   'tracker',
   'blocked_by',
   'action_group',
-  'sort_order',
   'required_after_close',
   'allow_not_required',
   'access',

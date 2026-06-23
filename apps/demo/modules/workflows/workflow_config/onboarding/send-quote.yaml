@@ -1,7 +1,6 @@
 type: send-quote
 kind: form
 action_group: quoting
-sort_order: 20
 blocked_by:
   - qualify
 description: Build and send the lead a quote; reviewer approves before send.

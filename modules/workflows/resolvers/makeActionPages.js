@@ -13,7 +13,6 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "tracker",
   "blocked_by",
   "action_group",
-  "sort_order",
   "required_after_close",
   "access",
   "status_map",
