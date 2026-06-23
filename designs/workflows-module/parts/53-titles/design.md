@@ -42,18 +42,18 @@ Rules:
 1. **Split** on `-`, `_`, and camelCase boundaries into word tokens.
 2. **Title-case** each token (first letter upper, rest lower).
 3. **Minor words** (`a an and as at but by for from in nor of on or the to via with`) are lowercased **unless** they are the first or last token. → "Convert **to** Customer", but "**To** Do".
-4. **Acronyms** — a token whose lowercased form is in the acronym set is fully uppercased. Base set ships in the module (`PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC PO RFQ`-class business/web acronyms — finalized in the build list). Always capitalized regardless of position.
+4. **Acronyms** — a token whose lowercased form is in the acronym set is fully uppercased. Base set ships in the module (`PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ`-class business/web acronyms — finalized in the build list). Always capitalized regardless of position.
 5. First token always starts with a capital.
 
 ### App-extensible acronyms
 
-Domain acronyms (RFQ, BOM, SKU…) are app-specific, and without them an app's defaults degrade to "Rfq" — defeating the whole point. So the acronym set is extensible via a module var:
+Domain acronyms (BOM, SKU, …) are app-specific, and without them an app's defaults degrade to "Bom" — defeating the whole point. So the acronym set is extensible via a module var:
 
 ```yaml
 modules:
   - id: workflows
     vars:
-      title_acronyms: [RFQ, BOM, SKU]   # merged into the base set
+      title_acronyms: [BOM, SKU]   # merged into the base set
 ```
 
 `makeWorkflowsConfig` reads `title_acronyms` (default `[]`), merges it into the base set, and passes the combined set to `humanizeSlug` for all build-time defaulting. Documented in the manifest as a top-level var.
@@ -65,14 +65,14 @@ Every title resolves by the same rule — **explicit `title` wins; else derive/c
 | Concept | Slug source | Default | Override | Materialized in | Read by |
 |---|---|---|---|---|---|
 | Workflow title | `workflow.type` | `humanizeSlug(type)` | `workflow.title` | `makeWorkflowsConfig` (already in `WORKFLOW_FIELDS`) | overview page, entity-workflows, Get*Overview / GetEntityWorkflows resolvers |
-| Action title (**new**) | `action.type` | `humanizeSlug(type)` | `action.title` | `makeWorkflowsConfig` (add `title` to picked action fields) **+ denormalized onto the action doc** | event planner, ActionSteps, overview cards, actions-on-entity, action pages |
-| Action group title | group `id` | enum title (`enums/action_groups.yaml`) → else `humanizeSlug(id)` | `action_groups[].title` in workflow config | `makeWorkflowsConfig` (group normalization) | ActionSteps, GetEntityWorkflows |
+| Action title (**new**) | `action.type` | `humanizeSlug(type)` | `action.title` | `makeWorkflowsConfig` (add `title` to picked action fields) **+ denormalized onto the action doc** | **From config:** ActionSteps / overview cards / actions-on-entity (via `GetEntityWorkflows`, which reads `wfConfig.actions` like it already reads group title), action pages (`makeActionPages`). **From the doc:** the event planner (`plannedActionDoc`) only. |
+| Action group title | group `id` | `group.title` if present (enum- or author-supplied) → else `humanizeSlug(id)` | `action_groups[].title` in workflow config | `makeWorkflowsConfig` (group normalization) | ActionSteps, GetEntityWorkflows |
 | Action page title | — | the resolved action title | `action.pages[verb].title` | `makeActionPages` defaults `page_config.title` to the action title | the `view/edit/review/error` templates (`page_config.title`) |
 | Status badge title | stage slug | curated enum, **unchanged** | — | `action_statuses.yaml` | overview badge, ActionSteps |
 | Lifecycle stage title | stage slug | curated enum, **unchanged** | — | `workflow_lifecycle_stages.yaml` | overview badge |
 | Event message | FSM signal | curated signal verb map × noun title (below) | 3-source event override chain (engine → YAML `event_overrides[signal]` → pre-hook) | `planEventDispatch` `DEFAULT_SIGNAL_TITLES` | EventsTimeline |
 
-Group title precedence is **explicit config title → shared enum title → `humanizeSlug(id)`**: the enum still owns icon/order, but a group with no enum entry and no config title now gets a sane derived label instead of a raw id.
+Group title precedence is **2-tier at the resolver: `group.title ?? humanizeSlug(group.id)`**. The shared `enums/action_groups.yaml` still owns `title`/`icon`/`order`, but those are `_ref`'d into the workflow YAML *upstream* of the resolver, so by the time `makeWorkflowsConfig` runs they're already inline in `group.title` — the resolver can't (and needn't) distinguish an enum-supplied title from an author override; both just present as `group.title`. A group with neither an enum entry nor an explicit title now gets a sane derived label instead of a raw id.
 
 ## Event messages — per-signal verb templates
 
@@ -108,16 +108,18 @@ The `submit` verb depends on `status_after` (the only branch — "completed" vs 
 | CancelWorkflow | `{{user}} cancelled {{workflow.title}}` |
 | CloseWorkflow | `{{user}} closed {{workflow.title}}` |
 
-**Fallback.** Any signal not in the map (defensive — e.g. an auxiliary `block`/`activate`/`unblock` that ever became primary) falls to `{{user}} updated {{action.title}}`, never the raw-slug string. The stage's curated `action_statuses` enum `.title` is available in the render context if an app override wants "as {{ status_title }}" phrasing.
+**Fallback.** Any signal not in the map (defensive — e.g. an auxiliary `block`/`activate`/`unblock` that ever became primary) falls to `{{user}} updated {{action.title}}`, never the raw-slug string. In practice the internal/auxiliary signals (`internal_cancel_action`, and `block`/`activate`/`unblock` when they aren't the primary signal) never reach `planEventDispatch` at all: each invocation dispatches exactly one event for its primary signal, and cascade cancels surface as the `workflow-cancelled` lifecycle event rather than a per-action signal. So the map only needs to cover the primary signals above to be exhaustive — the fallback is purely defensive. The stage's curated `action_statuses` enum `.title` is available in the render context if an app override wants "as {{ status_title }}" phrasing.
 
 These are **defaults only** — the existing 3-source override chain is unchanged, so an app can still rewrite any signal's message via `event_overrides[signal]` or a pre-hook.
 
-## Architecture: build-time materialization + one denormalized field
+## Architecture: build-time materialization + denormalized doc fields
 
-The defaulting happens in exactly two places, and every consumer stays dumb:
+The defaulting happens in exactly two build/runtime places, and every consumer stays dumb:
 
 1. **`makeWorkflowsConfig` (build).** During normalization it resolves and writes `title` for the workflow, each action, and each group into the runtime `workflowsConfig`. After build, the config carries real titles — config-reading surfaces (overview/entity-workflows resolvers, action-page generation) just read `title`. This is the "one correct way": the default is materialized once, not re-derived at each read site.
-2. **`planActionTransition` (runtime, action-doc creation).** The action doc is assembled at `planActionTransition.js:143-164` from `actionConfig`. Add `title: actionConfig.title` to the inserted doc (and `createAction.js`), denormalizing it the same way `type`/`kind`/`action_group` already are. Doc-reading surfaces — the event planner (`plannedActionDoc`) and the timeline (which joins action docs) — then get the title without a config lookup, matching the module's existing denormalization stance.
+2. **Runtime denormalization onto the persisted docs.** Both the action and the workflow are doc-rendered for events, so each carries its resolved title on the stored doc — the same stance the module already takes for `type`/`kind`/`workflow_type`:
+   - **Action title → action doc (`planActionTransition`).** Add `doc.title = actionConfig.title;` to the **unconditional denormalization block** (`planActionTransition.js:175+`, alongside `doc.workflow_type`), *not* the insert branch. The insert branch (`:141-164`) only runs on first creation; a submit on an existing action takes the update branch (`:165-173`, which spreads `...action`), and that updated doc is what `planSubmit` hands to `planEventDispatch`. Stamping in the unconditional block covers every transition — insert and update, new and pre-existing actions — so `{{ action.title }}` is always present on the planned doc. Doc-reading surfaces — the event planner (`plannedActionDoc`) and the timeline (which joins action docs) — then get the title without a config lookup.
+   - **Workflow title → workflow doc (`StartWorkflow`).** `baseWorkflowDoc` (`StartWorkflow.js:169-177`) carries `workflow_type` but no `title`, while `workflowConfig` (with `.title`) is already in scope at `:70`. Add `title: workflowConfig.title` to `baseWorkflowDoc` so the title persists in the DB. The lifecycle render context binds `workflow = plannedWorkflowDoc` (`planEventDispatch.js:105`), so StartWorkflow gets it directly, and Cancel/Close — which load the existing workflow doc — get it for free without re-reading config.
 
 The `humanizeSlug` helper therefore lives in the **module resolvers** (build side) only; the plugin never humanizes at runtime because the config it receives is already resolved.
 
@@ -133,11 +135,12 @@ makeWorkflowsConfig ── humanizeSlug + title_acronyms ──► runtime workf
         ▼                                                        ▼
    action pages                                          overview / entity-workflows / ActionSteps
         
-runtime: StartWorkflow / Submit
-        ▼
+runtime: StartWorkflow ── title: workflowConfig.title ──► workflow doc (denormalized title, persisted)
+        │                                                        │
+        ▼ Submit                                                 │ Cancel/Close load the doc → title for free
 planActionTransition ── title: actionConfig.title ──► action doc (denormalized title)
         ▼
-planEventDispatch ── DEFAULT_SIGNAL_TITLES[signal] over {{action.title}} ──► event doc ──► EventsTimeline
+planEventDispatch ── DEFAULT_SIGNAL_TITLES[signal] over {{action.title}} / {{workflow.title}} ──► event doc ──► EventsTimeline
 ```
 
 ## Files changed
@@ -151,14 +154,18 @@ planEventDispatch ── DEFAULT_SIGNAL_TITLES[signal] over {{action.title}} ─
 
 **Plugin (`plugins/modules-mongodb-plugins`)**
 - `connections/shared/phases/planners/planEventDispatch.js` — replace `DEFAULT_TITLES['action-event']` with `DEFAULT_SIGNAL_TITLES` (signal-keyed verb map + submit/status_after branch + fallback); lifecycle templates use `workflow.title`.
-- `connections/shared/phases/planners/planActionTransition.js` + `createAction.js` — add `title: actionConfig.title` to the action doc.
+- `connections/shared/phases/planners/planActionTransition.js` — add `doc.title = actionConfig.title;` to the unconditional denormalization block (alongside `doc.workflow_type`), so title is stamped on insert and update alike.
+- `connections/WorkflowAPI/StartWorkflow/StartWorkflow.js` — add `title: workflowConfig.title` to `baseWorkflowDoc` so the workflow title persists on the doc (Cancel/Close read it from the loaded doc).
 
 **Demo (`apps/demo/modules/workflows`)**
 - Workflow/action/group configs: drop titles now equal to the derived default; keep/add an explicit `title` only where the slug humanizes wrong (e.g. acronyms, custom phrasing) to exercise the override path.
 
 ## Migration
 
-No data migration required. Action docs created before this change lack the denormalized `title`, but their timeline events were rendered and stored at dispatch time, so historical messages are unaffected; only newly created action docs need the field. Surfaces that read the action doc `title` should treat a missing value as "fall back to config title" for the transition window — or simpler, accept that pre-existing in-flight actions show the config-derived title once redeployed (config is always resolvable by `type`). Finalize the read-path fallback in the build list.
+No data migration required, and no read-time fallback. The denormalized doc `title` is the one field that could go stale, but it is **written and read in the same plan**: `planActionTransition` stamps `doc.title = actionConfig.title` and hands that same planned doc straight to `planEventDispatch`, which is the only reader of the doc title. The stored value is never read again on any later surface — every display surface (overview, ActionSteps, entity-workflow cards, action pages) reads the title live from config, and the timeline reads the frozen `display` string off the event doc. So:
+
+- **This rollout.** Pre-existing action docs lack `title`. They need no backfill: display surfaces source it from config, the next transition stamps the doc, and historical events keep their already-rendered `display` strings.
+- **A future config change** (renaming a title, editing `title_acronyms`, changing the humanizer). Display surfaces reflect it immediately because they read config every time. The stored doc `title` goes stale, but since nothing reads it after it was stamped, the drift never surfaces — and the next event re-stamps from the new config before rendering. No re-sync job, ever.
 
 ## Decisions
 
@@ -171,7 +178,6 @@ No data migration required. Action docs created before this change lack the deno
 
 ## Open questions
 
-- **Read-path fallback for pre-existing in-flight action docs** (migration window) — accept config-derived title on redeploy vs. a one-time backfill. Lean: accept on redeploy (config is always resolvable by `type`); confirm in the build list.
 - **Final base acronym list** — settle the shipped set during the build (start from the web/business acronyms above; keep it small and uncontroversial, since apps extend via `title_acronyms`).
 
 ## Non-goals
