@@ -190,7 +190,7 @@ Reserved on `references` payloads — apps can't claim these field names.
 
 Display order is **declaration order** — group position in `action_groups[]`, then
 action position in `actions[]` — computed server-side at read time (see
-[Part 54 — Workflow action ordering](../../workflows-module/parts/54-action-ordering/design.md)).
+[Part 54 — Workflow action ordering](../../workflows-module/parts/_completed/54-action-ordering/design.md)).
 There is no `sort_order` field.
 
 ### Terminal-behaviour field
