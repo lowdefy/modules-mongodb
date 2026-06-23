@@ -116,8 +116,26 @@ test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page })
       timeout: 15_000,
     });
 
-    // Fill the qualify form — contact_name is required, site_visit_required = yes.
-    await ldf.block('form.contact_name').do.fill('Alice Example');
+    // Fill the qualify form — `contact` is now a ContactSelector (rich picker),
+    // required, site_visit_required = yes. The contact field stores an array of
+    // { contact_id, name, email, verified }; we add a new contact through the
+    // picker so the happy path doesn't depend on seeded contacts or an Atlas
+    // $search index.
+    // NOTE: this picker interaction (open → type → "Add … as new contact" →
+    // modal form → Save) has NOT been verified against a live run — confirm via
+    // /r:dev-test before relying on this spec.
+    const contactSearch = page.locator('#block\\:workflows\\/onboarding-qualify-edit\\:form\\.contact\\:0_selector_input');
+    await contactSearch.click();
+    await contactSearch.fill('Alice Example');
+    // Debounced search (500ms) renders the "Add <text> as new contact" option.
+    await page.getByText('as new contact').click();
+    // Add-contact modal (form_contact_short): First Name / Last Name / Email.
+    await page.getByLabel('First Name').fill('Alice');
+    await page.getByLabel('Last Name').fill('Example');
+    await page.getByLabel('Email').fill('alice@example.com');
+    await page.getByRole('button', { name: 'Save' }).click();
+    // The selected contact renders as a list row once appended.
+    await expect(page.getByText('alice@example.com')).toBeVisible({ timeout: 15_000 });
 
     // site_visit_required is a yes_no_selector (ButtonSelector). Click the
     // "Yes" button within the block's container to select true.
