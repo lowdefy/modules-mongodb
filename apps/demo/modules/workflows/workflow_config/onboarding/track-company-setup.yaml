@@ -1,4 +1,7 @@
 type: track-company-setup
+# title overrides the derived "Track Company Setup" — the card reads better
+# labelled as the thing being tracked (docs/idioms.md#titles).
+title: Company Setup
 kind: tracker
 action_group: conversion
 blocked_by:

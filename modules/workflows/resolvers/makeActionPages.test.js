@@ -185,7 +185,7 @@ test("makeActionPages: worked-example fixture emits exactly the five expected pa
   ]);
 });
 
-test("makeActionPages: page_config var passes through action.pages.{verb} verbatim", () => {
+test("makeActionPages: page_config var passes through action.pages.{verb} keys plus a defaulted title", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
     app_name: APP,
@@ -194,8 +194,75 @@ test("makeActionPages: page_config var passes through action.pages.{verb} verbat
   const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
   const viewPage = pages.find((p) => p.id === "onboarding-qualify-view");
 
-  expect(editPage._ref.vars.page_config).toEqual({ maxWidth: 1200 });
-  expect(viewPage._ref.vars.page_config).toEqual({});
+  // Author-supplied per-verb keys pass through; title defaults to the action title.
+  expect(editPage._ref.vars.page_config).toEqual({ maxWidth: 1200, title: "Qualify" });
+  expect(viewPage._ref.vars.page_config).toEqual({ title: "Qualify" });
+});
+
+test("makeActionPages: page_config.title defaults to humanizeSlug(action.type)", () => {
+  const action = {
+    type: "upload-po",
+    kind: "form",
+    access: { [APP]: { view: true, edit: true } },
+    form: [{ id: "po", type: "TextInput" }],
+  };
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.page_config.title).toBe("Upload PO");
+  }
+});
+
+test("makeActionPages: page_config.title defaults to an explicit action.title", () => {
+  const action = {
+    type: "upload-po",
+    kind: "form",
+    title: "Send the PO",
+    access: { [APP]: { view: true, edit: true } },
+    form: [{ id: "po", type: "TextInput" }],
+  };
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.page_config.title).toBe("Send the PO");
+  }
+});
+
+test("makeActionPages: explicit pages[verb].title wins over the action title", () => {
+  const action = {
+    type: "qualify",
+    kind: "form",
+    access: { [APP]: { view: true, edit: true } },
+    form: [{ id: "x", type: "TextInput" }],
+    pages: { edit: { title: "Edit qualification" } },
+  };
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
+  const editPage = pages.find((p) => p.id.endsWith("-edit"));
+  const viewPage = pages.find((p) => p.id.endsWith("-view"));
+  expect(editPage._ref.vars.page_config.title).toBe("Edit qualification");
+  expect(viewPage._ref.vars.page_config.title).toBe("Qualify");
+});
+
+test("makeActionPages: title_acronyms extends the humanizer for page titles", () => {
+  const action = {
+    type: "upload-bom",
+    kind: "form",
+    access: { [APP]: { view: true } },
+    form: [{ id: "x", type: "TextInput" }],
+  };
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+    title_acronyms: ["BOM"],
+  });
+  expect(pages[0]._ref.vars.page_config.title).toBe("Upload BOM");
 });
 
 test("makeActionPages: action_config does not carry the `pages` slot (duplicate path removed)", () => {

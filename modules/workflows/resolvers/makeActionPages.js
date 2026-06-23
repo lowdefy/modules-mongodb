@@ -1,3 +1,5 @@
+import { humanizeSlug } from "./humanizeSlug.js";
+
 const VERBS = ["edit", "view", "review", "error"];
 
 // Fields lifted from the raw action YAML onto each emitted page's
@@ -36,7 +38,7 @@ function fail(message) {
   throw new Error(`makeActionPages: ${message}`);
 }
 
-function emitForAction(workflow, action, appName) {
+function emitForAction(workflow, action, appName, titleAcronyms) {
   if (action.kind !== "form") return [];
 
   // Part 34 D5: emit a verb page iff the verb key is present in the app's
@@ -52,6 +54,12 @@ function emitForAction(workflow, action, appName) {
 
   const actionConfig = pick(action, ACTION_FIELDS_FOR_TEMPLATE);
 
+  // Resolve the action title identically to makeWorkflowsConfig (this resolver
+  // reads raw YAML, not the materialized config, so it must re-derive rather
+  // than read a pre-resolved field — kept in lock-step so a page title and the
+  // action's config title never disagree).
+  const actionTitle = action.title ?? humanizeSlug(action.type, titleAcronyms);
+
   return emittedVerbs.map((verb) => ({
     id: pageIds[verb],
     _ref: {
@@ -66,14 +74,19 @@ function emitForAction(workflow, action, appName) {
         // through verbatim as a top-level var. Templates read off
         // `page_config.*` — the duplicate path through `action_config.pages`
         // is intentionally removed (see `ACTION_FIELDS_FOR_TEMPLATE`).
-        page_config: action.pages?.[verb] ?? {},
+        // `title` defaults to the resolved action title (Part 51 F1 gap); an
+        // explicit per-verb `pages[verb].title` still wins.
+        page_config: {
+          ...(action.pages?.[verb] ?? {}),
+          title: action.pages?.[verb]?.title ?? actionTitle,
+        },
       },
     },
   }));
 }
 
 function makeActionPages(_, vars) {
-  const { workflows, app_name: appName } = vars;
+  const { workflows, app_name: appName, title_acronyms = [] } = vars;
 
   if (!appName) {
     fail(
@@ -84,7 +97,7 @@ function makeActionPages(_, vars) {
   const pages = [];
   for (const workflow of workflows) {
     for (const action of workflow.actions ?? []) {
-      pages.push(...emitForAction(workflow, action, appName));
+      pages.push(...emitForAction(workflow, action, appName, title_acronyms));
     }
   }
   return pages;

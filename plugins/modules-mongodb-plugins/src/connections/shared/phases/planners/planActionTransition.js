@@ -181,6 +181,10 @@ function planActionTransition({
   // so the engine arm (Part 44) sees the navigation target at link-compute time.
   doc.access = actionConfig.access;
   doc.workflow_type = loadedWorkflow.workflow_type;
+  // Part 53: denormalise the resolved action title onto the doc so the event
+  // planner (the only reader of the doc title) renders `{{ action.title }}` on
+  // every transition — insert and update, new and pre-existing actions.
+  doc.title = actionConfig.title;
   doc.tracker =
     actionConfig.kind === 'tracker'
       ? {

@@ -141,6 +141,7 @@ async function seedWorkflow({ _id = 'wf-1', overrides = {} } = {}) {
   await mongo.db.collection('workflows').insertOne({
     _id,
     workflow_type: 'onboarding',
+    title: 'Onboarding',
     entity_id: 'lead-1',
     entity_collection: 'leads-collection',
     entity_ref_key: 'lead_ids',
@@ -276,7 +277,7 @@ describe('lifecycle event override', () => {
       .collection('events')
       .findOne({ _id: result.event_id });
     expect(eventDoc).not.toBeNull();
-    expect(eventDoc.display['test-app'].title).toBe('Test User closed onboarding');
+    expect(eventDoc.display['test-app'].title).toBe('Test User closed Onboarding');
   });
 });
 

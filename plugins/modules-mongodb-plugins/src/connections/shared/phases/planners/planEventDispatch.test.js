@@ -10,6 +10,7 @@ function makeWorkflow(overrides = {}) {
   return {
     _id: 'wf-1',
     workflow_type: 'onboarding',
+    title: 'Onboarding',
     entity_id: 'lead-1',
     entity_ref_key: 'lead_ids',
     ...overrides,
@@ -20,6 +21,7 @@ function makeAction(overrides = {}) {
   return {
     _id: 'a-1',
     type: 'qualify',
+    title: 'Qualify',
     key: null,
     status: [{ stage: 'done' }],
     ...overrides,
@@ -126,8 +128,8 @@ test('tracker-mirror: internal_mirror_child_cancelled → action-internal-mirror
 
 // ── Render contexts asserted separately ──────────────────────────────────────
 
-test('action-event context: display title renders action.type and status_after', () => {
-  const action = makeAction({ type: 'qualify' });
+test('action-event context: display title renders action.title and the verb', () => {
+  const action = makeAction({ type: 'qualify', title: 'Qualify' });
   const { doc } = dispatch({
     handlerType: 'SubmitWorkflowAction',
     signal: 'submit',
@@ -136,24 +138,23 @@ test('action-event context: display title renders action.type and status_after',
   });
   const title = doc.display[connection.app_name].title;
   expect(title).toContain('Alice');
-  expect(title).toContain('qualify');
-  expect(title).toContain('done');
+  expect(title).toContain('Qualify');
 });
 
-test('workflow-lifecycle context: display title renders workflow.workflow_type (no action)', () => {
+test('workflow-lifecycle context: display title renders workflow.title (no action)', () => {
   const { doc } = dispatch({
     handlerType: 'StartWorkflow',
     allTouchedActionDocs: [makeAction()],
   });
   const title = doc.display[connection.app_name].title;
   expect(title).toContain('Alice');
-  expect(title).toContain('onboarding');
-  // action.type must NOT appear (lifecycle context has no action)
-  expect(title).not.toContain('qualify');
+  expect(title).toContain('Onboarding');
+  // action.title must NOT appear (lifecycle context has no action)
+  expect(title).not.toContain('Qualify');
 });
 
-test('tracker-mirror uses action-event context (action.type visible in render)', () => {
-  const action = makeAction({ type: 'my-tracker' });
+test('tracker-mirror uses action-event context (action.title visible in render)', () => {
+  const action = makeAction({ type: 'my-tracker', title: 'My Tracker' });
   const { doc } = dispatch({
     handlerType: 'tracker-mirror',
     signal: 'internal_mirror_child_completed',
@@ -161,55 +162,90 @@ test('tracker-mirror uses action-event context (action.type visible in render)',
     status_after: 'done',
     allTouchedActionDocs: [action],
   });
-  // Tracker-mirror default title: 'Tracker mirrored child {{ status_after }}'
-  // Does not use action.type but uses status_after
   const title = doc.display[connection.app_name].title;
-  expect(title).toContain('done');
+  expect(title).toBe('My Tracker completed');
 });
 
-// ── Default titles per handler type ──────────────────────────────────────────
+// ── Default titles per signal (Part 53) ──────────────────────────────────────
 
-test('StartWorkflow default title matches spec', () => {
+test('StartWorkflow default title uses workflow.title', () => {
   const { doc } = dispatch({ handlerType: 'StartWorkflow', allTouchedActionDocs: [] });
-  expect(doc.display.demo.title).toBe('Alice started onboarding');
+  expect(doc.display.demo.title).toBe('Alice started Onboarding');
 });
 
-test('SubmitWorkflowAction default title matches spec', () => {
-  const action = makeAction({ type: 'qualify' });
-  const { doc } = dispatch({
-    handlerType: 'SubmitWorkflowAction',
-    signal: 'submit',
-    plannedActionDoc: action,
-    status_after: 'done',
-  });
-  expect(doc.display.demo.title).toBe('Alice marked qualify as done');
+test('CancelWorkflow default title uses workflow.title', () => {
+  const { doc } = dispatch({ handlerType: 'CancelWorkflow', allTouchedActionDocs: [] });
+  expect(doc.display.demo.title).toBe('Alice cancelled Onboarding');
 });
 
-test('CancelWorkflow default title matches spec', () => {
-  const { doc } = dispatch({
-    handlerType: 'CancelWorkflow',
-    allTouchedActionDocs: [],
-  });
-  expect(doc.display.demo.title).toBe('Alice cancelled onboarding');
+test('CloseWorkflow default title uses workflow.title', () => {
+  const { doc } = dispatch({ handlerType: 'CloseWorkflow', allTouchedActionDocs: [] });
+  expect(doc.display.demo.title).toBe('Alice closed Onboarding');
 });
 
-test('CloseWorkflow default title matches spec', () => {
-  const { doc } = dispatch({
-    handlerType: 'CloseWorkflow',
-    allTouchedActionDocs: [],
-  });
-  expect(doc.display.demo.title).toBe('Alice closed onboarding');
+test('submit → done renders "completed"', () => {
+  const { doc } = dispatch({ signal: 'submit', status_after: 'done' });
+  expect(doc.display.demo.title).toBe('Alice completed Qualify');
 });
 
-test('tracker-mirror default title matches spec', () => {
-  const { doc } = dispatch({
+test('submit → in-review renders "submitted … for review"', () => {
+  const { doc } = dispatch({ signal: 'submit', status_after: 'in-review' });
+  expect(doc.display.demo.title).toBe('Alice submitted Qualify for review');
+});
+
+test('approve renders "approved"', () => {
+  const { doc } = dispatch({ signal: 'approve', status_after: 'done' });
+  expect(doc.display.demo.title).toBe('Alice approved Qualify');
+});
+
+test('request_changes renders "requested changes on"', () => {
+  const { doc } = dispatch({ signal: 'request_changes', status_after: 'changes-required' });
+  expect(doc.display.demo.title).toBe('Alice requested changes on Qualify');
+});
+
+test('progress renders "started"', () => {
+  const { doc } = dispatch({ signal: 'progress', status_after: 'in-progress' });
+  expect(doc.display.demo.title).toBe('Alice started Qualify');
+});
+
+test('not_required renders "marked … as not required"', () => {
+  const { doc } = dispatch({ signal: 'not_required', status_after: 'not-required' });
+  expect(doc.display.demo.title).toBe('Alice marked Qualify as not required');
+});
+
+test('resolve_error renders "resolved an error on"', () => {
+  const { doc } = dispatch({ signal: 'resolve_error', status_after: 'in-review' });
+  expect(doc.display.demo.title).toBe('Alice resolved an error on Qualify');
+});
+
+test('an unmapped action signal falls back to "updated", never a raw slug', () => {
+  const { doc } = dispatch({ signal: 'some_future_signal', status_after: 'done' });
+  expect(doc.display.demo.title).toBe('Alice updated Qualify');
+});
+
+test('tracker-mirror default titles are system-driven (no user attribution)', () => {
+  const active = dispatch({
+    handlerType: 'tracker-mirror',
+    signal: 'internal_mirror_child_active',
+    status_after: 'action-required',
+    allTouchedActionDocs: [makeAction()],
+  }).doc;
+  const completed = dispatch({
     handlerType: 'tracker-mirror',
     signal: 'internal_mirror_child_completed',
-    plannedActionDoc: makeAction(),
     status_after: 'done',
     allTouchedActionDocs: [makeAction()],
-  });
-  expect(doc.display.demo.title).toBe('Tracker mirrored child done');
+  }).doc;
+  const cancelled = dispatch({
+    handlerType: 'tracker-mirror',
+    signal: 'internal_mirror_child_cancelled',
+    status_after: 'not-required',
+    allTouchedActionDocs: [makeAction()],
+  }).doc;
+  expect(active.display.demo.title).toBe('Qualify started');
+  expect(completed.display.demo.title).toBe('Qualify completed');
+  expect(cancelled.display.demo.title).toBe('Qualify cancelled');
+  expect(active.display.demo.title).not.toContain('Alice');
 });
 
 // ── app_name keyed display ────────────────────────────────────────────────────
@@ -376,7 +412,7 @@ test('StartWorkflow: yamlEventOverrides metadata override is merged, non-overrid
 
 test('StartWorkflow: no override → engine default title', () => {
   const { doc } = dispatch({ handlerType: 'StartWorkflow', allTouchedActionDocs: [] });
-  expect(doc.display.demo.title).toBe('Alice started onboarding');
+  expect(doc.display.demo.title).toBe('Alice started Onboarding');
 });
 
 test('CancelWorkflow: yamlEventOverrides display override is applied', () => {
@@ -421,7 +457,7 @@ test('tracker-mirror: no override → engine default title', () => {
     allTouchedActionDocs: [makeAction()],
     status_after: 'done',
   });
-  expect(doc.display.demo.title).toBe('Tracker mirrored child done');
+  expect(doc.display.demo.title).toBe('Qualify completed');
 });
 
 test('tracker-mirror: yamlEventOverrides metadata override is merged, non-overridden keys preserved', () => {
@@ -448,7 +484,7 @@ test('Submit: no overrides → uses engine default', () => {
     yamlEventOverrides: undefined,
     preHookEventOverrides: undefined,
   });
-  expect(doc.display.demo.title).toBe('Alice marked qualify as done');
+  expect(doc.display.demo.title).toBe('Alice completed Qualify');
 });
 
 test('Submit: empty-object preHookEventOverrides ({}) produces output identical to no override', () => {
@@ -463,7 +499,7 @@ test('Submit: empty-object preHookEventOverrides ({}) produces output identical 
     yamlEventOverrides: undefined,
     preHookEventOverrides: {},
   });
-  expect(doc.display.demo.title).toBe('Alice marked qualify as done');
+  expect(doc.display.demo.title).toBe('Alice completed Qualify');
   expect(doc.type).toBe('action-submit');
   expect(doc.metadata.action_type).toBe('qualify');
 });

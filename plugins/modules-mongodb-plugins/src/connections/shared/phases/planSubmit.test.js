@@ -58,7 +58,7 @@ function makeConfig({ actions, action_groups } = {}) {
     entity_ref_key: 'lead_ids',
     starting_actions: [{ type: 'qualify', status: 'action-required' }],
     actions: actions ?? [
-      { type: 'qualify', kind: 'form', access: { 'test-app': { view: true, edit: true } } },
+      { type: 'qualify', title: 'Qualify', kind: 'form', access: { 'test-app': { view: true, edit: true } } },
     ],
     ...(action_groups ? { action_groups } : {}),
   };
@@ -378,6 +378,6 @@ test('event override: no overrides anywhere → engine default display title is 
     preHookResult: EMPTY_PREHOOK,
     context: makeContext(),
   });
-  // Engine default: "{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}"
-  expect(plan.event.doc.display['test-app'].title).toBe('Test User marked qualify as done');
+  // Engine default (Part 53): submit → done renders "completed {{ action.title }}".
+  expect(plan.event.doc.display['test-app'].title).toBe('Test User completed Qualify');
 });

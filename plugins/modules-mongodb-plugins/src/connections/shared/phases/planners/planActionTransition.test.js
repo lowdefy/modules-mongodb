@@ -164,6 +164,31 @@ test('persists denormalised access and workflow_type on the composed doc', () =>
   expect(result.doc.workflow_type).toBe('onboarding');
 });
 
+test('stamps the denormalised action title on the update path', () => {
+  const actionConfig = makeConfig({ title: 'Qualify Lead' });
+  const result = plan({ actionConfig });
+  expect(result.operation).toBe('update');
+  expect(result.doc.title).toBe('Qualify Lead');
+});
+
+test('stamps the denormalised action title on the insert path', () => {
+  const result = planActionTransition({
+    action: null,
+    signal: 'activate',
+    source: 'auxiliary',
+    upsert: true,
+    key: 'k-1',
+    actionConfig: makeConfig({ type: 'install-step', kind: 'check', title: 'Install Step' }),
+    loadedWorkflow,
+    entry_id,
+    event_id,
+    now,
+    newId: () => 'new-1',
+  });
+  expect(result.operation).toBe('insert');
+  expect(result.doc.title).toBe('Install Step');
+});
+
 test('update path refreshes tracker block incl. start_link from config', () => {
   // Loaded doc has a stale tracker without start_link; config declares one —
   // the denorm refresh must write the full block from config.

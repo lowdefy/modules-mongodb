@@ -50,7 +50,7 @@ function makeConfig({ actions } = {}) {
     entity_collection: 'parents',
     entity_ref_key: 'parent_ids',
     action_groups: [],
-    actions: actions ?? [{ type: 'track-child', kind: 'tracker', tracker: { child_workflow_type: 'child' } }],
+    actions: actions ?? [{ type: 'track-child', title: 'Track Child', kind: 'tracker', tracker: { child_workflow_type: 'child' } }],
   };
 }
 
@@ -196,5 +196,5 @@ test('no event_overrides on tracker actionConfig → mirror event uses engine de
   // Baseline: no event_overrides key on the config — engine default applies.
   const plan = planTrackerLevel(makeLoaded(), baseArgs);
   expect(plan).not.toBeNull();
-  expect(plan.event.doc.display['test-app'].title).toBe('Tracker mirrored child done');
+  expect(plan.event.doc.display['test-app'].title).toBe('Track Child completed');
 });

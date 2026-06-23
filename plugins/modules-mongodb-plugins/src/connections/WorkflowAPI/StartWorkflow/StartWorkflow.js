@@ -170,6 +170,10 @@ async function StartWorkflow(lowdefyContext) {
     ...params.references,
     _id: newId(),
     workflow_type: params.workflow_type,
+    // Part 53: persist the resolved workflow title so lifecycle events render
+    // `{{ workflow.title }}` (StartWorkflow binds it directly; Cancel/Close
+    // inherit it from the loaded doc with no config re-read).
+    title: workflowConfig.title,
     key: workflowConfig.key ?? null,
     display_order: workflowConfig.display_order,
     entity_id: params.entity_id,

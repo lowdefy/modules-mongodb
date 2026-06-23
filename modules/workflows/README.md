@@ -82,7 +82,9 @@ At runtime the engine resolves each submission as a **signal** against the actio
 
 ## Authoring actions
 
-Every action declares a `kind:` — `form`, `check`, or `tracker` — and an `access:` block. The action-level fields the engine reads at runtime are `type`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, and `status_map`. Build-time-only fields (`form`, `hooks`, `event`, `pages`) are consumed by the resolvers. Schema source of truth: [`makeWorkflowsConfig.js`](resolvers/makeWorkflowsConfig.js) and [`action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md).
+Every action declares a `kind:` — `form`, `check`, or `tracker` — and an `access:` block. The action-level fields the engine reads at runtime are `type`, `title`, `kind`, `key`, `tracker`, `blocked_by`, `action_group`, `required_after_close`, `allow_not_required`, `access`, and `status_map`. Build-time-only fields (`form`, `hooks`, `event`, `pages`) are consumed by the resolvers. Schema source of truth: [`makeWorkflowsConfig.js`](resolvers/makeWorkflowsConfig.js) and [`action-authoring/spec.md`](../../designs/workflows-module-concept/action-authoring/spec.md).
+
+Actions, workflows, and action groups all accept an optional **`title:`**. When omitted it derives from the slug (`type`/`id`) via the title humanizer — set `title:` only when the default is wrong (acronyms, custom phrasing). Each action's pages (`view`/`edit`/`review`/`error`) default their page title to the action title too, unless a per-verb `pages[verb].title` overrides it. See [Titles](../../docs/idioms.md#titles) for the derive-or-override rule, the acronym dictionary, and the event-message signal verb map.
 
 ### Access (`access:`)
 
@@ -408,6 +410,10 @@ The `actions` collection must remain free of any collection-level required-field
 ### `workflow_lifecycle_stages_display`
 
 `object` — Defaults to `{}`. Same shape as `action_statuses_display` for the three workflow lifecycle stages (`active`, `completed`, `cancelled`).
+
+### `title_acronyms`
+
+`array` — Defaults to `[]`. Domain acronyms (e.g. `[BOM, SKU]`) merged into the module's base acronym set and applied by the title humanizer when deriving default titles from workflow/action/group slugs (e.g. `upload-bom` → "Upload BOM"). The base set ships in the module; this var extends it. Has no effect on explicitly authored `title:` values. See [Titles](../../docs/idioms.md#titles).
 
 ## Secrets
 

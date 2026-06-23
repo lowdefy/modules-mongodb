@@ -126,6 +126,87 @@ When the consumer doesn't override `event_display`, the build wraps these templa
 
 ---
 
+## Titles
+
+<a name="titles"></a>
+
+The **workflows module** needs human-readable titles for many things — workflows, actions, action groups, the action's pages, and the verb in every timeline event ("Sam submitted Send Quote"). The convention: **every title gets a good default derived from what's already declared, and authors override only when the default is wrong.** Authors stop writing a title for every action; the override is the exception, not the rule.
+
+### Derive-or-override rule
+
+Every title-bearing concept resolves the same way — **explicit `title` wins; else derive from the slug; materialized once at build:**
+
+| Concept | Slug source | Default | Override |
+|---|---|---|---|
+| Workflow title | `workflow.type` | `humanizeSlug(type)` | `workflow.title` |
+| Action title | `action.type` | `humanizeSlug(type)` | `action.title` |
+| Action group title | group `id` | `humanizeSlug(id)` | `action_groups[].title` |
+| Action page title | — | the resolved action title | `action.pages[verb].title` |
+
+Defaulting happens once in `makeWorkflowsConfig` (build), which writes the resolved `title` onto the runtime config so every config-reading surface (overview, entity-workflow cards, action steps, action pages) reads a guaranteed-present `title` with no runtime fallback. The resolved titles are also denormalized onto the persisted workflow/action docs so the event planner renders them. An explicit `title:` is always preserved verbatim.
+
+### `humanizeSlug` behavior
+
+The humanizer turns a slug into Title Case:
+
+```
+send-quote             → Send Quote
+assign-account-manager → Assign Account Manager
+upload-po              → Upload PO          (acronym)
+convert-to-customer    → Convert to Customer (minor word lowercased mid-string)
+company_setup          → Company Setup       (snake_case)
+kickoffCall            → Kickoff Call        (camelCase boundary)
+```
+
+Rules, in order: split on `-`/`_`/camelCase boundaries → Title Case each token → **minor words** (`a an and as at but by for from in nor of on or the to via with`) are lowercased **unless** first or last token (so `to-do` → "To Do") → **acronyms** are fully uppercased always (regardless of position, taking precedence over minor-word lowercasing) → the first token always starts with a capital.
+
+### Acronym dictionary
+
+A token whose lowercased form is in the acronym set is fully uppercased. The base set ships in the module:
+
+```
+PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ
+```
+
+Domain acronyms (BOM, SKU, …) are app-specific, so the set is extensible via the workflows module's **`title_acronyms`** var — merged into the base set and applied to all derived defaults:
+
+```yaml
+modules:
+  - id: workflows
+    vars:
+      title_acronyms: [BOM, SKU]   # "upload-bom" → "Upload BOM"
+```
+
+`title_acronyms` has no effect on explicitly authored `title:` values.
+
+### Curated vs derived
+
+Only **open, author-defined** slugs (`workflow.type`, `action.type`, group `id`) are humanized. **Fixed, engine-known** slug sets are curated once in the module and never derived: action statuses (`action_statuses.yaml`), workflow lifecycle stages (`workflow_lifecycle_stages.yaml`), and **FSM signals** (the event verb map below). Authors never see or set the curated strings.
+
+### Signal verb map
+
+Timeline event messages combine a **curated signal verb** × the **derived-or-overridden noun title**. The FSM signal set is closed, so verbs are hand-written once (not humanized). Engine defaults:
+
+| Signal | Default message |
+|---|---|
+| `submit` → done | `{{user}} completed {{action.title}}` |
+| `submit` → in-review | `{{user}} submitted {{action.title}} for review` |
+| `approve` | `{{user}} approved {{action.title}}` |
+| `request_changes` | `{{user}} requested changes on {{action.title}}` |
+| `progress` | `{{user}} started {{action.title}}` |
+| `not_required` | `{{user}} marked {{action.title}} as not required` |
+| `resolve_error` | `{{user}} resolved an error on {{action.title}}` |
+| `internal_mirror_child_active` | `{{action.title}} started` *(system-driven; no user)* |
+| `internal_mirror_child_completed` | `{{action.title}} completed` |
+| `internal_mirror_child_cancelled` | `{{action.title}} cancelled` |
+| StartWorkflow | `{{user}} started {{workflow.title}}` |
+| CancelWorkflow | `{{user}} cancelled {{workflow.title}}` |
+| CloseWorkflow | `{{user}} closed {{workflow.title}}` |
+
+Any unmapped action signal falls back to `{{user}} updated {{action.title}}` — never a raw slug. These are **defaults only**; an app still overrides any signal's message via the 3-source `event_overrides[signal]` chain (engine → YAML → pre-hook), unchanged.
+
+---
+
 ## Live action cards
 
 <a name="live-action-cards"></a>

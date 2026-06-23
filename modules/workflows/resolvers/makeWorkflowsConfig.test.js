@@ -754,17 +754,99 @@ test("validateTrackerStartLink: rejects urlQuery with non-string static — bool
   );
 });
 
-// --- title (WORKFLOW_FIELDS) ------------------------------------------------
+// --- title materialization (workflow / action / group) ----------------------
 
-test("makeWorkflowsConfig: title flows through to validated workflow", () => {
-  const workflow = { ...validWorkflow, title: "Onboarding" };
+test("makeWorkflowsConfig: explicit workflow title flows through verbatim", () => {
+  const workflow = { ...validWorkflow, title: "Custom Onboarding" };
   const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
-  expect(out.title).toBe("Onboarding");
+  expect(out.title).toBe("Custom Onboarding");
 });
 
-test("makeWorkflowsConfig: workflow without title has no title on output", () => {
-  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
-  expect("title" in out).toBe(false);
+test("makeWorkflowsConfig: workflow without title derives it from type", () => {
+  const workflow = { ...validWorkflow, type: "company-setup" };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.title).toBe("Company Setup");
+});
+
+test("makeWorkflowsConfig: action without title derives it from type", () => {
+  const workflow = {
+    ...validWorkflow,
+    starting_actions: [{ type: "upload-po", status: "action-required" }],
+    actions: [{ type: "upload-po", kind: "check" }],
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.actions[0].title).toBe("Upload PO");
+});
+
+test("makeWorkflowsConfig: explicit action title wins over the derived default", () => {
+  const workflow = {
+    ...validWorkflow,
+    starting_actions: [{ type: "upload-po", status: "action-required" }],
+    actions: [{ type: "upload-po", kind: "check", title: "Send the PO" }],
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.actions[0].title).toBe("Send the PO");
+});
+
+test("makeWorkflowsConfig: group title — explicit wins, else derived from id (2-tier)", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    action_groups: [{ id: "kickoff-call", title: "Kickoff" }, { id: "billing-details" }],
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [{ type: "qualify", kind: "check", action_group: "kickoff-call" }],
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.action_groups[0].title).toBe("Kickoff");
+  expect(out.action_groups[1].title).toBe("Billing Details");
+});
+
+test("makeWorkflowsConfig: title_acronyms extends the humanizer for all defaults", () => {
+  const workflow = {
+    type: "manage-bom",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    action_groups: [{ id: "bom-review" }],
+    starting_actions: [{ type: "upload-bom", status: "action-required" }],
+    actions: [{ type: "upload-bom", kind: "check", action_group: "bom-review" }],
+  };
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [workflow],
+    title_acronyms: ["BOM"],
+  });
+  expect(out.title).toBe("Manage BOM");
+  expect(out.actions[0].title).toBe("Upload BOM");
+  expect(out.action_groups[0].title).toBe("BOM Review");
+});
+
+test("makeWorkflowsConfig: rejects a non-string workflow title", () => {
+  const workflow = { ...validWorkflow, title: 42 };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /workflow title must be a string when present/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a non-string action title", () => {
+  const workflow = {
+    ...validWorkflow,
+    actions: [{ type: "do-it", kind: "check", title: { x: 1 } }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /action "do-it" title must be a string when present/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a non-string group title", () => {
+  const workflow = {
+    ...validWorkflow,
+    action_groups: [{ id: "phase-1", title: 7 }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /action_groups "phase-1" title must be a string when present/,
+  );
 });
 
 // --- form_meta (form-kind actions) ------------------------------------------

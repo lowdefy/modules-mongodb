@@ -1,5 +1,5 @@
 type: company-setup
-title: Company setup
+# title omitted — derives to "Company Setup" via humanizeSlug (docs/idioms.md#titles).
 entity_collection:
   _module.connectionId: { id: companies-collection, module: companies }
 entity_ref_key: company_ids
@@ -14,8 +14,8 @@ starting_actions:
     status: blocked
 
 action_groups:
+  # title omitted — derives to "Setup" via humanizeSlug (docs/idioms.md#titles).
   - id: setup
-    title: Setup
     icon: AiOutlineSetting
 
 actions:

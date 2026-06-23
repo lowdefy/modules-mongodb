@@ -1,5 +1,5 @@
 type: onboarding
-title: Onboarding
+# title omitted — derives to "Onboarding" via humanizeSlug (docs/idioms.md#titles).
 entity_collection: leads-collection
 entity_ref_key: lead_ids
 display_order: 1
@@ -21,6 +21,8 @@ starting_actions:
 # No blocked_by on groups — groups are blocked_by *targets* (an action's
 # blocked_by entry may name a group id), never carriers; the engine reads
 # blocked_by only on actions. Sequencing lives on the actions below.
+# Group titles below override the derived defaults ("Qualification", "Quoting",
+# "Order", "Conversion") where the slug humanizes to a less apt label.
 action_groups:
   - id: qualification
     title: Qualify

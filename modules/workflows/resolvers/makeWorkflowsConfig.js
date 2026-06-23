@@ -1,5 +1,6 @@
 import { HOOK_SIGNALS, HOOK_PHASES, MIRROR_SIGNALS, LIFECYCLE_SIGNALS } from './hookSignals.js';
 import { collectTrackerEdges } from './trackerEdges.js';
+import { humanizeSlug } from './humanizeSlug.js';
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
@@ -15,6 +16,7 @@ import { collectTrackerEdges } from './trackerEdges.js';
 // it's no longer carried on the blob.
 const ACTION_FIELDS = [
   'type',
+  'title',
   'kind',
   'key',
   'tracker',
@@ -458,6 +460,13 @@ function validateAction(workflow, action) {
     );
   }
 
+  if ('title' in action && typeof action.title !== 'string') {
+    fail(
+      workflow.type,
+      `${where} title must be a string when present (got: ${JSON.stringify(action.title)}).`
+    );
+  }
+
   validateActionAccess(workflow, action);
   validateStatusMapCells(workflow, action);
   validateTrackerChildWorkflowType(workflow, action);
@@ -506,6 +515,13 @@ function validateWorkflow(workflow) {
     );
   }
 
+  if ('title' in workflow && typeof workflow.title !== 'string') {
+    fail(
+      workflow.type,
+      `workflow title must be a string when present (got: ${JSON.stringify(workflow.title)}).`
+    );
+  }
+
   validateWorkflowEvent(workflow);
 
   const actions = workflow.actions ?? [];
@@ -529,6 +545,12 @@ function validateWorkflow(workflow) {
       );
     }
     groupIds.add(group.id);
+    if ('title' in group && typeof group.title !== 'string') {
+      fail(
+        workflow.type,
+        `action_groups "${group.id}" title must be a string when present (got: ${JSON.stringify(group.title)}).`
+      );
+    }
     validateGroupOnComplete(workflow, group);
   }
 
@@ -628,13 +650,18 @@ function validateTrackerEdges(workflows) {
 }
 
 function makeWorkflowsConfig(_, vars) {
-  const { workflows } = vars;
+  const { workflows, title_acronyms = [] } = vars;
 
   const result = workflows.map((workflow) => {
     validateWorkflow(workflow);
 
     const actions = (workflow.actions ?? []).map((action) => {
       const picked = pick(action, ACTION_FIELDS);
+
+      // Title default: explicit `action.title` wins; else derive from `type`.
+      // Materialized once here so every config-reading surface reads a
+      // guaranteed-present title with no runtime fallback.
+      picked.title = action.title ?? humanizeSlug(action.type, title_acronyms);
 
       // Default allow_not_required to false (opt-in; preserves Part 39 D3's
       // safety rationale). Validation already rejected non-boolean values above.
@@ -658,8 +685,20 @@ function makeWorkflowsConfig(_, vars) {
       return picked;
     });
 
+    // Group title default: explicit `group.title` wins (enum-supplied titles
+    // arrive inline here too, _ref'd upstream — the resolver can't and needn't
+    // distinguish them from an author override); else derive from the group id.
+    const actionGroups = (workflow.action_groups ?? []).map((group) => ({
+      ...group,
+      title: group.title ?? humanizeSlug(group.id, title_acronyms),
+    }));
+
     return {
       ...pick(workflow, WORKFLOW_FIELDS),
+      // Workflow title default: explicit `workflow.title` wins; else derive
+      // from `type`. Set after the pick so it fills the gap when omitted.
+      title: workflow.title ?? humanizeSlug(workflow.type, title_acronyms),
+      ...(actionGroups.length > 0 ? { action_groups: actionGroups } : {}),
       actions,
     };
   });

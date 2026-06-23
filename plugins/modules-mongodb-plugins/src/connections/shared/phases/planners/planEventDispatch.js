@@ -9,18 +9,52 @@ const MIRROR_TYPE_MAP = {
   internal_mirror_child_cancelled: 'action-internal-mirror-cancelled',
 };
 
-// Engine-default title templates (plain Nunjucks strings) per design D12.
-const DEFAULT_TITLES = {
+// Engine-default lifecycle title templates (plain Nunjucks strings), composed
+// over the denormalised `workflow.title` (Part 53).
+const LIFECYCLE_TITLES = {
   'workflow-started':
-    '{{ user.profile.name }} started {{ workflow.workflow_type }}',
+    '{{ user.profile.name }} started {{ workflow.title }}',
   'workflow-cancelled':
-    '{{ user.profile.name }} cancelled {{ workflow.workflow_type }}',
+    '{{ user.profile.name }} cancelled {{ workflow.title }}',
   'workflow-closed':
-    '{{ user.profile.name }} closed {{ workflow.workflow_type }}',
-  'action-event':
-    '{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}',
-  'tracker-mirror': 'Tracker mirrored child {{ status_after }}',
+    '{{ user.profile.name }} closed {{ workflow.title }}',
 };
+
+// Curated per-signal verb templates for action events (Part 53; supersedes the
+// part-51 F24 / D6 catch-all). The FSM signal is known at dispatch and its set
+// is closed, so verbs are hand-written once over the always-present
+// `{{ action.title }}` — not humanized. `submit` is the only signal whose verb
+// branches on status_after ("completed" vs "submitted … for review"); the
+// mirror signals are system-driven and never attribute to a user.
+const DEFAULT_SIGNAL_TITLES = {
+  approve: '{{ user.profile.name }} approved {{ action.title }}',
+  request_changes:
+    '{{ user.profile.name }} requested changes on {{ action.title }}',
+  progress: '{{ user.profile.name }} started {{ action.title }}',
+  not_required:
+    '{{ user.profile.name }} marked {{ action.title }} as not required',
+  resolve_error:
+    '{{ user.profile.name }} resolved an error on {{ action.title }}',
+  internal_mirror_child_active: '{{ action.title }} started',
+  internal_mirror_child_completed: '{{ action.title }} completed',
+  internal_mirror_child_cancelled: '{{ action.title }} cancelled',
+};
+
+// Defensive fallback for any primary action signal not in the map above.
+// Auxiliary signals (block/activate/unblock, internal_cancel_action) never
+// reach planEventDispatch, so this never fires in practice — but it guarantees
+// a clean message instead of a raw slug if the signal set ever grows.
+const ACTION_FALLBACK_TITLE =
+  '{{ user.profile.name }} updated {{ action.title }}';
+
+function resolveActionSignalTitle(signal, status_after) {
+  if (signal === 'submit') {
+    return status_after === 'in-review'
+      ? '{{ user.profile.name }} submitted {{ action.title }} for review'
+      : '{{ user.profile.name }} completed {{ action.title }}';
+  }
+  return DEFAULT_SIGNAL_TITLES[signal] ?? ACTION_FALLBACK_TITLE;
+}
 
 /**
  * Plan-phase event planner (design D3 / D12). Composes and renders the full
@@ -132,23 +166,23 @@ function planEventDispatch({
       );
     }
     isActionEvent = true;
-    titleTemplate = DEFAULT_TITLES['tracker-mirror'];
+    titleTemplate = resolveActionSignalTitle(signal, status_after);
   } else if (isSubmit) {
     eventType = `action-${signal}`;
     isActionEvent = true;
-    titleTemplate = DEFAULT_TITLES['action-event'];
+    titleTemplate = resolveActionSignalTitle(signal, status_after);
   } else if (handlerType === 'StartWorkflow') {
     eventType = 'workflow-started';
     isActionEvent = false;
-    titleTemplate = DEFAULT_TITLES['workflow-started'];
+    titleTemplate = LIFECYCLE_TITLES['workflow-started'];
   } else if (handlerType === 'CancelWorkflow') {
     eventType = 'workflow-cancelled';
     isActionEvent = false;
-    titleTemplate = DEFAULT_TITLES['workflow-cancelled'];
+    titleTemplate = LIFECYCLE_TITLES['workflow-cancelled'];
   } else if (handlerType === 'CloseWorkflow') {
     eventType = 'workflow-closed';
     isActionEvent = false;
-    titleTemplate = DEFAULT_TITLES['workflow-closed'];
+    titleTemplate = LIFECYCLE_TITLES['workflow-closed'];
   } else {
     throw new WorkflowEngineError(
       `planEventDispatch: unknown handlerType "${handlerType}".`,

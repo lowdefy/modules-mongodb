@@ -18,6 +18,7 @@ function makeWorkflowsConfig({ withGroups = false, startingActions } = {}) {
   return [
     {
       type: 'onboarding',
+      title: 'Onboarding',
       entity_collection: 'leads-collection',
       entity_ref_key: 'lead_ids',
       starting_actions:
@@ -233,6 +234,23 @@ describe('handler return payload', () => {
     expect(wf.status[0].event_id).toBe(result.event_id);
     expect(wf.entity_ref_key).toBe('lead_ids');
   });
+
+  test('the base workflow doc carries the denormalised title from config', async () => {
+    const config = makeWorkflowsConfig();
+    config[0].title = 'Customer Onboarding';
+    await StartWorkflow(
+      buildContext({
+        request: {
+          workflow_type: 'onboarding',
+          entity_id: 'lead-1',
+          entity_collection: 'leads-collection',
+        },
+        workflowsConfig: config,
+      }),
+    );
+    const wf = await readOneWorkflow();
+    expect(wf.title).toBe('Customer Onboarding');
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -281,7 +299,7 @@ describe('lifecycle event override', () => {
       .collection('events')
       .findOne({ _id: result.event_id });
     expect(eventDoc).not.toBeNull();
-    expect(eventDoc.display['test-app'].title).toBe('Test User started onboarding');
+    expect(eventDoc.display['test-app'].title).toBe('Test User started Onboarding');
   });
 });
 

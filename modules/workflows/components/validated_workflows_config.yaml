@@ -5,3 +5,5 @@ _ref:
   vars:
     workflows:
       _module.var: workflows_config
+    title_acronyms:
+      _module.var: title_acronyms

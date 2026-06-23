@@ -44,7 +44,9 @@ vars:
       object with `type`, `entity_collection`, `entity_ref_key` (the event-references
       key for the workflow's entity, e.g. `lead_ids` — required), `starting_actions`,
       `action_groups`, and `actions` (see
-      workflows-module-concept/action-authoring/spec.md).
+      workflows-module-concept/action-authoring/spec.md). Workflows, actions, and
+      action groups accept an optional `title:`; when omitted it is derived from
+      the slug (`type`/`id`) by the title humanizer (see docs/idioms.md#titles).
   app_name:
     type: string
     required: true
@@ -86,6 +88,16 @@ vars:
       Per-stage display overrides for the shipped workflow_lifecycle_stages
       enum. Same merge semantics as action_statuses_display: UI-only,
       cannot affect engine logic.
+  title_acronyms:
+    type: array
+    default: []
+    description: >
+      Domain acronyms (e.g. [BOM, SKU]) merged into the module's base acronym
+      set and applied by the title humanizer when deriving default titles from
+      workflow/action/group slugs. A token whose lowercased form matches an entry
+      is fully uppercased in derived titles (e.g. "upload-bom" → "Upload BOM").
+      Base set ships in the module; this var extends it. Has no effect on
+      explicitly authored `title:` values. See docs/idioms.md#titles.
 
 exports:
   components:
@@ -162,6 +174,8 @@ pages:
             _module.var: workflows_config
           app_name:
             _module.var: app_name
+          title_acronyms:
+            _module.var: title_acronyms
 
 plugins:
   - name: '@lowdefy/modules-mongodb-plugins'
