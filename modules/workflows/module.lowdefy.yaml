@@ -114,12 +114,9 @@ vars:
       Collection name the timeline lookup (GetEventsTimeline) joins to resolve
       each event author's avatar (created.user.id → _id, projecting
       profile.picture). Defaults to `user-contacts` — the shared collection
-      where a user IS a contact (same _id space).
-      TODO: this duplicates the collection name owned by the contacts module's
-      `contacts-collection` connection. Ideally the workflow-api connection
-      would derive it from the contacts module rather than re-declaring it here.
-      For now it stays an independent var: a host app that points contacts at a
-      custom collection (via its own connection override) sets this to match.
+      where a user IS a contact (same _id space). Set this to match your
+      contacts collection name if the host app points the contacts module at a
+      custom collection.
 
 exports:
   components:
