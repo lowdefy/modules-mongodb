@@ -19,6 +19,8 @@ repo. The findings below are the gaps.
 
 ### 1. The check surface's mandatory `request_changes` comment is the *modal* input at `:626` — which already has `required` + a validate; D5/task 07 target the wrong block
 
+> **Resolved.** Confirmed in the working tree: two `current_action.comment` `TiptapInput`s (optional `:268`, mandatory modal `:626`), shared id, modal `Validate` at `:599` fires both. Rather than retarget to `:626` and keep relying on the shared id staying benign, fixed the root cause: **split the modal comment onto its own path `current_action.change_request_comment`** (id, `Validate` regex, submit payload, `onClose` reset, onMount seed) and tightened *its* `_ne null` validate to the text-or-fileList fold gate; the optional `:268` input and the five signal-button payloads stay on `current_action.comment`, validate-free. This mirrors the form template's two-path model and removes the coupling. Updated D5, Files-changed, In-scope, Background (capture/send), task 07 (Context + step 2 + Files + Notes), and tasks.md.
+
 D5, Files-changed (`:106`), and task 07 step 2 all assert that on the check surface the
 mandatory `request_changes` comment is `current_action.comment` at
 `check-action-surface.yaml:268`, which "needs a `validate` rule **added** (it has none
@@ -92,6 +94,8 @@ fields path).
 ## Minor
 
 ### 3. The two surfaces model the optional-vs-mandatory comment differently — worth one line so the validate fix isn't mis-ported
+
+> **Rejected — asymmetry removed by the id split in #1.** The split (resolution to #1) puts the check surface on the same two-path model as the form template (optional `comment`/`current_action.comment` + mandatory `change_request_comment`/`current_action.change_request_comment`), so there is no longer an asymmetry to warn about. Task 07's Notes record the now-symmetric model instead.
 
 The form review template uses **two distinct state paths** — optional `comment` (`:171`)
 and mandatory `change_request_comment` (`:380`) — so tightening one leaves the other
