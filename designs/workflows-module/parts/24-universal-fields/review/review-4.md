@@ -38,6 +38,8 @@ The findings below are the gaps that remain.
 
 ### 1. The kind-based guard, as specified, regresses cascade/auxiliary `fields` seeding on form-kind actions
 
+> **Resolved.** Verified: `kickoff` is `kind: form` and the create-path spread seeds `description: 'spawned'` (`SubmitWorkflowAction.test.js`), so guarding both spreads on `kind: check` breaks it. Scoped the guard to the **update path (`:170`) only**; the **create/upsert path (`:162`) stays unconditional** (cascade/auxiliary seeding writes fields for any kind — it's initialization). Updated design.md ("Submit-planner guard" + `planActionTransition.js` Files-changed bullet) and task 06 (Context, steps 2–4, acceptance criteria, test cases). Added the `kickoff` upsert as the named regression guard.
+
 This is the load-bearing finding. design.md:160 and :221 specify the submit-planner guard as:
 
 > "the planner writes `assignees` / `due_date` / `description` only for `kind: check` … For `kind: form`
@@ -78,6 +80,8 @@ test above as the regression guard the implementer must keep green.
 
 ### 2. `DEFAULT_TITLES` does not exist; the event-title plumbing described doesn't match shipped `planEventDispatch`
 
+> **Resolved (auto).** Confirmed no `DEFAULT_TITLES` map exists; titles flow through the `titleTemplate` if/else chain (`planEventDispatch.js:156-185`) over `LIFECYCLE_TITLES` / `DEFAULT_SIGNAL_TITLES` / `ACTION_FALLBACK_TITLE`. Reworded design.md (Plan bullet + `planEventDispatch` Files-changed bullet) and task 01 to describe adding an `UpdateActionFields` branch to that chain (not a map entry), reusing `ACTION_FALLBACK_TITLE` (`'{{ user.profile.name }} updated {{ action.title }}'`). Fixed task 01's title copy from `{{ action.type }}` to `{{ action.title }}`.
+
 design.md:152 and :220 (and task 1) instruct the new handler type to add "a `DEFAULT_TITLES` entry".
 There is **no `DEFAULT_TITLES` map anywhere in source** (verified: `grep -rn DEFAULT_TITLES
 plugins/.../src modules` → none). The shipped title machinery in
@@ -106,6 +110,8 @@ Two sub-issues to fix while there:
 
 ### 3. `api/get-entity-workflows.yaml:62-71` citation is stale — the cell now comes from the `GetEntityWorkflows` handler
 
+> **Resolved (auto).** Verified `GetEntityWorkflows.js:91` is the authoritative read (`const message = action[app_name]?.message ?? null`). Repointed design.md:36 from `api/get-entity-workflows.yaml:62-71` to `GetEntityWorkflows.js:91`. Conclusion (re-render the cell on the action doc, no workflow write) unchanged.
+
 The "re-render the cell, write only the action doc" rationale is **correct** (re-verified): the entity
 card sources the rendered cell from the action doc's top-level field. But design.md:36 still cites
 `api/get-entity-workflows.yaml:62-71` as the proof. That read path moved to the Part-46 plugin handler,
@@ -121,6 +127,8 @@ sufficient.
 
 ### 4. "writes the three named fields" vs "written exactly as today" — pick one
 
+> **Resolved.** Same edit as #1: design.md:160 now states the rule as gating the **existing** `...payload.fields` spread (stripping the three universal keys from the bag unless `kind: check`), not enumerating three named `$set`s — so a `check` submit keeps its full bag and the two phrasings no longer conflict. Task 06 already filtered only the three keys (other keys pass through verbatim); its wording was aligned to the update-path-only scope.
+
 design.md:160 says both (a) "the planner writes `assignees` / `due_date` / `description` only for
 `kind: check`" and (b) "Check submit is unaffected: its `fields` payload is written **exactly as
 today**." (a) reads as enumerating three named `$set`s; (b) is the full `...payload.fields` bag. An
@@ -130,6 +138,8 @@ gate the **existing spread** on kind/source (`...(kind === 'check' ? payload.fie
 path), preserving the full bag for check. State it that way so the two sentences stop disagreeing.
 
 ### 5. Re-anchor the remaining `loadWorkflowState` line numbers
+
+> **Resolved.** Re-verified against source: the submit discriminator is at `loadWorkflowState.js:110` (matching design.md, *not* `:113` as this finding claimed — left unchanged). The `:43-46` invariant ref had genuinely drifted (those lines are now the `gateAllows` helper body); repointed design.md:154 to the actual access-gate site `:216-219` (the `verbs.some(gateAllows…)` check that throws before reads return).
 
 Two citations drifted under Parts 48/49 (the design already warns to re-anchor, so this is a
 nudge, not a contradiction): the submit discriminator is at `loadWorkflowState.js:113`, not `:110`
