@@ -2,3 +2,8 @@ app_name:
   _ref:
     path: app_config.yaml
     key: app_name
+# Wired for the error-recovery cluster (Part 22 task 6): dispatches a real
+# notification from the trigger submit event, exercising the cross-module
+# callApi the plugin integration tests mock.
+send_routine:
+  _ref: modules/notifications/send-routine.yaml

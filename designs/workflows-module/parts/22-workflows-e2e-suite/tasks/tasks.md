@@ -12,8 +12,8 @@ These tasks implement `designs/workflows-module/parts/22-workflows-e2e-suite/des
 | 2   | `02-e2e-harness-and-workflow-fixture.md`| Playwright harness (port 3001) + `workflow` fixture driving real Lowdefy APIs + boot smoke spec       | 1          | ✅ Done (`2197fbb`) |
 | 3   | `03-cluster-form-lifecycle.md`          | Template cluster: review-verb form lifecycle (submit/approve/request_changes/progress/not_required)   | 2          | ✅ Done (`2f97a7e`) |
 | 4   | `04-cluster-check-blocked-by.md`        | Check actions with type dep + group-id dep; blocker completion unblocks dependents                    | 3          | ✅ Done (`0a6ec7d`) |
-| 5   | `05-cluster-cascade-keyed.md`           | Pre-hook cascade `block`/`error`/`activate` at siblings + `upsert: true` keyed spawn                  | 3          | ⬜ To do |
-| 6   | `06-cluster-error-recovery.md`          | Error-verb path: cascade to error stage, event + notification, `-error` page, resolve → done          | 3          | ⬜ To do |
+| 5   | `05-cluster-cascade-keyed.md`           | Pre-hook cascade `block`/`error`/`activate` at siblings + `upsert: true` keyed spawn                  | 3          | ✅ Done |
+| 6   | `06-cluster-error-recovery.md`          | Error-verb path: cascade to error stage, event + notification, `-error` page, resolve → done          | 3          | ✅ Done |
 | 7   | `07-cluster-tracker-child.md`           | Parent tracker mirrors child workflow lifecycle, incl. terminal-row recovery                          | 3          | ⬜ To do |
 | 8   | `08-cluster-field-gallery.md`           | Render sweep over all 27 field components + behaviors spec on one representative per family           | 3          | ⬜ To do |
 | 9   | `09-cluster-operational-lifecycle.md`   | Tail-only: start/cancel/close/get-* operational APIs end-to-end, close-sweep edge cases               | 3          | ⬜ To do |
@@ -24,7 +24,7 @@ These tasks implement `designs/workflows-module/parts/22-workflows-e2e-suite/des
 
 ## Progress
 
-**Tasks 1–4 complete** (branch `part-22-e2e-tasks-1-4`). Tasks 5–13 remain.
+**Tasks 1–6 complete.** Tasks 7–13 remain. (Tasks 5–6 added the `cascade-keyed` and `error-recovery` cluster fixtures + specs; the `error-recovery` `-error` page is the first to compile `templates/error.yaml.njk`, which surfaced and fixed a latent `_js` operator shape bug there — `{ params, body }` → `{ args, fn }`. The `error-recovery` cluster also wires the test app's notifications `send_routine` to dispatch a real notification from the trigger submit event, satisfying the design's cross-module-dispatch Verification item.)
 
 **⚠️ Target-state pivot — read before implementing tasks 5–10.** This suite is written against the **target state of the in-flight parts 40/46/48**, not current `main`. Two facts the remaining cluster tasks must follow (tasks 3–4 already do):
 

@@ -2,3 +2,5 @@
 # `_ref` entries to this list, one per cluster workflow.
 - _ref: modules/workflows/workflow_config/form-lifecycle/form-lifecycle.yaml
 - _ref: modules/workflows/workflow_config/check-blocked-by/check-blocked-by.yaml
+- _ref: modules/workflows/workflow_config/cascade-keyed/cascade-keyed.yaml
+- _ref: modules/workflows/workflow_config/error-recovery/error-recovery.yaml

@@ -1,0 +1,37 @@
+# The action that lands in error and is recovered. It is `kind: form` with the
+# `error` AND `review` verbs:
+#   - `error` makes makeActionPages emit the error-recovery-fragile-error page
+#     from templates/error.yaml.njk (the only cluster covering an `-error` page).
+#   - `review` covers the post-resolve approval: resolve_error routes the action
+#     to in-review (FSM `error` row), and an `approve` from the review page lands
+#     it `done`.
+# It starts action-required; the trigger's cascade `error` lands it in error
+# (form/check `error` cell from action-required).
+type: fragile
+kind: form
+action_group: recovery
+sort_order: 20
+description: An action that can land in error and be recovered.
+access:
+  test:
+    view: true
+    edit: true
+    error: true
+    review: true
+form:
+  - key: form.resolution
+    component: text_input
+    title: Resolution notes
+status_map:
+  action-required:
+    test:
+      message: Awaiting the trigger.
+  error:
+    test:
+      message: Errored — needs recovery.
+  in-review:
+    test:
+      message: Recovery submitted — awaiting review.
+  done:
+    test:
+      message: Recovered and complete.

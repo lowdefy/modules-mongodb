@@ -1,0 +1,66 @@
+# Test-app dispatch routine for the notifications module's send-notification
+# endpoint (Part 22 task 6). The engine calls send-notification with the just-
+# emitted event's id after every submit (commitPlan step 4 → dispatchNotifications);
+# this routine is the REAL cross-module callApi the plugin integration tests mock.
+#
+# It matches the error-recovery `trigger` submit event — the submit that cascades
+# `fragile` into error — and $merges a notification doc into the notifications
+# collection. Every other event type $matches nothing, so it is a silent no-op
+# (an empty $match merges nothing). Modelled on the demo's send-routine.yaml.
+#
+# The new-event endpoint flattens the event's `references` onto the doc's top
+# level (_object.assign), so workflow_ids / action_ids are top-level fields here.
+- id: notify_error_recovery
+  type: MongoDBAggregation
+  connectionId:
+    _module.connectionId:
+      id: events-collection
+      module: events
+  properties:
+    pipeline:
+      - $match:
+          _id:
+            $in:
+              _payload: event_ids
+          type: action-submit
+          metadata.workflow_type: error-recovery
+          metadata.action_type: trigger
+      - $project:
+          _id:
+            $function:
+              body: |
+                function(){ return UUID().toString().split('"')[1] }
+              args: []
+              lang: js
+          key:
+            $concat:
+              - $_id
+              - ':'
+              - $created.user.id
+          popup:
+            $literal: false
+          contact_id: $created.user.id
+          title: Workflow error
+          description:
+            $concat:
+              - $created.user.name
+              - ' pushed a workflow into error recovery.'
+          body: '<p>An action needs error recovery.</p>'
+          type: workflow-error
+          event_type: $type
+          event_id: $_id
+          workflow_ids: $workflow_ids
+          action_ids: $action_ids
+          created:
+            _ref:
+              module: events
+              component: change_stamp
+          read:
+            $literal: false
+          priority:
+            $literal: 50
+      - $merge:
+          into: notifications
+          on: _id
+          whenMatched: keepExisting # uuids never collide; defensive
+          whenNotMatched: insert

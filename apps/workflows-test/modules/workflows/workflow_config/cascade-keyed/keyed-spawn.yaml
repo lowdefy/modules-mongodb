@@ -1,0 +1,19 @@
+# The keyed action the cascade spawns. It has a config entry but NO starting
+# status (absent from cascade-keyed.yaml's starting_actions) — it only ever
+# comes into existence via the driver's `{ upsert: true }` cascade entry, which
+# resolves against the FSM `none` creation row. `activate` from `none` is the
+# birth stage action-required. The doc carries `key` (the value from the
+# driver's form), so a second upsert with the same key resolves the same doc.
+type: keyed-spawn
+kind: check
+action_group: cascade
+sort_order: 50
+description: Spawned with a key by the driver's cascade.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Spawned and action-required.

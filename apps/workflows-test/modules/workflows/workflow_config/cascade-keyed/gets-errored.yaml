@@ -1,0 +1,20 @@
+# Sibling the cascade `error`s: action-required → error (form/check `error`
+# cell). No `error` verb here — this cluster only proves the cascade LANDS the
+# error stage; the error PAGE and the recovery path are task 6's story
+# (error-recovery), so recovery is deliberately kept out.
+type: gets-errored
+kind: check
+action_group: cascade
+sort_order: 30
+description: A sibling the driver's cascade pushes into error.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Awaiting the cascade.
+  error:
+    test:
+      message: Errored by the cascade.
