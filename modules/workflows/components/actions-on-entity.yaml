@@ -33,40 +33,53 @@ layout:
 blocks:
   - id: entity_workflows
     type: List
+    # Stack the per-workflow header (title + overview button) above its action
+    # steps. Without a column direction the title, button and ActionSteps are
+    # flat siblings in the default wrapping row and tangle into each other.
+    layout:
+      direction: column
+      gap: 8
     blocks:
-      - id: entity_workflows.$.title
-        type: Html
+      - id: entity_workflows.$.header
+        type: Box
+        # Default row direction: title fills, the overview button pins right.
         layout:
-          flex: 1 1 auto
-        properties:
-          html:
-            _nunjucks:
-              template: '<h2>{{ title }}</h2>'
-              on:
-                title:
-                  _state: entity_workflows.$.title
-      - id: workflow_overview_tooltip
-        type: Tooltip
-        layout:
-          flex: 0 0 auto
-        properties:
-          title: Workflow Overview
+          align: middle
+          gap: 8
         blocks:
-          - id: workflow_overview
-            type: Button
+          - id: entity_workflows.$.title
+            type: Html
+            layout:
+              flex: 1 1 auto
             properties:
-              icon: LuWorkflow
-              hideTitle: true
-            events:
-              onClick:
-                - id: link_to_overview
-                  type: Link
-                  params:
-                    pageId:
-                      _module.pageId: workflow-overview
-                    urlQuery:
-                      workflow_id:
-                        _state: entity_workflows.$._id
+              html:
+                _nunjucks:
+                  template: '<h2>{{ title }}</h2>'
+                  on:
+                    title:
+                      _state: entity_workflows.$.title
+          - id: workflow_overview_tooltip
+            type: Tooltip
+            layout:
+              flex: 0 0 auto
+            properties:
+              title: Workflow Overview
+            blocks:
+              - id: workflow_overview
+                type: Button
+                properties:
+                  icon: LuWorkflow
+                  hideTitle: true
+                events:
+                  onClick:
+                    - id: link_to_overview
+                      type: Link
+                      params:
+                        pageId:
+                          _module.pageId: workflow-overview
+                        urlQuery:
+                          workflow_id:
+                            _state: entity_workflows.$._id
       - id: entity_workflows.$.action_steps
         type: ActionSteps
         events:
