@@ -37,7 +37,7 @@ the bottom. Grouped by surface so commits stay per-package. Verify config with
 
 - [ ] **F16** (D5) — File upload broken: `upload_files` request not on page. Template must provide the S3 upload (and download) request(s) when a form has a file field, built-in. `file_upload.yaml`, `templates/edit.yaml.njk`. **Root — do first in this cluster.**
 - [ ] **F13** — Quote action gets a file upload. Demo config only, after F16. `apps/demo/.../onboarding/send-quote.yaml:14-21`.
-- [ ] **F10** — Submit returns to the entity + shows a success prompt, built-in. `templates/edit.yaml.njk` submit/modal `onClick`/`onOk`.
+- [x] **F10** — Submit returns to the entity + shows a success prompt, built-in. `templates/edit.yaml.njk` submit/modal `onClick`/`onOk`.
 
 ## Lowdefy / theme (fix in the lowdefy repo, not this module)
 
