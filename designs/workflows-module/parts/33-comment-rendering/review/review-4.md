@@ -62,6 +62,8 @@ keeps the optional surfaces unguarded.
 
 ### 2. D4's "form-submit events carry no comment" is false — all four form templates post a comment on submit
 
+> **Resolved (via a deeper reshape of D4).** Confirmed all four templates post a `comment` on submit. Rather than only correct the parenthetical, the underlying decision was reconsidered: the false claim existed to justify a *static author `description`* surviving — but that static-description channel was unexercised inherited surface (Part 48 examples only ever set `title`), and it was the sole reason D4 needed a comment-vs-static precedence rule. **D4 is now "the comment owns the description; description is comment-only."** Authors override `title` per app only; an authored `display.{app}.description` is rejected at build (`makeWorkflowsConfig`, new task 8) and a pre-hook description is stripped at merge (task 2). The false parenthetical is gone and D4 now states plainly that form submits carry comments (optional on most signals, mandatory on `request_changes`). Added the optional-comment integration case (submit `approve`/`submit` with a comment → description renders it). Updated: D4, D7, Proposed-change item 4, Files-changed (`mergeEventOverrides` strip + new `makeWorkflowsConfig` reject), In-scope, Verification, Part 32 relation; tasks 02/03 rewritten and task 08 added.
+
 D4 argues the static author `description` "survives and renders" on the normal case of
 "**form-submit events, which carry no comment** (the comment rides Part 24's sidebar
 fields operation, not form submit)." The templates contradict this directly — every
