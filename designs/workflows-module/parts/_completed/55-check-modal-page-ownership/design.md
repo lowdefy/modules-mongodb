@@ -175,6 +175,6 @@ Add a single page-level modal drop (sibling to `lead_view_row`) wiring both refe
 
 ## Related
 
-- [Part 40 — simple/check action surfaces](../_completed/40-simple-action-surfaces/design.md) — created the modal, the surface, `actions-on-entity`, and the "dropped exactly once / `actions-on-entity` owns it" rule this design replaces.
-- [Part 46 — debundle workflow config](../_completed/46-debundle-workflow-config/design.md) — created `workflows-events-timeline` + `GetEventsTimeline`.
-- [Part 51 — UI fix sweep](../51-ui-fix-sweep/design.md) — F22 baked the shared click handler into both surfaces and added `include_modal`; this design removes `include_modal` and completes the click handler with graceful fallback.
+- [Part 40 — simple/check action surfaces](../40-simple-action-surfaces/design.md) — created the modal, the surface, `actions-on-entity`, and the "dropped exactly once / `actions-on-entity` owns it" rule this design replaces.
+- [Part 46 — debundle workflow config](../46-debundle-workflow-config/design.md) — created `workflows-events-timeline` + `GetEventsTimeline`.
+- [Part 51 — UI fix sweep](../../51-ui-fix-sweep/design.md) — F22 baked the shared click handler into both surfaces and added `include_modal`; this design removes `include_modal` and completes the click handler with graceful fallback.
