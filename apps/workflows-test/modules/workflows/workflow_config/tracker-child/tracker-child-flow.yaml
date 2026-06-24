@@ -1,0 +1,24 @@
+# The CHILD workflow the parent's track-child tracker mirrors. Kept deliberately
+# trivial — one completable check action — so the spec can drive it to
+# `completed` (which fires internal_mirror_child_completed up to the parent) or
+# cancel it (internal_mirror_child_cancelled) quickly through the real endpoints.
+#
+# A child is linked to a parent at start time: workflow.start({ ...,
+# parent_action_id }) → StartWorkflow stores parent_action_id/parent_workflow_id
+# on this workflow doc and fires internal_mirror_child_active against the parent.
+type: tracker-child-flow
+title: Tracker child flow
+entity_collection: things-collection
+entity_ref_key: thing_ids
+
+starting_actions:
+  - type: child-step
+    status: action-required
+
+action_groups:
+  - id: steps
+    title: Steps
+    icon: AiOutlineCheckSquare
+
+actions:
+  - _ref: modules/workflows/workflow_config/tracker-child/child-step.yaml

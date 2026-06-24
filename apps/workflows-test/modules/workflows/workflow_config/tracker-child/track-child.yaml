@@ -1,0 +1,44 @@
+# The parent's kind:tracker action. Starts action-required so its `edit` engine
+# link resolves to the start_link (computeEngineLinks tracker arm 2: pre-child +
+# action-required + declared start_link → edit link). Once a child is linked the
+# arm flips to a `view` link onto the child's workflow-overview.
+#
+# start_link is the only navigation a tracker exposes: it points at thing-view
+# (the simplest app page that carries the query params) and uses the reserved
+# urlQuery sentinels action_id/entity_id → resolved at link-compute time to the
+# tracker action's _id (the child's parent_action_id) and the entity _id. The
+# pageId is passed through verbatim (NOT entry-scoped), so a top-level app page
+# id is correct here.
+#
+# child_workflow_type must resolve to a declared workflow type (cross-workflow
+# acyclicity validation in makeWorkflowsConfig) — tracker-child-flow is its
+# sibling fixture, both _ref'd from workflows.yaml.
+type: track-child
+kind: tracker
+action_group: tracking
+sort_order: 10
+description: Tracks the child workflow on this thing.
+access:
+  test:
+    view: true
+    edit: true
+tracker:
+  child_workflow_type: tracker-child-flow
+  start_link:
+    pageId: thing-view
+    urlQuery:
+      action_id: true # → track-child action _id (the child's parent_action_id)
+      entity_id: true # → the thing _id
+status_map:
+  action-required:
+    test:
+      message: Start the child workflow.
+  in-progress:
+    test:
+      message: Child workflow in progress.
+  done:
+    test:
+      message: Child workflow complete.
+  not-required:
+    test:
+      message: Child workflow cancelled.

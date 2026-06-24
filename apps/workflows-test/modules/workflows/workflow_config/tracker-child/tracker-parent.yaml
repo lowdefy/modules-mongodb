@@ -1,0 +1,30 @@
+# tracker-child (Part 22 task 7) — a parent workflow whose kind:tracker action
+# mirrors a separate CHILD workflow's lifecycle, across two real workflow docs.
+#
+# This file is the PARENT. Its single `track-child` tracker action starts
+# action-required with a start_link; the engine then mirrors the child:
+#   child started (parent_action_id set) → internal_mirror_child_active → in-progress
+#   child workflow completes              → internal_mirror_child_completed → done
+#   child workflow cancelled              → internal_mirror_child_cancelled → not-required
+# Terminal-row recovery (a child activating against a parent already at a
+# terminal stage: done/not-required → in-progress) is exercised tail-side in the
+# spec. The tracker FSM table itself (6 source stages × the mirror/cancel
+# signals) is unit-owned (fsm/tables.test.js); runTrackerCascade's multi-level
+# walk + depth guard is unit-owned (runTrackerCascade.test.js). This cluster
+# proves the mirror fires through the wired app, across two workflow docs.
+type: tracker-parent
+title: Tracker parent
+entity_collection: things-collection
+entity_ref_key: thing_ids
+
+starting_actions:
+  - type: track-child
+    status: action-required
+
+action_groups:
+  - id: tracking
+    title: Tracking
+    icon: AiOutlineNodeIndex
+
+actions:
+  - _ref: modules/workflows/workflow_config/tracker-child/track-child.yaml

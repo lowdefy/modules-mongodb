@@ -4,3 +4,5 @@
 - _ref: modules/workflows/workflow_config/check-blocked-by/check-blocked-by.yaml
 - _ref: modules/workflows/workflow_config/cascade-keyed/cascade-keyed.yaml
 - _ref: modules/workflows/workflow_config/error-recovery/error-recovery.yaml
+- _ref: modules/workflows/workflow_config/tracker-child/tracker-parent.yaml
+- _ref: modules/workflows/workflow_config/tracker-child/tracker-child-flow.yaml
