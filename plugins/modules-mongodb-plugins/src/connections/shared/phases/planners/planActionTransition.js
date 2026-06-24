@@ -4,6 +4,28 @@ import computeEngineLinks from '../../render/computeEngineLinks.js';
 import renderStatusMap from '../../render/renderStatusMap.js';
 import deepMerge from './deepMerge.js';
 
+// Part 24: the three action-level universal fields. On the UPDATE path (a user
+// submit transitioning an existing action) they are written only for
+// `kind: check` — the kind whose submission content IS those fields. For
+// `kind: form` / `tracker` they're owned exclusively by the `UpdateActionFields`
+// operation, so a stray `fields` payload on their submit must be inert.
+const UNIVERSAL_FIELDS = ['assignees', 'due_date', 'description'];
+
+/**
+ * Apply the kind-based universal-fields rule to the update-path `fields` bag:
+ * strip `assignees` / `due_date` / `description` unless `kind: check`. All other
+ * keys pass through verbatim for every kind (pre-hook data seeding, tracker
+ * child-link forwarding). The create/upsert path does NOT call this — seeding
+ * onto a freshly-spawned action is initialization, not a form-submit clobber.
+ */
+function applyUpdateFieldsRule(fields, kind) {
+  if (fields == null) return {};
+  if (kind === 'check') return fields;
+  const filtered = { ...fields };
+  for (const key of UNIVERSAL_FIELDS) delete filtered[key];
+  return filtered;
+}
+
 /**
  * Plan-phase action planner (design D4 / D12 / D13). Given an action and a
  * signal, returns the planned post-commit action doc + its raw change-log
@@ -51,9 +73,12 @@ import deepMerge from './deepMerge.js';
  * @param {'user' | 'auxiliary' | 'cascade'} [args.source] — signal source,
  *   discriminates throw-vs-noop on null FSM resolution. Default `'user'`.
  * @param {{ fields?: Object, metadata?: Object }} [args.payload] — generic
- *   bags; `fields` is a kind-agnostic verbatim passthrough (today's
- *   `updateAction` `...fields` spread — no named universal fields; Part 24
- *   layers a kind-based rule later).
+ *   bags. On the CREATE/upsert path `fields` is a kind-agnostic verbatim
+ *   passthrough (cascade/auxiliary seeding). On the UPDATE path (Part 24) the
+ *   three universal keys (`assignees` / `due_date` / `description`) are written
+ *   only for `kind: check`; for `kind: form` / `tracker` they're stripped and
+ *   owned exclusively by the `UpdateActionFields` operation. All other keys
+ *   pass through verbatim on both paths.
  * @param {Object} args.actionConfig — workflowConfig.actions entry.
  * @param {Object} args.loadedWorkflow — the loaded workflow doc (NOT the
  *   recomputed one — that doesn't exist yet). Reads only the immutable
@@ -163,11 +188,13 @@ function planActionTransition({
       metadata: { ...(payload.metadata ?? {}) },
     };
   } else {
+    // Update path: kind-based universal-fields rule (Part 24). Universal keys
+    // are dropped unless kind: check; all other keys pass through verbatim.
     doc = {
       ...action,
       status: [statusEntry, ...action.status],
       updated: now,
-      ...payload.fields,
+      ...applyUpdateFieldsRule(payload.fields, actionConfig.kind),
       metadata: { ...(action.metadata ?? {}), ...(payload.metadata ?? {}) },
     };
   }

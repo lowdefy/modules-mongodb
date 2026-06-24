@@ -172,13 +172,19 @@ Per-verb check for a present gate: `gate === true OR size(setIntersection(_user.
 
 Every action doc carries three optional content fields, settable per-instance via the edit page:
 
-| Field         | Type       | Default |
-| ------------- | ---------- | ------- |
-| `assignees`   | `string[]` | `[]`    |
-| `due_date`    | `Date?`    | `null`  |
-| `description` | `string?`  | `null`  |
+| Field         | Type                              | Default |
+| ------------- | --------------------------------- | ------- |
+| `assignees`   | `string[]`                        | `[]`    |
+| `due_date`    | `Date?`                           | `null`  |
+| `description` | `{ text: string, html: string }?` | `null`  |
 
-Updates flow through the per-action endpoint's `fields:` payload block. `null` clears, omitted leaves unchanged. Atomic with the status transition (same Mongo `$set`).
+**Write path (kind-split, Part 24).** Universal fields are decoupled from the form submit:
+
+- **`kind: check`** — the fields *are* the submission content. They are written via the submit endpoint's `fields:` payload block (`null` clears, omitted leaves unchanged), atomic with the status transition (same Mongo `$set`). They are **also** independently editable via the operation below.
+- **`kind: form`** — the form submit (`submit` / `progress`) carries **no** universal fields. They are written exclusively by a dedicated operation, **`{workflow_type}-update-fields`** (one endpoint per workflow type, dispatched by `action_id` — mirroring `{workflow_type}-submit`). It has no signal and no FSM transition, is gated on the per-app **`edit`** verb (`access.{app}.edit`), and is editable in **any** stage the caller has `edit` on — including `done` / `not-required` / `error` and on a `completed` / `cancelled` workflow (`required_after_close` does **not** apply to it). It re-renders the action's status-map cell so the entity-page card never goes stale, and emits an `action-fields-updated` event. An optional `comment` rides the operation and is rendered into the event's `display.{app}.description` (Part 33) — never `metadata.comment`.
+- **`kind: tracker`** — the fields are carried on the action doc (seeded from the parent at `StartWorkflow`) but have no UI surface in v1.
+
+**`universal_fields`** — an optional UI presence declaration drawn from `[assignees, due_date, description]`. Omitted = all three shown (and optional); `false` / `[]` = the surface is hidden (data-only). It controls only what the templates render — the action doc always physically carries all three fields. (There is no `universal_fields_required` flag.)
 
 Reserved on `references` payloads — apps can't claim these field names.
 

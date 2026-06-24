@@ -25,6 +25,7 @@ const ACTION_FIELDS = [
   'required_after_close',
   'allow_not_required',
   'access',
+  'universal_fields',
 ];
 
 const WORKFLOW_FIELDS = [
@@ -94,6 +95,11 @@ const LEGAL_SEED_STATUSES = ['action-required', 'blocked'];
 
 // Part 34 access verbs. Vocabulary is closed in v1 (Part 34 D4 / per-app block).
 const ACCESS_VERBS = ['view', 'edit', 'review', 'error'];
+
+// Part 24: the three universal action fields an author may declare for the UI
+// presence list. The action doc always physically carries all three; this list
+// only controls which the templates render.
+const UNIVERSAL_FIELDS = ['assignees', 'due_date', 'description'];
 
 function pick(source, fields) {
   const picked = {};
@@ -427,6 +433,43 @@ function validateStatusMapCells(workflow, action) {
   }
 }
 
+// Part 24: universal_fields is an optional UI presence declaration. Legal
+// values: the field omitted; `false`; or an array whose every member is one of
+// assignees / due_date / description with no duplicates. Anything else hard-
+// errors (a bare `true`, a string, unknown field names, a non-array non-false).
+function validateUniversalFields(workflow, action) {
+  if (!('universal_fields' in action)) return;
+  const where = `action "${action.type}"`;
+  const value = action.universal_fields;
+  const legal = `omit the key (all three), false / [] (none), or an array drawn from ${UNIVERSAL_FIELDS.join(', ')}`;
+
+  if (value === false) return;
+
+  if (!Array.isArray(value)) {
+    fail(
+      workflow.type,
+      `${where} universal_fields must be ${legal} (got: ${JSON.stringify(value)}).`,
+    );
+  }
+
+  const seen = new Set();
+  for (const field of value) {
+    if (!UNIVERSAL_FIELDS.includes(field)) {
+      fail(
+        workflow.type,
+        `${where} universal_fields entry "${field}" is not a universal field — ${legal}.`,
+      );
+    }
+    if (seen.has(field)) {
+      fail(
+        workflow.type,
+        `${where} universal_fields has duplicate entry "${field}" — ${legal}.`,
+      );
+    }
+    seen.add(field);
+  }
+}
+
 function validateAction(workflow, action) {
   const where = `action "${action.type}"`;
 
@@ -468,6 +511,7 @@ function validateAction(workflow, action) {
   }
 
   validateActionAccess(workflow, action);
+  validateUniversalFields(workflow, action);
   validateStatusMapCells(workflow, action);
   validateTrackerChildWorkflowType(workflow, action);
   validateTrackerStartLink(workflow, action);

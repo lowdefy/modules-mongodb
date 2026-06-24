@@ -1332,3 +1332,61 @@ test("makeWorkflowsConfig: workflow-level event is not present on the returned c
   const [out] = makeWorkflowsConfig(null, { workflows: [wf] });
   expect("event" in out).toBe(false);
 });
+
+// ── Part 24: universal_fields authoring field ────────────────────────────────
+
+function universalFieldsWorkflow(universal_fields) {
+  return {
+    ...validWorkflow,
+    actions: [{ type: "do-it", kind: "form", form: [{ id: "x", type: "TextInput" }], ...(universal_fields !== undefined ? { universal_fields } : {}) }],
+  };
+}
+
+test("makeWorkflowsConfig: universal_fields omitted passes and is absent from the blob", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow(undefined)] });
+  expect("universal_fields" in out.actions[0]).toBe(false);
+});
+
+test("makeWorkflowsConfig: universal_fields a valid subset passes through verbatim", () => {
+  const [out] = makeWorkflowsConfig(null, {
+    workflows: [universalFieldsWorkflow(["assignees", "due_date"])],
+  });
+  expect(out.actions[0].universal_fields).toEqual(["assignees", "due_date"]);
+});
+
+test("makeWorkflowsConfig: universal_fields false passes through verbatim", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow(false)] });
+  expect(out.actions[0].universal_fields).toBe(false);
+});
+
+test("makeWorkflowsConfig: universal_fields [] passes through verbatim", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow([])] });
+  expect(out.actions[0].universal_fields).toEqual([]);
+});
+
+test("makeWorkflowsConfig: universal_fields with an unknown field name throws, action named", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow(["bogus"])] }),
+  ).toThrow(/universal_fields entry "bogus"/);
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow(["bogus"])] }),
+  ).toThrow(/do-it/);
+});
+
+test("makeWorkflowsConfig: universal_fields: true throws (must be array or false)", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow(true)] }),
+  ).toThrow(/universal_fields must be/);
+});
+
+test("makeWorkflowsConfig: universal_fields a string throws", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow("assignees")] }),
+  ).toThrow(/universal_fields must be/);
+});
+
+test("makeWorkflowsConfig: universal_fields with a duplicate entry throws", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [universalFieldsWorkflow(["assignees", "assignees"])] }),
+  ).toThrow(/duplicate entry "assignees"/);
+});

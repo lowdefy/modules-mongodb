@@ -57,8 +57,15 @@ export function gateAllows(gate, userRoles) {
  *
  * Modes:
  *   - Submit: pass `{ actionId, signal }` — reads the target action (deriving
- *     the workflow id from it), runs the stage check + access gate, and
- *     returns `actionConfig` + `targetAction`.
+ *     the workflow id from it), runs the stage check + per-signal access gate,
+ *     and returns `actionConfig` + `targetAction`.
+ *   - Fields (Part 24 `UpdateActionFields`): pass `{ actionId, verb }` —
+ *     signal-less. Reads the target action / workflow / configs exactly like
+ *     Submit, but runs NO stage check (universal fields stay editable on a
+ *     completed/cancelled workflow, regardless of `required_after_close`) and
+ *     NO `SIGNAL_VERBS` mapping — the required verb is given directly. Gates on
+ *     that verb via `gateAllows`. `signal` and `verb` are mutually exclusive
+ *     (passing both throws `invalid_load_args`).
  *   - Start/Cancel/Close/tracker: pass `{ workflowId }` — loads the whole
  *     workflow; no target action, no stage check (lifecycle preconditions
  *     live in the lifecycle handlers, task 17), no access gate.
@@ -98,19 +105,29 @@ export function gateAllows(gate, userRoles) {
  * `access_denied` / `unknown_signal`.
  *
  * @param {Object} context
- * @param {{ workflowId?: string, actionId?: string, signal?: string }} args
+ * @param {{ workflowId?: string, actionId?: string, signal?: string, verb?: string }} args
  * @returns {Promise<import('./types.js').LoadedState>} — note the loaded
  *   `workflow.updated.timestamp` is the CAS anchor the commit phase pins
  *   (design D15).
  */
-async function loadWorkflowState(context, { workflowId, actionId, signal }) {
+async function loadWorkflowState(context, { workflowId, actionId, signal, verb }) {
   const { mongoDb, connection } = context;
   const workflowsCollection = connection?.workflowsCollection ?? 'workflows';
   const actionsCollection = connection?.actionsCollection ?? 'actions';
-  const isSubmit = actionId !== undefined && actionId !== null;
+  // Action-targeted modes: Submit (`signal`) and Fields (`verb`). They share
+  // the read path; only the gating differs. `signal`/`verb` are mutually
+  // exclusive — a transition and a signal-less operation can't both apply.
+  const isActionMode = actionId !== undefined && actionId !== null;
+  if (signal != null && verb != null) {
+    throw new WorkflowEngineError(
+      `loadWorkflowState: signal "${signal}" and verb "${verb}" are mutually exclusive — Submit passes a signal, the signal-less fields operation passes a verb.`,
+      { code: 'invalid_load_args' },
+    );
+  }
+  const isVerbMode = isActionMode && verb != null;
 
-  // Submit identifies the workflow through the target action.
-  if (isSubmit) {
+  // The action-targeted modes identify the workflow through the target action.
+  if (isActionMode) {
     const [targetActionDoc] = await findDocs({
       mongoDb,
       collection: actionsCollection,
@@ -162,7 +179,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
     workflowType: workflow.workflow_type,
   });
 
-  if (!isSubmit) {
+  if (!isActionMode) {
     return { workflow, actions, workflowConfig };
   }
 
@@ -186,6 +203,25 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
     );
   }
 
+  const currentApp = connection?.app_name;
+  const userRoles = context.user?.roles ?? [];
+
+  // ── Fields mode (Part 24 `UpdateActionFields`): signal-less ──────────────
+  // No stage check (universal fields are editable in any stage, including on a
+  // completed/cancelled workflow — `required_after_close` does not apply) and
+  // no SIGNAL_VERBS mapping (the verb is given directly). The gate stays ahead
+  // of any handler side effects, preserving the load-gate invariant.
+  if (isVerbMode) {
+    if (!gateAllows(actionConfig.access?.[currentApp]?.[verb], userRoles)) {
+      throw new WorkflowEngineError(
+        `loadWorkflowState: access denied — verb "${verb}" is not granted on access.${currentApp} for action type "${targetAction.type}"`,
+        { code: 'access_denied' },
+      );
+    }
+    return { workflow, actions, workflowConfig, actionConfig, targetAction };
+  }
+
+  // ── Submit mode (signal-driven transition) ───────────────────────────────
   // Submit-specific stage check: a completed/cancelled workflow rejects the
   // submit unless the action is a post-close required action. Lifecycle
   // preconditions (e.g. Close's completed→no-op / cancelled→throw) live in
@@ -211,14 +247,12 @@ async function loadWorkflowState(context, { workflowId, actionId, signal }) {
       { code: 'unknown_signal' },
     );
   }
-  const currentApp = connection?.app_name;
-  const userRoles = context.user?.roles ?? [];
-  const allowed = verbs.some((verb) =>
-    gateAllows(actionConfig.access?.[currentApp]?.[verb], userRoles),
+  const allowed = verbs.some((signalVerb) =>
+    gateAllows(actionConfig.access?.[currentApp]?.[signalVerb], userRoles),
   );
   if (!allowed) {
     throw new WorkflowEngineError(
-      `loadWorkflowState: access denied — signal "${signal}" requires one of the ${verbs.map((verb) => `"${verb}"`).join('/')} verbs on access.${currentApp} for action type "${targetAction.type}"`,
+      `loadWorkflowState: access denied — signal "${signal}" requires one of the ${verbs.map((signalVerb) => `"${signalVerb}"`).join('/')} verbs on access.${currentApp} for action type "${targetAction.type}"`,
       { code: 'access_denied' },
     );
   }

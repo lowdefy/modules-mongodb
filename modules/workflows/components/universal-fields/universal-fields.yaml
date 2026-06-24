@@ -1,12 +1,329 @@
-# Stub component. Part 24 ships the real universal-fields renderer.
+# Universal-fields surface (Part 24).
 #
-# This stub renders nothing — the workflow-action-edit / workflow-action-view /
-# workflow-action-review pages that depend on it are declared in the manifest
-# but never navigated to in part 20a's tracker-only demo flow. The stub lets
-# the static build resolve the
-# `_ref: { path: components/universal-fields/universal-fields.yaml }`
-# references without surfacing a missing-file error.
-id: universal_fields_stub
-type: Box
-visible: false
-blocks: []
+# Renders the three action-level universal fields (assignees / due_date /
+# description) for one action, in edit or display mode, for form or check kind.
+# On form kind it is the right-hand sidebar card; on check kind it is primary
+# content inside the shared check-action surface. Every kind gets the same
+# standalone Update button (edit mode) that calls the per-workflow
+# `{workflow_type}-update-fields` operation — independent of any form submit or
+# FSM transition.
+#
+# Consumed via `_ref: { path: ..., vars: {...} }` with OPERATOR-valued vars, so
+# block-id namespacing uses `_string.concat` (not njk). Vars:
+#   - mode         'edit' | 'display' (required). Literal from the form
+#                  templates; a runtime `_if` operator from the check surface —
+#                  so mode is gated at RUNTIME (`_eq`), never `_build.*`.
+#   - kind         'form' | 'check' (required; always a build-time literal) —
+#                  drives the Card (form) vs plain Box (check) chrome.
+#   - state_path   state namespace for the edit inputs (default `fields`). Block
+#                  ids become `{state_path}.{field}`; the Update Validate is
+#                  scoped to `^{state_path}\.`.
+#   - workflow_type literal (form njk) or `_state` operator (check) — builds the
+#                  Update endpoint id at runtime.
+#   - action_id    operator leaf the Update payload posts (action root differs
+#                  by kind, so the consumer passes it).
+#   - allowed_edit operator leaf — gates the Update button (visible) and the
+#                  inline inputs (disabled). Defaults false (display consumers
+#                  pass nothing).
+#   - show         build-time array of field names to render (default all three;
+#                  per-field presence gated via `_build.array.includes`).
+#   - action_data  map of operator leaves: assignees, due_date, description, and
+#                  (display) assignee_docs.
+#   - on_complete  actions appended after the Update CallAPI (default []).
+#   - date_format  display date format (default `MMM D, YYYY`).
+id: universal_fields
+type:
+  _build.if:
+    test:
+      _build.eq:
+        - _var: kind
+        - form
+    then: Card
+    else: Box
+# Render nothing when the presence list is empty (the form templates also omit
+# the whole sidebar column — task 11).
+visible:
+  _build.if:
+    test:
+      _build.gt:
+        - _array.length:
+            _var:
+              key: show
+              default: [assignees, due_date, description]
+        - 0
+    then: true
+    else: false
+properties:
+  title:
+    _build.if:
+      test:
+        _build.eq:
+          - _var: kind
+          - form
+      then: Details
+      else: null
+layout:
+  gap: 16
+blocks:
+  # ── Edit group (mode: edit) — inputs + standalone Update button ───────────
+  - id: universal_fields_edit_group
+    type: Box
+    visible:
+      _eq:
+        - _var: mode
+        - edit
+    layout:
+      gap: 16
+    blocks:
+      _build.array.concat:
+        # assignees → user-multi-selector (cross-module, Part 24a)
+        - _build.if:
+            test:
+              _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date, description]
+                value: assignees
+            then:
+              - _ref:
+                  module: user-account
+                  component: user-multi-selector
+                  vars:
+                    id:
+                      _string.concat:
+                        - _var: state_path
+                        - .assignees
+                    title: Assignees
+            else: []
+        # due_date → DateSelector
+        - _build.if:
+            test:
+              _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date, description]
+                value: due_date
+            then:
+              - id:
+                  _string.concat:
+                    - _var: state_path
+                    - .due_date
+                type: DateSelector
+                properties:
+                  title: Due date
+                  disabled:
+                    _eq:
+                      - _var:
+                          key: allowed_edit
+                          default: false
+                      - false
+            else: []
+        # description → TiptapInput (stores { text, html })
+        - _build.if:
+            test:
+              _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date, description]
+                value: description
+            then:
+              - id:
+                  _string.concat:
+                    - _var: state_path
+                    - .description
+                type: TiptapInput
+                properties:
+                  title: Description
+                  disabled:
+                    _eq:
+                      - _var:
+                          key: allowed_edit
+                          default: false
+                      - false
+            else: []
+        # Update button — both kinds; visible only with the edit verb.
+        - - id: button_update_fields
+            type: Button
+            properties:
+              title: Update
+              type: primary
+            visible:
+              _eq:
+                - _var:
+                    key: allowed_edit
+                    default: false
+                - true
+            events:
+              onClick:
+                _build.array.concat:
+                  - - id: validate_fields
+                      type: Validate
+                      params:
+                        regex:
+                          - _string.concat:
+                              - '^'
+                              - _var: state_path
+                              - '\.'
+                    - id: update_fields
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /
+                            - _var: workflow_type
+                            - -update-fields
+                        payload:
+                          action_id:
+                            _var: action_id
+                          fields:
+                            _state:
+                              _var: state_path
+                          comment: null
+                  - _var:
+                      key: on_complete
+                      default: []
+  # ── Display group (mode: display) — read-only with empty-state placeholders ─
+  - id: universal_fields_display_group
+    type: Box
+    visible:
+      _eq:
+        - _var: mode
+        - display
+    layout:
+      gap: 16
+    blocks:
+      _build.array.concat:
+        # assignees → one avatar per assignee_docs entry; placeholder when empty
+        - _build.if:
+            test:
+              _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date, description]
+                value: assignees
+            then:
+              - id: universal_fields_assignees_label
+                type: Title
+                properties:
+                  level: 5
+                  content: Assignees
+              - id: universal_fields_assignees_list
+                type: List
+                visible:
+                  _gt:
+                    - _array.length:
+                        _var: action_data.assignee_docs
+                    - 0
+                layout:
+                  gap: 8
+                properties:
+                  data:
+                    _var: action_data.assignee_docs
+                blocks:
+                  - _ref:
+                      module: user-account
+                      component: user-avatar
+                      vars:
+                        user:
+                          _state: universal_fields_assignees_list.$
+              - id: universal_fields_assignees_empty
+                type: Paragraph
+                visible:
+                  _not:
+                    _gt:
+                      - _array.length:
+                          _var: action_data.assignee_docs
+                      - 0
+                properties:
+                  type: secondary
+                  content: Not assigned
+            else: []
+        # due_date → formatted date; placeholder when null
+        - _build.if:
+            test:
+              _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date, description]
+                value: due_date
+            then:
+              - id: universal_fields_due_date_label
+                type: Title
+                properties:
+                  level: 5
+                  content: Due date
+              - id: universal_fields_due_date_value
+                type: Paragraph
+                visible:
+                  _ne:
+                    - _var: action_data.due_date
+                    - null
+                properties:
+                  content:
+                    _dayjs.format:
+                      on:
+                        _var: action_data.due_date
+                      params:
+                        format:
+                          _var:
+                            key: date_format
+                            default: MMM D, YYYY
+              - id: universal_fields_due_date_empty
+                type: Paragraph
+                visible:
+                  _eq:
+                    - _var: action_data.due_date
+                    - null
+                properties:
+                  type: secondary
+                  content: No due date
+            else: []
+        # description → rendered html; placeholder when null
+        - _build.if:
+            test:
+              _build.array.includes:
+                on:
+                  _var:
+                    key: show
+                    default: [assignees, due_date, description]
+                value: description
+            then:
+              - id: universal_fields_description_label
+                type: Title
+                properties:
+                  level: 5
+                  content: Description
+              - id: universal_fields_description_value
+                type: Html
+                visible:
+                  _ne:
+                    - _get:
+                        from:
+                          _var: action_data.description
+                        key: html
+                    - null
+                properties:
+                  html:
+                    _get:
+                      from:
+                        _var: action_data.description
+                      key: html
+              - id: universal_fields_description_empty
+                type: Paragraph
+                visible:
+                  _eq:
+                    - _get:
+                        from:
+                          _var: action_data.description
+                        key: html
+                    - null
+                properties:
+                  type: secondary
+                  content: No description
+            else: []

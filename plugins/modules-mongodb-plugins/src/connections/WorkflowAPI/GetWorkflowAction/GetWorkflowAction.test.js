@@ -147,6 +147,7 @@ afterAll(async () => {
 async function resetCollections() {
   await mongo.db.collection('workflows').deleteMany({});
   await mongo.db.collection('actions').deleteMany({});
+  await mongo.db.collection('user-contacts').deleteMany({});
 }
 
 beforeEach(async () => {
@@ -835,5 +836,47 @@ describe('allowed resolution', () => {
     // account-manager does not have edit
     expect(result.allowed.view).toBe(true);
     expect(result.allowed.edit).toBe(false);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Part 24: assignee_docs lookup
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('assignee_docs (Part 24)', () => {
+  test('returns [{ _id, profile: { name, picture } }] for an action with assignees', async () => {
+    await seedWorkflow();
+    await seedAction({ extra: { assignees: ['user-a', 'user-b'] } });
+    await mongo.db.collection('user-contacts').insertMany([
+      { _id: 'user-a', profile: { name: 'Ada', picture: 'a.png', extra: 'drop-me' } },
+      { _id: 'user-b', profile: { name: 'Bo', picture: 'b.png' } },
+    ]);
+
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' } }),
+    );
+    const byId = Object.fromEntries(result.assignee_docs.map((d) => [d._id, d]));
+    expect(byId['user-a']).toEqual({ _id: 'user-a', profile: { name: 'Ada', picture: 'a.png' } });
+    expect(byId['user-b']).toEqual({ _id: 'user-b', profile: { name: 'Bo', picture: 'b.png' } });
+    // The envelope must not leak non-allowlisted contact fields.
+    expect(byId['user-a'].profile).not.toHaveProperty('extra');
+  });
+
+  test('returns [] when the action has no assignees', async () => {
+    await seedWorkflow();
+    await seedAction({ extra: { assignees: [] } });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' } }),
+    );
+    expect(result.assignee_docs).toEqual([]);
+  });
+
+  test('returns [] when assignees is absent', async () => {
+    await seedWorkflow();
+    await seedAction();
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: 'a1' } }),
+    );
+    expect(result.assignee_docs).toEqual([]);
   });
 });

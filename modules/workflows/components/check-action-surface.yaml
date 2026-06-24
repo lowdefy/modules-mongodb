@@ -126,8 +126,14 @@ blocks:
                 const { statuses, stage } = args;
                 return statuses?.[stage]?.title;
   # 3. Universal fields — Part 24 component. Editability is edit-verb-gated
-  #    (current_action.allowed.edit), not mode-gated. Pass the vars through; the
-  #    component is the Part 24 stub today and ignores them until Part 24 ships.
+  #    (current_action.allowed.edit), not mode-gated. The standalone Update
+  #    button writes the fields without a transition; the surface's submit/
+  #    progress signals additionally carry `fields` (check writes on transition).
+  #    `show` is omitted → the component defaults to all three (the design's
+  #    "no behavioural change for check" floor; the GetWorkflowAction envelope
+  #    carries no universal_fields presence list to narrow it). `workflow_type`
+  #    is a runtime state operator, so the Update endpoint id resolves
+  #    dynamically (same as the -submit buttons).
   - _ref:
       path: components/universal-fields/universal-fields.yaml
       vars:
@@ -141,6 +147,16 @@ blocks:
                 - true
             then: edit
             else: display
+        workflow_type:
+          _state: current_action.workflow_type
+        action_id:
+          _state: current_action._id
+        allowed_edit:
+          _state: current_action.allowed.edit
+        on_complete:
+          _var:
+            key: on_complete
+            default: []
         action_data:
           assignees:
             _state: current_action.fields.assignees
@@ -148,6 +164,8 @@ blocks:
             _state: current_action.fields.due_date
           description:
             _state: current_action.fields.description
+          assignee_docs:
+            _state: current_action.assignee_docs
   # 4. Status history — view mode only. The List binds state at its block id;
   #    the spread response already holds the status array at
   #    current_action.status, so there is no request and no extra SetState.

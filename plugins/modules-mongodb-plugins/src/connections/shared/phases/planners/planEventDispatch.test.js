@@ -503,3 +503,87 @@ test('Submit: empty-object preHookEventOverrides ({}) produces output identical 
   expect(doc.type).toBe('action-submit');
   expect(doc.metadata.action_type).toBe('qualify');
 });
+
+// ── UpdateActionFields (Part 24) ──────────────────────────────────────────────
+
+function fieldsUpdate(overrides = {}) {
+  return planEventDispatch({
+    event_id,
+    user,
+    handlerType: 'UpdateActionFields',
+    plannedWorkflowDoc: makeWorkflow(),
+    plannedActionDoc: makeAction(),
+    allTouchedActionDocs: [makeAction()],
+    connection,
+    ...overrides,
+  });
+}
+
+test('UpdateActionFields: type is action-fields-updated', () => {
+  const { doc } = fieldsUpdate();
+  expect(doc.type).toBe('action-fields-updated');
+});
+
+test('UpdateActionFields: doc._id is the injected event_id', () => {
+  const { doc } = fieldsUpdate();
+  expect(doc._id).toBe(event_id);
+});
+
+test('UpdateActionFields: default title renders against { user, action, workflow }', () => {
+  const action = makeAction({ type: 'qualify', title: 'Qualify' });
+  const { doc } = fieldsUpdate({ plannedActionDoc: action, allTouchedActionDocs: [action] });
+  expect(doc.display.demo.title).toBe('Alice updated Qualify');
+});
+
+test('UpdateActionFields: metadata carries { action_type, workflow_type, current_key } only', () => {
+  const action = makeAction({ type: 'qualify', key: 'device-1' });
+  const { doc } = fieldsUpdate({ plannedActionDoc: action, allTouchedActionDocs: [action] });
+  expect(doc.metadata).toEqual({
+    action_type: 'qualify',
+    workflow_type: 'onboarding',
+    current_key: 'device-1',
+  });
+  expect(doc.metadata).not.toHaveProperty('signal');
+  expect(doc.metadata).not.toHaveProperty('status_before');
+  expect(doc.metadata).not.toHaveProperty('status_after');
+  expect(doc.metadata).not.toHaveProperty('comment');
+});
+
+test('UpdateActionFields: metadata.comment absent whether or not a comment is passed', () => {
+  const withComment = fieldsUpdate({
+    comment: { text: 'reassigned', html: '<p>reassigned</p>' },
+  }).doc;
+  const withoutComment = fieldsUpdate().doc;
+  expect(withComment.metadata).not.toHaveProperty('comment');
+  expect(withoutComment.metadata).not.toHaveProperty('comment');
+});
+
+test('UpdateActionFields: current_key defaults to null when action has no key', () => {
+  const action = makeAction({ key: undefined });
+  const { doc } = fieldsUpdate({ plannedActionDoc: action, allTouchedActionDocs: [action] });
+  expect(doc.metadata.current_key).toBeNull();
+});
+
+test('UpdateActionFields: references shape matches the Submit path', () => {
+  const a1 = makeAction({ _id: 'a-1' });
+  const { doc } = fieldsUpdate({
+    plannedActionDoc: a1,
+    allTouchedActionDocs: [a1],
+    plannedWorkflowDoc: makeWorkflow({ entity_id: 'lead-99', entity_ref_key: 'lead_ids' }),
+  });
+  expect(doc.references.workflow_ids).toEqual(['wf-1']);
+  expect(doc.references.action_ids).toEqual(['a-1']);
+  expect(doc.references.lead_ids).toEqual(['lead-99']);
+});
+
+test('UpdateActionFields: YAML / pre-hook overrides are NOT applied even when passed', () => {
+  const action = makeAction({ type: 'qualify' });
+  const { doc } = fieldsUpdate({
+    plannedActionDoc: action,
+    allTouchedActionDocs: [action],
+    yamlEventOverrides: { display: { demo: { title: 'should not apply' } } },
+    preHookEventOverrides: { metadata: { extra: 'nope' } },
+  });
+  expect(doc.display.demo.title).toBe('Alice updated Qualify');
+  expect(doc.metadata).not.toHaveProperty('extra');
+});

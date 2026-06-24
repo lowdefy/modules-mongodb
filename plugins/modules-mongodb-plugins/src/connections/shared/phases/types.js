@@ -75,11 +75,17 @@
  *   doc: import('../types.js').WorkflowDoc,
  *   operation: 'insert' | 'update',
  *   changeLog: ChangeLogDelta,
- * }} workflow — whole post-commit workflow doc + its raw before/after delta
- *   (`before` is null for insert). `operation` is `update` (the default) for
- *   Submit/Cancel/Close/tracker, `insert` for Start; commit step 1 dispatches
- *   accordingly — update → CAS findOneAndUpdate (design D15), insert →
- *   insertOneDoc with no CAS filter (a fresh _id can't race).
+ * } | null} workflow — whole post-commit workflow doc + its raw before/after
+ *   delta (`before` is null for insert). `operation` is `update` (the default)
+ *   for Submit/Cancel/Close/tracker, `insert` for Start; commit step 1
+ *   dispatches accordingly — update → CAS findOneAndUpdate (design D15), insert
+ *   → insertOneDoc with no CAS filter (a fresh _id can't race). **`null` for
+ *   plans that touch no workflow doc (Part 24 `UpdateActionFields`) — commit
+ *   skips the workflow claim entirely (no CAS gate; per-action concurrency is
+ *   last-write-wins, Part 38 D15 deferral) and takes `CommitResult.workflow_id`
+ *   from the loaded state. Such plans also carry no `trackerFires` /
+ *   `completedGroups` — those are Submit-plan members the fields operation does
+ *   not produce.**
  * @property {Array<{
  *   doc: import('../types.js').ActionDoc,
  *   operation: 'insert' | 'update',

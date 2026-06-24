@@ -37,6 +37,10 @@ dependencies:
       Provides the contact-selector component wrapped by the `contact` /
       `multiple_contact` form fields (components/fields/). Only exercised when
       a workflow form uses one of those fields.
+  - id: user-account
+    description: >
+      Supplies the user-multi-selector and user-avatar components the
+      universal-fields surface composes (Part 24 / Part 24a).
 
 vars:
   workflows_config:

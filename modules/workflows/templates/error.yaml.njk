@@ -89,120 +89,156 @@ _ref:
     blocks:
       _build.array.concat:
         # Card-interior content — outer-card suppression on form_error[0].form.
-        - _build.if:
-            test:
-              _build.ne:
-                - _var:
-                    key: action_config.form_error.0.form
-                    default: null
-                - null
-            then:
+        # Two-column content row: error/recovery body (left) + read-only
+        # universal-fields sidebar (right), gated on universal_fields non-empty.
+        - - id: action_content_row
+            type: Box
+            layout:
+              gap: 16
+            blocks:
               _build.array.concat:
-                - - id: failure_banner
-                    type: Alert
-                    properties:
-                      type: error
-                      showIcon: true
-                      message:
-                        _state: action.status.0.error_message
-                      description:
-                        _nunjucks:
-                          template: |
-                            <pre>{{ metadata }}</pre>
-                          on:
-                            metadata:
-                              _js:
-                                params:
-                                  - _state: action.status.0.error_metadata
-                                body: |
-                                  return JSON.stringify(params[0], null, 2);
-                - _var:
-                    key: page_config.formHeader
-                    default: []
-                - - _ref:
-                      path: components/universal-fields/universal-fields.yaml
-                      vars:
-                        mode: display
-                        kind: form
-                        action_data:
-                          assignees:
-                            _state: action.assignees
-                          due_date:
-                            _state: action.due_date
-                          description:
-                            _state: action.description
-                - _ref:
-                    resolver: resolvers/makeActionsForm.js
-                    vars:
-                      form:
-                        _var:
-                          key: action_config.form_error
-                          default: []
-                      mode: error
-                - - id: comment
-                    type: TiptapInput
-                    properties:
-                      title: Comment
-                      placeholder: Add a comment about the recovery (optional).
-                - _var:
-                    key: page_config.formFooter
-                    default: []
-            else:
-              - id: error_card
-                type: Card
-                layout:
-                  gap: 16
-                blocks:
-                  _build.array.concat:
-                    - - id: failure_banner
-                        type: Alert
-                        properties:
-                          type: error
-                          showIcon: true
-                          message:
-                            _state: action.status.0.error_message
-                          description:
-                            _nunjucks:
-                              template: |
-                                <pre>{{ metadata }}</pre>
-                              on:
-                                metadata:
-                                  _js:
-                                    params:
-                                      - _state: action.status.0.error_metadata
-                                    body: |
-                                      return JSON.stringify(params[0], null, 2);
-                    - _var:
-                        key: page_config.formHeader
-                        default: []
-                    - - _ref:
-                          path: components/universal-fields/universal-fields.yaml
-                          vars:
-                            mode: display
-                            kind: form
-                            action_data:
-                              assignees:
-                                _state: action.assignees
-                              due_date:
-                                _state: action.due_date
-                              description:
-                                _state: action.description
-                    - _ref:
-                        resolver: resolvers/makeActionsForm.js
-                        vars:
-                          form:
+                - - id: form_column
+                    type: Box
+                    layout:
+                      span:
+                        _build.if:
+                          test:
+                            _build.gt:
+                              - _array.length:
+                                  _var:
+                                    key: action_config.universal_fields
+                                    default: []
+                              - 0
+                          then: 16
+                          else: 24
+                      sm:
+                        span: 24
+                    blocks:
+                      _build.if:
+                        test:
+                          _build.ne:
+                            - _var:
+                                key: action_config.form_error.0.form
+                                default: null
+                            - null
+                        then:
+                          _build.array.concat:
+                            - - id: failure_banner
+                                type: Alert
+                                properties:
+                                  type: error
+                                  showIcon: true
+                                  message:
+                                    _state: action.status.0.error_message
+                                  description:
+                                    _nunjucks:
+                                      template: |
+                                        <pre>{{ metadata }}</pre>
+                                      on:
+                                        metadata:
+                                          _js:
+                                            params:
+                                              - _state: action.status.0.error_metadata
+                                            body: |
+                                              return JSON.stringify(params[0], null, 2);
+                            - _var:
+                                key: page_config.formHeader
+                                default: []
+                            - _ref:
+                                resolver: resolvers/makeActionsForm.js
+                                vars:
+                                  form:
+                                    _var:
+                                      key: action_config.form_error
+                                      default: []
+                                  mode: error
+                            - - id: comment
+                                type: TiptapInput
+                                properties:
+                                  title: Comment
+                                  placeholder: Add a comment about the recovery (optional).
+                            - _var:
+                                key: page_config.formFooter
+                                default: []
+                        else:
+                          - id: error_card
+                            type: Card
+                            layout:
+                              gap: 16
+                            blocks:
+                              _build.array.concat:
+                                - - id: failure_banner
+                                    type: Alert
+                                    properties:
+                                      type: error
+                                      showIcon: true
+                                      message:
+                                        _state: action.status.0.error_message
+                                      description:
+                                        _nunjucks:
+                                          template: |
+                                            <pre>{{ metadata }}</pre>
+                                          on:
+                                            metadata:
+                                              _js:
+                                                params:
+                                                  - _state: action.status.0.error_metadata
+                                                body: |
+                                                  return JSON.stringify(params[0], null, 2);
+                                - _var:
+                                    key: page_config.formHeader
+                                    default: []
+                                - _ref:
+                                    resolver: resolvers/makeActionsForm.js
+                                    vars:
+                                      form:
+                                        _var:
+                                          key: action_config.form_error
+                                          default: []
+                                      mode: error
+                                - - id: comment
+                                    type: TiptapInput
+                                    properties:
+                                      title: Comment
+                                      placeholder: Add a comment about the recovery (optional).
+                                - _var:
+                                    key: page_config.formFooter
+                                    default: []
+                - _build.if:
+                    test:
+                      _build.gt:
+                        - _array.length:
                             _var:
-                              key: action_config.form_error
+                              key: action_config.universal_fields
                               default: []
-                          mode: error
-                    - - id: comment
-                        type: TiptapInput
-                        properties:
-                          title: Comment
-                          placeholder: Add a comment about the recovery (optional).
-                    - _var:
-                        key: page_config.formFooter
-                        default: []
+                        - 0
+                    then:
+                      - id: sidebar_column
+                        type: Box
+                        layout:
+                          span: 8
+                          sm:
+                            span: 24
+                        blocks:
+                          - _ref:
+                              path: components/universal-fields/universal-fields.yaml
+                              vars:
+                                mode: display
+                                kind: form
+                                state_path: fields
+                                workflow_type: {{ workflow_type }}
+                                show:
+                                  _var: action_config.universal_fields
+                                action_data:
+                                  assignees:
+                                    _state: action.assignees
+                                  assignee_docs:
+                                    _state: action.assignee_docs
+                                  due_date:
+                                    _state: action.due_date
+                                  description:
+                                    _state: action.description
+                    else: []
         # Floating-actions sticky button bar — single resolve_error button.
         - - _ref:
               module: layout

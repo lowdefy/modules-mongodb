@@ -274,3 +274,32 @@ test("makeActionPages: action_config does not carry the `pages` slot (duplicate 
   const editPage = pages.find((p) => p.id === "onboarding-qualify-edit");
   expect(editPage._ref.vars.action_config.pages).toBeUndefined();
 });
+
+// ── Part 24: universal_fields normalization on action_config ─────────────────
+
+test("makeActionPages: universal_fields omitted → all-three default on action_config", () => {
+  const pages = makeActionPages(null, { workflows: [workflow([qualifyAction])], app_name: APP });
+  expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([
+    "assignees",
+    "due_date",
+    "description",
+  ]);
+});
+
+test("makeActionPages: universal_fields false → [] on action_config", () => {
+  const action = { ...qualifyAction, universal_fields: false };
+  const pages = makeActionPages(null, { workflows: [workflow([action])], app_name: APP });
+  expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([]);
+});
+
+test("makeActionPages: universal_fields explicit subset passes through unchanged", () => {
+  const action = { ...qualifyAction, universal_fields: ["assignees"] };
+  const pages = makeActionPages(null, { workflows: [workflow([action])], app_name: APP });
+  expect(pages[0]._ref.vars.action_config.universal_fields).toEqual(["assignees"]);
+});
+
+test("makeActionPages: universal_fields_required never appears in output", () => {
+  const action = { ...qualifyAction, universal_fields_required: ["assignees"] };
+  const pages = makeActionPages(null, { workflows: [workflow([action])], app_name: APP });
+  expect("universal_fields_required" in pages[0]._ref.vars.action_config).toBe(false);
+});

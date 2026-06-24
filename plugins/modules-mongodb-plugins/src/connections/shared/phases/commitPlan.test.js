@@ -687,6 +687,111 @@ test('CommitResult has empty dispatchErrors on a fully clean commit', async () =
   });
 });
 
+// ── Workflow-less plan (Part 24 UpdateActionFields) ───────────────────────────
+
+test('workflow-less plan: action written, no workflow write, workflow_id from loaded state', async () => {
+  const loadedTs = new Date('2026-01-01T00:00:00Z');
+
+  await mongo.db.collection('workflows').insertOne({
+    _id: 'wf-fields',
+    workflow_type: 'onboarding',
+    updated: { timestamp: loadedTs },
+    status: [{ stage: 'in-progress' }],
+  });
+  await mongo.db.collection('actions').insertOne({
+    _id: 'act-fields',
+    workflow_id: 'wf-fields',
+    assignees: [],
+    status: [{ stage: 'done' }],
+  });
+
+  const callApi = makeCallApiMock();
+  const ctx = makeContext(mongo.db, { loadedTimestamp: loadedTs, callApi });
+  // The load phase supplies the workflow id for workflow-less plans.
+  ctx.loadedState.workflow._id = 'wf-fields';
+
+  const plan = {
+    workflow: null,
+    actions: [
+      {
+        doc: {
+          _id: 'act-fields',
+          workflow_id: 'wf-fields',
+          assignees: ['u-7'],
+          status: [{ stage: 'done' }],
+        },
+        operation: 'update',
+        changeLog: { before: { assignees: [] }, after: { assignees: ['u-7'] } },
+      },
+    ],
+    event: {
+      doc: {
+        _id: 'evt-fields',
+        type: 'action-fields-updated',
+        display: {},
+        references: { workflow_ids: ['wf-fields'] },
+        metadata: {},
+      },
+    },
+    changeLog: [],
+  };
+
+  const result = await commitPlan(ctx, plan);
+
+  expect(result.workflow_id).toBe('wf-fields');
+  expect(result.action_ids).toEqual(['act-fields']);
+  expect(result.event_id).toBe('evt-fields');
+  expect(result.dispatchErrors).toEqual([]);
+
+  // The action doc was updated with the new assignees.
+  const actDoc = await mongo.db.collection('actions').findOne({ _id: 'act-fields' });
+  expect(actDoc.assignees).toEqual(['u-7']);
+
+  // The workflow doc is untouched (no write — same loaded timestamp).
+  const wfDoc = await mongo.db.collection('workflows').findOne({ _id: 'wf-fields' });
+  expect(wfDoc.updated.timestamp).toEqual(loadedTs);
+});
+
+test('workflow-less plan: a stale loaded timestamp does NOT throw ConcurrentSubmitError (no CAS)', async () => {
+  const loadedTs = new Date('2026-01-01T00:00:00Z');
+  const staleTs = new Date('2020-01-01T00:00:00Z'); // wildly stale; would miss a CAS
+
+  await mongo.db.collection('workflows').insertOne({
+    _id: 'wf-fields-nocas',
+    workflow_type: 'onboarding',
+    updated: { timestamp: loadedTs },
+    status: [{ stage: 'completed' }],
+  });
+  await mongo.db.collection('actions').insertOne({
+    _id: 'act-fields-nocas',
+    workflow_id: 'wf-fields-nocas',
+    status: [{ stage: 'done' }],
+  });
+
+  const ctx = makeContext(mongo.db, { loadedTimestamp: staleTs });
+  ctx.loadedState.workflow._id = 'wf-fields-nocas';
+
+  const plan = {
+    workflow: null,
+    actions: [
+      {
+        doc: { _id: 'act-fields-nocas', workflow_id: 'wf-fields-nocas', due_date: new Date('2026-06-01') },
+        operation: 'update',
+        changeLog: { before: {}, after: {} },
+      },
+    ],
+    event: {
+      doc: { _id: 'evt-nocas', type: 'action-fields-updated', display: {}, references: {}, metadata: {} },
+    },
+    changeLog: [],
+  };
+
+  await expect(commitPlan(ctx, plan)).resolves.toMatchObject({
+    workflow_id: 'wf-fields-nocas',
+    dispatchErrors: [],
+  });
+});
+
 // ── ConcurrentSubmitError class shape ─────────────────────────────────────────
 
 test('ConcurrentSubmitError has correct name and code', () => {

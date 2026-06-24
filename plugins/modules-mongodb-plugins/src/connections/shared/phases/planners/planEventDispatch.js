@@ -62,15 +62,26 @@ function resolveActionSignalTitle(signal, status_after) {
  * invocation — the doc's `_id` IS `event_id`, so a second entry would collide.
  *
  * Handler types and their event types:
- *   StartWorkflow    → workflow-started     (lifecycle context)
- *   SubmitWorkflow   → action-{signal}      (action context) + 3-source merge
- *   CancelWorkflow   → workflow-cancelled   (lifecycle context)
- *   CloseWorkflow    → workflow-closed      (lifecycle context)
- *   tracker-mirror   → action-internal-mirror-{state} (action context, mirror signal map)
+ *   StartWorkflow      → workflow-started     (lifecycle context)
+ *   SubmitWorkflow     → action-{signal}      (action context) + 3-source merge
+ *   CancelWorkflow     → workflow-cancelled   (lifecycle context)
+ *   CloseWorkflow      → workflow-closed      (lifecycle context)
+ *   tracker-mirror     → action-internal-mirror-{state} (action context, mirror signal map)
+ *   UpdateActionFields → action-fields-updated (action context, signal-less; Part 24)
  *
  * The tracker-mirror path uses the action-event context but with a literal
  * type mapping (not the generic `action-{signal}` template) and the raw signal
  * name bound to `signal` in both context and metadata.
+ *
+ * The UpdateActionFields path (Part 24) is signal-less — it writes the three
+ * universal fields on an action with no FSM transition. It uses the action
+ * render context but WITHOUT `signal` / `status_before` / `status_after` /
+ * `submitted_form` (there is no transition), a default title, and a reduced
+ * metadata shape `{ action_type, workflow_type, current_key }`. No override
+ * channels exist for it (engine-default only). Its optional `comment` flows
+ * through the `comment` param; Part 33's `foldCommentIntoEvent` (single call
+ * site, post-render) renders it into `display.{app_name}.description` — this
+ * planner never writes `metadata.comment`.
  *
  * The three-source override merge (engine default → YAML override → pre-hook
  * return) fires for any handler type whenever an override slice is present.
@@ -88,8 +99,13 @@ function resolveActionSignalTitle(signal, status_after) {
  * @param {Object} args
  * @param {string} args.event_id — per-invocation id, minted by handler (task 15).
  * @param {Object} args.user — authenticated user.
- * @param {'StartWorkflow'|'SubmitWorkflowAction'|'CancelWorkflow'|'CloseWorkflow'|'tracker-mirror'} args.handlerType
- * @param {string} args.signal — the resolved FSM signal name.
+ * @param {'StartWorkflow'|'SubmitWorkflowAction'|'CancelWorkflow'|'CloseWorkflow'|'tracker-mirror'|'UpdateActionFields'} args.handlerType
+ * @param {string} [args.signal] — the resolved FSM signal name. Absent on the
+ *   UpdateActionFields path (no transition).
+ * @param {{ text: string, html: string } | null} [args.comment] — optional
+ *   comment (UpdateActionFields path). The planner does not store or render it;
+ *   Part 33's `foldCommentIntoEvent` folds it into `display.{app_name}.description`.
+ *   When Part 33's fold has not landed, the param simply flows un-folded.
  * @param {Object} args.plannedWorkflowDoc — the whole planned post-commit
  *   workflow doc (from planWorkflowRecompute). Must carry `entity_ref_key`.
  * @param {Object} [args.plannedActionDoc] — required for action-event and
@@ -118,6 +134,7 @@ function planEventDispatch({
   user,
   handlerType,
   signal,
+  comment,
   plannedWorkflowDoc,
   plannedActionDoc,
   status_before = null,
@@ -148,6 +165,7 @@ function planEventDispatch({
   // ── Determine event type and render-context branch ──────────────────────
   const isTrackerMirror = handlerType === 'tracker-mirror';
   const isSubmit = handlerType === 'SubmitWorkflowAction';
+  const isFieldsUpdate = handlerType === 'UpdateActionFields';
   const isLifecycle =
     handlerType === 'StartWorkflow' ||
     handlerType === 'CancelWorkflow' ||
@@ -157,7 +175,13 @@ function planEventDispatch({
   let isActionEvent;
   let titleTemplate;
 
-  if (isTrackerMirror) {
+  if (isFieldsUpdate) {
+    // Part 24: signal-less metadata write. Stamp the type directly (no signal
+    // to derive it from) and reuse the generic action fallback title.
+    eventType = 'action-fields-updated';
+    isActionEvent = true;
+    titleTemplate = ACTION_FALLBACK_TITLE;
+  } else if (isTrackerMirror) {
     eventType = MIRROR_TYPE_MAP[signal];
     if (!eventType) {
       throw new WorkflowEngineError(
@@ -192,7 +216,14 @@ function planEventDispatch({
 
   // ── Build render context ─────────────────────────────────────────────────
   let ctx;
-  if (isActionEvent) {
+  if (isFieldsUpdate) {
+    // Signal-less: no transition, so no signal / status_* / submitted_form.
+    ctx = {
+      user,
+      action: plannedActionDoc,
+      workflow,
+    };
+  } else if (isActionEvent) {
     ctx = {
       user,
       action: plannedActionDoc,
@@ -226,12 +257,14 @@ function planEventDispatch({
       action_ids: (allTouchedActionDocs ?? []).map((a) => a._id),
       [refKey]: [workflow.entity_id],
     },
-    metadata: buildMetadata({ isActionEvent, plannedActionDoc, signal, status_before, status_after, workflow }),
+    metadata: buildMetadata({ isActionEvent, isFieldsUpdate, plannedActionDoc, signal, status_before, status_after, workflow }),
   };
 
   // ── Apply override layers (any path that supplies an override slice) ────────
+  // UpdateActionFields renders engine-default only — no override channel exists
+  // for it, so overrides are ignored even if a caller passes them.
   let mergedPayload = defaultPayload;
-  if (yamlEventOverrides || preHookEventOverrides) {
+  if (!isFieldsUpdate && (yamlEventOverrides || preHookEventOverrides)) {
     mergedPayload = mergeEventOverrides({
       defaultPayload,
       yamlOverride: yamlEventOverrides,
@@ -259,10 +292,18 @@ function planEventDispatch({
 /**
  * Build the per-type `metadata` block.
  * Action events (incl. tracker-mirror): { action_type, workflow_type, signal, current_key, status_before, status_after }
+ * UpdateActionFields (Part 24): { action_type, workflow_type, current_key } — no signal/status (no transition).
  * Lifecycle events: { workflow_type, signal }
  * No metadata.comment — superseded by Part 33's foldCommentIntoEvent.
  */
-function buildMetadata({ isActionEvent, plannedActionDoc, signal, status_before, status_after, workflow }) {
+function buildMetadata({ isActionEvent, isFieldsUpdate, plannedActionDoc, signal, status_before, status_after, workflow }) {
+  if (isFieldsUpdate) {
+    return {
+      action_type: plannedActionDoc?.type ?? null,
+      workflow_type: workflow.workflow_type,
+      current_key: plannedActionDoc?.key ?? null,
+    };
+  }
   if (isActionEvent) {
     return {
       action_type: plannedActionDoc?.type ?? null,

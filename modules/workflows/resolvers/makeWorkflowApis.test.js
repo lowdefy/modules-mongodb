@@ -583,3 +583,72 @@ test("makeWorkflowApis: no hooks property on start/cancel/close", () => {
     );
   }
 });
+
+// ── Part 24: {type}-update-fields endpoint ───────────────────────────────────
+
+test("makeWorkflowApis: a workflow with a form action emits exactly one {type}-update-fields", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  const ids = apis.map((a) => a.id);
+  expect(ids).toContain("onboarding-update-fields");
+  expect(ids.filter((id) => id === "onboarding-update-fields")).toHaveLength(1);
+});
+
+test("makeWorkflowApis: update-fields endpoint shape — Api, exact properties, two-key :return", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  const ep = findApi(apis, "onboarding-update-fields");
+  expect(ep.type).toBe("Api");
+  expect(propsOf(ep)).toEqual({
+    action_id: { _payload: "action_id" },
+    workflow_type: "onboarding",
+    fields: { _payload: "fields" },
+    comment: { _payload: "comment" },
+  });
+  expect(ep.routine[0].type).toBe("UpdateActionFields");
+  expect(ep.routine[1][":return"]).toEqual({
+    action_id: { _step: "update_fields.action_id" },
+    event_id: { _step: "update_fields.event_id" },
+  });
+  // Signal-less / workflow-scoped: no signal/form/interaction/action_type keys.
+  const props = propsOf(ep);
+  expect(props).not.toHaveProperty("signal");
+  expect(props).not.toHaveProperty("form");
+  expect(props).not.toHaveProperty("interaction");
+  expect(props).not.toHaveProperty("action_type");
+});
+
+test("makeWorkflowApis: a workflow with only check actions still emits update-fields", () => {
+  const checkOnly = {
+    type: "check-flow",
+    entity_collection: "leads-collection",
+    starting_actions: [],
+    actions: [
+      { type: "audit", kind: "check", access: { "my-team-app": { view: true, edit: true } } },
+    ],
+  };
+  const apis = makeWorkflowApis(null, { workflows: [checkOnly] });
+  expect(apis.map((a) => a.id)).toContain("check-flow-update-fields");
+});
+
+test("makeWorkflowApis: a tracker-only workflow emits no update-fields endpoint", () => {
+  const apis = makeWorkflowApis(null, {
+    workflows: [onboardingTrackerWorkflow, workedExample],
+  });
+  const ids = apis.map((a) => a.id);
+  expect(ids).not.toContain("onboarding-tracker-update-fields");
+  // The form/check workflow still emits one.
+  expect(ids).toContain("onboarding-update-fields");
+});
+
+test("makeWorkflowApis: two workflows emit two distinct update-fields ids", () => {
+  const wfB = {
+    type: "renewal",
+    entity_collection: "leads-collection",
+    starting_actions: [],
+    actions: [
+      { type: "review", kind: "form", form: [{ id: "x", type: "TextInput" }], access: { "my-team-app": { view: true, edit: true } } },
+    ],
+  };
+  const apis = makeWorkflowApis(null, { workflows: [workedExample, wfB] });
+  const ids = apis.map((a) => a.id).filter((id) => id.endsWith("-update-fields"));
+  expect(ids).toEqual(expect.arrayContaining(["onboarding-update-fields", "renewal-update-fields"]));
+});

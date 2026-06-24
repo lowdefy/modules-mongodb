@@ -84,12 +84,101 @@ test('tracker kind: unblock from blocked lands action-required', () => {
   expect(result.doc.status[0].stage).toBe('action-required');
 });
 
-test('payload.fields is a verbatim kind-agnostic passthrough', () => {
+test('check kind update: payload.fields is a verbatim passthrough (universal keys written)', () => {
   const fields = { assignees: [{ id: 'u2' }], due_date: '2026-06-01', custom_field: 42 };
-  const result = plan({ payload: { fields } });
+  const result = plan({
+    action: makeAction({ kind: 'check' }),
+    actionConfig: makeConfig({ kind: 'check' }),
+    payload: { fields },
+  });
   expect(result.doc.assignees).toEqual([{ id: 'u2' }]);
   expect(result.doc.due_date).toBe('2026-06-01');
   expect(result.doc.custom_field).toBe(42);
+});
+
+// ── Part 24: kind-based universal-fields rule (update path) ───────────────────
+
+test('form kind update: universal keys stripped; non-universal keys still written', () => {
+  const fields = {
+    assignees: [{ id: 'u2' }],
+    due_date: '2026-06-01',
+    description: { text: 'x', html: '<p>x</p>' },
+    custom_field: 42,
+  };
+  const result = plan({
+    action: makeAction({
+      kind: 'form',
+      assignees: ['orig'],
+      due_date: 'orig-date',
+      description: 'orig-desc',
+    }),
+    actionConfig: makeConfig({ kind: 'form' }),
+    payload: { fields },
+  });
+  // Universal keys preserved at their loaded values (not clobbered by the bag).
+  expect(result.doc.assignees).toEqual(['orig']);
+  expect(result.doc.due_date).toBe('orig-date');
+  expect(result.doc.description).toBe('orig-desc');
+  // Non-universal key still passes through.
+  expect(result.doc.custom_field).toBe(42);
+});
+
+test('tracker kind update: universal keys stripped; child-link fields still forwarded', () => {
+  const fields = {
+    assignees: ['u-2'],
+    child_workflow_id: 'cw-1',
+    child_entity_id: 'ce-1',
+    child_entity_collection: 'cc-1',
+  };
+  const result = plan({
+    action: makeAction({ kind: 'tracker', stage: 'blocked', assignees: ['orig'] }),
+    signal: 'unblock',
+    actionConfig: makeConfig({ kind: 'tracker', tracker: { child_workflow_type: 'child-type' } }),
+    payload: { fields },
+  });
+  // Universal key dropped.
+  expect(result.doc.assignees).toEqual(['orig']);
+  // Cascade child-link fields forwarded.
+  expect(result.doc.child_workflow_id).toBe('cw-1');
+  expect(result.doc.child_entity_id).toBe('ce-1');
+  expect(result.doc.child_entity_collection).toBe('cc-1');
+});
+
+test('form kind upsert/insert: universal keys in the bag ARE written (create path unguarded)', () => {
+  const result = planActionTransition({
+    action: undefined,
+    signal: 'activate',
+    source: 'auxiliary',
+    upsert: true,
+    key: 'k-1',
+    payload: { fields: { description: 'spawned', assignees: ['u-9'] } },
+    actionConfig: makeConfig({ kind: 'form' }),
+    loadedWorkflow,
+    entry_id,
+    event_id,
+    now,
+    newId: () => 'new-1',
+  });
+  expect(result.operation).toBe('insert');
+  expect(result.doc.description).toBe('spawned');
+  expect(result.doc.assignees).toEqual(['u-9']);
+});
+
+test('check kind insert via seed mode: universal keys written (create path full passthrough)', () => {
+  const result = planActionTransition({
+    action: undefined,
+    seedStage: 'action-required',
+    payload: { fields: { assignees: ['u-9'], due_date: '2026-09-01' } },
+    actionConfig: makeConfig({ kind: 'check' }),
+    loadedWorkflow,
+    entry_id,
+    event_id,
+    now,
+    newId: () => 'seed-1',
+  });
+  expect(result.operation).toBe('insert');
+  expect(result.doc.assignees).toEqual(['u-9']);
+  expect(result.doc.due_date).toBe('2026-09-01');
 });
 
 test('metadata accumulates onto loaded metadata; incoming wins', () => {

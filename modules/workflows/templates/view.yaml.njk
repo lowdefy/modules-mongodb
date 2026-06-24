@@ -83,40 +83,88 @@ _ref:
               default: []
     blocks:
       _build.array.concat:
-        - - id: form_card
-            type: Card
+        # Two-column content row: form body (left) + read-only universal-fields
+        # sidebar (right), gated on action_config.universal_fields non-empty.
+        - - id: action_content_row
+            type: Box
             layout:
               gap: 16
             blocks:
               _build.array.concat:
-                - _var:
-                    key: page_config.formHeader
-                    default: []
-                - - _ref:
-                      path: components/universal-fields/universal-fields.yaml
-                      vars:
-                        mode: display
-                        kind: form
-                        action_data:
-                          assignees:
-                            _state: action.assignees
-                          due_date:
-                            _state: action.due_date
-                          description:
-                            _state: action.description
-                - - id: form_body
-                    type: DataDescriptions
-                    properties:
-                      formConfig:
-                        _var: action_config.form
-                      data:
-                        form:
-                          _state: form
-                        entity:
-                          _request: get_entity
-                - _var:
-                    key: page_config.formFooter
-                    default: []
+                - - id: form_column
+                    type: Box
+                    layout:
+                      span:
+                        _build.if:
+                          test:
+                            _build.gt:
+                              - _array.length:
+                                  _var:
+                                    key: action_config.universal_fields
+                                    default: []
+                              - 0
+                          then: 16
+                          else: 24
+                      sm:
+                        span: 24
+                    blocks:
+                      - id: form_card
+                        type: Card
+                        layout:
+                          gap: 16
+                        blocks:
+                          _build.array.concat:
+                            - _var:
+                                key: page_config.formHeader
+                                default: []
+                            - - id: form_body
+                                type: DataDescriptions
+                                properties:
+                                  formConfig:
+                                    _var: action_config.form
+                                  data:
+                                    form:
+                                      _state: form
+                                    entity:
+                                      _request: get_entity
+                            - _var:
+                                key: page_config.formFooter
+                                default: []
+                - _build.if:
+                    test:
+                      _build.gt:
+                        - _array.length:
+                            _var:
+                              key: action_config.universal_fields
+                              default: []
+                        - 0
+                    then:
+                      - id: sidebar_column
+                        type: Box
+                        layout:
+                          span: 8
+                          sm:
+                            span: 24
+                        blocks:
+                          - _ref:
+                              path: components/universal-fields/universal-fields.yaml
+                              vars:
+                                mode: display
+                                kind: form
+                                state_path: fields
+                                workflow_type: {{ workflow_type }}
+                                show:
+                                  _var: action_config.universal_fields
+                                action_data:
+                                  assignees:
+                                    _state: action.assignees
+                                  assignee_docs:
+                                    _state: action.assignee_docs
+                                  due_date:
+                                    _state: action.due_date
+                                  description:
+                                    _state: action.description
+                    else: []
         # Floating-actions sticky button bar.
         - - _ref:
               module: layout

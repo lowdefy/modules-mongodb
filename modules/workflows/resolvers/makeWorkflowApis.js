@@ -155,6 +155,41 @@ function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
   };
 }
 
+// Part 24: one {type}-update-fields endpoint per workflow that declares any
+// surface-bearing (form/check) action, dispatched by action_id — exactly
+// mirroring the per-workflow submit endpoint. The UpdateActionFields handler
+// loads the action by id and reads type/kind off the doc, so no per-action-type
+// granularity is needed. type: Api (client-callable) — the handler's load-phase
+// edit-verb gate is the access authority, same posture as submit. The endpoint
+// is signal-less and carries no form/interaction/action_type keys.
+function emitFieldsEndpoint(workflow) {
+  return {
+    id: `${workflow.type}-update-fields`,
+    type: 'Api',
+    routine: [
+      {
+        id: 'update_fields',
+        type: 'UpdateActionFields',
+        connectionId: { '_module.connectionId': 'workflow-api' },
+        properties: {
+          action_id: { _payload: 'action_id' },
+          // Build-time literal — the only per-workflow constant the endpoint
+          // needs (the component builds the id from it at runtime).
+          workflow_type: workflow.type,
+          fields: { _payload: 'fields' },
+          comment: { _payload: 'comment' },
+        },
+      },
+      {
+        ':return': {
+          action_id: { _step: 'update_fields.action_id' },
+          event_id: { _step: 'update_fields.event_id' },
+        },
+      },
+    ],
+  };
+}
+
 // Part 48 D5: per-workflow lifecycle endpoints replace the generic
 // start-workflow/cancel-workflow/close-workflow Apis — a generic endpoint
 // can't carry a bounded render_config because it doesn't know its workflow
@@ -291,6 +326,10 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
         renderConfig,
       ),
     );
+    // Part 24: one update-fields endpoint per surface-bearing workflow (the
+    // same form/check gate as the submit endpoint). Check actions get the
+    // independent Update path in addition to writing fields on submit.
+    apis.push(emitFieldsEndpoint(workflow));
   }
 
   // Lifecycle endpoints for every workflow — including all-tracker ones,

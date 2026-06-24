@@ -1,4 +1,7 @@
-id: user-multi-selector
+id:
+  _var:
+    key: id
+    default: user-multi-selector
 type: MultipleSelector
 requests:
   - _ref: requests/get_users_for_selector.yaml
@@ -8,7 +11,10 @@ events:
       type: Request
       params: get_users_for_selector
 properties:
-  title: Users
+  title:
+    _var:
+      key: title
+      default: Users
   placeholder: Select users
   options:
     _request: get_users_for_selector

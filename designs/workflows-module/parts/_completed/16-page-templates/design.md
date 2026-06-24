@@ -1,5 +1,18 @@
 # Part 16 — Form-action page templates
 
+> **Part 24 deviation (follow-on, do not reopen this folder).** The form
+> templates (`edit/view/review/error.yaml.njk`) no longer render the
+> universal-fields component inline in the form body. Part 24 moved it to a
+> right-hand sidebar column: the content area is now a two-column row
+> (`form_column` span 16, `sidebar_column` span 8, `sm: { span: 24 }`), with the
+> sidebar emitted at build time iff `action_config.universal_fields` is
+> non-empty (otherwise the form column spans 24). `edit` renders the component in
+> `mode: edit` (its own Update button calling `{workflow_type}-update-fields`,
+> independent of form submit); `view/review/error` render it `mode: display`.
+> All four pass `workflow_type` / `show` (and edit additionally `action_id` /
+> `allowed_edit` / `on_complete`). See
+> [parts/24-universal-fields/design.md](../../24-universal-fields/design.md) and its task 11.
+
 **Source rationale:** [workflows-module-concept/ui/spec.md](../../../workflows-module-concept/ui/spec.md), [workflows-module-concept/submit-pipeline/spec.md](../../../workflows-module-concept/submit-pipeline/spec.md). **Layer:** UI delivery. **Size:** M. **Repo:** `modules/workflows/templates/`.
 
 ## Goal

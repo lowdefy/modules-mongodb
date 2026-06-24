@@ -220,6 +220,80 @@ test('completed workflow allows submit on a required_after_close action', async 
   expect(loaded.actionConfig.required_after_close).toBe(true);
 });
 
+// --- Fields mode (Part 24 UpdateActionFields): { actionId, verb } ------------
+
+test('verb mode returns the full LoadedState like submit mode', async () => {
+  await seedWorkflow();
+  const loaded = await loadWorkflowState(rolesContext(['account-manager']), {
+    actionId: 'act-1',
+    verb: 'edit',
+  });
+  expect(loaded.workflow._id).toBe('wf-1');
+  expect(loaded.actionConfig.type).toBe('collect-docs');
+  expect(loaded.targetAction._id).toBe('act-1');
+  expect(loaded.targetAction).toBe(loaded.actions.find((a) => a._id === 'act-1'));
+});
+
+test('verb mode skips the stage check: completed workflow loads fine', async () => {
+  await seedWorkflow({ stage: 'completed' });
+  // act-1 (collect-docs) is NOT required_after_close, so submit mode rejects it.
+  await expect(
+    loadWorkflowState(rolesContext(['account-manager']), {
+      actionId: 'act-1',
+      signal: 'submit',
+    }),
+  ).rejects.toMatchObject({ code: 'stage_rejects_submit' });
+  // The same fixture loads fine in verb mode (no stage/required_after_close gate).
+  const loaded = await loadWorkflowState(rolesContext(['account-manager']), {
+    actionId: 'act-1',
+    verb: 'edit',
+  });
+  expect(loaded.targetAction._id).toBe('act-1');
+});
+
+test('verb mode gates on the given verb: role outside the gate throws access_denied', async () => {
+  await seedWorkflow();
+  await expect(
+    loadWorkflowState(rolesContext(['compliance-officer']), {
+      actionId: 'act-1',
+      verb: 'edit',
+    }),
+  ).rejects.toMatchObject({
+    code: 'access_denied',
+    message: expect.stringContaining('"edit"'),
+  });
+});
+
+test('verb mode: a `true` gate passes a user with no roles', async () => {
+  await seedWorkflow();
+  // final-audit's edit gate is `true`.
+  const loaded = await loadWorkflowState(makeContext({ user: { roles: [] } }), {
+    actionId: 'act-2',
+    verb: 'edit',
+  });
+  expect(loaded.targetAction._id).toBe('act-2');
+});
+
+test('verb mode: matching role passes', async () => {
+  await seedWorkflow();
+  const loaded = await loadWorkflowState(rolesContext(['account-manager']), {
+    actionId: 'act-1',
+    verb: 'edit',
+  });
+  expect(loaded.targetAction._id).toBe('act-1');
+});
+
+test('passing both signal and verb throws invalid_load_args', async () => {
+  await seedWorkflow();
+  await expect(
+    loadWorkflowState(rolesContext(['account-manager']), {
+      actionId: 'act-1',
+      signal: 'submit',
+      verb: 'edit',
+    }),
+  ).rejects.toMatchObject({ code: 'invalid_load_args' });
+});
+
 // --- Per-verb access gate (design D16 / Part 34 D6) ---------------------------
 
 const rolesContext = (roles) =>

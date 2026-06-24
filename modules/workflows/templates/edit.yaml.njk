@@ -97,82 +97,135 @@ _ref:
       _build.array.concat:
         # Card-interior content — wrapped in layout.card unless the first
         # form entry owns its own outer chrome.
-        - _build.if:
-            test:
-              _build.ne:
-                - _var:
-                    key: action_config.form.0.form
-                    default: null
-                - null
-            then:
-              # First form entry owns outer chrome — render content directly.
+        # Two-column content row: form body (left) + universal-fields sidebar
+        # (right). The sidebar renders iff action_config.universal_fields is
+        # non-empty (Part 24); when empty the form column spans the full width.
+        - - id: action_content_row
+            type: Box
+            layout:
+              gap: 16
+            blocks:
               _build.array.concat:
-                - _var:
-                    key: page_config.formHeader
-                    default: []
-                - - _ref:
-                      path: components/universal-fields/universal-fields.yaml
-                      vars:
-                        mode: edit
-                        kind: form
-                        action_data:
-                          assignees:
-                            _state: fields.assignees
-                          due_date:
-                            _state: fields.due_date
-                          description:
-                            _state: fields.description
-                - _ref:
-                    resolver: resolvers/makeActionsForm.js
-                    vars:
-                      form:
-                        _var: action_config.form
-                      mode: edit
-                - - id: comment
-                    type: TiptapInput
-                    properties:
-                      title: Comment
-                      placeholder: Add a comment (optional).
-                - _var:
-                    key: page_config.formFooter
-                    default: []
-            else:
-              # Default: wrap in a Card.
-              - id: form_card
-                type: Card
-                layout:
-                  gap: 16
-                blocks:
-                  _build.array.concat:
-                    - _var:
-                        key: page_config.formHeader
-                        default: []
-                    - - _ref:
-                          path: components/universal-fields/universal-fields.yaml
-                          vars:
-                            mode: edit
-                            kind: form
-                            action_data:
-                              assignees:
-                                _state: fields.assignees
-                              due_date:
-                                _state: fields.due_date
-                              description:
-                                _state: fields.description
-                    - _ref:
-                        resolver: resolvers/makeActionsForm.js
-                        vars:
-                          form:
-                            _var: action_config.form
-                          mode: edit
-                    - - id: comment
-                        type: TiptapInput
-                        properties:
-                          title: Comment
-                          placeholder: Add a comment (optional).
-                    - _var:
-                        key: page_config.formFooter
-                        default: []
+                - - id: form_column
+                    type: Box
+                    layout:
+                      span:
+                        _build.if:
+                          test:
+                            _build.gt:
+                              - _array.length:
+                                  _var:
+                                    key: action_config.universal_fields
+                                    default: []
+                              - 0
+                          then: 16
+                          else: 24
+                      sm:
+                        span: 24
+                    blocks:
+                      _build.if:
+                        test:
+                          _build.ne:
+                            - _var:
+                                key: action_config.form.0.form
+                                default: null
+                            - null
+                        then:
+                          # First form entry owns outer chrome — render directly.
+                          _build.array.concat:
+                            - _var:
+                                key: page_config.formHeader
+                                default: []
+                            - _ref:
+                                resolver: resolvers/makeActionsForm.js
+                                vars:
+                                  form:
+                                    _var: action_config.form
+                                  mode: edit
+                            - - id: comment
+                                type: TiptapInput
+                                properties:
+                                  title: Comment
+                                  placeholder: Add a comment (optional).
+                            - _var:
+                                key: page_config.formFooter
+                                default: []
+                        else:
+                          # Default: wrap in a Card.
+                          - id: form_card
+                            type: Card
+                            layout:
+                              gap: 16
+                            blocks:
+                              _build.array.concat:
+                                - _var:
+                                    key: page_config.formHeader
+                                    default: []
+                                - _ref:
+                                    resolver: resolvers/makeActionsForm.js
+                                    vars:
+                                      form:
+                                        _var: action_config.form
+                                      mode: edit
+                                - - id: comment
+                                    type: TiptapInput
+                                    properties:
+                                      title: Comment
+                                      placeholder: Add a comment (optional).
+                                - _var:
+                                    key: page_config.formFooter
+                                    default: []
+                - _build.if:
+                    test:
+                      _build.gt:
+                        - _array.length:
+                            _var:
+                              key: action_config.universal_fields
+                              default: []
+                        - 0
+                    then:
+                      - id: sidebar_column
+                        type: Box
+                        layout:
+                          span: 8
+                          sm:
+                            span: 24
+                        blocks:
+                          - _ref:
+                              path: components/universal-fields/universal-fields.yaml
+                              vars:
+                                mode: edit
+                                kind: form
+                                state_path: fields
+                                workflow_type: {{ workflow_type }}
+                                show:
+                                  _var: action_config.universal_fields
+                                action_id:
+                                  _state: action._id
+                                allowed_edit:
+                                  _state: action.allowed.edit
+                                on_complete:
+                                  - id: refetch_action_fields
+                                    type: Request
+                                    params: get_workflow_action
+                                  - id: reset_action_fields
+                                    type: SetState
+                                    params:
+                                      action:
+                                        _request: get_workflow_action
+                                  - id: update_fields_success
+                                    type: DisplayMessage
+                                    params:
+                                      status: success
+                                      content: Updated successfully.
+                                action_data:
+                                  assignees:
+                                    _state: fields.assignees
+                                  due_date:
+                                    _state: fields.due_date
+                                  description:
+                                    _state: fields.description
+                    else: []
         # Floating-actions sticky button bar.
         - - _ref:
               module: layout

@@ -60,6 +60,22 @@ async function commitWorkflowAndActions(context, plan, session) {
   const workflowsCollection = context.connection?.workflowsCollection ?? 'workflows';
   const actionsCollection = context.connection?.actionsCollection ?? 'actions';
 
+  // Workflow-less plan (Part 24 UpdateActionFields): no workflow doc is written
+  // — summary/groups/form_data are unaffected by action metadata. Skip step 1
+  // entirely (no CAS read, no ConcurrentSubmitError) and go straight to the
+  // action bulk-write. Per-action concurrency is last-write-wins (Part 38 D15
+  // deferral); there is no workflow claim to gate on.
+  if (plan.workflow == null) {
+    const actionOperations = buildActionOperations(plan.actions);
+    await bulkWriteActions({
+      mongoDb: context.mongoDb,
+      collection: actionsCollection,
+      operations: actionOperations,
+      session,
+    });
+    return;
+  }
+
   const { doc: plannedWorkflowDoc, operation } = plan.workflow;
 
   // Step 1 — claim the workflow (workflow-first ordering, D9).
@@ -150,11 +166,18 @@ async function writeChangeLog(context, plan) {
  * @param {import('./types.js').Plan} plan
  * @param {string | null} event_id — the dispatched event_id, or null on step-3 failure.
  * @param {Array<{ step: number, error: Error }>} dispatchErrors
+ * @param {Object} context — engine context; `context.loadedState.workflow._id`
+ *   supplies the workflow id for a workflow-less plan (`plan.workflow == null`).
  * @returns {import('./types.js').CommitResult}
  */
-function buildCommitResult(plan, event_id, dispatchErrors) {
+function buildCommitResult(plan, event_id, dispatchErrors, context) {
   return {
-    workflow_id: plan.workflow.doc._id,
+    // Workflow-less plans (UpdateActionFields) write no workflow doc; the
+    // committed workflow id comes from the load phase, which always has it.
+    workflow_id:
+      plan.workflow != null
+        ? plan.workflow.doc._id
+        : context.loadedState.workflow._id,
     action_ids: plan.actions.map((a) => a.doc._id),
     event_id,
     dispatchErrors,
@@ -252,7 +275,7 @@ async function commitPlan(context, plan) {
     dispatchErrors.push({ step: 5, error });
   }
 
-  return buildCommitResult(plan, event_id, dispatchErrors);
+  return buildCommitResult(plan, event_id, dispatchErrors, context);
 }
 
 export default commitPlan;

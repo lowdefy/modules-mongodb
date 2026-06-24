@@ -1,5 +1,11 @@
 # Part 24a — Migrate `user-selector` + ship `user-avatar` in user-account
 
+> **Part 24 deviation (follow-on).** `user-multi-selector.yaml` gained a
+> parameterizable `id` var (default `user-multi-selector`, backward-compatible)
+> and an optional `title` var (default `Users`) so the universal-fields surface
+> can auto-bind it to `{state_path}.assignees`. See
+> [parts/24-universal-fields/design.md](../../24-universal-fields/design.md) task 9.
+
 **Source rationale:** Precursor work split out of [part 24 (universal-fields)](../../24-universal-fields/design.md) action review. Part 24 needs a shared way to pick assignees (Selector) and to render assigned users (avatar + name) on display surfaces; user-account already owns `user-contacts-collection`, `app_name`, and `avatar_colors`, so it's the right home. **Layer:** module-surface (user-account + user-admin). **Size:** S. **Repos:** `modules/user-account/`, `modules/user-admin/`.
 
 ## Goal

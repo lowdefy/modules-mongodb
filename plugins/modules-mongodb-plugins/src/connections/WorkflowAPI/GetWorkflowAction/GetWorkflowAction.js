@@ -17,7 +17,7 @@ import { computeAllowed, resolveButtons } from '../../shared/render/resolveActio
  *
  *   {
  *     _id, type, workflow_type, kind, key, status, action_group, description, due_date,
- *     assignees, entity_id, entity_collection, created, updated,
+ *     assignees, assignee_docs, entity_id, entity_collection, created, updated,
  *     entity_link,          // { pageId, urlQuery, title } from connection.entities, or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
@@ -121,6 +121,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? 'workflows';
   const actionsCollection = connection.actionsCollection ?? 'actions';
+  const contactsCollection = connection.contactsCollection ?? 'user-contacts';
   const entities = connection.entities ?? {};
 
   // ── Step 1: Read the action doc ──
@@ -164,6 +165,25 @@ async function GetWorkflowAction(lowdefyContext) {
   // ── Workflow closed flag ──
   const wfStage = wfDoc?.status?.[0]?.stage ?? null;
   const workflow_closed = wfStage === 'completed' || wfStage === 'cancelled';
+
+  // ── Assignee display docs (Part 24) — the universal-fields display mode
+  //    renders one avatar per assignee, which needs user docs, not ids.
+  //    user-contacts._id is a string (uuid), so the $in matches without
+  //    coercion. Empty array when the action has no assignees.
+  const assigneeIds = action.assignees ?? [];
+  const assignee_docs =
+    assigneeIds.length > 0
+      ? (
+          await findDocs({
+            mongoDb,
+            collection: contactsCollection,
+            query: { _id: { $in: assigneeIds } },
+          })
+        ).map((d) => ({
+          _id: d._id,
+          profile: { name: d.profile?.name, picture: d.profile?.picture },
+        }))
+      : [];
 
   // ── Form-field values (allowlisted by validated form keys) ──
   // Collect valid keys from all three form arrays (form, form_review, form_error).
@@ -222,6 +242,7 @@ async function GetWorkflowAction(lowdefyContext) {
     description: action.description ?? null,
     due_date: action.due_date ?? null,
     assignees: action.assignees ?? null,
+    assignee_docs,
     entity_id: action.entity_id ?? null,
     entity_collection: action.entity_collection ?? null,
     entity_link,

@@ -24,7 +24,19 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "hooks",
   "interactions",
   "event",
+  "universal_fields",
 ];
+
+// Part 24: the all-three default for the UI presence list. Normalized onto the
+// emitted action_config so templates/components always see a (possibly empty)
+// array — `false` → [], omitted → all three, array → as-is.
+const UNIVERSAL_FIELDS_DEFAULT = ["assignees", "due_date", "description"];
+
+function normalizeUniversalFields(value) {
+  if (value === undefined) return UNIVERSAL_FIELDS_DEFAULT;
+  if (value === false) return [];
+  return value;
+}
 
 function pick(source, fields) {
   const picked = {};
@@ -53,6 +65,10 @@ function emitForAction(workflow, action, appName, titleAcronyms) {
   );
 
   const actionConfig = pick(action, ACTION_FIELDS_FOR_TEMPLATE);
+
+  // Normalize universal_fields to a concrete array so templates can gate the
+  // sidebar column on non-emptiness with no type juggling (Part 24).
+  actionConfig.universal_fields = normalizeUniversalFields(action.universal_fields);
 
   // Resolve the action title identically to makeWorkflowsConfig (this resolver
   // reads raw YAML, not the materialized config, so it must re-derive rather
