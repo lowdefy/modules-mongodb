@@ -182,12 +182,15 @@ function buildVarsMarkdown(moduleName, vars) {
 
 /**
  * Build the full file content (front-matter + body) for vars.md.
+ * @param {string} moduleSlug — directory name / lowercase slug (e.g. "user-admin")
+ * @param {string} manifestName — human-readable name from manifest (e.g. "User Admin")
+ * @param {Record<string, object>} vars — parsed vars block from manifest
  */
-function buildVarsFile(manifestName, vars) {
+function buildVarsFile(moduleSlug, manifestName, vars) {
   const frontMatter = [
     '---',
     `title: Vars`,
-    `module: ${manifestName}`,
+    `module: ${moduleSlug}`,
     `type: reference`,
     '---',
     '',
@@ -234,7 +237,7 @@ function generateForModule(moduleName) {
     return null; // No vars to document
   }
 
-  const content = buildVarsFile(manifest.name ?? moduleName, manifest.vars);
+  const content = buildVarsFile(moduleName, manifest.name ?? moduleName, manifest.vars);
   return content;
 }
 

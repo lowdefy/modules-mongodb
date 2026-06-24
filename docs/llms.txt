@@ -18,43 +18,43 @@
 - docs/shared/secrets.md: Secrets — Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 - docs/shared/slots.md: Slots — Modules that ship list / detail / edit pages expose **slots** so consumers can extend each page without forking the YAML. Three slot vars are conventional:
 
-## Activities
+## activities
 
 - docs/activities/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## Companies
+## companies
 
 - docs/companies/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## Contacts
+## contacts
 
 - docs/contacts/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## Events
+## events
 
 - docs/events/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## Files
+## files
 
 - docs/files/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## Layout
+## layout
 
 - docs/layout/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## Notifications
+## notifications
 
 - docs/notifications/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## Release Notes
+## release-notes
 
 - docs/release-notes/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## User Account
+## user-account
 
 - docs/user-account/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
-## User Admin
+## user-admin
 
 - docs/user-admin/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
@@ -66,7 +66,4 @@
 - docs/workflows/reference/form-components.md: Form Components — Built-in field components for action `form:` blocks. The form-builder resolver substitutes each component's block config (with author-supplied vars merged) into the page block tree at build time.
 - docs/workflows/reference/fsm-and-signals.md: FSM and Signals — The engine resolves every status change as a **signal** against a per-kind finite-state machine. A submission carries a signal name; the FSM looks up `(currentStatus, signal) → newStatus`. An unlisted `(status, signal)` pair no-ops silently. For the explanation of why this model exists, see [Sign...
 - docs/workflows/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collections backing the `actions-collection` and `workflows-collection` connections.
-
-## Workflows
-
 - docs/workflows/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
