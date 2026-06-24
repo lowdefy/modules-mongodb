@@ -3,14 +3,12 @@ _ref:
   component: page
   vars:
     id: edit
-    title:
+    type:
       _string.concat:
         - "Edit "
         - _module.var: label
-        - ": "
-        - _if_none:
-            - _request: get_activity.0.title
-            - ""
+    title:
+      _request: get_activity.0.title
     content_width: 700
     breadcrumbs:
       - home: true

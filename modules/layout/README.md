@@ -59,6 +59,26 @@ See `apps/demo/modules/layout/vars.yaml` for a worked example.
 - **`floating-actions`** — Floating action button bar affixed to the bottom of the viewport.
 - **`auth-page`** — Centered auth/login page layout with branded cover and card. See [Notes](#notes).
 
+## Title bar props
+
+The `page` component renders a shared title bar (`modules/shared/layout/title-block.yaml`) above the content. These props are passed per page through the `page` component's `_ref` vars (not module-level vars). All are optional.
+
+| Prop | Type | Default | Purpose |
+|---|---|---|---|
+| `title` | string | `null` | The entity **name/identifier only** — never a `"{type}: {name}"` concatenation. Rendered as the `<h2>` heading. |
+| `type` | string | `null` | Entity-type "eyebrow" rendered uppercase directly above the title. Hidden when `null`. Pass in normal case — the component uppercases. Conventions: **view** → the entity type alone (e.g. `Company`); **edit** → `Edit {type}`; **create** → the create verb + type (usually `New {type}`, but follow the domain's verb — user-admin uses `Invite {…} User`). |
+| `status` | string | `null` | Status slug (runtime), looked up in `status_enum`. The pill is hidden when `status` is `null` or doesn't match an enum entry. |
+| `status_enum` | object | `null` | Status-enum map (build-time `_ref`) using the standard `{ color, borderColor, titleColor, title }` entry shape (`color`→fill, `borderColor`→border, `titleColor`→text, `title`→label). Any existing status enum works as-is. Point at the override-merged `components/<enum>.yaml` map where one exists, so per-app `*_display` overrides survive; reference a raw `enums/<enum>.yaml` map only when the enum has no override wrapper. See [Status display](../../docs/idioms.md#status-display) for the colour contract. |
+| `doc` | object | `null` | Change-stamp doc (`{ created, updated }`) for the subtitle line. |
+| `loading` | boolean | `false` | When truthy, the title, subtitle, and status pill render as shimmer skeletons; the `type` eyebrow always renders immediately (it is static config). Gate on `_not: { _request: <id> }` for request-backed pages, or `_not: { _state: <key> }` for CallAPI+SetState pages. |
+| `page_actions` | array | `[]` | Action blocks rendered to the right of the title. |
+| `show_back_button` | boolean | `false` | Render a back button to the left of the title. |
+| `back_link` | object | `null` | Explicit back target (`{ pageId, urlQuery }`); falls back to browser history when `null`. |
+
+Static list/index page titles (e.g. a "Contacts" heading) should leave `loading` off and pass no `type`/`status` — they remain plain, non-skeletoned headings.
+
+To replace the whole bar, use the [`title_block`](#title_block) override var instead.
+
 ## Vars
 
 ### `page_type`

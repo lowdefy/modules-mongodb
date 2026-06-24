@@ -3,14 +3,12 @@ _ref:
   component: page
   vars:
     id: edit
-    title:
+    type:
       _string.concat:
         - "Edit "
         - _module.var: label
-        - ": "
-        - _if_none:
-            - _request: get_contact.0.profile.name
-            - ""
+    title:
+      _request: get_contact.0.profile.name
     content_width: 600
     breadcrumbs:
       - home: true

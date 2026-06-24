@@ -21,22 +21,14 @@ _ref:
         _state: workflow.entity_link.pageId
       urlQuery:
         _state: workflow.entity_link.urlQuery
-    badge_text:
-      _get:
-        from:
-          _ref: components/workflow_lifecycle_stages.yaml
-        key:
-          _string.concat:
-            - _state: workflow.status.0.stage
-            - .title
-    badge_color:
-      _get:
-        from:
-          _ref: components/workflow_lifecycle_stages.yaml
-        key:
-          _string.concat:
-            - _state: workflow.status.0.stage
-            - .titleColor
+    type: Workflow
+    status:
+      _state: workflow.status.0.stage
+    status_enum:
+      _ref: components/workflow_lifecycle_stages.yaml
+    loading:
+      _not:
+        _state: workflow
     events:
       onMount:
         # workflow_id presence guard.

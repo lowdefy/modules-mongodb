@@ -3,15 +3,19 @@ _ref:
   component: page
   vars:
     id: edit
+    type:
+      _nunjucks:
+        template: |
+          Edit {% if app_title %}{{ app_title }} {% endif %}User
+        on:
+          app_title:
+            _module.var: app_title
     title:
       _nunjucks:
         template: |
-          Edit {% if app_title %}{{ app_title }} {% endif %}User{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+          {% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
-          _object.assign:
-            - _request: get_user.0
-            - app_title:
-                _module.var: app_title
+          _request: get_user.0
     content_width: 600
     breadcrumbs:
       - home: true

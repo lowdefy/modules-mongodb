@@ -219,14 +219,22 @@ blocks:
                               _var:
                                 key: page_actions
                                 default: []
-                            badge_text:
+                            type:
                               _var:
-                                key: badge_text
+                                key: type
                                 default: null
-                            badge_color:
+                            status:
                               _var:
-                                key: badge_color
-                                default: default
+                                key: status
+                                default: null
+                            status_enum:
+                              _var:
+                                key: status_enum
+                                default: null
+                            loading:
+                              _var:
+                                key: loading
+                                default: false
                             show_back_button:
                               _var:
                                 key: show_back_button

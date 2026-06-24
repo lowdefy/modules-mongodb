@@ -1,0 +1,21 @@
+# Action group rollup status — the aggregate state across the actions in a
+# group, distinct from an individual action's status (action_statuses.yaml).
+# Consumed by the title-block status pill on the group-overview page. No
+# *_display override var yet, so it is referenced directly (no components/
+# wrapper). Colours preserve the previous group-overview badge: done=green,
+# in-progress=blue, blocked=grey.
+done:
+  color: '#f6ffed'
+  borderColor: '#b7eb8f'
+  titleColor: '#389e0d'
+  title: Done
+in-progress:
+  color: '#e6f7ff'
+  borderColor: '#91d5ff'
+  titleColor: '#096dd9'
+  title: In progress
+blocked:
+  color: '#efefef'
+  borderColor: '#aeaeae'
+  titleColor: '#595959'
+  title: Blocked

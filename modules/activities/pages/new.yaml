@@ -3,7 +3,7 @@ _ref:
   component: page
   vars:
     id: new
-    title:
+    type:
       _string.concat:
         - "New "
         - _module.var: label

@@ -3,15 +3,17 @@ _ref:
   component: page
   vars:
     id: view
+    type:
+      _module.var: label
     title:
       _nunjucks:
         template: |
-          {{ label }}{% if profile %}: {{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
+          {% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
-          _object.assign:
-            - _request: get_contact.0
-            - label:
-                _module.var: label
+          _request: get_contact.0
+    loading:
+      _not:
+        _request: get_contact
     breadcrumbs:
       - home: true
         icon: AiOutlineHome

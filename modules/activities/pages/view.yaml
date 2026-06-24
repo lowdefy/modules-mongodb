@@ -24,17 +24,20 @@ _ref:
   component: page
   vars:
     id: view
+    type:
+      _module.var: label
     title:
       _nunjucks:
         template: |
-          {{ label }}{% if title %}: {{ title | safe }}{% endif %}
+          {% if title %}{{ title | safe }}{% endif %}
         on:
-          label:
-            _module.var: label
           title:
             _if_none:
               - _request: get_activity.0.title
               - ""
+    loading:
+      _not:
+        _request: get_activity
     breadcrumbs:
       - home: true
         icon: AiOutlineHome

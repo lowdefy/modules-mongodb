@@ -25,36 +25,14 @@ _ref:
         _state: workflow.entity_link.pageId
       urlQuery:
         _state: workflow.entity_link.urlQuery
-    badge_text:
-      _if:
-        test:
-          _eq:
-            - _state: group.status
-            - done
-        then: Done
-        else:
-          _if:
-            test:
-              _eq:
-                - _state: group.status
-                - in-progress
-            then: In progress
-            else: Blocked
-    badge_color:
-      _if:
-        test:
-          _eq:
-            - _state: group.status
-            - done
-        then: green
-        else:
-          _if:
-            test:
-              _eq:
-                - _state: group.status
-                - in-progress
-            then: blue
-            else: default
+    type: Workflow
+    status:
+      _state: group.status
+    status_enum:
+      _ref: enums/action_group_statuses.yaml
+    loading:
+      _not:
+        _state: group
     events:
       onMount:
         # workflow_id + group_id presence guard.

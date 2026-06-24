@@ -41,69 +41,145 @@ blocks:
                       else:
                         back: true
         else: []
-    # Optional status badge — caller supplies text + colour; rendered as a
-    # full-height pill to the left of the title.
+    # Status pill (optional) — caller supplies a status slug + a status-enum
+    # map; the pill resolves label + the three-colour contract internally and
+    # renders to the left of the title. Built only when `status_enum` is wired,
+    # so pages without a status produce no pill block (and no loading flash).
     - _build.if:
         test:
           _build.ne:
             - _var:
-                key: badge_text
+                key: status_enum
                 default: null
             - null
         then:
-          - id: title-badge
-            type: Tag
+          - id: title-status-pill
+            type: Html
             layout:
               flex: 0 0 auto
-              selfAlign: stretch
-            # Hidden until the badge text resolves — avoids a grey
-            # placeholder pill (and the block-id fallback) during load.
+              # Centre against the taller eyebrow+title column rather than
+              # stretching to the full row height (the row's default cross-axis
+              # alignment is stretch). This is what keeps the pill "chunky and
+              # vertically centred" instead of full-height.
+              selfAlign: middle
+            loading:
+              _var:
+                key: loading
+                default: false
+            skeleton:
+              type: Skeleton
+              properties:
+                width: 96
+                height: 50
+            # Visible while loading (so the skeleton can render — Lowdefy skips
+            # loading/skeleton entirely when visible is false) OR once the
+            # status slug resolves to an enum entry. Once loaded, an
+            # unmatched/null status hides the pill — no empty placeholder.
             visible:
-              _ne:
-                - _var: badge_text
-                - null
+              _or:
+                - _var:
+                    key: loading
+                    default: false
+                - _ne:
+                    - _get:
+                        from:
+                          _var: status_enum
+                        key:
+                          _var:
+                            key: status
+                            default: null
+                    - null
             style:
-              .element:
-                display: flex
-                alignItems: center
-                height: 100%
-                marginRight: 12
-                fontSize: 15
-                fontWeight: 500
-                lineHeight: 1
-                paddingInline: 12
-                borderRadius: 6
+              marginRight: 12
             properties:
-              color:
-                _var:
-                  key: badge_color
-                  default: default
-              title:
-                _var: badge_text
+              html:
+                _nunjucks:
+                  template: |
+                    <span style="display:inline-block; padding:15px 14px; border-radius:6px; font-size:15px; font-weight:500; line-height:1; white-space:nowrap; background-color:{{ entry.color }}; border:1px solid {{ entry.borderColor }}; color:{{ entry.titleColor }};">{{ entry.title | safe }}</span>
+                  on:
+                    entry:
+                      _get:
+                        from:
+                          _var: status_enum
+                        key:
+                          _var:
+                            key: status
+                            default: null
         else: []
-    - - id: title
-        type: Html
+    # Eyebrow + title/subtitle, stacked in a column so the eyebrow sits ABOVE
+    # the title (the outer Box is a horizontal row). The eyebrow is a separate
+    # sibling block with no loading/skeleton of its own, so it renders
+    # immediately and is never swapped out when `loading` is set.
+    - - id: title-column
+        type: Box
         layout:
+          direction: column
           flex: 1 0 auto
-        properties:
-          html:
-            _nunjucks:
-              template: |
-                <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
-                <div class="text-text-secondary text-sm" style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                  {% if doc.updated.user.name %}
-                    Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A')}}
-                  {% endif %}
-                  {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
-                  {% if doc.created.user.name %}
-                    Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('MMM D, YYYY h:mm A')}}
-                  {% endif %}
-                </div>
-              on:
-                title:
-                  _var: title
-                doc:
-                  _var: doc
+          gap: 2
+        blocks:
+          _build.array.concat:
+            # Type eyebrow (optional) — uppercased entity-type label. Static
+            # config, so it has no loading/skeleton and stays outside the
+            # block that skeletons.
+            - _build.if:
+                test:
+                  _build.ne:
+                    - _var:
+                        key: type
+                        default: null
+                    - null
+                then:
+                  - id: title-type-eyebrow
+                    type: Html
+                    properties:
+                      html:
+                        _nunjucks:
+                          template: |
+                            <div class="text-text-secondary" style="text-transform: uppercase; letter-spacing: 0.08em; font-size: 11px; line-height: 1.2;">{{ type | safe }}</div>
+                          on:
+                            type:
+                              _var: type
+                else: []
+            # Title + change-stamp subtitle. Carries the loading/skeleton.
+            - - id: title
+                type: Html
+                loading:
+                  _var:
+                    key: loading
+                    default: false
+                skeleton:
+                  type: Box
+                  layout:
+                    direction: column
+                    gap: 8
+                  blocks:
+                    - type: Skeleton
+                      properties:
+                        height: 26
+                        width: 280
+                    - type: Skeleton
+                      properties:
+                        height: 13
+                        width: 360
+                properties:
+                  html:
+                    _nunjucks:
+                      template: |
+                        <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
+                        <div class="text-text-secondary text-sm" style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                          {% if doc.updated.user.name %}
+                            Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A')}}
+                          {% endif %}
+                          {% if doc.updated.user.name and doc.created.user.name %} | {% endif %}
+                          {% if doc.created.user.name %}
+                            Created by {{ doc.created.user.name | safe }} on {{ doc.created.timestamp | date('MMM D, YYYY h:mm A')}}
+                          {% endif %}
+                        </div>
+                      on:
+                        title:
+                          _var: title
+                        doc:
+                          _var: doc
     - - id: page-actions
         type: Box
         layout:
