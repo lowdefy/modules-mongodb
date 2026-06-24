@@ -58,6 +58,15 @@
 
 - docs/user-admin/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
 
+## workflows
+
+- docs/workflows/index.md: Workflows — Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine — authors do not hand-write status trans...
+- docs/workflows/reference/authoring-grammar.md: Authoring Grammar — Reference for the action YAML grammar. Schema source of truth: `resolvers/makeWorkflowsConfig.js` and `designs/workflows-module-concept/action-authoring/spec.md`.
+- docs/workflows/reference/exports.md: Exports — | ID | Path | Description | |---|---|---| | `workflow-action-edit` | `/{entryId}/workflow-action-edit` | Shared check-kind action edit page — universal fields + comment + signal button bar (`submit` / `progress` / `not_required`). No status selector. Addressed by `?action_id=<id>` | | `workflow-a...
+- docs/workflows/reference/form-components.md: Form Components — Built-in field components for action `form:` blocks. The form-builder resolver substitutes each component's block config (with author-supplied vars merged) into the page block tree at build time.
+- docs/workflows/reference/fsm-and-signals.md: FSM and Signals — The engine resolves every status change as a **signal** against a per-kind finite-state machine. A submission carries a signal name; the FSM looks up `(currentStatus, signal) → newStatus`. An unlisted `(status, signal)` pair no-ops silently. For the explanation of why this model exists, see [Sign...
+- docs/workflows/reference/indexes.md: Indexes — The module does not create indexes — index creation is a host-app concern. Host apps must add the following indexes to the collections backing the `actions-collection` and `workflows-collection` connections.
+
 ## Workflows
 
 - docs/workflows/reference/vars.md: Vars — Var definitions are derived from `module.lowdefy.yaml`. Pass these via the `vars:` block in your app's `lowdefy.yaml` entry for this module.
