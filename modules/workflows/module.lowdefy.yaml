@@ -127,26 +127,26 @@ exports:
       description: >
         Standalone in-context check-action modal — a single Modal block (fixed
         blockId check_action_modal) wrapping the shared check-action surface.
-        Bundled automatically by actions-on-entity (and, opt-in, by
-        workflows-events-timeline via include_modal). Opened exclusively via the
-        documented SetState + CallMethod(setOpen, [{ open: true }]) contract.
-        Optional var: on_complete (host refetch actions, default []). One
-        instance per page; never drop it on a page that already defines a
-        get_workflow_action request (the workflow-action-* pages).
+        The PAGE drops the modal exactly once and owns its on_complete (the
+        host's refetch action sequence run after a successful signal, default
+        []) — the page is the only scope that sees every co-present surface, so
+        it composes the full refetch list. Surfaces no longer auto-bundle it; a
+        check-row click degrades to navigation when no modal is on the page.
+        Opened exclusively via the documented SetState + CallMethod(setOpen,
+        [{ open: true }]) contract. One instance per page; never drop it on a
+        page that already defines a get_workflow_action request (the
+        workflow-action-* pages).
     - id: workflows-events-timeline
       description: >
         Action-enriched events timeline panel backed by the GetEventsTimeline
         engine method — events with cross-stream action cards, workflow cards
         verb-filtered and engine-linked server-side. The kind-branch click
-        handler is baked in (check cards open the shared check_action_modal,
-        every other kind navigates via action.link) — consumers wire no
-        onActionClick. Vars: reference_field, reference_value (plus optional
-        reverse, contact_page_url, disable_contact_link, compact,
-        s3GetPolicyRequestId; include_modal — bundle a check-action modal here,
-        default false, set true ONLY on a timeline-only page with no
-        actions-on-entity since the check_action_modal blockId is global;
-        on_action_complete — extras appended after the bundled modal's built-in
-        timeline refetch, default []).
+        handler is baked in (check cards try to open the shared
+        check_action_modal, every other kind navigates via action.link) —
+        consumers wire no onActionClick. The in-context modal, if wanted, is
+        dropped by the page (not by this component). Vars: reference_field,
+        reference_value (plus optional reverse, contact_page_url,
+        disable_contact_link, compact, s3GetPolicyRequestId).
 
 components:
   - id: action_statuses

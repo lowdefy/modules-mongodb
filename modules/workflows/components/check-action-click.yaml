@@ -1,41 +1,63 @@
-# Shared action-card click handler (Part 51 — F22).
+# Shared action-card click handler (Part 51 — F22; Part 55 — D2/D3).
 #
 # A reusable action sequence wired into the `onActionClick` of every action
 # surface — `actions-on-entity` (ActionSteps) and `workflows-events-timeline`
 # (EventsTimeline). Both blocks fire the identical `{ action }` event, so one
-# handler serves both: a `check`-kind card opens the shared check-action modal
-# in place (the fixed `check_action_modal` blockId); every other kind navigates
-# via the server-resolved `action.link`. Consumers never write their own click
-# handler — it is baked into both hosts by default.
-- id: set_check_action_modal_action
-  type: SetState
-  skip:
-    _ne:
-      - _event: action.kind
-      - check
-  params:
-    check_action_modal:
-      action_id:
-        _event: action._id
-- id: open_check_action_modal
-  type: CallMethod
-  skip:
-    _ne:
-      - _event: action.kind
-      - check
-  params:
-    blockId: check_action_modal
-    method: setOpen
-    args:
-      - open: true
-- id: link_to_action_page
-  type: Link
-  skip:
-    _eq:
-      - _event: action.kind
-      - check
-  params:
-    pageId:
-      _event: action.link.pageId
-    urlQuery:
-      _event: action.link.urlQuery
+# handler serves both. Consumers never write their own click handler — it is
+# baked into both hosts by default.
+#
+# The page (not a surface) drops the check-action modal, so a surface can no
+# longer assume the modal is present. The handler degrades gracefully:
+#   - `check` kind → TRY to open the shared modal in place (the fixed
+#     `check_action_modal` blockId). If no modal is on the page the open
+#     `CallMethod` throws and the `catch` navigates to the action's own page
+#     (`action.link`). Only the open `CallMethod` carries
+#     `messages.error: false`, so the recovered-via-catch path is silent.
+#   - every other kind → navigate via the server-resolved `action.link` in the
+#     `try` body (skip-gated); never touches the modal, never reaches the catch.
+try:
+  - id: set_check_action_modal_action
+    type: SetState
+    skip:
+      _ne:
+        - _event: action.kind
+        - check
+    params:
+      check_action_modal:
+        action_id:
+          _event: action._id
+  - id: open_check_action_modal
+    type: CallMethod
+    skip:
+      _ne:
+        - _event: action.kind
+        - check
+    # error:false → when no modal is on the page the CallMethod throws and the
+    # catch navigates; suppress the would-be error toast so recovery is silent.
+    messages:
+      error: false
+    params:
+      blockId: check_action_modal
+      method: setOpen
+      args:
+        - open: true
+  - id: link_to_action_page
+    type: Link
+    skip:
+      _eq:
+        - _event: action.kind
+        - check
+    params:
+      pageId:
+        _event: action.link.pageId
+      urlQuery:
+        _event: action.link.urlQuery
+catch:
+  # Modal not on the page (open threw) — navigate to the action's own page.
+  - id: link_to_action_page_fallback
+    type: Link
+    params:
+      pageId:
+        _event: action.link.pageId
+      urlQuery:
+        _event: action.link.urlQuery

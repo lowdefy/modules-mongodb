@@ -97,3 +97,21 @@ components:
             - id: refetch_events
               type: Request
               params: get-events
+    # Page owns the single check-action modal drop and its on_complete (Part 55
+    # D1). The co-present activities tile keeps its own on_created refetch and
+    # stays out of on_complete — a check submit changes workflow state, not
+    # activities — so only the action steps (actions-on-entity) refresh here.
+    - _ref:
+        module: workflows
+        component: check-action-modal
+        vars:
+          on_complete:
+            _build.array.concat:
+              - _ref:
+                  module: workflows
+                  component: entity-workflows-refetch
+                  vars:
+                    entity_id:
+                      _url_query: _id
+                    entity_collection:
+                      _module.connectionId: { id: companies-collection, module: companies }

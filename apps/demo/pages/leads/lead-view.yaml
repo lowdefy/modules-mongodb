@@ -65,14 +65,6 @@ _ref:
                             entity_id:
                               _url_query: _id
                             entity_collection: leads-collection
-                            # Refresh the co-present Activity timeline when a
-                            # check action is submitted from the bundled modal —
-                            # the timeline only fetches on mount, so without this
-                            # it shows stale events after a submit.
-                            on_action_complete:
-                              - id: refetch_events_timeline
-                                type: Request
-                                params: get_events_timeline
           - id: lead_info_column
             type: Box
             layout:
@@ -122,3 +114,25 @@ _ref:
                             reference_value:
                               _url_query: _id
                             contact_page_url: '/contacts/view?_id={id}'
+      # Page owns the single check-action modal drop and its on_complete (Part
+      # 55 D1): refresh every co-present surface after a successful signal — the
+      # action steps (actions-on-entity) and the Activity timeline
+      # (workflows-events-timeline, which only fetches on mount).
+      - _ref:
+          module: workflows
+          component: check-action-modal
+          vars:
+            on_complete:
+              _build.array.concat:
+                # refresh the action steps (actions-on-entity's surface)
+                - _ref:
+                    module: workflows
+                    component: entity-workflows-refetch
+                    vars:
+                      entity_id:
+                        _url_query: _id
+                      entity_collection: leads-collection
+                # refresh the activity timeline (workflows-events-timeline's surface)
+                - - id: refetch_events_timeline
+                    type: Request
+                    params: get_events_timeline

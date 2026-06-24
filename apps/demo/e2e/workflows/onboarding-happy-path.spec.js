@@ -12,6 +12,15 @@ import { test, expect } from '../fixtures.js';
 //   - Part 44 (start_link tracker)
 // Run it once those parts land. The controller records this as a deferred-
 // verification item.
+//
+// Part 55: lead-view and companies/view drop the check-action modal, so the
+// four `check`-kind rows (site-visit, schedule-followup on lead-view;
+// assign-account-manager, kickoff-call on companies/view) open the modal IN
+// PLACE — they no longer navigate to workflow-action-edit. Each step opens the
+// modal, selects `done`, submits, and asserts the modal closes; lead-view also
+// asserts the co-present Activity timeline refreshes (the Part 55 bug fix).
+// These four steps must be confirmed against a live app + MongoDB via
+// /r:dev-test — a build check is not sufficient to exercise the modal.
 
 test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page }) => {
   // Set up admin session up-front — required for the `send-quote` review verb
@@ -209,23 +218,25 @@ test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page })
     await ldf.goto(`/lead-view?_id=${leadId}`);
     await page.waitForLoadState('networkidle');
 
-    // ── site-visit (kind: check) ────────────────────────────────────────────
+    // ── site-visit (kind: check) — opens the in-context modal IN PLACE ───────
+    // Part 55: lead-view drops the check-action modal, so a check-row click
+    // opens it over the entity page (no navigation to workflow-action-edit).
     const siteVisitLink = page.locator('a', { hasText: 'Complete the site visit.' }).first();
     await siteVisitLink.waitFor({ state: 'visible', timeout: 10_000 });
     await siteVisitLink.click();
-    await page.waitForURL((url) => url.href.includes('workflow-action-edit'), {
-      timeout: 15_000,
-    });
+
+    // Modal opens in place — the surface's status selector becomes visible and
+    // the URL stays on lead-view (no workflow-action-edit navigation).
+    await expect(ldf.block('status').locator()).toBeVisible({ timeout: 15_000 });
+    expect(page.url()).toContain('lead-view');
+    expect(page.url()).not.toContain('workflow-action-edit');
 
     // For a check action the status selector drives completion. Select "done".
     await ldf.block('status').do.select('done');
 
-    await Promise.all([
-      page.waitForURL((url) => !url.href.includes('workflow-action-edit'), {
-        timeout: 30_000,
-      }),
-      ldf.block('button_submit_edit').do.click(),
-    ]);
+    // Submit in the modal — it closes on success (no navigation).
+    await ldf.block('button_submit_edit').do.click();
+    await expect(ldf.block('status').locator()).toBeHidden({ timeout: 30_000 });
 
     await expect
       .poll(
@@ -234,6 +245,26 @@ test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page })
             .collection('actions')
             .findOne({ workflow_id: onboardingWf._id, type: 'site-visit' });
           return doc?.status?.[0]?.stage;
+        },
+        { timeout: 10_000 }
+      )
+      .toBe('done');
+
+    // Bug fix (Part 55 D1): the co-present Activity timeline must refresh after
+    // a modal submit. The page-owned on_complete re-runs get_events_timeline, so
+    // the site-visit card in the timeline now reflects `done` WITHOUT
+    // re-navigating to lead-view. Before the fix the timeline only fetched on
+    // mount and showed stale events here.
+    const siteVisitDoc = await mdb
+      .collection('actions')
+      .findOne({ workflow_id: onboardingWf._id, type: 'site-visit' });
+    await expect
+      .poll(
+        async () => {
+          const timeline = await ldf.request('get_events_timeline').response();
+          const cards = (timeline ?? []).flatMap((event) => event.actions ?? []);
+          const card = cards.find((c) => String(c._id) === String(siteVisitDoc._id));
+          return card?.status ?? null;
         },
         { timeout: 10_000 }
       )
@@ -248,18 +279,16 @@ test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page })
       .first();
     await followupLink.waitFor({ state: 'visible', timeout: 10_000 });
     await followupLink.click();
-    await page.waitForURL((url) => url.href.includes('workflow-action-edit'), {
-      timeout: 15_000,
-    });
+
+    // Modal opens in place — no navigation off lead-view.
+    await expect(ldf.block('status').locator()).toBeVisible({ timeout: 15_000 });
+    expect(page.url()).toContain('lead-view');
+    expect(page.url()).not.toContain('workflow-action-edit');
 
     await ldf.block('status').do.select('done');
 
-    await Promise.all([
-      page.waitForURL((url) => !url.href.includes('workflow-action-edit'), {
-        timeout: 30_000,
-      }),
-      ldf.block('button_submit_edit').do.click(),
-    ]);
+    await ldf.block('button_submit_edit').do.click();
+    await expect(ldf.block('status').locator()).toBeHidden({ timeout: 30_000 });
 
     await expect
       .poll(
@@ -597,18 +626,18 @@ test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page })
       .first();
     await assignLink.waitFor({ state: 'visible', timeout: 10_000 });
     await assignLink.click();
-    await page.waitForURL((url) => url.href.includes('workflow-action-edit'), {
-      timeout: 15_000,
-    });
+
+    // Part 55: companies/view also drops the modal, so this opens in place — no
+    // navigation off companies/view.
+    await expect(ldf.block('status').locator()).toBeVisible({ timeout: 15_000 });
+    expect(page.url()).toContain('companies');
+    expect(page.url()).toContain('view');
+    expect(page.url()).not.toContain('workflow-action-edit');
 
     await ldf.block('status').do.select('done');
 
-    await Promise.all([
-      page.waitForURL((url) => !url.href.includes('workflow-action-edit'), {
-        timeout: 30_000,
-      }),
-      ldf.block('button_submit_edit').do.click(),
-    ]);
+    await ldf.block('button_submit_edit').do.click();
+    await expect(ldf.block('status').locator()).toBeHidden({ timeout: 30_000 });
 
     await expect
       .poll(
@@ -644,18 +673,17 @@ test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page })
       .first();
     await kickoffLink.waitFor({ state: 'visible', timeout: 10_000 });
     await kickoffLink.click();
-    await page.waitForURL((url) => url.href.includes('workflow-action-edit'), {
-      timeout: 15_000,
-    });
+
+    // Modal opens in place — no navigation off companies/view.
+    await expect(ldf.block('status').locator()).toBeVisible({ timeout: 15_000 });
+    expect(page.url()).toContain('companies');
+    expect(page.url()).toContain('view');
+    expect(page.url()).not.toContain('workflow-action-edit');
 
     await ldf.block('status').do.select('done');
 
-    await Promise.all([
-      page.waitForURL((url) => !url.href.includes('workflow-action-edit'), {
-        timeout: 30_000,
-      }),
-      ldf.block('button_submit_edit').do.click(),
-    ]);
+    await ldf.block('button_submit_edit').do.click();
+    await expect(ldf.block('status').locator()).toBeHidden({ timeout: 30_000 });
 
     await expect
       .poll(
