@@ -87,6 +87,26 @@ Defaults work out of the box. To point the module at a different MongoDB collect
 |---|---|
 | `default` | Single link to the activities list |
 
+## Indexes
+
+Index creation is a host-app concern; the module does not create them. Host apps must add the following.
+
+### `activities`
+
+- **Atlas Search index** named `default` (the implicit index `get_activities`' `$search` stage targets — no explicit `index:` is set). It must cover the paths the request queries:
+  - `title`, `description.text` — free-text `text` + `wildcard` search (`description` is Tiptap rich text stored as `{ html, text }`; only the `text` subpath is searched).
+  - `type`, `status.stage`, `contacts.contact_id`, `company_ids` — `equals` filter clauses.
+  - `deleted.timestamp` — `equals`/exists filter (soft-delete exclusion).
+  - `updated.timestamp` — sort key.
+
+### `actions` (shared with the workflows module)
+
+The module writes agenda topics as task docs (`kind: task`, `activity_ids: [<activity _id>]`, `workflow_id: null`, **no `type`**) into the shared `actions` collection, and reads them back via `lookup_agenda_tasks`.
+
+- `{ activity_ids: 1 }` — serves the `lookup_agenda_tasks` `$lookup` (`foreignField: activity_ids`) that joins agenda-topic task cards onto their parent activity on every activity view/edit load.
+
+> **Schema contract.** Task docs carry `workflow_id: null` and no `type` — `workflow_id` truthfully means "belongs to a workflow" (see `modules/workflows/README.md` § Indexes). Any host-app per-workflow uniqueness index on the `actions` collection (e.g. unique `{ workflow_id: 1, type: 1, key: 1 }`) **must be partial** — `partialFilterExpression: { type: { $exists: true } }` — so these untyped task docs are excluded and do not collide on `(null, null, null)`. Do **not** mint a synthetic `workflow_id` to dodge a non-partial unique index; that corrupts the workflow/non-workflow discriminator the workflows engine reads.
+
 ## Vars
 
 See [`VARS.md`](./VARS.md) for the full list with defaults and descriptions.
