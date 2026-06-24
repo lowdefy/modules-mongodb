@@ -1,232 +1,419 @@
 # Documentation Design
 
-The repo's docs are currently one README per module plus a shared `docs/idioms.md`. That model worked for getting every module *covered*, but it collapses four different reader needs — concept, task, reference, and contributor convention — into a single spec-like file per module, which fails badly for the concept-heavy modules (workflows above all). This design replaces the single-README model with a **central, intent-separated `docs/` tree** (`concepts/`, `how-to/`, `reference/` per module), migrates the rich conceptual material currently buried in `designs/` into consumer docs, splits cross-cutting idioms by audience, and adds front-matter + an `llms.txt` index so the docs serve human readers (incl. Obsidian), a future Lowdefy markdown-rendering app, and LLM agents equally well.
+## Problem
 
-This is a **successor to the prior version of this design** (the one that produced today's per-module READMEs). The decisions that still hold — manifest as source of truth, a strong root landing page, derived var tables — are carried forward; the single-README structure is what changes.
+The `modules-mongodb` repo ships ~10 reusable Lowdefy modules plus a plugin package, but the docs that explain how to consume them are incomplete and scattered:
 
-## Proposed change
+- The repo `README.md` is a single line (`# modules`).
+- Three modules have a `VARS.md` (`events`, `files`, `notifications`); the rest don't.
+- `layout` has a `README.md` mixing module overview, var reference, and an auth-page how-to.
+- Every other module is documented only inside its `module.lowdefy.yaml` manifest.
+- Manifest var descriptions are inconsistent: top-level vars usually have `description:`, but **nested var properties mostly don't** — the `companies` and `contacts` manifests carry literal `# TODO: add a description: to every nested property below` markers, and the same gap exists across most other modules.
+- There is no central document explaining the module set as a whole, the dependency graph between modules, or the cross-cutting idioms (`change_stamp`, `app_name`, `fields/components/request_stages` slots, `event_display`).
 
-1. **Move canonical docs into a central `docs/` tree with one folder per module** (`docs/{module}/`). Each `modules/{name}/README.md` shrinks to a one-paragraph stub linking to `docs/{name}/`.
-2. **Separate docs by intent within each module folder** — `concepts/` (explanation), `how-to/` (task guides), `reference/` (lookup) — applied proportionally to module complexity. **No tutorials.**
-3. **Migrate the conceptual material from `designs/workflows-module-concept/` into `docs/workflows/concepts/`**, establishing a boundary: docs explain *how it behaves and how to author it*; designs keep *why it was built this way*.
-4. **Split `docs/idioms.md` by audience**: consumer cross-cutting idioms become per-idiom files under `docs/shared/`; pure repo authoring conventions consolidate into `CLAUDE.md` so each fact lives in one place.
-5. **Add front-matter (`title`, `module`, `type`, `concepts`) to every doc and generate `docs/llms.txt`** — a machine index of the whole doc set for agents and the future renderer.
-6. **Derive reference var tables from `module.lowdefy.yaml`** so reference docs cannot drift from the manifest, and keep the manifest the source of truth for var schema.
-7. **Author the workflows docs in full as the exemplar**, then migrate the remaining ten modules onto the same structure.
+A consumer trying to wire these modules into a new app today has to read the manifests, read scattered guides under `.claude/guides/`, and read the demo app to figure out which vars are required, which modules depend on which, and what each export does.
 
-## Key decisions
+The goal is to design a documentation surface that:
 
-### 1. Central `docs/` tree, not co-located per-module READMEs
+1. Gives a consumer a single starting page that explains the module set, the dependency graph, the shared idioms, and where to go next.
+2. Gives each module its own complete reference doc (overview, dependencies, exports, vars including nested vars, secrets, examples, gotchas).
+3. Treats the manifest as the source of truth for var schema (type, default, required) **and** description, and brings the manifests up to date so they actually carry that information.
+4. Stays as plain Markdown in the repo for now, but doesn't paint us into a corner if we later render it as a Lowdefy doc app or publish it to a static site.
 
-The prior design co-located each module's docs at `modules/{name}/README.md` so they'd "travel with the module on a git tag." That reasoning is preserved by central docs anyway: consumers pull a whole repo tag (`github:lowdefy/modules-mongodb/...@tag`), so `docs/{name}/` is present at the same ref as the module's code. Nothing is lost by relocating.
+## Solution
 
-What's *gained* is navigation. A central tree reads like a documentation site, is Obsidian-friendly for any contributor who opens the repo as a vault (central tree + front-matter gives graph view and backlinks), and gives the future Lowdefy markdown app a single root to walk. A thin `modules/{name}/README.md` stub stays so GitHub still renders something useful when browsing the module directory, and so a reader who lands on the code finds the door to the docs.
+Three layers of documentation, all Markdown, with the module manifest as the canonical source for var metadata:
 
-### 2. Intent-separated docs (concepts / how-to / reference), no tutorials
+```
+modules-mongodb/
+  README.md                          ← central doc: module set, dep graph,
+                                       when-to-use, idioms link, basics
+  docs/
+    idioms.md                        ← all shared idioms (change_stamp,
+                                       event_display, fields/components/
+                                       request_stages, app_name,
+                                       avatar_colors, secrets) on one page
+  modules/
+    {name}/
+      README.md                      ← per-module deep dive (replaces VARS.md)
+      module.lowdefy.yaml            ← canonical var schema + descriptions
+  plugins/
+    modules-mongodb-plugins/
+      README.md                      ← plugin package overview
+      src/
+        blocks/{Block}/README.md     ← per-block doc (1 already exists for
+                                        ContactSelector — same pattern)
+        actions/                     ← single FetchRequest action documented
+                                        in the package README for now
+```
 
-The single-README model fails because it answers four questions in one voice:
+Existing per-module `VARS.md` files are folded into the new `README.md` and deleted. The existing `modules/layout/README.md` is restructured to match the new template; the auth-page how-to inside it moves into `docs/cross-cutting/` or stays as a section under the Layout README, whichever reads better.
 
-- **Understanding** ("how does signal→status work?") → `concepts/`
-- **Doing** ("how do I add a review step?") → `how-to/`
-- **Looking up** ("what vars exist? what are the 8 statuses?") → `reference/`
-- **Contributor conventions** ("snake_case request IDs") → `CLAUDE.md`, not the docs tree
+## Key Decisions
 
-Tutorials (a guided "build your first workflow from zero" walkthrough) are explicitly **out** — the team doesn't want to maintain them, and concept + how-to + reference cover the consumer's needs.
+### 1. Manifest is the source of truth for var schema and descriptions
 
-This is applied **proportionally**. A concept-heavy module (workflows) gets all three subfolders with many files; a simple module (release-notes) gets a single `index.md` and nothing else. We don't manufacture empty `concepts/` folders to look symmetric — docs scale to the module, matching the repo's "build for concrete needs, not speculation" principle.
+Var metadata (`type`, `default`, `required`, `enum`, `description`) lives in `module.lowdefy.yaml` because:
 
-### 3. Promote concepts from `designs/` into consumer docs
+- It's already there — adding `description:` to nested properties is just completing what's already started.
+- It travels with the code — a module published via `github:lowdefy/...@v1.2.0` carries its var schema at the same git tag as its implementation.
+- It's machine-readable — a future renderer (Lowdefy doc app, static site, or simply a generator script) can read manifests and produce var tables. We don't want to maintain two copies and let them drift.
+- It's consumer-readable — Lowdefy tooling (build errors, future LSP, etc.) can surface the description when a var is misused.
 
-The best explanation of workflows — signals vs. status, the FSM, the three action kinds, hooks, groups, the worked onboarding example — already exists, well-written, in `designs/workflows-module-concept/` (8 sub-designs: `action-authoring/`, `action-groups/`, `engine/`, `state-machine/`, `submit-pipeline/`, `ui/`, `module-surface/`, `call-api/`). But it's build-time source-of-truth, mixed with implementation-part tracking and review critiques, and consumers never see it.
+The per-module `README.md` then has a "Vars" section that **restates** the same descriptions in narrative form. For now we accept some duplication; the rule is "manifest first, README must match." In a follow-up we can add a build-time check or a generator that derives the README var table from the manifest. We're not building that generator in this design — just keeping the door open by keeping the data in the manifest.
 
-We migrate the **explanation** content into `docs/workflows/concepts/`, rewriting it for a consumer audience (drop implementation-part numbering, review findings, and "why we chose X over Y" rationale). The design folders stay as the historical record of *why* — the boundary is:
+This means the audit work in this design is two-pass:
 
-| Question | Lives in |
+- Pass A — fill in every missing nested var description in every manifest.
+- Pass B — write the per-module README using those descriptions.
+
+### 2. The repo `README.md` is the central doc — no separate `Overview.md`
+
+The root `README.md` is the single landing page. GitHub renders it at the repo home, so consumers land on the central doc by default. No extra click, no two files telling overlapping stories.
+
+`README.md` covers:
+
+- What this repo is (a set of reusable Lowdefy + MongoDB modules) and who it's for.
+- The list of modules with one-line descriptions and links to per-module READMEs.
+- A dependency graph (Mermaid, with ASCII fallback if needed).
+- A "what to use when" section — pick the right module for the job.
+- A short "Using modules in an app" section — bare-basics snippet (the `modules:` block, a single module entry with `id` / `source` / `vars`) plus a link to the canonical Lowdefy module docs at <https://docs.lowdefy.com/modules>. We do **not** re-document the module system — that lives upstream.
+- A pointer to `docs/idioms.md` for the shared patterns.
+- A pointer to `plugins/modules-mongodb-plugins/README.md` for the plugin package.
+- A pointer to the demo app as a worked example.
+- Versioning and release info (link to CHANGELOG).
+
+**Why one file, not two:** for a repo of this size the central doc isn't long enough to warrant splitting. Two files for the same purpose is exactly the kind of duplication that drifts. If `README.md` ever gets unwieldy, splitting later is cheap — move sections into a new `docs/Overview.md` and add a link.
+
+### 3. Per-module READMEs follow a fixed template
+
+Every module's `README.md` has the same sections in the same order, so consumers always know where to look:
+
+```
+# {Module Name}
+
+One-paragraph description.
+
+## Dependencies
+## How to Use
+## Exports
+  ### Pages
+  ### Components
+  ### API Endpoints
+  ### Connections
+  ### Menus
+## Vars
+## Secrets
+## Plugins
+## Examples
+## Notes / Gotchas (optional)
+```
+
+The "Vars" section uses a consistent format: a top-level bullet list for simple vars, a nested heading or table for vars with nested properties. Vars that take an `_ref` to a default file (e.g. `event_display`, `change_stamp`, `avatar_colors`) reference the cross-cutting doc that explains that idiom rather than repeating the explanation per module.
+
+### 4. All cross-cutting idioms live in a single `docs/idioms.md`
+
+Several patterns repeat across modules:
+
+- `change_stamp` — used by events, files, companies, contacts, user-account, user-admin
+- `event_display` — used by every module that logs events
+- `app_name` — used by contacts, user-account, user-admin, notifications for app scoping
+- `fields` / `components` / `request_stages` slot pattern — used by companies, contacts, user-admin, user-account
+- `avatar_colors` — used by contacts, user-admin, user-account
+- Secrets envelope (`MONGODB_URI`, S3 keys) — used by everything
+
+Earlier draft split these into 6 files under `docs/cross-cutting/`. Collapsing into a single `docs/idioms.md` keeps the file count down, makes the docs easier to skim end-to-end (one Cmd-F covers everything), and matches how short these explanations actually are — most are a few paragraphs. Per-module READMEs still link to specific anchors (`docs/idioms.md#change-stamp`, etc.) so navigation isn't worse.
+
+If `idioms.md` ever grows past ~500 lines we revisit and split. Until then, one page.
+
+### 5. The plugin package gets its own README plus per-block READMEs
+
+`@lowdefy/modules-mongodb-plugins` is a peer artifact — modules consume it as a regular Lowdefy plugin, and it's published to npm independently. It gets the same treatment as the modules:
+
+- `plugins/modules-mongodb-plugins/README.md` — package overview. Lists what the plugin contains (5 blocks: ContactSelector, DataDescriptions, EventsTimeline, FileManager, SmartDescriptions; 1 action: FetchRequest), peer dependencies, install instructions, and links to per-block READMEs.
+- `plugins/modules-mongodb-plugins/src/blocks/{Block}/README.md` — one per block. Covers what the block does, props, events, slots, examples. **One already exists** at `src/blocks/ContactSelector/README.md` — the rest follow the same pattern.
+- The single `FetchRequest` action gets a section in the package README rather than its own folder + README. If we add more actions, split out then.
+
+Per-block READMEs live next to the source for the same reason module READMEs do: they travel with the code, and a developer browsing `src/blocks/FileManager/` sees the docs immediately.
+
+**Naming:** the existing `ContactSelector/README.md` sets the convention — README, not `documentation.md`. GitHub auto-renders README at the directory listing, which is the main reason for the choice.
+
+### 6. Format is plain Markdown, with two soft constraints
+
+- **Front-matter is forbidden** for now — we don't have a renderer that uses it, and YAML front-matter inside the repo confuses some Markdown viewers.
+- **Diagrams are ASCII or Mermaid** — both render on GitHub. ASCII for small graphs (5–10 nodes), Mermaid for the full dependency graph.
+
+This keeps the docs viewable wherever Markdown renders (GitHub, IDEs, Obsidian — there's already a `.obsidian/` folder in the repo) and easy to migrate into another rendering surface later without a format conversion step.
+
+### 7. Place per-module READMEs next to the code, not under `docs/`
+
+`modules/{name}/README.md` co-locates the module reference with the module itself. Reasons:
+
+- A consumer pulling `github:lowdefy/modules-mongodb/modules/user-admin@v1.2.0` gets the README at the same git ref. If the module is removed from the repo, its docs go with it.
+- GitHub renders `README.md` automatically when you browse to `modules/user-admin/`, which makes the directory listing serve as an index.
+- It mirrors what `modules/layout/README.md` already does — we're standardizing an existing pattern, not inventing one.
+
+`docs/` then contains only repo-level docs (overview + cross-cutting + plugin), which is cleaner.
+
+## Doc Inventory
+
+The full list of files this design produces. Counts assume the current set of 10 modules.
+
+### Top-level (2 files)
+
+| File | Purpose |
 |---|---|
-| How does this behave? How do I author it? | `docs/` |
-| Why was it built this way? What alternatives were rejected? | `designs/` |
+| `README.md` | Central doc — module set, dependency graph, when-to-use, idioms link, bare-basics consumer snippet linking to <https://docs.lowdefy.com/modules>, plugin link, demo link. Replaces the current 1-line README. |
+| `docs/idioms.md` | All cross-cutting idioms on one page (anchored sections). |
 
-This resolves a latent tension in `CLAUDE.md` ("designs are the source of truth"): designs remain source-of-truth for **code decisions**; docs become source-of-truth for **authoring behavior as a consumer experiences it**. When the two would disagree about *behavior*, docs win and the design gets a note; when they disagree about *rationale*, the design wins.
+### Cross-cutting idioms (1 file: `docs/idioms.md`)
 
-### 4. Split idioms by audience
+A single page with one section per idiom. Per-module READMEs link to specific anchors.
 
-`docs/idioms.md` (437 lines) currently mixes two audiences:
+| Section | Covers | Used by |
+|---|---|---|
+| Change stamps | The `change_stamp` audit metadata template, where it lives (events module), how to opt out, default schema. | events, files, companies, contacts, user-account, user-admin |
+| Event display | `event_display` per-app templates, default file shape, how event types map to titles. | every module that logs events |
+| Fields / components / request_stages slots | The slot pattern for extending list / detail / edit pages. | companies, contacts, user-admin, user-account |
+| App name scoping | `app_name` scoping pattern — why it exists, where it appears in MongoDB field paths, multi-app deployments. | contacts, user-account, user-admin, notifications |
+| Avatar colors | Shared `avatar_colors` defaults at `modules/shared/profile/avatar_colors.yaml`, how to override. | contacts, user-admin, user-account |
+| Secrets | Master list of secret names by category (Mongo, S3 file storage, S3 sync bucket, email) and which modules need each. | all modules |
 
-- **Consumer cross-cutting idioms** — `change_stamp`, `event_display`, `fields/components/request_stages` slots, `app_name`, `avatar_colors`, `secrets`. These describe how a *consumer* uses shared behavior across modules. → split into per-idiom files under **`docs/shared/`**, linked from each module's reference docs instead of re-explained per module.
-- **Repo authoring/code conventions** — naming, file structure, "payload not state", operator preferences. These are for people *working in this repo*. → these already live in `CLAUDE.md`; any such content currently in `idioms.md` folds back into `CLAUDE.md` so it isn't duplicated.
+### Plugin docs (5 files, plus 1 already exists)
 
-Per-idiom files (rather than one big page) match the "one concept per file" rule that serves the renderer and LLM agents, and keep Obsidian's graph meaningful. `idioms.md` itself is deleted once its content is split.
-
-### 5. Front-matter + `llms.txt`
-
-Every doc opens with YAML front-matter:
-
-```yaml
----
-title: Signals vs Status
-module: workflows
-type: concept        # concept | how-to | reference | index | shared
-concepts: [signals, fsm, status]
----
-```
-
-Obsidian reads front-matter natively; the future Lowdefy app reads it for titles/nav; LLM agents read it to filter. This **reverses the prior design's "front-matter forbidden" rule**, which was justified by "no renderer uses it" — we now have three consumers that do.
-
-`docs/llms.txt` is a generated, flat index of every doc: path + one-line description, grouped by module. An agent reads one file and knows the entire doc surface. (Format follows the emerging `llms.txt` convention — a markdown list of links with descriptions.)
-
-### 6. Manifest stays source of truth; reference var tables are derived
-
-Carried forward from the prior design and strengthened: `module.lowdefy.yaml` holds every var's `type`, `default`, `required`, `enum`, and `description` (including nested properties). `docs/{module}/reference/vars.md` is **generated** from the manifest by a small script (`scripts/gen-var-docs.mjs`) rather than hand-restated. This kills the drift the prior design accepted as a known risk. The generator is in scope for this design (it's small, and the central tree makes the output path predictable). Other reference pages (exports, indexes, grammar) stay hand-written.
-
-The bulk manifest audit from the prior design — filling every missing nested `description:` — is already done across all 11 manifests. What remains is narrow: closing the workflows `contacts_collection` TODO and reconciling the layout `logo.*` keys (see Phase 0). A clean, fully-described manifest is the prerequisite for generated var tables.
-
-## Current state
-
-What the prior design successfully produced and we keep (re-homing, not discarding):
-
-- **Root `README.md`** (121 lines) — module list, Mermaid dep graph, "what to use when", consumer basics. Its *content* is good; most of it becomes `docs/index.md`, with `README.md` kept as a short repo landing that links into `docs/`.
-- **`docs/idioms.md`** (437 lines) — split per decision 4.
-- **11 per-module READMEs** — content is mined into the new `docs/{module}/` trees, then each README becomes a stub.
-- **Plugin package README + per-block READMEs** — all six blocks (`ActionSteps`, `ContactSelector`, `DataDescriptions`, `EventsTimeline`, `FileManager`, `SmartDescriptions`) already have a co-located `src/blocks/{Block}/README.md` (shipped by the prior design). These stay where they are (a developer browsing the block source wants the doc right there); the remaining work is verifying they conform to the per-block template and listing them in `llms.txt`.
-
-Loose ends to clean up:
-
-- `modules/activities/VARS.md` — last surviving legacy VARS file; folded into `docs/activities/` and deleted.
-- Two remaining manifest items — the workflows `contacts_collection` TODO and the layout `logo.*` key inconsistency (see Phase 0). The rest of the nested-description audit is complete.
-
-Modules (11): `activities`, `companies`, `contacts`, `events`, `files`, `layout`, `notifications`, `release-notes`, `user-account`, `user-admin`, `workflows`. (`modules/shared/` is not a module — it holds referenced resources and gets no folder of its own; its contents are documented via `docs/shared/` idioms and the modules that consume them.)
-
-## The doc tree
-
-```
-README.md                        ← short repo landing → links into docs/
-docs/
-  index.md                       ← module set, dep graph, when-to-use (from old root README)
-  llms.txt                       ← generated machine index of every doc
-  shared/                        ← consumer cross-cutting idioms (split from idioms.md)
-    change-stamps.md
-    event-display.md
-    slots.md
-    app-name.md
-    avatar-colors.md
-    secrets.md
-  workflows/                     ← exemplar (full treatment)
-    index.md                     ← overview, when-to-use, dependencies, quickstart snippet
-    concepts/                    ← migrated from designs/workflows-module-concept/
-      mental-model.md
-      signals-vs-status.md
-      action-kinds.md
-      groups-and-blocking.md
-      access.md
-      hooks.md
-      events.md
-    how-to/
-      add-a-review-step.md
-      conditional-actions.md
-      multi-app-access.md
-      track-a-child-workflow.md
-      instanced-actions.md
-      write-a-hook.md
-    reference/
-      vars.md                    ← GENERATED from manifest
-      authoring-grammar.md
-      fsm-and-signals.md
-      form-components.md
-      exports.md
-      indexes.md
-  companies/
-    index.md
-    how-to/ ...                  ← only the subfolders the module actually needs
-    reference/
-      vars.md                    ← generated
-      exports.md
-  release-notes/
-    index.md                     ← single page; nothing else
-  ...one folder per module
-modules/
-  workflows/README.md            ← stub → "Full docs: ../../docs/workflows/"
-  ...
-plugins/modules-mongodb-plugins/
-  README.md                      ← package overview (kept; listed in llms.txt)
-  src/blocks/{Block}/README.md   ← per-block doc, co-located (6 blocks)
-```
-
-### Per-module folder shape
-
-Every module folder has an `index.md`. Beyond that, subfolders appear **only when the module has content for them**:
-
-- `index.md` (required) — one-paragraph description, dependencies table, "when to use", a single worked `lowdefy.yaml` quickstart snippet, and links to the module's concept/how-to/reference pages and to relevant `docs/shared/` idioms.
-- `concepts/` (concept-heavy modules only) — explanation, one concept per file.
-- `how-to/` (modules with non-obvious tasks) — task-oriented, "to do X: …".
-- `reference/` — `vars.md` (generated) always; `exports.md`, `indexes.md`, and module-specific grammar pages as needed.
-
-`index.md` front-matter uses `type: index`; it replaces the old README's job and carries the dependency/quickstart content the prior template put under "How to Use".
-
-## Front-matter schema
-
-| Field | Required | Values | Purpose |
-|---|---|---|---|
-| `title` | yes | string | Human/nav title; renderer + Obsidian use it |
-| `module` | yes | module name, or `shared` / `root` | Grouping in `llms.txt` and the app |
-| `type` | yes | `index` \| `concept` \| `how-to` \| `reference` \| `shared` | Intent filter for agents/renderer |
-| `concepts` | no | string[] | Topic tags for cross-linking and search |
-
-`llms.txt` is generated by walking `docs/**/*.md`, reading front-matter, and emitting grouped `- path: title — <first paragraph summary>` lines. Same script can validate that every doc has required front-matter (a cheap lint).
-
-## Workflows exemplar — content sources
-
-The workflows docs are authored first and drive the structure. Each target page maps to existing material so authoring is migration + rewrite, not invention:
-
-| Target doc | Source |
+| File | Purpose |
 |---|---|
-| `concepts/mental-model.md` | `designs/workflows-module-concept/design.md` (worked onboarding example) |
-| `concepts/signals-vs-status.md` | `.../state-machine/` (FSM, signals, button bars) — the #1 confusion point |
-| `concepts/action-kinds.md` | `.../action-authoring/` (form / check / tracker) |
-| `concepts/groups-and-blocking.md` | `.../action-groups/` (rollup status, `blocked_by`, conditional-action rule) |
-| `concepts/access.md` | `.../action-authoring/` access model (per-app/per-verb, review-verb signal flip) |
-| `concepts/hooks.md` | `.../submit-pipeline/` (pre/post, out-of-band writes, failure modes) |
-| `concepts/events.md` | `.../engine/` event logging + `docs/shared/event-display.md` |
-| `how-to/*` | demo workflows in `apps/demo/modules/workflows/workflow_config/` (onboarding, company-setup) |
-| `reference/vars.md` | generated from `modules/workflows/module.lowdefy.yaml` |
-| `reference/fsm-and-signals.md` | `.../state-machine/` tables |
-| `reference/form-components.md` | `modules/workflows/components/fields/README.md` |
-| `reference/authoring-grammar.md` | current `modules/workflows/README.md` action-authoring sections |
-| `reference/indexes.md` | current README index requirements (+ the `actions` validator constraint) |
+| `plugins/modules-mongodb-plugins/README.md` | Package overview — what's in the plugin, peer deps, install, list of blocks/actions with links. |
+| `src/blocks/ContactSelector/README.md` | Already exists — verify it matches the new template, update if needed. |
+| `src/blocks/DataDescriptions/README.md` | New — per-block doc. |
+| `src/blocks/EventsTimeline/README.md` | New — per-block doc. |
+| `src/blocks/FileManager/README.md` | New — per-block doc. |
+| `src/blocks/SmartDescriptions/README.md` | New — per-block doc. |
 
-The complexity hotspots the exploration surfaced get **dedicated** treatment so they're findable, not buried: signals-vs-status, the conditional-action `blocked_by` anti-pattern, per-app/per-verb access, tracker `start_link` wiring, instanced-action form-data paths, and `allow_not_required`.
+The single `FetchRequest` action is documented in the package README. No per-action README until there are more actions.
 
-## Migration plan (all modules)
+### Per-module READMEs (10 files, one per module)
 
-**Phase 0 — Manifest reconciliation.** The bulk audit (every nested `description:` across all 11 manifests) is already done. Remaining: resolve the workflows `contacts_collection` TODO (`modules/workflows/module.lowdefy.yaml:114`), and reconcile the layout `logo.*` keys against the actual layout block — the manifest defines `primary` / `primary_dark` / `style`, while `tasks.md:21` references `primary_light` / `icon`, so a real cross-check is owed. Prerequisite for generated var tables.
+For each module under `modules/{name}/`, create `README.md` following the fixed template. Modules: `companies`, `contacts`, `data-upload`, `events`, `files`, `layout`, `notifications`, `release-notes`, `user-account`, `user-admin`.
 
-**Phase 1 — Scaffolding.** Create `docs/` skeleton, the front-matter convention, and `scripts/gen-var-docs.mjs` + `scripts/gen-llms-txt.mjs` (the latter doubles as the front-matter linter). Move root README content into `docs/index.md`; reduce `README.md` to a landing stub.
+The `shared/` directory is **not** a module — it holds resources referenced by other modules (`avatar_colors.yaml`, `event_types.yaml`, layout components, etc.). It does not get a README of its own; what's in it is documented via the cross-cutting docs and via the modules that reference it.
 
-**Phase 2 — Shared idioms.** Split `docs/idioms.md` into `docs/shared/*.md`; fold contributor-convention content into `CLAUDE.md`; delete `idioms.md`. Update existing cross-links.
+### Manifest updates (10 files)
 
-**Phase 3 — Workflows exemplar.** Author `docs/workflows/` in full per the table above. Migrate concept content from `designs/workflows-module-concept/`. This proves the structure end-to-end before the other ten follow.
+For each module's `module.lowdefy.yaml`, audit and complete:
 
-**Phase 4 — Remaining modules.** Migrate the other ten module READMEs into `docs/{module}/` trees, proportional to each module's complexity. Fold and delete `modules/activities/VARS.md`. Reduce each `modules/{name}/README.md` to a stub.
+- Every top-level var has `description:` (mostly already done — verify and fill gaps).
+- Every nested property under an object var has `description:`. This is the bulk of the work and includes:
+  - `companies`: `fields.attributes`, `components.*`, `request_stages.*` (≈12 nested props)
+  - `contacts`: `fields.show_honorific`, `fields.profile`, `fields.global_attributes`, `components.*`, `request_stages.*` (≈12 nested props)
+  - `data-upload`: `tool.*` (already described — verify completeness, mainly `columns` shape)
+  - `events`: top-level only, already described
+  - `files`: `components.file_list` (deprecated — describe and mark deprecated)
+  - `layout`: `logo.*` (description present but inconsistent — `primary` vs `primary_light` mismatch with README), `header_extra.*`, `auth_page.*` (≈8 nested props)
+  - `user-account`: `fields.*`, `components.*`, `request_stages.*` (≈6 nested props)
+  - `user-admin`: `fields.*`, `components.*`, `request_stages.*` (≈11 nested props)
+- Resolve any current README/manifest discrepancies (e.g. layout's `logo.primary` / `logo.primary_light` / defaults).
 
-**Phase 5 — Plugin blocks + cleanup.** Verify the six per-block READMEs (`ActionSteps`, `ContactSelector`, `DataDescriptions`, `EventsTimeline`, `FileManager`, `SmartDescriptions`) conform to the per-block template and list them in `llms.txt`. Regenerate `llms.txt`. Update `CLAUDE.md`'s documentation section to describe the new layout. Generate var tables for every module.
+The `data-upload`'s `tool.columns` is currently described as "[{field, headerName}]" — extend the description to spell out optional column properties if any are supported.
 
-## Files changed (shape, not exhaustive)
+## Per-Module README Template
 
-**New:** `docs/index.md`, `docs/llms.txt` (generated), `docs/shared/{6 idioms}.md`, `docs/{11 modules}/...` trees, `scripts/gen-var-docs.mjs`, `scripts/gen-llms-txt.mjs`.
+Used unchanged for every module. Sections marked **(omit if empty)** are left out when the module doesn't have that export type.
 
-**Modified:** root `README.md` (→ stub), all 11 `module.lowdefy.yaml` (manifest audit), all 11 `modules/{name}/README.md` (→ stubs), `CLAUDE.md` (absorb contributor idioms + describe new doc layout).
+````markdown
+# {Module Name}
 
-**Deleted:** `docs/idioms.md`, `modules/activities/VARS.md`.
+One-paragraph description: what this module does, what problem it solves.
 
-## Open questions
+## Dependencies
 
-1. **Generated var-table format** — full table (type/default/required/description) vs. a more readable nested layout for vars with deep object properties (workflows, companies). Decide when building `gen-var-docs.mjs`; lean table for flat vars, indented sub-lists for nested.
-2. **Does the future Lowdefy markdown app live in this repo?** It could be dogfooded as a module, but that's a separate design. This design only commits to making the tree app-ready (consistent structure + front-matter), not to building the app.
-3. **`llms.txt` granularity** — flat list of all docs vs. a tiered index (top-level pointers to per-module sub-indexes) if the doc count grows large. Start flat; revisit past ~80 docs.
+| Module | Why |
+|---|---|
+| layout | Page wrapper |
+| events | Audit logging and `change_stamp` |
 
-## Non-goals
+(Pulled from manifest `dependencies:`.)
 
-- Building the Lowdefy markdown-rendering app (future, separate design).
-- Tutorials / guided walkthroughs (explicitly excluded).
-- Versioned docs across releases — git tags are the version history.
-- Auto-generating prose docs from manifests — only var *tables* are generated; concepts and how-tos are hand-written.
-- Documenting module *internals* for maintainers — that audience is served by `designs/` and `CLAUDE.md`.
+## How to Use
+
+Minimal `lowdefy.yaml` snippet showing the module entry, required vars, and any non-obvious wiring (e.g. `dependencies:` remap, `connections:` remap). One concrete worked example, not a kitchen-sink config.
+
+## Exports
+
+### Pages **(omit if empty)**
+
+| ID | Description | Path |
+|---|---|---|
+| companies | Company list | `/{entryId}/companies` |
+
+### Components **(omit if empty)**
+
+Each exported component with a 1–2 sentence description, the vars it takes, and a small `_ref:` example.
+
+### API Endpoints **(omit if empty)**
+
+Each endpoint with what it does and what it expects in the payload.
+
+### Connections **(omit if empty)**
+
+Each connection ID with what collection / bucket it points at.
+
+### Menus **(omit if empty)**
+
+Each menu ID with what links it contains.
+
+## Vars
+
+Narrative reference for every var. Top-level vars are H3, nested properties are bullet lists or H4. Each var includes type, default, required-or-not, and description. Cross-references to `docs/cross-cutting/*` for shared idioms (`change_stamp`, `event_display`, `app_name`, `avatar_colors`, etc.) instead of re-explaining them.
+
+## Secrets
+
+| Name | Used for |
+|---|---|
+| MONGODB_URI | MongoDB connection |
+
+## Plugins
+
+Lowdefy plugins required by this module (from manifest `plugins:`).
+
+## Notes **(omit if empty)**
+
+Caveats, gotchas, version-specific behavior, deprecated features.
+````
+
+## Source-of-Truth Strategy
+
+**Manifest is canonical for var schema.** The README "Vars" section restates the manifest descriptions in narrative form, but the manifest is what consumers and tooling look at. If the two ever drift, the manifest wins.
+
+We accept the duplication for two reasons:
+
+1. The README needs more than the manifest provides — examples, cross-references, idiom explanations — so it can't be a pure auto-generated table.
+2. We want READMEs viewable on GitHub today, without a build step.
+
+**Soft enforcement:** add a quick `scripts/check-vars-docs.mjs` (separate task, optional) that walks every manifest, collects var paths, and warns if a var path is missing from the README. This catches drift but isn't a hard gate. Out of scope for this design — listed as an open question.
+
+## `docs/idioms.md` Outline
+
+Single file, six sections. Anchors used by per-module READMEs are listed in parentheses.
+
+### Change stamps (`#change-stamps`)
+
+- What a change stamp is and why we use one.
+- The default schema (`{ timestamp, user: { name, id } }`) from `events/defaults/change_stamp.yaml`.
+- How to consume: `_ref: { module: events, component: change_stamp }`.
+- How to override the var on a per-module-instance basis (e.g. add app context).
+- Why it's a runtime template (operators evaluate per request, not at build).
+
+### Event display (`#event-display`)
+
+- What `event_display` is — per-app Nunjucks templates that turn `log-events` documents into human-readable titles.
+- The default file shape (e.g. `companies/defaults/event_display.yaml`).
+- Variables available to templates (`user`, `target`, etc.).
+- Why it's per-app (multi-tenant rendering — same event collection, different titles per app).
+- How to extend with custom event types.
+
+### Fields, components, request_stages slots (`#slots`)
+
+- The pattern: `fields` (form blocks), `components` (page slot overrides), `request_stages` (pipeline overrides).
+- Rationale: configuration over code-fork — consumers extend pages without copying YAML.
+- Conventions: required nested keys per module, what each slot can contain.
+- One worked example (probably `companies`).
+
+### App name scoping (`#app-name`)
+
+- Why apps need a name — multi-app deployments share user-contacts and event collections; documents are scoped by `app_name`.
+- Where it shows up (`user.app_attributes.{app_name}`, `created.app_name`, `display.{app_name}`).
+- Constraint: no `.` allowed (MongoDB field path collision).
+- Modules that require it: `notifications`, `user-account`, `user-admin`, `contacts`.
+
+### Avatar colors (`#avatar-colors`)
+
+- Where the shared default lives (`modules/shared/profile/avatar_colors.yaml`).
+- Shape: array of `{ from, to }` gradient pairs.
+- How modules pick a color deterministically (hash of user id → color index).
+- How to override — write your own file and point the var at it.
+
+### Secrets (`#secrets`)
+
+- Master list of every secret name used by every module.
+- Grouped by category (Mongo, S3 file storage, S3 sync bucket, email).
+- Notes on which modules need which.
+
+## Files Changed
+
+### New files
+
+10 module READMEs + 1 idioms doc + 1 plugin package README + 4 per-block READMEs = 16 new Markdown files. Root `README.md` and `plugins/modules-mongodb-plugins/.../ContactSelector/README.md` are rewritten in place.
+
+| Path | Purpose |
+|---|---|
+| `docs/idioms.md` | All cross-cutting idioms on one page |
+| `modules/companies/README.md` | Per-module |
+| `modules/contacts/README.md` | Per-module |
+| `modules/data-upload/README.md` | Per-module |
+| `modules/events/README.md` | Per-module (replaces VARS.md) |
+| `modules/files/README.md` | Per-module (replaces VARS.md) |
+| `modules/notifications/README.md` | Per-module (replaces VARS.md) |
+| `modules/release-notes/README.md` | Per-module |
+| `modules/user-account/README.md` | Per-module |
+| `modules/user-admin/README.md` | Per-module |
+| `plugins/modules-mongodb-plugins/README.md` | Plugin package overview |
+| `plugins/modules-mongodb-plugins/src/blocks/DataDescriptions/README.md` | Per-block |
+| `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/README.md` | Per-block |
+| `plugins/modules-mongodb-plugins/src/blocks/FileManager/README.md` | Per-block |
+| `plugins/modules-mongodb-plugins/src/blocks/SmartDescriptions/README.md` | Per-block |
+
+### Modified files
+
+| Path | Change |
+|---|---|
+| `README.md` | Rewrite as central doc (module set, dep graph, when-to-use, idioms link, basics) |
+| `modules/layout/README.md` | Restructure to match the new template |
+| `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/README.md` | Verify it matches the new per-block template, update if needed |
+| `modules/companies/module.lowdefy.yaml` | Add nested var descriptions, remove TODO comment |
+| `modules/contacts/module.lowdefy.yaml` | Add nested var descriptions, remove TODO comment |
+| `modules/data-upload/module.lowdefy.yaml` | Verify and fill any gaps |
+| `modules/events/module.lowdefy.yaml` | Verify (likely no change) |
+| `modules/files/module.lowdefy.yaml` | Describe `components.file_list`, mark deprecated |
+| `modules/layout/module.lowdefy.yaml` | Reconcile `logo.*` keys with README, fill nested descriptions |
+| `modules/notifications/module.lowdefy.yaml` | Verify (likely no change) |
+| `modules/release-notes/module.lowdefy.yaml` | Verify |
+| `modules/user-account/module.lowdefy.yaml` | Add nested var descriptions |
+| `modules/user-admin/module.lowdefy.yaml` | Add nested var descriptions |
+
+### Deleted files
+
+| Path | Why |
+|---|---|
+| `modules/events/VARS.md` | Folded into `modules/events/README.md` |
+| `modules/files/VARS.md` | Folded into `modules/files/README.md` |
+| `modules/notifications/VARS.md` | Folded into `modules/notifications/README.md` |
+| `temp.md` | Already a TODO scratchpad — kill before final |
+
+## Phasing
+
+Suggested implementation order, since the full set is sizeable:
+
+**Phase 1 — Manifest audit.** Fill every missing nested var description across all 10 modules. Reconcile layout's `logo` keys. This is contained, mechanical, and unlocks accurate per-module READMEs in Phase 3.
+
+**Phase 2 — Root README + idioms.** Write the new root `README.md` (central doc) and `docs/idioms.md`. Both are referenced by per-module READMEs, so writing them first lets module READMEs link instead of duplicating.
+
+**Phase 3 — Per-module READMEs.** Write the 10 module READMEs using the template. Delete the 3 old `VARS.md` files. Restructure `modules/layout/README.md`.
+
+**Phase 4 — Plugin docs.** Write `plugins/modules-mongodb-plugins/README.md` (package overview) plus the 4 missing per-block READMEs. Update the existing `ContactSelector/README.md` to match the new per-block template if needed.
+
+**Phase 5 — Cleanup.** Delete `temp.md`. Add the doc structure to `CLAUDE.md` so agents know where docs live.
+
+## Open Questions
+
+1. **Generator script for var tables?** A small `scripts/check-vars-docs.mjs` that walks manifests and warns on missing descriptions or missing README mentions would prevent drift, but it's an extra moving part. Defer until we see drift in practice.
+2. **Mermaid vs ASCII for the dependency graph?** Mermaid renders on GitHub but not in every IDE. ASCII renders everywhere but is uglier. Lean Mermaid since GitHub is the primary surface, but accept ASCII fallback.
+3. **Do the per-module READMEs link to the demo app?** Each module is exercised in `apps/demo` with a real `vars.yaml`. Linking would help consumers see a working config. Probably yes — add a "See it in action" link in each README's "How to Use" section.
+4. **Per-block README template.** The 5 plugin blocks need a fixed template (props / events / slots / examples / theme tokens). Worth defining before Phase 4 starts. Likely close to the existing `ContactSelector/README.md` shape.
+
+## Non-Goals
+
+- Building a static site or Lowdefy doc app. Markdown only for now.
+- Auto-generation of READMEs from manifests. Possible later, not now.
+- Documenting internal implementation details. The audience is module *consumers*, not module authors. (A separate `CONTRIBUTING.md` could cover module-author concerns later.)
+- Versioned docs across multiple module releases. The repo's git history is the version history; docs at `v1.2.0` are whatever's in the tag.
