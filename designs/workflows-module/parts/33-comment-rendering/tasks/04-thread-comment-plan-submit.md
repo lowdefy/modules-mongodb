@@ -4,7 +4,7 @@
 
 After task 3, `planEventDispatch` accepts a `comment` parameter and folds it into the rendered `display.{app_name}.description`. The submit pipeline doesn't pass it yet.
 
-The wire path already exists end-to-end up to the planner: the pages post `comment: { _state: comment }` (the whole TipTap value), `makeWorkflowApis` maps `comment: { _payload: 'comment' }` onto the handler properties (`modules/workflows/resolvers/makeWorkflowApis.js:74`, with a test pinning it for every form/check endpoint), `handleSubmit` passes `params` whole into `planSubmit`, and `buildHookPayload` already passes `comment: params.comment ?? null` through to hooks. The single missing link is `planSubmit`'s step-7 `planEventDispatch` call (`plugins/modules-mongodb-plugins/src/connections/shared/phases/planSubmit.js:188-202`), where `params` is already in scope.
+The wire path already exists end-to-end up to the planner: the pages post the whole TipTap value under the `comment` payload key (source state key varies — `comment` on regular submit, `change_request_comment` in the form review modal, `current_action.comment` on the check surface — but all land under `comment`), `makeWorkflowApis` maps `comment: { _payload: 'comment' }` onto the handler properties (`modules/workflows/resolvers/makeWorkflowApis.js`, with a test pinning it for every form/check endpoint), `handleSubmit` passes `params` whole into `planSubmit`, and `buildHookPayload` already passes `comment: params.comment ?? null` through to hooks. The single missing link is `planSubmit`'s step-7 `planEventDispatch` call (`plugins/modules-mongodb-plugins/src/connections/shared/phases/planSubmit.js:188-202`), where `params` is already in scope.
 
 ## Task
 

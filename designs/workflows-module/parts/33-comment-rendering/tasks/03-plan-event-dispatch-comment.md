@@ -2,7 +2,7 @@
 
 ## Context
 
-Tasks 1–2 established the pieces: `foldCommentIntoEvent(eventPayload, comment, appName)` (pure helper in `shared/phases/planners/`) and a `mergeEventOverrides` that deep-merges `display` under the app key. This task wires them into the shared event-dispatch planner — `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/planEventDispatch.js` — which composes the full event doc for every handler type (`StartWorkflow` / `SubmitWorkflowAction` / `CancelWorkflow` / `CloseWorkflow` / `tracker-mirror`; Part 24 later adds `UpdateActionFields`).
+Tasks 1–2 established the pieces: `foldCommentIntoEvent(eventPayload, comment, appName)` (pure helper in `shared/phases/planners/`) and a `mergeEventOverrides` that deep-merges `display` under the app key. This task wires them into the shared event-dispatch planner — `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/planEventDispatch.js` — which composes the full event doc for every handler type (`StartWorkflow` / `SubmitWorkflowAction` / `CancelWorkflow` / `CloseWorkflow` / `tracker-mirror` / `UpdateActionFields`). The planner **already accepts a `comment` param** (`planEventDispatch.js:137`, currently un-folded) and the `UpdateActionFields` handler route is **already landed** (`isFieldsUpdate` branch, `:178-183`; `planFieldsUpdate` already passes `comment` through) — so this task adds the *fold call*, not the param or the handler type.
 
 The planner's current sequence (Submit path): build engine-default payload → `mergeEventOverrides` (YAML + pre-hook layers) → `renderEventDisplay` (compiles **every string** in the display tree as a Nunjucks template against the render context) → assemble `doc`.
 
@@ -14,7 +14,7 @@ Having the fold inside this planner — not in any handler — is the contract t
 
 Amend `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/planEventDispatch.js`:
 
-1. **New `comment` parameter** on the destructured signature, defaulting to `null`. Contract (design D5): the TipTap rich-text value `{ html, text, markdown?, fileList? } | null`; the planner only ever reads `comment.html` (via the helper). Add the `@param` JSDoc line.
+1. **`comment` parameter** — already on the destructured signature (`:137`); keep it. Contract (design D5): the TipTap rich-text value `{ html, text, markdown?, fileList? } | null`; the planner only ever reads `comment.html` (via the helper). Confirm the `@param` JSDoc line is present and accurate.
 2. **Call the fold after render**, unconditionally for all handler types (it no-ops on null/empty): after `renderEventDisplay` produces `renderedDisplay` and before/around assembling `doc`, apply `foldCommentIntoEvent` so the final `doc.display[appName].description` carries `comment.html` when present. The helper takes an `eventPayload` carrying `display` — e.g. fold on `{ ...mergedPayload, display: renderedDisplay }` or on the assembled `doc` just before return; pick the minimal shape, but the fold must see the **rendered** display.
 3. **Docblock update.** Replace the stale paragraph ("No `metadata.comment` is written — … Part 38 keeps the `comment` param flowing on the emitted payload via task 19; the planner doesn't touch it") with the live contract: the runtime comment is folded into `display.{app_name}.description` by `foldCommentIntoEvent`, **after** `renderEventDisplay` (merge → render → fold, Part 33 D4) — comment HTML is stored verbatim and never templated; a runtime comment wins the description slot over an author static override; no `metadata.comment` is ever written. Also update the `buildMetadata` doc note if it reads oddly ("superseded by" → "comment lives in `display.{app}.description` via `foldCommentIntoEvent`").
 4. Import `foldCommentIntoEvent` from `./foldCommentIntoEvent.js`.
@@ -41,6 +41,6 @@ Amend `plugins/modules-mongodb-plugins/src/connections/shared/phases/planners/pl
 
 ## Notes
 
-- The fold call is **unconditional** (not gated on `isSubmit`): the helper no-ops without a comment, and this is what lets Part 24's future `UpdateActionFields` handler type pick up comment rendering automatically. Lifecycle callers simply never pass `comment`.
-- Do not add an `UpdateActionFields` handler type here — that's Part 24's change; the planner's handler enum still throws on unknown types.
+- The fold call is **unconditional** (not gated on `isSubmit`): the helper no-ops without a comment, and this is what lets the already-landed `UpdateActionFields` handler type pick up comment rendering automatically. Lifecycle callers simply never pass `comment`.
+- Don't touch the handler enum — `UpdateActionFields` already exists and the enum already throws on unknown types. This task only adds the post-render fold.
 - `mergeEventOverrides` applies only on the Submit path (existing behaviour) — leave that as-is; the fold applies to the rendered display regardless of path.

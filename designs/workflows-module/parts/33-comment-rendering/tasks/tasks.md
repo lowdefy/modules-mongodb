@@ -2,7 +2,9 @@
 
 ## Overview
 
-Make the workflow submit comment a first-class part of the standard event: the engine folds the comment's HTML into `display.{app_name}.description` (rendered by the standard `EventsTimeline`), the event-display merge deep-merges under the app key so engine title + author overrides + comment coexist, the bespoke comments card is deleted, and the shared `events-timeline` component is added to the workflow action pages (check view page + all four form-kind templates). Derived from `designs/workflows-module/parts/33-comment-rendering/design.md`.
+Make the workflow submit comment a first-class part of the standard event: the engine folds the comment's HTML into `display.{app_name}.description` (rendered by the standard `EventsTimeline`), the event-display merge deep-merges under the app key so engine title + author overrides + comment coexist, the bespoke comments card is deleted, and the standard events module `events-timeline` component is added to the workflow action pages (check view page + all four form-kind templates). Derived from `designs/workflows-module/parts/33-comment-rendering/design.md`.
+
+> **Re-baselined 2026-06** against shipped Parts 38/40/42/46/48/53 (see design.md's revision note). Engine stream (tasks 1–4) is unchanged and accurate: `planEventDispatch` already takes a `comment` param (un-folded) and already never writes `metadata.comment`, and Part 24's `UpdateActionFields` handler route is already landed — so this part only adds the fold + the deep-merge + the `planSubmit` threading. Surface stream (tasks 5–7) was rewritten: the action view page is now a Part 40 thin container (delete the page-level `comments_card` below the `check-action-surface` `_ref`); `get_action` is renamed `get_workflow_action` returning a single object (no `.0`); the timeline to add is the events module's **events-only** generic `events-timeline` (action-card enrichment moved to the workflows-owned `workflows-events-timeline` in Part 46, and is unneeded on a single-action page); and the mandatory `request_changes` comment now lives in `change_request_comment` (form review template) and `current_action.comment` (check surface), not a single `comment` input.
 
 ## Tasks
 
@@ -12,9 +14,9 @@ Make the workflow submit comment a first-class part of the standard event: the e
 | 2   | `02-deep-merge-event-display.md`     | `mergeEventOverrides` deep-merges `display` under the app key via `deepMerge`; migrate stale tests  | —          |
 | 3   | `03-plan-event-dispatch-comment.md`  | `planEventDispatch` takes `comment`, calls the fold after `renderEventDisplay` (merge → render → fold) | 1, 2       |
 | 4   | `04-thread-comment-plan-submit.md`   | `planSubmit` step 7 threads `comment: params.comment` into the planner call                         | 3          |
-| 5   | `05-check-view-timeline-swap.md`    | Delete the bespoke comments card on the check view page; add the shared `events-timeline`          | —          |
+| 5   | `05-check-view-timeline-swap.md`    | Delete the page-level comments card on the check view page; add the events-only `events-timeline`   | —          |
 | 6   | `06-form-template-timelines.md`      | Add the action-filtered `events-timeline` to all four form-kind templates                          | —          |
-| 7   | `07-tighten-comment-validate.md`     | Tighten the `request_changes` comment validate to the fold-gate condition on both review surfaces  | —          |
+| 7   | `07-tighten-comment-validate.md`     | Tighten the mandatory `request_changes` comment validate (form `change_request_comment` + check `current_action.comment`) to the fold-gate condition | —          |
 
 ## Ordering Rationale
 
@@ -25,7 +27,7 @@ Two independent streams:
 
 The boundary between 3 and 4 keeps the planner's unit-level behaviour (fold, precedence, no `metadata.comment`) reviewable separately from the submit-pipeline integration test, which lives in a different test file with its own fixtures.
 
-**Naming note for tasks 5–7:** Part 38 task 18 (`18-display-surface-renames.md`) has landed — the pages are `pages/workflow-action-{view,review,edit}.yaml`, matching the design's names.
+**Baseline note for tasks 5–7 (shipped Parts 40/46):** the action view page (`pages/workflow-action-view.yaml`) is a Part 40 thin container that `_ref`s `components/check-action-surface.yaml` and renders the bespoke `comments_card` as page-level chrome below it; the form templates and the view page load the action via `get_workflow_action` (a **single object**, no `.0`) into `_state` (`_state.action` on templates, `_state.current_action` on the surface). The mandatory `request_changes` comment is `change_request_comment` on the form review template and `current_action.comment` on the check surface.
 
 ## Scope
 
@@ -35,4 +37,4 @@ The boundary between 3 and 4 keeps the planner's unit-level behaviour (fold, pre
 
 ## Out of scope (per design)
 
-Comment editing/deletion, threading/replies, standalone comments, email/notification rendering, full-text search, backfill of legacy `metadata.comment`, folding `status_history` into the timeline. Concept-spec amendments are already applied. Integration verification in the demo app rides Part 45 (demo rebuild); E2E coverage rides Part 22.
+Comment editing/deletion, threading/replies, standalone comments, email/notification rendering, full-text search, backfill of legacy `metadata.comment`, folding `status_history` into the timeline. Concept-spec amendments were applied at first draft — re-verify their line refs against the Part 48/53 spec rewrites before trusting offsets (design.md § Concept-spec amendments). Integration verification in the demo app rides Part 45 (demo rebuild); E2E coverage rides Part 22.
