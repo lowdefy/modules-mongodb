@@ -38,57 +38,63 @@ blocks:
             properties:
               title:
                 __build.args: 0
-  - id: signed_up
-    type: Paragraph
-    visible:
-      _eq:
-        - _state: is_user
-        - true
-    style:
-      marginBottom: 0
+  # Account lifecycle + record audit stamp, rendered as label/value rows
+  # (matches the Profile card's descriptions). Created/Last modified moved here
+  # from the page-title subtitle so the title bar stays a single line. "Signed
+  # up" is only included for actual users (is_user); the audit rows are always
+  # present on a saved record. antd renders the value in the normal text colour
+  # and the label muted — the label/value contrast the flat paragraphs lacked.
+  - id: access_meta
+    type: Descriptions
     properties:
-      type: secondary
-      content:
-        _nunjucks:
-          template: "Signed up {{ date | date('YYYY-MM-DD') }}"
-          on:
-            date:
-              _state: sign_up
-  # Record audit stamp — moved here from the page-title subtitle so the title
-  # bar stays a single line (eyebrow + name + status pill).
-  - id: created_stamp
-    type: Paragraph
-    visible:
-      _ne:
-        - _state: created.user.name
-        - null
-    style:
-      marginBottom: 0
-    properties:
-      type: secondary
-      content:
-        _nunjucks:
-          template: "Created by {{ name | safe }} on {{ date | date('YYYY-MM-DD') }}"
-          on:
-            name:
-              _state: created.user.name
-            date:
-              _state: created.timestamp
-  - id: updated_stamp
-    type: Paragraph
-    visible:
-      _ne:
-        - _state: updated.user.name
-        - null
-    style:
-      marginBottom: 0
-    properties:
-      type: secondary
-      content:
-        _nunjucks:
-          template: "Last modified by {{ name | safe }} on {{ date | date('YYYY-MM-DD') }}"
-          on:
-            name:
-              _state: updated.user.name
-            date:
-              _state: updated.timestamp
+      column: 1
+      size: small
+      # Each piece of metadata is its own label/value field (no combined
+      # "name · date" string), kept in order via _object.assign: Signed up is
+      # only present for actual users; each "by" field is dropped when the
+      # change stamp has no user (legacy records) so no empty row renders.
+      items:
+        _object.assign:
+          - _if:
+              test:
+                _eq:
+                  - _state: is_user
+                  - true
+              then:
+                Signed up:
+                  _nunjucks:
+                    template: "{{ date | date('YYYY-MM-DD') }}"
+                    on:
+                      date:
+                        _state: sign_up
+              else: {}
+          - _if:
+              test:
+                _ne:
+                  - _state: created.user.name
+                  - null
+              then:
+                Created by:
+                  _state: created.user.name
+              else: {}
+          - Created on:
+              _nunjucks:
+                template: "{{ date | date('YYYY-MM-DD') }}"
+                on:
+                  date:
+                    _state: created.timestamp
+          - _if:
+              test:
+                _ne:
+                  - _state: updated.user.name
+                  - null
+              then:
+                Last modified by:
+                  _state: updated.user.name
+              else: {}
+          - Last modified on:
+              _nunjucks:
+                template: "{{ date | date('YYYY-MM-DD') }}"
+                on:
+                  date:
+                    _state: updated.timestamp
