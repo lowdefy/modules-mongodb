@@ -58,7 +58,7 @@ importers:
         version: 0.41.2(nodemailer@6.9.7)
       '@hono/auth-js':
         specifier: 1.1.1
-        version: 1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)
+        version: 1.1.1(@auth/core@0.41.2)(hono@4.12.25)(react@18.2.0)
       '@hono/node-server':
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
@@ -106,10 +106,10 @@ importers:
         version: 0.0.0-experimental-20260611102401(moment@2.29.4)
       '@lowdefy/community-plugin-mongodb':
         specifier: 3.0.0
-        version: 3.0.0(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 3.0.0(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-nodemailer':
         specifier: 1.1.4
-        version: 1.1.4(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 1.1.4(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
@@ -166,7 +166,7 @@ importers:
         version: 0.0.0-experimental-20260611102401(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))
+        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2)
       '@tailwindcss/postcss':
         specifier: 4.2.1
         version: 4.2.1
@@ -251,7 +251,7 @@ importers:
         version: 0.41.2(nodemailer@6.9.7)
       '@hono/auth-js':
         specifier: 1.1.1
-        version: 1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)
+        version: 1.1.1(@auth/core@0.41.2)(hono@4.12.25)(react@18.2.0)
       '@hono/node-server':
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
@@ -293,10 +293,10 @@ importers:
         version: 0.0.0-experimental-20260611102401(moment@2.29.4)
       '@lowdefy/community-plugin-mongodb':
         specifier: 3.0.0
-        version: 3.0.0(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 3.0.0(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(nodemailer@6.9.7)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-nodemailer':
         specifier: 1.1.4
-        version: 1.1.4(@auth/core@0.41.2)(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+        version: 1.1.4(@auth/core@0.41.2(nodemailer@6.9.7))(next@16.2.6(@babel/core@7.29.7)(@opentelemetry/api@1.9.1)(@playwright/test@1.60.0)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/community-plugin-xlsx':
         specifier: 1.1.0
         version: 1.1.0
@@ -338,7 +338,7 @@ importers:
         version: 0.0.0-experimental-20260611102401(antd@6.3.1(moment@2.29.4)(react-dom@18.2.0(react@18.2.0))(react@18.2.0))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))
+        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2)
       '@sentry/browser':
         specifier: ^10.57.0
         version: 10.57.0
@@ -427,7 +427,7 @@ importers:
         version: 0.41.2(nodemailer@6.9.7)
       '@hono/auth-js':
         specifier: 1.1.1
-        version: 1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)
+        version: 1.1.1(@auth/core@0.41.2)(hono@4.12.25)(react@18.2.0)
       '@hono/node-server':
         specifier: 2.0.4
         version: 2.0.4(hono@4.12.25)
@@ -493,7 +493,7 @@ importers:
         version: 0.0.0-experimental-20260611102401
       '@lowdefy/plugin-next-auth':
         specifier: 0.0.0-experimental-20260611102401
-        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))
+        version: 0.0.0-experimental-20260611102401(@auth/core@0.41.2)
       '@sentry/browser':
         specifier: ^10.57.0
         version: 10.57.0
@@ -8424,7 +8424,7 @@ snapshots:
 
   '@formatjs/icu-skeleton-parser@2.1.9': {}
 
-  '@hono/auth-js@1.1.1(@auth/core@0.41.2(nodemailer@6.9.7))(hono@4.12.25)(react@18.2.0)':
+  '@hono/auth-js@1.1.1(@auth/core@0.41.2)(hono@4.12.25)(react@18.2.0)':
     dependencies:
       '@auth/core': 0.41.2(nodemailer@6.9.7)
       hono: 4.12.25
@@ -9529,7 +9529,7 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@lowdefy/plugin-next-auth@0.0.0-experimental-20260611102401(@auth/core@0.41.2(nodemailer@6.9.7))':
+  '@lowdefy/plugin-next-auth@0.0.0-experimental-20260611102401(@auth/core@0.41.2)':
     dependencies:
       '@auth/core': 0.41.2(nodemailer@6.9.7)
 
