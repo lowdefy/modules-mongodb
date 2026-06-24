@@ -16,6 +16,15 @@
 #     AND-ed server-side per Part 46 D5), .workflow_closed, .required_after_close.
 #   - working inputs: current_action.fields.{assignees, due_date, description}
 #     (seeded from the response) and current_action.comment (seeded null).
+#   - current_action.stage — the current stage (response status.0.stage),
+#     seeded as a plain scalar by every container. The header badge and the
+#     error-stage comment gate read THIS, not current_action.status.0.stage,
+#     because the status-history List binds `id: current_action.status` and
+#     Lowdefy deletes a non-visible block's state by its blockId — so whenever
+#     the List is hidden (any mode but view), current_action.status is pruned
+#     and status.0.stage goes undefined. The scalar is bound by no block, so it
+#     survives. The List/rows still read current_action.status[.$] — they only
+#     render when the List is visible (view mode), where the array is present.
 #   - current_action.mode — `edit` | `view` | `review`, set by the container
 #     (pages set a literal in onMount; the modal sets the derived value in its
 #     open handler). The surface gates every mode-dependent block on
@@ -52,17 +61,12 @@ blocks:
       message: Workflow closed
       description: This workflow is closed. Updates to this action are no longer accepted.
   # 2. Header — Title + status Tag styled from the action_statuses enum.
-  #    view / review modes only.
+  #    Shown in ALL modes: the surface is the only title source for the modal
+  #    and for the action pages (both use hide_title + content_width and rely on
+  #    the surface for chrome), so gating it to view/review left edit mode with
+  #    no title and no status tag.
   - id: action_header
     type: Box
-    visible:
-      _or:
-        - _eq:
-            - _state: current_action.mode
-            - view
-        - _eq:
-            - _state: current_action.mode
-            - review
     layout:
       gap: 8
       align: middle
@@ -75,25 +79,18 @@ blocks:
             _state: current_action.message
       - id: action_status_badge
         type: Tag
-        properties:
-          color:
-            _js:
-              args:
-                statuses:
-                  _ref: ../shared/enums/action_statuses.yaml
-                stage:
-                  _state: current_action.status.0.stage
-              fn: |
-                const { statuses, stage } = args;
-                return statuses?.[stage]?.color;
-          style:
+        # `.element` targets the antd Tag itself; a flat style object would land
+        # on the BlockLayout wrapper instead, leaving the Tag's default
+        # (white-on-custom-colour) text invisible on the light tint.
+        style:
+          .element:
             color:
               _js:
                 args:
                   statuses:
                     _ref: ../shared/enums/action_statuses.yaml
                   stage:
-                    _state: current_action.status.0.stage
+                    _state: current_action.stage
                 fn: |
                   const { statuses, stage } = args;
                   return statuses?.[stage]?.titleColor;
@@ -103,17 +100,28 @@ blocks:
                   statuses:
                     _ref: ../shared/enums/action_statuses.yaml
                   stage:
-                    _state: current_action.status.0.stage
+                    _state: current_action.stage
                 fn: |
                   const { statuses, stage } = args;
                   return statuses?.[stage]?.borderColor;
-          content:
+        properties:
+          color:
             _js:
               args:
                 statuses:
                   _ref: ../shared/enums/action_statuses.yaml
                 stage:
-                  _state: current_action.status.0.stage
+                  _state: current_action.stage
+              fn: |
+                const { statuses, stage } = args;
+                return statuses?.[stage]?.color;
+          title:
+            _js:
+              args:
+                statuses:
+                  _ref: ../shared/enums/action_statuses.yaml
+                stage:
+                  _state: current_action.stage
               fn: |
                 const { statuses, stage } = args;
                 return statuses?.[stage]?.title;
@@ -170,6 +178,28 @@ blocks:
             blocks:
               - id: current_action.status.$.badge
                 type: Tag
+                style:
+                  .element:
+                    color:
+                      _js:
+                        args:
+                          statuses:
+                            _ref: ../shared/enums/action_statuses.yaml
+                          stage:
+                            _state: current_action.status.$.stage
+                        fn: |
+                          const { statuses, stage } = args;
+                          return statuses?.[stage]?.titleColor;
+                    borderColor:
+                      _js:
+                        args:
+                          statuses:
+                            _ref: ../shared/enums/action_statuses.yaml
+                          stage:
+                            _state: current_action.status.$.stage
+                        fn: |
+                          const { statuses, stage } = args;
+                          return statuses?.[stage]?.borderColor;
                 properties:
                   color:
                     _js:
@@ -181,7 +211,7 @@ blocks:
                       fn: |
                         const { statuses, stage } = args;
                         return statuses?.[stage]?.color;
-                  content:
+                  title:
                     _js:
                       args:
                         statuses:
@@ -232,7 +262,7 @@ blocks:
                 - _state: current_action.mode
                 - view
             - _eq:
-                - _state: current_action.status.0.stage
+                - _state: current_action.stage
                 - error
     properties:
       title: Comment
@@ -248,6 +278,37 @@ blocks:
       wrap: nowrap
       gap: 8
     blocks:
+      # Edit affordance — view mode only, gated on allowed.edit (parity with
+      # the form view template's button_edit, which navigates to the edit page).
+      # The surface renders every mode in place, so here it flips mode to `edit`
+      # rather than navigating. Lets an editable action opened read-only (e.g. a
+      # `done` action, which derives to view mode) re-enter the editable surface;
+      # the signal buttons it exposes stay server-gated on current_action.buttons.
+      - id: button_edit
+        type: Button
+        layout:
+          flex: 0 1 auto
+        visible:
+          _and:
+            - _eq:
+                - _state: current_action.mode
+                - view
+            - _state: current_action.allowed.edit
+        properties:
+          title: Edit
+          type: default
+          disabled:
+            _and:
+              - _state: current_action.workflow_closed
+              - _ne:
+                  - _state: current_action.required_after_close
+                  - true
+        events:
+          onClick:
+            - id: enter_edit_mode
+              type: SetState
+              params:
+                current_action.mode: edit
       - id: button_progress
         type: Button
         layout:

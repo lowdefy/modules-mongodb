@@ -78,6 +78,9 @@ _ref:
               description:
                 _request: get_workflow_action.description
             current_action.comment: null
+            # Stable stage scalar for the header badge (see check-action-surface.yaml).
+            current_action.stage:
+              _request: get_workflow_action.status.0.stage
             current_action.mode: review
         # Step 8 (author-supplied pages.review.events.onMount) — omitted on
         # shared check pages; same gap as workflow-action-view / workflow-action-edit.

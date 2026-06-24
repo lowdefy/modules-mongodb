@@ -45,6 +45,24 @@
 #   |   |   changes-required] AND allowed.edit                        |        |
 #   | 4 | otherwise                                                   | view   |
 #
+# Mode is derived from the GetWorkflowAction RESPONSE (`_request:
+# get_workflow_action.*`), NOT from `_state: current_action.*`, and is written
+# in the SAME SetState that spreads the response. This is load-bearing:
+#   - `current_action.status` is the bind path of the view-mode status-history
+#     List. Lowdefy deletes the state of any non-visible block keyed by its
+#     blockId (Slots.updateState → recContainerDelState). SetState runs an
+#     `update()` after every action, so if the spread and the mode write were
+#     separate steps, the update between them would see `mode` unset →
+#     `status_history_card` (visible: mode==view) hidden → its List pruned →
+#     `current_action.status` deleted. The next step would then read
+#     `status.0.stage` as undefined → mode collapses to `view` AND the history
+#     renders empty. Setting mode in the same update cycle as the spread keeps
+#     the correct container visible from the first render, so `status` survives.
+#   - Deriving mode from `_state` would also fail even in one SetState: action
+#     params are fully evaluated against the PRE-SetState state before any write
+#     lands, so `_state: current_action.status` would still be empty. The
+#     response is available at parse time; the state is not.
+#
 # The events timeline is NOT rendered in the modal (page-level only, D1).
 # `view` mode's status history (a stateful List, no request) is modal-safe.
 id: check_action_modal
@@ -69,16 +87,19 @@ events:
     - id: get_action
       type: Request
       params: get_workflow_action
-    # Step 2: spread the GetWorkflowAction response into current_action.
+    # Step 2: spread the response, seed the working inputs, and write the
+    # derived mode in ONE SetState (one update cycle). See the header note —
+    # splitting these would let an intermediate update prune
+    # `current_action.status` before mode is set, collapsing mode to `view` and
+    # emptying the status history. Mode is derived from the response
+    # (`_request`), not `_state`, because params evaluate against pre-SetState
+    # state. `current_action` is the first key so the spread lands before the
+    # nested `.fields` / `.comment` / `.mode` writes.
     - id: set_current_action
       type: SetState
       params:
         current_action:
           _request: get_workflow_action
-    # Step 3: seed the working inputs.
-    - id: seed_working_state
-      type: SetState
-      params:
         current_action.fields:
           assignees:
             _request: get_workflow_action.assignees
@@ -87,15 +108,15 @@ events:
           description:
             _request: get_workflow_action.description
         current_action.comment: null
-    # Step 4: derive and write the mode (modal-side half of the mode contract).
-    - id: set_mode
-      type: SetState
-      params:
+        # Stable stage scalar — the header badge reads this, not the prunable
+        # current_action.status.0.stage (see check-action-surface.yaml).
+        current_action.stage:
+          _request: get_workflow_action.status.0.stage
         current_action.mode:
           _if:
             test:
               _eq:
-                - _state: current_action.status.0.stage
+                - _request: get_workflow_action.status.0.stage
                 - error
             then: view
             else:
@@ -103,10 +124,10 @@ events:
                 test:
                   _and:
                     - _eq:
-                        - _state: current_action.status.0.stage
+                        - _request: get_workflow_action.status.0.stage
                         - in-review
                     - _eq:
-                        - _state: current_action.allowed.review
+                        - _request: get_workflow_action.allowed.review
                         - true
                 then: review
                 else:
@@ -117,9 +138,9 @@ events:
                             - - action-required
                               - in-progress
                               - changes-required
-                            - _state: current_action.status.0.stage
+                            - _request: get_workflow_action.status.0.stage
                         - _eq:
-                            - _state: current_action.allowed.edit
+                            - _request: get_workflow_action.allowed.edit
                             - true
                     then: edit
                     else: view
