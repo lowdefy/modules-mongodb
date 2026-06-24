@@ -5,39 +5,8 @@ properties:
 layout:
   gap: 8
 blocks:
-  - id: status_tag
-    type: Tag
-    properties:
-      color:
-        _if:
-          test:
-            _eq:
-              - _state: disabled
-              - true
-          then: red
-          else:
-            _if:
-              test:
-                _eq:
-                  - _state: invite.open
-                  - true
-              then: blue
-              else: green
-      title:
-        _if:
-          test:
-            _eq:
-              - _state: disabled
-              - true
-          then: Disabled
-          else:
-            _if:
-              test:
-                _eq:
-                  - _state: invite.open
-                  - true
-              then: Open Invite
-              else: Active
+  # Status (Active / Open Invite / Disabled) is shown in the page title pill,
+  # so it is intentionally not repeated here.
   - id: roles_label
     type: Paragraph
     style:
@@ -85,3 +54,41 @@ blocks:
           on:
             date:
               _state: sign_up
+  # Record audit stamp — moved here from the page-title subtitle so the title
+  # bar stays a single line (eyebrow + name + status pill).
+  - id: created_stamp
+    type: Paragraph
+    visible:
+      _ne:
+        - _state: created.user.name
+        - null
+    style:
+      marginBottom: 0
+    properties:
+      type: secondary
+      content:
+        _nunjucks:
+          template: "Created by {{ name | safe }} on {{ date | date('YYYY-MM-DD') }}"
+          on:
+            name:
+              _state: created.user.name
+            date:
+              _state: created.timestamp
+  - id: updated_stamp
+    type: Paragraph
+    visible:
+      _ne:
+        - _state: updated.user.name
+        - null
+    style:
+      marginBottom: 0
+    properties:
+      type: secondary
+      content:
+        _nunjucks:
+          template: "Last modified by {{ name | safe }} on {{ date | date('YYYY-MM-DD') }}"
+          on:
+            name:
+              _state: updated.user.name
+            date:
+              _state: updated.timestamp

@@ -16,6 +16,13 @@ _ref:
           {% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}
         on:
           _request: get_user.0
+    status:
+      _request: get_user.0.status
+    status_enum:
+      _ref: enums/user_statuses.yaml
+    loading:
+      _not:
+        _request: get_user
     content_width: 600
     breadcrumbs:
       - home: true

@@ -44,6 +44,29 @@ properties:
             - '$apps.'
             - _module.var: app_name
             - '.invite'
+        # Status slug for the title-block pill (enums/user_statuses.yaml).
+        # Mirrors the `active` $switch in get_all_users: disabled > open
+        # invite > active.
+        status:
+          $switch:
+            branches:
+              - case:
+                  $eq:
+                    - _string.concat:
+                        - '$apps.'
+                        - _module.var: app_name
+                        - '.disabled'
+                    - true
+                then: disabled
+              - case:
+                  $eq:
+                    - _string.concat:
+                        - '$apps.'
+                        - _module.var: app_name
+                        - '.invite.open'
+                    - true
+                then: invited
+            default: active
         is_user:
           _string.concat:
             - '$apps.'

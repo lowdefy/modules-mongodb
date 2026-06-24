@@ -3,15 +3,15 @@ _ref:
   component: page
   vars:
     id: view
+    type:
+      _module.var: label
     title:
-      _nunjucks:
-        template: |
-          {{ label }}{% if display_name %}: {{ display_name | safe }}{% endif %}
-        on:
-          _object.assign:
-            - _request: get_company.0
-            - label:
-                _module.var: label
+      _if_none:
+        - _request: get_company.0.display_name
+        - ""
+    loading:
+      _not:
+        _request: get_company
     breadcrumbs:
       - home: true
         icon: AiOutlineHome

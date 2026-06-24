@@ -114,7 +114,18 @@ blocks:
         type: Box
         layout:
           direction: column
-          flex: 1 0 auto
+          # flex-basis 0 (not auto) is load-bearing. Lowdefy turns layout.flex
+          # into a bare `flex:` on the item with no min-width:0 (deriveLayout.js
+          # — and a block's `style` lands on the inner div, not this flex item,
+          # so min-width:0 can't be injected that way). With basis `auto` the
+          # browser collects flex lines at this column's MIN-content width; the
+          # change-stamp subtitle therefore must be allowed to wrap (no
+          # white-space:nowrap below) so min-content collapses to the longest
+          # word. basis 0 + a wrapping subtitle keeps the row on one line: the
+          # column is collected small, then grows (grow 1) to fill the space the
+          # pill and page-actions leave, and the subtitle wraps within it.
+          # Verified in a headless-Chrome render of this exact structure.
+          flex: 1 1 0
           gap: 2
         blocks:
           _build.array.concat:
@@ -166,7 +177,7 @@ blocks:
                     _nunjucks:
                       template: |
                         <h2 class="text-2xl font-semibold" style="margin: 0;">{{ title | safe }}</h2>
-                        <div class="text-text-secondary text-sm" style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                        <div class="text-text-secondary text-sm">
                           {% if doc.updated.user.name %}
                             Last modified by {{ doc.updated.user.name | safe }} on {{ doc.updated.timestamp | date('MMM D, YYYY h:mm A')}}
                           {% endif %}
@@ -182,8 +193,11 @@ blocks:
                           _var: doc
     - - id: page-actions
         type: Box
+        # flex: 0 0 auto — never grow, never shrink. The actions always hold
+        # the right edge at their natural width; the title-column (flex 1 1 0)
+        # absorbs all the give instead.
         layout:
-          flex: 0 1 auto
+          flex: 0 0 auto
         style:
           margin: 16
         blocks:
