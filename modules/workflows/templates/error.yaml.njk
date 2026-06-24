@@ -141,10 +141,12 @@ _ref:
                                       on:
                                         metadata:
                                           _js:
-                                            params:
-                                              - _state: action.status.0.error_metadata
-                                            body: |
-                                              return JSON.stringify(params[0], null, 2);
+                                            args:
+                                              metadata:
+                                                _state: action.status.0.error_metadata
+                                            fn: |
+                                              const { metadata } = args;
+                                              return JSON.stringify(metadata, null, 2);
                             - _var:
                                 key: page_config.formHeader
                                 default: []
@@ -185,10 +187,12 @@ _ref:
                                           on:
                                             metadata:
                                               _js:
-                                                params:
-                                                  - _state: action.status.0.error_metadata
-                                                body: |
-                                                  return JSON.stringify(params[0], null, 2);
+                                                args:
+                                                  metadata:
+                                                    _state: action.status.0.error_metadata
+                                                fn: |
+                                                  const { metadata } = args;
+                                                  return JSON.stringify(metadata, null, 2);
                                 - _var:
                                     key: page_config.formHeader
                                     default: []
