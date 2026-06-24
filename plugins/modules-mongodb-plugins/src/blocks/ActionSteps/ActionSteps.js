@@ -1,9 +1,9 @@
-import React, { Fragment } from "react";
+import React from "react";
 import { Badge, ConfigProvider, Steps, Typography, theme } from "antd";
 import { cn, renderHtml, withBlockDefaults } from "@lowdefy/block-utils";
 import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import { type } from "@lowdefy/helpers";
-import "./style.module.css";
+import "./style.css";
 
 const actionStepStatusMap = {
   blocked: "wait",
@@ -157,9 +157,22 @@ const ActionSteps = ({
                 />
               ),
               description:
-                actionGroupStatus === "not-required"
-                  ? undefined
-                  : item.actions.map((action, actionIdx) => {
+                actionGroupStatus === "not-required" ? undefined : (
+                  // Stack each action on its own row. The column layout lives
+                  // on this container (not the per-badge `width: 100%` rule) so
+                  // stacking holds even if the stylesheet is absent. These are
+                  // plain layout primitives (no theme tokens), so inlining them
+                  // does not affect theming or CSS-variable overrides.
+                  <div
+                    className={cn("action-steps-actions", classNames.actions)}
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      rowGap: 2,
+                      ...styles.actions,
+                    }}
+                  >
+                    {item.actions.map((action, actionIdx) => {
                       const linkDisabled =
                         action?.link?.disabled || !action?.link;
                       const secondaryText = ["blocked", "not-required"].includes(
@@ -180,9 +193,9 @@ const ActionSteps = ({
                       const fireEvent =
                         events.onActionClick !== undefined && !linkDisabled;
                       return (
-                        <Fragment key={action.id ?? actionIdx}>
-                          <Badge
-                            className={cn("action-steps-badge", classNames.badge)}
+                        <Badge
+                          key={action.id ?? actionIdx}
+                          className={cn("action-steps-badge", classNames.badge)}
                             style={styles.badge}
                             color={statusColor(
                               actionStatusConfig,
@@ -225,10 +238,11 @@ const ActionSteps = ({
                                 </Link>
                               )
                             }
-                          />
-                        </Fragment>
+                        />
                       );
-                    }),
+                    })}
+                  </div>
+                ),
             };
           })}
       />

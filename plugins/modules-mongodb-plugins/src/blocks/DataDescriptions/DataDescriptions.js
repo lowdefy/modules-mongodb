@@ -4,7 +4,7 @@ import { Card, Descriptions } from "antd";
 import withTheme from "@lowdefy/blocks-antd/blocks/withTheme.js";
 import preprocessData from "./preprocessing/preprocessData.js";
 import renderFieldValue from "./core/renderFieldValue.js";
-import "./style.module.css";
+import "./style.css";
 
 const DataDescriptions = ({
   blockId,

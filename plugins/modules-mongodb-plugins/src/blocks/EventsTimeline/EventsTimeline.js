@@ -20,7 +20,7 @@ import { withBlockDefaults } from "@lowdefy/block-utils";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration.js";
 import DOMPurify from "dompurify";
-import "./style.module.css";
+import "./style.css";
 
 dayjs.extend(duration);
 

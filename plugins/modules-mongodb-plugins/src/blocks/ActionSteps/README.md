@@ -165,12 +165,15 @@ Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionCli
 
 ## Built-in classes
 
-The block ships these global CSS classes via `style.module.css` (imported by the
-component, `:global`-scoped) and applies them automatically:
+The block ships these global CSS classes via `style.css` (imported by the
+component as a plain global stylesheet — not a `.module.css`, which Vite
+tree-shakes away when imported only for side effects) and applies them
+automatically:
 
 | Class | Where | What it does |
 |---|---|---|
-| `.action-steps-badge` | Every action `Badge` | Row layout (`margin-left: 5px`, `width: 100%`, `padding-right: 5px`). |
+| `.action-steps-actions` | The per-group container around its action badges | Stacks the actions vertically (flex column). Applied via inline style on the element so the layout holds even if the stylesheet is absent. |
+| `.action-steps-badge` | Every action `Badge` | Row spacing (`margin-left: 5px`, `width: 100%`, `padding-right: 5px`). |
 | `.action-steps-link-secondary` | Action `Link` when status is `blocked` or `not-required` | Secondary text color via `var(--ant-color-text-tertiary)`. |
 | `.action-steps-link-disabled` | Action `Link` when `action.link.disabled` or `action.link` is missing | `cursor: default`. |
 
