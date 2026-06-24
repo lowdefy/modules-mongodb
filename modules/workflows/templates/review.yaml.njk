@@ -277,11 +277,15 @@ _ref:
                           default: false
                     events:
                       onClick:
+                        # request_changes_modal is a Modal (not a ConfirmModal):
+                        # its open method is setOpen({ open }), not open.
                         - id: open_request_changes_modal
                           type: CallMethod
                           params:
-                            method: open
+                            method: setOpen
                             blockId: request_changes_modal
+                            args:
+                              - open: true
                   - id: button_approve
                     type: Button
                     layout:
