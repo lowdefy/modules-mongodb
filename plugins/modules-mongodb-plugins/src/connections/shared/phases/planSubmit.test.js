@@ -381,3 +381,28 @@ test('event override: no overrides anywhere → engine default display title is 
   // Engine default (Part 53): submit → done renders "completed {{ action.title }}".
   expect(plan.event.doc.display['test-app'].title).toBe('Test User completed Qualify');
 });
+
+test('comment threads through to display.{app}.description; no metadata.comment (Part 33)', () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext({
+      params: {
+        action_id: 'A1',
+        signal: 'submit',
+        comment: { html: '<p>Looks wrong</p>', text: 'Looks wrong' },
+      },
+    }),
+  });
+  expect(plan.event.doc.display['test-app'].description).toBe('<p>Looks wrong</p>');
+  expect(plan.event.doc.metadata.comment).toBeUndefined();
+});
+
+test('no comment → no description key under the app bucket (Part 33)', () => {
+  const plan = planSubmit({
+    loadedState: makeLoadedState(),
+    preHookResult: EMPTY_PREHOOK,
+    context: makeContext(),
+  });
+  expect(plan.event.doc.display['test-app']).not.toHaveProperty('description');
+});

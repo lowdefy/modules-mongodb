@@ -158,13 +158,39 @@ function validateHooks(workflow, action) {
   }
 }
 
+// Part 33 D4: the `display.{app}.description` slot is comment-only — the
+// runtime comment is its only writer. Authors override per-app `title`; an
+// authored `description` is dead config that would be stripped at merge, so it
+// hard-errors at build. `entryWhere` names the offending event entry.
+function rejectAuthoredDescription(workflow, entryEntry, entryWhere) {
+  const display = entryEntry?.display;
+  if (display === null || typeof display !== 'object' || Array.isArray(display)) {
+    return;
+  }
+  for (const [app, bucket] of Object.entries(display)) {
+    if (
+      bucket !== null &&
+      typeof bucket === 'object' &&
+      !Array.isArray(bucket) &&
+      'description' in bucket
+    ) {
+      fail(
+        workflow.type,
+        `${entryWhere} display "${app}" has a "description" — event descriptions are owned by the action comment and cannot be authored; set only "title" here.`
+      );
+    }
+  }
+}
+
 function validateEvent(workflow, action) {
   if (!action.event) return;
   const where = `action "${action.type}"`;
   const isTracker = action.kind === 'tracker';
   for (const signal of Object.keys(action.event)) {
-    if (HOOK_SIGNALS.includes(signal)) continue;
-    if (isTracker && MIRROR_SIGNALS.includes(signal)) continue;
+    if (HOOK_SIGNALS.includes(signal) || (isTracker && MIRROR_SIGNALS.includes(signal))) {
+      rejectAuthoredDescription(workflow, action.event[signal], `${where} event "${signal}"`);
+      continue;
+    }
     if (!isTracker && MIRROR_SIGNALS.includes(signal)) {
       fail(
         workflow.type,
@@ -538,6 +564,9 @@ function validateWorkflowEvent(workflow) {
         `workflow event key "${signal}" is not a known lifecycle signal (expected one of: ${LIFECYCLE_SIGNALS.join(', ')}).`
       );
     }
+    // Lifecycle events carry no comment, so a static description is dead config
+    // (Part 33 D4) — reject it the same way as per-action events.
+    rejectAuthoredDescription(workflow, event[signal], `workflow event "${signal}"`);
   }
 }
 

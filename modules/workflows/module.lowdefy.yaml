@@ -25,8 +25,11 @@ dependencies:
   - id: events
     description: >
       Provides the change_stamp component referenced by the workflow-api
-      connection, and the new-event Api the engine dispatches the
-      per-invocation log event to (endpoints.new_event on the connection).
+      connection, the new-event Api the engine dispatches the per-invocation
+      log event to (endpoints.new_event on the connection), and the
+      events-timeline component composed by the action pages (the check view
+      page and all four form-kind templates) to render the action's activity
+      stream — comments included inline via display.{app}.description.
   - id: notifications
     description: >
       Provides the send-notification InternalApi the engine dispatches to

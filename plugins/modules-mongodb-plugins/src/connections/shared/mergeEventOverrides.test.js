@@ -42,31 +42,6 @@ describe("mergeEventOverrides", () => {
     expect(result.metadata.action_type).toBe("qualify");
   });
 
-  test("YAML override on metadata.foo does NOT clobber default metadata.comment (regression: layer 3 folded into layer 1)", () => {
-    const withComment = {
-      ...defaultPayload,
-      metadata: { ...defaultPayload.metadata, comment: "hello" },
-    };
-    const result = mergeEventOverrides({
-      defaultPayload: withComment,
-      yamlOverride: { metadata: { foo: "bar" } },
-    });
-    expect(result.metadata.comment).toBe("hello");
-    expect(result.metadata.foo).toBe("bar");
-  });
-
-  test("pre-hook override on metadata.comment overrides layer-1 runtime comment", () => {
-    const withComment = {
-      ...defaultPayload,
-      metadata: { ...defaultPayload.metadata, comment: "hello" },
-    };
-    const result = mergeEventOverrides({
-      defaultPayload: withComment,
-      preHookOverride: { metadata: { comment: "SCRUBBED" } },
-    });
-    expect(result.metadata.comment).toBe("SCRUBBED");
-  });
-
   test("pre-hook override on type replaces default type", () => {
     const result = mergeEventOverrides({
       defaultPayload,
@@ -83,16 +58,43 @@ describe("mergeEventOverrides", () => {
     expect(result.type).toBe("action-submit_edit");
   });
 
-  test("pre-hook override on display.{appName} replaces just that key (one-level deep)", () => {
+  test("deep-merge under app key: author title override wins, sibling keys survive", () => {
+    const base = {
+      ...defaultPayload,
+      display: { demo: { title: "Engine title", info: "kept" } },
+    };
     const result = mergeEventOverrides({
-      defaultPayload,
-      preHookOverride: {
-        display: {
-          demo: { title: { _nunjucks: { template: "custom" } } },
-        },
-      },
+      defaultPayload: base,
+      preHookOverride: { display: { demo: { title: "Custom" } } },
     });
-    expect(result.display.demo.title._nunjucks.template).toBe("custom");
+    expect(result.display.demo.title).toBe("Custom");
+    expect(result.display.demo.info).toBe("kept");
+  });
+
+  test("override under a different app key adds its bucket, keeps the engine bucket", () => {
+    const base = {
+      ...defaultPayload,
+      display: { demo: { title: "Engine title" } },
+    };
+    const result = mergeEventOverrides({
+      defaultPayload: base,
+      yamlOverride: { display: { portal: { title: "Generic" } } },
+    });
+    expect(result.display.portal.title).toBe("Generic");
+    expect(result.display.demo.title).toBe("Engine title");
+  });
+
+  test("description on a merged app bucket is stripped (comment-only, D4)", () => {
+    const base = {
+      ...defaultPayload,
+      display: { demo: { title: "Engine title" } },
+    };
+    const result = mergeEventOverrides({
+      defaultPayload: base,
+      preHookOverride: { display: { demo: { description: "Custom" } } },
+    });
+    expect(result.display.demo).not.toHaveProperty("description");
+    expect(result.display.demo.title).toBe("Engine title");
   });
 
   test("YAML + pre-hook combined: pre-hook wins on collision; non-colliding YAML fields remain", () => {

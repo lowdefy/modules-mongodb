@@ -14,9 +14,10 @@
 # `error → resolve_error → in-review`), Part 40's resolution of ui Open
 # Question 4 (design D4) — there is no separate `check-error` page.
 #
-# The Comments card below the surface is page-level chrome (design D1), kept
-# verbatim pending Part 33, which owns swapping it for the shared
-# events-timeline `_ref`.
+# Below the surface, the page-level Activity card composes the events module's
+# events-only `events-timeline` filtered to this action (design D6) — the
+# comment renders inline under the engine title via the timeline's `description`
+# channel, alongside the full submit/status-change stream.
 _ref:
   module: layout
   component: page
@@ -63,6 +64,7 @@ _ref:
               description:
                 _request: get_workflow_action.description
             current_action.comment: null
+            current_action.change_request_comment: null
             # Stable stage scalar for the header badge (see check-action-surface.yaml).
             current_action.stage:
               _request: get_workflow_action.status.0.stage
@@ -70,89 +72,15 @@ _ref:
     blocks:
       - _ref:
           path: components/check-action-surface.yaml
-      - id: comments_card
+      - id: activity_card
         type: Card
         properties:
-          title: Comments
-        layout:
-          gap: 16
+          title: Activity
         blocks:
-          - id: comment_events
-            type: Box
-            requests:
-              - id: get_comment_events
-                type: MongoDBAggregation
-                connectionId:
-                  _module.connectionId:
-                    id: events-collection
-                    module: events
-                payload:
-                  action_id:
-                    _request: get_workflow_action._id
-                properties:
-                  pipeline:
-                    - $match:
-                        action_ids:
-                          $in:
-                            - _payload: action_id
-                        metadata.comment:
-                          $exists: true
-                    - $sort:
-                        created.timestamp: -1
-            events:
-              onMount:
-                - id: fetch_comment_events
-                  type: Request
-                  params: get_comment_events
-                - id: set_comment_events_list
-                  type: SetState
-                  params:
-                    comment_events_list:
-                      _request: get_comment_events
-            blocks:
-              - id: comment_events_empty
-                type: Paragraph
-                visible:
-                  _eq:
-                    - _array.length:
-                        _request: get_comment_events
-                    - 0
-                properties:
-                  type: secondary
-                  style:
-                    fontSize: 12
-                    fontStyle: italic
-                  content: No comments yet.
-              - id: comment_events_list
-                type: List
-                visible:
-                  _gt:
-                    - _array.length:
-                        _state: comment_events_list
-                    - 0
-                blocks:
-                  - id: comment_events_list.$.row
-                    type: Box
-                    layout:
-                      gap: 4
-                    blocks:
-                      - id: comment_events_list.$.author_line
-                        type: Paragraph
-                        properties:
-                          type: secondary
-                          style:
-                            fontSize: 12
-                          content:
-                            _string.concat:
-                              - _state: comment_events_list.$.created.by.name
-                              - " — "
-                              - _dayjs.format:
-                                  on:
-                                    _state: comment_events_list.$.created.timestamp
-                                  params:
-                                    format: YYYY-MM-DD HH:mm
-                      - id: comment_events_list.$.body
-                        type: Html
-                        properties:
-                          html:
-                            _state: comment_events_list.$.metadata.comment
+          - _ref:
+              module: events
+              component: events-timeline
+              vars:
+                reference_field: action_ids
+                reference_value:
+                  _request: get_workflow_action._id

@@ -15,7 +15,11 @@
 #     not_required, approve, request_changes, resolve_error } booleans, all
 #     AND-ed server-side per Part 46 D5), .workflow_closed, .required_after_close.
 #   - working inputs: current_action.fields.{assignees, due_date, description}
-#     (seeded from the response) and current_action.comment (seeded null).
+#     (seeded from the response), current_action.comment (the OPTIONAL surface
+#     comment, seeded null) and current_action.change_request_comment (the
+#     MANDATORY comment in the review-mode Request Changes modal, a separate
+#     path so its required-validate doesn't fire on the optional input; seeded
+#     null).
 #   - current_action.stage — the current stage (response status.0.stage),
 #     seeded as a plain scalar by every container. The header badge and the
 #     error-stage comment gate read THIS, not current_action.status.0.stage,
@@ -575,10 +579,12 @@ blocks:
               - _var:
                   key: on_complete
                   default: []
-  # 7. Request-changes modal — review mode only. Required comment binds
-  #    current_action.comment; onOk validates the comment then fires the
-  #    request_changes signal (base payload, no fields) and runs on_complete;
-  #    onClose resets the comment. Opened via setOpen({ open: true }).
+  # 7. Request-changes modal — review mode only. Mandatory comment binds
+  #    current_action.change_request_comment (its own path, separate from the
+  #    optional surface comment, so its required-validate fires only here); onOk
+  #    validates the comment then fires the request_changes signal (base payload,
+  #    no fields) and runs on_complete; onClose resets the comment. Opened via
+  #    setOpen({ open: true }).
   - id: request_changes_modal
     type: Modal
     visible:
@@ -596,7 +602,7 @@ blocks:
           - - id: validate_comment
               type: Validate
               params:
-                regex: ^current_action\.comment$
+                regex: ^current_action\.change_request_comment$
             - id: submit_request_changes
               type: CallAPI
               params:
@@ -613,7 +619,7 @@ blocks:
                   current_key:
                     _state: current_action.key
                   comment:
-                    _state: current_action.comment
+                    _state: current_action.change_request_comment
           - _var:
               key: on_complete
               default: []
@@ -621,18 +627,27 @@ blocks:
         - id: reset_comment
           type: SetState
           params:
-            current_action.comment: null
+            current_action.change_request_comment: null
     blocks:
-      - id: current_action.comment
+      - id: current_action.change_request_comment
         type: TiptapInput
         required: true
         validate:
           - message: A comment is required to request changes
             status: error
             pass:
-              _ne:
-                - _state: current_action.comment
-                - null
+              _or:
+                - _ne:
+                    - _if_none:
+                        - _state: current_action.change_request_comment.text
+                        - null
+                    - null
+                - _gt:
+                    - _array.length:
+                        _if_none:
+                          - _state: current_action.change_request_comment.fileList
+                          - []
+                    - 0
         properties:
           title: Change Description
           placeholder: Please provide a description of the changes you would like.

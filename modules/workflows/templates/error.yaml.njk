@@ -365,3 +365,16 @@ _ref:
                               comment:
                                 _state: comment
             else: []
+        # Activity timeline (Part 33) — events for this action, comments inline.
+        - - id: activity_card
+            type: Card
+            properties:
+              title: Activity
+            blocks:
+              - _ref:
+                  module: events
+                  component: events-timeline
+                  vars:
+                    reference_field: action_ids
+                    reference_value:
+                      _state: action._id

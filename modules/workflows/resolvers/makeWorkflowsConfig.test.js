@@ -365,6 +365,50 @@ test("makeWorkflowsConfig: unknown event key hard-errors", () => {
   );
 });
 
+test("makeWorkflowsConfig: authored event display.{app}.description hard-errors (comment-only, D4)", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "check",
+        event: {
+          submit: { display: { demo: { description: "should not be authored" } } },
+        },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /has a "description"/,
+  );
+});
+
+test("makeWorkflowsConfig: authored event display.{app}.title-only passes (D7)", () => {
+  const workflow = {
+    type: "onboarding",
+    entity_collection: "leads-collection",
+    entity_ref_key: "lead_ids",
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "check",
+        event: {
+          submit: { display: { demo: { title: "Lead qualified" } } },
+        },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
 test("makeWorkflowsConfig: inline on_complete routine validates cleanly", () => {
   const workflow = {
     type: "onboarding",
@@ -1320,6 +1364,18 @@ test("makeWorkflowsConfig: workflow-level event with unknown key hard-errors", (
   expect(() =>
     makeWorkflowsConfig(null, { workflows: [wf] })
   ).toThrow(/submit/);
+});
+
+test("makeWorkflowsConfig: workflow-level lifecycle event display.{app}.description hard-errors (D4)", () => {
+  const wf = {
+    ...validWorkflow,
+    event: {
+      started: { display: { demo: { description: "dead config" } } },
+    },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /has a "description"/,
+  );
 });
 
 test("makeWorkflowsConfig: workflow-level event is not present on the returned config blob", () => {

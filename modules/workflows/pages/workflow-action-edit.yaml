@@ -72,6 +72,7 @@ _ref:
               description:
                 _request: get_workflow_action.description
             current_action.comment: null
+            current_action.change_request_comment: null
             # Stable stage scalar for the header badge (see check-action-surface.yaml).
             current_action.stage:
               _request: get_workflow_action.status.0.stage
