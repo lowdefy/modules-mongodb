@@ -12,7 +12,11 @@
   },
   "sandbox": {
     "enabled": true,
-    "excludedCommands": ["gh"],
+    "excludedCommands": [
+      "gh",
+      "pnpm e2e*",
+      "pnpm --filter @lowdefy/modules-demo e2e*"
+    ],
     "network": {
       "allowedDomains": ["github.com", "api.github.com", "registry.npmjs.org"]
     },
