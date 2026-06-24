@@ -133,7 +133,9 @@ test('completing a type blocker and completing a group both unblock their depend
   await ldf.goto(
     `/workflows/workflow-group-overview?workflow_id=${workflow_id}&group_id=prep`
   );
-  await expect(page.getByText('Prep')).toBeVisible(); // group.title
+  // Target the title heading specifically — a bare getByText('Prep') also
+  // matches the "...prep check complete." status messages on this page.
+  await expect(page.getByRole('heading', { name: 'Prep' })).toBeVisible(); // group.title
 
   // ── SPINE CLOSURE: the entity surface reflects both committed unblocks ─────
   await ldf.goto(`/thing-view?_id=${thingId}`);

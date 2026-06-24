@@ -7,6 +7,10 @@ config:
 plugins:
   - name: '@lowdefy/community-plugin-mongodb'
     version: 3.0.0
+  # Required by the contacts/companies modules (Excel export), pulled in to
+  # satisfy the workflows module's contacts dependency chain.
+  - name: '@lowdefy/community-plugin-xlsx'
+    version: 1.1.0
   - name: '@lowdefy/modules-mongodb-plugins'
     version: workspace:*
 

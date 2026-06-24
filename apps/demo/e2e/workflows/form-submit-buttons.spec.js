@@ -28,9 +28,16 @@ const CHANGE_STAMP = {
 // (a) Save Draft — progress signal persists partial data, skips validation
 // ---------------------------------------------------------------------------
 test('Save Draft persists partial form data without running validation (Part 39 § a)', async ({ ldf, mdb, page }) => {
-  const leadId = `lead-${Date.now()}`;
-  const workflowId = `wf-${Date.now()}`;
-  const actionId = `action-${Date.now()}`;
+  // The /workflows/* pages are protected (lowdefy.yaml pages.protected: true);
+  // without a session the page redirects to Login. Admin matches the role used
+  // by onboarding-happy-path.spec.js and covers send-quote's review verb.
+  await ldf.user({ name: 'Test Admin', email: 'test-admin@example.com', roles: ['admin'] });
+
+  // Unique per-section id prefixes — the three specs run in parallel workers and
+  // a bare `Date.now()` collides when two start in the same millisecond.
+  const leadId = `lead-a-${Date.now()}`;
+  const workflowId = `wf-a-${Date.now()}`;
+  const actionId = `action-a-${Date.now()}`;
 
   await mdb.collection('leads').insertOne({
     _id: leadId,
@@ -58,6 +65,9 @@ test('Save Draft persists partial form data without running validation (Part 39 
     workflow_id: workflowId,
     entity_id: leadId,
     type: 'qualify',
+    // Engine bakes config access onto the action doc; GetWorkflowAction returns
+    // null (→ edit page redirects to view) when access.view is not granted.
+    access: { demo: { view: true, edit: true } },
     kind: 'form',
     key: null,
     action_group: 'g1',
@@ -110,9 +120,11 @@ test('Save Draft persists partial form data without running validation (Part 39 
 // (b) FSM source-stage gate: progress hidden, submit visible on a done action
 // ---------------------------------------------------------------------------
 test('progress button hidden and submit visible on edit page of a done action (Part 39 § b)', async ({ ldf, mdb, page }) => {
-  const leadId = `lead-${Date.now()}`;
-  const workflowId = `wf-${Date.now()}`;
-  const actionId = `action-${Date.now()}`;
+  await ldf.user({ name: 'Test Admin', email: 'test-admin@example.com', roles: ['admin'] });
+
+  const leadId = `lead-b-${Date.now()}`;
+  const workflowId = `wf-b-${Date.now()}`;
+  const actionId = `action-b-${Date.now()}`;
 
   await mdb.collection('leads').insertOne({
     _id: leadId,
@@ -145,6 +157,8 @@ test('progress button hidden and submit visible on edit page of a done action (P
     workflow_id: workflowId,
     entity_id: leadId,
     type: 'send-quote',
+    // send-quote's review verb is gated to admin (see send-quote.yaml).
+    access: { demo: { view: true, edit: true, review: ['admin'] } },
     kind: 'form',
     key: null,
     action_group: 'g2',
@@ -162,7 +176,7 @@ test('progress button hidden and submit visible on edit page of a done action (P
 
     // Step 1: open the view page.
     await ldf.goto(`/workflows/onboarding-send-quote-view?action_id=${actionId}`);
-    await ldf.request('get_action').expect.toFinish();
+    await ldf.request('get_workflow_action').expect.toFinish();
 
     // Step 2: click the Edit button (sets skip_status_redirect: true via Link input).
     // Use ldf.waitForPage so currentBlockMap is updated to the edit page before
@@ -174,7 +188,7 @@ test('progress button hidden and submit visible on edit page of a done action (P
     ]);
 
     // Step 3: wait for the page to load its action state.
-    await ldf.request('get_action').expect.toFinish();
+    await ldf.request('get_workflow_action').expect.toFinish();
 
     // button_submit visible: source list includes done.
     await ldf.block('button_submit').expect.visible();
@@ -192,9 +206,11 @@ test('progress button hidden and submit visible on edit page of a done action (P
 // (c) submit from done (via view → Edit path) lands the action in-review
 // ---------------------------------------------------------------------------
 test('submit from done re-opens action to in-review (Part 39 § c)', async ({ ldf, mdb, page }) => {
-  const leadId = `lead-${Date.now()}`;
-  const workflowId = `wf-${Date.now()}`;
-  const actionId = `action-${Date.now()}`;
+  await ldf.user({ name: 'Test Admin', email: 'test-admin@example.com', roles: ['admin'] });
+
+  const leadId = `lead-c-${Date.now()}`;
+  const workflowId = `wf-c-${Date.now()}`;
+  const actionId = `action-c-${Date.now()}`;
 
   await mdb.collection('leads').insertOne({
     _id: leadId,
@@ -224,6 +240,8 @@ test('submit from done re-opens action to in-review (Part 39 § c)', async ({ ld
     workflow_id: workflowId,
     entity_id: leadId,
     type: 'send-quote',
+    // send-quote's review verb is gated to admin (see send-quote.yaml).
+    access: { demo: { view: true, edit: true, review: ['admin'] } },
     kind: 'form',
     key: null,
     action_group: 'g2',
@@ -236,7 +254,7 @@ test('submit from done re-opens action to in-review (Part 39 § c)', async ({ ld
   try {
     // Step 1: open the view page.
     await ldf.goto(`/workflows/onboarding-send-quote-view?action_id=${actionId}`);
-    await ldf.request('get_action').expect.toFinish();
+    await ldf.request('get_workflow_action').expect.toFinish();
 
     // Step 2: click the Edit button.  The view template's button_edit sets
     // `input: { skip_status_redirect: true }` on the Link action, allowing
@@ -247,7 +265,7 @@ test('submit from done re-opens action to in-review (Part 39 § c)', async ({ ld
     ]);
 
     // Step 3: wait for the edit page to load.
-    await ldf.request('get_action').expect.toFinish();
+    await ldf.request('get_workflow_action').expect.toFinish();
 
     // Step 4: update the quote total and click Submit.
     await page.getByLabel('Quote total').fill('2500');
