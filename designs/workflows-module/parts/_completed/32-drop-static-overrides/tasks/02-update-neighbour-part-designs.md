@@ -8,7 +8,7 @@ Three other part design docs cite Layer 2 by name and need their prose updated s
 - **Part 9** (`_completed/09-hook-invocation/design.md`) — shipped. Drops the Layer 2 branch in `resolveTargetStatus`. Adds pre-hook `status` enum-membership runtime check. Three-layer status resolution becomes two-layer. **Does not** touch the event-overrides merge (still four-layer).
 - **Part 13** (`_completed/13-resolver-apis/design.md`) — tasks 1–2 shipped. Stop emitting the `interactions:` literal into the per-action endpoint payload. **Does not** touch the `event_overrides:` literal.
 
-The `event:` block stays as a build-time override channel — out of scope for Part 32, tracked under [Part 33](../../../_next/33-comment-rendering/design.md). Do not touch any prose describing the event-overrides merge or the `event_overrides:` endpoint literal.
+The `event:` block stays as a build-time override channel — out of scope for Part 32, tracked under [Part 33](../../../33-comment-rendering/design.md). Do not touch any prose describing the event-overrides merge or the `event_overrides:` endpoint literal.
 
 Read each file before editing — the prose styles differ.
 

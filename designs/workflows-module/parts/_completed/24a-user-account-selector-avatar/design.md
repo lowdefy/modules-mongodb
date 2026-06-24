@@ -1,6 +1,6 @@
 # Part 24a — Migrate `user-selector` + ship `user-avatar` in user-account
 
-**Source rationale:** Precursor work split out of [part 24 (universal-fields)](../../_next/24-universal-fields/design.md) action review. Part 24 needs a shared way to pick assignees (Selector) and to render assigned users (avatar + name) on display surfaces; user-account already owns `user-contacts-collection`, `app_name`, and `avatar_colors`, so it's the right home. **Layer:** module-surface (user-account + user-admin). **Size:** S. **Repos:** `modules/user-account/`, `modules/user-admin/`.
+**Source rationale:** Precursor work split out of [part 24 (universal-fields)](../../24-universal-fields/design.md) action review. Part 24 needs a shared way to pick assignees (Selector) and to render assigned users (avatar + name) on display surfaces; user-account already owns `user-contacts-collection`, `app_name`, and `avatar_colors`, so it's the right home. **Layer:** module-surface (user-account + user-admin). **Size:** S. **Repos:** `modules/user-account/`, `modules/user-admin/`.
 
 ## Goal
 
@@ -131,7 +131,7 @@ Export under `exports.components`. No new request — callers `_ref` it inline w
 
 ## Consumers
 
-- **[Part 24 (universal-fields)](../../_next/24-universal-fields/design.md)** — edit mode `_ref`s `user-multi-selector` (the `assignees` array is multi-valued); display mode `_ref`s `user-avatar` per assignee. **Part 24's design currently names `user-selector` for the assignees edit (its line 172) — that reference must change to `user-multi-selector` when Part 24 is actioned.** It does not consume the single-select `user-selector`.
+- **[Part 24 (universal-fields)](../../24-universal-fields/design.md)** — edit mode `_ref`s `user-multi-selector` (the `assignees` array is multi-valued); display mode `_ref`s `user-avatar` per assignee. **Part 24's design currently names `user-selector` for the assignees edit (its line 172) — that reference must change to `user-multi-selector` when Part 24 is actioned.** It does not consume the single-select `user-selector`.
 - **External/downstream apps** — consume `user-selector` (single-select); this part relocates it to user-account (breaking path change, see "Contract to neighbours").
 
 ## Verification

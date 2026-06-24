@@ -17,11 +17,11 @@ Dependency-ordered. Items with no entry in **After** have no unmet dependencies 
 | #   | Part                                                                                                         | Size | Status                                      |
 | --- | ------------------------------------------------------------------------------------------------------------ | ---- | ------------------------------------------- |
 | 11  | [group-on-complete-fanout](parts/_next/11-group-on-complete-fanout/design.md)                                | S    | 💤                                          |
-| 24  | [universal-fields](parts/_next/24-universal-fields/design.md) — real renderer + `UpdateActionFields` handler | M    | 💤                                          |
+| 24  | [universal-fields](parts/24-universal-fields/design.md) — real renderer + `UpdateActionFields` handler | M    | 💤                                          |
 | 26  | [entity-data-contract](parts/_next/26-entity-data-contract/design.md)                                        | M    | 💤                                          |
 | 28  | [custom-action-kind](parts/_next/28-custom-action-kind/design.md)                                            | M    | 💤                                          |
 | 31  | [keyed-auto-unblock-fanout](parts/_next/31-keyed-auto-unblock-fanout/design.md)                              | S–M  | 💤 draft / open for discussion              |
-| 33  | [comment-rendering](parts/_next/33-comment-rendering/design.md)                                              | M    | 💤                                          |
+| 33  | [comment-rendering](parts/33-comment-rendering/design.md)                                              | M    | 💤                                          |
 | 36  | [extra-action-buttons](parts/_next/36-extra-action-buttons/design.md)                                        | S–M  | 💤 needs signal-model reconciliation        |
 | 41  | [notification-roles-model](parts/_next/41-notification-roles-model/design.md)                                | TBD  | 💤 ⚠️ STUB — rethink; supersedes part 34 D9 |
 

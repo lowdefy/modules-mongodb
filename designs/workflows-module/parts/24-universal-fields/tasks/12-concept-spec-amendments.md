@@ -14,7 +14,7 @@ Current spec state (verified):
 
 1. **`designs/workflows-module-concept/action-authoring/spec.md`**:
    - In the "Universal action fields" section, add the `universal_fields` authoring field to the reserved/declared-field documentation: optional list drawn from `[assignees, due_date, description]`; omitted = all three shown, optional; `false` / `[]` = surface hidden; purely a UI presence declaration (the doc always carries all three physically).
-   - Rewrite the write-path narrative to the kind-split contract: **check** — fields are the submission content, written via the submit endpoint's `fields:` payload, atomic with the transition; **form** — fields are written by the dedicated `{workflow_type}-{action_type}-update-fields` operation (no signal, no transition, `edit`-verb gated, editable in any stage including after close); **tracker** — fields carried on the doc, no UI surface in v1.
+   - Rewrite the write-path narrative to the kind-split contract: **check** — fields are the submission content, written via the submit endpoint's `fields:` payload, atomic with the transition; **form** — fields are written by the dedicated `{workflow_type}-update-fields` operation (one per workflow, action_id-dispatched; no signal, no transition, `edit`-verb gated, editable in any stage including after close); **tracker** — fields carried on the doc, no UI surface in v1.
    - Confirm `universal_fields_required` is absent (do not add).
 2. **`designs/workflows-module-concept/engine/spec.md`**:
    - Line ~132: `description` type → `{ text: string, html: string } | null` (mirrors the `comment` shape; the `text` shadow serves plain-text search/length checks).
@@ -36,5 +36,5 @@ Current spec state (verified):
 
 ## Notes
 
-- Use the final shipped endpoint id `{workflow_type}-{action_type}-update-fields` (the workflow-type prefix is a deviation from the design's first draft, already folded into Part 24's design.md).
+- Use the final shipped endpoint id `{workflow_type}-update-fields` — **one per workflow**, action_id-dispatched, mirroring `{workflow_type}-submit` (Rev 2; supersedes the per-action-type id of the first draft, folded into Part 24's design.md).
 - These are concept docs, not module READMEs — consumer-facing module docs are out of scope here (no `modules/workflows/README.md` vars changed in this part; `universal_fields` is workflow-YAML authoring surface, not a module var).

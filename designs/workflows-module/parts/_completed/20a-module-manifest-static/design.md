@@ -172,7 +172,7 @@ Every part that ships a static manifest entry referenced here:
 - [Part 23](modules-mongodb/designs/workflows-module/parts/_completed/23-close-workflow-handler/design.md) — `close-workflow` API + handler.
 - [Part 25](modules-mongodb/designs/workflows-module/parts/_completed/25-group-overview-page/design.md) — `group-overview` page + `get-action-group-overview` API.
 
-Does **not** depend on parts [01](../01-call-api-primitive/design.md), [02](../02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../../14-form-components-library/design.md), [15](../../15-resolver-form-builder/design.md), [16](../16-page-templates/design.md), [24](../../_next/24-universal-fields/design.md), or [28](../../_next/28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
+Does **not** depend on parts [01](../01-call-api-primitive/design.md), [02](../02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../../14-form-components-library/design.md), [15](../../15-resolver-form-builder/design.md), [16](../16-page-templates/design.md), [24](../../24-universal-fields/design.md), or [28](../../_next/28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
 
 ## Verification
 

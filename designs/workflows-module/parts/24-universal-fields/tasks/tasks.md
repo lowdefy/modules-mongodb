@@ -1,5 +1,7 @@
 # Implementation Tasks — Part 24: Universal-fields surface
 
+> **Rev 2 (current-state reconciliation, see design.md):** these tasks were generated in the `kind: simple` era. Tasks 8/9/10/11 were rewritten to match in-tree reality — the Update endpoint is **per-workflow** (`{workflow_type}-update-fields`, action_id-dispatched, mirroring `{workflow_type}-submit`), the read path is the single-object `get_workflow_action` envelope (no `.0.`, the old `get_action.yaml` aggregation is gone), assignee display docs come from the **`GetWorkflowAction` handler** (not a YAML `$lookup`), the check integration point is Part 40's `check-action-surface.yaml`, and the component drops the `action_type` var. Tasks 1–7 and 12 are largely unchanged but should be re-anchored against the post-Part-48/49 helper shapes.
+
 ## Overview
 
 Implements the universal-fields surface (`assignees`, `due_date`, `description`): the `UpdateActionFields` engine operation (form kind), the kind-based submit-planner guard (check kind keeps writing fields on submit), the `universal_fields` authoring passthrough, the reusable `universal-fields` Lowdefy component, and the template/page integration. Derives from `designs/workflows-module/parts/24-universal-fields/design.md`.
@@ -17,8 +19,8 @@ Implements the universal-fields surface (`assignees`, `due_date`, `description`)
 | 5   | `05-update-action-fields-handler.md`  | `UpdateActionFields` handler + `WorkflowAPI` connection registration                          | 2, 3, 4    |
 | 6   | `06-submit-kind-guard.md`             | Kind-based universal-fields rule in `planActionTransition` (write only for `kind: check`)    | —          |
 | 7   | `07-universal-fields-passthrough.md`  | `universal_fields` authoring field: validation, allowlist passthrough, default normalization  | —          |
-| 8   | `08-emit-update-fields-endpoint.md`   | `makeWorkflowApis` emits `{workflow_type}-{action_type}-update-fields` per form action        | 5 (runtime) |
-| 9   | `09-binding-prerequisites.md`         | `user-multi-selector` id var, `get_action` assignee `$lookup`, `user-account` manifest dep    | —          |
+| 8   | `08-emit-update-fields-endpoint.md`   | `makeWorkflowApis` emits one `{workflow_type}-update-fields` per workflow (action_id-dispatched) | 5 (runtime) |
+| 9   | `09-binding-prerequisites.md`         | `user-multi-selector` id var, `assignee_docs` in `GetWorkflowAction` handler, `user-account` manifest dep | —          |
 | 10  | `10-universal-fields-component.md`    | The `universal-fields` component (replaces the stub; kind × mode behaviour + Update button)   | 7, 8, 9    |
 | 11  | `11-template-sidebar-integration.md`  | Form-template sidebar column + display bindings + check-page verification (Part 16/17 follow-on) | 10     |
 | 12  | `12-concept-spec-amendments.md`       | Concept-spec amendments (authoring reserved fields, `description` shape, handler docs)        | 5, 8       |
@@ -37,10 +39,10 @@ Parallelizable groups: {1, 2, 3, 6, 7, 9} → {4, 8} → {5} → {10} → {11, 1
 
 ## Notable decisions baked into these tasks
 
-- **Endpoint id is `{workflow_type}-{action_type}-update-fields`** (user-approved deviation, design.md updated): action types are only unique per workflow, so the unprefixed id in the original draft would collide across workflows. Matches the `{workflow_type}-{action_type}-submit` pattern.
+- **Endpoint id is `{workflow_type}-update-fields`, one per workflow** (Rev 2 — supersedes the per-action-type id): the shipped submit/start/cancel endpoints are per-workflow and action_id-dispatched (`makeWorkflowApis.js:135,174`), and the `UpdateActionFields` handler reads `type`/`kind` off the loaded action doc, so per-action-type granularity is unnecessary. The workflow prefix still avoids the cross-workflow collision the earlier per-action-type approval was about. The build-time `action_type` literal/var is dropped.
 - **Access gate = `edit` verb.** The design's "role check (`access.roles` ⊇ user roles)" wording predates Part 34's per-app per-verb access model (action-wide `access.roles` no longer exists — `makeWorkflowsConfig.js` hard-errors on it). The shipped gate is `access.{app_name}.edit`, the verb that owns the page surface where the Update button renders, evaluated with the existing `gateAllows` semantics.
-- **`_state.action_allowed` is a per-verb map** (`{ view, edit, review, error }` — see `components/action_role_check.yaml`), so the component gates on `action_allowed.edit`, not a bare boolean as the design snippet sketches.
-- **Assignee display docs come from a `$lookup` in `requests/get_action.yaml`** (`from: user-contacts` — precedent: `modules/activities/requests/stages/lookup_contacts.yaml`). The design pins "no module-shipped requests *added*" and `user-avatar` consumption per assignee, but avatars need user docs, not ids; extending the existing shared request is the smallest conforming path.
+- **The edit gate is `allowed.edit`, a per-verb map on the `GetWorkflowAction` envelope** (`{ view, edit, review, error }`). Rev 2: `components/action_role_check.yaml` was **deleted** — the form templates now bind `_state: action.allowed.*` directly off the primed envelope (e.g. `review.yaml.njk:143`), and the check surface binds `current_action.allowed.edit`. The component receives `allowed.edit` as the `allowed_edit` var (operator leaf) from its consumer, not via a client-side role-check component.
+- **Assignee display docs come from the `GetWorkflowAction` handler envelope** (Rev 2 — the old `requests/get_action.yaml` aggregation was replaced by the `GetWorkflowAction` plugin handler, Part 46, which returns a curated single object). The handler grows an `assignee_docs` lookup into `user-contacts` and adds it to its allowlisted envelope — consistent with Part 46's server-side-curation design. Avatars need user docs, not ids; this is the conforming path now that no shared aggregation file exists.
 - **`user-multi-selector` gains an `id` var** (default `user-multi-selector`, backward-compatible) so it can auto-bind to `fields.assignees` — Part 24a shipped it with a hardcoded id but its design explicitly states "Part 24 binds `_state.fields.assignees`".
 
 ## Scope

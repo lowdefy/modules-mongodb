@@ -62,11 +62,11 @@ parameter in the planner bullet.
 
 > **Resolved.** Order pinned: 33 before 40 (added 33 to Part 40's deps in `implementation-plan.md`, both tables — codifies the existing schedule where 33 is "next" and 40 waits on 24/39). Part 40's design and tasks 03/04/05 amended throughout: carry over the events-timeline `_ref`, not the comments card. Modal question answered: the timeline lives inside the surface component's `view` mode, so the Drawer renders it identically to the pages — no page-only special case. Added Part 40 (ordering + carry-over note) and Part 42 (its D6 suppresses the self-referential action card) to this part's Depends-on.
 
-[Part 40](../../../_completed/40-simple-action-surfaces/design.md) moves the view page's body —
+[Part 40](../../_completed/40-simple-action-surfaces/design.md) moves the view page's body —
 **including the comments card and its `metadata.comment: { $exists }` query** — into a
 new shared `components/simple-action-surface.yaml`, rendered by the three pages *and* a
 `Drawer` modal (design `:48`, `:156`, `:171`; tasks
-[03 `:32,:97`](../../../_completed/40-simple-action-surfaces/tasks/03-check-action-surface.md),
+[03 `:32,:97`](../../_completed/40-simple-action-surfaces/tasks/03-check-action-surface.md),
 [04 `:10,:13,:19`](../../../40-simple-action-surfaces/tasks/04-rewrite-check-pages.md),
 [05 `:9`](../../../40-simple-action-surfaces/tasks/05-check-action-modal.md) — "comments
 card (carry over from `workflow-action-view.yaml`)"). This part deletes that card and
@@ -87,7 +87,7 @@ Consequences of leaving it unpinned:
 **Fix:** pin the order in `implementation-plan.md`, amend the lagging design (likely
 Part 40: "carry over the events-timeline `_ref`, not the comments card"), answer the
 modal question explicitly, and add Part 40 to this part's Depends-on/relates-to. While
-there, also back-reference [Part 42](../../../_completed/42-timeline-action-cards/design.md), which
+there, also back-reference [Part 42](../../_completed/42-timeline-action-cards/design.md), which
 already coordinates with this part from its side (D6 suppresses the self-referential
 action card on the timeline this part adds — Part 42 `:122`, `:234`).
 

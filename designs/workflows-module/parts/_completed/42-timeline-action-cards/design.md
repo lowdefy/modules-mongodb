@@ -119,7 +119,7 @@ $addFields:
 
 ### D6 — A timeline keyed to a reference never renders that reference's own action card
 
-[Part 33](../../_next/33-comment-rendering/design.md) adds the standard `events-timeline` component to the action view page (`workflow-action-view.yaml`), filtered to the action (`reference_field: action_ids`, `reference_value: get_action._id`). Because this part splices the lookup fragment into `events-timeline` **unconditionally** (D2), that page's timeline would otherwise attach a live status card for the very action whose page you're on — a card whose resolved `link` points back to the current page, sitting beside the action header and the `status_history_list` Part 33 leaves in place. That self-referential card is noise.
+[Part 33](../../33-comment-rendering/design.md) adds the standard `events-timeline` component to the action view page (`workflow-action-view.yaml`), filtered to the action (`reference_field: action_ids`, `reference_value: get_action._id`). Because this part splices the lookup fragment into `events-timeline` **unconditionally** (D2), that page's timeline would otherwise attach a live status card for the very action whose page you're on — a card whose resolved `link` points back to the current page, sitting beside the action header and the `status_history_list` Part 33 leaves in place. That self-referential card is noise.
 
 **Decision: the `events-timeline` component drops the action whose `_id` equals the timeline's own `reference_value`.** The component already carries `reference_value` as a request payload (`events-timeline.yaml:18-20`) — the id the whole timeline is keyed on. A single `$filter` stage spliced **after** the fragment removes that action from each event's `actions[]` array. The event row still renders (title + comment-as-description); only its own card is stripped, and an emptied `actions: []` renders no card (`EventsTimeline.js:357`).
 
@@ -221,7 +221,7 @@ pipeline:
 ## Non-goals
 
 - **Category-chip filtering** (notes / comments / actions / events) and **pagination** — these were app-specific UI in v0's `get_ticket_history` and stay app-authored. The exported fragment is the reusable piece; the surrounding `$match`/`$facet` is not.
-- **Comment-inline rendering** — owned by [part 33](../../_next/33-comment-rendering/design.md). This part is about the *action* card; the two timeline-enrichment concerns stay separate.
+- **Comment-inline rendering** — owned by [part 33](../../33-comment-rendering/design.md). This part is about the *action* card; the two timeline-enrichment concerns stay separate.
 - **`ActionSteps` colour source** — unchanged (hardcoded theme tokens).
 
 ## Open questions
@@ -236,5 +236,5 @@ None. (The earlier "is the link render-ready / does it need `action_id` substitu
 
 ## Related
 
-- [Part 33 — Comment rendering on the events timeline](../../_next/33-comment-rendering/design.md) — sibling timeline-enrichment concern; it adds the standard timeline to the action view page, where D6 governs the combined surface (this part's card + Part 33's inline comment) by suppressing the action's own self-referential card.
+- [Part 33 — Comment rendering on the events timeline](../../33-comment-rendering/design.md) — sibling timeline-enrichment concern; it adds the standard timeline to the action view page, where D6 governs the combined surface (this part's card + Part 33's inline comment) by suppressing the action's own self-referential card.
 - [Part 18 — Entity-page components](../18-entity-components/design.md) — `actions-on-entity` (the always-on widget, distinct surface).

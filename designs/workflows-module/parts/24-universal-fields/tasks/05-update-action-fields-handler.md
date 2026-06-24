@@ -35,7 +35,7 @@ The operation is deliberately minimal: **no pre/post hooks, no tracker cascade, 
        → return { action_id, event_id }
      ```
 
-   - Params (from `context.params`): `action_id` (required), `fields` (`{ assignees?, due_date?, description? }`), `comment` (optional), plus the build-time literals `action_type` / `workflow_type` the emitted endpoint sends (accepted for parity with the submit endpoint shape; `action_id` is the authoritative target locator).
+   - Params (from `context.params`): `action_id` (required), `fields` (`{ assignees?, due_date?, description? }`), `comment` (optional), plus the build-time literal `workflow_type` the emitted (per-workflow) endpoint sends. `action_id` is the authoritative target locator; `action_type` is **not** sent — the handler derives it from the loaded action doc (`action.type`), since the endpoint is no longer per-action-type (Rev 2, task 8).
    - Set `context.loadedState = loadedState` before `commitPlan` (commit reads it for `workflow_id` resolution on workflow-less plans — task 3).
    - Dispatch-error policy, same as `handleSubmit.js`'s tail: when `commitResult.dispatchErrors` is non-empty, throw `WorkflowEngineError` with `code: 'post_commit_dispatch_failed'` naming the failed steps — after composing nothing else (there is no cascade or post-hook here, so the throw follows commit directly).
    - Return `{ action_id: commitResult.action_ids[0], event_id: context.event_id }` — matching the emitted endpoint's `:return` mapping (task 8).
