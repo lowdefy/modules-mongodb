@@ -4,6 +4,8 @@
 
 ### 1. `companies/view` is an unaddressed consumer of the auto-bundled modal
 
+> **Resolved.** `companies/view` is now carried through the page-ownership model rather than left to change by omission. Added a Proposed-change item (#7), a D1 paragraph, a Files-changed row (`apps/demo/modules/companies/vars.yaml`), and an Impact bullet. It is *rewired* (not downgraded): it drops `check-action-modal` once in the companies sidebar composition with `on_complete = [entity-workflows-refetch]` (companies-collection connectionId), keeping the in-context modal. The activities tile stays out of `on_complete` — a check submit changes workflow state, not activities, and the tile keeps its own `on_created` refetch. This contradicts the `onboarding-happy-path` spec's navigation expectation on companies/view; reconciled in #2.
+
 The design's "Files changed" and "Impact" sections enumerate only `lead-view` (rewired) and `workflows-test/thing-view` (acceptable navigation downgrade). But there is a **third** consumer of `actions-on-entity`, and it is the one the design never mentions: the companies module sidebar.
 
 `apps/demo/modules/companies/vars.yaml:79-87` mounts `actions-on-entity` inside `components.sidebar_slots`:
@@ -26,6 +28,8 @@ Two things the design must do:
 - **Note that the refetch composition differs from lead-view.** `companies/view` has no `workflows-events-timeline`; its co-present surface is `activities/tile_activities` (`vars.yaml:88+`), which already has its own `on_created` refetch. So a page-level modal drop here would compose the `entity-workflows-refetch` plus (if desired) the activities-tile refetch, and `entity_collection` is the `companies-collection` connection-id operator, not a literal. This is exactly the "page owns `on_complete`" model the design argues for — but it isn't carried through to the second multi-surface page that needs it.
 
 ### 2. The "breaks no tests" claim is wrong — `onboarding-happy-path` clicks check-kind rows and expects navigation
+
+> **Resolved.** Narrowed the false global claim in the `thing-view` Impact bullet to "breaks no `workflows-test` e2e" (true for `check-blocked-by` / `form-lifecycle`). Added an Impact bullet + a Files-changed row for `onboarding-happy-path.spec.js`. Since finding #1 rewires *both* pages to keep the modal, all four check-row steps now open the modal in place and contradict the `waitForURL(workflow-action-edit)` assertion — so the spec must be reconciled to drive the modal in place (click → assert no nav → select `done` → submit in modal → assert doc + surface refresh) on both `lead-view` and `companies/view`. Flagged for live confirmation via `/r:dev-test` (the spec is already marked unverified).
 
 The Impact section asserts:
 
@@ -54,9 +58,13 @@ Consequences for this design:
 
 ### 3. The `catch` fallback fires on *any* try-chain error, not only "modal absent"
 
+> **Resolved.** Added a paragraph to D2 acknowledging the `catch` is a catch-all: Lowdefy runs the catch chain on any try-body throw, the absent-modal `CallMethod` is the only expected throw (the preceding `SetState` is a static assignment that effectively cannot throw), and navigating to the action's own page is a safe default for any check-row failure. Noted the residual that a throw from outside the `error:false` `CallMethod` would flash a toast — accepted, since those cases aren't expected. Doc-only, no shape change.
+
 D2 and the Proposed-shape comment frame the `catch` as "Modal not on the page (open threw)". But `callActions` runs `catchActions` whenever the try chain throws for *any* reason (`Actions.js:99-103`, installed engine `0.0.0-experimental-20260611102401`). Only `open_check_action_modal` carries `messages: { error: false }`; `set_check_action_modal_action` (the preceding `SetState`) does not. So if that `SetState` throws — or if a *present* modal's `setOpen` throws for some unrelated reason — the user is still navigated away by the fallback, and in the `SetState` case an error toast also flashes (it isn't suppressed). The probability is low, but the design's stronger statement — "the `catch` reliably fires [when, and implicitly only when,] the modal is absent" — is inaccurate. Either acknowledge the `catch` is a catch-all (acceptable: navigation is a safe default for any check-row failure), or narrow it. A one-line note in D2 is enough; no code change strictly required.
 
 ### 4. Engine line citations don't match the pinned engine (mechanism itself verified correct)
+
+> **Resolved.** Replaced the source-checkout line citations with symbol names: `initEvent` / `callActions` / `displayMessage` (Actions.js, Events.js) in D2, and dropped the `packages/engine/src/...` path from the `createCallMethod` reference in "Current state". No engine version pinned — these symbols are stable across the experimental versions tested, so a function name is enough and avoids re-introducing fragile line numbers. The `resolveActionAccess.js:76` cite is left as-is (this plugins repo, not the engine; not flagged).
 
 The load-bearing engine facts in D2/D3 were all verified against the version the demo actually builds with — `@lowdefy/engine@0.0.0-experimental-20260611102401`:
 

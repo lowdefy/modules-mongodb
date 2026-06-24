@@ -53,9 +53,13 @@ Either the generator must also walk `plugins/**/README.md` and `modules/**/READM
 
 ### 5. "Generated var tables cannot drift" is overclaimed without a CI/pre-commit check
 
+> **Resolved.** Verified the repo has no PR-CI and no pre-commit hooks today (only `release.yaml` on `main`). Softened decision 6 to "generation removes drift only when a check enforces regeneration," and added enforcement to scope: both generators get a `--check` mode (regenerate to temp, fail on diff), exposed as `pnpm docs:check` and run by a new `.github/workflows/ci.yaml` on every PR (front-matter lint rides along). Reflected in Phase 1 and Files-changed. Chose CI gate over pre-commit hook (authoritative, not bypassable).
+
 `design.md:78-79` says deriving `reference/vars.md` from the manifest *"kills the drift the prior design accepted as a known risk."* It doesn't — committed generated output drifts the moment someone edits a manifest and forgets to re-run `gen-var-docs.mjs`. Generation only removes drift if a check enforces it. The design specifies the generator but no enforcement. Add a CI step / pre-commit hook that runs both generators and fails if `vars.md` or `llms.txt` are out of date (the front-matter linter in `gen-llms-txt.mjs` is the natural home). Without it this is the same drift risk, just relocated.
 
 ### 6. CLAUDE.md's "Designs are the source of truth" principle conflicts with the new boundary, and only the "documentation section" is slated for update
+
+> **Resolved.** Rewrote Phase 5's CLAUDE.md step to explicitly *amend* the top-level "Designs are the source of truth" principle to encode decision 3's boundary (designs = code decisions/rationale; docs = consumer-observable behavior; behavior conflict → docs win + note the design, rationale conflict → design wins), not just append a layout description. Widened the Files-changed CLAUDE.md note to match.
 
 Decision 3 (`design.md:49`) establishes docs-win-for-behavior, designs-win-for-rationale. But the top-level `CLAUDE.md` principle reads flatly *"Designs are the source of truth. Code implements designs; when they disagree, update the design first."* Phase 5 (`design.md:210`) only updates *"CLAUDE.md's documentation section"* to describe the new layout — it does not amend that core principle. An agent reading the literal principle will treat `designs/` as authoritative for behavior and "fix" docs to match a stale design. Phase 5 must explicitly amend the "Designs" principle to encode the docs/designs boundary, not just add a layout description.
 
@@ -63,9 +67,13 @@ Decision 3 (`design.md:49`) establishes docs-win-for-behavior, designs-win-for-r
 
 ### 7. The other ten modules are hand-waved as "proportional" with no per-module shape
 
+> **Accepted.** The other ten modules are all small — a single README has served each adequately to date — so per-module sizing isn't load-bearing the way it is for workflows. The subfolder call is a deliberate delegation to the implementer at authoring time, not an oversight; a sizing table would be busywork that drifts. Added a sentence to Phase 4 making this intent explicit (most collapse to `index.md` + generated `reference/vars.md`; `concepts/`/`how-to/` only where genuinely warranted).
+
 The workflows exemplar is specified page-by-page with sources (`design.md:180-194`), which is excellent. Phase 4 (`design.md:208`) covers the remaining ten with only *"proportional to each module's complexity."* That's the bulk of the work (≈10 trees, dozens of files) with no per-module breakdown — which modules get `concepts/`, which collapse to a single `index.md`, what each `how-to/` covers. Without a rough per-module sizing, Phase 4 is unestimable and the "proportional" judgment gets re-litigated per module at authoring time. Add a short table: module → subfolders it gets → page count, even if approximate. `release-notes` (`index.md` only) and `workflows` (full) anchor the two ends; place the other nine.
 
 ### 8. Splitting `idioms.md` breaks the cross-links the prior design just wired in
+
+> **Resolved.** Confirmed 9 module READMEs link to `idioms.md` (plus root README + CLAUDE.md). Scoped Phase 2's cross-link update to the files that survive as prose (root README, CLAUDE.md); the 9 module READMEs are explicitly *not* rewritten there because they become stubs in Phase 4, and the new `docs/{module}/` pages link to `docs/shared/` natively as authored. Removes the wasted-rewrite sequencing trap.
 
 Decision 4 deletes `docs/idioms.md` and splits it into `docs/shared/*.md`. The prior design wired `docs/idioms.md#anchor` links into all 11 module READMEs (`tasks.md:34-41` defines those anchors; the CLAUDE.md doc section references them: `#change-stamps`, `#event-display`, …). Phase 2 (`design.md:204`) says *"Update existing cross-links"* but those same READMEs become stubs in Phase 4. Sequencing them apart means rewriting links in Phase 2 that get deleted in Phase 4. Call out that the idiom-link rewrite and the README→stub reduction for each module should happen together, or that Phase 2 only needs to fix links in files that *survive* (root README, CLAUDE.md).
 

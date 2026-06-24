@@ -10,6 +10,7 @@ Submitting a check action from the in-context modal leaves co-present surfaces s
 4. **Suppress the modal-absent error toast.** The `CallMethod` that opens the modal carries `messages: { error: false }` so the recovered-via-`catch` path is silent.
 5. **`check-action-modal` and `entity-workflows-refetch` become page-composable.** Both are already in the manifest `components:` registry (so `_ref`-able cross-module today); the `exports.components` docs are updated to describe the page-drop contract.
 6. **Wire the demo `lead-view`.** Drop the modal once, with `on_complete = [entity-workflows-refetch, Request get_events_timeline]` so both the action steps and the activity timeline refresh on submit.
+7. **Wire the demo `companies/view`.** It is the second multi-surface consumer (the workflows sidebar's `actions-on-entity` alongside an activities tile). Drop the modal once in the companies sidebar composition, with `on_complete = [entity-workflows-refetch]` — the same page-owns-`on_complete` model, but a different surface set (see D1).
 
 ## Current state
 
@@ -25,7 +26,7 @@ The governing rule (Part 40): *the modal is dropped exactly once per page, and `
 Two structural problems underlie it:
 
 - **The refetch is wired at the wrong scope.** `on_complete` is fixed when the modal is dropped, by a single surface component that is structurally blind to its siblings. The page is the only scope that sees all surfaces, but it does not own `on_complete`.
-- **The click handler assumes the modal exists.** `check-action-click.yaml` unconditionally runs `CallMethod { blockId: check_action_modal, method: setOpen }` for `check` cards. `createCallMethod` (`packages/engine/src/actions/createCallMethod.js`) reads `RootSlots.map[blockId].methods[method]`; if the block is absent, `map[blockId]` is `undefined` and `.methods` throws. So a surface on a page without the modal (a timeline-only page with `include_modal: false`) errors on a check-row click today.
+- **The click handler assumes the modal exists.** `check-action-click.yaml` unconditionally runs `CallMethod { blockId: check_action_modal, method: setOpen }` for `check` cards. `createCallMethod` reads `RootSlots.map[blockId].methods[method]`; if the block is absent, `map[blockId]` is `undefined` and `.methods` throws. So a surface on a page without the modal (a timeline-only page with `include_modal: false`) errors on a check-row click today.
 
 ## Key decisions
 
@@ -54,6 +55,8 @@ on_complete:
 - **Action steps** → the `entity-workflows-refetch` component (the same sequence `actions-on-entity` used internally). It encapsulates the `CallAPI` + `SetState entity_workflows`; the page passes only `entity_id` / `entity_collection`, which it already passes to `actions-on-entity`.
 - **Timeline** → re-run the page-scoped request `get_events_timeline` by id (a `Request` action). The request is defined by `workflows-events-timeline`; Lowdefy resolves requests at page scope by id, so any block on the page can re-run it.
 
+The model generalises to any surface set. `companies/view` is the second multi-surface page, and it composes a *different* `on_complete`: its co-present surface is the activities tile (`tile_activities`), not a timeline. A check-action submit changes workflow state, not activities, so the activities tile is left out of `on_complete` (it keeps its own `on_created` refetch for activity creation). `companies/view` therefore drops the modal with `on_complete = [entity-workflows-refetch]` only, and passes `entity_collection` as the `companies-collection` connectionId operator (not a literal). This is the same page-owns-`on_complete` rule producing a page-appropriate refetch list — the point of moving ownership to the page.
+
 **Rejected — thread an `on_action_complete` var down into `actions-on-entity`** (keep it as the dropper, page passes only the timeline refetch). This works and touches fewer files, but keeps the fragile "who drops it" rule, keeps `include_modal` on the timeline as a parallel mechanism, and still requires per-page wiring for the multi-surface case — so the auto-bundle's "free, no per-app wiring" promise is unmet exactly where it matters. Page ownership removes the rule and the second mechanism instead of adding a third var.
 
 ### D2 — `try`/`catch` for modal presence, not a flag
@@ -62,9 +65,11 @@ Once the page (not a surface) drops the modal, a surface can no longer assume th
 
 Verified facts that make this sound:
 
-- **`try`/`catch` is a first-class action-chain shape.** `packages/engine/src/Events.js:38-39` maps `onClick.try` → `actions` and `onClick.catch` → `catchActions`; `Actions.js:107-148` runs the catch chain when the try chain throws. An array-valued `onClick` is just `{ try: [...], catch: [] }`.
+- **`try`/`catch` is a first-class action-chain shape.** `initEvent` (Events.js) maps `onClick.try` → `actions` and `onClick.catch` → `catchActions`; `callActions` (Actions.js) runs the catch chain when the try chain throws. An array-valued `onClick` is just `{ try: [...], catch: [] }`.
 - **A missing block throws.** `createCallMethod` dereferences `RootSlots.map[blockId].methods` — `undefined.methods` on an absent block — so the `catch` reliably fires.
-- **The recovered path is silent.** On any action error the runner shows a 6s error toast (`Actions.js:232-238`) *unless* the action sets `messages.error: false` (`displayMessage`, `Actions.js:250-259`: `hideExplicitly && message !== false` gates the toast). So the open-modal `CallMethod` carries `messages: { error: false }` — when the modal is absent it throws, the `catch` navigates, and no error flashes.
+- **The recovered path is silent.** On any action error the runner shows a 6s error toast *unless* the action sets `messages.error: false` — `displayMessage` (Actions.js) gates the toast on `hideExplicitly && message !== false`. So the open-modal `CallMethod` carries `messages: { error: false }` — when the modal is absent it throws, the `catch` navigates, and no error flashes.
+
+The `catch` is a catch-all, not a modal-absent-only handler: Lowdefy runs the catch chain on *any* throw in the try body. In practice the only expected throw is the absent-modal `CallMethod`, since the preceding `SetState` is a static assignment that effectively cannot throw; but if some other check-row failure did occur, the catch would still navigate to the action's own page — a safe default for any check-row failure, not a wrong behaviour. (One residual: only the open-modal `CallMethod` carries `messages.error: false`, so a throw from anywhere else in the try body would still flash a toast before the fallback navigates. Acceptable — those cases are not expected to occur.)
 
 A presence flag was the first instinct (and is viable) but is strictly more wiring: every surface would need the boolean, set correctly per page, and a page that forgot it would silently navigate where the author expected a modal. `try`/`catch` needs no per-surface state and is self-correcting.
 
@@ -148,15 +153,19 @@ Add a single page-level modal drop (sibling to `lead_view_row`) wiring both refe
 | `modules/workflows/components/workflows-events-timeline.yaml` | Remove `include_modal` + `on_action_complete` + `_build.if` bundling; update header. |
 | `modules/workflows/module.lowdefy.yaml` | Update `exports.components` docs for `check-action-modal` (page-drop contract) and `workflows-events-timeline` (drop `include_modal`/`on_action_complete`). |
 | `apps/demo/pages/leads/lead-view.yaml` | Drop `check-action-modal` once; `on_complete = [entity-workflows-refetch, Request get_events_timeline]`. |
+| `apps/demo/modules/companies/vars.yaml` | Drop `check-action-modal` once in the workflows sidebar composition; `on_complete = [entity-workflows-refetch]` with the `companies-collection` connectionId. |
+| `apps/demo/e2e/workflows/onboarding-happy-path.spec.js` | Reconcile the four `check`-row steps (2 on `lead-view`, 2 on `companies/view`) to drive the modal in place — assert no navigation, submit in the modal — instead of `waitForURL(workflow-action-edit)`. Confirm via `/r:dev-test`. |
 | `modules/workflows/README.md` | Reflect the page-drop contract (was: auto-bundle + `include_modal`). |
 
 `check-action-modal.yaml` and `entity-workflows-refetch.yaml` are unchanged (already exposed via the `components:` registry).
 
 ## Impact
 
-- **`apps/workflows-test/pages/thing-view.yaml`** mounts `actions-on-entity` with no timeline and relies on the auto-bundled modal. After this change it drops no modal, so a check-row click navigates to the `workflow-action-edit/view/review` page (via the `try`/`catch` fallback). This is acceptable for the bare test page and breaks no tests — every workflows e2e (`check-blocked-by`, `form-lifecycle`) reaches the action surface by `ldf.goto(/workflows/workflow-action-…)` directly and never opens the modal through a row click. Optionally, `thing-view` can drop the modal to exercise the in-context path; not required.
+- **`apps/workflows-test/pages/thing-view.yaml`** mounts `actions-on-entity` with no timeline and relies on the auto-bundled modal. After this change it drops no modal, so a check-row click navigates to the `workflow-action-edit/view/review` page (via the `try`/`catch` fallback). This is acceptable for the bare test page and breaks no `workflows-test` e2e — both of those specs (`check-blocked-by`, `form-lifecycle`) reach the action surface by `ldf.goto(/workflows/workflow-action-…)` directly and never open the modal through a row click. Optionally, `thing-view` can drop the modal to exercise the in-context path; not required. (The demo's `onboarding-happy-path` spec *does* click check rows and is affected — see the next bullet.)
+- **`apps/demo/e2e/workflows/onboarding-happy-path.spec.js`** clicks four `check`-kind rows and today asserts full-page navigation (`waitForURL(workflow-action-edit)`): `site-visit` and `schedule-followup` on `lead-view` (≈ lines 213, 246), `assign-account-manager` and `kickoff-call` on `companies/view` (≈ lines 595, 643). Because both pages keep the modal (D1 / finding #1), each row click now opens the modal in place and does **not** navigate, so all four navigation assertions would fail. The spec must be reconciled to drive the **modal in place** on these steps: click the row → assert no navigation → select status `done` in the modal → submit in the modal → assert the actions doc reaches `done` and the co-present surface refreshes. This spec is already marked unverified against a live run, so the rewrite must be confirmed via `/r:dev-test` at implementation.
+- **`apps/demo/companies/view`** is the second multi-surface consumer (workflows sidebar + activities tile) and is rewired, not downgraded: it drops `check-action-modal` once in the companies sidebar composition (`apps/demo/modules/companies/vars.yaml`) with `on_complete = [entity-workflows-refetch]`, keeping the in-context modal. See D1 for why the activities tile stays out of `on_complete`.
 - **`workflow-action-{edit,view,review}` pages** never used the modal (they carry their own URL-bound `get_workflow_action`); unaffected.
-- **Existing apps that mounted `actions-on-entity` expecting a free modal** must now drop `check-action-modal` on the page. This is the one migration cost of moving ownership to the page; it is a single `_ref` per page and is the same wiring the canonical demo page now models.
+- **Existing apps that mounted `actions-on-entity` expecting a free modal** must now drop `check-action-modal` on the page. This is the one migration cost of moving ownership to the page; it is a single `_ref` per page and is the same wiring the canonical demo pages now model.
 
 ## Non-goals
 
