@@ -81,6 +81,22 @@ A literal value baked at build time would freeze the user and timestamp at deplo
 
 Modules that write to the `log-events` collection store **per-app display titles** alongside each event document. The `event_display` var on each module is a map from `app_name → { event_type → Nunjucks template }`. The events module renders the template that matches the current `display_key`.
 
+### Wording convention
+
+Timeline titles read **`{actor} {past-tense verb} {type} {object}`** — sentence case, **no trailing period**. They are headlines in a feed, not sentences:
+
+```
+Alex Smith created company Acme Corp
+Alex Smith updated contact Jane Doe
+Alex Smith created lead Test 4
+Alex Smith converted lead Test 4 to a customer
+```
+
+- **Always lead with the actor** (`{{ user.profile.name }}`). Never write object-first ("Test 4 created") or passive ("Lead converted to customer.").
+- **Name the entity type after the verb** (`created company …`, `updated user …`). The timeline interleaves entity kinds, so the bare object name doesn't say *what* was touched. Skip the type word only when the verb already implies it (e.g. `invited Jane Doe` — you only invite people) or when the template already carries a type label (`activities` titles render `logged a {{ target.type_label }}: …`).
+- **No trailing period** — these are fragments, not full sentences. (Contrast with workflow `status_map` messages, which *are* full sentences and *do* end with a period: "Qualify the lead.", "Lead qualified.")
+- **Use the standard variable shape** even for app-level events rendered inline: pass `user: { _user: true }` and `target: { name: … }`, then template with `{{ user.profile.name }}` / `{{ target.name }}` — identical to module-rendered titles, so the wording reads the same everywhere.
+
 ### Why per-app
 
 Multi-tenant deployments share a single `log-events` collection but render events in different chrome per app. The same event document might appear as "Alex created Company X" in the CRM app and "C-0001 created by Alex" in the back-office app. Storing pre-rendered titles per app at write time keeps the timeline render path query-only (no template engine on read).

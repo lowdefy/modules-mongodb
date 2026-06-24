@@ -12,8 +12,8 @@ request_stages:
   write: []
 event_display:
   demo:
-    create-contact: "{{ user.profile.name }} created {{ target.name }}"
-    update-contact: "{{ user.profile.name }} updated {{ target.name }}"
+    create-contact: "{{ user.profile.name }} created contact {{ target.name }}"
+    update-contact: "{{ user.profile.name }} updated contact {{ target.name }}"
 components:
   sidebar_slots:
     - _ref:

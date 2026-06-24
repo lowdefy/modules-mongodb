@@ -33,10 +33,13 @@ routine:
           demo:
             title:
               _nunjucks:
-                template: '{{ name }} created'
+                template: "{{ user.profile.name }} created lead {{ target.name }}"
                 on:
-                  name:
-                    _payload: name
+                  user:
+                    _user: true
+                  target:
+                    name:
+                      _payload: name
         references:
           lead_ids:
             - _payload: _id
