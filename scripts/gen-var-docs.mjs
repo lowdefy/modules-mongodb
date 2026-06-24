@@ -30,63 +30,18 @@
  *   node scripts/gen-var-docs.mjs              # write all vars.md files
  *   node scripts/gen-var-docs.mjs --check      # diff only; exit 1 if stale
  *   node scripts/gen-var-docs.mjs --module layout  # single module (write mode)
- *
- * No new dependencies — uses js-yaml from the pnpm virtual store that the
- * repo already depends on transitively.
  */
 
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'fs';
 import { join, dirname, resolve } from 'path';
 import { fileURLToPath } from 'url';
-import { createRequire } from 'module';
-import { tmpdir } from 'os';
-import { randomBytes } from 'crypto';
+import yaml from 'js-yaml';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const ROOT = resolve(__dirname, '..');
 const MODULES_DIR = join(ROOT, 'modules');
 const DOCS_DIR = join(ROOT, 'docs');
-
-// ---------------------------------------------------------------------------
-// YAML parser — reuse js-yaml already present in the pnpm virtual store.
-// ---------------------------------------------------------------------------
-
-// Try a few candidate locations (pnpm store paths for js-yaml 4.x).
-let yamlLoad;
-const javaYamlCandidates = [
-  join(ROOT, 'node_modules/.pnpm/js-yaml@4.1.1/node_modules/js-yaml/index.js'),
-  join(ROOT, 'node_modules/.pnpm/js-yaml@4.1.0/node_modules/js-yaml/index.js'),
-  join(
-    ROOT,
-    '../node_modules/.pnpm/js-yaml@4.1.1/node_modules/js-yaml/index.js'
-  ),
-];
-for (const candidate of javaYamlCandidates) {
-  if (existsSync(candidate)) {
-    const req = createRequire(candidate);
-    const jsYaml = req(candidate);
-    yamlLoad = jsYaml.load ?? jsYaml.default?.load;
-    if (yamlLoad) break;
-  }
-}
-
-if (!yamlLoad) {
-  // Fallback: dynamic import (ESM-published yaml if available)
-  try {
-    const mod = await import('js-yaml');
-    yamlLoad = mod.load ?? mod.default?.load;
-  } catch {
-    /* ignore */
-  }
-}
-
-if (!yamlLoad) {
-  console.error(
-    'Could not load a YAML parser. js-yaml should be in the pnpm virtual store at node_modules/.pnpm/js-yaml@4.1.1/...'
-  );
-  process.exit(1);
-}
 
 // ---------------------------------------------------------------------------
 // CLI flags
@@ -155,13 +110,6 @@ function buildFlatTable(entries) {
     ...rows,
   ].join('\n');
 }
-
-/**
- * Render a single var — either a table row in the parent table (flat vars)
- * or a dedicated sub-section (object vars with properties).
- *
- * Returns { flatEntry | sectionLines } — callers accumulate accordingly.
- */
 
 /**
  * Generate the full markdown body for a module's vars section.
@@ -255,7 +203,11 @@ function buildVarsFile(manifestName, vars) {
 function discoverModules() {
   const entries = readdirSync(MODULES_DIR, { withFileTypes: true });
   return entries
-    .filter((e) => e.isDirectory() && e.name !== 'shared')
+    .filter(
+      (e) =>
+        e.isDirectory() &&
+        existsSync(join(MODULES_DIR, e.name, 'module.lowdefy.yaml'))
+    )
     .map((e) => e.name)
     .sort();
 }
@@ -264,14 +216,11 @@ function readManifest(moduleName) {
   const manifestPath = join(MODULES_DIR, moduleName, 'module.lowdefy.yaml');
   if (!existsSync(manifestPath)) return null;
   const raw = readFileSync(manifestPath, 'utf-8');
-  // js-yaml can choke on Lowdefy operator values like `_date: now` — use
-  // DEFAULT_SCHEMA (no custom types) with strict:false; errors are surfaced.
   try {
-    return yamlLoad(raw, { schema: 'DEFAULT' });
-  } catch {
-    // Some manifests embed runtime operators that js-yaml can't type-check.
-    // Fall back to a permissive parse.
-    return yamlLoad(raw);
+    return yaml.load(raw);
+  } catch (err) {
+    console.warn(`WARN: ${moduleName} — failed to parse manifest (${manifestPath}): ${err.message}`);
+    return null;
   }
 }
 
