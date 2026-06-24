@@ -46,7 +46,7 @@ visible:
   _build.if:
     test:
       _build.gt:
-        - _array.length:
+        - _build.array.length:
             _var:
               key: show
               default: [assignees, due_date, description]
