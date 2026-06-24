@@ -34,9 +34,7 @@ The engine resolves this from the action's static config at the time of the call
 
 ## Why not direct status setting?
 
-The old model let pre-hooks return `{ type: send-quote, status: action-required }` and used a priority rule (`blocked(7) > action-required(6) > … > done(2)`) to decide if the transition was legal. Common flows — resubmit after review, recover from error, re-open a done action — all required a `force: true` flag to bypass the rule. This was the source of most transition-related bugs: `force: true` bypassed the safety check entirely, making it unclear what transitions were actually valid from any given state.
-
-The signal model replaces all of this. **There is no priority rule and no `force: true`.** The FSM table is the source of truth. A backward move like `done → changes-required` is legal because `done` has an entry for `request_changes` in the table — not because an override was requested.
+**There is no priority rule and no `force: true`.** The FSM table is the source of truth. A backward move like `done → changes-required` is legal because `done` has an entry for `request_changes` in the table. Common flows — resubmit after review, recover from error, re-open a done action — are all handled by signals with entries in the FSM table.
 
 ## How the `submit` signal determines its target
 
@@ -74,7 +72,7 @@ actions:
   - { type: failed-action, signal: error }       # was: { ..., status: error }
 ```
 
-The migration is mechanical: look up the old target status in the signal inventory and replace `status:` with the matching `signal:`. Use `activate` where you previously used `force: true` to push an action back to `action-required` from any state.
+Use `activate` to push an action back to `action-required` from any state.
 
 **Important:** a pre-hook cannot re-signal the current action. The current action always lands per the signal the user fired. If you need conditional landing (e.g., "sometimes this submit should skip to done"), model it as a separate thin action with its own button.
 

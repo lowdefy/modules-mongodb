@@ -58,7 +58,7 @@ access:
 
 **No per-action pages.** Check actions don't get per-action page sets. The shared pages handle all check actions via the query param.
 
-**Same FSM as form.** The check kind uses the same FSM table as the form kind. `submit` is nullary — the target (`in-review` vs `done`) depends on whether the action declares the `review` verb, same as form actions. There is no status selector — the v0 "choose your target" dropdown is gone.
+**Same FSM as form.** The check kind uses the same FSM table as the form kind. `submit` is nullary — the target (`in-review` vs `done`) depends on whether the action declares the `review` verb, same as form actions. There is no status selector.
 
 **Hooks.** Check actions can declare `hooks:` per signal. These follow the same contract as form action hooks.
 
@@ -149,7 +149,7 @@ One `CallApi` is all that's needed. The engine writes:
 2. The child's starting action docs.
 3. The parent tracker action's `child_workflow_id`, `child_entity_id`, `child_entity_collection` fields, and the `in-progress` transition.
 
-All in one server-side call. No follow-up API call to wire the link.
+All in one server-side call. No follow-up API call to wire the link — see [Track a child workflow](../how-to/track-a-child-workflow.md).
 
 ### Instanced actions and form data paths
 

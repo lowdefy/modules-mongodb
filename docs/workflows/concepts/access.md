@@ -65,7 +65,7 @@ An empty array `[]` is invalid — omit the verb key instead.
 
 **1. Build time.** `makeActionPages` emits a page only when the verb key is present in `access.{host_app_name}`. Presence is the gate — role values are irrelevant at build time. A verb absent from the config has no page in that app.
 
-**2. Query time.** `get-entity-workflows` evaluates every declared verb's gate against the caller's roles and returns `visible_verbs: { view, edit, review, error }` on each action. If all four are `false`, the action is dropped from the response — invisible to that user. Page links rendered by `actions-on-entity` read these booleans to decide which links to show.
+**2. Query time.** `get-entity-workflows` evaluates every declared verb's gate against the caller's roles and returns the server-resolved `allowed` bag (`{ view, edit, review, error }`) on each action. If all four are `false`, the action is dropped from the response — invisible to that user. Page links rendered by `actions-on-entity` read these booleans to decide which links to show.
 
 **3. Submit time.** `SubmitWorkflowAction` re-checks the required verb for the fired signal before writing anything. This is the authoritative gate — a role revoked between page load and submit is caught here.
 
@@ -96,7 +96,7 @@ my-app:
 
 This is **action-global, not caller-specific**: if any app's `access` block declares `review`, every `submit` from every app routes to `in-review`. The action is either a review action or it isn't — there's no per-caller flip.
 
-To add a review step to an action, declare `review:` in the access map. To remove a review step, remove the `review` key. No other config change is needed.
+To add a review step to an action, declare `review:` in the access map — see [Add a review step](../how-to/add-a-review-step.md). To remove a review step, remove the `review` key. No other config change is needed.
 
 ## `request_changes` — a broad gate
 
