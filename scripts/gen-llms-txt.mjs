@@ -35,11 +35,9 @@
  *   node scripts/gen-llms-txt.mjs --check      # diff + lint; exit 1 if stale/invalid
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'fs';
 import { join, dirname, resolve, relative } from 'path';
 import { fileURLToPath } from 'url';
-import { tmpdir } from 'os';
-import { randomBytes } from 'crypto';
 import yaml from 'js-yaml';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -101,12 +99,13 @@ function parseFrontMatter(content) {
   if (!content.startsWith('---')) {
     return { frontMatter: null, body: content };
   }
-  const end = content.indexOf('\n---', 3);
+  const match = content.match(/\n---[ \t]*(\n|$)/);
+  const end = match ? match.index : -1;
   if (end === -1) {
     return { frontMatter: null, body: content };
   }
   const raw = content.slice(4, end); // skip opening '---\n'
-  const body = content.slice(end + 4); // skip closing '\n---'
+  const body = content.slice(end + match[0].length); // skip closing '\n---' line
   try {
     const frontMatter = yaml.load(raw) ?? {};
     return { frontMatter, body };
@@ -347,7 +346,7 @@ function checkMode(files) {
     failed = true;
   }
 
-  // --- Diff check (write to temp, compare against committed) ---
+  // --- Diff check (in-memory compare against committed) ---
   const generated = buildLlmsTxt(entries);
 
   if (!existsSync(LLMS_TXT_PATH)) {
