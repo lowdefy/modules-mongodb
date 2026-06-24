@@ -14,6 +14,40 @@ form:
   - key: form.vat_number
     component: text_input
     title: VAT number
+hooks:
+  # Post-hook (fires after the commit lands): persist the captured billing
+  # details onto the company entity doc. The workflow's entity is the company
+  # (company-setup.entity_collection → companies/companies-collection), so the
+  # entity_id is the company _id (a string consecutive id — no ObjectId coercion).
+  # Form values arrive under the payload's form bag without the `form.` block-id
+  # prefix collapsing (_payload: form.billing_email). Idempotent by design (D6):
+  # a plain $set replays safely.
+  submit:
+    post:
+      routine:
+        - id: update_company_billing
+          type: MongoDBUpdateOne
+          connectionId:
+            _module.connectionId:
+              id: companies-collection
+              module: companies
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity_id
+            update:
+              $set:
+                billing.email:
+                  _payload: form.billing_email
+                billing.vat_number:
+                  _payload: form.vat_number
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+        - :return:
+            company_id:
+              _payload: context.workflow.entity_id
 status_map:
   action-required:
     demo:
