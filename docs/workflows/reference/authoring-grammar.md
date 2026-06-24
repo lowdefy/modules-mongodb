@@ -92,7 +92,7 @@ Mirrors a child workflow's lifecycle. Never submitted by a user. Emits no pages.
 - type: track-company-setup
   kind: tracker
   tracker:
-    workflow_type: company-setup
+    child_workflow_type: company-setup
     start_link:                         # optional — navigation target before child exists
       pageId: company-new
       urlQuery:
@@ -216,7 +216,7 @@ The post-hook payload `context` carries the committed workflow + action docs; `r
 
 | Field | Required | Description |
 |---|---|---|
-| `workflow_type` | yes | Child workflow type to mirror |
+| `child_workflow_type` | yes | Child workflow type to mirror |
 | `start_link` | no | Navigation target before child exists — `{ pageId, urlQuery? }` |
 
 ### `start_link.urlQuery` reserved keys

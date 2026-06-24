@@ -19,6 +19,8 @@ Role names are fully scoped to each app: `admin` in `team-app` is completely ind
 
 ## Steps
 
+> **Note:** The demo workflows are single-app (`demo` only). The `customer-portal` and `admin-panel` entries in the examples below are **illustrative** — they extend the real demo config to show the multi-app pattern. The single-app `demo` blocks are verbatim from the demo.
+
 ### 1. Add a second app entry under `access:`
 
 Open the action YAML and add a new key under `access:` for the second app. Each app's entry is a flat map of verb → gate:

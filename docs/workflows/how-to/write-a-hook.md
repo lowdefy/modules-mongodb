@@ -74,13 +74,15 @@ workflow_config/
       onboarding-qualify-post-submit.yaml
 ```
 
-### 2. Write a pre-hook routine
+### 2. Write the hook routine
 
-A pre-hook receives the full submit context via `_payload`. Read form data at `_payload: form.{field}` (where `form.` is the `key` prefix used in the form block). Read workflow context at `_payload: context.workflow`:
+Both pre- and post-hook routines receive the full submit context via `_payload`. Read form data at `_payload: form.{field}` (where `form.` is the `key` prefix used in the form block). Read workflow context at `_payload: context.workflow`.
+
+The example below is a **post-hook** — it runs after the engine has committed the action status transition, then writes form data back to the entity document:
 
 ```yaml
-# onboarding/api/onboarding-billing-details-post-submit.yaml
-# (from billing-details.yaml's submit post-hook)
+# company-setup/billing-details.yaml — submit post-hook (inline)
+# (billing-details action in the company-setup workflow)
 id: update_company_billing
 routine:
   - id: update_company_billing
@@ -110,7 +112,7 @@ routine:
 
 This is the `billing-details` action's inline post-hook from the `company-setup` workflow. It writes form data to the company entity doc after the action commits.
 
-**Full pre-hook payload fields:**
+**Full hook payload fields** (same for pre and post):
 
 ```
 workflow_id, workflow_type, action_id, action_type, current_key

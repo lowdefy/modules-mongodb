@@ -77,7 +77,7 @@ access:
     view: true
     edit: [account-manager]  # controls start-link visibility
 tracker:
-  workflow_type: device-installation
+  child_workflow_type: device-installation
   start_link:
     pageId: ticket-new
     urlQuery:
@@ -103,7 +103,7 @@ Before a child workflow exists, the tracker row sits at `action-required` with n
 
 ```yaml
 tracker:
-  workflow_type: device-installation
+  child_workflow_type: device-installation
   start_link:
     pageId: ticket-new       # page where the user creates the child entity
     urlQuery:
