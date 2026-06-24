@@ -13,7 +13,7 @@ None.
 ```yaml
 modules:
   - id: events
-    source: "github:lowdefy/modules-mongodb/modules/events@v0.7.0"
+    source: "github:lowdefy/modules-mongodb/modules/events@v0.8.1"
     vars:
       display_key: my-app
 ```
@@ -24,7 +24,7 @@ To extend the change stamp (e.g. add `app_name` so writes record which app produ
 
 ```yaml
 - id: events
-  source: "github:lowdefy/modules-mongodb/modules/events@v0.7.0"
+  source: "github:lowdefy/modules-mongodb/modules/events@v0.8.1"
   vars:
     display_key: my-app
     change_stamp:

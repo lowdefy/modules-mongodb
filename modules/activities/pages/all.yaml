@@ -3,14 +3,13 @@
 # AgGrid table + filter panel + Excel download + pagination, mirroring
 # `companies/pages/all.yaml`.
 #
-# URL hydration on mount. Reads `_url_query.contact_id` and
-# `_url_query.company_id` and seeds them into `state.filter.contact_id`
-# / `state.filter.company_id`. This is the contract used by
-# `tile_activities`'s "View all" link (and external deep-links): the
-# tile builds `?contact_id=<uuid>` / `?company_id=<uuid>`, the list
-# page hydrates the filter from the URL, and the `get_activities`
-# pipeline scopes results via Atlas Search `equals` clauses on
-# `contacts.contact_id` / `company_ids`.
+# No url-query filtering. This page renders no visible entity
+# (contact/company/deal) filter control, so it does NOT scope the table
+# from url-query params — a silently filtered list the user can't see or
+# clear is bad UX. "View all" links (e.g. `activities-timeline`) navigate
+# here with a clean url and show the full list. `state.filter.contact_id`
+# / `company_id` remain as a request-side extension point for consumers
+# that add their own *visible* picker via `components.filters`.
 _ref:
   module: layout
   component: page
@@ -54,14 +53,13 @@ _ref:
               stage: null
               date_from: null
               date_to: null
-              contact_id:
-                _if_none:
-                  - _url_query: contact_id
-                  - null
-              company_id:
-                _if_none:
-                  - _url_query: company_id
-                  - null
+              # Entity-scope keys kept null-initialised so the filter state
+              # shape stays stable and `get_activities`' contact/company
+              # `equals` clauses still bind. They are only ever set by a
+              # consumer-added *visible* picker (via `components.filters`) —
+              # NOT by url-query params (see header note).
+              contact_id: null
+              company_id: null
             sort:
               by: updated.timestamp
               order: -1

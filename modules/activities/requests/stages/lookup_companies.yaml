@@ -3,7 +3,11 @@
 # must set the `lookup_collections.companies` module var to match.
 $lookup:
   from:
-    _module.var: lookup_collections.companies
+    _build.if_none:
+      - _module.var: lookup_collections.companies
+      - _module.connectionId:
+          id: companies-collection
+          module: companies
   localField: company_ids
   foreignField: _id
   as: companies
