@@ -587,3 +587,70 @@ test('UpdateActionFields: YAML / pre-hook overrides are NOT applied even when pa
   expect(doc.display.demo.title).toBe('Alice updated Qualify');
   expect(doc.metadata).not.toHaveProperty('extra');
 });
+
+// ── Comment fold into display.{app}.description (Part 33) ─────────────────────
+
+test('Submit: author title override coexists with engine bucket and yields no description (D7)', () => {
+  const { doc } = dispatch({
+    signal: 'submit',
+    status_after: 'done',
+    yamlEventOverrides: { display: { demo: { title: 'Custom title' } } },
+  });
+  expect(doc.display.demo.title).toBe('Custom title');
+  expect(doc.display.demo).not.toHaveProperty('description');
+});
+
+test('Submit: comment owns description; rendered title untouched (D4)', () => {
+  const { doc } = dispatch({
+    signal: 'submit',
+    status_after: 'done',
+    comment: { html: '<p>Typed</p>', text: 'Typed' },
+  });
+  expect(doc.display.demo.description).toBe('<p>Typed</p>');
+  expect(doc.display.demo.title).toBe('Alice completed Qualify');
+});
+
+test('Submit: no comment → no description key (no static fallback, D4)', () => {
+  const { doc } = dispatch({ signal: 'submit', status_after: 'done' });
+  expect(doc.display.demo.title).toBe('Alice completed Qualify');
+  expect(doc.display.demo).not.toHaveProperty('description');
+});
+
+test('Submit: pre-hook description is stripped; only the fold writes the slot (D4)', () => {
+  const { doc } = dispatch({
+    signal: 'submit',
+    status_after: 'done',
+    preHookEventOverrides: { display: { demo: { description: 'Static' } } },
+  });
+  expect(doc.display.demo).not.toHaveProperty('description');
+});
+
+test('Submit: a comment never writes metadata.comment', () => {
+  const { doc } = dispatch({
+    signal: 'submit',
+    status_after: 'done',
+    comment: { html: '<p>Typed</p>', text: 'Typed' },
+  });
+  expect(doc.metadata).not.toHaveProperty('comment');
+});
+
+test('Submit: comment HTML with template syntax stored verbatim while title renders (post-render fold)', () => {
+  const { doc } = dispatch({
+    signal: 'submit',
+    status_after: 'done',
+    comment: {
+      html: '<p>{{ user.profile.name }} and a stray {% if</p>',
+      text: 'x',
+    },
+  });
+  expect(doc.display.demo.description).toBe(
+    '<p>{{ user.profile.name }} and a stray {% if</p>',
+  );
+  expect(doc.display.demo.title).toBe('Alice completed Qualify');
+});
+
+test('StartWorkflow lifecycle without comment produces no description key', () => {
+  const { doc } = dispatch({ handlerType: 'StartWorkflow', allTouchedActionDocs: [] });
+  expect(doc.display.demo.title).toBe('Alice started Onboarding');
+  expect(doc.display.demo).not.toHaveProperty('description');
+});

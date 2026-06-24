@@ -1,6 +1,7 @@
 import { WorkflowEngineError } from '../../errors.js';
 import mergeEventOverrides from '../../mergeEventOverrides.js';
 import renderEventDisplay from '../../render/renderEventDisplay.js';
+import foldCommentIntoEvent from './foldCommentIntoEvent.js';
 
 // Tracker-mirror signal → event-type suffix mapping.
 const MIRROR_TYPE_MAP = {
@@ -89,10 +90,12 @@ function resolveActionSignalTitle(signal, status_after) {
  * Originally applied only to SubmitWorkflowAction; generalized in Part 48 to
  * serve tracker-mirror (D4) and lifecycle (D8) channels as well.
  *
- * No `metadata.comment` is written — the old `buildDefaultLogEventPayload`
- * comment fold is superseded by Part 33's `foldCommentIntoEvent` (Part 38
- * keeps the `comment` param flowing on the emitted payload via task 19; the
- * planner doesn't touch it).
+ * The runtime `comment` is folded into `display.{app_name}.description` by
+ * `foldCommentIntoEvent`, run **after** `renderEventDisplay` (merge → render →
+ * fold, Part 33 D4) — the comment HTML is stored verbatim and never templated.
+ * The description slot is comment-only: the merge strips any non-comment
+ * `description` and authored descriptions are rejected at build
+ * (`makeWorkflowsConfig`). No `metadata.comment` is ever written.
  *
  * Pure: no I/O; derives everything from injected inputs.
  *
@@ -102,10 +105,10 @@ function resolveActionSignalTitle(signal, status_after) {
  * @param {'StartWorkflow'|'SubmitWorkflowAction'|'CancelWorkflow'|'CloseWorkflow'|'tracker-mirror'|'UpdateActionFields'} args.handlerType
  * @param {string} [args.signal] — the resolved FSM signal name. Absent on the
  *   UpdateActionFields path (no transition).
- * @param {{ text: string, html: string } | null} [args.comment] — optional
- *   comment (UpdateActionFields path). The planner does not store or render it;
- *   Part 33's `foldCommentIntoEvent` folds it into `display.{app_name}.description`.
- *   When Part 33's fold has not landed, the param simply flows un-folded.
+ * @param {{ html: string, text?: string, fileList?: any[] } | null} [args.comment]
+ *   — optional rich-text comment (submit and UpdateActionFields paths). Folded
+ *   into `display.{app_name}.description` (verbatim `comment.html`) by
+ *   `foldCommentIntoEvent` after render; the planner reads only `comment.html`.
  * @param {Object} args.plannedWorkflowDoc — the whole planned post-commit
  *   workflow doc (from planWorkflowRecompute). Must carry `entity_ref_key`.
  * @param {Object} [args.plannedActionDoc] — required for action-event and
@@ -277,6 +280,13 @@ function planEventDispatch({
     display: mergedPayload.display,
     ctx,
   });
+
+  // ── Fold the runtime comment into display.{appName}.description ──────────
+  // Strictly after render (merge → render → fold, Part 33 D4): the comment is
+  // raw user-typed HTML stored verbatim — it must never pass through the
+  // Nunjucks compile in renderEventDisplay. No-ops when there is no comment, so
+  // it is unconditional for every handler type (lifecycle paths never pass one).
+  foldCommentIntoEvent({ display: renderedDisplay }, comment, appName);
 
   const doc = {
     _id: event_id,

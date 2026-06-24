@@ -108,6 +108,7 @@ events:
           description:
             _request: get_workflow_action.description
         current_action.comment: null
+        current_action.change_request_comment: null
         # Stable stage scalar — the header badge reads this, not the prunable
         # current_action.status.0.stage (see check-action-surface.yaml).
         current_action.stage:
