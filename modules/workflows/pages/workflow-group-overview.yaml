@@ -128,8 +128,16 @@ _ref:
                 const filled = (summary.done || 0) + (summary.not_required || 0);
                 return Math.round((filled / total) * 100);
 
+      # Card gap rides the `.element` CSS slot — blocks-basic List merges it into
+      # its item flex-container; layout.gap only reaches blocks within a card.
       - id: actions_list
         type: List
+        properties:
+          direction: column
+          wrap: nowrap
+        style:
+          .element:
+            gap: 8px
         blocks:
           - id: actions_list.$.card
             type: Card

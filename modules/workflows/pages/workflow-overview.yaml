@@ -131,19 +131,26 @@ _ref:
       # Action cards grouped by action group (engine emits groups in declaration
       # order; cards within keep declaration order). Each group renders an
       # icon + title header (suppressed for ungrouped/null-title groups) above
-      # its card list. Outer gap spaces group sections; inner gap spaces cards.
-      # List blocks bypass the framework Area, so layout.gap does not space their
-      # items — set the flex column on the List and the gap on style.element
-      # (which List.js merges into the flex container). The group header carries
-      # a top margin so groups read as separated while the header still hugs its
-      # own cards (small inner gap).
+      # its card list.
+      #
+      # List spacing: blocks-basic List builds its item flex-container from
+      # properties.direction/wrap and merges its `.element` CSS slot into it, so
+      # the gap BETWEEN items lives on `style: .element: gap`. (A bare `style.gap`
+      # would land on the outer BlockLayout div, not the flex container — which is
+      # why it had no effect.) layout.gap cannot space items either — the
+      # framework Area wraps each item individually, so layout.gap only spaces the
+      # blocks WITHIN one item. Hence here: layout.gap spaces the header from its
+      # own cards inside each group; `.element` gap spaces the group sections.
       - id: groups_list
         type: List
         properties:
           direction: column
           wrap: nowrap
+        layout:
+          gap: 8
         style:
-          gap: 8px
+          .element:
+            gap: 24px
         blocks:
           - id: groups_list.$.group_header
             type: Box
@@ -154,8 +161,6 @@ _ref:
             layout:
               gap: 8
               align: middle
-            style:
-              marginTop: 20px
             blocks:
               - id: groups_list.$.group_icon
                 type: Icon
@@ -182,7 +187,8 @@ _ref:
               direction: column
               wrap: nowrap
             style:
-              gap: 16px
+              .element:
+                gap: 8px
             blocks:
               - id: groups_list.$.actions.$.card
                 type: Card
