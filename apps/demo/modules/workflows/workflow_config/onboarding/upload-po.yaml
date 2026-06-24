@@ -19,7 +19,7 @@ form:
 status_map:
   blocked:
     demo:
-      message: Awaiting quote approval.
+      message: Upload the purchase order once the quote is approved.
   action-required:
     demo:
       message: Upload the purchase order.

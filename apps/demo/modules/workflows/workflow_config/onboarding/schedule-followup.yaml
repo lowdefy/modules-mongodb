@@ -11,7 +11,7 @@ access:
 status_map:
   blocked:
     demo:
-      message: Awaiting qualification.
+      message: Schedule the follow-up call once the lead is qualified.
   action-required:
     demo:
       message: Schedule the follow-up call.

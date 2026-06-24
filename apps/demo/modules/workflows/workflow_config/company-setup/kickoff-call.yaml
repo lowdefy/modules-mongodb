@@ -11,7 +11,7 @@ access:
 status_map:
   blocked:
     demo:
-      message: Awaiting account manager assignment.
+      message: Schedule the kickoff call once an account manager is assigned.
   action-required:
     demo:
       message: Schedule and complete the kickoff call.

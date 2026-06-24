@@ -22,7 +22,7 @@ tracker:
 status_map:
   blocked:
     demo:
-      message: Awaiting purchase order.
+      message: Convert the lead to a customer once the purchase order is uploaded.
   action-required:
     demo:
       message: Convert the lead to a customer.

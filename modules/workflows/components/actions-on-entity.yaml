@@ -9,6 +9,19 @@
 # `check_action_modal` is fixed and global). A host page composing the event
 # timeline (workflows-events-timeline) alongside this component targets the same
 # `check_action_modal` blockId by id and must NOT drop a second copy.
+#
+# Vars:
+#   entity_id          — (required) the entity whose workflows render.
+#   entity_collection  — (required) the entity's collection.
+#   on_action_complete — extra actions appended after the bundled modal's
+#                        built-in entity-workflows refetch on a successful
+#                        signal (default []). Because this component owns the
+#                        single modal, a co-present surface that also needs
+#                        refreshing on completion (e.g. workflows-events-timeline,
+#                        which only fetches on mount) is refreshed by threading
+#                        its refetch through here — the modal's on_complete does
+#                        not know about sibling surfaces. A timeline page passes
+#                        `[{ type: Request, params: get_events_timeline }]`.
 id: actions_on_entity
 type: Box
 events:
@@ -113,10 +126,14 @@ blocks:
       path: components/check-action-modal.yaml
       vars:
         on_complete:
-          _ref:
-            path: components/entity-workflows-refetch.yaml
-            vars:
-              entity_id:
-                _var: entity_id
-              entity_collection:
-                _var: entity_collection
+          _build.array.concat:
+            - _ref:
+                path: components/entity-workflows-refetch.yaml
+                vars:
+                  entity_id:
+                    _var: entity_id
+                  entity_collection:
+                    _var: entity_collection
+            - _var:
+                key: on_action_complete
+                default: []

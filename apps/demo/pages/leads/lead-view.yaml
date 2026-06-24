@@ -65,6 +65,14 @@ _ref:
                             entity_id:
                               _url_query: _id
                             entity_collection: leads-collection
+                            # Refresh the co-present Activity timeline when a
+                            # check action is submitted from the bundled modal —
+                            # the timeline only fetches on mount, so without this
+                            # it shows stale events after a submit.
+                            on_action_complete:
+                              - id: refetch_events_timeline
+                                type: Request
+                                params: get_events_timeline
           - id: lead_info_column
             type: Box
             layout:
