@@ -37,11 +37,15 @@ Phase 0 should be scoped to *"verify the audit holds and close the workflows `co
 
 ### 3. `tasks.md` tracks the superseded design, not this one
 
+> **Resolved.** Resolved structurally: the successor design was split into `designs/documentation-v2/`, leaving the stale `tasks.md` co-located with the prior design (`designs/documentation/`) it actually tracks. The successor folder has no `tasks.md`, so nothing masquerades as its plan — a fresh checklist gets generated from the Phase 0–5 migration plan via `/r:design-task` after this review.
+
 `designs/documentation/tasks.md` is the prior design's checklist (per-module READMEs, single `docs/idioms.md`, "5 blocks + 1 action") — every box is `[x]`, and it references a `modules/data-upload/` module (`tasks.md:18`) that no longer exists in the tree. It contains **no** tasks for this design's Phase 0–5 migration. Anyone running an action/implementation pass off `tasks.md` will work the wrong, already-finished plan. Regenerate `tasks.md` from this design's Migration plan before implementation.
 
 ## Correctness / contradictions
 
 ### 4. `llms.txt` generator scope can't see the docs it's claimed to index
+
+> **Resolved.** Closed structurally rather than by widening the walk: the plugin block docs were the one doc set left out of the central tree (an unjustified exception to decision 1), so they now migrate into a new `docs/plugins/` folder (`index.md` + per-block files) with source-side stubs, mirroring the module pattern. A plain `docs/**` walk is then complete coverage — every canonical doc lives under `docs/`. Module/plugin source-side READMEs are intentionally *not* indexed (each only points at a `docs/` page already covered). Applied across decision 1, the doc-tree diagram, current-state, front-matter schema (`module: plugins`), the generator note, Phase 5, and Files-changed.
 
 `design.md:174` defines generation as *"walking `docs/**/*.md`."* But `design.md:90` says the co-located plugin block READMEs (under `plugins/...`) *"get listed in `llms.txt`"*, and the plan keeps `modules/{name}/README.md` stubs (under `modules/...`) as the door into the docs. Neither path is under `docs/**`, so a `docs/**`-only walk silently omits them.
 
