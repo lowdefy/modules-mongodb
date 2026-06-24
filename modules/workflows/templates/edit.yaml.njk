@@ -20,6 +20,10 @@ _ref:
       _var:
         key: page_config.title
         default: null
+    status:
+      _state: action.status.0.stage
+    status_enum:
+      _ref: ../shared/enums/action_statuses.yaml
     show_back_button: true
     content_width:
       _var:
@@ -318,6 +322,25 @@ _ref:
                                     _state: action.key
                                   form:
                                     _state: form
+                            # Progress succeeded (CallAPI halts the chain on
+                            # error): refetch the action so status/key reflect
+                            # the saved draft, then confirm with a toast.
+                            - id: refetch_action_progress
+                              type: Request
+                              params: get_workflow_action
+                            - id: reset_action_progress
+                              type: SetState
+                              params:
+                                action:
+                                  _request: get_workflow_action
+                            - id: progress_success_message
+                              type: DisplayMessage
+                              params:
+                                status: success
+                                content:
+                                  _var:
+                                    key: page_config.buttons.progress.successMessage
+                                    default: Draft saved.
                   - id: button_submit
                     type: Button
                     layout:
