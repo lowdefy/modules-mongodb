@@ -76,7 +76,46 @@ The `page` component renders a shared title bar above the content. Key per-page 
 
 ## Profile dropdown
 
-Two supported shapes — zero-config (use `user-account`'s bundled menu) or fully custom inline. See `modules/layout/README.md` for the custom shape.
+Two supported shapes:
+
+**Zero-config** — use `user-account`'s bundled Profile + Divider + Logout dropdown:
+
+```yaml
+# apps/{app}/menus.yaml
+- id: profile
+  links:
+    _ref:
+      module: user-account
+      menu: profile-default
+```
+
+**Custom** — write the whole dropdown inline when you need extra links. Module-level fragment mixing is not supported.
+
+```yaml
+- id: profile
+  links:
+    - id: profile
+      type: MenuLink
+      pageId: user-account/view
+      properties:
+        title: Profile
+        icon: AiOutlineUser
+    - id: settings
+      type: MenuLink
+      pageId: settings/all
+      properties:
+        title: Settings
+        icon: AiOutlineSetting
+    - id: logout-divider
+      type: MenuDivider
+    - id: logout
+      type: MenuLink
+      pageId: user-account/logout
+      properties:
+        title: Logout
+        icon: AiOutlineLogout
+        danger: true
+```
 
 ## Reference
 
