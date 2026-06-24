@@ -6,7 +6,7 @@
 
 ## root
 
-- docs/CONTRIBUTING.md: Docs Contributing Guide — Every file in `docs/` must open with a YAML front-matter block. The linter (Task 4) validates this schema at CI time.
+- docs/CONTRIBUTING.md: Docs Contributing Guide — Every file in `docs/` must open with a YAML front-matter block. The linter (`scripts/gen-llms-txt.mjs`, run via `pnpm docs:check`) validates this schema at CI time.
 - docs/index.md: Lowdefy Modules — MongoDB — A set of reusable [Lowdefy](https://lowdefy.com) modules backed by MongoDB. Drop them into a Lowdefy app to get authentication, user admin, contacts, companies, file attachments, audit events, and notifications without writing the YAML for each.
 
 ## shared
