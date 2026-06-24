@@ -18,8 +18,8 @@ Modules that require it: `notifications`, `user-account`, `user-admin`, `contact
 
 - `created.app_name` on event and notification documents — set by the writing pipeline so reads can filter by app.
 - `user.app_attributes.{app_name}` on user documents — per-app profile fields and access flags.
-- `display.{app_name}` on event documents — per-app pre-rendered titles (see [Event display](event-display.md)).
-- `events.display_key` — the `display_key` var on the `events` module is the same string; events render the title at `display.{display_key}`.
+- `{app_name}.title` on event documents — per-app pre-rendered titles, stored at the **top level** of the event document keyed by app name (not nested under a `display` key) — see [Event display](event-display.md).
+- `events.display_key` — the `display_key` var on the `events` module is the same string; events read the title back at `{display_key}.title`.
 
 ## Constraint: no dots
 
