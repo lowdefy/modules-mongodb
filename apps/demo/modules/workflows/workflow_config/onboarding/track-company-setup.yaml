@@ -1,6 +1,6 @@
 type: track-company-setup
 # title overrides the derived "Track Company Setup" — the card reads better
-# labelled as the thing being tracked (docs/idioms.md#titles).
+# labelled as the thing being tracked (docs/workflows/reference/authoring-grammar.md#titles).
 title: Company Setup
 kind: tracker
 action_group: conversion

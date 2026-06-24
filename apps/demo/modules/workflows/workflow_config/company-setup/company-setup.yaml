@@ -1,5 +1,5 @@
 type: company-setup
-# title omitted — derives to "Company Setup" via humanizeSlug (docs/idioms.md#titles).
+# title omitted — derives to "Company Setup" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
 entity_collection:
   _module.connectionId: { id: companies-collection, module: companies }
 entity_ref_key: company_ids
@@ -14,7 +14,7 @@ starting_actions:
     status: blocked
 
 action_groups:
-  # title omitted — derives to "Setup" via humanizeSlug (docs/idioms.md#titles).
+  # title omitted — derives to "Setup" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
   - id: setup
     icon: AiOutlineSetting
 
