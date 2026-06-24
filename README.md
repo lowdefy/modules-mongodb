@@ -33,6 +33,6 @@ modules:
 
 The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. See [`docs/index.md`](docs/index.md) for the full module list, dependency graph, and "what to use when" guide.
 
-## Contributing
+## Documentation
 
-See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) for the docs front-matter schema. Release notes live in [`CHANGELOG.md`](CHANGELOG.md).
+See [`docs/CONTRIBUTING.md`](docs/CONTRIBUTING.md) for the docs front-matter and authoring schema. Release notes live in [`CHANGELOG.md`](CHANGELOG.md).

@@ -112,7 +112,7 @@ modules:
 
 Each entry pins a `source` (GitHub ref or local `file:` path), passes `vars`, and optionally remaps `dependencies` and `connections` when entry IDs don't match the names declared in the module manifest. See <https://docs.lowdefy.com/modules> for the full module-system reference.
 
-Per-module READMEs cover the vars, exports, and a worked example for each module. [`docs/idioms.md`](idioms.md) covers the shared patterns (`change_stamp`, `event_display`, slot vars, `app_name`, avatar colors, secrets) that most modules use.
+Each module's `docs/{module}/` folder covers the vars, exports, and worked examples for that module. [`docs/idioms.md`](idioms.md) covers the shared patterns (`change_stamp`, `event_display`, slot vars, `app_name`, avatar colors, secrets) that most modules use.
 
 ## See it in action
 

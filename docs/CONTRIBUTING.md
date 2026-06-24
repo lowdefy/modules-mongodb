@@ -50,7 +50,6 @@ Optional. A flat string array of the key concepts or terms the page covers. Usef
 docs/
   index.md              — type: index, module: root
   CONTRIBUTING.md       — type: reference, module: root
-  idioms.md             — type: shared, module: shared  (to be split in Task 6)
   shared/               — cross-cutting idiom pages
   workflows/            — workflows module docs
   plugins/              — plugin package docs
