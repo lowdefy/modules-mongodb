@@ -18,6 +18,16 @@
 - docs/shared/secrets.md: Secrets — Master list of every secret read by modules in this repo. Bucket names, keys, and connection strings live in secrets so they stay out of version control.
 - docs/shared/slots.md: Slots — Modules that ship list / detail / edit pages expose **slots** so consumers can extend each page without forking the YAML. Three slot vars are conventional:
 
+## plugins
+
+- docs/plugins/action-steps.md: ActionSteps — A vertical (or horizontal) Antd `Steps` view of grouped actions. Each `item` is an *action group* rendered as one step; its child `actions` render in the step description as badged, optionally linked rows. The group's rolled-up status drives the step icon and styling.
+- docs/plugins/contact-selector.md: ContactSelector — A multi-select contact picker. Search the contact pool, add a new contact inline (with a custom form rendered into the modal slot), edit or verify selected contacts, and remove them. Used by the `contacts` module to back its `contact-selector` component.
+- docs/plugins/data-descriptions.md: DataDescriptions — A read-only data view built on Antd `Descriptions`, driven by an explicit `formConfig` that lays out sections, ordering, labels, and renderer hints. Use it on detail pages where the field set is fixed and you want full control over how the data is grouped.
+- docs/plugins/events-timeline.md: EventsTimeline — A vertical timeline of audit events. Each entry shows an avatar, the event title (Nunjucks-rendered upstream by the `events` module), a relative timestamp, an optional description, optional info link with a modal, optional inline action cards with status badges, and optional attached files.
+- docs/plugins/file-manager.md: FileManager — Drag-drop file upload with S3 signed URLs, paste-to-upload, optional metadata form, file-type icons, image thumbnails, download links, and a delete-confirmation modal. Used by the `files` module to back its `file-manager`, `file-card`, and (indirectly) `file-list` components.
+- docs/plugins/index.md: Modules MongoDB Plugins — Custom Lowdefy blocks and actions used by the modules in this repo. The package is a regular Lowdefy plugin — modules declare it under their `plugins:` and consumers register it in their app's `lowdefy.yaml`. You only need to add it yourself if you are wiring blocks or the `FetchRequest` action d...
+- docs/plugins/smart-descriptions.md: SmartDescriptions — A read-only data view built on Antd `Descriptions` that auto-detects how to render each field straight from the data — no schema needed. Drop in a data object and get a labelled, type-aware view: contacts and companies become links, change stamps become "by Alice on 2026-04-30", phone numbers bec...
+
 ## activities
 
 - docs/activities/index.md: Activities — CRM activities — calls, meetings, emails. Past-tense external-interaction logs linked to contacts and companies. Activities have a lifecycle (`open → done | cancelled`, with `reopen`); built-in types (`call`, `meeting`, `email`) are created `done` since they are logged after the fact. Consumer-de...
