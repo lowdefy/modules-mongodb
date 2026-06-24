@@ -102,7 +102,7 @@ To add a review step to an action, declare `review:` in the access map — see [
 
 `request_changes` passes on `view`, `edit`, **or** `review`:
 
-```yaml
+```text
 # interaction → accepted verbs
 submit       → edit
 not_required → edit
