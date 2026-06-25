@@ -122,4 +122,4 @@ Conditional actions are not listed in `starting_actions`. They don't exist until
 
 The workflow doc carries `groups: [...]` — an array of per-group objects with `id`, `status`, and per-group `summary: { done, not_required, total }`. This lets dashboards, analytics pipelines, and admin tools read phase progress directly from the workflow doc without going through the module's API.
 
-The same drift risk as `summary` writeback applies: a direct DB write to an action bypasses the engine and may leave `groups[]` stale. The engine's periodic reconciliation job covers this alongside summary drift. The module README documents that direct action writes bypass the engine.
+The same drift risk as `summary` writeback applies: a direct DB write to an action bypasses the engine and may leave `groups[]` stale.

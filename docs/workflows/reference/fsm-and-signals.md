@@ -48,7 +48,12 @@ The engine resolves every status change as a **signal** against a per-kind finit
 | `internal_mirror_child_completed` | `blocked`, `action-required`, `in-progress`, `not-required` (tracker only) | `done` | Engine tracker subscription |
 | `internal_mirror_child_cancelled` | `blocked`, `action-required`, `in-progress`, `done` (tracker only) | `not-required` | Engine tracker subscription |
 
-`unblock` stays narrow by design — firing it against a non-blocked target no-ops, which keeps `blocked_by` re-evaluation structurally safe against accidentally regressing done/in-progress siblings.
+**`unblock` vs `activate`.** Both land on `action-required`, but they differ in *which source states accept them* — and that difference is the whole point:
+
+- `unblock` accepts **only `blocked`**. It's the dependency-gate release: the engine fires it after every transition against actions whose `blocked_by` deps are now terminal, and pre-hooks fire it when a target is known-blocked. The narrow source list is a structural safety guarantee — because the engine re-walks `blocked_by` and re-fires `unblock` on every transition, an already-released sibling sitting in `in-progress` or `done` must not be dragged back to `action-required`. Since those states don't list `unblock`, the re-fire no-ops and the sibling is left alone.
+- `activate` accepts **almost every non-actionable state** (`blocked`, `in-progress`, `in-review`, `changes-required`, `error`, `done`). It's the deliberate "make this actionable, whatever its current state" signal, emitted only by pre-hooks for cascades where the target's state is uncertain or being intentionally overridden (e.g. an issue-resolve hook re-opening a `done` action). The breadth is exactly what `unblock` refuses: `activate` *will* pull a `done` or `in-progress` action back to `action-required`.
+
+So: reach for `unblock` when the intent is "this dependency is satisfied, release it if (and only if) it was waiting" — it's safe to fire repeatedly and the engine does. Reach for `activate` when the intent is "force this back to actionable regardless of where it is" — a deliberate, author-driven reset, never auto-fired by the engine.
 
 `internal_*` signals are engine-internal conventions. Pre-hooks should not emit them.
 

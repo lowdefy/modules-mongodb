@@ -48,7 +48,7 @@ hooks:
 
 Both `pre:` and `post:` are optional per signal. Hook declarations are `hooks.{signal}.pre` and `hooks.{signal}.post`. Only button-surfaced signals can carry hooks — engine-internal signals (`unblock`, `internal_*`) have no hook-dispatch point.
 
-**Hooks are internal-only APIs.** They have no HTTP entry point and no `auth:` block of their own. They are callable only via the engine's internal `context.callApi` from the submit endpoint. The submit endpoint's access check is the sole gate — if you can fire the signal, you can run its hooks.
+**Hooks are internal-only APIs.** They have no HTTP entry point of their own. They are callable only via the engine's internal `context.callApi` from the submit endpoint. The submit endpoint's access check is the sole gate — if you can fire the signal, you can run its hooks.
 
 Hook files typically live under `workflow_config/{workflow_type}/api/`:
 

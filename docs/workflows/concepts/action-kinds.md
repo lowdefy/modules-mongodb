@@ -120,7 +120,7 @@ The `start_link` is only shown to users with the `edit` verb. Trackers without `
 
 **When to use `start_link` vs a paired trigger action:**
 - **App page owns creation → `start_link`.** When the child entity is created on a normal app page (a new-ticket form, etc.), add `start_link` to the tracker. No separate trigger action needed.
-- **Inline form owns creation → paired trigger + tracker.** When creation is a small inline form with no existing app page, use a `kind: form` (or `kind: check`) trigger action to create the entity and call `start-workflow`, plus a separate tracker action to mirror the child's lifecycle.
+- **Inline form owns creation → paired trigger + tracker.** When creation is a small inline form with no existing app page, use a `kind: form` trigger action to create the entity and call `start-workflow`, plus a separate tracker action to mirror the child's lifecycle.
 
 ### Linking parent and child at runtime
 
