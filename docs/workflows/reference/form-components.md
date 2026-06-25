@@ -9,7 +9,7 @@ concepts: [form, components, fields, form-builder]
 
 Built-in field components for action `form:` blocks. The form-builder resolver substitutes each component's block config (with author-supplied vars merged) into the page block tree at build time.
 
-Apps never `_ref` these files directly. To use a domain-specific component not in this library, ship it as a Lowdefy custom block plugin and reference it as `component: <plugin-name>:foo` in `form:` blocks — the resolver passes through any name it does not recognise.
+Apps never `_ref` these files directly. A domain-specific field not in this library is added one of two ways: contribute a library component, or — as an escape hatch — write a raw Lowdefy block inline in the `form:` array (see [Custom components](#custom-components)).
 
 **Universal action fields (`assignees`, `due_date`, `description`) are not form components** — they render in the page templates via the page chrome. Do not include them in `form:` blocks.
 
@@ -647,13 +647,19 @@ Inline button. Renders a `Button`.
 
 ## Custom components
 
-Apps that need a domain-specific component ship it as a regular Lowdefy custom component in their plugin and reference it in `form:` blocks:
+There is no `component:` namespace for plugin blocks — `component:` resolves only against this library. For anything not covered here:
+
+- **Reused field?** Contribute a library component (a `components/fields/*.yaml` file) so it gets a bare `component:` name and is shared across actions. If a Lowdefy plugin block renders it, wrap that block in the library component.
+- **One-off?** Drop a raw Lowdefy block directly into the `form:` array. Unlike the library entries, a raw block has no `component:` key — you write its real `id`, `type`, and `properties`. The `id` doubles as the state path, the same convention library components apply to `key`. Any block, including a plugin block, works:
 
 ```yaml
 form:
-  - component: my-plugin:device_selector
-    key: form.device
+  - component: section
+    key: device_section
     title: Device
+    form:
+      - id: form.device                  # state path, same convention as library `key`
+        type: my-plugin:device_selector  # plugin block type — resolved by the plugin registry
+        properties:
+          collection: devices
 ```
-
-The form-builder resolver passes through any `component:` name it does not recognise as a library component.

@@ -682,7 +682,7 @@ At build time, the form resolver (`makeActionsForm`) walks the array, looks up `
 
 **Why ship as a library, not as `exports.components`.** The components are not consumed via `_module.componentId` from app pages — they're internal building blocks the resolver dereferences. `exports.components` stays as the top-level UI blocks consuming apps drop onto entity pages: `actions-on-entity`, `workflow-header`, `action_role_check` (see [ui](../ui/design.md)). The form library is one layer below that; it never surfaces in app YAML except as a `component:` name string.
 
-**Override + extension.** Apps that need a domain-specific component (e.g. a `device_selector` that hits an app-specific collection) ship it as a regular Lowdefy custom component in their plugin and reference it in `form:` blocks via `component: <plugin-name>:device_selector`. The resolver passes through any `component:` name it doesn't recognise as a library component, so app-side custom components compose alongside library components naturally.
+**Override + extension.** Apps that need a domain-specific component (e.g. a `device_selector` that hits an app-specific collection) write a **raw inline Lowdefy block** directly in the `form:` array — an entry with no `component:` key, carrying its own `id`, `type` (any plugin block type), and `properties`. The `id` doubles as the state path, the same convention library components apply to `key`, so a raw block composes alongside library components naturally. (There is no `component: <plugin>:name` namespace — `component:` resolves only against the library.) See [Part 58](../../workflows-module/parts/58-form-custom-component-seam/design.md).
 
 Detailed library content is implementation-time material; the v1 list is the floor, and the module adds entries as patterns emerge during real-app adoption.
 
@@ -690,7 +690,7 @@ Detailed library content is implementation-time material; the v1 list is the flo
 
 The v0 production corpus surfaces 27 form components in real use (yes_no_selector, device_type_selector, location, file_upload, number, box, section, controlled_list, label, label_value, date_range_selector, text_input, text_area, and 14 more). v1 ships all 27 rather than a smaller floor. Rationale: the example_workflow exercises most of them; shipping the floor and asking apps to port over the rest as plugin components would block real adoption. Cost is one-time documentation and resolver coverage; benefit is day-one parity with v0 deployments.
 
-Apps that need a domain-specific component (e.g. `device_type_selector` hitting an app-specific collection) keep using the plugin-component path (`component: <plugin-name>:device_selector`); the resolver passes through unrecognised names.
+Apps that need a domain-specific component (e.g. `device_type_selector` hitting an app-specific collection) write it as a raw inline Lowdefy block in the `form:` array (see **Override + extension** above); there is no plugin-component `component:` namespace.
 
 ## Decision 8 — Status-map, page-event vocabulary, and per-page chrome
 

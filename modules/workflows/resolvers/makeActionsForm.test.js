@@ -68,12 +68,6 @@ test("makeActionsForm: nested controlled_list — author form: renamed to blocks
   ]);
 });
 
-test("makeActionsForm: namespaced (plugin) component passes through unchanged", () => {
-  const entry = { component: "my-plugin:device_selector", key: "device" };
-  const out = makeActionsForm(null, { form: [entry] });
-  expect(out).toEqual([entry]);
-});
-
 test("makeActionsForm: empty / missing form returns []", () => {
   expect(makeActionsForm(null, { form: [] })).toEqual([]);
   expect(makeActionsForm(null, {})).toEqual([]);

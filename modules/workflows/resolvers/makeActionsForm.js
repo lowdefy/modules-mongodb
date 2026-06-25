@@ -20,10 +20,6 @@ function fail(message) {
   throw new Error(`makeActionsForm: ${message}`);
 }
 
-function isNamespaced(component) {
-  return typeof component === "string" && component.includes(":");
-}
-
 // True iff any entry in formArray (or any nested sub-form within a
 // structural entry) carries viewOnly: true.
 function formHasViewOnly(formArray) {
@@ -60,10 +56,7 @@ function substituteEntry(entry, mode) {
   // (1) no component: emit verbatim (raw Lowdefy block authored inline).
   if (!component) return stripped;
 
-  // (2) namespaced (plugin) component: pass through unchanged.
-  if (isNamespaced(component)) return stripped;
-
-  // (3) bare component: substitute via _ref to the library file. Unknown
+  // (2) bare component: substitute via _ref to the library file. Unknown
   // names and missing required vars fail at the framework's _ref / _var
   // resolution step; the resolver doesn't pre-check.
   const isStructural = STRUCTURAL_COMPONENTS.includes(component);

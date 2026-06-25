@@ -660,7 +660,7 @@ form:
 
 ### Override + extension
 
-Apps that need a domain-specific component ship it as a regular Lowdefy custom component in their plugin and reference it in `form:` blocks via `component: <plugin-name>:device_selector`. The resolver passes through any `component:` name it doesn't recognize as a library component, so app custom components compose alongside library components naturally.
+Apps that need a domain-specific component write a raw inline Lowdefy block directly in the `form:` array — an entry with no `component:` key, carrying its own `id`, `type` (any plugin block type), and `properties` (the `id` doubles as the state path). There is no `component: <plugin>:name` namespace; `component:` resolves only against the library. Raw blocks compose alongside library components naturally. See Part 58 (`designs/workflows-module/parts/58-form-custom-component-seam/design.md`).
 
 ## Open question
 

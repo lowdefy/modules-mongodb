@@ -1,5 +1,7 @@
 # Part 15 — `makeActionsForm` + `makeActionFormConfigs`
 
+> **Deviation (superseded by [Part 58](../../58-form-custom-component-seam/design.md)):** This design's namespaced `component: <plugin>:<name>` passthrough branch was based on a false premise — Lowdefy plugin-block syntax lives in a block's `type:` field, not in a `component:` key, so leaving the entry unchanged never yielded a renderable block. The branch was dead code. Part 58 removed it; the real escape hatch for app-specific fields is a **raw inline Lowdefy block** in the `form:` array. The rest of this design is accurate.
+
 **Source rationale:** [workflows-module-concept/action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md). **Layer:** resolvers. **Size:** M. **Repo:** `modules/workflows/resolvers/`.
 
 ## Goal
