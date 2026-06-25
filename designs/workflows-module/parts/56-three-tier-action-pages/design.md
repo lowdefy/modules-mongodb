@@ -14,6 +14,7 @@ Today an action page is a single centred column (`content_width: 750`): the form
 4. **Check actions get a per-workflow page that recomposes the check surface.** `makeActionPages` emits, per workflow with ≥1 `check` action, a **single** `{workflow_type}-check` page (mode derived as `check-action-modal` does — D3). Its middle is **not** `check-action-surface` verbatim: the surface **splits** (D6). The workspace check page recomposes from the shared leaf components — `entity_view.slot` (the review subject) + the comment input + the signal buttons **in the middle** — with the universal-fields card in the RHS and History below it. No Details tab on check: the slot is the middle content, so the right column is universal-fields + History only. `computeEngineLinks` points the check branch at `{workflow_type}-check`; the shared `workflow-action-*` pages are retired. The in-context `check-action-modal` is untouched.
 5. **`entity_view` on the workflow config** (raw YAML, read-only, `_ref`-able): `{ slot }` — the Details/review block array. `makeActionPages` reads it from the raw workflow and bakes the slot into the emitted pages via build-time `_var` (the mechanism the templates already use for `formHeader`/`formFooter`). `makeWorkflowsConfig` excludes it from the materialised engine config — build-time UI only, never reaches engine logic. **History sources its match field from the existing mandatory `workflow.entity_ref_key`** (the event-references key the engine already writes onto every event doc — `planEventDispatch.js:157`, required by `schema.js:91`), not from `entity_view`; the shell bakes `reference_field` from `entity_ref_key` the same way it bakes `entity_collection` from `workflow.entity_collection`.
 6. **`entity_view` is read-only.** The slot renders display blocks only — no inputs, save handlers, or state writes. (The motivating screenshot is a disabled copy of an edit component; read-only is the committed restriction.)
+7. **A page header — built from the layout module's existing chrome.** The breadcrumb, eyebrow, title, and status pill are **not** new components — they're vars the layout `page` component already renders (via `modules/shared/layout/title-block.yaml`). Each action page passes `breadcrumbs` (`Home / {entity type · name} / {workflow title} / {action title}`, the standard `- home: true` convention every module page uses), `type` (the workflow-title eyebrow), and the already-wired `title` / `status` / `status_enum`. The title bar renders **full content-width above the three columns** (D8); the breadcrumb is page chrome above it. The only shared new artefact is a small `breadcrumbs` config fragment so the four-segment trail isn't duplicated across templates. Two cheap data changes feed the deep-links: `workflow_id` is added to the `GetWorkflowAction` envelope (for the Workflow→overview link, D9), and `entity_link.name` is resolved from an optional `entities[collection].name_field` (the entity instance name, D10).
 
 ## Key decisions
 
@@ -59,13 +60,43 @@ For a **form** action the work is filling the form, so the entity detail is refe
 
 Consequence on the scaffold: the RHS Details *tab* is form-only (on check, the slot is in the middle, so the check RHS is universal-fields + History with no Details tab). This is the one place the columns differ by kind — accepted deliberately: the heavy scaffold (left steps; RHS universal-fields + History) stays put across form↔check, and the Details panel moving to centre-stage on a check reads as intentional (you're now reviewing it), not as a layout glitch. The alternative — Details always a RHS tab, check middle = decision-only — was rejected as leaving the check middle too thin.
 
+### D8 — The header is the layout module's native chrome, rendered full content-width
+
+The breadcrumb, eyebrow, title, and status pill are **already** provided by the layout `page` component. `modules/shared/layout/title-block.yaml` renders an optional back button, a status pill (from `status` + `status_enum`, the three-colour contract), a `type` eyebrow (an uppercased label above the title), the title (+ change-stamp subtitle from `doc`), and right-aligned `page_actions`; the breadcrumb comes from the page's `breadcrumbs` var. The action templates **already wire** `title` / `status` / `status_enum`. So this part adds only `breadcrumbs` and `type` (= the workflow title) — no new title or breadcrumb block components. This is the strongest "one correct way": the header is identical to every other module page because it *is* the same component.
+
+**Full content-width, not above-center.** The title bar is the first block in the page's content area, so it spans the full content width above the three columns. An earlier draft put the title above the center column only, reasoning that form↔check navigation shouldn't shift a full-width element. That reasoning doesn't hold: per **D4, jumping between actions in the left panel is a full page load** (the row links to the action's page), not an in-place swap — so nothing "shifts", and a title bar in the same position on every action page reads as continuity, exactly like the shared left/right columns. Full-width also keeps the action pages consistent with the rest of the app's pages and gives the back button + `page_actions` their conventional home.
+
+**Implementation note — center-only fallback.** If, against real content, the full-width title bar feels heavy above the three-column workspace, the fallback is: set `hide_title: true` on the page and `_ref` the same shared `modules/shared/layout/title-block.yaml` config into the **center column** instead (reusing the component, not rebuilding it). Try this only if the full-width bar is unsatisfactory.
+
+**Title content is eyebrow + title + status only.** The eyebrow (`type` var) is the workflow title (baked at build time); the title is the action's `message`; the status pill maps `status[0].stage` through the `action_statuses` enum (the same lookup `check-action-surface` already uses). Due date and assignees are deliberately **not** in the header — they live on the universal-fields card / action body; the header stays a compact identity strip. The breadcrumb segments are assembled by a small shared `breadcrumbs` config fragment (D9/D10) so the four-segment trail isn't duplicated across the templates. The in-context modal is **not** a layout page and keeps its own inline title (unchanged).
+
+### D9 — Workflow breadcrumb segment: title baked at build time, link via a new envelope `workflow_id`
+
+The Workflow breadcrumb segment links to the existing `workflow-overview` page (`pages/workflow-overview.yaml`, addressed by `?workflow_id=`). Lowdefy breadcrumb items spread their whole object onto the `Link` component (`Breadcrumb.js:50`), so a breadcrumb item supports `label` + `pageId` + `urlQuery` directly. Two values feed it:
+
+- **Label** — the workflow title, **baked at build time**. `makeActionPages` resolves `workflow.title ?? humanizeSlug(workflow.type)` (it already does this for action page titles); it passes the workflow title to the templates as the breadcrumb fragment's `workflow_title` var (also the `type` eyebrow). No runtime fetch — the page belongs to exactly one workflow.
+- **Link target** — `{ pageId: <scoped workflow-overview>, urlQuery: { workflow_id } }`. The pageId bakes via `_module.pageId: workflow-overview`; `workflow_id` is read at runtime — but it is **not in the `GetWorkflowAction` envelope today** (the allowlist at `GetWorkflowAction.js:233-260` omits it, though `action.workflow_id` exists on the doc and drives the workflow lookup at `:162`). So this part **adds `workflow_id` to the envelope** — a one-line allowlist addition. Each template passes its own `_state.{action|current_action}.workflow_id` into the breadcrumb fragment.
+
+### D10 — Entity breadcrumb segment: type always, instance name via optional `entities[collection].name_field`
+
+`entity_link` (built in `GetWorkflowAction.js:217-227` from the connection `entities` config) carries `{ pageId, urlQuery, title }`, where `title` is the entity **type** label ("Company", "Lead") and a working deep-link. The specific instance **name** ("Acme Corp") is **not** on the response, and `entities` has no field telling the module where to read it. So:
+
+- The breadcrumb entity segment **always** renders the type label as a link (free, works today).
+- The instance name is **opt-in**: a new optional `entities[collection].name_field` (a dot-path into the entity doc). When set, `GetWorkflowAction` does one lightweight `findOne` on `entity_collection` by `entity_id` projecting that field, and attaches it as `entity_link.name`; the segment renders "{type} · {name}". When unset, `entity_link.name` is null and the segment shows the type only — no extra query.
+
+This keeps the common case zero-cost and avoids inventing a generic name-extraction heuristic: the host app declares the name field, the module reads exactly that. The read-only `entity_view` slot's own fetch is **not** the name source — the breadcrumb must work whether or not a workflow declares `entity_view`, so the name resolution is independent and lives in the envelope. (A shared `buildEntityLink` helper across the three envelope builders is a reasonable later cleanup; this part adds name resolution only where the header needs it.)
+
 ## The three-tier shell
 
 Same scaffold both kinds; only the middle content and whether the RHS has a Details tab differ.
 
 ```
 FORM page
-┌────────────────┬─────────────────────────┬──────────────────────────┐
+┌───────────────────────────────────────────────────────────────────────┐
+│ Home / Company · Acme Corp / Onboarding / Collect Documents             │ ← breadcrumb (page chrome)
+│ ONBOARDING                                          [ In Progress ]      │ ← eyebrow (type) + status pill
+│ Collect Documents                                                       │ ← title (full content-width)
+├────────────────┬─────────────────────────┬──────────────────────────┤
 │ actions-on-    │  form body + submit     │  universal-fields card   │
 │ entity         │  buttons                │  Tabs[ Details | History ]│
 │ (current row   │                         │   • Details = slot       │
@@ -73,13 +104,18 @@ FORM page
 └────────────────┴─────────────────────────┴──────────────────────────┘
 
 CHECK page
-┌────────────────┬─────────────────────────┬──────────────────────────┐
+┌───────────────────────────────────────────────────────────────────────┐
+│ Home / Company · Acme Corp / Onboarding / RCA Acceptance               │ ← breadcrumb (page chrome)
+│ ONBOARDING                                          [ In Review ]        │ ← eyebrow (type) + status pill
+│ RCA Acceptance                                                          │ ← title (full content-width)
+├────────────────┬─────────────────────────┬──────────────────────────┤
 │ actions-on-    │  entity_view.slot +     │  universal-fields card   │
 │ entity         │  comment + signal       │  History (timeline)      │
 │ (current row   │  buttons                │   (no Details tab — slot │
 │  highlighted)  │                         │    is in the middle)     │
 └────────────────┴─────────────────────────┴──────────────────────────┘
-   stacks to full width on small breakpoints (sm: span 24)
+   breadcrumb + title bar are the layout page's native chrome, full content-width
+   above the columns (D8). columns stack to full width on small breakpoints (sm: span 24).
 ```
 
 **Shell vars** (`components/action-workspace.yaml`, plain `.yaml`, all inputs in operator/block-array positions). The shell is layout-only — it renders whatever block arrays the caller passes into its slots:
@@ -90,7 +126,11 @@ CHECK page
 - `entity_collection` — scalar, baked from `workflow.entity_collection` (for `actions-on-entity`).
 - `reference_field` — scalar, baked from `workflow.entity_ref_key` (for the History timeline). Mandatory engine config, so always available — which is why History is unconditionally present.
 
+The shell is the three columns only. The header (breadcrumb + eyebrow + title + status) is the layout `page` component's native chrome (D8), set by the template via the page's `breadcrumbs` / `type` / `title` / `status` vars — not by the shell. The breadcrumb's Home segment is the standard `- home: true` item; the Entity segment links via the action's `entity_link` (type + optional `.name`, D10); the Workflow segment links to `workflow-overview?workflow_id=…` (D9); the Action segment is the current page (no link).
+
 **State contract — one normalized read.** The loaded action lives under different keys per kind (`_state.action` on form pages; `_state.current_action` on the check page / surface), so the shell cannot read a fixed action path. The shell needs only one runtime value: the entity id (left panel, History `reference_value`, and the mount gate). So **every action page sets a normalized scalar `_state.entity_id`** from its own loaded response, in the onMount/`SetState` it already runs (form templates beside `set_action`; the check page in the same response-derived `SetState` that derives mode — D3). The shell then reads a single fixed `_state: entity_id` everywhere. This is a single normalized "the entity this page is about" scalar — not a duplicated action object — and it leaves the check surface and the in-context modal (which keep `current_action`) untouched. The read-only `details_slot` likewise reads `_state: entity_id` for its own entity fetch (`entity_collection` is build-time-baked, no state needed).
+
+The header (D8) reads several action fields (`message`, `status[0].stage`, `workflow_id`, `entity_link`) for the title bar and breadcrumb, but it is set by the **template** on the layout `page` vars using the template's own state path (`_state.action.*` on form templates, `_state.current_action.*` on the check page) — exactly as the templates already wire `title` / `status` today. So the header needs no normalized scalar; the single `entity_id` scalar exists only for the shell's columns (left panel, History, mount gate).
 
 **Mount sequencing:** `actions-on-entity` and `workflows-events-timeline` fire their `onMount` reads off `entity_id`, so the left/right columns must mount *after* the action loads. The shell gates the columns' render on `visible: _ne [ _state.entity_id, null ]` so their `onMount` fires once `entity_id` is set, rather than firing with a null id on first paint.
 
@@ -99,6 +139,7 @@ CHECK page
 ```yaml
 workflows:
   - type: nc-internal
+    title: Non-Conformance                            # breadcrumb Workflow label + title eyebrow (else humanized from type)
     entity_collection: nc-collection
     entity_ref_key: nc_ids                            # existing mandatory field — History matches events on it
     entity_view:
@@ -111,22 +152,34 @@ workflows:
       - type: rca-acceptance          # check action -> three-tier {workflow}-check page
         kind: check
         # ...
+
+# Connection-level `entities` var — breadcrumb Entity segment (D10)
+entities:
+  nc-collection:
+    page_id: nc-view            # existing — deep-link target
+    id_query_key: _id           # existing — URL query key
+    title: Non-Conformance      # existing — entity TYPE label (always shown)
+    name_field: reference        # NEW (optional) — dot-path into the entity doc for the instance NAME;
+                                 #   when set, GetWorkflowAction projects it into entity_link.name → "Type · Name"
+                                 #   when unset, the segment shows the type only (no extra query)
 ```
 
 History always renders — it sources its match field from the mandatory `workflow.entity_ref_key`, which every workflow has. `entity_view` is optional and carries only the `slot` block array, rendered in the position that matches the action kind (D7): on **form** pages as the RHS **Details** tab (omitted ⇒ History is the sole RHS tab; present ⇒ Details + History tabs); on **check** pages in the **middle** as the review subject. The same `slot` serves both — `makeActionPages` bakes it into the form templates and the check page alike.
 
 ## Files changed
 
-- `modules/workflows/components/action-workspace.yaml` — **new** shared three-tier shell: `middle` / `universal_fields` / `details_slot` slots, baked `entity_collection` / `reference_field`, columns gated on `_state: entity_id`.
-- `modules/workflows/templates/{view,edit,review,error}.yaml.njk` — wrap the existing form body as the shell's `middle`; compose the Part 24 universal-fields card into the `universal_fields` slot; pass `entity_view.slot` as `details_slot` (RHS Details tab); set the normalized `_state.entity_id` in onMount; widen the page to full width.
-- `modules/workflows/templates/check.yaml.njk` — **new** per-workflow check page. Recomposes the check surface across the shell (D6): `entity_view.slot` + comment + signal buttons as `middle`, universal-fields card as `universal_fields`, empty `details_slot`. Derives mode in the response-derived `SetState` (D3) and sets `_state.entity_id` there too.
-- `modules/workflows/components/check-action-surface.yaml` — **extract the shared leaves** (signal-button bar, comment input, status-history list, mode derivation) so both the in-context modal body and the new workspace check page compose them (D6). No behavioural change to the modal; the modal keeps its all-in-one arrangement.
+- `modules/workflows/components/action-workspace.yaml` — **new** shared three-tier shell: `middle` / `universal_fields` / `details_slot` slots, baked `entity_collection` / `reference_field`, columns gated on `_state: entity_id`. The header is the layout `page` component's chrome, not the shell (D8).
+- `modules/workflows/components/action-breadcrumbs.yaml` — **new** small config fragment returning the four-segment breadcrumb list (`- home: true`, Entity, Workflow, Action). `_ref`'d into each template's `breadcrumbs` var with `entity_link` / `workflow_id` / `action_label` / `workflow_title` vars (each template supplies its own state-path operators); bakes the `workflow-overview` pageId via `_module.pageId`. Page-only — the modal has no breadcrumb. (No custom title component: title/eyebrow/status are layout-page vars.)
+- `modules/workflows/templates/{view,edit,review,error}.yaml.njk` — wrap the existing form body as the shell's `middle`; compose the Part 24 universal-fields card into the `universal_fields` slot; pass `entity_view.slot` as `details_slot` (RHS Details tab); pass the layout-page header vars — `breadcrumbs` (`_ref` the breadcrumbs fragment with `_state.action.*`), `type: <baked workflow_title>` (eyebrow); keep the existing `title` / `status` / `status_enum` wiring; set the normalized `_state.entity_id` in onMount; widen the page to full width.
+- `modules/workflows/templates/check.yaml.njk` — **new** per-workflow check page. Recomposes the check surface across the shell (D6): `entity_view.slot` + comment + signal buttons as `middle`, universal-fields card as `universal_fields`, empty `details_slot`; passes the same header vars but sourced from `_state.current_action.*`. Derives mode in the response-derived `SetState` (D3) and sets `_state.entity_id` there too.
+- `modules/workflows/components/check-action-surface.yaml` — **extract the shared leaves** (signal-button bar, comment input, status-history list, mode derivation) so both the in-context modal body and the new workspace check page compose them (D6). No behavioural change to the modal; the modal keeps its all-in-one arrangement, including its own inline title + status `Tag` (the modal is not a layout page, so it has no header chrome).
 - `modules/workflows/components/universal-fields/universal-fields.yaml` (Part 24) — composed by both the form templates and the check page into the shell's RHS; the check page now passes it `state_path: current_action.fields` / `current_action.*` (its previous middle-primary placement moves to the RHS). No new component work, a placement change owned here.
-- `modules/workflows/resolvers/makeActionPages.js` — read `workflow.entity_view.slot`; pass the slot, `entity_collection`, and `entity_ref_key` (as `reference_field`) to the templates; emit `{workflow_type}-check` when the workflow has ≥1 `check` action.
+- `modules/workflows/resolvers/makeActionPages.js` — read `workflow.entity_view.slot`; pass the slot, `entity_collection`, `entity_ref_key` (as `reference_field`), and a newly-resolved `workflow_title` (`workflow.title ?? humanizeSlug(workflow.type)` — `humanizeSlug` is already imported; used for the `type` eyebrow + the breadcrumb Workflow segment) to the templates; emit `{workflow_type}-check` when the workflow has ≥1 `check` action.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetWorkflowAction/GetWorkflowAction.js` — add `workflow_id` to the response envelope (`:233-260`, D9); resolve `entity_link.name` from the optional `entities[collection].name_field` via one projected `findOne` on `entity_collection` by `entity_id` (D10); both gated/null-safe so unconfigured workflows are unaffected.
 - `modules/workflows/resolvers/makeWorkflowsConfig.js` — strip `entity_view` from the materialised engine config (build-time UI field, not engine input).
 - `plugins/modules-mongodb-plugins/src/connections/shared/render/computeEngineLinks.js` — check branch → `{workflow_type}-check` (lines 116-121).
 - `modules/workflows/pages/workflow-action-{view,edit,review}.yaml` — **retire** (replaced by emitted per-workflow check pages).
-- `modules/workflows/module.lowdefy.yaml` — drop the three retired shared pages from `pages`; document `entity_view` in the workflow-config var description; re-point the export-description constraint (`:137-138`) off the retired `workflow-action-*` pages.
+- `modules/workflows/module.lowdefy.yaml` — drop the three retired shared pages from `pages`; document `entity_view` in the workflow-config var description; document the optional `name_field` on the `entities` var (D10); re-point the export-description constraint (`:137-138`) off the retired `workflow-action-*` pages.
 - `modules/workflows/README.md`, `docs/idioms.md` — document `entity_view` and the workspace layout. README also re-points the Exports table rows for the three retired pages and the "check actions use the shared `workflow-action-*` pages" line (`:300-302,308,317`).
 - **Re-point the "canonical page" / duplicate-`get_workflow_action` constraint comments.** D3 retires the shared pages, so the comments naming them as canonical and as the duplicate-request hazard are now stale — the new `{workflow_type}-check` page is itself a URL-bound `get_workflow_action` page, so the "never drop the modal on a page that already defines `get_workflow_action`" constraint moves to it:
   - `modules/workflows/components/check-action-modal.yaml:6-7,22-25`
@@ -148,13 +201,14 @@ History always renders — it sources its match field from the mandatory `workfl
 
 ## Depends on / amends
 
-- **Part 16 page-templates** (shipped) — edits the four `.yaml.njk` templates in place.
-- **Part 17 shared-pages** (shipped) — retires the three shared `workflow-action-*` pages it introduced; `entities` var unchanged.
+- **Part 16 page-templates** (shipped) — edits the four `.yaml.njk` templates in place; they now also pass the layout-page header vars (`breadcrumbs`, `type`) alongside the existing `title` / `status`.
+- **Layout module** (shipped) — the page header is the layout `page` component's native chrome (breadcrumb + `modules/shared/layout/title-block.yaml`'s eyebrow/title/status pill/back button). No layout-module change: this part only passes vars the component already accepts (D8). The shared `title-block` config is the reuse target for the center-only fallback.
+- **Part 17 shared-pages** (shipped) — retires the three shared `workflow-action-*` pages it introduced; reuses its `workflow-overview` page (the breadcrumb Workflow segment links to it via `?workflow_id=`); extends the `entities` var with an optional `name_field` (D10).
 - **Part 40 check-action surfaces** (shipped) — **splits the surface** (D6): the leaves (signal buttons, comment, status history, mode derivation) are extracted so the modal body and the new workspace check page both compose them. The modal's arrangement is unchanged; the standalone shared check pages are retired and replaced by the per-workflow recomposition.
 - **Part 42 / Part 55** — relies on the `actions-on-entity` + `check-action-click` no-modal degrade path.
 - **Part 46 / Part 50** — reuses `workflows-events-timeline`; the History tab here is the module-baked counterpart to Part 50's app-composed `events_tile`.
 - **Part 24 universal-fields** (shipped) — central to the reshape: the universal-fields card is composed into the shell's RHS for **both** kinds (D2). On form pages this matches Part 24's existing RHS placement; on check pages it moves the card from middle-primary to the RHS. This part owns that placement change for the workspace check page (the modal keeps Part 24's in-body placement).
-- **Part 4 config schema** — adds optional `entity_view` to the workflow grammar + validates `slot` is a block ref; `entity_ref_key` is already a required string in the schema and is reused unchanged for History.
+- **Part 4 config schema** — adds optional `entity_view` to the workflow grammar + validates `slot` is a block ref; adds optional `name_field` to the `entities` var entries (D10) and optional `title` to the workflow grammar (D9, the breadcrumb/eyebrow label); `entity_ref_key` is already a required string in the schema and is reused unchanged for History.
 
 ## Verification
 
@@ -166,7 +220,11 @@ History always renders — it sources its match field from the mandatory `workfl
 - `entity_view.slot` renders read-only — RHS Details tab on form, middle on check; omitting `entity_view` drops the Details tab (form) / leaves the middle decision-only (check) while History (sourced from `entity_ref_key`) still renders.
 - Clicking another action in the left panel navigates to its page (check included) via the degrade path.
 - `entity_view` does not appear in the materialised `workflows_config` consumed by the engine.
-- The modal body is unchanged after the surface split (D6): the in-context `check-action-modal` renders and behaves exactly as before.
+- The modal body is unchanged after the surface split (D6): the in-context `check-action-modal` renders and behaves exactly as before (keeps its own inline title + `Tag`).
+- **Header:** every action page renders the layout page's native chrome — a breadcrumb `Home / {entity type[· name]} / {workflow title} / {action title}` plus a full content-width title bar (workflow-title eyebrow + action title + status pill) above the three columns. The header sits in the same position on every action page, so navigating between actions reads as continuity.
+- The Workflow breadcrumb segment links to `workflow-overview?workflow_id=…` (envelope now carries `workflow_id`); the Entity segment links to the entity page.
+- With `entities[collection].name_field` set, the Entity segment shows "{type} · {name}"; with it unset, it shows the type only and no extra entity query fires.
+- Status `Tag` reflects `status[0].stage` via the `action_statuses` enum; the title reads `message`; the eyebrow reads the baked workflow title.
 - Narrow viewport: the three columns stack to full width.
 - E2E: covered by Part 22 once a workflow fixture declares `entity_view`.
 
@@ -175,6 +233,8 @@ History always renders — it sources its match field from the mandatory `workfl
 - **Current-action highlight.** `ActionSteps` has no `active`/`selected` prop today (`plugins/.../ActionSteps`). Highlighting the current row (as the screenshot does) needs a small block prop fed the loaded `action._id`, or a CSS-only treatment. Lean: add a minimal `activeActionId` prop to `ActionSteps`; defer if it slips scope — the layout works without it.
 - **Slot entity-data fetch.** The read-only `slot` authors its own read off the normalized `_state.entity_id`. Whether the module should standardise that fetch via Part 26's `get_entity_endpoint` (so slots consume one shaped object instead of each writing a request) is left to Part 26; this part only guarantees `_state.entity_id` (set by every action page) and the build-time-baked `entity_collection`.
 - **Right-panel sizing.** Default column spans (e.g. 6/12/6 on `lg`, 24 on `sm`) and a max-height/scroll on the History tab are sensible defaults; tune during implementation against real content.
+- **Full-width vs center-only title bar.** Shipping full-width (D8); the center-only fallback (suppress with `hide_title`, `_ref` the shared `title-block` into the center column) is the documented escape hatch if the full-width bar feels heavy against the three-column workspace. Decide against real content during implementation.
+- **`name_field` resolution scope.** This part resolves the entity instance name only in `GetWorkflowAction` (where the breadcrumb needs it). If `GetEntityWorkflows` / `GetWorkflowOverview` later want the name in their `entity_link`s, extract a shared `buildEntityLink` helper rather than duplicating the lookup.
 
 ## Non-goals
 
