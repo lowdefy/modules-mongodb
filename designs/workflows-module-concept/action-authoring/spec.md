@@ -85,7 +85,7 @@ Every action declares its kind via a required `kind:` field. `kind` is the **lif
 
 Per workflow:
 
-- `type`, `entity_collection`, `display_order` required.
+- `type`, `entity_collection`, `entity_ref_key`, `display_order` required. `entity_ref_key` (e.g. `lead_ids`) is the event-references key for the entity — author-chosen, not derived from `entity_collection`.
 - `starting_actions` required; each entry `{ type, status }` resolves to one of the workflow's `actions[].type` values, with `status` a key in `action_statuses`.
 - `actions` required, non-empty.
 - Action `type` values within a workflow must be unique.

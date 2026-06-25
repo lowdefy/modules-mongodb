@@ -13,7 +13,7 @@ The engine emits a log event on every successful action transition — no author
 
 Every signal that transitions the current action generates a log event. The event's `references` field is derived from the workflow context so it appears on the entity's timeline without any per-action authoring.
 
-The entity reference key is derived from `entity_collection`: strip a trailing `-collection` if present, replace `-` with `_`, append `_ids`. So `leads-collection → leads_ids`, `tickets-collection → tickets_ids`. This matches the convention entity-page timeline components query by.
+The entity reference key is the workflow config's required `entity_ref_key` (e.g. `lead_ids`) — the event-references key for the workflow's entity. It is denormalized onto the workflow doc at start, and the engine writes `{ [entity_ref_key]: [entity_id] }` into the event's references. This is the key entity-page timeline components query by, so the event surfaces on the entity's timeline without per-action authoring.
 
 ## Overriding event metadata
 

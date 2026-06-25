@@ -334,7 +334,7 @@ display:
 references:
   workflow_ids: [<workflow_id>]
   action_ids: [<action_id>]
-  { entity-ref-key }: [<workflow.entity_id>] # entity_collection-derived key, e.g. leads_ids
+  { entity_ref_key }: [<workflow.entity_id>] # the workflow config's entity_ref_key, e.g. lead_ids
 metadata:
   action_type: <action_type>
   workflow_type: <workflow_type>
@@ -348,7 +348,7 @@ The audit entry records the signal the user **fired** against the current action
 
 `display` is keyed by the consuming app's `app_name` (= the events module's `display_key` var, per [events-timeline.yaml](../../../../modules/events/components/events-timeline.yaml)'s `$<display_key>.title` projection). The workflows module exposes its own `app_name` manifest var; the engine reads it from `connection.app_name`.
 
-`{entity-ref-key}` is derived from `workflow.entity_collection`: strip a trailing `-collection` if present, replace remaining `-` with `_`, append `_ids` (so `leads-collection → leads_ids`, `tickets-collection → tickets_ids`). This is the same convention entity-page timeline components query by, so the engine-emitted event surfaces on the entity's timeline without per-action authoring.
+`{entity_ref_key}` is the workflow config's required `entity_ref_key` field (e.g. `lead_ids`) — the event-references key for the workflow's entity. It is denormalized onto the workflow doc at start (`StartWorkflow` copies `workflowConfig.entity_ref_key` onto the doc), and the engine writes `{ [entity_ref_key]: [workflow.entity_id] }` into the event references. This is the same key entity-page timeline components query by, so the engine-emitted event surfaces on the entity's timeline without per-action authoring.
 
 **Override paths:**
 
