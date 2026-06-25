@@ -14,8 +14,8 @@ config:
     _var: key
   type: Box
   layout:
-    contentGutter: 16
-    contentJustify: center
+    gap: 16
+    justify: center
   visible:
     _var:
       key: visible
