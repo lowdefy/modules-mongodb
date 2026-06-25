@@ -22,6 +22,9 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@25.9.1)
+      js-yaml:
+        specifier: 4.1.1
+        version: 4.1.1
       mongodb:
         specifier: ^6.10.0
         version: 6.21.0

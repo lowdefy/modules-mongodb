@@ -1,5 +1,5 @@
 type: onboarding
-# title omitted — derives to "Onboarding" via humanizeSlug (docs/idioms.md#titles).
+# title omitted — derives to "Onboarding" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
 entity_collection: leads-collection
 entity_ref_key: lead_ids
 display_order: 1

@@ -9,6 +9,8 @@
   "scripts": {
     "build": "pnpm -r --filter '!@lowdefy/modules-demo' run build",
     "changeset": "changeset",
+    "docs:check": "node scripts/gen-var-docs.mjs --check && node scripts/gen-llms-txt.mjs --check",
+    "docs:gen": "node scripts/gen-var-docs.mjs && node scripts/gen-llms-txt.mjs",
     "release:version": "pnpm changeset version && node scripts/sync-module-versions.mjs && pnpm install --no-frozen-lockfile",
     "release:publish": "pnpm changeset publish",
     "test": "jest",
@@ -19,6 +21,7 @@
     "@changesets/cli": "2.29.4",
     "@swc/jest": "^0.2.37",
     "jest": "^29.7.0",
+    "js-yaml": "4.1.1",
     "mongodb": "^6.10.0",
     "mongodb-memory-server": "^10.1.2"
   },

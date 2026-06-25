@@ -58,7 +58,10 @@ vars:
       `action_groups`, and `actions` (see
       workflows-module-concept/action-authoring/spec.md). Workflows, actions, and
       action groups accept an optional `title:`; when omitted it is derived from
-      the slug (`type`/`id`) by the title humanizer (see docs/idioms.md#titles).
+      the slug (`type`/`id`) by the title humanizer — splits on `-`/`_`/camelCase,
+      applies Title Case, lowercases minor words mid-string, uppercases acronyms
+      (base set: PO ID URL API CRM SLA KPI VAT PDF CSV FAQ KYC RFQ; extended by
+      `title_acronyms`). Set `title:` only when the default is wrong.
   app_name:
     type: string
     required: true
@@ -109,7 +112,7 @@ vars:
       workflow/action/group slugs. A token whose lowercased form matches an entry
       is fully uppercased in derived titles (e.g. "upload-bom" → "Upload BOM").
       Base set ships in the module; this var extends it. Has no effect on
-      explicitly authored `title:` values. See docs/idioms.md#titles.
+      explicitly authored `title:` values.
   contacts_collection:
     type: string
     default: user-contacts
@@ -117,12 +120,9 @@ vars:
       Collection name the timeline lookup (GetEventsTimeline) joins to resolve
       each event author's avatar (created.user.id → _id, projecting
       profile.picture). Defaults to `user-contacts` — the shared collection
-      where a user IS a contact (same _id space).
-      TODO: this duplicates the collection name owned by the contacts module's
-      `contacts-collection` connection. Ideally the workflow-api connection
-      would derive it from the contacts module rather than re-declaring it here.
-      For now it stays an independent var: a host app that points contacts at a
-      custom collection (via its own connection override) sets this to match.
+      where a user IS a contact (same _id space). Set this to match your
+      contacts collection name if the host app points the contacts module at a
+      custom collection.
 
 exports:
   components:
