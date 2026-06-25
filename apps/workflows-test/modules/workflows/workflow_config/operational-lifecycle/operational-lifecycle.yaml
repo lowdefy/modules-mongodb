@@ -1,0 +1,37 @@
+# operational-lifecycle (Part 22 task 9) — the one browser-free cluster.
+#
+# Three plain kind:check actions in a single group. The spec drives only the
+# operational APIs (start / cancel / close / get-entity-workflows /
+# get-workflow-overview / get-action-group-overview) over real HTTP via the
+# `workflow` fixture and asserts via `mdb` reads — no page navigation.
+#
+# The group `routine` exists so get-action-group-overview returns a non-null
+# group (its documented shape), and so the close sweep can be observed against a
+# group-summarised workflow.
+#
+#   routine-step  — plain check; submit → done (no review verb).
+#   must-finish   — required_after_close: true → survives the close sweep while a
+#                   sibling is swept (the cluster's load-bearing assertion).
+#   optional-step — plain check; swept to not-required on close.
+type: operational-lifecycle
+title: Operational lifecycle
+entity_collection: things-collection
+entity_ref_key: thing_ids
+
+starting_actions:
+  - type: routine-step
+    status: action-required
+  - type: must-finish
+    status: action-required
+  - type: optional-step
+    status: action-required
+
+action_groups:
+  - id: routine
+    title: Routine
+    icon: AiOutlineUnorderedList
+
+actions:
+  - _ref: modules/workflows/workflow_config/operational-lifecycle/routine-step.yaml
+  - _ref: modules/workflows/workflow_config/operational-lifecycle/must-finish.yaml
+  - _ref: modules/workflows/workflow_config/operational-lifecycle/optional-step.yaml

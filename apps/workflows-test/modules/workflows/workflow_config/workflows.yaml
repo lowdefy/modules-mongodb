@@ -7,3 +7,5 @@
 - _ref: modules/workflows/workflow_config/tracker-child/tracker-parent.yaml
 - _ref: modules/workflows/workflow_config/tracker-child/tracker-child-flow.yaml
 - _ref: modules/workflows/workflow_config/field-gallery/field-gallery.yaml
+- _ref: modules/workflows/workflow_config/operational-lifecycle/operational-lifecycle.yaml
+- _ref: modules/workflows/workflow_config/access-verbs/access-verbs.yaml

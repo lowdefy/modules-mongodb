@@ -1,0 +1,21 @@
+# A plain, non-protected check: left open at close time, so the close sweep
+# moves it to not-required (the swept-sibling counterpart to must-finish).
+type: optional-step
+kind: check
+action_group: routine
+sort_order: 30
+description: An optional step that the close sweep marks not-required if still open.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: Complete the optional step, or leave it for the close sweep.
+  done:
+    test:
+      message: Optional step complete.
+  not-required:
+    test:
+      message: Optional step swept to not-required on close.

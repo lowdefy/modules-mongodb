@@ -1,0 +1,26 @@
+# view + edit open to all roles (`true` gates). No `review` key, so submit goes
+# straight to done. Its row + edit button render for every session — the
+# baseline against which the gated actions contrast.
+type: everyone-edits
+kind: form
+action_group: gated
+sort_order: 10
+description: A form action every role can view and edit.
+access:
+  test:
+    view: true
+    edit: true
+form:
+  - key: form.note
+    component: text_input
+    title: Note
+status_map:
+  action-required:
+    test:
+      message: Everyone can edit this.
+  in-progress:
+    test:
+      message: Draft saved.
+  done:
+    test:
+      message: Done — anyone could edit.

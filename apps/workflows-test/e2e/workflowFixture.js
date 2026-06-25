@@ -171,6 +171,31 @@ export const workflowTest = base.extend({
         return post(`workflows/${workflow_type}-close`, { workflow_id }, options);
       },
 
+      // ── Operational read endpoints (Part 19) ───────────────────────────────
+      // Static module-scoped Apis (manifest `api:`), so their endpoint ids are
+      // `workflows/{id}` — not per-workflow. Each returns its documented
+      // `:return:` shape; the operational-lifecycle cluster asserts the
+      // load-bearing keys.
+
+      // GET-style read over POST (the Lowdefy endpoint envelope is always POST):
+      // returns { workflows: [...] } for an entity.
+      async getEntityWorkflows({ entity_id, entity_collection = 'things-collection' }) {
+        return post('workflows/get-entity-workflows', { entity_id, entity_collection });
+      },
+
+      // Returns { workflow, groups } for a workflow_id.
+      async getWorkflowOverview(workflow_id) {
+        return post('workflows/get-workflow-overview', { workflow_id });
+      },
+
+      // Returns { workflow, group, actions } for a workflow_id + group_id.
+      async getActionGroupOverview(workflow_id, group_id) {
+        return post('workflows/get-action-group-overview', {
+          workflow_id,
+          group_id,
+        });
+      },
+
       // ── Assertion helpers (poll the engine collections via mdb) ────────────
       // expect.poll because UI-triggered writes land asynchronously.
 

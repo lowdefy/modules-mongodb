@@ -1,0 +1,20 @@
+# required_after_close: true — a non-blocked instance of this action SURVIVES
+# the close sweep (stays action-required) while a non-protected sibling is swept
+# to not-required. The post-close submit carve-out (D2) keeps it actionable.
+type: must-finish
+kind: check
+action_group: routine
+sort_order: 20
+required_after_close: true
+description: A step that must still be finished after the workflow is closed.
+access:
+  test:
+    view: true
+    edit: true
+status_map:
+  action-required:
+    test:
+      message: This step must still be finished, even after close.
+  done:
+    test:
+      message: Must-finish step complete.

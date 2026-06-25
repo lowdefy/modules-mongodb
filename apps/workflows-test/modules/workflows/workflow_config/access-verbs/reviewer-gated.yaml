@@ -1,0 +1,38 @@
+# view + edit open to all roles; the `review` verb role-gated to [reviewer].
+#
+# `review` is action-global (resolveSignal / hasReview keys on the verb's mere
+# PRESENCE), so any editor's `submit` routes to in-review regardless of role.
+# The role gate then governs the `approve` button (review-only) and the approve
+# signal at the endpoint — a plain editor can submit but cannot approve.
+type: reviewer-gated
+kind: form
+action_group: gated
+sort_order: 20
+description: A form action anyone can submit but only a reviewer can approve.
+access:
+  test:
+    view: true
+    edit: true
+    review:
+      - reviewer
+form:
+  - key: form.summary
+    component: text_input
+    title: Summary
+    required: true
+status_map:
+  action-required:
+    test:
+      message: Submit this for review.
+  in-progress:
+    test:
+      message: Draft saved.
+  in-review:
+    test:
+      message: Awaiting reviewer approval.
+  changes-required:
+    test:
+      message: Reviewer requested changes.
+  done:
+    test:
+      message: Approved by a reviewer.
