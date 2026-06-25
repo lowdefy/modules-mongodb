@@ -239,6 +239,46 @@ test('completed_groups: a group whose status flips to done emits with joined on_
   ]);
 });
 
+test('completed_groups: one submit completing the last open action of two groups emits both, each with its on_complete', () => {
+  // g1 and g2 each hold a single open action. The user submit completes g1's
+  // member; a pre-hook auxiliary submit completes g2's member. Both groups flip
+  // in_progress → done in the one plan, so the diff loop emits both entries.
+  const workflow = makeWorkflow({
+    summary: { done: 0, not_required: 0, total: 2 },
+    groups: [
+      { id: 'g1', status: 'in-progress', summary: { done: 0, not_required: 0, total: 1 } },
+      { id: 'g2', status: 'in-progress', summary: { done: 0, not_required: 0, total: 1 } },
+    ],
+  });
+  const actions = [
+    makeAction({ _id: 'A1', type: 'qualify', action_group: 'g1' }),
+    makeAction({ _id: 'A2', type: 'review-docs', action_group: 'g2' }),
+  ];
+  const config = makeConfig({
+    actions: [
+      { type: 'qualify', kind: 'form', action_group: 'g1', access: { 'test-app': { view: true, edit: true } } },
+      { type: 'review-docs', kind: 'form', action_group: 'g2', access: { 'test-app': { view: true, edit: true } } },
+    ],
+    action_groups: [
+      { id: 'g1', title: 'Group 1', on_complete: { signal: 'progress' } },
+      { id: 'g2', title: 'Group 2', on_complete: { signal: 'notify' } },
+    ],
+  });
+  const plan = planSubmit({
+    loadedState: makeLoadedState({ workflow, actions, config }),
+    preHookResult: {
+      actions: [{ type: 'review-docs', signal: 'submit' }],
+      event_overrides: {},
+      form_overrides: {},
+    },
+    context: makeContext(),
+  });
+  expect(plan.completedGroups).toEqual([
+    { workflow_id: 'W1', id: 'g1', on_complete: { signal: 'progress' } },
+    { workflow_id: 'W1', id: 'g2', on_complete: { signal: 'notify' } },
+  ]);
+});
+
 test('trackerFires: emitted iff workflow auto-completed AND has a parent_action_id', () => {
   const workflow = makeWorkflow({
     parent_workflow_id: 'PW1',

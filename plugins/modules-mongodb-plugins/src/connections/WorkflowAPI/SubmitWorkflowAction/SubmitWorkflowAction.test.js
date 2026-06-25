@@ -424,6 +424,25 @@ describe('per-verb access gate', () => {
   });
 });
 
+describe('user-signal re-fire no-op safety', () => {
+  test('re-firing approve on an already-done action rejects and leaves the action doc unmutated', async () => {
+    // The action is already `done` (the terminal an approve lands on). Firing
+    // `approve` again is a user signal the FSM maps to no transition from
+    // `done`: it clears the per-verb access gate (the user has `review`) but
+    // the plan phase throws signal_not_allowed BEFORE commitPlan runs, so
+    // nothing is written. Pins the end-to-end no-op — a user re-fire mapping to
+    // no transition must not append a status entry or otherwise mutate the doc.
+    await seed({ qualifyStage: 'done' });
+    const before = await mongo.db.collection('actions').findOne({ _id: 'A1' });
+    await expect(
+      SubmitWorkflowAction(buildContext({ request: { action_id: 'A1', signal: 'approve' } })),
+    ).rejects.toMatchObject({ code: 'signal_not_allowed' });
+    const after = await mongo.db.collection('actions').findOne({ _id: 'A1' });
+    expect(after.status).toHaveLength(1);
+    expect(after).toEqual(before);
+  });
+});
+
 describe('hasReview resolution is action-global', () => {
   test('submit from the review-declaring app lands in-review', async () => {
     await seed();

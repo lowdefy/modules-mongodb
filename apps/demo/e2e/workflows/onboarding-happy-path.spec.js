@@ -22,7 +22,16 @@ import { test, expect } from '../fixtures.js';
 // These four steps must be confirmed against a live app + MongoDB via
 // /r:dev-test — a build check is not sufficient to exercise the modal.
 
-test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page }) => {
+// QUARANTINED (Part 22 task 11): this spec is stale against the current
+// navigation model (parts 40/46/48) — it waits for the retired
+// `workflow-action-edit` URL where form actions now use per-action pages
+// (`onboarding-qualify-edit`), clicks the renamed `button_submit_edit`
+// (now `button_submit`), and its contact-picker step depends on Atlas
+// `$search`, which the local/CI memory-server cannot run. Exhaustive coverage
+// now lives in the fully-green `apps/workflows-test` suite. Re-enable only after
+// a live-verified rewrite (/r:dev-test). Skipped (not deleted) so the curated
+// example is rebuilt rather than lost.
+test.skip('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page }) => {
   // Set up admin session up-front — required for the `send-quote` review verb
   // which is gated to `access.demo.review: [admin]`.
   await ldf.user({
@@ -102,9 +111,11 @@ test('onboarding happy path — six-step end-to-end', async ({ ldf, mdb, page })
     }
 
     // lead-view should render the four group titles from the onboarding config.
-    // We are already on lead-view after the redirect above.
+    // We are already on lead-view after the redirect above. Match exactly — a
+    // bare getByText('Qualify') also matches the action's "Qualify the lead."
+    // status message (strict-mode violation); the group title is its own span.
     for (const groupTitle of ['Qualify', 'Quote', 'Purchase order', 'Convert to customer']) {
-      await expect(page.getByText(groupTitle)).toBeVisible();
+      await expect(page.getByText(groupTitle, { exact: true })).toBeVisible();
     }
 
     // ─────────────────────────────────────────────────────────────────────────
