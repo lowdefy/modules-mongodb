@@ -6,3 +6,4 @@
 - _ref: modules/workflows/workflow_config/error-recovery/error-recovery.yaml
 - _ref: modules/workflows/workflow_config/tracker-child/tracker-parent.yaml
 - _ref: modules/workflows/workflow_config/tracker-child/tracker-child-flow.yaml
+- _ref: modules/workflows/workflow_config/field-gallery/field-gallery.yaml

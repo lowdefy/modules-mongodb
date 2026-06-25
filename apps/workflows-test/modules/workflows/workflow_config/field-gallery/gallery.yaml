@@ -1,0 +1,251 @@
+# gallery — a single form action whose `form:` references EVERY field component
+# in modules/workflows/components/fields/ (29) exactly once, with minimal valid
+# config each. This is the roster the render sweep enumerates.
+#
+# Six entries double as the behavior-spec representatives (one per field family):
+#   form.text_input    (text)      — required: true, drives required-validation.
+#   form.selector      (selector)
+#   form.date_selector (date)
+#   form.file_upload   (file)      — NOT required: the test app has no S3, so the
+#                                    upload can never complete; a required upload
+#                                    could never satisfy submit. Render +
+#                                    (non-blocking) coverage only — see the spec.
+#   form.devices       (list)      — controlled_list, required: true. Its submit
+#                                    gate is the required-non-empty rule; the
+#                                    `minItems` var only auto-fills rows (it is
+#                                    not a Validate rule), so it is left at 0 so
+#                                    an empty list genuinely blocks submit.
+#   form.rich_text     (rich-text) — tiptap_input.
+#
+# `review` + `error` verbs are open so the -review / -error page surfaces exist.
+type: gallery
+kind: form
+action_group: fields
+sort_order: 10
+description: One form action exercising the full field-component roster.
+access:
+  test:
+    view: true
+    edit: true
+    review: true
+    error: true
+
+form:
+  # ── Display / structure components (no state binding; plain keys) ──────────
+  - key: gallery_title
+    component: title
+    title: Field gallery
+  # key avoids `gallery_section_*`: the `section` component below emits an inner
+  # divider id `gallery_section_title`, which would collide at render.
+  - key: gallery_divider
+    component: section_title
+    title: All field components
+  - key: gallery_html
+    component: html
+    html: "<p>Every field component, rendered once.</p>"
+  - key: gallery_alert
+    component: alert
+    message: This form exercises the full field roster.
+    type: info
+  - key: gallery_label
+    component: label
+    title: Label wrapper
+    form:
+      - key: gallery_label_html
+        component: html
+        html: "<p>Inside a label.</p>"
+  - key: gallery_box
+    component: box
+    form:
+      - key: gallery_box_html
+        component: html
+        html: "<p>Inside a box.</p>"
+  - key: gallery_section
+    component: section
+    title: Section wrapper
+    form:
+      - key: gallery_section_html
+        component: html
+        html: "<p>Inside a section.</p>"
+  - key: gallery_button
+    component: button
+    title: A button
+    on_click: []
+
+  # ── Text ───────────────────────────────────────────────────────────────────
+  - key: form.text_input
+    component: text_input
+    title: Text input
+    required: true
+  - key: form.text_area
+    component: text_area
+    title: Text area
+  - key: form.rich_text
+    component: tiptap_input
+    title: Rich text
+
+  # ── Numeric ──────────────────────────────────────────────────────────────────
+  - key: form.number
+    component: number
+    title: Number
+
+  # ── Date ─────────────────────────────────────────────────────────────────────
+  - key: form.date_selector
+    component: date_selector
+    title: Date
+  - key: form.date_range_selector
+    component: date_range_selector
+    title: Date range
+
+  # ── Choice ───────────────────────────────────────────────────────────────────
+  - key: form.selector
+    component: selector
+    title: Selector
+    options:
+      - label: Option A
+        value: a
+      - label: Option B
+        value: b
+  - key: form.multiple_selector
+    component: multiple_selector
+    title: Multiple selector
+    options:
+      - label: One
+        value: one
+      - label: Two
+        value: two
+  - key: form.radio_selector
+    component: radio_selector
+    title: Radio
+    options:
+      - label: Yes
+        value: true
+      - label: No
+        value: false
+  - key: form.checkbox_selector
+    component: checkbox_selector
+    title: Checkboxes
+    options:
+      - label: Email
+        value: email
+      - label: SMS
+        value: sms
+  - key: form.button_selector
+    component: button_selector
+    title: Buttons
+    options:
+      - label: Low
+        value: low
+      - label: High
+        value: high
+  - key: form.checkbox_switch
+    component: checkbox_switch
+    title: Switch
+  - key: form.yes_no_selector
+    component: yes_no_selector
+    title: Yes / No
+  - key: form.enum_selector
+    component: enum_selector
+    title: Enum selector
+    enum:
+      open:
+        title: Open
+        color: "#1890ff"
+        icon: AiOutlineFolderOpen
+      closed:
+        title: Closed
+        color: "#52c41a"
+        icon: AiOutlineCheck
+
+  # ── Files ─────────────────────────────────────────────────────────────────────
+  - key: form.file_upload
+    component: file_upload
+    title: File upload
+  - key: form.file_download
+    component: file_download
+    title: File download
+    fileList: []
+
+  # ── Location — EXCLUDED FROM THE ROSTER (documented exception) ──────────────────
+  # The `location` field component (components/fields/location.yaml) renders
+  # `GoogleAPIProvider` + `PlacesAutocomplete` block types. NO published Lowdefy
+  # plugin provides those block types — they exist nowhere in @lowdefy/* or the
+  # local plugins (verified 2026-06-25). location was authored in Part 14 against
+  # block types from a private app's custom plugin that was never published, so
+  # the field is currently UNRENDERABLE in any app using only available plugins.
+  # Including it fails the build with `Block type "PlacesAutocomplete" was used
+  # but is not defined`. It is therefore excluded here — covering it would require
+  # fabricating a stub plugin (fake coverage). This is a field-gallery FINDING:
+  # the module ships an unrenderable field. Roster coverage is 28/29 until the
+  # `location` block dependency is resolved (ship the blocks via a declared
+  # plugin, or remove/fix the field). The render sweep's literal key list names
+  # this exclusion explicitly so the gap stays visible in review.
+
+  # ── Contact (wrap the contacts module's contact-selector export) ───────────────
+  - key: form.contact
+    component: contact
+    title: Contact
+  - key: form.stakeholders
+    component: multiple_contact
+    title: Stakeholders
+
+  # ── Display value + dynamic list ────────────────────────────────────────────
+  - key: form.label_value
+    component: label_value
+    title: Label value
+  - key: form.devices
+    component: controlled_list
+    title: Devices
+    required: true
+    form:
+      # Row children use the FULL `{list}.$.{field}` state path as their key (the
+      # module's documented convention — see components/fields/README.md, e.g.
+      # `form.devices.$._id`). The `$` resolves to the row index at runtime, so
+      # the field binds to `form.devices.0.name` for row 0; a relative key does
+      # NOT populate the list array and so never satisfies the required rule.
+      - key: form.devices.$.name
+        component: text_input
+        title: Device name
+
+# form_review — a small writable section the review page renders below the
+# read-only main form (proves the form_review surface is wired).
+form_review:
+  - key: form_review.verdict
+    component: text_input
+    title: Reviewer verdict
+
+# form_error — the recovery form the -error page renders (with a failure
+# banner). Kept to two representatives; the error page exists only to prove the
+# `error` verb's page surface is reachable, not to re-test every field.
+form_error:
+  - key: form.text_input
+    component: text_input
+    title: Text input
+  - key: form.selector
+    component: selector
+    title: Selector
+    options:
+      - label: Option A
+        value: a
+      - label: Option B
+        value: b
+
+status_map:
+  action-required:
+    test:
+      message: Fill in and submit the form.
+  in-progress:
+    test:
+      message: Draft saved — finish and submit.
+  in-review:
+    test:
+      message: Submitted — awaiting review.
+  changes-required:
+    test:
+      message: Reviewer requested changes.
+  error:
+    test:
+      message: Something went wrong — recover the action.
+  done:
+    test:
+      message: Approved and complete.

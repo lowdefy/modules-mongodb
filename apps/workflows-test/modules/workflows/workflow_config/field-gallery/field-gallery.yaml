@@ -1,0 +1,38 @@
+# field-gallery — the field-component roster cluster (Part 22 task 8).
+#
+# This cluster is the ONE named exception to the suite's "no surface census"
+# principle (design Principle 3): per-field renderability has no other coverage
+# home — a field component no fixture uses has zero coverage — so the single
+# `gallery` action's `form:` exercises every RENDERABLE component in
+# modules/workflows/components/fields/ — 28 of 29. The one exclusion is
+# `location`, which references block types no published plugin provides and is
+# currently unrenderable (see the documented exception in gallery.yaml). It is a
+# roster, not a behavior matrix; behaviors are covered for six family
+# representatives only.
+#
+# The `gallery` action carries the view / edit / review / error verbs so all
+# four emitted page surfaces exist:
+#   field-gallery-gallery-edit    — the writable form (per-field blocks via
+#                                    makeActionsForm; the render sweep targets
+#                                    this page).
+#   field-gallery-gallery-review  — read-only main form (a DataDescriptions
+#                                    block, not per-field) + writable form_review.
+#   field-gallery-gallery-view    — read-only DataDescriptions.
+#   field-gallery-gallery-error   — the recovery form (form_error) + failure
+#                                    banner; only renders at the `error` stage.
+type: field-gallery
+title: Field gallery
+entity_collection: things-collection
+entity_ref_key: thing_ids
+
+starting_actions:
+  - type: gallery
+    status: action-required
+
+action_groups:
+  - id: fields
+    title: Gallery
+    icon: AiOutlineForm
+
+actions:
+  - _ref: modules/workflows/workflow_config/field-gallery/gallery.yaml
