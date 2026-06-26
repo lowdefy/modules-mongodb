@@ -58,7 +58,7 @@ Added after the original 20 were cut. See [Follow-on parts](#follow-on-parts) fo
 | 23  | [close-workflow-handler](parts/_completed/23-close-workflow-handler/design.md)                    | [part 6 review-1 #7](parts/_completed/06-submit-action-writes/review/review-1.md)                                                                                          | M    |
 | 24  | [universal-fields](designs/workflows-module/parts/_completed/24-universal-fields/design.md)       | [ui spec § Page-level rendering of universal fields](../workflows-module-concept/ui/spec.md#page-level-rendering-of-universal-fields)                                      | M    |
 | 25  | [group-overview-page](parts/_completed/25-group-overview-page/design.md)                          | [action-groups spec](../workflows-module-concept/action-groups/spec.md) + [ui spec § Workflow overview page](../workflows-module-concept/ui/spec.md)                       | S    |
-| 28  | [custom-action-kind](parts/_next/28-custom-action-kind/design.md)                                 | [action-authoring spec § Action kinds](../workflows-module-concept/action-authoring/spec.md) + [submit-pipeline spec](../workflows-module-concept/submit-pipeline/spec.md) | S    |
+| 28  | [custom-action-kind](designs/workflows-module/parts/28-custom-action-kind/design.md)              | [action-authoring spec § Action kinds](../workflows-module-concept/action-authoring/spec.md) + [submit-pipeline spec](../workflows-module-concept/submit-pipeline/spec.md) | S    |
 
 S ≈ 1 reviewer-day. M ≈ 2–4 reviewer-days. L ≈ 1–2 weeks (may sub-split).
 

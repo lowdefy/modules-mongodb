@@ -16,7 +16,7 @@ The five kinds all answer one question: **where does the action's resolution com
 
 - `form` — from structured input captured in-app
 - `tracker` — from a child workflow completing (it subscribes)
-- `custom` — from app-defined logic ([Part 28](../../_next/28-custom-action-kind/design.md))
+- `custom` — from app-defined logic ([Part 28](designs/workflows-module/parts/28-custom-action-kind/design.md))
 - `external` — from an external system driving it (planned)
 - `check` — **from a human just declaring "I did the thing"**
 

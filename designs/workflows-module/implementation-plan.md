@@ -19,10 +19,10 @@ Dependency-ordered. Items with no entry in **After** have no unmet dependencies 
 | 11  | [group-on-complete-fanout](parts/_next/11-group-on-complete-fanout/design.md)                                                              | S    | 💤                                          |
 | 24  | [universal-fields](designs/workflows-module/parts/_completed/24-universal-fields/design.md) — real renderer + `UpdateActionFields` handler | M    | 💤                                          |
 | 26  | [entity-data-contract](parts/_next/26-entity-data-contract/design.md)                                                                      | M    | 💤                                          |
-| 28  | [custom-action-kind](parts/_next/28-custom-action-kind/design.md)                                                                          | M    | 💤                                          |
+| 28  | [custom-action-kind](designs/workflows-module/parts/28-custom-action-kind/design.md)                                                       | M    | 💤                                          |
 | 31  | [keyed-auto-unblock-fanout](parts/_next/31-keyed-auto-unblock-fanout/design.md)                                                            | S–M  | 💤 draft / open for discussion              |
 | 33  | [comment-rendering](designs/workflows-module/parts/_completed/33-comment-rendering/design.md)                                              | M    | 💤                                          |
-| 36  | [extra-action-buttons](parts/_next/36-extra-action-buttons/design.md)                                                                      | S–M  | 💤 needs signal-model reconciliation        |
+| 36  | [extra-action-buttons](designs/workflows-module/parts/36-extra-action-buttons/design.md)                                                   | S–M  | 💤 needs signal-model reconciliation        |
 | 41  | [notification-roles-model](parts/_next/41-notification-roles-model/design.md)                                                              | TBD  | 💤 ⚠️ STUB — rethink; supersedes part 34 D9 |
 
 ## Shipped
