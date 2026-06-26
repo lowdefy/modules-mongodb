@@ -111,12 +111,12 @@ vars:
     type: string
     default: user-contacts
     description: >
-      Collection name the timeline lookup (GetEventsTimeline) joins to resolve
-      each event author's avatar (created.user.id → _id, projecting
-      profile.picture). Defaults to `user-contacts` — the shared collection
-      where a user IS a contact (same _id space). Set this to match your
-      contacts collection name if the host app points the contacts module at a
-      custom collection.
+      Collection name the workflow-api connection's contact lookups join to
+      resolve each contact's avatar (the action-page read GetWorkflowAction
+      joins it to project profile.picture). Defaults to `user-contacts` — the
+      shared collection where a user IS a contact (same _id space). Set this to
+      match your contacts collection name if the host app points the contacts
+      module at a custom collection.
 
 exports:
   components:
@@ -133,17 +133,6 @@ exports:
         [{ open: true }]) contract. One instance per page; never drop it on a
         page that already defines a get_workflow_action request (the
         workflow-action-* pages).
-    - id: workflows-events-timeline
-      description: >
-        Action-enriched events timeline panel backed by the GetEventsTimeline
-        engine method — events with cross-stream action cards, workflow cards
-        verb-filtered and engine-linked server-side. The kind-branch click
-        handler is baked in (check cards try to open the shared
-        check_action_modal, every other kind navigates via action.link) —
-        consumers wire no onActionClick. The in-context modal, if wanted, is
-        dropped by the page (not by this component). Vars: reference_field,
-        reference_value (plus optional reverse, contact_page_url,
-        disable_contact_link, compact, s3GetPolicyRequestId).
 
 components:
   - id: action_statuses
@@ -164,9 +153,6 @@ components:
   - id: entity-workflows-refetch
     component:
       _ref: components/entity-workflows-refetch.yaml
-  - id: workflows-events-timeline
-    component:
-      _ref: components/workflows-events-timeline.yaml
 
 connections:
   - _ref: connections/workflows-collection.yaml
