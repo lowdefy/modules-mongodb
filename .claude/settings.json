@@ -1,7 +1,4 @@
 {
-  "enabledPlugins": {
-    "r@resonancy": true
-  },
   "extraKnownMarketplaces": {
     "resonancy": {
       "source": {
