@@ -79,16 +79,17 @@ const schema = {
         'Normalized workflows config — output of the makeWorkflowsConfig resolver. ' +
         'Each entry is one workflow with its actions and action_groups. ' +
         'Consumed by the engine at runtime. ' +
-        'Workflow shape: { type, entity_collection, entity_ref_key, display_order?, starting_actions, actions, action_groups? }. ' +
-        'entity_ref_key is the event-references key for the workflow\'s entity (e.g. "lead_ids") — written into event docs so events surface on the entity. ' +
+        'Workflow shape: { type, entity, display_order?, starting_actions, actions, action_groups? }. ' +
+        'entity is a nested block { connection_id, ref_key, page_id, id_query_key, title } carrying the workflow\'s entity routing wholesale: ' +
+        'connection_id is the entity\'s Lowdefy connection id; ref_key is the event-references key (e.g. "lead_ids") — written into event docs so events surface on the entity; ' +
+        'page_id is the host-app page id rendering the entity; id_query_key is the URL query-string key for the entity\'s primary id (default "_id"); title is the singular entity-kind label. ' +
         'starting_actions entries: { type: string, status: string } where type matches an actions[].type and status is a key in actionsEnum.',
       items: {
         type: 'object',
         additionalProperties: true,
         required: [
           'type',
-          'entity_collection',
-          'entity_ref_key',
+          'entity',
           'starting_actions',
           'actions',
         ],
@@ -149,23 +150,6 @@ const schema = {
         'per request, so this resolves to the current session user ' +
         '(`{ roles: [...], ... }`) at handler entry. ' +
         'The engine reads `user.roles` for verb gate checks.',
-    },
-    entities: {
-      type: 'object',
-      description:
-        'Per-`entity_collection` host-app routing map. Wire from ' +
-        '`_module.var: entities` on connections/workflow-api.yaml. ' +
-        'The engine resolves `workflow.entity_link` from it when building ' +
-        'entity back-links in the overview read methods.',
-      additionalProperties: {
-        type: 'object',
-        additionalProperties: false,
-        properties: {
-          page_id: { type: 'string' },
-          id_query_key: { type: 'string' },
-          title: { type: 'string' },
-        },
-      },
     },
     eventsCollection: {
       type: 'string',

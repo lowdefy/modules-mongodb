@@ -53,10 +53,17 @@ vars:
       Array of workflow definitions consumed by every build-time resolver in this
       module (parts 4, 12, 13, 15). Host app supplies via the entry's `vars` block,
       e.g. `vars: { _ref: workflow_config/workflows.yaml }`. Each entry is a workflow
-      object with `type`, `entity_collection`, `entity_ref_key` (the event-references
-      key for the workflow's entity, e.g. `lead_ids` — required), `starting_actions`,
+      object with `type`, a required `entity:` block, `starting_actions`,
       `action_groups`, and `actions` (see
-      workflows-module-concept/action-authoring/spec.md). Workflows, actions, and
+      workflows-module-concept/action-authoring/spec.md). The `entity:` block carries
+      the workflow's entity routing:
+      - `connection_id` (required) — the entity's Lowdefy connection id (e.g. `leads-collection`).
+      - `ref_key` (required) — the event-references key for the workflow's entity (e.g. `lead_ids`),
+        written into event docs so events surface on the entity.
+      - `page_id` (required) — host-app page id rendering the entity.
+      - `id_query_key` (optional, default `_id`) — URL query-string key for the entity's primary id.
+      - `title` (required) — singular human-readable entity-kind label (e.g. "Lead").
+      Workflows, actions, and
       action groups accept an optional `title:`; when omitted it is derived from
       the slug (`type`/`id`) by the title humanizer — splits on `-`/`_`/camelCase,
       applies Title Case, lowercases minor words mid-string, uppercases acronyms
@@ -72,19 +79,6 @@ vars:
       projection); and (3) keys the per-app action display the engine writes
       onto each action doc — display surfaces read `action.{app_name}.message`
       and `action.{app_name}.links` for the current app's slug.
-  entities:
-    type: object
-    required: true
-    description: >
-      Map keyed by workflow `entity_collection` → `{ page_id, id_query_key, title }`.
-      The module deep-links back into host-app entity pages (workflow-overview back-link,
-      workflow-header entity-kind chrome) using these entries.
-      - `page_id` — host-app page id rendering the entity.
-      - `id_query_key` — URL query string key the entity page expects for its primary id (commonly `_id`).
-      - `title` — singular human-readable entity-kind label (e.g. "Lead", "Ticket").
-      Per-key shape is not statically validated by Lowdefy; part 4's `makeWorkflowsConfig`
-      validator confirms every `entity_collection` referenced in `workflows_config`
-      has a matching key here.
   action_statuses_display:
     type: object
     default: {}
