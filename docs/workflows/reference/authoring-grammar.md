@@ -29,6 +29,9 @@ entity: # required — the workflow's entity wiring
   page_id: <page> # required — host-app page id the back-link navigates to
   id_query_key: <key> # optional — URL query key for the entity id (default _id)
   title: <Label> # required — singular entity-kind label (e.g. Lead)
+  name_field: <dot-path> # optional — entity-doc path to the instance name; adds "· {name}" to the breadcrumb
+entity_view: # optional — build-time, read-only UI hint; never part of the engine config
+  slot: { ... } # a Lowdefy block ref rendering a read-only view of the entity
 title: <string> # optional — human-readable title; derived from slug when omitted
 starting_actions: # required — seed actions at workflow start
   - { type: <slug>, status: action-required | blocked }
@@ -92,7 +95,7 @@ Emits per-verb pages (`-edit`, `-view`, `-review`, `-error`) and a submit endpoi
 
 ### `kind: check`
 
-Uses the shared `workflow-action-*` pages (no per-action pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`, `description`).
+Served by the per-workflow `{workflow_type}-check` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`, `description`).
 
 ```yaml
 - type: send-quote

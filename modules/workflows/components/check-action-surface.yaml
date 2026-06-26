@@ -1,14 +1,16 @@
-# Shared check-action surface (Part 40 — D1).
+# Check-action surface — the in-context modal body ONLY (Part 40 — D1; Part 56 — D6).
 #
-# One body for every check-action container: the three shared pages
-# (workflow-action-edit / -view / -review) and the in-context check-action
-# modal all `_ref` this file. One body, two container types (a full page or a
-# Modal block on an entity page).
+# This file is the body of the standalone in-context check-action modal
+# (components/check-action-modal.yaml) and nothing else. The per-workflow
+# {workflow_type}-check action page is its OWN composition (templates/check.yaml.njk),
+# authored standalone in the three-tier workspace shell — it shares no leaf with
+# this surface (Part 56 — D6: the modal's compact one-card body and the page's
+# three-column spread diverged too far for a shared leaf to pay off; the small
+# duplication is deliberate).
 #
 # State contract — the surface reads exclusively from `_state.current_action.*`.
-# The container (page `onMount` / modal open handler) spreads the
-# `GetWorkflowAction` response into `current_action` and seeds the working
-# inputs:
+# The modal open handler spreads the `GetWorkflowAction` response into
+# `current_action` and seeds the working inputs:
 #   - response top-level: current_action._id, .key, .type, .message,
 #     .status (array; status.0.stage = current stage), .allowed
 #     ({ view, edit, review, error }), .buttons ({ submit, progress,
@@ -29,17 +31,17 @@
 #     and status.0.stage goes undefined. The scalar is bound by no block, so it
 #     survives. The List/rows still read current_action.status[.$] — they only
 #     render when the List is visible (view mode), where the array is present.
-#   - current_action.mode — `edit` | `view` | `review`, set by the container
-#     (pages set a literal in onMount; the modal sets the derived value in its
-#     open handler). The surface gates every mode-dependent block on
-#     `_state: current_action.mode` — mode is NOT an `_ref` var.
+#   - current_action.mode — `edit` | `view` | `review`, set by the modal's open
+#     handler (which derives it from the GetWorkflowAction response). The surface
+#     gates every mode-dependent block on `_state: current_action.mode` — mode is
+#     NOT an `_ref` var.
 #
 # The surface computes no visibility client-side: each signal button reads its
 # single server-resolved `current_action.buttons.{signal}` boolean (D2).
 #
-# Normalisations vs the shipped pages:
-#   - Workflow-closed banner renders in ALL modes (the shipped view page had no
-#     banner; rendering it read-only is informative and keeps one body).
+# Surface conventions:
+#   - Workflow-closed banner renders in ALL modes; rendering it read-only is
+#     informative and keeps one body.
 #   - The signal button bar is an in-flow, right-aligned Box at the bottom of
 #     the card — NOT the layout module's `floating-actions` — because the
 #     surface also renders inside a Modal, where a page-level floating bar is
@@ -65,10 +67,9 @@ blocks:
       message: Workflow closed
       description: This workflow is closed. Updates to this action are no longer accepted.
   # 2. Header — Title + status Tag styled from the action_statuses enum.
-  #    Shown in ALL modes: the surface is the only title source for the modal
-  #    and for the action pages (both use hide_title + content_width and rely on
-  #    the surface for chrome), so gating it to view/review left edit mode with
-  #    no title and no status tag.
+  #    Shown in ALL modes: the surface is the only title source inside the modal
+  #    (the modal has no page chrome), so gating it to view/review left edit mode
+  #    with no title and no status tag.
   - id: action_header
     type: Box
     layout:

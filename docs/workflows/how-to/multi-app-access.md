@@ -113,7 +113,7 @@ Role names in `notification_roles` are resolved by the notifications module's `s
 
 ### 6. Check-action multi-app access
 
-Multi-app access works identically for `kind: check` actions. Check actions use the shared `workflow-action-*` pages (addressed by `?action_id=`). The engine evaluates the caller's app against `access.{app_name}` at submit time:
+Multi-app access works identically for `kind: check` actions. Check actions are served by the per-workflow `{workflow_type}-check` page (addressed by `?action_id=`). The engine evaluates the caller's app against `access.{app_name}` at submit time:
 
 ```yaml
 type: assign-account-manager
