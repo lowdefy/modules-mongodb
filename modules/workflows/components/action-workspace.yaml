@@ -1,0 +1,129 @@
+# Three-tier action workspace shell (Part 56).
+#
+# The shared layout every action page (form templates + the per-workflow check
+# page) `_ref`s, so the column scaffold is identical across page kinds and only
+# the MIDDLE content (and whether the RHS has a Details tab) differs — the
+# "no-jarring-shift" constraint. The shell is LAYOUT-ONLY: it renders whatever
+# block arrays the caller passes into its slots, holds no requests, writes no
+# state, and renders no header (the header is the layout `page` component's
+# native chrome, set by the template — D8).
+#
+#   ┌──────────────┬───────────────────────┬──────────────────────────┐
+#   │ actions-on-  │  middle (caller slot)  │  universal_fields card   │
+#   │ entity       │                        │  Tabs[ Details? History ]│
+#   └──────────────┴───────────────────────┴──────────────────────────┘
+#
+# Vars (slots + baked scalars):
+#   - middle               (required) block array — the action surface.
+#   - universal_fields     block array — the Part 24 universal-fields card the
+#                          caller composes with its own kind-specific vars
+#                          (RHS top, both kinds). Default [].
+#   - details_slot         block array — baked from the workflow's
+#                          `entity_view.slot`. Rendered as the RHS Details tab on
+#                          form pages; check pages pass it empty (their slot is
+#                          in `middle`). Default []. When empty the Details tab
+#                          is omitted (History becomes the sole tab); the Tabs
+#                          wrapper stays so the RHS layout is stable form↔check.
+#   - entity_connection_id scalar — baked from workflow.entity.connection_id
+#                          (the entity's MongoDB connection id), for the left
+#                          `actions-on-entity` panel.
+#   - reference_field      scalar — baked from workflow.entity.ref_key (the
+#                          event-references key), for the History timeline match.
+#
+# State contract — one normalized read. The loaded action lives under different
+# keys per kind (`_state.action` on form pages, `_state.current_action` on the
+# check page), so the shell cannot read a fixed action path. It needs only the
+# entity id, so every action page sets a normalized scalar `_state.entity_id` in
+# its onMount; the shell reads that single fixed path for the left panel, the
+# History reference_value, and the mount gate.
+#
+# Mount sequencing — `actions-on-entity` and the events timeline fire onMount
+# reads off `entity_id`, so the columns must mount AFTER the action loads. The
+# shell gates its render on `_state.entity_id` being non-null so those reads do
+# not fire with a null id on first paint.
+id: action_workspace
+type: Box
+visible:
+  _ne:
+    - _state: entity_id
+    - null
+layout:
+  gap: 16
+blocks:
+  # LEFT — the entity's workflows + steps (current row links to its action page).
+  - id: workspace_left
+    type: Box
+    layout:
+      span: 6
+      sm:
+        span: 24
+    blocks:
+      - _ref:
+          path: components/actions-on-entity.yaml
+          vars:
+            entity_id:
+              _state: entity_id
+            entity_connection_id:
+              _var: entity_connection_id
+  # MIDDLE — the caller-supplied action surface.
+  - id: workspace_middle
+    type: Box
+    layout:
+      span: 12
+      sm:
+        span: 24
+    blocks:
+      _var:
+        key: middle
+        default: []
+  # RIGHT — universal-fields card (top) above a Tabs wrapper (Details? + History).
+  - id: workspace_right
+    type: Box
+    layout:
+      span: 6
+      sm:
+        span: 24
+      gap: 16
+    blocks:
+      _build.array.concat:
+        - _var:
+            key: universal_fields
+            default: []
+        - - id: workspace_rhs_tabs
+            type: Tabs
+            properties:
+              tabs:
+                _build.array.concat:
+                  # Details first (the reference subject), present only when the
+                  # workflow declares an entity_view slot for this page.
+                  - _build.if:
+                      test:
+                        _build.gt:
+                          - _build.array.length:
+                              _var:
+                                key: details_slot
+                                default: []
+                          - 0
+                      then:
+                        - key: details
+                          title: Details
+                      else: []
+                  # History always present.
+                  - - key: history
+                      title: History
+            slots:
+              details:
+                blocks:
+                  _var:
+                    key: details_slot
+                    default: []
+              history:
+                blocks:
+                  - _ref:
+                      module: events
+                      component: events-timeline
+                      vars:
+                        reference_field:
+                          _var: reference_field
+                        reference_value:
+                          _state: entity_id

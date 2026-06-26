@@ -1,7 +1,8 @@
 # Error recovery page for a form action.
 #
 # Build-time vars (from makeActionPages.js): action_config, page_config,
-# page_ids, workflow_type, connection_id. See view.yaml.njk.
+# page_ids, workflow_type, connection_id, workflow_title, reference_field,
+# entity_view_slot, name_field. See view.yaml.njk.
 #
 # Stale-URL allowlist: [error]. Only renders during recovery; any other
 # stage redirects to -view.
@@ -21,6 +22,34 @@ _ref:
       _var:
         key: page_config.title
         default: null
+    type:
+      _var: workflow_title
+    description:
+      _state: action.message
+    breadcrumbs:
+      _ref:
+        path: components/action-breadcrumbs.yaml
+        vars:
+          entity_title:
+            _state: action.entity_link.title
+          entity_name:
+{%- if name_field %}
+            _request: get_entity.0.{{ name_field }}
+{%- else %}
+            null
+{%- endif %}
+          entity_page_id:
+            _state: action.entity_link.pageId
+          entity_url_query:
+            _state: action.entity_link.urlQuery
+          workflow_id:
+            _state: action.workflow_id
+          workflow_title:
+            _var: workflow_title
+          action_label:
+            _var:
+              key: page_config.title
+              default: null
     status:
       _state: action.status.0.stage
     status_enum:
@@ -29,7 +58,7 @@ _ref:
     content_width:
       _var:
         key: page_config.maxWidth
-        default: 750
+        default: null
     requests:
       _build.array.concat:
         - - _ref: requests/get_workflow_action.yaml
@@ -59,6 +88,12 @@ _ref:
               params:
                 action:
                   _request: get_workflow_action
+            # Normalized entity id for the shell's columns.
+            - id: set_entity_id
+              type: SetState
+              params:
+                entity_id:
+                  _request: get_workflow_action.entity.id
             - id: redirect_stale_status
               type: Link
               skip:
@@ -92,40 +127,73 @@ _ref:
               default: []
     blocks:
       _build.array.concat:
-        # Card-interior content — outer-card suppression on form_error[0].form.
-        # Two-column content row: error/recovery body (left) + read-only
-        # universal-fields sidebar (right), gated on universal_fields non-empty.
-        - - id: action_content_row
-            type: Box
-            layout:
-              gap: 16
-            blocks:
-              _build.array.concat:
-                - - id: form_column
-                    type: Box
-                    layout:
-                      span:
-                        _build.if:
-                          test:
-                            _build.gt:
-                              - _build.array.length:
-                                  _var:
-                                    key: action_config.universal_fields
-                                    default: []
-                              - 0
-                          then: 16
-                          else: 24
-                      sm:
-                        span: 24
-                    blocks:
-                      _build.if:
-                        test:
-                          _build.ne:
-                            - _var:
-                                key: action_config.form_error.0.form
-                                default: null
-                            - null
-                        then:
+        # Three-tier shell: left (entity workflows) + middle (error/recovery
+        # body) + RHS (read-only universal-fields card above Details?/History
+        # tabs). Outer-card suppression on form_error[0].form.
+        - - _ref:
+              path: components/action-workspace.yaml
+              vars:
+                entity_connection_id:
+                  _var: connection_id
+                reference_field:
+                  _var: reference_field
+                details_slot:
+                  _var: entity_view_slot
+                middle:
+                  _build.if:
+                    test:
+                      _build.ne:
+                        - _var:
+                            key: action_config.form_error.0.form
+                            default: null
+                        - null
+                    then:
+                      _build.array.concat:
+                        - - id: failure_banner
+                            type: Alert
+                            properties:
+                              type: error
+                              showIcon: true
+                              message:
+                                _state: action.status.0.error_message
+                              description:
+                                _nunjucks:
+                                  template: |
+                                    <pre>{{ metadata }}</pre>
+                                  on:
+                                    metadata:
+                                      _js:
+                                        args:
+                                          metadata:
+                                            _state: action.status.0.error_metadata
+                                        fn: |
+                                          const { metadata } = args;
+                                          return JSON.stringify(metadata, null, 2);
+                        - _var:
+                            key: page_config.formHeader
+                            default: []
+                        - _ref:
+                            resolver: resolvers/makeActionsForm.js
+                            vars:
+                              form:
+                                _var:
+                                  key: action_config.form_error
+                                  default: []
+                              mode: error
+                        - - id: comment
+                            type: TiptapInput
+                            properties:
+                              title: Comment
+                              placeholder: Add a comment about the recovery (optional).
+                        - _var:
+                            key: page_config.formFooter
+                            default: []
+                    else:
+                      - id: error_card
+                        type: Card
+                        layout:
+                          gap: 16
+                        blocks:
                           _build.array.concat:
                             - - id: failure_banner
                                 type: Alert
@@ -166,53 +234,8 @@ _ref:
                             - _var:
                                 key: page_config.formFooter
                                 default: []
-                        else:
-                          - id: error_card
-                            type: Card
-                            layout:
-                              gap: 16
-                            blocks:
-                              _build.array.concat:
-                                - - id: failure_banner
-                                    type: Alert
-                                    properties:
-                                      type: error
-                                      showIcon: true
-                                      message:
-                                        _state: action.status.0.error_message
-                                      description:
-                                        _nunjucks:
-                                          template: |
-                                            <pre>{{ metadata }}</pre>
-                                          on:
-                                            metadata:
-                                              _js:
-                                                args:
-                                                  metadata:
-                                                    _state: action.status.0.error_metadata
-                                                fn: |
-                                                  const { metadata } = args;
-                                                  return JSON.stringify(metadata, null, 2);
-                                - _var:
-                                    key: page_config.formHeader
-                                    default: []
-                                - _ref:
-                                    resolver: resolvers/makeActionsForm.js
-                                    vars:
-                                      form:
-                                        _var:
-                                          key: action_config.form_error
-                                          default: []
-                                      mode: error
-                                - - id: comment
-                                    type: TiptapInput
-                                    properties:
-                                      title: Comment
-                                      placeholder: Add a comment about the recovery (optional).
-                                - _var:
-                                    key: page_config.formFooter
-                                    default: []
-                - _build.if:
+                universal_fields:
+                  _build.if:
                     test:
                       _build.gt:
                         - _build.array.length:
@@ -221,31 +244,24 @@ _ref:
                               default: []
                         - 0
                     then:
-                      - id: sidebar_column
-                        type: Box
-                        layout:
-                          span: 8
-                          sm:
-                            span: 24
-                        blocks:
-                          - _ref:
-                              path: components/universal-fields/universal-fields.yaml
-                              vars:
-                                mode: display
-                                kind: form
-                                state_path: fields
-                                workflow_type: {{ workflow_type }}
-                                show:
-                                  _var: action_config.universal_fields
-                                action_data:
-                                  assignees:
-                                    _state: action.assignees
-                                  assignee_docs:
-                                    _state: action.assignee_docs
-                                  due_date:
-                                    _state: action.due_date
-                                  description:
-                                    _state: action.description
+                      - _ref:
+                          path: components/universal-fields/universal-fields.yaml
+                          vars:
+                            mode: display
+                            kind: form
+                            state_path: fields
+                            workflow_type: {{ workflow_type }}
+                            show:
+                              _var: action_config.universal_fields
+                            action_data:
+                              assignees:
+                                _state: action.assignees
+                              assignee_docs:
+                                _state: action.assignee_docs
+                              due_date:
+                                _state: action.due_date
+                              description:
+                                _state: action.description
                     else: []
         # Floating-actions sticky button bar — single resolve_error button.
         - - _ref:
@@ -365,16 +381,3 @@ _ref:
                               comment:
                                 _state: comment
             else: []
-        # Activity timeline (Part 33) — events for this action, comments inline.
-        - - id: activity_card
-            type: Card
-            properties:
-              title: Activity
-            blocks:
-              - _ref:
-                  module: events
-                  component: events-timeline
-                  vars:
-                    reference_field: action_ids
-                    reference_value:
-                      _state: action._id
