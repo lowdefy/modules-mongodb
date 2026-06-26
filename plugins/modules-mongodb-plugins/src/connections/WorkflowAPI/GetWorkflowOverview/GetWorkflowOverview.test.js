@@ -192,13 +192,13 @@ async function seedAction({
     "test-app": {
       links: {
         view: {
-          pageId: "workflows/workflow-action-view",
+          pageId: "workflows/onboarding-check",
           urlQuery: { action_id: _id },
         },
         edit:
           stage === "action-required"
             ? {
-                pageId: "workflows/workflow-action-edit",
+                pageId: "workflows/onboarding-check",
                 urlQuery: { action_id: _id },
               }
             : null,

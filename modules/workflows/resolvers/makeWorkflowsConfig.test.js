@@ -161,6 +161,112 @@ test("makeWorkflowsConfig: rejects a non-string entity.id_query_key when present
   );
 });
 
+// --- entity.name_field (Part 56 D10) ---------------------------------------
+
+test("makeWorkflowsConfig: entity.name_field non-empty string validates and survives onto the materialized entity block", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, name_field: "company.name" },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.entity.name_field).toBe("company.name");
+});
+
+test("makeWorkflowsConfig: omitted entity.name_field validates (no error)", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [validWorkflow] }),
+  ).not.toThrow();
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect("name_field" in out.entity).toBe(false);
+});
+
+test("makeWorkflowsConfig: rejects a non-string entity.name_field", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, name_field: 42 },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /entity\.name_field must be a non-empty string when present/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /onboarding/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects an empty-string entity.name_field", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, name_field: "" },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /entity\.name_field must be a non-empty string when present/,
+  );
+});
+
+// --- entity_view (Part 56 D2) -----------------------------------------------
+
+test("makeWorkflowsConfig: valid entity_view with an object slot validates and is absent from the materialized output", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity_view: { slot: { _ref: "components/details.yaml" } },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect("entity_view" in out).toBe(false);
+});
+
+test("makeWorkflowsConfig: valid entity_view with an array slot validates (block array)", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity_view: { slot: [{ _ref: "components/details.yaml" }] },
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [workflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: omitted entity_view validates (no error)", () => {
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [validWorkflow] }),
+  ).not.toThrow();
+});
+
+test("makeWorkflowsConfig: rejects entity_view missing slot", () => {
+  const workflow = { ...validWorkflow, entity_view: {} };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /"entity_view" must be an object with a "slot" block ref/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /onboarding/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects entity_view whose slot is not a block ref (string)", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity_view: { slot: "components/details.yaml" },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /"entity_view" must be an object with a "slot" block ref/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects entity_view that is not an object (string)", () => {
+  const workflow = { ...validWorkflow, entity_view: "details" };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /"entity_view" must be an object with a "slot" block ref/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects entity_view that is an array", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity_view: [{ slot: { _ref: "x" } }],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /"entity_view" must be an object with a "slot" block ref/,
+  );
+});
+
 test("makeWorkflowsConfig: blocked_by referencing a declared action type passes", () => {
   const workflow = {
     type: "onboarding",

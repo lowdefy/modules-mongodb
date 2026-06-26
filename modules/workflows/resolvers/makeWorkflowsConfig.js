@@ -597,6 +597,35 @@ function validateWorkflowEvent(workflow) {
   }
 }
 
+// Part 56 D2: optional read-only `entity_view` block carrying `{ slot }` — the
+// block ref rendered as the Details tab (form) / middle (check). It is build-
+// time UI only and never reaches the materialized engine config (it's absent
+// from WORKFLOW_FIELDS, so no strip is needed). Validation only confirms that,
+// when present, `entity_view` is an object whose `slot` is a block ref — the
+// object/array shape Lowdefy `_ref`-resolves. The slot's block tree contents
+// are not validated here; the build walker resolves them when baked into pages.
+function validateEntityView(workflow) {
+  if (!("entity_view" in workflow)) return;
+  const entityView = workflow.entity_view;
+  if (
+    entityView === null ||
+    typeof entityView !== "object" ||
+    Array.isArray(entityView)
+  ) {
+    fail(
+      workflow.type,
+      `"entity_view" must be an object with a "slot" block ref (got: ${JSON.stringify(entityView)}).`,
+    );
+  }
+  const slot = entityView.slot;
+  if (slot === null || typeof slot !== "object") {
+    fail(
+      workflow.type,
+      `"entity_view" must be an object with a "slot" block ref (got slot: ${JSON.stringify(slot)}).`,
+    );
+  }
+}
+
 function validateWorkflow(workflow) {
   if ("entity_type" in workflow) {
     fail(
@@ -654,6 +683,21 @@ function validateWorkflow(workflow) {
       `entity.id_query_key must be a non-empty string when present (got: ${JSON.stringify(entity.id_query_key)}).`,
     );
   }
+
+  // Part 56 D10: optional dot-path to the entity's display name field, read by
+  // GetWorkflowAction to resolve the breadcrumb instance name. When present it
+  // must be a non-empty string; it rides the wholesale entity carry untouched.
+  if (
+    "name_field" in entity &&
+    (typeof entity.name_field !== "string" || entity.name_field === "")
+  ) {
+    fail(
+      workflow.type,
+      `entity.name_field must be a non-empty string when present (got: ${JSON.stringify(entity.name_field)}).`,
+    );
+  }
+
+  validateEntityView(workflow);
 
   if ("title" in workflow && typeof workflow.title !== "string") {
     fail(
