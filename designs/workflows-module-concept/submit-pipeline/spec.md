@@ -26,7 +26,7 @@ Page button (template-shipped button bar)
            12. Return { action_ids, completed_groups, event_id, tracker_fired?, pre_hook_response?, post_hook_response? }
 ```
 
-The current action lands per the signal the user fired; there is no current-action redirect. Pre-hook `actions[]` entries fire signals against *other* actions only.
+The current action lands per the signal the user fired; there is no current-action redirect. Pre-hook `actions[]` entries fire signals against _other_ actions only.
 
 ## `SubmitWorkflowAction` plugin request
 
@@ -89,7 +89,7 @@ routine:
 | `approve`         | `review`                 |
 | `request_changes` | `view`, `edit`, `review` |
 
-`view` has no interaction of its own. This is the access gate (a verb whose role-list the caller must intersect); it is distinct from the FSM's interaction → *target status* resolution below.
+`view` has no interaction of its own. This is the access gate (a verb whose role-list the caller must intersect); it is distinct from the FSM's interaction → _target status_ resolution below.
 
 **`hooks` and `event_overrides` keying:** Both are emitted as per-signal maps because the resolver can't know which signal the runtime payload carries. The handler resolves `hooks[signal]` and `event_overrides[signal]` once on entry and treats them as scalar bags for the rest of the lifecycle. The pre-hook return's `event_overrides` is the unkeyed runtime bag that merges on top. Only button-surfaced signals (the "interactions") carry hooks; engine-internal and cascade signals (`unblock`, `internal_*`) have no hook-dispatch point.
 
@@ -104,12 +104,12 @@ Each button is a template-shipped block that, on click:
 
 **Default v1 button bars** (from [state-machine](../state-machine/design.md) "Templates and buttons"):
 
-| Template | Signals surfaced                          | Notes                                                                                       |
-| -------- | ----------------------------------------- | ------------------------------------------------------------------------------------------- |
-| `edit`   | `submit`, `progress`, `not_required`      | The submitter's working surface. `progress` is restored in v1.                              |
+| Template | Signals surfaced                                   | Notes                                                                                                                                                                                                                                                                                                                |
+| -------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `edit`   | `submit`, `progress`, `not_required`               | The submitter's working surface. `progress` is restored in v1.                                                                                                                                                                                                                                                       |
 | `view`   | Edit link (navigation), `request_changes` (opt-in) | Default landing for `done` actions. `request_changes` on view is opt-in (default hidden) and viewer-fireable by design — the engine accepts it on `view`, `edit`, OR `review` ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md) resolved review-1 finding 7 the other way). |
-| `review` | `approve`, `request_changes`              | The reviewer's surface.                                                                     |
-| `error`  | `resolve_error`                           | The error-handler's surface.                                                                |
+| `review` | `approve`, `request_changes`                       | The reviewer's surface.                                                                                                                                                                                                                                                                                              |
+| `error`  | `resolve_error`                                    | The error-handler's surface.                                                                                                                                                                                                                                                                                         |
 
 Apps that customize a template pick the button bar they want; the FSM is unchanged. Adding a button (e.g. `not_required` on the view page) is a template edit, no engine work.
 
@@ -199,7 +199,7 @@ pre_hook_payload:
 }
 ```
 
-The `force` field is gone (engine D4 removed the priority bypass). Backward moves that used to need `force` — `done → changes-required`, `done → action-required` — are now ordinary FSM transitions reached by firing the appropriate signal (`request_changes`, `activate`, …). To push another action into `error`, fire `actions: [{ type, signal: error }]` (replacing the v0 `{ ..., status: 'error' }` return). To fail the *current* submission, `:reject` / `throw` — there is no way to error the current action from its own pre-hook. The `{ status }` → `{ signal }` migration mapping lives in [state-machine](../state-machine/design.md) "Pre-hook returns".
+The `force` field is gone (engine D4 removed the priority bypass). Backward moves that used to need `force` — `done → changes-required`, `done → action-required` — are now ordinary FSM transitions reached by firing the appropriate signal (`request_changes`, `activate`, …). To push another action into `error`, fire `actions: [{ type, signal: error }]` (replacing the v0 `{ ..., status: 'error' }` return). To fail the _current_ submission, `:reject` / `throw` — there is no way to error the current action from its own pre-hook. The `{ status }` → `{ signal }` migration mapping lives in [state-machine](../state-machine/design.md) "Pre-hook returns".
 
 **Aborts.** A pre-hook aborts the lifecycle by throwing. Two flavours, the choice belongs to the hook author (see [Part 29 § D5](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-propagates-transparently) and [Part 9 § Pre-hook abort modes](../../workflows-module/parts/_completed/09-hook-invocation/design.md)):
 
@@ -268,7 +268,7 @@ The audit entry records the signal the user **fired** and the `status_after` it 
 1. Engine defaults (above).
 2. Action YAML `event.{signal}.{type|display|metadata}` — resolver bakes the whole `event:` block into the endpoint payload's keyed `event_overrides` map; handler resolves `event_overrides[signal]` once on entry.
 3. Pre-hook return `event_overrides` — unkeyed runtime bag, merges on top of (2).
-4. Runtime `comment` — folded **last** into `display.{app_name}.description` (the submitting app), winning the description slot over any static/author/pre-hook description. See [Part 33 — comment rendering](../../workflows-module/parts/33-comment-rendering/design.md).
+4. Runtime `comment` — folded **last** into `display.{app_name}.description` (the submitting app), winning the description slot over any static/author/pre-hook description. See [Part 33 — comment rendering](designs/workflows-module/parts/_completed/33-comment-rendering/design.md).
 
 **Multi-app display.** `display` is app-keyed (`display.{app}.{title,description,info}`) so a single event renders differently per app — a team app shows an exact, user-named title; a customer portal shows a generic one — and an event surfaces in an app's timeline only when `display.{that-app}` exists. Authors write per-app overrides under `event.{signal}.display.{app}.{title,description}` as **plain Nunjucks template strings rendered by the engine** at plan time (the same model as the engine-default title; not `_nunjucks` operators, not read-time templating — per [Part 38](../../workflows-module/parts/_completed/38-engine-rebuild/design.md)). The `display` merge therefore **deep-merges under the app key** (`display → {app} → {title,description}`) so the engine title, an author override, and the comment coexist within one app bucket instead of clobbering.
 
@@ -290,12 +290,12 @@ event:
 
 ## Side effects owned by the engine
 
-| Effect               | When                                              | How                                                                                                                                                                                                                                 |
-| -------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Log event            | Always, after action writes                       | Engine `callApi({ endpointId: connection.endpoints.new_event, payload: <merged event payload> })` — build-resolved opaque id ([call-api/spec.md](../call-api/spec.md))                                                              |
-| Notifications        | Always, after the log event                       | Engine `callApi({ endpointId: connection.endpoints.send_notification, payload: { event_ids: [<event_id>] } })`. The app's `send_routine` (on the notifications module entry) decides recipients — silent no-op when no routine is wired. |
-| Tracker subscription | When workflow status changed                      | Synchronous in-process per engine D3. Engine writes parent tracker action via internal `emitSignal` recursion firing the `internal_mirror_child_*` signal; `SubmitWorkflowAction` invocations don't recurse on themselves. Each level emits `completed_groups` from its recompute diff and accumulates them on the fire chain.                                                                                       |
-| Group `on_complete`  | When groups transition to `done` this call        | Engine `context.callApi(<on_complete-api-id>)` per completed group. Fires for the union of the originating workflow's `completed_groups` and every tracker-propagated parent level's `completed_groups`. Runs after tracker subscription so parent-level completions are visible. |
+| Effect               | When                                       | How                                                                                                                                                                                                                                                                                                                            |
+| -------------------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Log event            | Always, after action writes                | Engine `callApi({ endpointId: connection.endpoints.new_event, payload: <merged event payload> })` — build-resolved opaque id ([call-api/spec.md](../call-api/spec.md))                                                                                                                                                         |
+| Notifications        | Always, after the log event                | Engine `callApi({ endpointId: connection.endpoints.send_notification, payload: { event_ids: [<event_id>] } })`. The app's `send_routine` (on the notifications module entry) decides recipients — silent no-op when no routine is wired.                                                                                       |
+| Tracker subscription | When workflow status changed               | Synchronous in-process per engine D3. Engine writes parent tracker action via internal `emitSignal` recursion firing the `internal_mirror_child_*` signal; `SubmitWorkflowAction` invocations don't recurse on themselves. Each level emits `completed_groups` from its recompute diff and accumulates them on the fire chain. |
+| Group `on_complete`  | When groups transition to `done` this call | Engine `context.callApi(<on_complete-api-id>)` per completed group. Fires for the union of the originating workflow's `completed_groups` and every tracker-propagated parent level's `completed_groups`. Runs after tracker subscription so parent-level completions are visible.                                              |
 
 `entity_update` (the status-quo `submit-action` payload's optional Mongo write to the entity doc) is **dropped**. Apps that need to update the entity do so from a pre/post hook.
 

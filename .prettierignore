@@ -1,0 +1,16 @@
+# Dependencies & lockfiles
+node_modules/
+pnpm-lock.yaml
+
+# Build outputs
+**/dist/
+**/build/
+**/.next/
+**/.lowdefy/
+
+# Generated docs (owned by scripts/gen-*.mjs — see CLAUDE.md)
+docs/llms.txt
+**/reference/vars.md
+
+# Generated changelogs
+**/CHANGELOG.md

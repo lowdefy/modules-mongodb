@@ -32,7 +32,8 @@ source of the routing fields, so `entity_link` is built from `wfConfig.entity`
 
 2. **Resolve `entity_link.name` from `entity.name_field` (null-safe, opt-in).**
    When `wfConfig.entity?.name_field` is a non-empty string and `entity_link` is
-   non-null, run one lightweight projected `findOne` on the entity collection
+   non-null, run one lightweight projected `findDocs` read (`limit: 1`,
+   `[doc] =` destructure) on the entity collection
    (`action.entity_collection`) by `_id: action.entity_id`, projecting only the
    `name_field` dot-path. Read the value at that dot-path from the result and set
    `entity_link.name` to it (or `null` if missing). When `name_field` is unset,
@@ -47,7 +48,7 @@ source of the routing fields, so `entity_link` is built from `wfConfig.entity`
 
 - The response carries `workflow_id` (the action's `workflow_id`).
 - With `wfConfig.entity.name_field` set, `entity_link.name` holds the projected
-  field value (dot-path resolved), and a single projected `findOne` fires.
+  field value (dot-path resolved), and a single projected `findDocs` read fires.
 - With `name_field` unset, `entity_link.name` is `null` and **no** entity query
   fires (assert via the mongo mock call count in the test).
 - Unconfigured / de-configured workflows are unaffected: `entity_link` null →
@@ -65,15 +66,13 @@ source of the routing fields, so `entity_link` is built from `wfConfig.entity`
 - **No connection `schema.js` change.** `name_field` rides through the workflow's
   `entity:` block into the `additionalProperties: true` `workflowsConfig`
   (`schema.js:87,100`), so no strict-schema entry is needed.
-- **`wfConfig.entity.name_field` presence depends on Task 4.** Part 57's resolver
-  lifts `entity.collection`/`entity.ref_key` to flat names and carries the routing
-  remainder; Task 4 ensures that carry preserves `name_field` (wholesale, not
-  whitelisted) so this read resolves. If `wfConfig.entity.name_field` is undefined
-  at runtime, that carry is the thing to check.
-- Depends on Part 57's `entity:` block. If, when implementing, `GetWorkflowAction`
-  still reads `connection.entities[...]` (Part 57 not yet merged), coordinate:
-  the `name_field` source is `wfConfig.entity.name_field` per the design — do not
-  re-introduce a connection-level `entities` read.
+- **`wfConfig.entity.name_field` is present because Part 57 carries the `entity`
+  routing remainder wholesale** (every non-lifted `entity:` field, not a fixed
+  whitelist), so `name_field` rides through to `wfConfig.entity.name_field`. Task 4
+  adds a regression test guarding that carry.
+- Depends on Part 57's `entity:` block — the `name_field` source is
+  `wfConfig.entity.name_field` (resolved by `action.workflow_type`); never a
+  connection-level `entities` read (Part 57 removes that map).
 - Keep `entity_link` shape otherwise unchanged (`pageId`, `urlQuery`, `title`);
   `name` is purely additive.
 - Future cleanup (out of scope): a shared `buildEntityLink` helper across the

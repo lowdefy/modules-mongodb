@@ -123,11 +123,11 @@ actions:
 
 Every action declares its kind explicitly via a **required `kind:` field**. Three values:
 
-| `kind:` value | Required companion block      | Primary content                                                             |
-| ------------- | ----------------------------- | --------------------------------------------------------------------------- |
-| `form`        | `form:` block                 | A domain-specific form schema, rendered as the edit page's main content     |
+| `kind:` value | Required companion block      | Primary content                                                                                  |
+| ------------- | ----------------------------- | ------------------------------------------------------------------------------------------------ |
+| `form`        | `form:` block                 | A domain-specific form schema, rendered as the edit page's main content                          |
 | `check`       | none (no `form`/`tracker`)    | Universal fields + comment + the same nullary signal buttons as form edit, on a shared edit page |
-| `tracker`     | `tracker:` block (Decision 5) | None — display-only inline; status_map link points at the child entity view |
+| `tracker`     | `tracker:` block (Decision 5) | None — display-only inline; status_map link points at the child entity view                      |
 
 ```yaml
 # Form action
@@ -173,35 +173,35 @@ Every action declares an `access:` block that is **one canonical shape**: a map 
 ```yaml
 access:
   my-team-app:
-    view: true                              # any my-team-app user
-    edit: [account-manager, account-rep]    # role-gated
-    review: [account-manager]               # narrower gate
+    view: true # any my-team-app user
+    edit: [account-manager, account-rep] # role-gated
+    review: [account-manager] # narrower gate
   my-customer-app:
-    view: [customer-lead]                   # also role-gated
+    view: [customer-lead] # also role-gated
   # no other app key → action invisible in any other app
-notification_roles:                         # action-root, app-agnostic (see Decision 9 below)
+notification_roles: # action-root, app-agnostic (see Decision 9 below)
   - account-manager
 ```
 
-> **This shape supersedes the previous two-axis model** (a per-app verb *list* plus a single action-wide `access.roles`). The full rationale and decision log are owned by [Part 34 — Action access model](../../workflows-module/parts/_completed/34-action-access-model/design.md); this section restates the committed model.
+> **This shape supersedes the previous two-axis model** (a per-app verb _list_ plus a single action-wide `access.roles`). The full rationale and decision log are owned by [Part 34 — Action access model](../../workflows-module/parts/_completed/34-action-access-model/design.md); this section restates the committed model.
 
 ### Per-app verb-gate map
 
 `access.{app_name}` is an object whose keys are verbs and whose values are role gates:
 
-| Field        | Type                            | Allowed values                                                                                                                                                                            |
-| ------------ | ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| verb (key)   | string                          | `view`, `edit`, `review`, `error`. Vocabulary is closed in v1; unknown verb keys fail build-time validation.                                                                              |
+| Field        | Type                            | Allowed values                                                                                                                                                                             |
+| ------------ | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| verb (key)   | string                          | `view`, `edit`, `review`, `error`. Vocabulary is closed in v1; unknown verb keys fail build-time validation.                                                                               |
 | gate (value) | `true` \| array of role strings | `true` — no role gate, any user of this app passes. A non-empty array — the user's roles for **this app** must intersect the list. Empty array `[]` is invalid; omit the verb key instead. |
 
 The four verbs drive the UI affordances:
 
-| Verb     | Effect                                                                                                                                                            |
-| -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `view`   | Shows the action in `actions-on-entity` and renders read-only detail pages (form-action `-view`, check-action `workflow-action-view`).                                   |
-| `edit`   | Renders the submit form — form-action `-edit`, check-action `workflow-action-edit`. Does **not** imply `view` (verbs are independent — D4 below).                         |
+| Verb     | Effect                                                                                                                                                                     |
+| -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`   | Shows the action in `actions-on-entity` and renders read-only detail pages (form-action `-view`, check-action `workflow-action-view`).                                     |
+| `edit`   | Renders the submit form — form-action `-edit`, check-action `workflow-action-edit`. Does **not** imply `view` (verbs are independent — D4 below).                          |
 | `review` | Renders a dedicated review page (form actions get a per-action `-review`; check actions use the shared `workflow-action-review`). Ships Approve / Request Changes buttons. |
-| `error`  | Renders the recovery page (form-action `-error`). Author-driven error entry lands here only where the app declares the verb.                                      |
+| `error`  | Renders the recovery page (form-action `-error`). Author-driven error entry lands here only where the app declares the verb.                                               |
 
 **Presence/absence is the first gate.** A missing app key means the action has **no access in that app** (no `actions-on-entity` row, no page, no link). A missing verb key under a present app means **no access to that verb** in that app. This removes the old `app-name: []` ceremony — omitting the key is the canonical "no access" expression. Build-time page emission, query-time filtering, and submit-time checks all read the verb's presence first; only present verbs are then evaluated against their role gate.
 
@@ -227,13 +227,13 @@ The build-time validator **lint-warns (does not hard-error)** when an app block 
 
 ### Interaction → accepted verbs
 
-| Interaction       | Accepted verbs (any)          |
-| ----------------- | ----------------------------- |
-| `submit_edit`     | `edit`                        |
-| `not_required`    | `edit`                        |
-| `resolve_error`   | `error`                       |
-| `approve`         | `review`                      |
-| `request_changes` | `view`, `edit`, `review`      |
+| Interaction       | Accepted verbs (any)     |
+| ----------------- | ------------------------ |
+| `submit_edit`     | `edit`                   |
+| `not_required`    | `edit`                   |
+| `resolve_error`   | `error`                  |
+| `approve`         | `review`                 |
+| `request_changes` | `view`, `edit`, `review` |
 
 `request_changes` passes on any of the three ([Part 49](../../workflows-module/parts/_completed/49-request-changes-verb-gate/design.md)): `review` gates the reviewer's _judgement_ power (`approve`, review-page access), while `request_changes` is "flag a problem, send it back" — anyone who can see or work on the action may raise it.
 
@@ -269,9 +269,9 @@ The fields are added to the actions schema and to the reserved-keys list (engine
 
 One more optional field is universal across kinds. It affects how the action surfaces in the entity-page UI:
 
-| Field          | Type     | Description                                                                                                      |
-| -------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `action_group` | `String` | Group ID referenced from the workflow's `action_groups:` list. Drives entity-page grouping and progress rollup.  |
+| Field          | Type     | Description                                                                                                     |
+| -------------- | -------- | --------------------------------------------------------------------------------------------------------------- |
+| `action_group` | `String` | Group ID referenced from the workflow's `action_groups:` list. Drives entity-page grouping and progress rollup. |
 
 > **Superseded by [Part 54 — Workflow action ordering](../../workflows-module/parts/_completed/54-action-ordering/design.md).** Display order is **declaration order**: group position in `action_groups[]`, then action position in `actions[]`, computed server-side at read time. `sort_order` is retired (it was never written onto action docs, so its sort was dead), and the `blocked_by` topological-order fallback described below was **never implemented** and is explicitly rejected — declaration order is the model, not a fallback. The paragraph below is retained only as historical context.
 
@@ -432,7 +432,8 @@ status_map:
     my-team-app:
       message: Complete site setup
       link:
-        pageId: { _module.pageId: { id: workflow-action-edit, module: workflows } }
+        pageId:
+          { _module.pageId: { id: workflow-action-edit, module: workflows } }
         urlQuery: { action_id: true }
   done:
     my-team-app: { message: Site setup completed. }
@@ -448,13 +449,13 @@ The parent tracker action declares `tracker: { workflow_type: site-setup }`. Whe
 
 The module exports five JS resolvers that consume authored YAML at build time:
 
-| Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                          | Used in                                                                              |
-| ----------------------- | ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML (one per (workflow, action, verb))                                                                                                                                                                                                          | `module.lowdefy.yaml` `pages:`                                                       |
+| Resolver                | Reads                                                   | Emits                                                                                                                                                                                                                                                                                                      | Used in                                                                              |
+| ----------------------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `makeActionPages`       | `workflows_config`, `app_name`                          | Array of page YAML (one per (workflow, action, verb))                                                                                                                                                                                                                                                      | `module.lowdefy.yaml` `pages:`                                                       |
 | `makeWorkflowApis`      | `workflows_config`, `app_name`                          | Array of `Api` YAML — one `{workflow_type}-{action_type}-submit` entry per form / check action (bakes in the action's `hooks:` + `event:` blocks as signal-keyed build-time literals; flags `status:` keys in pre-hook returns), plus the resolver-derived internal hook Apis; skipped for tracker actions | `module.lowdefy.yaml` `api:`                                                         |
-| `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection                                                                                                                                                                                                   | `module.lowdefy.yaml` `connections:` (the connection's `properties.workflowsConfig`) |
-| `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name (used inside the page templates)                                                                                                                                                          | Inside templates, called recursively per action (form actions only)                  |
-| `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, default values, field types)                                                                                                                                                                                         | `global.action_form_configs` — read by templates and the workflow-overview page      |
+| `makeWorkflowsConfig`   | `workflows_config`                                      | Runtime config object consumed by the WorkflowAPI connection                                                                                                                                                                                                                                               | `module.lowdefy.yaml` `connections:` (the connection's `properties.workflowsConfig`) |
+| `makeActionsForm`       | An action's `form` field + `components/fields/` library | Block tree for the form, with library components substituted by name (used inside the page templates)                                                                                                                                                                                                      | Inside templates, called recursively per action (form actions only)                  |
+| `makeActionFormConfigs` | `workflows_config`                                      | Per-action form metadata map (validation, default values, field types)                                                                                                                                                                                                                                     | `global.action_form_configs` — read by templates and the workflow-overview page      |
 
 Each resolver lives at `resolvers/{name}.js` in the module package and is invoked via `_ref: { resolver: ..., vars: { ... } }` from the appropriate location in `module.lowdefy.yaml`. Apps don't invoke any of them directly — the module's `module.lowdefy.yaml` does the wiring.
 
@@ -683,7 +684,7 @@ At build time, the form resolver (`makeActionsForm`) walks the array, looks up `
 
 **Why ship as a library, not as `exports.components`.** The components are not consumed via `_module.componentId` from app pages — they're internal building blocks the resolver dereferences. `exports.components` stays as the top-level UI blocks consuming apps drop onto entity pages: `actions-on-entity`, `workflow-header`, `action_role_check` (see [ui](../ui/design.md)). The form library is one layer below that; it never surfaces in app YAML except as a `component:` name string.
 
-**Override + extension.** Apps that need a domain-specific component (e.g. a `device_selector` that hits an app-specific collection) write a **raw inline Lowdefy block** directly in the `form:` array — an entry with no `component:` key, carrying its own `id`, `type` (any plugin block type), and `properties`. The `id` doubles as the state path, the same convention library components apply to `key`, so a raw block composes alongside library components naturally. (There is no `component: <plugin>:name` namespace — `component:` resolves only against the library.) See [Part 58](../../workflows-module/parts/58-form-custom-component-seam/design.md).
+**Override + extension.** Apps that need a domain-specific component (e.g. a `device_selector` that hits an app-specific collection) write a **raw inline Lowdefy block** directly in the `form:` array — an entry with no `component:` key, carrying its own `id`, `type` (any plugin block type), and `properties`. The `id` doubles as the state path, the same convention library components apply to `key`, so a raw block composes alongside library components naturally. (There is no `component: <plugin>:name` namespace — `component:` resolves only against the library.) See [Part 58](designs/workflows-module/parts/_completed/58-form-custom-component-seam/design.md).
 
 Detailed library content is implementation-time material; the v1 list is the floor, and the module adds entries as patterns emerge during real-app adoption.
 
@@ -851,7 +852,7 @@ The recovery form schema **reuses** the action's `form:` block — the user sees
 
 **Buttons.** The error template ships with a single primary "Submit" button wired to `pages.error.events.onSubmit`. Authors can override the button title and add a confirm modal via `pages.error.buttons.submit.{title,modal}`. Multi-button error pages can use `formFooter:` to add additional buttons with their own routines.
 
-**`access` interaction.** The `-error` page is gated identically to the other three verbs (Decision 3): the resolver emits it iff `error` is in the action's `access.{host_app_name}` map. Actions without `error` declared for an app have no recovery surface in that app — an author-driven `error` push still lands on the action, but there is no reachable `-error` page there. The stuck-state visibility concern is addressed by authors declaring `error` explicitly in the relevant app's verb map (this supersedes the earlier draft that emitted `-error` for every form action regardless of access — see [Part 34 § D5](../../workflows-module/parts/_completed/34-action-access-model/design.md)). Per-app suppression of the recovery *link* from other pages is additionally controlled at the status-map level (omit `status_map.error.{app_name}`).
+**`access` interaction.** The `-error` page is gated identically to the other three verbs (Decision 3): the resolver emits it iff `error` is in the action's `access.{host_app_name}` map. Actions without `error` declared for an app have no recovery surface in that app — an author-driven `error` push still lands on the action, but there is no reachable `-error` page there. The stuck-state visibility concern is addressed by authors declaring `error` explicitly in the relevant app's verb map (this supersedes the earlier draft that emitted `-error` for every form action regardless of access — see [Part 34 § D5](../../workflows-module/parts/_completed/34-action-access-model/design.md)). Per-app suppression of the recovery _link_ from other pages is additionally controlled at the status-map level (omit `status_map.error.{app_name}`).
 
 ## Decision 9 — Instanced actions (`key:`)
 
@@ -920,11 +921,11 @@ The legal seed statuses for entries in `starting_actions` are `action-required` 
 ```yaml
 # Canonical shape — from the demo's onboarding workflow
 starting_actions:
-  - { type: qualify, status: action-required }       # entry action
-  - { type: send-quote, status: blocked }            # downstream standard action
-  - { type: schedule-followup, status: blocked }     # downstream standard action
-  - { type: upload-po, status: blocked }             # downstream standard action
-  - { type: track-company-setup, status: blocked }   # downstream standard action
+  - { type: qualify, status: action-required } # entry action
+  - { type: send-quote, status: blocked } # downstream standard action
+  - { type: schedule-followup, status: blocked } # downstream standard action
+  - { type: upload-po, status: blocked } # downstream standard action
+  - { type: track-company-setup, status: blocked } # downstream standard action
   # site-visit is absent — conditional; spawned by qualify's pre-submit hook
   # with { type: site-visit, signal: activate, upsert: true } when needed.
 ```
@@ -955,11 +956,11 @@ Group-ID entries in `blocked_by` resolve as "group status is `done`"; action-typ
 
 **Summary table.**
 
-| Element | May carry `blocked_by`? | May be named in `blocked_by`? |
-|---|---|---|
-| Standard action (always-spawned) | Yes | Yes |
-| Conditional action (hook-spawned, `upsert: true`) | Yes | **No** |
-| Group ID | No (`blocked_by` on groups is ignored) | Yes |
+| Element                                           | May carry `blocked_by`?                | May be named in `blocked_by`? |
+| ------------------------------------------------- | -------------------------------------- | ----------------------------- |
+| Standard action (always-spawned)                  | Yes                                    | Yes                           |
+| Conditional action (hook-spawned, `upsert: true`) | Yes                                    | **No**                        |
+| Group ID                                          | No (`blocked_by` on groups is ignored) | Yes                           |
 
 ## Open Questions
 

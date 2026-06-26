@@ -56,7 +56,7 @@ Part 09 ships **unit tests per task** per the top-level § Testing conventions. 
   - Pre-hook returning `actions: [{ ..., status: 'error' }]`: writes the error transition via the priority path (no `force` needed); log event + notifications fire normally.
   - `pre_hook_response` raw return surfaces on the API response; `null` when no pre-hook declared.
   - `post_hook_response` raw return surfaces; post-hook throw propagates (writes from steps 4–10 stay).
-- **End-to-end coverage** lands in [part 22 — workflows-e2e-suite](../../../22-workflows-e2e-suite/design.md). The integration-layer reject-classification path (`isReject` reaches `runRoutine` and is labelled `'reject'`) depends on the upstream `runRoutine.js` tweak (see [Part 29 § Upstream dependency](../../29-error-model-cleanup/design.md#upstream-dependency)) and is verified there, not here.
+- **End-to-end coverage** lands in [part 22 — workflows-e2e-suite](designs/workflows-module/parts/_completed/22-workflows-e2e-suite/design.md). The integration-layer reject-classification path (`isReject` reaches `runRoutine` and is labelled `'reject'`) depends on the upstream `runRoutine.js` tweak (see [Part 29 § Upstream dependency](../../29-error-model-cleanup/design.md#upstream-dependency)) and is verified there, not here.
 
 ### What's not in scope (deferred per design)
 

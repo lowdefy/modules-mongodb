@@ -4,7 +4,7 @@
 
 Today the engine resolves the per-interaction target status across three merge layers: an engine default, an optional static layer baked into the action YAML (`interactions.{interaction}.status`), and an optional pre-hook return. The static YAML layer ("Layer 2") is the only build-time-baked override channel for status. This part drops it: pre-hooks become the single override channel for status.
 
-> **Scope note.** An earlier draft also dropped the action-YAML `event:` block. That has been pulled out — `event:` stays as a build-time override channel for now. The investigation surfaced a related but distinct question (how the user-supplied `comment` interacts with the events module's timeline rendering) that deserves its own design. See [Part 33 — Comment rendering on the events timeline](../../33-comment-rendering/design.md).
+> **Scope note.** An earlier draft also dropped the action-YAML `event:` block. That has been pulled out — `event:` stays as a build-time override channel for now. The investigation surfaced a related but distinct question (how the user-supplied `comment` interacts with the events module's timeline rendering) that deserves its own design. See [Part 33 — Comment rendering on the events timeline](designs/workflows-module/parts/_completed/33-comment-rendering/design.md).
 
 ## Proposed change
 
@@ -109,7 +109,7 @@ The pre-hook also emits an extra Lowdefy Api at build time (`update-action-quali
 
 ### Out of scope (was previously in scope; pulled out)
 
-- **Action-YAML `event:` block** — stays. The investigation surfaced a related rendering question (whether the user-supplied `comment` should flow into the events timeline's secondary-text channel, and how that interacts with template scoping) that needs its own design before deciding whether the static channel can be safely retired. Tracked under [Part 33 — Comment rendering on the events timeline](../../33-comment-rendering/design.md).
+- **Action-YAML `event:` block** — stays. The investigation surfaced a related rendering question (whether the user-supplied `comment` should flow into the events timeline's secondary-text channel, and how that interacts with template scoping) that needs its own design before deciding whether the static channel can be safely retired. Tracked under [Part 33 — Comment rendering on the events timeline](designs/workflows-module/parts/_completed/33-comment-rendering/design.md).
 
 ### Migration
 
@@ -141,7 +141,7 @@ The hardest churn is **rewriting cross-referencing design documents** (parts 4, 
 - `makeWorkflowApis` emits no `interactions:` keys in `properties:` on any per-action endpoint (snapshot the worked-example demo output).
 - `resolveTargetStatus` resolves to engine default unless a pre-hook returns `status`.
 - `resolveTargetStatus` throws a `UserError(isReject: false)` on a pre-hook `status` return that is not a member of `action_statuses`. Test that no writes have landed when the throw fires (action's `status[0]` unchanged from pre-submit), and that the wrapping endpoint classifies it as `'error'` (not `'reject'`).
-- Worked-example smoke (in [part 22](../../22-workflows-e2e-suite/design.md)): every action with a non-default target status still produces the same submit-time behaviour after any YAML overrides have been ported to pre-hook routines.
+- Worked-example smoke (in [part 22](designs/workflows-module/parts/_completed/22-workflows-e2e-suite/design.md)): every action with a non-default target status still produces the same submit-time behaviour after any YAML overrides have been ported to pre-hook routines.
 
 ## Contract to neighbours
 

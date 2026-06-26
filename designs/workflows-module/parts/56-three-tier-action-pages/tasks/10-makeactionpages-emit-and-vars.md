@@ -21,7 +21,7 @@ Part 56 needs two changes here, feeding the templates from Tasks 8 and 9:
 ## Task
 
 1. **Resolve `workflow_title` once per workflow:** `workflow.title ??
-   humanizeSlug(workflow.type, titleAcronyms)` — used for the `type` eyebrow and
+humanizeSlug(workflow.type, titleAcronyms)` — used for the `type` eyebrow and
    the breadcrumb Workflow segment (kept in lock-step with `makeWorkflowsConfig`'s
    own title resolution).
 
@@ -31,10 +31,10 @@ Part 56 needs two changes here, feeding the templates from Tasks 8 and 9:
    - `reference_field`: `workflow.entity.ref_key`
    - `entity_view_slot`: `workflow.entity_view?.slot ?? []` (baked block array;
      empty when the workflow declares no `entity_view`)
-   (Keep the `action_config`, `workflow_type`, `entity_collection`, `page_ids`,
-   `page_config` vars — but **update the `entity_collection` source read from
-   `workflow.entity_collection` to `workflow.entity.collection`**, since Part 57
-   nests it under the raw `entity:` block. See Notes.)
+     (Keep the `action_config`, `workflow_type`, `entity_collection`, `page_ids`,
+     `page_config` vars. The `entity_collection` var already reads
+     `workflow.entity.collection` — **Part 57 updated that `:86` read** as part of
+     nesting the authored shape; this task does not re-touch it. See Notes.)
 
 3. **Emit the check page.** Restructure `makeActionPages` so that, per workflow,
    in addition to the form pages, it emits a single page when the workflow has at
@@ -46,7 +46,7 @@ Part 56 needs two changes here, feeding the templates from Tasks 8 and 9:
      (`workflow.entity_view?.slot ?? []`), and the baked action title/label the
      check page needs for its header (resolve the check action's title the same
      way form action titles are resolved — `action.title ??
-     humanizeSlug(action.type)`). If a workflow has multiple check actions, still
+humanizeSlug(action.type)`). If a workflow has multiple check actions, still
      emit exactly **one** check page (it derives per `?action_id` at runtime).
 
 4. **Update tests** (`makeActionPages.test.js`): assert check-page emission
@@ -80,12 +80,12 @@ Part 56 needs two changes here, feeding the templates from Tasks 8 and 9:
   and `workflow.entity_view` are read directly (the file's existing comments note
   it re-derives titles for this same raw-read reason).
 - **Part 57 dependency.** Part 57 lands first and moves entity wiring into the
-  nested `entity:` block. The existing `entity_collection: workflow.entity_collection`
-  read at `makeActionPages.js:86` breaks under that change; Part 57's files-changed
-  list omits `makeActionPages.js`, so **either Part 57 fixes `:86` or this task
-  owns the migration to `workflow.entity.collection`**. Either way, after this task
-  the resolver reads `workflow.entity.collection` / `workflow.entity.ref_key` — never
-  the flat names — from the raw config.
+  nested `entity:` block. **Part 57 owns updating the existing
+  `entity_collection: workflow.entity_collection` read at `makeActionPages.js:86`**
+  to `workflow.entity.collection` (it is in Part 57's Files-changed). This task
+  therefore assumes the nested read is already in place and only adds the new
+  `workflow.entity.ref_key` / `workflow.entity_view` reads — no flat-shape
+  compatibility shim (the two parts ship together).
 - Depends on Task 8 (the `check.yaml.njk` template must exist) and Task 9 (the
   form templates must consume the new vars). The page id `{workflow_type}-check`
   must match the engine-link target from Task 2 exactly.

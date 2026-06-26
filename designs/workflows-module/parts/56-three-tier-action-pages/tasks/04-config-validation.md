@@ -49,14 +49,14 @@ breadcrumb/eyebrow label) already exists and is validated (~`:33,591`) — no ch
    `WORKFLOW_FIELDS` and therefore does not appear in the materialized config;
    add/extend a test asserting it is absent from the resolver output.
 
-4. **Ensure `name_field` survives into the materialized `entity` block.** Part 57's
+4. **Confirm `name_field` survives into the materialized `entity` block.** Part 57's
    resolver lifts `entity.collection`/`entity.ref_key` to the flat names and carries
-   the *routing remainder* of the `entity:` block into the materialized `entity`
-   object. For `GetWorkflowAction` (Task 3) to read `wfConfig.entity.name_field`,
-   that remainder must be carried **wholesale** — not whitelisted to only
-   `page_id`/`id_query_key`/`title`. Verify Part 57's carry preserves `name_field`
-   (and adjust it if it whitelists); add a test asserting `name_field` appears on
-   the materialized `entity` block when authored.
+   the _routing remainder_ of the `entity:` block **wholesale** into the materialized
+   `entity` object (every non-lifted `entity:` field, not a fixed whitelist) — so
+   D10's optional `name_field` rides through to `wfConfig.entity.name_field` with no
+   carry change owned here. Add a test asserting `name_field` appears on the
+   materialized `entity` block when authored (a regression guard on Part 57's
+   wholesale carry, which `GetWorkflowAction` in Task 3 depends on).
 
 ## Acceptance Criteria
 
@@ -82,6 +82,6 @@ breadcrumb/eyebrow label) already exists and is validated (~`:33,591`) — no ch
 - This is the validation Part 4 owns (per the design's "Files changed").
 - Depends on Part 57 having added the `entity:` block validation; `name_field`
   validation extends that block's checks rather than introducing a new one.
-- Do not validate the *contents* of the `slot` block tree — only that `slot` is a
+- Do not validate the _contents_ of the `slot` block tree — only that `slot` is a
   block ref. The block tree is resolved by the build walker when baked into pages
   (Task 10).

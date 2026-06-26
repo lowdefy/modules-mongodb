@@ -6,7 +6,7 @@ These four modules each declare an `app_name` manifest var and read it at a hand
 
 `user-admin` and `workflows` are migrated separately (Tasks 3, 4) because they carry extra complexity (the `app_title` default; the resolver).
 
-**Build-time vs runtime for these four** (apply [the rule in tasks.md](tasks.md#the-one-rule-that-governs-every-swap)):
+**Build-time vs runtime for these four** (apply [the rule in tasks.md](designs/app-operator/tasks/tasks.md#the-one-rule-that-governs-every-swap)):
 
 - **`_build.app: slug`** — the single `- - _module.var: app_name` key nested under `_build.object.fromEntries` (event-display map) in each create/update API:
   `companies/api/{create,update}-company.yaml`, `contacts/api/{create,update}-contact.yaml`, `user-account/api/{create,update}-profile.yaml`.
@@ -23,11 +23,12 @@ For **each** of `contacts`, `companies`, `notifications`, `user-account`:
 2. **Module YAML** — replace `_module.var: app_name`:
    - at the `_build.object.fromEntries` key → `_build.app: slug`;
    - everywhere else → `_app: slug`.
-   Re-grep to find the sites: `grep -rn "_module.var: app_name" modules/{module}/`. Confirm zero remain afterward.
+     Re-grep to find the sites: `grep -rn "_module.var: app_name" modules/{module}/`. Confirm zero remain afterward.
 
 3. **Demo vars** — delete the top-level `app_name:` block from `apps/demo/modules/{module}/vars.yaml`.
 
 Known site inventory (re-confirm by grep — counts drift):
+
 - `contacts` — `api/{create,update}-contact.yaml` (incl. 1 `_build.object.fromEntries` key each), `pages/{view,edit}.yaml`.
 - `companies` — `api/{create,update}-company.yaml` (incl. 1 `_build.object.fromEntries` key each).
 - `notifications` — 6 `requests/*.yaml` + `components/unread-count-request.yaml` (all runtime payload defaults).
@@ -52,5 +53,5 @@ Known site inventory (re-confirm by grep — counts drift):
 
 ## Notes
 
-- Do not touch the inline `app_name` field name on `created.{}` stamps or the `_payload: app_name` filter keys — those are stored field / payload names and stay literal. Only the *value* expression migrates.
+- Do not touch the inline `app_name` field name on `created.{}` stamps or the `_payload: app_name` filter keys — those are stored field / payload names and stay literal. Only the _value_ expression migrates.
 - The `_build.object.fromEntries` key is the only build-time site in these four modules. If you find yourself writing `_build.app` anywhere else here, re-check — it's probably runtime.

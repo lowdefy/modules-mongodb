@@ -266,7 +266,7 @@ Add a Part 39 row to [`designs/workflows-module/design.md`](../../../design.md)'
 
 - [state-machine](../../../../workflows-module-concept/state-machine/design.md) — the signal inventory, FSM tables, and the "Default v1 button bars" table this part implements.
 - [Part 38 — Engine rebuild](../38-engine-rebuild/design.md) — the signal contract, `makeWorkflowApis` emitting `signal`, demo config migration. This part depends on its endpoint contract.
-- [Part 24 — Universal fields](../../24-universal-fields/design.md) — decouples form-kind universal-field writes into `update-action-fields-{action_type}`; this part drops `fields` from the submit/progress payloads as hygiene (no dead state, no spurious `^fields\.` validation). Part 24's kind-based guard already prevents form submit from writing those fields, so the drop is not a clobber-prevention requirement.
+- [Part 24 — Universal fields](designs/workflows-module/parts/_completed/24-universal-fields/design.md) — decouples form-kind universal-field writes into `update-action-fields-{action_type}`; this part drops `fields` from the submit/progress payloads as hygiene (no dead state, no spurious `^fields\.` validation). Part 24's kind-based guard already prevents form submit from writing those fields, so the drop is not a clobber-prevention requirement.
 - [Part 36 — Extra action buttons](../../_next/36-extra-action-buttons/design.md) — author-extras bar; rebase notes above.
 - [`ui`](../../../../workflows-module-concept/ui/design.md), [`submit-pipeline`](../../../../workflows-module-concept/submit-pipeline/design.md) — the concept docs this part reconciles.
-- [Part 22 — Workflows e2e suite](../../22-workflows-e2e-suite/design.md) — e2e coverage home.
+- [Part 22 — Workflows e2e suite](designs/workflows-module/parts/_completed/22-workflows-e2e-suite/design.md) — e2e coverage home.

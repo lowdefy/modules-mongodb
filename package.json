@@ -23,7 +23,8 @@
     "jest": "^29.7.0",
     "js-yaml": "4.1.1",
     "mongodb": "^6.10.0",
-    "mongodb-memory-server": "^10.1.2"
+    "mongodb-memory-server": "^10.1.2",
+    "prettier": "^3.8.4"
   },
   "pnpm": {
     "packageExtensions": {

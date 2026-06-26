@@ -1,6 +1,6 @@
 # Part 38 — Carried surfaces (Part 30 salvage + Part 34 absorption)
 
-Surface-by-surface inventory of what Part 38 carries from other parts, extracted from [design.md](design.md) (stubs remain at D14/D16 there). Bare decision references (D3, D4, D8, D13, …) resolve in design.md.
+Surface-by-surface inventory of what Part 38 carries from other parts, extracted from [design.md](designs/workflows-module/parts/_completed/38-engine-rebuild/design.md) (stubs remain at D14/D16 there). Bare decision references (D3, D4, D8, D13, …) resolve in design.md.
 
 ## D14. Salvaged from Part 30
 

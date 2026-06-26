@@ -144,7 +144,7 @@ The resolver synthesizes each emitted hook Api's `auth.roles` directly from `act
 - Post-hook return surfaces on the API response as `post_hook_response`.
 - Post-hook throw: error propagates to caller; writes from steps 4–10 stay (deliberately non-atomic). No `post_hook_error` field on the response (the field does not exist).
 - **Mid-write throw (steps 4–6) while Part 29 Task 5 is unlanded:** the existing catch still fires — `error` transition is force-written on the user-submitted action; response returns `{ ..., error_transition }`. Behaviour unchanged from pre-Part-9. Part 9's tests for the _new_ failure path (step-2 pre-hook throws) explicitly mock at step 2, not mid-write, so they don't depend on Part 29 Task 5 having landed. Once Part 29 Task 5 ships, the post-removal behaviour ("mid-write throw propagates; no `error_transition`; partial writes stay") is verified in Part 29 Task 6.
-- End-to-end coverage lands in [part 22](../../22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
+- End-to-end coverage lands in [part 22](designs/workflows-module/parts/_completed/22-workflows-e2e-suite/design.md). This part's verification is unit-tests + handler-level integration smoke only.
 
 ## Open questions
 

@@ -2,7 +2,7 @@
 
 Reviewed the **current** design (post review-1 resolutions) against the shipped templates
 (`modules/workflows/templates/{edit,view,review,error}.yaml.njk`), the dependency designs
-[Part 24](../../../24-universal-fields/design.md) and [Part 38](../../38-engine-rebuild/design.md),
+[Part 24](designs/workflows-module/parts/_completed/24-universal-fields/design.md) and [Part 38](../../38-engine-rebuild/design.md),
 the form FSM table in [state-machine](../../../../../workflows-module-concept/state-machine/design.md),
 and the Lowdefy `_ref` build-time `key` mechanism.
 
@@ -19,8 +19,8 @@ Two prior-review findings re-confirmed as **sound, no further action**:
   yaml file") covers exactly this. `_ref: { path: enums/button_signal_sources.yaml, key: progress }`
   resolving to the list at build time is valid.
 
-The findings below are about the design's *stated rationale* for dropping `fields`, the
-*scope* of that drop across the four templates, and a structural blind spot in every code
+The findings below are about the design's _stated rationale_ for dropping `fields`, the
+_scope_ of that drop across the four templates, and a structural blind spot in every code
 sample.
 
 ## Correctness / accuracy
@@ -33,7 +33,7 @@ This is the headline. D1 (line 24) and the "Why a dedicated part" prose justify 
 `fields` from the `submit`/`progress` payloads as a **correctness precondition**:
 
 > "Part 24's no-clobber guard in `planActionTransition.js` only `$set`s the fields when
-> `payload.fields` is present, so an *absent* `fields` payload is what tells the engine
+> `payload.fields` is present, so an _absent_ `fields` payload is what tells the engine
 > 'leave them untouched.' … if submit kept sending `fields: { _state: fields }`, the guard's
 > 'present' branch would fire and submit would overwrite whatever the sidebar last saved …
 > defeating the decoupling."
@@ -44,14 +44,14 @@ Both of Part 39's dependencies describe the guard differently — and explicitly
 - **Part 24 design (line 147):** "The rule keys on the action's `kind` … **not** on the
   payload shape, so it cannot be defeated by a stray `fields` payload, and the form template
   dropping `fields` (Part 39) becomes **hygiene** … **rather than a correctness precondition**."
-- **Part 38 design (line 558):** `planActionTransition.js` carries a *kind-agnostic generic
-  passthrough*; Part 24 "layers a **kind-based rule** on top (write the universal fields only
+- **Part 38 design (line 558):** `planActionTransition.js` carries a _kind-agnostic generic
+  passthrough_; Part 24 "layers a **kind-based rule** on top (write the universal fields only
   for `kind: simple`; `kind: form` owns them via its own operation)."
 
 So for a `kind: form` action the planner **never** writes `assignees`/`due_date`/`description`,
 regardless of whether `payload.fields` is present. A stale `fields` payload from form submit is
 **ignored**, not clobbering. Part 39's premise — that an absent payload is what protects the
-sidebar's writes — describes a guard that Part 24 deliberately engineered *not* to exist
+sidebar's writes — describes a guard that Part 24 deliberately engineered _not_ to exist
 (precisely so the protection can't depend on every caller remembering to omit the key —
 CLAUDE.md "One correct way").
 
@@ -64,7 +64,7 @@ inputs on submit, don't post dead state.
 **Fix:** Rewrite D1's rationale (and the matching "Why a dedicated part" paragraph) to match
 Part 24/38: the guard is kind-based; form submit never writes the universal fields; dropping
 `fields` is hygiene (no dead payload, no spurious `^fields\.` validation), not a no-clobber
-correctness requirement. Keep the change; correct the *why*.
+correctness requirement. Keep the change; correct the _why_.
 
 ### 2. The `fields` dead-payload drop is applied to `edit` only — `review` and `error` still send it
 
@@ -76,7 +76,7 @@ other two writable templates still carry it, and the design's Files-changed rows
 are silent about it:
 
 - **`review.yaml.njk`** — `submit_approve` payload sends `fields: { _state: fields }`
-  (`review.yaml.njk:312–313` *and* the modal copy at `:426–427`); `submit_request_changes`
+  (`review.yaml.njk:312–313` _and_ the modal copy at `:426–427`); `submit_request_changes`
   likewise (`:351–352`). Both `Validate` steps include `^fields\.` (`:289–290`, `:403–404`).
   The page primes `_state.fields` in `prime_form_state` (`:100`), and renders universal-fields
   in **`display`** mode (`:125`) — per Part 24's page table (line 86) review is read-only for
@@ -109,13 +109,13 @@ confirm-modal's `onOk` (modal configured). Each copy is a full, independent payl
 The design's D1/D2 code samples and the Files-changed table show only the `else`-branch copy, so
 a literal implementer will migrate one and miss the other. Concretely:
 
-| Template | Button | onClick payload | modal `onOk` payload |
-| -------- | ------ | --------------- | -------------------- |
-| `edit`   | `submit_edit`     | `:242–261` | `:362–381` |
-| `edit`   | `not_required`    | `:310–327` | `:410–427` |
-| `review` | `approve`         | `:294–313` | `:408–427` |
-| `review` | `request_changes` | (modal-only — `:333–352`) | — |
-| `error`  | `resolve_error`   | `:275–294` | `:334–353` |
+| Template | Button            | onClick payload           | modal `onOk` payload |
+| -------- | ----------------- | ------------------------- | -------------------- |
+| `edit`   | `submit_edit`     | `:242–261`                | `:362–381`           |
+| `edit`   | `not_required`    | `:310–327`                | `:410–427`           |
+| `review` | `approve`         | `:294–313`                | `:408–427`           |
+| `review` | `request_changes` | (modal-only — `:333–352`) | —                    |
+| `error`  | `resolve_error`   | `:275–294`                | `:334–353`           |
 
 Each migration item in this part — `interaction:` → `signal:`, dropping `fields`, dropping the
 dead `form_review` key on `error` (review-1 #8), and narrowing the `Validate` regex to
@@ -136,7 +136,7 @@ old `interaction:`/`fields:` shape. (`progress` has no modal, so D2 is unaffecte
 
 D3's guard test (line 177) and the Tests section import the `form` FSM table from the **plugin
 package's public API**, and the design correctly flags this "adds a small export contract on
-Part 38." But Part 38's design (line 569) only states that `tables.js` *exports* the tables at
+Part 38." But Part 38's design (line 569) only states that `tables.js` _exports_ the tables at
 the module level (`FSM_TABLES`, with `simple` aliased to `form`) — its files-changed does **not**
 mention re-exporting them from the plugin package's `index` / public surface. As written, Part 38
 could land with `tables.js` plugin-internal and Part 39's guard test would have nothing to

@@ -4,13 +4,13 @@
 > parameterizable `id` var (default `user-multi-selector`, backward-compatible)
 > and an optional `title` var (default `Users`) so the universal-fields surface
 > can auto-bind it to `{state_path}.assignees`. See
-> [parts/24-universal-fields/design.md](../../24-universal-fields/design.md) task 9.
+> [parts/24-universal-fields/design.md](designs/workflows-module/parts/_completed/24-universal-fields/design.md) task 9.
 
-**Source rationale:** Precursor work split out of [part 24 (universal-fields)](../../24-universal-fields/design.md) action review. Part 24 needs a shared way to pick assignees (Selector) and to render assigned users (avatar + name) on display surfaces; user-account already owns `user-contacts-collection`, `app_name`, and `avatar_colors`, so it's the right home. **Layer:** module-surface (user-account + user-admin). **Size:** S. **Repos:** `modules/user-account/`, `modules/user-admin/`.
+**Source rationale:** Precursor work split out of [part 24 (universal-fields)](designs/workflows-module/parts/_completed/24-universal-fields/design.md) action review. Part 24 needs a shared way to pick assignees (Selector) and to render assigned users (avatar + name) on display surfaces; user-account already owns `user-contacts-collection`, `app_name`, and `avatar_colors`, so it's the right home. **Layer:** module-surface (user-account + user-admin). **Size:** S. **Repos:** `modules/user-account/`, `modules/user-admin/`.
 
 ## Goal
 
-Move the shared user-picker out of user-admin into user-account, and add a companion component for rendering any user's avatar from a user-contacts doc. Reasoning: user-account is universally present (every app has profiles), user-admin is optional (a customer portal admined from a separate team app won't ship user-admin). Components that pick or render *any* user belong in the module every app has.
+Move the shared user-picker out of user-admin into user-account, and add a companion component for rendering any user's avatar from a user-contacts doc. Reasoning: user-account is universally present (every app has profiles), user-admin is optional (a customer portal admined from a separate team app won't ship user-admin). Components that pick or render _any_ user belong in the module every app has.
 
 ## In scope
 
@@ -28,7 +28,7 @@ Update `modules/user-account/module.lowdefy.yaml`:
 - Add the component under `components:` and `exports.components`.
 - (No new request export needed — the request is internal to the component.)
 
-After migration, **delete** the user-admin copies (and remove `user-selector` from user-admin's `components:` / `exports.components`). Note: `user-selector` and `get_users_for_selector` have **no in-repo consumer** — a repo-wide grep finds only the user-admin manifest export entries and one README line, no page or app config — but `user-selector` *is* consumed by external/downstream apps, so it's a real export, not dead code. This is therefore a relocation of an externally-consumed export with no in-repo call sites to audit or rewrite. (Part 24 does **not** consume this single-select component — it uses the new `user-multi-selector` below.) Private downstream apps that `_ref` the old `user-admin/user-selector` path must update; since the repo is pre-stable that's an acceptable break — see "Contract to neighbours".
+After migration, **delete** the user-admin copies (and remove `user-selector` from user-admin's `components:` / `exports.components`). Note: `user-selector` and `get_users_for_selector` have **no in-repo consumer** — a repo-wide grep finds only the user-admin manifest export entries and one README line, no page or app config — but `user-selector` _is_ consumed by external/downstream apps, so it's a real export, not dead code. This is therefore a relocation of an externally-consumed export with no in-repo call sites to audit or rewrite. (Part 24 does **not** consume this single-select component — it uses the new `user-multi-selector` below.) Private downstream apps that `_ref` the old `user-admin/user-selector` path must update; since the repo is pre-stable that's an acceptable break — see "Contract to neighbours".
 
 ### 2. Ship `user-multi-selector` component in user-account
 
@@ -67,7 +67,7 @@ Render an arbitrary user's avatar + name from a user-contacts doc. Distinct from
 **Distinct from `identity-header` too.** `modules/shared/layout/identity-header.yaml` is also an Avatar+name widget, so the two look like twins — they are not, and shouldn't be merged:
 
 - `identity-header` is a shared **file-path fragment** (`_ref: { path: ../shared/layout/identity-header.yaml }`, not a module export). It takes **flat** vars (`avatar_src`, `name`, `email`, `extra`) and renders the heavy header at the top of a detail/edit page — 64px avatar, name, **email**, card chrome — and is consumed within-repo by the view/edit pages of contacts, user-admin, and user-account.
-- `user-avatar` is a user-account **module export**, **doc-shaped** (callers pass a user-contacts doc), and renders a compact inline chip (avatar + name, no email/card) for assignee lists and timelines. It must be an export because its first consumer, Part 24, lives in a *different module* and needs `_ref: { module: user-account, component: user-avatar }`; reaching across module boundaries to identity-header's relative path would break module encapsulation — the very thing this part exists to respect.
+- `user-avatar` is a user-account **module export**, **doc-shaped** (callers pass a user-contacts doc), and renders a compact inline chip (avatar + name, no email/card) for assignee lists and timelines. It must be an export because its first consumer, Part 24, lives in a _different module_ and needs `_ref: { module: user-account, component: user-avatar }`; reaching across module boundaries to identity-header's relative path would break module encapsulation — the very thing this part exists to respect.
 
 They share the `icon: UserOutlined` fallback by coincidence of using the same Avatar block, not by reuse.
 
@@ -105,12 +105,12 @@ blocks:
 
 Vars contract:
 
-| Var         | Type    | Default | Description                                                                  |
-| ----------- | ------- | ------- | ---------------------------------------------------------------------------- |
+| Var         | Type    | Default | Description                                                                                         |
+| ----------- | ------- | ------- | --------------------------------------------------------------------------------------------------- |
 | `user`      | object  | —       | A user-contacts doc (or projection thereof) — needs `profile.picture` and `profile.name`. Required. |
-| `show_name` | boolean | `true`  | Render the name beside the avatar. Set `false` for compact / avatar-only displays. |
+| `show_name` | boolean | `true`  | Render the name beside the avatar. Set `false` for compact / avatar-only displays.                  |
 
-**Note — how avatar images actually work here.** There is no render-time gradient/initials computation for `user-avatar` to do. When a profile or contact is created, `modules/shared/profile/generate-avatar-svg.js.njk` builds a first-letter-on-gradient SVG (color picked once from `avatar_colors` and stored in `profile.avatar_color`) and stores the SVG as a `data:image/svg+xml` URI in `profile.picture`. So `profile.picture` is already a populated image for any created user; `user-avatar` just renders it. The colored-initials *render-time* fallback some surfaces show (e.g. the `EventsTimeline` plugin, which hashes `user.name` into its own palette) is React-internal to that plugin and is intentionally **not** replicated here — for the rare doc with no generated SVG, `user-avatar` falls back to the Avatar block's `icon: UserOutlined`.
+**Note — how avatar images actually work here.** There is no render-time gradient/initials computation for `user-avatar` to do. When a profile or contact is created, `modules/shared/profile/generate-avatar-svg.js.njk` builds a first-letter-on-gradient SVG (color picked once from `avatar_colors` and stored in `profile.avatar_color`) and stores the SVG as a `data:image/svg+xml` URI in `profile.picture`. So `profile.picture` is already a populated image for any created user; `user-avatar` just renders it. The colored-initials _render-time_ fallback some surfaces show (e.g. the `EventsTimeline` plugin, which hashes `user.name` into its own palette) is React-internal to that plugin and is intentionally **not** replicated here — for the rare doc with no generated SVG, `user-avatar` falls back to the Avatar block's `icon: UserOutlined`.
 
 Export under `exports.components`. No new request — callers `_ref` it inline with a user record they already loaded (the assignees array in Part 24's universal-fields component, the workflow timeline's `created_by` block in any future surface, etc.).
 
@@ -137,7 +137,7 @@ Export under `exports.components`. No new request — callers `_ref` it inline w
 
 ## Consumers
 
-- **[Part 24 (universal-fields)](../../24-universal-fields/design.md)** — edit mode `_ref`s `user-multi-selector` (the `assignees` array is multi-valued); display mode `_ref`s `user-avatar` per assignee. **Part 24's design currently names `user-selector` for the assignees edit (its line 172) — that reference must change to `user-multi-selector` when Part 24 is actioned.** It does not consume the single-select `user-selector`.
+- **[Part 24 (universal-fields)](designs/workflows-module/parts/_completed/24-universal-fields/design.md)** — edit mode `_ref`s `user-multi-selector` (the `assignees` array is multi-valued); display mode `_ref`s `user-avatar` per assignee. **Part 24's design currently names `user-selector` for the assignees edit (its line 172) — that reference must change to `user-multi-selector` when Part 24 is actioned.** It does not consume the single-select `user-selector`.
 - **External/downstream apps** — consume `user-selector` (single-select); this part relocates it to user-account (breaking path change, see "Contract to neighbours").
 
 ## Verification

@@ -30,17 +30,18 @@ constraint moves to it.
    - Re-point the export-description constraint that names the retired
      `workflow-action-*` pages (the `check-action-modal` export note ~`:137–141`
      "never drop it on a page that already defines a `get_workflow_action`
-     request (the workflow-action-* pages)") to the new `{workflow_type}-check`
+     request (the workflow-action-\* pages)") to the new `{workflow_type}-check`
      page.
 
 3. **Re-point stale "canonical page" / duplicate-request comments** to the new
    page:
    - `modules/workflows/components/check-action-modal.yaml` (~`:6–7,22–25`) — the
-     "canonical workflow-action-* pages" and the "NEVER drop this on a page that
-     defines get_workflow_action — the workflow-action-* pages" notes.
+     "canonical workflow-action-_ pages" and the "NEVER drop this on a page that
+     defines get_workflow_action — the workflow-action-_ pages" notes.
    - `modules/workflows/components/check-action-surface.yaml` (~`:4`) — the "three
-     shared pages … all `_ref` this file" note (now: the modal body composes the
-     leaves; the workspace check page recomposes them — Tasks 5/8).
+     shared pages … all `_ref` this file" note (now: this file is the standalone
+     in-context modal body only; the workspace check page is its own composition,
+     authored independently — no shared leaves — Task 8 / D6).
 
 4. **README + docs** — `modules/workflows/README.md` and the workflows docs
    (`docs/workflows/...`, e.g. `docs/idioms.md` / the relevant concept/reference

@@ -1,6 +1,6 @@
 # Part 14 — Form components library
 
-> **Deviation (superseded by [Part 58](../../58-form-custom-component-seam/design.md)):** Where this design describes app-specific fields shipping as a namespaced `component: <plugin>:<name>` plugin component, that path was based on a false premise and never rendered (see Part 58). The real escape hatch is a **raw inline Lowdefy block** in the `form:` array. The library mechanism described here is otherwise accurate.
+> **Deviation (superseded by [Part 58](designs/workflows-module/parts/_completed/58-form-custom-component-seam/design.md)):** Where this design describes app-specific fields shipping as a namespaced `component: <plugin>:<name>` plugin component, that path was based on a false premise and never rendered (see Part 58). The real escape hatch is a **raw inline Lowdefy block** in the `form:` array. The library mechanism described here is otherwise accurate.
 
 **Source rationale:** [workflows-module-concept/action-authoring/spec.md](../../../workflows-module-concept/action-authoring/spec.md). **Layer:** resolvers. **Size:** M. **Repo:** `modules/workflows/components/fields/`.
 

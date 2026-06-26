@@ -35,12 +35,11 @@ Close the static-surface gap against `modules/workflows/module.lowdefy.yaml` —
 
 ## Manifest scope — static surface only
 
-This half adds everything in `module.lowdefy.yaml` *except* the two resolver-channel entries that depend on [part 02](../02-dynamic-module-pages/design.md).
+This half adds everything in `module.lowdefy.yaml` _except_ the two resolver-channel entries that depend on [part 02](../02-dynamic-module-pages/design.md).
 
 ### `vars` (final, matching the [concept spec](modules-mongodb/designs/workflows-module-concept/module-surface/spec.md) plus `entities`)
 
 The five vars below match the [concept spec](modules-mongodb/designs/workflows-module-concept/module-surface/spec.md) verbatim. `entities` is **not** in the concept spec — it was introduced by [part 17 shared-pages](modules-mongodb/designs/workflows-module/parts/_completed/17-shared-pages/design.md) (see "`entities` module var" there), which explicitly hands the manifest-level declaration to this part ("part 20 obligation: `vars.entities` declared with `type: object`, `required: true`").
-
 
 - `workflows_config: array` (required) — app's workflow YAML.
 - `app_name: string` (required) — host app deployment name.
@@ -144,7 +143,7 @@ When 20b lands, the demo extension wires the link from the parent tracker action
 
 Per the [CLAUDE.md docs section](modules-mongodb/CLAUDE.md), the README uses the fixed template — Description, Dependencies, How to Use, Exports (Pages / Components / API Endpoints / Connections / Menus), Vars (narrative matching `module.lowdefy.yaml` verbatim), Secrets, Plugins, Notes.
 
-The "Exports" section's *pages* and *api* lists carry the static entries shipped here plus a one-line callout: "Per-action pages (`-edit` / `-view` / `-review` / `-error`) and per-action submit endpoints (`update-action-{action_type}`) ship in part 20b; see [docs/idioms.md](../../docs/idioms.md) anchors if a new idiom emerges." Part 20b updates the README in place when it lands.
+The "Exports" section's _pages_ and _api_ lists carry the static entries shipped here plus a one-line callout: "Per-action pages (`-edit` / `-view` / `-review` / `-error`) and per-action submit endpoints (`update-action-{action_type}`) ship in part 20b; see [docs/idioms.md](../../docs/idioms.md) anchors if a new idiom emerges." Part 20b updates the README in place when it lands.
 
 ## Out of scope / deferred
 
@@ -172,7 +171,7 @@ Every part that ships a static manifest entry referenced here:
 - [Part 23](modules-mongodb/designs/workflows-module/parts/_completed/23-close-workflow-handler/design.md) — `close-workflow` API + handler.
 - [Part 25](modules-mongodb/designs/workflows-module/parts/_completed/25-group-overview-page/design.md) — `group-overview` page + `get-action-group-overview` API.
 
-Does **not** depend on parts [01](../01-call-api-primitive/design.md), [02](../02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../../14-form-components-library/design.md), [15](../../15-resolver-form-builder/design.md), [16](../16-page-templates/design.md), [24](../../24-universal-fields/design.md), or [28](../../_next/28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
+Does **not** depend on parts [01](../01-call-api-primitive/design.md), [02](../02-dynamic-module-pages/design.md), [12](../12-resolver-pages/design.md), [13](../13-resolver-apis/design.md), [14](../../14-form-components-library/design.md), [15](../../15-resolver-form-builder/design.md), [16](../16-page-templates/design.md), [24](designs/workflows-module/parts/_completed/24-universal-fields/design.md), or [28](../../_next/28-custom-action-kind/design.md). Those land via [part 20b](../20b-module-manifest-dynamic/design.md) or are independent of this manifest split.
 
 ## Verification
 

@@ -11,7 +11,7 @@
 > independent of form submit); `view/review/error` render it `mode: display`.
 > All four pass `workflow_type` / `show` (and edit additionally `action_id` /
 > `allowed_edit` / `on_complete`). See
-> [parts/24-universal-fields/design.md](../../24-universal-fields/design.md) and its task 11.
+> [parts/24-universal-fields/design.md](designs/workflows-module/parts/_completed/24-universal-fields/design.md) and its task 11.
 
 **Source rationale:** [workflows-module-concept/ui/spec.md](../../../workflows-module-concept/ui/spec.md), [workflows-module-concept/submit-pipeline/spec.md](../../../workflows-module-concept/submit-pipeline/spec.md). **Layer:** UI delivery. **Size:** M. **Repo:** `modules/workflows/templates/`.
 
@@ -79,12 +79,12 @@ Every template runs a status-stage guard in `onMount` after `get_action` resolve
 
 The allowlists are template-specific knowledge — they don't reduce cleanly to status priority or to a per-stage flag — so they're hardcoded at the top of each template as a single constant array:
 
-| Template          | Allowed stages                                       | Notes                                                                                                                  |
-| ----------------- | ---------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| `edit.yaml.njk`   | `[action-required, in-progress, changes-required]`   | Pre-review writable states. Escape hatch: `_input: skip_status_redirect` (set by the review-page Edit-button link).    |
-| `view.yaml.njk`   | (no guard)                                           | View is always reachable; renders read-only at any stage.                                                              |
-| `review.yaml.njk` | `[in-review, error]`                                 | `error` is included so reviewers can see the action while it's mid-recovery; the engine-side recovery flow handles it. |
-| `error.yaml.njk`  | `[error]`                                            | Only renders during recovery; everything else redirects to `-view`.                                                    |
+| Template          | Allowed stages                                     | Notes                                                                                                                  |
+| ----------------- | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `edit.yaml.njk`   | `[action-required, in-progress, changes-required]` | Pre-review writable states. Escape hatch: `_input: skip_status_redirect` (set by the review-page Edit-button link).    |
+| `view.yaml.njk`   | (no guard)                                         | View is always reachable; renders read-only at any stage.                                                              |
+| `review.yaml.njk` | `[in-review, error]`                               | `error` is included so reviewers can see the action while it's mid-recovery; the engine-side recovery flow handles it. |
+| `error.yaml.njk`  | `[error]`                                          | Only renders during recovery; everything else redirects to `-view`.                                                    |
 
 If a new status is added to `global.action_statuses`, the template author decides whether it belongs in any of these allowlists. There's no automatic propagation. The intent is that adding a status is rare and deserves a deliberate review of the template surfaces it touches.
 
@@ -108,8 +108,8 @@ All interaction buttons are additionally gated on `_state.action_allowed === tru
 
 **Navigation buttons** are a separate category — they don't fire interaction events. One navigation button ships:
 
-| Button | Template          | Action            | Default render rule                                                                                                            |
-| ------ | ----------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Button | Template          | Action            | Default render rule                                                                                                                                                                                                        |
+| ------ | ----------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Edit` | `review.yaml.njk` | `Link` to `-edit` | Renders iff `page_ids.edit` is defined (i.e. edit verb in this app's access list). Lets reviewers round-trip back to the edit page for small fixes without bouncing the action back to the assignee via `request_changes`. |
 
 The `Edit` button targets `page_ids.edit` with `input: { skip_status_redirect: true }` so the edit page's stale-URL guard (allowlist `[action-required, in-progress, changes-required]`) doesn't immediately redirect away when the action is sitting in `in-review`.
@@ -118,12 +118,12 @@ The `Edit` button targets `page_ids.edit` with `input: { skip_status_redirect: t
 
 Authors override per-button chrome via `pages.{verb}.buttons.{name}.*` on the action YAML. Part 12's resolver lifts the whole `pages.{verb}` slice into `page_config`, so templates read `_var: page_config.buttons.{name}.{knob}`. Defaults apply when the author hasn't set the knob.
 
-| Knob       | Type          | Default     | Buttons it applies to                                                                | Effect                                                                                                                                                                                                |
-| ---------- | ------------- | ----------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `visible`  | boolean       | see render rule above | every interaction button + `Edit`                                          | Hides the button when `false`. Composed with `_state.action_allowed === true` on interaction buttons. For `not_required` the default is `false` (opt-in); for everything else `true`.                  |
-| `disabled` | boolean       | `false`     | every interaction button + `Edit`                                                    | Greys the button out without removing it from the layout — for "show but block until precondition" UX (contrast with `visible: false` which removes it entirely).                                       |
-| `title`    | string        | per-button  | `resolve_error` (error-page `submit`) — the one button whose copy varies per app    | Overrides the button label. v0 parity: only the error page exposes this; the other interaction buttons have fixed labels (Submit, Mark Not Required, Approve, Request Changes, Edit) for consistency. |
-| `modal`    | object / null | `null`      | `submit_edit`, `not_required`, `resolve_error`                                       | When present, opens a confirm modal before firing. Shape: `{ title?: string, content?: string }`. v0 parity for `edit.buttons.submit.modal` + `edit.buttons.not_required.modal` + `error.buttons.submit.modal`. Approve and request_changes have their own dedicated modals; `Edit` is a pure link with no confirm step. |
+| Knob       | Type          | Default               | Buttons it applies to                                                            | Effect                                                                                                                                                                                                                                                                                                                   |
+| ---------- | ------------- | --------------------- | -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `visible`  | boolean       | see render rule above | every interaction button + `Edit`                                                | Hides the button when `false`. Composed with `_state.action_allowed === true` on interaction buttons. For `not_required` the default is `false` (opt-in); for everything else `true`.                                                                                                                                    |
+| `disabled` | boolean       | `false`               | every interaction button + `Edit`                                                | Greys the button out without removing it from the layout — for "show but block until precondition" UX (contrast with `visible: false` which removes it entirely).                                                                                                                                                        |
+| `title`    | string        | per-button            | `resolve_error` (error-page `submit`) — the one button whose copy varies per app | Overrides the button label. v0 parity: only the error page exposes this; the other interaction buttons have fixed labels (Submit, Mark Not Required, Approve, Request Changes, Edit) for consistency.                                                                                                                    |
+| `modal`    | object / null | `null`                | `submit_edit`, `not_required`, `resolve_error`                                   | When present, opens a confirm modal before firing. Shape: `{ title?: string, content?: string }`. v0 parity for `edit.buttons.submit.modal` + `edit.buttons.not_required.modal` + `error.buttons.submit.modal`. Approve and request_changes have their own dedicated modals; `Edit` is a pure link with no confirm step. |
 
 ### `not_required` opt-in
 
@@ -145,13 +145,13 @@ Every interaction button posts the same payload shape to `update-action-{action_
 
 ```yaml
 payload:
-  action_id:    { _request: get_action._id }
-  interaction:  <fixed string per button — see vocabulary table>
-  current_key:  { _request: get_action.key }
-  form:         { _state: form }
-  form_review:  { _state: form_review }
-  fields:       { _state: fields }
-  comment:      { _state: comment }
+  action_id: { _request: get_action._id }
+  interaction: <fixed string per button — see vocabulary table>
+  current_key: { _request: get_action.key }
+  form: { _state: form }
+  form_review: { _state: form_review }
+  fields: { _state: fields }
+  comment: { _state: comment }
 ```
 
 State-path conventions (per the CLAUDE.md rule "Input block IDs match data paths"):
@@ -229,11 +229,12 @@ Authors customize per-verb page chrome via `pages.{verb}.*` on the action YAML. 
 - **Outer-card suppression rule (v0 parity).** `edit.yaml.njk` and `error.yaml.njk` render `_ref: { module: layout, component: card }` around the card-interior content by default, and suppress the outer card when `action_config.form[0]?.form` is truthy (matches v0's `!vars.form[0]?.form` at [`dist/.../makeActionsForm.js:12`](../../../../dist/workflows-module/ui/current_workflow_utils/resolvers/makeActionsForm.js)). Verify with two fixtures: (a) a form starting with `text_input` (no `form:` slot) — outer card renders. (b) a form starting with `section` (has `form:`) — outer card suppressed; the section's own inner Card provides the visual framing. Card chrome itself (shadow, gutter, padding) comes from the host app's layout-module composition — no v0 token parity here; that's the layout module's concern, not part 16's.
 - **Manual a11y pass.** Most of the a11y baseline is inherited from Lowdefy's Ant Design–backed blocks: inputs render `<label>` + `aria-required` / `aria-invalid` from Lowdefy's `required` / `validate` props, buttons render real `<button>` with `disabled` / `aria-disabled`, modals trap focus and restore on close (`role="dialog"`, `aria-modal="true"`), keyboard tab order follows DOM. Don't re-litigate any of that here. The template-level checks worth running by hand:
   - Required-field visible indicator (asterisk) renders for required inputs — verifies Lowdefy's `required: true` is mapped to Ant Design's `Form.Item required`.
-  - The submit button conveys *why* it's disabled when blocked (e.g. tooltip, hint text, or a state-based error message). A `disabled` button alone leaves the user guessing; the form needs to surface the precondition.
+  - The submit button conveys _why_ it's disabled when blocked (e.g. tooltip, hint text, or a state-based error message). A `disabled` button alone leaves the user guessing; the form needs to surface the precondition.
   - End-to-end keyboard flow: tab from form → universal fields → form body → comment → buttons; pressing Enter on submit opens the confirm modal (if configured); focus lands inside the modal; closing the modal returns focus to the submit button. Modal-trap is Ant Design's job, but the round-trip across `layout.floating-actions` + modal + form is composition this part owns.
   - Sticky button-bar (`layout.floating-actions`, an `Affix` block) doesn't reorder the tab sequence relative to the form below it.
 
   No automated a11y assertions here — that belongs in part 22's e2e suite if it lands. Part 16's verification is unit-tests + this manual sweep.
+
 - End-to-end coverage lands in [part 22](../22-workflows-e2e-suite/design.md). This part's verification is the demo-app render checks + outer-card suppression fixtures + manual a11y sweep above — no unit-tests (templates are YAML, not JS) and no handler-level integration (the engine path is exercised end-to-end via part 22).
 
 ## Open questions
