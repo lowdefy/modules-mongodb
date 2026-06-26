@@ -6,10 +6,8 @@ routine:
     connectionId:
       _module.connectionId: workflow-api
     properties:
-      entity_collection:
-        _payload: entity_collection
-      entity_id:
-        _payload: entity_id
+      entity:
+        _payload: entity
 
   - :return:
       workflows:

@@ -478,10 +478,9 @@ test("makeWorkflowApis: {type}-start — StartWorkflow step, static workflow_typ
   // workflow_type is a static literal — the endpoint is type-scoped, callers
   // no longer pass it in the payload.
   expect(step.properties.workflow_type).toBe("onboarding");
-  expect(step.properties.entity_id).toEqual({ _payload: "entity_id" });
-  expect(step.properties.entity_collection).toEqual({
-    _payload: "entity_collection",
-  });
+  // Narrow pick: only entity.id is mapped from the payload; the connection id
+  // is sourced from config inside StartWorkflow (Part 59).
+  expect(step.properties.entity).toEqual({ id: { _payload: "entity.id" } });
   expect(step.properties.parent_action_id).toEqual({
     _payload: "parent_action_id",
   });

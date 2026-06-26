@@ -220,8 +220,12 @@ function emitStartEndpoint(workflow, renderConfig) {
           // Static literal — the endpoint is type-scoped, so callers no
           // longer pass workflow_type in the payload.
           workflow_type: workflow.type,
-          entity_id: { _payload: "entity_id" },
-          entity_collection: { _payload: "entity_collection" },
+          // Narrow pick: only entity.id is mapped from the payload — the
+          // connection id is a config constant, sourced inside StartWorkflow
+          // from workflowConfig.entity.connection_id (Part 59). The mapping
+          // itself is the filter, so a caller can't smuggle in a conflicting
+          // connection_id.
+          entity: { id: { _payload: "entity.id" } },
           parent_action_id: { _payload: "parent_action_id" },
           // actions: override seeds actions directly at a declared status.
           // Grammar: { type, key?, status } where status is one of

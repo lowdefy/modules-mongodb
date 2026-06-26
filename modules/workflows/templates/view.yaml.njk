@@ -9,7 +9,7 @@
 #                     modals, maxWidth, buttons }), defaults to {}.
 #   page_ids:      { view, edit?, review?, error? }
 #   workflow_type: workflow.type
-#   entity_collection: workflow.entity_collection (connection id baked into get_entity)
+#   connection_id: workflow.entity.connection_id (connection id baked into get_entity)
 #
 # View has a floating-actions bar (Edit nav + request_changes), but no stale-URL guard.
 _ref:
@@ -37,7 +37,7 @@ _ref:
           - _ref:
               path: requests/get_entity.yaml.njk
               vars:
-                entity_collection: {{ entity_collection }}
+                connection_id: {{ connection_id }}
         - _var:
             key: page_config.requests
             default: []
