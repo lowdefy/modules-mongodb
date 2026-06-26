@@ -12,8 +12,12 @@
 # (deleted in task 11 once this lands).
 type: error-recovery
 title: Error recovery
-entity_collection: things-collection
-entity_ref_key: thing_ids
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
 
 starting_actions:
   - type: trigger

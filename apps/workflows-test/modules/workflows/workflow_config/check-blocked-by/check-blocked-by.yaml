@@ -13,8 +13,12 @@
 # is the suite's coverage home for those pages serving check actions.
 type: check-blocked-by
 title: Check blocked-by
-entity_collection: things-collection
-entity_ref_key: thing_ids
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
 
 starting_actions:
   - type: first-check

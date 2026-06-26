@@ -1,8 +1,12 @@
 type: company-setup
 # title omitted — derives to "Company Setup" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
-entity_collection:
-  _module.connectionId: { id: companies-collection, module: companies }
-entity_ref_key: company_ids
+entity:
+  connection_id:
+    _module.connectionId: { id: companies-collection, module: companies }
+  ref_key: company_ids
+  page_id: companies/view
+  title: Company
+  # id_query_key omitted — defaults to _id
 display_order: 2
 
 starting_actions:

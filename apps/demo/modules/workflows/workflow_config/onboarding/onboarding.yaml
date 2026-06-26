@@ -1,7 +1,11 @@
 type: onboarding
 # title omitted — derives to "Onboarding" via humanizeSlug (docs/workflows/reference/authoring-grammar.md#titles).
-entity_collection: leads-collection
-entity_ref_key: lead_ids
+entity:
+  connection_id: leads-collection
+  ref_key: lead_ids
+  page_id: lead-view
+  title: Lead
+  # id_query_key omitted — defaults to _id
 display_order: 1
 
 starting_actions:

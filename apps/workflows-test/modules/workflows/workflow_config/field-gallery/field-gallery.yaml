@@ -22,8 +22,12 @@
 #                                    banner; only renders at the `error` stage.
 type: field-gallery
 title: Field gallery
-entity_collection: things-collection
-entity_ref_key: thing_ids
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
 
 starting_actions:
   - type: gallery
