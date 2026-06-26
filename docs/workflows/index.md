@@ -40,20 +40,12 @@ modules:
         _ref:
           path: app_config.yaml
           key: app_name
-      entities:
-        leads-collection:
-          page_id: lead-view
-          id_query_key: _id
-          title: Lead
-        tickets-collection:
-          page_id: ticket-view
-          id_query_key: _id
-          title: Ticket
 ```
 
 - `workflows_config` — the app's workflow YAML, one entry per workflow type with actions and optional `action_groups`. Validated at build time by `makeWorkflowsConfig`.
 - `app_name` — the host app's deployment name. Filters per-action access via `access.{app_name}`. See [App name scoping](../shared/app-name.md).
-- `entities` — map of `entity_collection` → `{ page_id, id_query_key, title }`. Every `entity_collection` referenced in `workflows_config` must have a matching key here.
+
+Each workflow declares its own entity wiring (`connection_id`, `ref_key`, and the page link) in a per-workflow `entity:` block inside `workflows_config` — not as a module var. See [Authoring grammar](reference/authoring-grammar.md).
 
 See [`apps/demo/modules/workflows/vars.yaml`](../../apps/demo/modules/workflows/vars.yaml) for a worked example.
 

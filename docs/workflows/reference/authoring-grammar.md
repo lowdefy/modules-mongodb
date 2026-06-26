@@ -13,8 +13,12 @@ Reference for the action YAML grammar. Schema source of truth: `resolvers/makeWo
 
 ```yaml
 type: <slug>                  # required — unique workflow type name; "workflow" is reserved
-entity_collection: <slug>     # required — MongoDB collection name for the workflow's entities
-entity_ref_key: <key>         # required — event-references key for the entity (e.g. lead_ids)
+entity:                       # required — the workflow's entity wiring
+  connection_id: <slug>       # required — Lowdefy connection id for the entity (e.g. leads-collection)
+  ref_key: <key>              # required — event-references key (e.g. lead_ids)
+  page_id: <page>             # required — host-app page id the back-link navigates to
+  id_query_key: <key>         # optional — URL query key for the entity id (default _id)
+  title: <Label>              # required — singular entity-kind label (e.g. Lead)
 title: <string>               # optional — human-readable title; derived from slug when omitted
 starting_actions:             # required — seed actions at workflow start
   - { type: <slug>, status: action-required | blocked }
