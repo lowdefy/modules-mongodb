@@ -64,7 +64,7 @@ _ref:
                           vars:
                             entity_id:
                               _url_query: _id
-                            entity_collection: leads-collection
+                            entity_connection_id: leads-collection
           - id: lead_info_column
             type: Box
             layout:
@@ -131,7 +131,7 @@ _ref:
                     vars:
                       entity_id:
                         _url_query: _id
-                      entity_collection: leads-collection
+                      entity_connection_id: leads-collection
                 # refresh the activity timeline (events-timeline's surface)
                 - - id: refetch_events_timeline
                     type: Request

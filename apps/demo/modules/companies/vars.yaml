@@ -33,10 +33,9 @@ on_create_routine:
       endpointId:
         _module.endpointId: { id: company-setup-start, module: workflows }
       payload:
-        entity_id:
-          _step: insert.insertedId
-        entity_collection:
-          _module.connectionId: { id: companies-collection, module: companies }
+        entity:
+          id:
+            _step: insert.insertedId
         parent_action_id:
           _payload: url_query.action_id
   - ":if":
@@ -81,7 +80,7 @@ components:
                 vars:
                   entity_id:
                     _url_query: _id
-                  entity_collection:
+                  entity_connection_id:
                     _module.connectionId:
                       { id: companies-collection, module: companies }
     - _ref:
@@ -114,6 +113,6 @@ components:
                   vars:
                     entity_id:
                       _url_query: _id
-                    entity_collection:
+                    entity_connection_id:
                       _module.connectionId:
                         { id: companies-collection, module: companies }

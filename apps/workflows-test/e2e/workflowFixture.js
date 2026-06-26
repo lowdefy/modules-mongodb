@@ -118,13 +118,15 @@ export const workflowTest = base.extend({
       async start({
         workflow_type,
         entity_id,
-        entity_collection = "things-collection",
+        // entity_collection is no longer sent — the start endpoint sources the
+        // connection id from config (Part 59). Absorbed here so call sites that
+        // still pass it don't leak a stray field into the payload.
+        entity_collection,
         ...overrides
       } = {}) {
         const payload = {
           workflow_type,
-          entity_id,
-          entity_collection,
+          entity: { id: entity_id },
           ...overrides,
         };
         return post(`workflows/${workflow_type}-start`, payload);
@@ -196,8 +198,7 @@ export const workflowTest = base.extend({
         entity_collection = "things-collection",
       }) {
         return post("workflows/get-entity-workflows", {
-          entity_id,
-          entity_collection,
+          entity: { connection_id: entity_collection, id: entity_id },
         });
       },
 

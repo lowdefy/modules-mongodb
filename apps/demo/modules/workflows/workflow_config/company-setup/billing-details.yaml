@@ -17,8 +17,8 @@ form:
 hooks:
   # Post-hook (fires after the commit lands): persist the captured billing
   # details onto the company entity doc. The workflow's entity is the company
-  # (company-setup.entity_collection → companies/companies-collection), so the
-  # entity_id is the company _id (a string consecutive id — no ObjectId coercion).
+  # (company-setup.entity.connection_id → companies/companies-collection), so the
+  # entity.id is the company _id (a string consecutive id — no ObjectId coercion).
   # Form values arrive under the payload's form bag without the `form.` block-id
   # prefix collapsing (_payload: form.billing_email). Idempotent by design (D6):
   # a plain $set replays safely.
@@ -34,7 +34,7 @@ hooks:
           properties:
             filter:
               _id:
-                _payload: context.workflow.entity_id
+                _payload: context.workflow.entity.id
             update:
               $set:
                 billing.email:
@@ -47,7 +47,7 @@ hooks:
                     component: change_stamp
         - :return:
             company_id:
-              _payload: context.workflow.entity_id
+              _payload: context.workflow.entity.id
 status_map:
   action-required:
     demo:

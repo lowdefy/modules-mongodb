@@ -40,4 +40,4 @@ _ref:
           vars:
             entity_id:
               _url_query: _id
-            entity_collection: things-collection
+            entity_connection_id: things-collection
