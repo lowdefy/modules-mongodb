@@ -55,16 +55,10 @@ async function StartWorkflow(lowdefyContext) {
       code: "invalid_params",
     });
   }
-  if (!params.entity_id) {
-    throw new WorkflowEngineError("StartWorkflow: entity_id is required", {
+  if (!params.entity?.id) {
+    throw new WorkflowEngineError("StartWorkflow: entity.id is required", {
       code: "invalid_params",
     });
-  }
-  if (!params.entity_collection) {
-    throw new WorkflowEngineError(
-      "StartWorkflow: entity_collection is required",
-      { code: "invalid_params" },
-    );
   }
 
   const workflowConfig = (workflowsConfig ?? []).find(
@@ -162,9 +156,9 @@ async function StartWorkflow(lowdefyContext) {
   }
 
   // ── Plan: the base insert workflow doc (status seeded `active`) ──────────
-  // payload.references spreads in first; reserved fields below win. The
-  // denormalised entity_ref_key + parent linkage are set once at Start and
-  // never changed (schema additions).
+  // payload.references spreads in first; reserved fields below win. The nested
+  // entity pointer (connection_id from config, id from payload, ref_key from
+  // config) + parent linkage are set once at Start and never changed.
   const baseWorkflowDoc = {
     ...params.references,
     _id: newId(),
@@ -175,17 +169,20 @@ async function StartWorkflow(lowdefyContext) {
     title: workflowConfig.title,
     key: workflowConfig.key ?? null,
     display_order: workflowConfig.display_order,
-    entity_id: params.entity_id,
-    entity_collection: params.entity_collection,
-    entity_ref_key: workflowConfig.entity_ref_key,
+    entity: {
+      connection_id: workflowConfig.entity.connection_id,
+      id: params.entity.id,
+      ref_key: workflowConfig.entity.ref_key,
+    },
     status: [{ stage: "active", event_id, created: now }],
     summary: { done: 0, not_required: 0, total: 0 },
     groups: [],
     form_data: {},
     parent_action_id: parent ? params.parent_action_id : null,
     parent_workflow_id: parent ? parent.workflow_id : null,
-    parent_entity_id: parent ? parent.entity_id : null,
-    parent_entity_collection: parent ? parent.entity_collection : null,
+    parent_entity: parent
+      ? { connection_id: parent.entity.connection_id, id: parent.entity.id }
+      : null,
     created: now,
     updated: now,
   };
@@ -260,8 +257,10 @@ async function StartWorkflow(lowdefyContext) {
             payload: {
               fields: {
                 child_workflow_id: plannedWorkflowDoc._id,
-                child_entity_id: plannedWorkflowDoc.entity_id,
-                child_entity_collection: plannedWorkflowDoc.entity_collection,
+                child_entity: {
+                  connection_id: plannedWorkflowDoc.entity.connection_id,
+                  id: plannedWorkflowDoc.entity.id,
+                },
               },
             },
           },

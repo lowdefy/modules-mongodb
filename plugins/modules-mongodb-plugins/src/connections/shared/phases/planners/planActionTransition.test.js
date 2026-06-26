@@ -7,8 +7,7 @@ const entry_id = "workflows";
 const loadedWorkflow = {
   _id: "wf-1",
   workflow_type: "onboarding",
-  entity_id: "ent-1",
-  entity_collection: "companies",
+  entity: { connection_id: "companies", id: "ent-1" },
 };
 
 function makeAction({
@@ -152,8 +151,7 @@ test("tracker kind update: universal keys stripped; child-link fields still forw
   const fields = {
     assignees: ["u-2"],
     child_workflow_id: "cw-1",
-    child_entity_id: "ce-1",
-    child_entity_collection: "cc-1",
+    child_entity: { connection_id: "cc-1", id: "ce-1" },
   };
   const result = plan({
     action: makeAction({
@@ -172,8 +170,7 @@ test("tracker kind update: universal keys stripped; child-link fields still forw
   expect(result.doc.assignees).toEqual(["orig"]);
   // Cascade child-link fields forwarded.
   expect(result.doc.child_workflow_id).toBe("cw-1");
-  expect(result.doc.child_entity_id).toBe("ce-1");
-  expect(result.doc.child_entity_collection).toBe("cc-1");
+  expect(result.doc.child_entity).toEqual({ connection_id: "cc-1", id: "ce-1" });
 });
 
 test("form kind upsert/insert: universal keys in the bag ARE written (create path unguarded)", () => {
@@ -378,7 +375,7 @@ test("end-to-end: tracker with start_link + edit verb materialises links.edit on
     action: makeAction({
       kind: "tracker",
       stage: "blocked",
-      entity_id: "ent-1",
+      entity: { connection_id: "companies", id: "ent-1" },
       tracker: { child_workflow_type: "child-type" },
     }),
     signal: "unblock",
@@ -480,15 +477,13 @@ describe("upsert spawn", () => {
       key: "k-1",
       action_group: null,
       status: [{ stage: "action-required", event_id, created: now }],
-      entity_id: "ent-1",
-      entity_collection: "companies",
+      entity: { connection_id: "companies", id: "ent-1" },
       assignees: [],
       due_date: null,
       description: null,
       tracker: null,
       child_workflow_id: null,
-      child_entity_id: null,
-      child_entity_collection: null,
+      child_entity: null,
       created: now,
       updated: now,
       metadata: { m: 1 },

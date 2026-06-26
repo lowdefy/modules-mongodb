@@ -6,9 +6,7 @@ const event_id = "e1";
 const workflow = {
   _id: "wf-1",
   workflow_type: "onboarding",
-  entity_id: "ent-1",
-  entity_collection: "companies",
-  entity_ref_key: "lead_ids",
+  entity: { connection_id: "companies", id: "ent-1", ref_key: "lead_ids" },
 };
 
 const user = { id: "u1", profile: { name: "Alice" } };

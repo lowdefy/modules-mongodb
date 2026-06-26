@@ -25,7 +25,7 @@ const APP = "demo";
 const workflowsConfig = [
   {
     type: "onboarding",
-    entity_collection: "companies",
+    entity: { connection_id: "companies" },
     starting_actions: [{ type: "collect-docs", status: "action-required" }],
     actions: [
       {
@@ -485,7 +485,7 @@ function makeContextWithRenderConfig(renderConfig) {
     workflowsConfig: [
       {
         type: "onboarding",
-        entity_collection: "companies",
+        entity: { connection_id: "companies" },
         starting_actions: [{ type: "collect-docs", status: "action-required" }],
         actions: [
           {

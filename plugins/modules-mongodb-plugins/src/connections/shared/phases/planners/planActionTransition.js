@@ -82,8 +82,8 @@ function applyUpdateFieldsRule(fields, kind) {
  * @param {Object} args.actionConfig — workflowConfig.actions entry.
  * @param {Object} args.loadedWorkflow — the loaded workflow doc (NOT the
  *   recomputed one — that doesn't exist yet). Reads only the immutable
- *   `workflow_type`, plus `_id` / `entity_id` / `entity_collection` for
- *   inserts. In seed mode the caller passes its planned workflow INSERT doc
+ *   `workflow_type`, plus `_id` / `entity` (the `{ connection_id, id }` pointer)
+ *   for inserts. In seed mode the caller passes its planned workflow INSERT doc
  *   instead — Start has no loaded doc; the immutable-fields constraint holds
  *   because Start mints them before any draft is seeded (task 17).
  * @param {string} args.entry_id — module entry id for engine link scoping.
@@ -179,15 +179,16 @@ function planActionTransition({
       key,
       action_group: actionConfig.action_group ?? null,
       status: [statusEntry],
-      entity_id: loadedWorkflow.entity_id,
-      entity_collection: loadedWorkflow.entity_collection,
+      entity: {
+        connection_id: loadedWorkflow.entity.connection_id,
+        id: loadedWorkflow.entity.id,
+      },
       assignees: [],
       due_date: null,
       description: null,
       tracker: null,
       child_workflow_id: null,
-      child_entity_id: null,
-      child_entity_collection: null,
+      child_entity: null,
       created: now,
       updated: now,
       ...payload.fields,

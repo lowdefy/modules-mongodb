@@ -26,11 +26,9 @@
  * @property {string} workflow_type
  * @property {string | null} key
  * @property {number} display_order
- * @property {string} entity_id
- * @property {string} entity_collection
+ * @property {{ connection_id: string, id: string, ref_key: string }} entity
  * @property {string | null} parent_action_id
- * @property {string | null} parent_entity_id
- * @property {string | null} parent_entity_collection
+ * @property {{ connection_id: string, id: string } | null} parent_entity
  * @property {StatusEntry[]} status
  * @property {{ done: number, not_required: number, total: number }} summary
  * @property {WorkflowGroupEntry[]} groups
@@ -51,15 +49,13 @@
  * @property {ActionKind} kind
  * @property {string | null} key
  * @property {StatusEntry[]} status
- * @property {string} entity_id
- * @property {string} entity_collection
+ * @property {{ connection_id: string, id: string }} entity
  * @property {string[]} assignees
  * @property {Date | null} due_date
  * @property {string | null} description
  * @property {{ child_workflow_type: string, start_link?: { pageId: string, urlQuery?: Object } } | null} tracker
  * @property {string | null} child_workflow_id
- * @property {string | null} child_entity_id
- * @property {string | null} child_entity_collection
+ * @property {{ connection_id: string, id: string } | null} child_entity
  */
 
 export {};

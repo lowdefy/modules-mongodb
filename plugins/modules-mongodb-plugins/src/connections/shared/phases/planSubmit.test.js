@@ -39,9 +39,7 @@ function makeWorkflow(overrides = {}) {
   return {
     _id: "W1",
     workflow_type: "onboarding",
-    entity_id: "L1",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: { connection_id: "leads-collection", id: "L1", ref_key: "lead_ids" },
     status: [{ stage: "active", event_id: "e0", created: now }],
     summary: { done: 0, not_required: 0, total: 1 },
     groups: [],
@@ -57,8 +55,7 @@ function makeWorkflow(overrides = {}) {
 function makeConfig({ actions, action_groups } = {}) {
   return {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: { connection_id: "leads-collection", ref_key: "lead_ids" },
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: actions ?? [
       {

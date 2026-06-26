@@ -257,9 +257,7 @@ async function seedWorkflow({
   await mongo.db.collection("workflows").insertOne({
     _id,
     workflow_type: "onboarding",
-    entity_id,
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: { connection_id: "leads-collection", id: entity_id, ref_key: "lead_ids" },
     display_order: 1,
     status: [{ stage: wfStage, event_id: "e0", created: changeStamp }],
     groups: [
@@ -317,8 +315,7 @@ async function seedAction({
     },
     metadata: { some: "internal" },
     description: `${type} description`,
-    entity_id: "lead-1",
-    entity_collection: "leads-collection",
+    entity: { connection_id: "leads-collection", id: "lead-1" },
     created: changeStamp,
     updated: changeStamp,
     ...extra,
@@ -406,18 +403,20 @@ describe("envelope shape", () => {
     expect(result.action_group).toBe("phase-1");
     expect(result.created).toBeDefined();
     expect(result.updated).toBeDefined();
-    expect(result.entity_id).toBe("lead-1");
-    expect(result.entity_collection).toBe("leads-collection");
+    expect(result.entity).toEqual({
+      connection_id: "leads-collection",
+      id: "lead-1",
+    });
   });
 
-  test("entity_link resolves from wfConfig.entity (id from action.entity_id)", async () => {
+  test("entity_link resolves from wfConfig.entity (id from action.entity.id)", async () => {
     await seedWorkflow();
     await seedAction({ _id: "a1", type: "qualify" });
     const result = await GetWorkflowAction(
       buildContext({ request: { action_id: "a1" } }),
     );
     // id_query_key/page_id/title come from wfConfig.entity; the id comes from
-    // the action doc's entity_id (seedAction stamps entity_id: 'lead-1').
+    // the action doc's entity.id (seedAction stamps entity.id: 'lead-1').
     expect(result.entity_link).toEqual({
       pageId: "leads/lead-view",
       urlQuery: { lead_id: "lead-1" },

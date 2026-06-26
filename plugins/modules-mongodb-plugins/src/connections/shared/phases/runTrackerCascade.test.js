@@ -23,8 +23,7 @@ const changeStamp = {
 // One-tracker-only parent: auto-completes when its tracker flips terminal.
 const oneTrackerParent = {
   type: "one-tracker-parent",
-  entity_collection: "parents",
-  entity_ref_key: "parent_ids",
+  entity: { connection_id: "parents", ref_key: "parent_ids" },
   action_groups: [],
   actions: [
     {
@@ -37,8 +36,7 @@ const oneTrackerParent = {
 // Two-action parent: stays active (the form action keeps it non-terminal).
 const twoActionParent = {
   type: "two-action-parent",
-  entity_collection: "parents",
-  entity_ref_key: "parent_ids",
+  entity: { connection_id: "parents", ref_key: "parent_ids" },
   action_groups: [],
   actions: [
     { type: "qualify", kind: "form" },
@@ -122,9 +120,11 @@ async function seedWorkflow({
   await mongo.db.collection("workflows").insertOne({
     _id,
     workflow_type,
-    entity_id: `${_id}-entity`,
-    entity_collection: "parents",
-    entity_ref_key: "parent_ids",
+    entity: {
+      connection_id: "parents",
+      id: `${_id}-entity`,
+      ref_key: "parent_ids",
+    },
     parent_action_id,
     parent_workflow_id,
     status: [{ stage, event_id: "e0", created: changeStamp }],
@@ -402,8 +402,7 @@ test("a fire carrying payload.fields sets those fields on the parent tracker doc
         payload: {
           fields: {
             child_workflow_id: "wf-child-new",
-            child_entity_id: "ent-child",
-            child_entity_collection: "children",
+            child_entity: { connection_id: "children", id: "ent-child" },
           },
         },
       },
@@ -424,8 +423,10 @@ test("a fire carrying payload.fields sets those fields on the parent tracker doc
     .findOne({ _id: "track-1" });
   expect(track1.status[0].stage).toBe("in-progress");
   expect(track1.child_workflow_id).toBe("wf-child-new");
-  expect(track1.child_entity_id).toBe("ent-child");
-  expect(track1.child_entity_collection).toBe("children");
+  expect(track1.child_entity).toEqual({
+    connection_id: "children",
+    id: "ent-child",
+  });
 });
 
 // ─────────────────────────────────────────────────────────────────────────────

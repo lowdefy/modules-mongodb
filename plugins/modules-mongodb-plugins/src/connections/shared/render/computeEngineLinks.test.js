@@ -164,7 +164,7 @@ test("tracker start_link: edit emitted at action-required with null child + decl
     entry_id: ENTRY,
     action: {
       _id: "action-abc",
-      entity_id: "entity-xyz",
+      entity: { connection_id: "tickets", id: "entity-xyz" },
       kind: "tracker",
       status: [{ stage: "action-required" }],
       child_workflow_id: null,
@@ -196,7 +196,7 @@ test("tracker start_link: edit null when edit verb not declared", () => {
     entry_id: ENTRY,
     action: {
       _id: "action-abc",
-      entity_id: "entity-xyz",
+      entity: { connection_id: "tickets", id: "entity-xyz" },
       kind: "tracker",
       status: [{ stage: "action-required" }],
       child_workflow_id: null,

@@ -11,8 +11,7 @@ function makeWorkflow(overrides = {}) {
     _id: "wf-1",
     workflow_type: "onboarding",
     title: "Onboarding",
-    entity_id: "lead-1",
-    entity_ref_key: "lead_ids",
+    entity: { connection_id: "leads", id: "lead-1", ref_key: "lead_ids" },
     ...overrides,
   };
 }
@@ -304,8 +303,7 @@ test("references carries workflow_ids, action_ids from allTouchedActionDocs, and
   const { doc } = dispatch({
     allTouchedActionDocs: [a1, a2],
     plannedWorkflowDoc: makeWorkflow({
-      entity_id: "lead-99",
-      entity_ref_key: "lead_ids",
+      entity: { connection_id: "leads", id: "lead-99", ref_key: "lead_ids" },
     }),
   });
   expect(doc.references.workflow_ids).toEqual(["wf-1"]);
@@ -324,22 +322,21 @@ test("multi-action submit: submitted + unblocked action_ids all present", () => 
   expect(doc.references.action_ids).toContain("a-unblocked");
 });
 
-test("references uses entity_ref_key from workflow doc", () => {
+test("references uses entity.ref_key from workflow doc", () => {
   const { doc } = dispatch({
     plannedWorkflowDoc: makeWorkflow({
-      entity_ref_key: "ticket_ids",
-      entity_id: "T-1",
+      entity: { connection_id: "tickets", id: "T-1", ref_key: "ticket_ids" },
     }),
   });
   expect(doc.references.ticket_ids).toEqual(["T-1"]);
   expect(doc.references).not.toHaveProperty("lead_ids");
 });
 
-test("throws when entity_ref_key is missing from workflow doc", () => {
+test("throws when entity.ref_key is missing from workflow doc", () => {
   const wf = makeWorkflow();
-  delete wf.entity_ref_key;
+  delete wf.entity.ref_key;
   expect(() => dispatch({ plannedWorkflowDoc: wf })).toThrow(
-    /entity_ref_key is required/,
+    /entity\.ref_key is required/,
   );
 });
 
@@ -637,8 +634,7 @@ test("UpdateActionFields: references shape matches the Submit path", () => {
     plannedActionDoc: a1,
     allTouchedActionDocs: [a1],
     plannedWorkflowDoc: makeWorkflow({
-      entity_id: "lead-99",
-      entity_ref_key: "lead_ids",
+      entity: { connection_id: "leads", id: "lead-99", ref_key: "lead_ids" },
     }),
   });
   expect(doc.references.workflow_ids).toEqual(["wf-1"]);

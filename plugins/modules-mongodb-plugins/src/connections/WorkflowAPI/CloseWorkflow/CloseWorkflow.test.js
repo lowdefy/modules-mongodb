@@ -20,8 +20,7 @@ function makeWorkflowsConfig() {
   return [
     {
       type: "onboarding",
-      entity_collection: "leads-collection",
-      entity_ref_key: "lead_ids",
+      entity: { connection_id: "leads-collection", ref_key: "lead_ids" },
       starting_actions: [{ type: "qualify", status: "action-required" }],
       action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
       actions: [
@@ -142,9 +141,7 @@ async function seedWorkflow({ _id = "wf-1", overrides = {} } = {}) {
     _id,
     workflow_type: "onboarding",
     title: "Onboarding",
-    entity_id: "lead-1",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: { connection_id: "leads-collection", id: "lead-1", ref_key: "lead_ids" },
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 0 },
     groups: [],
@@ -257,7 +254,7 @@ describe("lifecycle event override", () => {
           lifecycle_event_override: {
             display: {
               "test-app": {
-                title: "Onboarding kicked off for {{ workflow.entity_id }}",
+                title: "Onboarding kicked off for {{ workflow.entity.id }}",
               },
             },
           },
@@ -378,9 +375,11 @@ describe("tracker cascade", () => {
     await mongo.db.collection("workflows").insertOne({
       _id: "wf-parent",
       workflow_type: "onboarding",
-      entity_id: "parent-entity",
-      entity_collection: "leads-collection",
-      entity_ref_key: "lead_ids",
+      entity: {
+        connection_id: "leads-collection",
+        id: "parent-entity",
+        ref_key: "lead_ids",
+      },
       status: [{ stage: "active", event_id: "e0", created: changeStamp }],
       summary: { done: 0, not_required: 0, total: 2 },
       groups: [],

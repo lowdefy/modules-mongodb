@@ -15,7 +15,7 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  * ordering, and enriches each workflow + group with display config from
  * workflowsConfig (including each workflow config's `entity` block).
  *
- * Params: { entity_collection, entity_id }
+ * Params: { entity: { connection_id, id } }
  *
  * Response: { workflows: [...] }
  *   Each workflow: { _id, workflow_type, status, groups: [...], ...doc fields }
@@ -25,7 +25,7 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
 async function GetEntityWorkflows(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
   const { params, mongoDb, connection, workflowsConfig } = context;
-  const { entity_collection, entity_id } = params;
+  const { connection_id, id } = params.entity ?? {};
   const app_name = connection.app_name;
   const entry_id = connection.entry_id;
   const userRoles = context.user?.roles;
@@ -36,7 +36,7 @@ async function GetEntityWorkflows(lowdefyContext) {
   const workflowDocs = await findDocs({
     mongoDb,
     collection: workflowsCollection,
-    query: { entity_collection, entity_id },
+    query: { "entity.connection_id": connection_id, "entity.id": id },
     options: { sort: { display_order: 1, "created.timestamp": -1 } },
   });
 
@@ -178,7 +178,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     const entity_link = entityConfig
       ? {
           pageId: entityConfig.page_id,
-          urlQuery: { [entityConfig.id_query_key]: wfDoc.entity_id },
+          urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
           title: entityConfig.title ?? null,
         }
       : null;
