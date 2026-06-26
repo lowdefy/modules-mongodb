@@ -795,8 +795,21 @@ function makeWorkflowsConfig(_, vars) {
   const result = workflows.map((workflow) => {
     validateWorkflow(workflow);
 
-    const actions = (workflow.actions ?? []).map((action) => {
+    // Group-id list (declaration order) for stamping each action's group_index.
+    // Ids are unchanged by the title-defaulting map below, so this is read off
+    // the raw config directly — `findIndex` mirrors the comparator exactly.
+    const groupIds = (workflow.action_groups ?? []).map((group) => group.id);
+
+    const actions = (workflow.actions ?? []).map((action, declIndex) => {
       const picked = pick(action, ACTION_FIELDS);
+
+      // Denormalised sort indices (Part 50): the action's declaration position
+      // (the `.map` index — action `type` is unique within a workflow, so this
+      // equals the comparator's `actions.findIndex((a) => a.type === ...)`) and
+      // its group's position in `action_groups[]`. `findIndex` → -1 for a
+      // missing/unknown group; stored as -1 (the comparator maps -1 → +∞).
+      picked.decl_index = declIndex;
+      picked.group_index = groupIds.findIndex((id) => id === action.action_group);
 
       // Title default: explicit `action.title` wins; else derive from `type`.
       // Materialized once here so every config-reading surface reads a

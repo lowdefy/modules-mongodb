@@ -1,10 +1,9 @@
 # Shared action-card click handler (Part 51 — F22; Part 55 — D2/D3).
 #
-# A reusable action sequence wired into the `onActionClick` of every action
-# surface — `actions-on-entity` (ActionSteps) and `workflows-events-timeline`
-# (EventsTimeline). Both blocks fire the identical `{ action }` event, so one
-# handler serves both. Consumers never write their own click handler — it is
-# baked into both hosts by default.
+# A reusable action sequence wired into the `onActionClick` of the
+# `actions-on-entity` surface (ActionSteps). The block fires an `{ action }`
+# event consumed by this handler. Consumers never write their own click
+# handler — it is baked into the host by default.
 #
 # The page (not a surface) drops the check-action modal, so a surface can no
 # longer assume the modal is present. The handler degrades gracefully:

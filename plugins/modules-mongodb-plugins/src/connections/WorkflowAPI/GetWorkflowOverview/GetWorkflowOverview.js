@@ -72,7 +72,7 @@ async function GetWorkflowOverview(lowdefyContext) {
   }
 
   // ── Sort: declaration order (group, not-required sink, action, key, _id) ──
-  const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
+  const compareOrder = makeWorkflowOrderComparator();
   visibleActions.sort((a, b) => compareOrder(a.action, b.action));
 
   // ── Build action cards, grouped by action_group ──

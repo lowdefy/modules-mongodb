@@ -67,8 +67,8 @@ async function GetEntityWorkflows(lowdefyContext) {
     return (workflowsConfig ?? []).find((wc) => wc.type === workflow_type);
   }
 
-  // Shared declaration-order comparator (resolves config per action).
-  const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
+  // Shared declaration-order comparator (reads denormalised indices off the doc).
+  const compareOrder = makeWorkflowOrderComparator();
 
   // Helper: build the group-overview page link (matches computeEngineLinks scoped convention).
   function buildGroupLink(workflow_id, group_id) {

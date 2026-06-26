@@ -294,7 +294,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       .toBe("done");
 
     // Bug fix (Part 55 D1): the co-present Activity timeline must refresh after
-    // a modal submit. The page-owned on_complete re-runs get_events_timeline, so
+    // a modal submit. The page-owned on_complete re-runs get-events, so
     // the site-visit card in the timeline now reflects `done` WITHOUT
     // re-navigating to lead-view. Before the fix the timeline only fetched on
     // mount and showed stale events here.
@@ -304,7 +304,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await expect
       .poll(
         async () => {
-          const timeline = await ldf.request("get_events_timeline").response();
+          const timeline = await ldf.request("get-events").response();
           const cards = (timeline ?? []).flatMap(
             (event) => event.actions ?? [],
           );

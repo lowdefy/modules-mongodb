@@ -13,21 +13,12 @@ const changeStamp = {
   user: { id: "u1", name: "Stamper" },
 };
 
-// Declaration order: groups [phase-1, phase-2];
-//   actions [qualify (phase-1, 0), kickoff (phase-2, 1), site-visit (phase-1, 2)]
-function makeWorkflowsConfig() {
-  return [
-    {
-      type: "onboarding",
-      action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
-      actions: [
-        { type: "qualify", action_group: "phase-1" },
-        { type: "kickoff", action_group: "phase-2" },
-        { type: "site-visit", action_group: "phase-1" },
-      ],
-    },
-  ];
-}
+// Declaration order is denormalised onto each action doc (Part 50 task 1):
+//   groups [phase-1 (group_index 0), phase-2 (group_index 1)];
+//   actions: qualify → {group_index:0, decl_index:0},
+//            kickoff → {group_index:1, decl_index:1},
+//            site-visit → {group_index:0, decl_index:2}.
+// The comparator orders purely from these stamped indices; no workflows config.
 
 let mongo;
 
@@ -59,7 +50,6 @@ function buildContext({
     profile: { name: "Test User" },
     roles: ["account-manager"],
   },
-  workflowsConfig = makeWorkflowsConfig(),
 } = {}) {
   return {
     request,
@@ -75,7 +65,6 @@ function buildContext({
       actionsCollection: "actions",
       eventsCollection: "log-events",
       app_name,
-      workflowsConfig,
       changeStamp,
       user,
       endpoints: {
@@ -141,6 +130,10 @@ async function seedAction({
   workflow_type, // defaults below: 'onboarding' for workflow cards, null otherwise
   type = "qualify",
   action_group = "phase-1",
+  // Denormalised declaration indices (Part 50 task 1). Default to qualify's
+  // position {0, 0}; ordering tests pass explicit values per action type.
+  group_index = 0,
+  decl_index = 0,
   kind = "check",
   status_history = null, // full status array override
   stage = "action-required",
@@ -176,6 +169,8 @@ async function seedAction({
     workflow_type: workflow_type ?? (workflow_id == null ? null : "onboarding"),
     type,
     action_group,
+    group_index,
+    decl_index,
     kind,
     status: status_history ?? [{ stage, event_id: "e0", created: changeStamp }],
     [app_name]: {
@@ -626,24 +621,32 @@ describe("non-workflow card pass-through (workflow_id null)", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("action card order within an event", () => {
-  // config: groups [phase-1, phase-2];
-  //   actions [qualify (phase-1, 0), kickoff (phase-2, 1), site-visit (phase-1, 2)]
+  // Stamped declaration indices:
+  //   qualify → {group_index:0, decl_index:0},
+  //   kickoff → {group_index:1, decl_index:1},
+  //   site-visit → {group_index:0, decl_index:2}.
   test("cards follow declaration order (group index, then action index)", async () => {
-    // Seed in scrambled order; the engine must re-order by declaration.
+    // Seed in scrambled order; the engine must re-order by stamped indices.
     await seedAction({
       _id: "a-kickoff",
       type: "kickoff",
       action_group: "phase-2",
+      group_index: 1,
+      decl_index: 1,
     });
     await seedAction({
       _id: "a-site-visit",
       type: "site-visit",
       action_group: "phase-1",
+      group_index: 0,
+      decl_index: 2,
     });
     await seedAction({
       _id: "a-qualify",
       type: "qualify",
       action_group: "phase-1",
+      group_index: 0,
+      decl_index: 0,
     });
     await seedEvent({
       _id: "ev-1",
@@ -663,17 +666,23 @@ describe("action card order within an event", () => {
     ]);
   });
 
-  test("non-workflow cards (no workflow_type) sort after workflow cards", async () => {
+  test("non-workflow cards (no stamped indices) sort after workflow cards", async () => {
+    // Non-workflow card has no resolvable declaration position → indices -1, so
+    // it sinks to the bottom (∞) and sorts after the workflow card.
     await seedAction({
       _id: "a-task",
       workflow_id: null,
       type: "misc",
       action_group: null,
+      group_index: -1,
+      decl_index: -1,
     });
     await seedAction({
       _id: "a-qualify",
       type: "qualify",
       action_group: "phase-1",
+      group_index: 0,
+      decl_index: 0,
     });
     await seedEvent({ _id: "ev-1", action_ids: ["a-task", "a-qualify"] });
 

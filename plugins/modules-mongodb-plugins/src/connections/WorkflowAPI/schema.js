@@ -146,23 +146,15 @@ const schema = {
         "(`{ roles: [...], ... }`) at handler entry. " +
         "The engine reads `user.roles` for verb gate checks.",
     },
-    eventsCollection: {
-      type: "string",
-      default: "log-events",
-      description:
-        "Events collection name queried by GetEventsTimeline (task 6). " +
-        'Defaults to "log-events" (matching the events module\'s collection). ' +
-        "Host apps need only set this when overriding the collection name.",
-    },
     contactsCollection: {
       type: "string",
       default: "user-contacts",
       description:
-        "Contacts collection name joined by GetEventsTimeline to resolve each " +
-        "event author's avatar (created.user.id → _id, projecting " +
-        'profile.picture onto created.user.picture). Defaults to "user-contacts" ' +
-        "(the shared collection where a user IS a contact — same _id space). " +
-        "Host apps need only set this when overriding the collection name.",
+        "Contacts collection name joined by GetWorkflowAction to resolve each " +
+        "contact's avatar (created.user.id → _id, projecting profile.picture). " +
+        'Defaults to "user-contacts" (the shared collection where a user IS a ' +
+        "contact — same _id space). Host apps need only set this when overriding " +
+        "the collection name.",
     },
   },
 };

@@ -12,50 +12,17 @@ events:
 
 requests:
   - id: get-events
-    type: MongoDBAggregation
+    type: GetEventsTimeline
     connectionId:
-      _module.connectionId: events-collection
+      _module.connectionId: events-timeline
     payload:
       reference_value:
         _var: reference_value
     properties:
-      pipeline:
-        - $match:
-            _object.fromEntries:
-              - - _var: reference_field
-                - _payload: reference_value
-              - - _var:
-                    key: display_key
-                    default:
-                      _module.var: display_key
-                - $ne: null
-        - $sort:
-            date: -1
-        - $addFields:
-            title:
-              _string.concat:
-                - "$"
-                - _var:
-                    key: display_key
-                    default:
-                      _module.var: display_key
-                - ".title"
-            description:
-              _string.concat:
-                - "$"
-                - _var:
-                    key: display_key
-                    default:
-                      _module.var: display_key
-                - ".description"
-            info:
-              _string.concat:
-                - "$"
-                - _var:
-                    key: display_key
-                    default:
-                      _module.var: display_key
-                - ".info"
+      reference_field:
+        _var: reference_field
+      reference_value:
+        _payload: reference_value
 
 blocks:
   - id: events_timeline_empty
@@ -73,6 +40,55 @@ blocks:
         fontStyle: italic
   - id: events-timeline
     type: EventsTimeline
+    events:
+      onActionClick:
+        try:
+          - id: set_check_action_modal_action
+            type: SetState
+            skip:
+              _ne:
+                - _event: action.kind
+                - check
+            params:
+              check_action_modal:
+                action_id:
+                  _event: action._id
+          - id: open_check_action_modal
+            type: CallMethod
+            skip:
+              _ne:
+                - _event: action.kind
+                - check
+            # error:false → when no modal is on the page the CallMethod throws
+            # and the catch navigates; suppress the would-be error toast so
+            # recovery is silent.
+            messages:
+              error: false
+            params:
+              blockId: check_action_modal
+              method: setOpen
+              args:
+                - open: true
+          - id: link_to_action_page
+            type: Link
+            skip:
+              _eq:
+                - _event: action.kind
+                - check
+            params:
+              pageId:
+                _event: action.link.pageId
+              urlQuery:
+                _event: action.link.urlQuery
+        catch:
+          # Modal not on the page (open threw) — navigate to the action's own page.
+          - id: link_to_action_page_fallback
+            type: Link
+            params:
+              pageId:
+                _event: action.link.pageId
+              urlQuery:
+                _event: action.link.urlQuery
     visible:
       _gt:
         - _array.length:
@@ -86,9 +102,7 @@ blocks:
           - _ref: ../shared/enums/event_types.yaml
           - _module.var: event_types
       actionStatusConfig:
-        _build.object.assign:
-          - _ref: ../shared/enums/action_statuses.yaml
-          - _module.var: action_statuses_display
+        _ref: ../shared/enums/action_statuses.yaml
       reverse:
         _var:
           key: reverse

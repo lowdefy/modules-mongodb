@@ -107,8 +107,8 @@ _ref:
                     title: Activity
                     blocks:
                       - _ref:
-                          module: workflows
-                          component: workflows-events-timeline
+                          module: events
+                          component: events-timeline
                           vars:
                             reference_field: lead_ids
                             reference_value:
@@ -117,7 +117,7 @@ _ref:
       # Page owns the single check-action modal drop and its on_complete (Part
       # 55 D1): refresh every co-present surface after a successful signal — the
       # action steps (actions-on-entity) and the Activity timeline
-      # (workflows-events-timeline, which only fetches on mount).
+      # (events-timeline, which only fetches on mount).
       - _ref:
           module: workflows
           component: check-action-modal
@@ -132,7 +132,7 @@ _ref:
                       entity_id:
                         _url_query: _id
                       entity_collection: leads-collection
-                # refresh the activity timeline (workflows-events-timeline's surface)
+                # refresh the activity timeline (events-timeline's surface)
                 - - id: refetch_events_timeline
                     type: Request
-                    params: get_events_timeline
+                    params: get-events

@@ -1,0 +1,14 @@
+id: events-timeline
+type: EventsTimeline
+properties:
+  databaseUri:
+    _secret: MONGODB_URI
+  app_name:
+    _module.var: display_key
+  eventsCollection: log-events
+  actionsCollection:
+    _module.var: actions_collection
+  contactsCollection:
+    _module.var: contacts_collection
+  user:
+    _user: true

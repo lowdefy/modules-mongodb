@@ -31,7 +31,7 @@ import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOr
  */
 async function GetEventsTimeline(lowdefyContext) {
   const context = await createEngineContext(lowdefyContext);
-  const { params, mongoDb, connection, workflowsConfig } = context;
+  const { params, mongoDb, connection } = context;
   const { reference_field, reference_value } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
@@ -161,8 +161,8 @@ async function GetEventsTimeline(lowdefyContext) {
     },
 
     // Filter nulls out of the actions array (non-latest events contribute null).
-    // Action cards are ordered in JS post-processing (declaration order needs
-    // the workflowsConfig, which is unavailable inside the aggregation pipeline).
+    // Action cards are ordered in JS post-processing from the denormalised
+    // group_index / decl_index stamped on each action doc.
     {
       $addFields: {
         "event.actions": {
@@ -243,16 +243,15 @@ async function GetEventsTimeline(lowdefyContext) {
   // roles, which are not available inside a MongoDB aggregation pipeline.
   // The aggregation produces raw action docs; JS applies the access policy here.
 
-  const compareOrder = makeWorkflowOrderComparator(workflowsConfig);
+  const compareOrder = makeWorkflowOrderComparator();
 
   const events = rawEvents.map((event) => {
     const rawActions = Array.isArray(event.actions) ? event.actions : [];
 
     // Order raw action docs by declaration order BEFORE the enrichment loop
-    // trims them — the loop drops type/action_group/workflow_type, which the
-    // comparator needs. The $lookup already rewrote status to a scalar stage,
-    // which the comparator tolerates. Non-workflow cards have no config and
-    // sort last by _id.
+    // trims them — the loop drops the denormalised group_index/decl_index the
+    // comparator reads. The $lookup already rewrote status to a scalar stage,
+    // which the comparator tolerates. Cards with missing indices sort last by _id.
     rawActions.sort(compareOrder);
 
     const enrichedActions = [];

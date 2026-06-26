@@ -151,6 +151,19 @@ async function seedWorkflow({
   });
 }
 
+// Denormalised declaration indices (Part 50 task 1), derived from the same
+// config the engine receives so seeded docs carry the indices the comparator
+// now reads. Unknown group/type → -1 (sorts last), matching findIndex semantics.
+function declIndicesFor(type, action_group) {
+  const cfg = makeWorkflowsConfig()[0];
+  return {
+    group_index: (cfg.action_groups ?? []).findIndex(
+      (g) => g.id === action_group,
+    ),
+    decl_index: (cfg.actions ?? []).findIndex((a) => a.type === type),
+  };
+}
+
 async function seedAction({
   _id,
   type,
@@ -161,6 +174,7 @@ async function seedAction({
   key = null,
   extra = {},
 } = {}) {
+  const { group_index, decl_index } = declIndicesFor(type, action_group);
   await mongo.db.collection("actions").insertOne({
     _id,
     workflow_id,
@@ -169,6 +183,8 @@ async function seedAction({
     kind,
     key,
     action_group,
+    group_index,
+    decl_index,
     status: [{ stage, event_id: "e0", created: changeStamp }],
     access: { "test-app": { view: true, edit: ["account-manager"] } },
     "test-app": {
