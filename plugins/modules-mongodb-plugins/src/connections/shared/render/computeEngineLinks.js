@@ -24,7 +24,7 @@
  *               • `action-required` + null child + declared `tracker.start_link`
  *                 → `edit` to start_link.pageId (verbatim, NOT entry-scoped),
  *                   urlQuery sentinels: `action_id: true` → action._id,
- *                   `entity_id: true` → action.entity_id, statics verbatim
+ *                   `entity_id: true` → action.entity.id, statics verbatim
  *   - custom  -> no engine links (author authors them in the cell); returns {}
  *
  * Output: `{ [slug]: { view, edit, review, error } }` (each cell a link object
@@ -94,7 +94,7 @@ function computeEngineLinks({ action, entry_id: entryId }) {
             if (key === "action_id" && val === true) {
               urlQuery[key] = action._id;
             } else if (key === "entity_id" && val === true) {
-              urlQuery[key] = action.entity_id;
+              urlQuery[key] = action.entity.id;
             } else {
               urlQuery[key] = val;
             }

@@ -51,9 +51,9 @@ routine:
           id: onboarding-start
           module: workflows
       payload:
-        entity_id:
-          _payload: _id
-        entity_collection: leads-collection
+        entity:
+          id:
+            _payload: _id
   - :return:
       _id:
         _payload: _id

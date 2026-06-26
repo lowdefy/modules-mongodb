@@ -7,8 +7,7 @@ const entry_id = "workflows";
 const loadedWorkflow = {
   _id: "wf-1",
   workflow_type: "onboarding",
-  entity_id: "ent-1",
-  entity_collection: "companies",
+  entity: { connection_id: "companies", id: "ent-1" },
 };
 
 function action(

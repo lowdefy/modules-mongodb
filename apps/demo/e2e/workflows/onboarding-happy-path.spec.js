@@ -76,7 +76,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
           (await mdb
             .collection("workflows")
             .countDocuments({
-              entity_id: leadId,
+              "entity.id": leadId,
               workflow_type: "onboarding",
             })) > 0,
         { timeout: 10_000 },
@@ -91,7 +91,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
         async () => {
           const wf = await mdb
             .collection("workflows")
-            .findOne({ entity_id: leadId, workflow_type: "onboarding" });
+            .findOne({ "entity.id": leadId, workflow_type: "onboarding" });
           if (!wf) return 0;
           return mdb
             .collection("actions")
@@ -103,7 +103,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
 
     const onboardingWf = await mdb
       .collection("workflows")
-      .findOne({ entity_id: leadId, workflow_type: "onboarding" });
+      .findOne({ "entity.id": leadId, workflow_type: "onboarding" });
     expect(onboardingWf).toBeDefined();
 
     // qualify is action-required; the other four are blocked.
@@ -586,11 +586,11 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       .poll(
         async () =>
           mdb.collection("workflows").countDocuments({
-            entity_id: companyId,
+            "entity.id": companyId,
             workflow_type: "company-setup",
-            // entity_collection resolves to the module-scoped connection id
+            // entity.connection_id resolves to the module-scoped connection id
             // (see apps/demo/modules/workflows/vars.yaml entities key)
-            entity_collection: "companies/companies-collection",
+            "entity.connection_id": "companies/companies-collection",
           }),
         { timeout: 10_000 },
       )
@@ -598,7 +598,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
 
     const companySetupWf = await mdb
       .collection("workflows")
-      .findOne({ entity_id: companyId, workflow_type: "company-setup" });
+      .findOne({ "entity.id": companyId, workflow_type: "company-setup" });
     expect(companySetupWf).toBeDefined();
     expect(companySetupWf.parent_action_id?.toString()).toBe(
       trackerAction._id.toString(),
@@ -835,8 +835,8 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     }
 
     for (const entityId of entityIds) {
-      await mdb.collection("actions").deleteMany({ entity_id: entityId });
-      await mdb.collection("workflows").deleteMany({ entity_id: entityId });
+      await mdb.collection("actions").deleteMany({ "entity.id": entityId });
+      await mdb.collection("workflows").deleteMany({ "entity.id": entityId });
     }
 
     if (leadId) {

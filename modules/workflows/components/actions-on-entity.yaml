@@ -12,8 +12,8 @@
 # navigation (Part 55 D2/D3).
 #
 # Vars:
-#   entity_id          — (required) the entity whose workflows render.
-#   entity_collection  — (required) the entity's collection.
+#   entity_id            — (required) the entity whose workflows render.
+#   entity_connection_id — (required) the entity's connection id.
 id: actions_on_entity
 type: Box
 events:
@@ -24,10 +24,11 @@ events:
         endpointId:
           _module.endpointId: get-entity-workflows
         payload:
-          entity_id:
-            _var: entity_id
-          entity_collection:
-            _var: entity_collection
+          entity:
+            id:
+              _var: entity_id
+            connection_id:
+              _var: entity_connection_id
     - id: set_entity_workflows
       type: SetState
       params:

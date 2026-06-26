@@ -20,7 +20,7 @@ import {
  *
  *   {
  *     _id, type, workflow_type, kind, key, status, action_group, description, due_date,
- *     assignees, assignee_docs, entity_id, entity_collection, created, updated,
+ *     assignees, assignee_docs, entity: { connection_id, id }, created, updated,
  *     entity_link,          // { pageId, urlQuery, title } from the workflow config's `entity` block, or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
@@ -235,7 +235,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const entity_link = entityConfig
     ? {
         pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: action.entity_id },
+        urlQuery: { [entityConfig.id_query_key]: action.entity.id },
         title: entityConfig.title ?? null,
       }
     : null;
@@ -257,8 +257,10 @@ async function GetWorkflowAction(lowdefyContext) {
     due_date: action.due_date ?? null,
     assignees: action.assignees ?? null,
     assignee_docs,
-    entity_id: action.entity_id ?? null,
-    entity_collection: action.entity_collection ?? null,
+    entity: {
+      connection_id: action.entity?.connection_id ?? null,
+      id: action.entity?.id ?? null,
+    },
     entity_link,
     created: action.created ?? null,
     updated: action.updated ?? null,

@@ -121,9 +121,11 @@ async function seedWorkflow({
   await mongo.db.collection("workflows").insertOne({
     _id,
     workflow_type: "onboarding",
-    entity_id,
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      id: entity_id,
+      ref_key: "lead_ids",
+    },
     display_order: 1,
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 2 },

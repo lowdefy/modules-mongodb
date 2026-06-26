@@ -1,7 +1,7 @@
 # Review page for a form action — read-only main form + writable form_review.
 #
 # Build-time vars (from makeActionPages.js): action_config, page_config,
-# page_ids, workflow_type, entity_collection. See view.yaml.njk.
+# page_ids, workflow_type, connection_id. See view.yaml.njk.
 #
 # Stale-URL allowlist: [in-review, error]. `error` is included so reviewers
 # can see the action while it's mid-recovery; the engine-side recovery flow
@@ -35,7 +35,7 @@ _ref:
           - _ref:
               path: requests/get_entity.yaml.njk
               vars:
-                entity_collection: {{ entity_collection }}
+                connection_id: {{ connection_id }}
         - _var:
             key: page_config.requests
             default: []

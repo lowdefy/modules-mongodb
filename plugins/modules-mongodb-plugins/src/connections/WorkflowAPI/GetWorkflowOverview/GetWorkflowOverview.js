@@ -200,7 +200,7 @@ async function GetWorkflowOverview(lowdefyContext) {
   const entity_link = entityConfig
     ? {
         pageId: entityConfig.page_id,
-        urlQuery: { [entityConfig.id_query_key]: wfDoc.entity_id },
+        urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
         title: entityConfig.title ?? null,
       }
     : null;

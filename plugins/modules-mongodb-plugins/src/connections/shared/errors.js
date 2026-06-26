@@ -7,7 +7,7 @@
  * `access_denied`. Plan-phase signal-validation codes: `unknown_signal`,
  * `missing_target`, `signal_not_allowed`, `invalid_seed`. Lifecycle-handler
  * codes: `stage_rejects_close`; `invalid_params` — a missing required request
- * param (Start's `workflow_type`/`entity_id`/`entity_collection`,
+ * param (Start's `workflow_type`/`entity.id`,
  * Cancel/Close's `workflow_id`); plus Start's config-shaped preconditions —
  * `unknown_workflow_type` / `unknown_action_type` (config lookups, distinct
  * from the doc-lookup `*_not_found` codes) and `invalid_seed` (seed

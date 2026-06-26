@@ -26,13 +26,13 @@ Serves every workflow-stream read:
 
 ## `workflows` collection
 
-### Index: `{ entity_collection: 1, entity_id: 1 }` — non-partial
+### Index: `{ "entity.connection_id": 1, "entity.id": 1 }` — non-partial
 
-Serves the entity workflow list:
+Serves the entity workflow list (the entity pointer is a nested `entity` object; MongoDB indexes the dotted sub-fields identically to top-level fields):
 
-| Query site             | Operation                                                                                                                        |
-| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `get-entity-workflows` | `$match: { entity_collection, entity_id }` then `$sort: { display_order: 1, created.timestamp: -1 }` on every entity page render |
+| Query site             | Operation                                                                                                                                          |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get-entity-workflows` | `$match: { "entity.connection_id", "entity.id" }` then `$sort: { display_order: 1, created.timestamp: -1 }` on every entity page render |
 
 The compound index matches the equality prefix exactly. Per-entity workflow counts are small (single-digit rows in typical apps), so the post-match in-memory sort on `display_order` + `created.timestamp` is inexpensive.
 

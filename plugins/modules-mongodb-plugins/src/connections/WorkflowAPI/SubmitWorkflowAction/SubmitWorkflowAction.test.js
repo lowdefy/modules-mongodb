@@ -47,8 +47,7 @@ function makeWorkflowsConfig({
   return [
     {
       type: "onboarding",
-      entity_collection: "leads-collection",
-      entity_ref_key: "lead_ids",
+      entity: { connection_id: "leads-collection", ref_key: "lead_ids" },
       starting_actions: [{ type: "qualify", status: "action-required" }],
       actions: [
         {
@@ -114,9 +113,7 @@ async function seed({
   await mongo.db.collection("workflows").insertOne({
     _id: "W1",
     workflow_type: "onboarding",
-    entity_id: "L1",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: { connection_id: "leads-collection", id: "L1", ref_key: "lead_ids" },
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 1 + extraActions.length },
     groups: [],

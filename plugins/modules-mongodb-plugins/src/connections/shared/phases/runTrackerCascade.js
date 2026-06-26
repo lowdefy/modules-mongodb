@@ -64,7 +64,7 @@ const RECORDED_CODES = [
  *   payload?: { fields?: Object } }>} initialFires
  *   — fully-resolved fires from the originating plan (`plan.trackerFires`).
  *   The optional `payload.fields` (Start's child link fields —
- *   `child_workflow_id`, `child_entity_id`, `child_entity_collection`, task 17)
+ *   `child_workflow_id`, `child_entity: { connection_id, id }`, task 17)
  *   is forwarded through `planTrackerLevel` into `planActionTransition`'s
  *   `payload.fields` (D3 fire shape).
  * @param {Object} baseContext — engine context for the next-level loads/commits

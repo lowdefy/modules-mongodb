@@ -108,7 +108,7 @@ function resolveActionSignalTitle(signal, status_after) {
  *   into `display.{app_name}.description` (verbatim `comment.html`) by
  *   `foldCommentIntoEvent` after render; the planner reads only `comment.html`.
  * @param {Object} args.plannedWorkflowDoc — the whole planned post-commit
- *   workflow doc (from planWorkflowRecompute). Must carry `entity_ref_key`.
+ *   workflow doc (from planWorkflowRecompute). Must carry `entity.ref_key`.
  * @param {Object} [args.plannedActionDoc] — required for action-event and
  *   tracker-mirror paths; the planned post-commit action doc.
  * @param {string|null} [args.status_before] — stage before the signal.
@@ -155,10 +155,10 @@ function planEventDispatch({
   }
 
   const workflow = plannedWorkflowDoc;
-  const refKey = workflow.entity_ref_key;
+  const refKey = workflow.entity?.ref_key;
   if (typeof refKey !== "string" || refKey.length === 0) {
     throw new WorkflowEngineError(
-      'planEventDispatch: workflow.entity_ref_key is required — the workflow config must declare entity_ref_key (e.g. "lead_ids").',
+      'planEventDispatch: workflow.entity.ref_key is required — the workflow config must declare entity.ref_key (e.g. "lead_ids").',
       { code: "missing_entity_ref_key" },
     );
   }
@@ -256,7 +256,7 @@ function planEventDispatch({
     references: {
       workflow_ids: [workflow._id],
       action_ids: (allTouchedActionDocs ?? []).map((a) => a._id),
-      [refKey]: [workflow.entity_id],
+      [refKey]: [workflow.entity.id],
     },
     metadata: buildMetadata({
       isActionEvent,

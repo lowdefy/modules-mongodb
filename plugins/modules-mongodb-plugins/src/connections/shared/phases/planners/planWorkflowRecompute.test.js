@@ -19,8 +19,7 @@ function makeWorkflow(overrides = {}) {
   return {
     _id: "wf-1",
     workflow_type: "onboarding",
-    entity_id: "lead-1",
-    entity_collection: "leads-collection",
+    entity: { connection_id: "leads-collection", id: "lead-1" },
     status: [{ stage: "active", created: new Date("2026-05-19T00:00:00Z") }],
     summary: { done: 0, not_required: 0, total: 0 },
     groups: [],
@@ -339,8 +338,7 @@ test("composes the whole doc: passthrough fields survive, updated: now, formData
 
   expect(doc._id).toBe("wf-1");
   expect(doc.workflow_type).toBe("onboarding");
-  expect(doc.entity_id).toBe("lead-1");
-  expect(doc.entity_collection).toBe("leads-collection");
+  expect(doc.entity).toEqual({ connection_id: "leads-collection", id: "lead-1" });
   // CAS soundness (D15): every commit must advance the stored
   // updated.timestamp — never carry the loaded `updated` through.
   expect(doc.updated).toBe(now);

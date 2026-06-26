@@ -37,9 +37,7 @@ function makeWorkflow(overrides = {}) {
   return {
     _id: "wf-A",
     workflow_type: "one-tracker-parent",
-    entity_id: "ent-A",
-    entity_collection: "parents",
-    entity_ref_key: "parent_ids",
+    entity: { connection_id: "parents", id: "ent-A", ref_key: "parent_ids" },
     parent_action_id: null,
     parent_workflow_id: null,
     status: [{ stage: "active", event_id: "e0", created: now }],
@@ -57,8 +55,7 @@ function makeWorkflow(overrides = {}) {
 function makeConfig({ actions } = {}) {
   return {
     type: "one-tracker-parent",
-    entity_collection: "parents",
-    entity_ref_key: "parent_ids",
+    entity: { connection_id: "parents", ref_key: "parent_ids" },
     action_groups: [],
     actions: actions ?? [
       {
@@ -183,8 +180,7 @@ test("forwards the fire payload.fields onto the parent tracker doc alongside the
     payload: {
       fields: {
         child_workflow_id: "wf-child-new",
-        child_entity_id: "ent-child",
-        child_entity_collection: "children",
+        child_entity: { connection_id: "children", id: "ent-child" },
       },
     },
   });
@@ -194,8 +190,10 @@ test("forwards the fire payload.fields onto the parent tracker doc alongside the
     event_id,
   });
   expect(target.doc.child_workflow_id).toBe("wf-child-new");
-  expect(target.doc.child_entity_id).toBe("ent-child");
-  expect(target.doc.child_entity_collection).toBe("children");
+  expect(target.doc.child_entity).toEqual({
+    connection_id: "children",
+    id: "ent-child",
+  });
 });
 
 test("returns null when the mirror signal FSM-no-ops (tracker already done)", () => {

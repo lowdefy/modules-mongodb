@@ -1,7 +1,7 @@
 # Error recovery page for a form action.
 #
 # Build-time vars (from makeActionPages.js): action_config, page_config,
-# page_ids, workflow_type, entity_collection. See view.yaml.njk.
+# page_ids, workflow_type, connection_id. See view.yaml.njk.
 #
 # Stale-URL allowlist: [error]. Only renders during recovery; any other
 # stage redirects to -view.
@@ -36,7 +36,7 @@ _ref:
           - _ref:
               path: requests/get_entity.yaml.njk
               vars:
-                entity_collection: {{ entity_collection }}
+                connection_id: {{ connection_id }}
         - _var:
             key: page_config.requests
             default: []

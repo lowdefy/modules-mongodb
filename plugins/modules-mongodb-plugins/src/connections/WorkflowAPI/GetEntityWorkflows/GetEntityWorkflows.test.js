@@ -123,9 +123,7 @@ async function seedWorkflow({
   await mongo.db.collection("workflows").insertOne({
     _id,
     workflow_type,
-    entity_id,
-    entity_collection,
-    entity_ref_key: "lead_ids",
+    entity: { connection_id: entity_collection, id: entity_id, ref_key: "lead_ids" },
     display_order: 1,
     status: [{ stage: "active", event_id: "e0", created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 0 },
@@ -218,8 +216,7 @@ describe("GetEntityWorkflows return shape", () => {
     const result = await GetEntityWorkflows(
       buildContext({
         request: {
-          entity_collection: "leads-collection",
-          entity_id: "no-such",
+          entity: { connection_id: "leads-collection", id: "no-such" },
         },
       }),
     );
@@ -230,7 +227,7 @@ describe("GetEntityWorkflows return shape", () => {
     await seedWorkflow();
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     expect(result.workflows).toHaveLength(1);
@@ -241,7 +238,7 @@ describe("GetEntityWorkflows return shape", () => {
     await seedWorkflow();
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     expect(result.workflows[0].entity_link).toEqual({
@@ -257,7 +254,7 @@ describe("GetEntityWorkflows return shape", () => {
     delete config[0].entity;
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
         workflowsConfig: config,
       }),
     );
@@ -268,7 +265,7 @@ describe("GetEntityWorkflows return shape", () => {
     await seedWorkflow();
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
         workflowsConfig: [],
       }),
     );
@@ -291,7 +288,7 @@ describe("action cards include _id and kind", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const groups = result.workflows[0].groups;
@@ -338,7 +335,7 @@ describe("access drop", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     // The action should be dropped since user doesn't have reviewer role.
@@ -357,7 +354,7 @@ describe("access drop", () => {
     // Use reviewer user instead
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
         user: { id: "U2", profile: { name: "Reviewer" }, roles: ["reviewer"] },
       }),
     );
@@ -385,7 +382,7 @@ describe("access drop", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const allCards = result.workflows[0].groups.flatMap((g) => g.actions);
@@ -408,7 +405,7 @@ describe("link collapse", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const card = result.workflows[0].groups.flatMap((g) => g.actions)[0];
@@ -440,7 +437,7 @@ describe("link collapse", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const card = result.workflows[0].groups.flatMap((g) => g.actions)[0];
@@ -463,7 +460,7 @@ describe("group display config", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const phase1 = result.workflows[0].groups.find((g) => g.id === "phase-1");
@@ -476,7 +473,7 @@ describe("group display config", () => {
     await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const phase1 = result.workflows[0].groups.find((g) => g.id === "phase-1");
@@ -491,7 +488,7 @@ describe("group display config", () => {
     await seedAction({ _id: "a1", type: "qualify", action_group: null }); // no group
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const nullGroup = result.workflows[0].groups.find((g) => g.id === null);
@@ -520,7 +517,7 @@ describe("within-group action ordering", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const phase1 = result.workflows[0].groups.find((g) => g.id === "phase-1");
@@ -545,7 +542,7 @@ describe("within-group action ordering", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const phase1 = result.workflows[0].groups.find((g) => g.id === "phase-1");
@@ -571,7 +568,7 @@ describe("within-group action ordering", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const phase1 = result.workflows[0].groups.find((g) => g.id === "phase-1");
@@ -589,7 +586,7 @@ describe("group id field", () => {
     await seedAction({ _id: "a1", type: "qualify", action_group: "phase-1" });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const groups = result.workflows[0].groups;
@@ -629,7 +626,7 @@ describe("unseen group order", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const groups = result.workflows[0].groups;
@@ -670,7 +667,7 @@ describe("unseen group order", () => {
     });
     const result = await GetEntityWorkflows(
       buildContext({
-        request: { entity_collection: "leads-collection", entity_id: "lead-1" },
+        request: { entity: { connection_id: "leads-collection", id: "lead-1" } },
       }),
     );
     const groups = result.workflows[0].groups;

@@ -19,8 +19,7 @@ function makeWorkflowsConfig({ withGroups = false, startingActions } = {}) {
     {
       type: "onboarding",
       title: "Onboarding",
-      entity_collection: "leads-collection",
-      entity_ref_key: "lead_ids",
+      entity: { connection_id: "leads-collection", ref_key: "lead_ids" },
       starting_actions: startingActions ?? [
         { type: "a", status: "action-required" },
       ],
@@ -62,8 +61,7 @@ function makeParentChildConfig() {
   return [
     {
       type: "onboarding",
-      entity_collection: "leads-collection",
-      entity_ref_key: "lead_ids",
+      entity: { connection_id: "leads-collection", ref_key: "lead_ids" },
       starting_actions: [{ type: "a", status: "action-required" }],
       action_groups: [],
       actions: [
@@ -179,8 +177,7 @@ describe("handler return payload", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
       }),
     );
@@ -198,8 +195,7 @@ describe("handler return payload", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
         callApi: makeCallApi({ calls }),
       }),
@@ -225,15 +221,14 @@ describe("handler return payload", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
       }),
     );
     const wf = await readOneWorkflow();
     expect(wf.status[0].stage).toBe("active");
     expect(wf.status[0].event_id).toBe(result.event_id);
-    expect(wf.entity_ref_key).toBe("lead_ids");
+    expect(wf.entity.ref_key).toBe("lead_ids");
   });
 
   test("the base workflow doc carries the denormalised title from config", async () => {
@@ -243,8 +238,7 @@ describe("handler return payload", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
         workflowsConfig: config,
       }),
@@ -265,12 +259,11 @@ describe("lifecycle event override", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
           lifecycle_event_override: {
             display: {
               "test-app": {
-                title: "Onboarding kicked off for {{ workflow.entity_id }}",
+                title: "Onboarding kicked off for {{ workflow.entity.id }}",
               },
             },
           },
@@ -294,8 +287,7 @@ describe("lifecycle event override", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
         callApi: makeCallApi({ calls }),
       }),
@@ -320,8 +312,7 @@ describe("seeded drafts", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
         workflowsConfig: makeWorkflowsConfig({
           startingActions: [
@@ -344,8 +335,7 @@ describe("seeded drafts", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
       }),
     );
@@ -366,8 +356,7 @@ describe("seeded drafts", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
           metadata: { source: "import", batch: 7 },
         },
         workflowsConfig: makeWorkflowsConfig({
@@ -393,15 +382,14 @@ describe("seeded drafts", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
           render_config: {
             onboarding: {
               a: {
                 status_map: {
                   "action-required": {
                     "test-app": {
-                      message: "Kick-off task for {{ entity_id }}.",
+                      message: "Kick-off task for {{ entity.id }}.",
                     },
                   },
                 },
@@ -420,8 +408,7 @@ describe("seeded drafts", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
         workflowsConfig: makeWorkflowsConfig({
           withGroups: true,
@@ -465,8 +452,7 @@ describe("payload channels", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
           references: { campaign_id: "C9", priority: "high" },
         },
       }),
@@ -481,8 +467,7 @@ describe("payload channels", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
           actions: [{ type: "a", key: "k1", status: "action-required" }],
         },
       }),
@@ -499,8 +484,7 @@ describe("payload channels", () => {
         buildContext({
           request: {
             workflow_type: "onboarding",
-            entity_id: "lead-1",
-            entity_collection: "leads-collection",
+            entity: { id: "lead-1" },
             actions: [{ type: "a", status: "in-review" }],
           },
         }),
@@ -518,9 +502,11 @@ describe("started as a tracker child", () => {
     await mongo.db.collection("workflows").insertOne({
       _id: "wf-parent",
       workflow_type: "onboarding",
-      entity_id: "parent-entity",
-      entity_collection: "leads-collection",
-      entity_ref_key: "lead_ids",
+      entity: {
+        connection_id: "leads-collection",
+        id: "parent-entity",
+        ref_key: "lead_ids",
+      },
       status: [{ stage: "active", event_id: "e0", created: changeStamp }],
       summary: { done: 0, not_required: 0, total: 2 },
       groups: [],
@@ -536,6 +522,7 @@ describe("started as a tracker child", () => {
       kind: "check",
       key: null,
       action_group: null,
+      entity: { connection_id: "leads-collection", id: "parent-entity" },
       status: [
         { stage: "action-required", event_id: "e0", created: changeStamp },
       ],
@@ -550,10 +537,10 @@ describe("started as a tracker child", () => {
       kind: "tracker",
       key: null,
       action_group: null,
+      entity: { connection_id: "leads-collection", id: "parent-entity" },
       tracker: { child_workflow_type: "onboarding" },
       child_workflow_id: null,
-      child_entity_id: null,
-      child_entity_collection: null,
+      child_entity: null,
       access: { "test-app": { view: true } },
       workflow_type: "onboarding",
       status: [{ stage: trackerStage, event_id: "e0", created: changeStamp }],
@@ -570,8 +557,7 @@ describe("started as a tracker child", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "child-entity",
-          entity_collection: "leads-collection",
+          entity: { id: "child-entity" },
           parent_action_id: "p-tracker",
         },
         workflowsConfig: makeParentChildConfig(),
@@ -584,8 +570,10 @@ describe("started as a tracker child", () => {
       .findOne({ _id: "p-tracker" });
     expect(tracker.status[0].stage).toBe("in-progress");
     expect(tracker.child_workflow_id).toBe(result.workflow_id);
-    expect(tracker.child_entity_id).toBe("child-entity");
-    expect(tracker.child_entity_collection).toBe("leads-collection");
+    expect(tracker.child_entity).toEqual({
+      connection_id: "leads-collection",
+      id: "child-entity",
+    });
 
     // Parent groups/summary recomputed (deliberate delta vs today's stale push).
     const parentWf = await mongo.db
@@ -615,8 +603,7 @@ describe("started as a tracker child", () => {
         buildContext({
           request: {
             workflow_type: "onboarding",
-            entity_id: "child-entity",
-            entity_collection: "leads-collection",
+            entity: { id: "child-entity" },
             parent_action_id: "p-a",
           },
           workflowsConfig: makeParentChildConfig(),
@@ -632,8 +619,7 @@ describe("started as a tracker child", () => {
         buildContext({
           request: {
             workflow_type: "onboarding",
-            entity_id: "child-entity",
-            entity_collection: "leads-collection",
+            entity: { id: "child-entity" },
             parent_action_id: "nope",
           },
           workflowsConfig: makeParentChildConfig(),
@@ -654,8 +640,7 @@ describe("preconditions", () => {
         buildContext({
           request: {
             workflow_type: "nope",
-            entity_id: "lead-1",
-            entity_collection: "leads-collection",
+            entity: { id: "lead-1" },
           },
         }),
       ),
@@ -668,8 +653,7 @@ describe("preconditions", () => {
         buildContext({
           request: {
             workflow_type: "onboarding",
-            entity_id: "lead-1",
-            entity_collection: "leads-collection",
+            entity: { id: "lead-1" },
             actions: [{ type: "nope", status: "action-required" }],
           },
         }),
@@ -684,8 +668,7 @@ describe("post-commit dispatch failure", () => {
       buildContext({
         request: {
           workflow_type: "onboarding",
-          entity_id: "lead-1",
-          entity_collection: "leads-collection",
+          entity: { id: "lead-1" },
         },
         callApi: makeCallApi({ failOn: "events/new-event" }),
       }),

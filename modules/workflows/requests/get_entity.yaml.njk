@@ -1,9 +1,9 @@
 id: get_entity
 type: MongoDBAggregation
-connectionId: {{ entity_collection }}
+connectionId: {{ connection_id }}
 payload:
   entity_id:
-    _request: get_workflow_action.entity_id
+    _request: get_workflow_action.entity.id
 properties:
   pipeline:
     - $match:
