@@ -6,6 +6,10 @@ exports:
   connections:
     - id: events-collection
       description: MongoDB collection connection for event log records
+    - id: events-timeline
+      description: >
+        Read-only EventsTimeline connection exposing the GetEventsTimeline
+        engine method that the events-timeline component fetches from.
   components:
     - id: change_stamp
       description: Audit metadata template with timestamp and user fields
@@ -55,15 +59,23 @@ vars:
       without a link. Example: `/user-admin/view?user_id={id}`.
       Per-call overrides via `contact_page_url` and `disable_contact_link`
       vars on the events-timeline component.
-  action_statuses_display:
-    type: object
-    default: {}
+  actions_collection:
+    type: string
+    default: null
     description: >
-      Per-status display overrides for the shared action_statuses enum.
-      Currently unused: the events timeline is events-only (no workflow action
-      cards), so this var no longer affects anything — retained for manifest
-      compatibility. Action-card display overrides belong on the workflows
-      module's `action_statuses_display` var.
+      Actions collection the events timeline joins to enrich events with action
+      cards. The engine falls back to `actions` when unset, so override only when
+      your actions collection is named differently. Enrichment is data-driven:
+      the join is inert when events carry no `action_ids`, so entities with no
+      workflow actions render as an events-only timeline.
+  contacts_collection:
+    type: string
+    default: null
+    description: >
+      Contacts collection joined to resolve each event author's avatar
+      (`created.user.id` → `_id`, projecting `profile.picture`). The engine
+      falls back to `user-contacts` when unset; avatars fall back to initials
+      when an author has no matching contact.
 
 components:
   - id: change_stamp
@@ -83,6 +95,7 @@ api:
 
 connections:
   - _ref: connections/events-collection.yaml
+  - _ref: connections/events-timeline.yaml
 
 plugins:
   - name: "@lowdefy/modules-mongodb-plugins"
