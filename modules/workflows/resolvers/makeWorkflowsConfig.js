@@ -31,8 +31,6 @@ const ACTION_FIELDS = [
 const WORKFLOW_FIELDS = [
   'type',
   'title',
-  'entity_collection',
-  'entity_ref_key',
   'display_order',
   'starting_actions',
   'action_groups',
@@ -574,17 +572,57 @@ function validateWorkflow(workflow) {
   if ('entity_type' in workflow) {
     fail(
       workflow.type,
-      'legacy "entity_type" field is no longer supported; rename to "entity_collection" (a MongoDB collection connection id like "leads-collection").'
+      'legacy "entity_type" field is no longer supported; move the entity wiring into the nested "entity" block (entity.connection_id, a MongoDB collection connection id like "leads-collection").'
+    );
+  }
+
+  // Part 57: a workflow's entity wiring is one nested `entity:` block, carried
+  // into the materialized config as authored (nothing lifted to flat aliases).
+  // Required strings: connection_id, ref_key, page_id, title; id_query_key is
+  // optional and defaults to "_id" in the materialized output.
+  const entity = workflow.entity;
+  if (entity === null || typeof entity !== 'object' || Array.isArray(entity)) {
+    fail(
+      workflow.type,
+      'missing required "entity" block — the workflow\'s entity wiring (entity.connection_id, entity.ref_key, entity.page_id, entity.title; optional entity.id_query_key).'
+    );
+  }
+
+  if (typeof entity.connection_id !== 'string' || entity.connection_id === '') {
+    fail(
+      workflow.type,
+      'missing required "entity.connection_id" — the entity\'s MongoDB collection connection id (e.g. "leads-collection").'
+    );
+  }
+
+  if (typeof entity.ref_key !== 'string' || entity.ref_key === '') {
+    fail(
+      workflow.type,
+      'missing required "entity.ref_key" — the event-references key for the workflow\'s entity (e.g. "lead_ids"), written into event docs so events surface on the entity.'
+    );
+  }
+
+  if (typeof entity.page_id !== 'string' || entity.page_id === '') {
+    fail(
+      workflow.type,
+      'missing required "entity.page_id" — the host-app page id the workflow back-link navigates to.'
+    );
+  }
+
+  if (typeof entity.title !== 'string' || entity.title === '') {
+    fail(
+      workflow.type,
+      'missing required "entity.title" — the singular human-readable entity-kind label (e.g. "Lead", "Company").'
     );
   }
 
   if (
-    typeof workflow.entity_ref_key !== 'string' ||
-    workflow.entity_ref_key === ''
+    'id_query_key' in entity &&
+    (typeof entity.id_query_key !== 'string' || entity.id_query_key === '')
   ) {
     fail(
       workflow.type,
-      'missing required "entity_ref_key" — the event-references key for the workflow\'s entity (e.g. "lead_ids"), written into event docs so events surface on the entity.'
+      `entity.id_query_key must be a non-empty string when present (got: ${JSON.stringify(entity.id_query_key)}).`
     );
   }
 
@@ -771,6 +809,12 @@ function makeWorkflowsConfig(_, vars) {
       // Workflow title default: explicit `workflow.title` wins; else derive
       // from `type`. Set after the pick so it fills the gap when omitted.
       title: workflow.title ?? humanizeSlug(workflow.type, title_acronyms),
+      // Part 57: carry the whole authored `entity` block wholesale (no field is
+      // lifted to a flat alias), applying only the id_query_key default.
+      entity: {
+        ...workflow.entity,
+        id_query_key: workflow.entity.id_query_key ?? '_id',
+      },
       ...(actionGroups.length > 0 ? { action_groups: actionGroups } : {}),
       actions,
     };
