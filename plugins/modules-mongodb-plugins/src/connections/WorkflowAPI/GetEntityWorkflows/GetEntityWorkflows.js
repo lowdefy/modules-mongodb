@@ -10,7 +10,7 @@ import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOr
  * Reads all workflows for a given entity, joins their actions, applies per-user
  * access filtering, groups actions by action_group with not-required-sinks-last
  * ordering, and enriches each workflow + group with display config from
- * workflowsConfig + entities map.
+ * workflowsConfig (including each workflow config's `entity` block).
  *
  * Params: { entity_collection, entity_id }
  *
@@ -28,7 +28,6 @@ async function GetEntityWorkflows(lowdefyContext) {
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? 'workflows';
   const actionsCollection = connection.actionsCollection ?? 'actions';
-  const entities = connection.entities ?? {};
 
   // ── Load: all workflows for the entity, sorted by display_order asc, created desc ──
   const workflowDocs = await findDocs({
@@ -169,7 +168,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     const title = wfConfig?.title ?? null;
 
     // ── entity_link ──
-    const entityConfig = entities[wfDoc.entity_collection];
+    const entityConfig = wfConfig?.entity;
     const entity_link = entityConfig
       ? {
           pageId: entityConfig.page_id,

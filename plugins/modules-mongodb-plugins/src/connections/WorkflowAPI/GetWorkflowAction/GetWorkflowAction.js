@@ -18,7 +18,7 @@ import { computeAllowed, resolveButtons } from '../../shared/render/resolveActio
  *   {
  *     _id, type, workflow_type, kind, key, status, action_group, description, due_date,
  *     assignees, assignee_docs, entity_id, entity_collection, created, updated,
- *     entity_link,          // { pageId, urlQuery, title } from connection.entities, or null
+ *     entity_link,          // { pageId, urlQuery, title } from the workflow config's `entity` block, or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
  *     allowed,              // { view, edit, review, error }
@@ -122,7 +122,6 @@ async function GetWorkflowAction(lowdefyContext) {
   const workflowsCollection = connection.workflowsCollection ?? 'workflows';
   const actionsCollection = connection.actionsCollection ?? 'actions';
   const contactsCollection = connection.contactsCollection ?? 'user-contacts';
-  const entities = connection.entities ?? {};
 
   // ── Step 1: Read the action doc ──
   const [action] = await findDocs({
@@ -214,10 +213,11 @@ async function GetWorkflowAction(lowdefyContext) {
     }
   }
 
-  // ── Entity link (mirrors GetWorkflowOverview) — resolved from the
-  //    connection's entities config so submit/back nav can return to the
-  //    entity page. Null when the entity_collection has no entities entry.
-  const entityConfig = entities[action.entity_collection];
+  // ── Entity link (mirrors GetWorkflowOverview) — resolved from the workflow
+  //    config's `entity` block (by action.workflow_type) so submit/back nav can
+  //    return to the entity page. Null when the workflow type has no config or
+  //    no `entity` block.
+  const entityConfig = wfConfig?.entity;
   const entity_link = entityConfig
     ? {
         pageId: entityConfig.page_id,
