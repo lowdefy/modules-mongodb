@@ -14,7 +14,7 @@ The engine emits a log event on every successful action transition — no author
 
 Every signal that transitions the current action generates a log event. The event's `references` field is derived from the workflow context so it appears on the entity's timeline without any per-action authoring.
 
-The entity reference key is the workflow config's required `entity_ref_key` (e.g. `lead_ids`) — the event-references key for the workflow's entity. It is denormalized onto the workflow doc at start, and the engine writes `{ [entity_ref_key]: [entity_id] }` into the event's references. This is the key entity-page timeline components query by, so the event surfaces on the entity's timeline without per-action authoring.
+The entity reference key is the workflow config's required `entity.ref_key` (e.g. `lead_ids`) — the event-references key for the workflow's entity. It is denormalized onto the workflow doc's `entity` object at start, and the engine writes `{ [entity.ref_key]: [entity.id] }` into the event's references. This is the key entity-page timeline components query by, so the event surfaces on the entity's timeline without per-action authoring.
 
 ## Overriding event metadata
 
@@ -47,7 +47,7 @@ For how event display works across all modules, see [Event display](../../shared
 
 ## Event log and timeline
 
-Log events emitted by the engine appear on the entity's event timeline automatically, assuming the entity's view page uses the events module's timeline component and the `entity_ref_key` var is configured. No per-action wiring is needed.
+Log events emitted by the engine appear on the entity's event timeline automatically, assuming the entity's view page uses the events module's timeline component and the workflow config's `entity.ref_key` is configured. No per-action wiring is needed.
 
 The `event_id` returned by `SubmitWorkflowAction` is the id of the log event written in that call. Post-hooks receive this id in `result.event_id` and can fetch the event doc if they need to attach additional context or fan out to downstream consumers.
 

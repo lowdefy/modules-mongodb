@@ -95,7 +95,7 @@ routine:
     properties:
       filter:
         _id:
-          _payload: context.workflow.entity_id
+          _payload: context.workflow.entity.id
       update:
         $set:
           billing.email:
@@ -108,7 +108,7 @@ routine:
               component: change_stamp
   - :return:
       company_id:
-        _payload: context.workflow.entity_id
+        _payload: context.workflow.entity.id
 ```
 
 This is the `billing-details` action's inline post-hook from the `company-setup` workflow. It writes form data to the company entity doc after the action commits.
@@ -166,7 +166,7 @@ routine:
     properties:
       filter:
         _id:
-          _payload: context.workflow.entity_id
+          _payload: context.workflow.entity.id
   - :reject:
       skip:
         _gt:

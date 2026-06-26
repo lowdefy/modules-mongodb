@@ -49,7 +49,8 @@ A generic onboarding workflow on a `lead` entity. Four actions, one per kind:
 
 ```yaml
 type: onboarding
-entity_collection: leads-collection
+entity:
+  connection_id: leads-collection
 display_order: 1
 action_groups:
   - id: discovery

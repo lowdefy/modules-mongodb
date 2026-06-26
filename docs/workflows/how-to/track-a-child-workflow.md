@@ -9,7 +9,7 @@ concepts: [tracker, start-link, child-workflow, parent-action]
 
 **Goal:** Add a `kind: tracker` action to a parent workflow so that it mirrors the lifecycle of a child workflow running on a related entity — and provide a `start_link` so users can create the child entity from the tracker card.
 
-**Prerequisites:** Two workflow types must exist (parent and child). The child workflow's `entity_collection` must already be declared. Understanding of [Action kinds](../concepts/action-kinds.md) — the tracker section.
+**Prerequisites:** Two workflow types must exist (parent and child). The child workflow's `entity.connection_id` must already be declared. Understanding of [Action kinds](../concepts/action-kinds.md) — the tracker section.
 
 ## How tracker actions work
 
@@ -103,10 +103,10 @@ On the page the `start_link` points to, call the child workflow type's `{type}-s
   endpointId:
     _module.endpointId: { id: company-setup-start, module: workflows }
   payload:
-    entity_id:
-      _state: company._id # the just-created child entity id
-    entity_collection:
-      _module.connectionId: { id: companies-collection, module: companies }
+    entity:
+      id:
+        _state: company._id # the just-created child entity id
+      # connection id is sourced from the workflow config, not the payload
     parent_action_id:
       _url_query: action_id # passed by the tracker's start_link urlQuery
 ```
@@ -115,7 +115,7 @@ The engine writes in one call:
 
 1. The new child workflow doc (with back-references to the parent).
 2. The child's starting action docs.
-3. The parent tracker action's `child_workflow_id`, `child_entity_id`, and `child_entity_collection` fields, plus the `in-progress` transition.
+3. The parent tracker action's `child_workflow_id` and `child_entity` (`{ connection_id, id }`) fields, plus the `in-progress` transition.
 
 No follow-up API call is needed to wire the link.
 

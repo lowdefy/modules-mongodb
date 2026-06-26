@@ -141,8 +141,7 @@ The bidirectional link between a tracker action and its child workflow is establ
   endpointId:
     _module.endpointId: { id: device-installation-start, module: workflows }
   payload:
-    entity_id: { _step: create_ticket.insertedId }
-    entity_collection: tickets-collection
+    entity: { id: { _step: create_ticket.insertedId } } # connection id sourced from config
     parent_action_id: { _state: parent_action_id } # the tracker action's _id
 ```
 
@@ -150,7 +149,7 @@ One `CallApi` is all that's needed. The engine writes:
 
 1. The new child workflow doc (with back-references to the parent).
 2. The child's starting action docs.
-3. The parent tracker action's `child_workflow_id`, `child_entity_id`, `child_entity_collection` fields, and the `in-progress` transition.
+3. The parent tracker action's `child_workflow_id` and `child_entity` (`{ connection_id, id }`) fields, and the `in-progress` transition.
 
 All in one server-side call. No follow-up API call to wire the link — see [Track a child workflow](../how-to/track-a-child-workflow.md).
 
