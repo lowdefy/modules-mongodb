@@ -287,6 +287,38 @@ test("persists denormalised access and workflow_type on the composed doc", () =>
   expect(result.doc.workflow_type).toBe("onboarding");
 });
 
+test("persists denormalised sort indices (group_index/decl_index) on the update path", () => {
+  const actionConfig = makeConfig({ group_index: 1, decl_index: 3 });
+  const result = plan({ actionConfig });
+  expect(result.operation).toBe("update");
+  expect(result.doc.group_index).toBe(1);
+  expect(result.doc.decl_index).toBe(3);
+});
+
+test("persists denormalised sort indices on the insert path, incl. -1 group", () => {
+  const result = planActionTransition({
+    action: null,
+    signal: "activate",
+    source: "auxiliary",
+    upsert: true,
+    key: "k-1",
+    actionConfig: makeConfig({
+      type: "install-step",
+      kind: "check",
+      group_index: -1,
+      decl_index: 0,
+    }),
+    loadedWorkflow,
+    entry_id,
+    event_id,
+    now,
+    newId: () => "new-1",
+  });
+  expect(result.operation).toBe("insert");
+  expect(result.doc.group_index).toBe(-1);
+  expect(result.doc.decl_index).toBe(0);
+});
+
 test("stamps the denormalised action title on the update path", () => {
   const actionConfig = makeConfig({ title: "Qualify Lead" });
   const result = plan({ actionConfig });

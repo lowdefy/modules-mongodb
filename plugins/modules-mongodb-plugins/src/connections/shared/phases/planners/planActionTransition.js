@@ -214,6 +214,11 @@ function planActionTransition({
   // so the engine arm (Part 44) sees the navigation target at link-compute time.
   doc.access = actionConfig.access;
   doc.workflow_type = loadedWorkflow.workflow_type;
+  // Part 50: denormalise the action's declaration sort indices onto the doc so
+  // the order comparator (task 2) reads them off stored data instead of
+  // resolving config at read time. Plain copy from the per-action config entry.
+  doc.group_index = actionConfig.group_index;
+  doc.decl_index = actionConfig.decl_index;
   // Part 53: denormalise the resolved action title onto the doc so the event
   // planner (the only reader of the doc title) renders `{{ action.title }}` on
   // every transition — insert and update, new and pre-existing actions.

@@ -1885,3 +1885,47 @@ test("makeWorkflowsConfig: universal_fields with a duplicate entry throws", () =
     }),
   ).toThrow(/duplicate entry "assignees"/);
 });
+
+// Part 50: denormalised sort indices attached to each action config entry.
+test("makeWorkflowsConfig: attaches decl_index and group_index onto each action config entry", () => {
+  const workflow = {
+    ...validWorkflow,
+    action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      { type: "qualify", kind: "check", action_group: "phase-1" },
+      { type: "send-quote", kind: "check", action_group: "phase-2" },
+      { type: "close", kind: "check", action_group: "phase-1" },
+    ],
+  };
+
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+
+  expect(out.actions[0]).toMatchObject({ type: "qualify", decl_index: 0, group_index: 0 });
+  expect(out.actions[1]).toMatchObject({ type: "send-quote", decl_index: 1, group_index: 1 });
+  expect(out.actions[2]).toMatchObject({ type: "close", decl_index: 2, group_index: 0 });
+});
+
+test("makeWorkflowsConfig: group_index is -1 when the action has no group or an unknown group", () => {
+  const workflow = {
+    ...validWorkflow,
+    action_groups: [{ id: "phase-1" }],
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      { type: "qualify", kind: "check", action_group: "phase-1" },
+      { type: "send-quote", kind: "check" },
+    ],
+  };
+
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+
+  expect(out.actions[0]).toMatchObject({ type: "qualify", decl_index: 0, group_index: 0 });
+  // No action_group declared → findIndex returns -1 (comparator maps -1 → +∞).
+  expect(out.actions[1]).toMatchObject({ type: "send-quote", decl_index: 1, group_index: -1 });
+});
+
+test("makeWorkflowsConfig: decl_index/group_index default to -1 group when a workflow declares no groups", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+
+  expect(out.actions[0]).toMatchObject({ type: "do-it", decl_index: 0, group_index: -1 });
+});
