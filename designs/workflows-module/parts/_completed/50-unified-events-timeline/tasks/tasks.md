@@ -2,7 +2,7 @@
 
 ## Overview
 
-These tasks implement [Part 50](../design.md): re-merge the split entity timeline
+These tasks implement [Part 50](designs/workflows-module/parts/_completed/50-unified-events-timeline/design.md): re-merge the split entity timeline
 into **one** events-module-owned timeline that enriches itself with action cards
 when an `actions_collection` var is set. The work denormalises the action sort key
 so the read engine needs no workflow config, introduces a new config-free
