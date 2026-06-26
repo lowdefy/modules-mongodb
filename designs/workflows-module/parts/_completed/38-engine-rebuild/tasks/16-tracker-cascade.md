@@ -11,7 +11,11 @@
 ```js
 const MAX_DEPTH = 10; // chain depth, not fan-out
 const MAX_ATTEMPTS = 3; // per-level CAS retry bound
-const RECORDED_CODES = ["concurrent_submit", "workflow_not_found", "missing_target"];
+const RECORDED_CODES = [
+  "concurrent_submit",
+  "workflow_not_found",
+  "missing_target",
+];
 
 async function runTrackerCascade(initialFires, baseContext) {
   const fires = []; // [{ parent_action_id, parent_workflow_id, new_status }] — today's shape
@@ -28,7 +32,9 @@ async function runTrackerCascade(initialFires, baseContext) {
     let attempts = 0;
     while (true) {
       try {
-        const levelLoaded = await loadWorkflowState(levelContext, { workflowId: fire.parentWorkflowId });
+        const levelLoaded = await loadWorkflowState(levelContext, {
+          workflowId: fire.parentWorkflowId,
+        });
         const levelPlan = await planTrackerLevel(levelLoaded, {
           parentActionId: fire.parentActionId,
           signal: fire.signal,
@@ -41,10 +47,16 @@ async function runTrackerCascade(initialFires, baseContext) {
         const commitResult = await commitPlan(levelContext, levelPlan);
         dispatchErrors.push(...commitResult.dispatchErrors);
         fires.push(levelPlan.fired); // the plan carries the level's fired entry (FSM-resolved new_status)
-        pendingFires.push(...levelPlan.trackerFires.map((f) => ({ ...f, depth: fire.depth + 1 })));
+        pendingFires.push(
+          ...levelPlan.trackerFires.map((f) => ({
+            ...f,
+            depth: fire.depth + 1,
+          })),
+        );
         break;
       } catch (error) {
-        if (error.code === "concurrent_submit" && ++attempts < MAX_ATTEMPTS) continue; // fresh load → plan → commit
+        if (error.code === "concurrent_submit" && ++attempts < MAX_ATTEMPTS)
+          continue; // fresh load → plan → commit
         if (RECORDED_CODES.includes(error.code)) {
           cascadeErrors.push({ fire, error }); // exhausted CAS / gone parent — record, continue
           break;
@@ -57,11 +69,11 @@ async function runTrackerCascade(initialFires, baseContext) {
 }
 ```
 
-- **Each level is its own invocation — mint a fresh `event_id` per level.** Design rule: "Tracker-mirror commits per cascade level each generate their own `event_id`." Reusing the base submit's `event_id` would collide on the event doc `_id` (duplicate-key on every cascade-bearing submit) and point the parent's `status[]` entries at the *child* submit's event. `now` is **not** re-minted: the single per-request `connection.changeStamp` passes through to every level — one user action, one timestamp (matches today's recursion sharing `context.changeStamp`, keeps the stamp app-overridable, and keeps the change-log's stamp-grouped audit coherent). The `newId` factory passes through unchanged (each call already returns a fresh uuid).
+- **Each level is its own invocation — mint a fresh `event_id` per level.** Design rule: "Tracker-mirror commits per cascade level each generate their own `event_id`." Reusing the base submit's `event_id` would collide on the event doc `_id` (duplicate-key on every cascade-bearing submit) and point the parent's `status[]` entries at the _child_ submit's event. `now` is **not** re-minted: the single per-request `connection.changeStamp` passes through to every level — one user action, one timestamp (matches today's recursion sharing `context.changeStamp`, keeps the stamp app-overridable, and keeps the change-log's stamp-grouped audit coherent). The `newId` factory passes through unchanged (each call already returns a fresh uuid).
 - **`MAX_DEPTH = 10` guard tracks chain depth, not loop iterations.** Each fire carries a `depth` field seeded at 1, incremented per level. A wide-but-shallow cascade (one workflow with many tracker parents) must **not** trip the guard; a genuinely deep cycle must. A single dequeue counter on the BFS loop would measure total fan-out (breadth), not depth — do **not** use that.
 - Define `TrackerCascadeDepthError extends WorkflowEngineError` (`code: "tracker_depth_exceeded"`) in `shared/errors.js` — engine throws share the D13 error model (base class created by task 9); it keeps a named class like `ConcurrentSubmitError`, but callers/tests discriminate on `code`.
 - **Collect per-level dispatch errors; don't stop the cascade for them.** Each level's `commitPlan` may record post-commit dispatch failures on its `CommitResult.dispatchErrors[]` (task 13 failure policy). `runTrackerCascade` accumulates these across levels and returns them, so the handler folds them into its single end-of-invocation `post_commit_dispatch_failed` throw (task 15). A level's dispatch failure never prevents the remaining fires from running.
-- **Bounded per-level CAS retry — a level's `ConcurrentSubmitError` never propagates.** The parent is a live workflow other users submit against, so a CAS miss at a cascade level is the *expected* concurrency event — and the caller can't recover it by retrying the original submit (the child already advanced; the retry FSM-no-ops → `signal_not_allowed`, so D15's "retryable" framing doesn't hold post-commit). On a CAS miss the loop re-runs the level, up to **3 attempts**, each a full fresh load → plan → commit: nothing stale is ever re-issued (the re-plan works from the re-loaded state; if the concurrent write advanced the tracker action itself, the re-plan FSM-no-ops and the level skips), and the level's `event_id` is safely reused across attempts (a CAS miss writes nothing — D9). This is the one engine site where auto-retry is safe by construction: tracker levels have no pre-hook and `planTrackerLevel` is deterministic, so D15's non-idempotence argument doesn't apply. On exhaustion, record `{ fire, error }` on the cascade's error accumulation and continue with the remaining fires.
+- **Bounded per-level CAS retry — a level's `ConcurrentSubmitError` never propagates.** The parent is a live workflow other users submit against, so a CAS miss at a cascade level is the _expected_ concurrency event — and the caller can't recover it by retrying the original submit (the child already advanced; the retry FSM-no-ops → `signal_not_allowed`, so D15's "retryable" framing doesn't hold post-commit). On a CAS miss the loop re-runs the level, up to **3 attempts**, each a full fresh load → plan → commit: nothing stale is ever re-issued (the re-plan works from the re-loaded state; if the concurrent write advanced the tracker action itself, the re-plan FSM-no-ops and the level skips), and the level's `event_id` is safely reused across attempts (a CAS miss writes nothing — D9). This is the one engine site where auto-retry is safe by construction: tracker levels have no pre-hook and `planTrackerLevel` is deterministic, so D15's non-idempotence argument doesn't apply. On exhaustion, record `{ fire, error }` on the cascade's error accumulation and continue with the remaining fires.
 - **`TrackerCascadeDepthError` and unclassified errors do propagate immediately.** A depth cycle is a structural config bug (D13 defensive gate), not a per-fire data state — it taints the whole cascade, so it fails loudly rather than folding into the error list. The loop's catch is a closed set — `concurrent_submit` (after exhaustion), `workflow_not_found`, `missing_target` are recorded; everything else rethrows (an unclassifiable mid-level error leaves the level's state unknowable; swallowing it would hide corruption).
 - **Return `{ fires, dispatchErrors, cascadeErrors }`.** The handler's `tracker_fired` return key (task 15) and the post-hook `result` bag (task 14) read `fires` in **today's shape** — `[{ parent_action_id, parent_workflow_id, new_status }]`, `new_status` the FSM-resolved parent stage (review-11 #2; this is the existing `tracker_fired` consumer contract, `makeWorkflowApis.js` `:return`); each level's plan carries its `fired` entry, composed by `planTrackerLevel`. The two error lists stay separate (different shapes — step failures vs `{ fire, error }`); the handler throws `post_commit_dispatch_failed` when **either** is non-empty (task 15).
 - **No-op convention: `planTrackerLevel` returns `null`** (mirroring `planActionTransition`'s landed no-op convention) — the loop's skip check is `levelPlan === null`, not a structural emptiness probe.

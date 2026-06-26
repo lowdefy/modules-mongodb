@@ -12,8 +12,8 @@ The send routine itself is provided by the consuming app — this module ships t
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
+| Module                       | Why                                                     |
+| ---------------------------- | ------------------------------------------------------- |
 | [layout](../layout/index.md) | Page wrapper for the `all`, `link`, and `invalid` pages |
 
 ## When to use

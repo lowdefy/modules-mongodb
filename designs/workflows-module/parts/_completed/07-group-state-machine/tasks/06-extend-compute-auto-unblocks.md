@@ -15,7 +15,7 @@ Part 7's design replaces the action-type-only logic with **mixed resolution**:
 
 > For each entry in `blocked_by`, first match against declared `action_groups[].id`; if matched, evaluate against that group's persisted status (`done` ⇒ unblocked). Otherwise match against an action `type`; evaluate against the action's status.
 
-The function runs in **step 3 of the lifecycle** (pre-write, before step 4's per-entry write loop). Its job: compute which currently-`blocked` actions should flip to `action-required` because their `blocked_by` dependencies are all terminal. Group-status reads use the workflow doc's **current** `groups[]` array — the pre-submit state. Part 7's submit-side recompute (sub-step 4a, task 8) computes the post-submit state, but that runs *after* step 3's auto-unblock check.
+The function runs in **step 3 of the lifecycle** (pre-write, before step 4's per-entry write loop). Its job: compute which currently-`blocked` actions should flip to `action-required` because their `blocked_by` dependencies are all terminal. Group-status reads use the workflow doc's **current** `groups[]` array — the pre-submit state. Part 7's submit-side recompute (sub-step 4a, task 8) computes the post-submit state, but that runs _after_ step 3's auto-unblock check.
 
 This means `computeAutoUnblocks` needs a new input: the workflow's current `groups[]` array. Caller (the existing wiring in `handleSubmit.js` step 3) needs to pass it.
 
@@ -104,7 +104,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
 
 ## Notes
 
-- `computeAutoUnblocks` reads the workflow's **pre-submit** `groups[]` array. Part 7's sub-step 4a (task 8) computes the post-submit array — but 4a runs *after* step 4 writes, while `computeAutoUnblocks` runs in step 3 *before* step 4. The auto-unblock check should see the pre-submit world; the post-write re-evaluation walk (task 7) sees the post-write world. Both are needed because they catch different cases.
+- `computeAutoUnblocks` reads the workflow's **pre-submit** `groups[]` array. Part 7's sub-step 4a (task 8) computes the post-submit array — but 4a runs _after_ step 4 writes, while `computeAutoUnblocks` runs in step 3 _before_ step 4. The auto-unblock check should see the pre-submit world; the post-write re-evaluation walk (task 7) sees the post-write world. Both are needed because they catch different cases.
 - The defensive "skip unresolved entries" branch only fires if the build-time validator (task 2) was bypassed (e.g. ad-hoc DB editing of the workflow config, or a runtime config injection). It's not a real production code path.
 - Per the existing JSDoc: keyed actions share a `type`; a type is "fully terminal" only when every doc of that type is terminal. That rule is preserved unchanged from part 6.
 - The action-type lookup `terminalByType.get(entry) === true` returns `undefined` for entries that don't exist in `terminalByType` (no action docs of that type yet). `undefined !== true`, so the entry stays unsatisfied — same defensive behaviour as v0.

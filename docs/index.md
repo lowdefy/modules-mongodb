@@ -14,19 +14,19 @@ The repo is for app builders who already use Lowdefy and want a curated set of m
 
 ## Modules
 
-| Module | One-liner |
-|---|---|
-| [layout](../modules/layout/README.md) | Page wrapper — header, sider, menu, profile, notifications, dark mode, auth pages |
-| [events](../modules/events/README.md) | Audit event log — `new-event` API, timeline panel, `change_stamp` template |
-| [files](../modules/files/README.md) | File attachments backed by S3 — upload, download, file cards, file lists |
-| [notifications](../modules/notifications/README.md) | Bell, inbox, deep-link routing, configurable send routine |
-| [user-account](../modules/user-account/README.md) | Login, email verification, profile view/edit/create |
-| [user-admin](../modules/user-admin/README.md) | User administration — list, edit, invite |
-| [contacts](../modules/contacts/README.md) | Contact management — list, detail, edit, create, selector |
-| [companies](../modules/companies/README.md) | Company management — list, detail, edit, create, selector |
-| [activities](../modules/activities/README.md) | CRM activities — calls, meetings, emails logged against contacts and companies |
-| [workflows](../modules/workflows/README.md) | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions |
-| [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page |
+| Module                                              | One-liner                                                                                                   |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| [layout](../modules/layout/README.md)               | Page wrapper — header, sider, menu, profile, notifications, dark mode, auth pages                           |
+| [events](../modules/events/README.md)               | Audit event log — `new-event` API, timeline panel, `change_stamp` template                                  |
+| [files](../modules/files/README.md)                 | File attachments backed by S3 — upload, download, file cards, file lists                                    |
+| [notifications](../modules/notifications/README.md) | Bell, inbox, deep-link routing, configurable send routine                                                   |
+| [user-account](../modules/user-account/README.md)   | Login, email verification, profile view/edit/create                                                         |
+| [user-admin](../modules/user-admin/README.md)       | User administration — list, edit, invite                                                                    |
+| [contacts](../modules/contacts/README.md)           | Contact management — list, detail, edit, create, selector                                                   |
+| [companies](../modules/companies/README.md)         | Company management — list, detail, edit, create, selector                                                   |
+| [activities](../modules/activities/README.md)       | CRM activities — calls, meetings, emails logged against contacts and companies                              |
+| [workflows](../modules/workflows/README.md)         | Multi-workflow engine — declare workflow YAML, render entity action lists, FSM-driven lifecycle transitions |
+| [release-notes](../modules/release-notes/README.md) | Render `CHANGELOG.md` as a release-notes page                                                               |
 
 ## Dependency graph
 
@@ -69,17 +69,17 @@ A few notes on the shape:
 
 ## What to use when
 
-| You need… | Add… |
-|---|---|
-| A login page and a profile page | `layout`, `events`, `user-account` |
-| To invite and manage users | + `user-admin`, `notifications` |
-| A bell and inbox for in-app messages | + `notifications` |
-| Contact management with company links | + `contacts`, `companies`, `files` |
-| File attachments on any entity | + `files` |
-| To log calls, meetings, and emails against contacts/companies | + `activities`, `contacts` |
-| Multi-step business processes (lifecycle, actions, approvals) on any entity | + `workflows` |
-| An audit log on writes anywhere in the app | + `events` (most other modules already log) |
-| A release-notes page from `CHANGELOG.md` | + `release-notes` |
+| You need…                                                                   | Add…                                        |
+| --------------------------------------------------------------------------- | ------------------------------------------- |
+| A login page and a profile page                                             | `layout`, `events`, `user-account`          |
+| To invite and manage users                                                  | + `user-admin`, `notifications`             |
+| A bell and inbox for in-app messages                                        | + `notifications`                           |
+| Contact management with company links                                       | + `contacts`, `companies`, `files`          |
+| File attachments on any entity                                              | + `files`                                   |
+| To log calls, meetings, and emails against contacts/companies               | + `activities`, `contacts`                  |
+| Multi-step business processes (lifecycle, actions, approvals) on any entity | + `workflows`                               |
+| An audit log on writes anywhere in the app                                  | + `events` (most other modules already log) |
+| A release-notes page from `CHANGELOG.md`                                    | + `release-notes`                           |
 
 The minimum set for an authenticated app is `layout` + `events` + `user-account` + `notifications`. Everything else is opt-in.
 

@@ -5,6 +5,7 @@
 After Task 6, the four shared pipeline stages exist. This task wires them into five concrete requests: list, detail, selector feed, for-entity, and Excel data. Each request composes a different combination of stages plus its own match/sort/pagination logic.
 
 Reference shapes:
+
 - `modules/companies/requests/get_all_companies.yaml` — Atlas Search list with $search/compound/filter/$facet/$sort. Use as the template for `get_activities.yaml`.
 - `modules/companies/requests/get_company.yaml` — single-doc detail. Template for `get_activity.yaml`.
 - `modules/companies/requests/get_companies_for_selector.yaml` — selector feed. Template for `get_activity_options.yaml`.
@@ -47,11 +48,11 @@ properties:
         _id:
           _payload: _id
         removed.timestamp:
-          $exists: false   # NOT { $ne: true } — that's the get_company.yaml bug
+          $exists: false # NOT { $ne: true } — that's the get_company.yaml bug
     - _ref: stages/add_derived_fields.yaml
     - _ref: stages/lookup_contacts.yaml
     - _ref: stages/lookup_companies.yaml
-    - _module.var: request_stages.get_activity   # if such a hook exists; otherwise skip. Verify against vars table.
+    - _module.var: request_stages.get_activity # if such a hook exists; otherwise skip. Verify against vars table.
 ```
 
 Note: the design's vars table lists `request_stages.get_all_activities`, `request_stages.selector`, `request_stages.filter_match`, `request_stages.write` — but **not** a `get_activity` hook. Companies has `get_contact` but not `get_company` either. Skip the consumer hook here; if needed later, add the var.
@@ -77,7 +78,7 @@ connectionId:
   _module.connectionId: activities-collection
 payload:
   reference_field:
-    _state: reference_field   # passed via the embedding component's vars
+    _state: reference_field # passed via the embedding component's vars
   reference_value:
     _state: reference_value
 properties:
@@ -88,16 +89,17 @@ properties:
         $expr:
           $in:
             - _payload: reference_value
-            - $$ROOT.${reference_field}    # see note below
+            - $$ROOT.${reference_field} # see note below
         removed.timestamp:
           $exists: false
     - _ref: stages/add_derived_fields.yaml
     - $sort:
         updated.timestamp: -1
-    - $limit: 20    # tile shows recent — paginate or "View all" for the rest
+    - $limit: 20 # tile shows recent — paginate or "View all" for the rest
 ```
 
 The `$match` with a dynamic field name is the tricky bit. Two viable approaches:
+
 - **(a)** Use `$expr` + `$in`. The above sketch shows this. The path `$$ROOT.${reference_field}` isn't directly supported — use `$getField` with the reference_field as a key. Aggregation operator `$getField: { field: { _payload: reference_field }, input: '$$ROOT' }` might work. Verify against Mongo docs.
 - **(b)** Build the `$match` doc at request-prep time using Lowdefy operators (`_object.defineProperty` to set the key dynamically). The shape would be:
   ```yaml

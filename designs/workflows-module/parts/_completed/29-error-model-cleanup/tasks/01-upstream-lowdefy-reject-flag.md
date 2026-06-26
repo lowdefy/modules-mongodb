@@ -18,9 +18,12 @@ Open a single PR against the Lowdefy repo with three small edits:
 
    ```js
    class UserError extends Error {
-     constructor(message, { blockId, cause, isReject = false, metaData, pageId } = {}) {
+     constructor(
+       message,
+       { blockId, cause, isReject = false, metaData, pageId } = {},
+     ) {
        super(message, { cause });
-       this.name = 'UserError';
+       this.name = "UserError";
        this.isLowdefyError = true;
        this.blockId = blockId;
        this.isReject = isReject;
@@ -38,7 +41,7 @@ Open a single PR against the Lowdefy repo with three small edits:
 
    `controlThrow.js` stays unchanged (no flag → `isReject: false`).
 
-3. **`packages/api/src/routes/endpoints/runRoutine.js`** — rewrite the catch (lines 56-62) to branch on `isReject` *before* `context.handleError` runs, so propagated rejects bypass `handleError` (preserving today's invariant: rejects never hit `handleError`) and only errors trigger it. Matches the routine-loop early-return at line 49, which also skips `handleError` for in-routine rejects.
+3. **`packages/api/src/routes/endpoints/runRoutine.js`** — rewrite the catch (lines 56-62) to branch on `isReject` _before_ `context.handleError` runs, so propagated rejects bypass `handleError` (preserving today's invariant: rejects never hit `handleError`) and only errors trigger it. Matches the routine-loop early-return at line 49, which also skips `handleError` for in-routine rejects.
 
    ```js
    } catch (error) {
@@ -76,5 +79,5 @@ In `/Users/sam/Developer/lowdefy/lowdefy`:
 
 ## Notes
 
-- Do not change `callApi`'s signature. The contract is unchanged: `callApi` still throws on `:reject` / `:throw` and returns raw response on success; the only thing changing is what the *wrapping* `runRoutine` does with a caught throw.
+- Do not change `callApi`'s signature. The contract is unchanged: `callApi` still throws on `:reject` / `:throw` and returns raw response on success; the only thing changing is what the _wrapping_ `runRoutine` does with a caught throw.
 - Part 29 in the workflows-module repo does not ship until this PR merges.

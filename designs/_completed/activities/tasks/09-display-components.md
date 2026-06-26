@@ -10,6 +10,7 @@ After Tasks 1 + 7, the module skeleton and request files exist. This task builds
 - `excel_download` — Excel export trigger button.
 
 Reference shapes:
+
 - `modules/companies/components/view_company.yaml` — SmartDescriptions detail. Template for `view_activity.yaml`.
 - `modules/companies/components/table_companies.yaml` — AgGrid table. Template for `table_activities.yaml`.
 - `modules/companies/components/filter_companies.yaml` — filter panel. Template for `filter_activities.yaml`.
@@ -22,6 +23,7 @@ Reference shapes:
 SmartDescriptions block showing the activity's fields read-only. Consumed by `pages/view.yaml` (Task 14).
 
 Sections:
+
 - **Type** — typed chip with color + icon (looked up from the merged `activity_types` enum at render time via `_get` against `state.<doc>.type`).
 - **Title** — plain text.
 - **Description** — rendered Tiptap HTML (the description block in display mode, or a Raw HTML block).
@@ -49,7 +51,7 @@ events:
             _state: __raw_event.data._id
 properties:
   rowData:
-    _request: get_activities.0.results   # depends on actual envelope shape
+    _request: get_activities.0.results # depends on actual envelope shape
   columnDefs:
     _array.concat:
       - - field: type
@@ -69,7 +71,7 @@ properties:
           # cellRenderer rendering company chips
         - field: updated_at
           headerName: Updated
-      - _module.var: components.table_columns   # consumer extension
+      - _module.var: components.table_columns # consumer extension
 ```
 
 Row actions: include a "Mark done / Reopen / Cancel" action menu using the action wrappers from Task 4 (`complete_activity`, `cancel_activity`, `reopen_activity`). Conditional rendering — show "Mark done" if `current_stage === 'open'`, "Reopen" if it's `done`/`cancelled`, etc.

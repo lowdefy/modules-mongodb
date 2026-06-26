@@ -34,10 +34,10 @@ What needs to match is the **composite policy** — every action a user can subm
 
 `design.md:43` says the verb check is "must include `view`". The concept's per-app verb table at [`action-authoring/spec.md:130-132`](../../../workflows-module-concept/action-authoring/spec.md) says `edit` and `review` both **imply `view`**:
 
-| Verb | Effect |
-| --- | --- |
-| `view` | Shows action in `actions-on-entity`; ... |
-| `edit` | Renders submit form. **Implies `view`.** |
+| Verb     | Effect                                               |
+| -------- | ---------------------------------------------------- |
+| `view`   | Shows action in `actions-on-entity`; ...             |
+| `edit`   | Renders submit form. **Implies `view`.**             |
 | `review` | Renders a dedicated review page. **Implies `view`.** |
 
 So an action with `access.{app_name}: [edit]` (no explicit `view`) should still appear in `get-entity-workflows`. Today's wording would silently drop it.

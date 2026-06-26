@@ -189,7 +189,10 @@ routine:
       render_config: { onboarding: { ... } } # own + ancestors, as above
       lifecycle_event_override: # workflow-level (D8); the `started` slice only
         team-app:
-          { display: { title: "Onboarding kicked off for {{ workflow.entity_id }}" } }
+          {
+            display:
+              { title: "Onboarding kicked off for {{ workflow.entity_id }}" },
+          }
 ```
 
 Workflow-level `event` authoring (D8) — sits on the workflow, not an action:
@@ -198,7 +201,14 @@ Workflow-level `event` authoring (D8) — sits on the workflow, not an action:
 workflow:
   type: onboarding
   event:
-    started: { team-app: { display: { title: "Onboarding kicked off for {{ workflow.entity_id }}" } } }
+    started:
+      {
+        team-app:
+          {
+            display:
+              { title: "Onboarding kicked off for {{ workflow.entity_id }}" },
+          },
+      }
     cancelled: { team-app: { display: { title: "..." } } }
     closed: { team-app: { display: { title: "..." } } }
 ```

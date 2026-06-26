@@ -68,7 +68,7 @@ defaulting. Either is fine; pick one.
 
 > Engine default from part 8's `buildDefaultLogEventPayload` (imported as
 > the bottom layer; returns the unkeyed `{ type, display, references,
-> metadata }` shape).
+metadata }` shape).
 
 And [design.md:59](../design.md):
 
@@ -140,8 +140,8 @@ ships a wrapping `try { … } catch (err) { … }` around steps 4–6 that:
    or the form-data `$set`.
 2. Force-pushes an error transition onto the user-submitted action.
 3. Returns a partial `{ action_ids, completed_groups: [], event_id: null,
-   tracker_fired: null, pre_hook_response: null, post_hook_response: null,
-   error_transition: { reason, error_message, error_metadata } }`.
+tracker_fired: null, pre_hook_response: null, post_hook_response: null,
+error_transition: { reason, error_message, error_metadata } }`.
 
 So the handler today **does catch sub-step throws** and synthesizes a
 non-throwing partial-return shape with an undocumented `error_transition`
@@ -193,7 +193,7 @@ honest.
 
 > Resolves `hooks[interaction].pre` from the endpoint config (baked in by
 > [part 13](…)). The id follows the template `update-action-{action_type}-
-> {interaction}-pre` (post-hook: `…-post`)…
+{interaction}-pre` (post-hook: `…-post`)…
 
 This pins the id template but not the resolution path or skip semantics:
 
@@ -201,7 +201,7 @@ This pins the id template but not the resolution path or skip semantics:
   `context.params.hooks`, but the design says "from the endpoint config"
   without naming the slot. (Aside: [`makeWorkflowApis.js:27`](../../../../../modules/workflows/resolvers/makeWorkflowApis.js)
   reads `action.hooks[interaction]` from the workflow config at resolver
-  time, but the *runtime* payload bakes those id strings into the routine
+  time, but the _runtime_ payload bakes those id strings into the routine
   step's `properties`, surfacing as `context.params.<slot>` — name the slot.)
 - **Skip semantics.** What happens when:
   - `params.hooks` is undefined (no `hooks:` declared on the action at
@@ -291,12 +291,14 @@ re-derive it.
 shapes the step-1 entry as:
 
 ```js
-actions: [{
-  type: action.type,
-  status: targetStatus,
-  keys: params.current_key ? [params.current_key] : undefined,
-  fields: params.fields,
-}]
+actions: [
+  {
+    type: action.type,
+    status: targetStatus,
+    keys: params.current_key ? [params.current_key] : undefined,
+    fields: params.fields,
+  },
+];
 ```
 
 When `current_key` is null/undefined, `keys` is `undefined` (matching the
@@ -313,7 +315,7 @@ the same `keys: undefined → [null]` expansion before collision evaluation."
 
 ### 7. `resolveTargetStatus` throw precedes the pre-hook layer
 
-> **Resolved.** Picked the intentional reading. Added a "Required inputs are validated before the pre-hook fires" paragraph to `design.md` § three-layer status precedence — names `resolveTargetStatus` as the step-1 site that throws on missing `current_status`, clarifies the three-layer story is about *resolution* not *required-input rescue*, and tells authors who need hook-derived target status that they can return any `status` via layer 3 but cannot bypass the layer-1 input contract.
+> **Resolved.** Picked the intentional reading. Added a "Required inputs are validated before the pre-hook fires" paragraph to `design.md` § three-layer status precedence — names `resolveTargetStatus` as the step-1 site that throws on missing `current_status`, clarifies the three-layer story is about _resolution_ not _required-input rescue_, and tells authors who need hook-derived target status that they can return any `status` via layer 3 but cannot bypass the layer-1 input contract.
 
 [`handleSubmit.js:33–37`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
 throws on missing `current_status` for task `submit_edit`:
@@ -321,13 +323,15 @@ throws on missing `current_status` for task `submit_edit`:
 ```js
 if (interaction === "submit_edit" && actionConfig.kind === "task") {
   if (typeof params.current_status !== "string") {
-    throw new Error("SubmitWorkflowAction: task submit_edit requires caller-supplied current_status");
+    throw new Error(
+      "SubmitWorkflowAction: task submit_edit requires caller-supplied current_status",
+    );
   }
 }
 ```
 
 `resolveTargetStatus` is called at step 1 ([`handleSubmit.js:136`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) — **before** the pre-hook (step 2). So a pre-hook
-that *intends* to override the engine default to (e.g.) `done` regardless of
+that _intends_ to override the engine default to (e.g.) `done` regardless of
 caller-supplied `current_status` can't actually rescue a missing
 `current_status` — the handler throws before the pre-hook fires.
 

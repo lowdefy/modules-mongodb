@@ -6,11 +6,11 @@ A pure vocabulary sweep that renames the workflow-action kind value `simple` to 
 
 ## Tasks
 
-| #   | File                              | Summary                                                                                  | Depends On |
-| --- | --------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-validator-rename.md`          | Flip `ACTION_KINDS` and the kind branches/error wording in the config-schema validator + its resolver tests | —          |
-| 2   | `02-engine-rename.md`             | Rename the `simple` FSM-table alias, the render-layer kind branch, the `ActionKind` typedef + all plugin engine tests | —          |
-| 3   | `03-docs-and-demo-sweep.md`       | Update README + living concept-spec terminology; verify the demo `workflow_config` is fully on `check` | 1, 2       |
+| #   | File                        | Summary                                                                                                               | Depends On |
+| --- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-validator-rename.md`    | Flip `ACTION_KINDS` and the kind branches/error wording in the config-schema validator + its resolver tests           | —          |
+| 2   | `02-engine-rename.md`       | Rename the `simple` FSM-table alias, the render-layer kind branch, the `ActionKind` typedef + all plugin engine tests | —          |
+| 3   | `03-docs-and-demo-sweep.md` | Update README + living concept-spec terminology; verify the demo `workflow_config` is fully on `check`                | 1, 2       |
 
 ## Ordering Rationale
 

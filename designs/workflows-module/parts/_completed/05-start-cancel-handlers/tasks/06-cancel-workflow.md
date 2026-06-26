@@ -17,6 +17,7 @@ Per design § CancelWorkflow.js:
 - **Returns**: `{ action_ids, event_id: null, tracker_fired: null }`.
 
 Out of scope (deferred):
+
 - Group recompute → owned by part 7's `CancelWorkflow integration`.
 - Log event + notifications → part 8 (v1 cancel writes no event).
 - Tracker subscription fire on parent cancel → part 10.
@@ -34,11 +35,11 @@ Replace the body of `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI
 3. **Push cancelled status onto the workflow.** Use `mongoDBConnection('workflows').MongoDBUpdateOne` with the reserved-key merge order:
 
    ```js
-   await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+   await context.mongoDBConnection("workflows").MongoDBUpdateOne({
      filter: { _id: payload.workflow_id },
      update: {
        $set: {
-         ...payload.references,            // spread first (reserved-key merge order)
+         ...payload.references, // spread first (reserved-key merge order)
          updated: context.changeStamp,
        },
        $push: {
@@ -46,7 +47,7 @@ Replace the body of `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI
            $position: 0,
            $each: [
              {
-               stage: 'cancelled',
+               stage: "cancelled",
                created: context.changeStamp,
                ...(payload.reason ? { reason: payload.reason } : {}),
              },
@@ -88,16 +89,14 @@ Replace the body of `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI
    ```js
    const actionIds = nonTerminalActions.map((a) => a._id);
    if (actionIds.length > 0) {
-     await context.mongoDBConnection('actions').MongoDBUpdateMany({
+     await context.mongoDBConnection("actions").MongoDBUpdateMany({
        filter: { _id: { $in: actionIds } },
        update: {
          $set: { updated: context.changeStamp },
          $push: {
            status: {
              $position: 0,
-             $each: [
-               { stage: 'not-required', created: context.changeStamp },
-             ],
+             $each: [{ stage: "not-required", created: context.changeStamp }],
            },
          },
        },

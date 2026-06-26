@@ -21,7 +21,7 @@ Line 99 leans further on the fiction ("we already have `external` filling BPMN's
 
 > **Resolved.** Added a "Shared but conditional" sub-section between Workflow-only and Task-only. Holds `entity_id` / `entity_collection` with a note that workflow actions always populate them while tasks-module design decides whether to use these top-level fields or fold entity linkage into `references`. Removed the redundant entries from Workflow-only and Task-only.
 
-Schema contract puts these fields in **Workflow-only** (line 70: "set on workflow actions, **null/absent** on tasks") and also in **Task-only** (line 77: "*optional* for tasks (a task can be standalone or filed against a specific entity). Same field names as workflow actions; tasks just allow null"). They can't be both. The Task-only entry is correct (the constraint on line 86 confirms it: `entity_id, entity_collection ... must all be nullable at the schema level`).
+Schema contract puts these fields in **Workflow-only** (line 70: "set on workflow actions, **null/absent** on tasks") and also in **Task-only** (line 77: "_optional_ for tasks (a task can be standalone or filed against a specific entity). Same field names as workflow actions; tasks just allow null"). They can't be both. The Task-only entry is correct (the constraint on line 86 confirms it: `entity_id, entity_collection ... must all be nullable at the schema level`).
 
 **Fix:** Remove `entity_id` / `entity_collection` from the Workflow-only bullet on line 70. Either move them into a third **Shared but conditional** sub-section, or leave them under Task-only with a one-line note that workflow actions always populate them and tasks may set them.
 
@@ -52,7 +52,7 @@ Line 87 says "Existing indexes on `actions` are on `(workflow_id, status)`, `(en
 
 Both can be true at different layers, but the doc never says that. A reader landing on line 80 first will assume `kind` is incidental; a reader landing on line 57 first will assume `workflow_id` is incidental.
 
-**Fix:** State the layering explicitly once. Suggested wording: "`kind` discriminates the action's user-facing surface (`form` / `simple` / `tracker` / `custom` for workflow actions, `task` for adhoc); `workflow_id` discriminates the *stream* — set means a workflow engine wrote it, null means a tasks module wrote it. The tasks module ignores `kind` on read; the workflows engine ignores any doc with `workflow_id: null`."
+**Fix:** State the layering explicitly once. Suggested wording: "`kind` discriminates the action's user-facing surface (`form` / `simple` / `tracker` / `custom` for workflow actions, `task` for adhoc); `workflow_id` discriminates the _stream_ — set means a workflow engine wrote it, null means a tasks module wrote it. The tasks module ignores `kind` on read; the workflows engine ignores any doc with `workflow_id: null`."
 
 ## Rename completeness
 
@@ -87,7 +87,7 @@ Line 132 says action `status_map.{stage}.{slug}.link.pageId` references the shar
 
 > **Resolved.** Dropped the hedge — `change_stamp.created.user.id` records creator on insert across both streams. Combined with #10 (no task-only `title` field), Task-only became empty and was removed; replaced with a one-paragraph statement that tasks share Common, may set Shared-but-conditional, and leave Workflow-only null.
 
-Line 78 hedges on whether tasks should add `created_by`. The doc already commits to `change_stamp` as a common field (line 58) and the events module's `change_stamp` captures `user.id` / `user.name` on insert (`docs/idioms.md` "Change stamps"). The first stamp on the doc *is* `created_by`. No new field needed.
+Line 78 hedges on whether tasks should add `created_by`. The doc already commits to `change_stamp` as a common field (line 58) and the events module's `change_stamp` captures `user.id` / `user.name` on insert (`docs/idioms.md` "Change stamps"). The first stamp on the doc _is_ `created_by`. No new field needed.
 
 **Fix:** Replace the hedge with a one-line decision: "No separate `created_by`; `change_stamp.created.user.id` already records creator and is set on insert across both streams."
 

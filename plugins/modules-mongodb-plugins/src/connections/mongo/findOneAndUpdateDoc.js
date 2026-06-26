@@ -7,10 +7,16 @@
  * a concurrent write moved the doc, which the engine turns into a retryable
  * `ConcurrentSubmitError`. See design D15.
  */
-async function findOneAndUpdateDoc({ mongoDb, collection, filter, update, session }) {
+async function findOneAndUpdateDoc({
+  mongoDb,
+  collection,
+  filter,
+  update,
+  session,
+}) {
   const result = await mongoDb
     .collection(collection)
-    .findOneAndUpdate(filter, update, { returnDocument: 'after', session });
+    .findOneAndUpdate(filter, update, { returnDocument: "after", session });
   // driver v6 returns the document (or null) directly when
   // includeResultMetadata is false (the default).
   return result ?? null;

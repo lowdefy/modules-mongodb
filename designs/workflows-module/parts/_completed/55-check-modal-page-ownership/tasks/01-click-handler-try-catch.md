@@ -10,7 +10,7 @@ Verified facts (from the design) this change relies on:
 
 - **`try`/`catch` is a first-class action-chain shape.** `initEvent` (Events.js) maps an `onClick.try` → `actions` and `onClick.catch` → `catchActions`; `callActions` (Actions.js) runs the catch chain when the try chain throws. An array-valued `onClick` is sugar for `{ try: [...], catch: [] }`.
 - **A missing block throws.** `createCallMethod` dereferences `RootSlots.map[blockId].methods` (`undefined.methods` on an absent block), so the absent-modal `CallMethod` reliably throws and the `catch` fires.
-- **The recovered path can be made silent.** On an action error the runner shows a 6s error toast *unless* the action sets `messages.error: false` — `displayMessage` (Actions.js) gates the toast on `hideExplicitly && message !== false`. Setting `messages: { error: false }` on the open `CallMethod` suppresses the would-be toast so the recovery is silent.
+- **The recovered path can be made silent.** On an action error the runner shows a 6s error toast _unless_ the action sets `messages.error: false` — `displayMessage` (Actions.js) gates the toast on `hideExplicitly && message !== false`. Setting `messages: { error: false }` on the open `CallMethod` suppresses the would-be toast so the recovery is silent.
 
 ## Task
 
@@ -81,7 +81,7 @@ catch:
         _event: action.link.urlQuery
 ```
 
-Update the header comment block to describe the new behaviour: a `check` card *tries* to open the modal and, when no modal is on the page, the `catch` navigates to `action.link`; non-`check` kinds navigate in the `try` body and never touch the modal. Note that only the open `CallMethod` carries `messages.error:false`.
+Update the header comment block to describe the new behaviour: a `check` card _tries_ to open the modal and, when no modal is on the page, the `catch` navigates to `action.link`; non-`check` kinds navigate in the `try` body and never touch the modal. Note that only the open `CallMethod` carries `messages.error:false`.
 
 ## Acceptance Criteria
 
@@ -97,5 +97,5 @@ Update the header comment block to describe the new behaviour: a `check` card *t
 
 ## Notes
 
-- The `catch` is a catch-all (Lowdefy runs it on *any* throw in the `try` body), not modal-absent-only. The only expected throw is the absent-modal `CallMethod` — the preceding `SetState` is a static assignment that effectively cannot throw. A throw from elsewhere would still navigate to the action's own page, a safe default for any check-row failure.
+- The `catch` is a catch-all (Lowdefy runs it on _any_ throw in the `try` body), not modal-absent-only. The only expected throw is the absent-modal `CallMethod` — the preceding `SetState` is a static assignment that effectively cannot throw. A throw from elsewhere would still navigate to the action's own page, a safe default for any check-row failure.
 - Only the open `CallMethod` carries `messages.error:false`; a throw from anywhere else in the `try` body would still flash a toast before the fallback navigates. This is an accepted residual (those cases are not expected to occur) — do not blanket-suppress errors on the other steps.

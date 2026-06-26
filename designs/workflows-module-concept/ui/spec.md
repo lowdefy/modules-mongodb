@@ -12,11 +12,11 @@ When workflow YAML is shared across multiple host apps, each host app composes t
 
 ### Resolver output per action kind
 
-| Kind      | Pages generated                                                                                                                                                                                                                                                               |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Kind      | Pages generated                                                                                                                                                                                                                                                                          |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `form`    | Per-action `{workflow_type}-{action_type}-edit` / `-view` / `-review` / `-error`. Per-verb page is emitted only when the verb key is present in the action's `access.{app_name}` map. All four verbs are gated identically; `error` follows the same rule as `edit` / `view` / `review`. |
-| `check`   | None (uses shared `workflow-action-edit` / `workflow-action-view` / `workflow-action-review`)                                                                                                                                                                                                            |
-| `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                  |
+| `check`   | None (uses shared `workflow-action-edit` / `workflow-action-view` / `workflow-action-review`)                                                                                                                                                                                            |
+| `tracker` | None (renders inline in `actions-on-entity`)                                                                                                                                                                                                                                             |
 
 ### Form-action page YAML shape
 
@@ -70,7 +70,7 @@ The `-error` page is gated identically to the other verbs: emitted iff the `erro
 | `approve`         | `review.yaml.njk`        | `approve`         | `onApprove`                | `done`                                                                     |
 | `request_changes` | `review.yaml.njk`        | `request_changes` | `onRequestChanges`         | `changes-required`                                                         |
 
-These are the *button-surfaced* signals (the "interactions"); the FSM also accepts engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) that no template surfaces. On click, each button (1) fires the matching `pages.{verb}.events.{handler}` author-supplied event (for page-state work — set state, fire requests, validate), then (2) calls `{workflow_type}-{action_type}-submit` with `signal: <name>` and the standard payload (`form`, `form_review`, `fields`, `current_key`). Authors who need pre-write logic register a pre-hook (`hooks.{signal}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
+These are the _button-surfaced_ signals (the "interactions"); the FSM also accepts engine/pre-hook-only signals (`unblock`, `activate`, `block`, `internal_*`) that no template surfaces. On click, each button (1) fires the matching `pages.{verb}.events.{handler}` author-supplied event (for page-state work — set state, fire requests, validate), then (2) calls `{workflow_type}-{action_type}-submit` with `signal: <name>` and the standard payload (`form`, `form_review`, `fields`, `current_key`). Authors who need pre-write logic register a pre-hook (`hooks.{signal}.pre`, submit-pipeline Decision 4); authors who just need page-state work register the matching event verb.
 
 **Static check-action pages** at `pages/`:
 
@@ -120,11 +120,11 @@ _ref:
 
 **Components used:**
 
-| Layout component          | Where                                                                                                                                         |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Layout component          | Where                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `layout.page`             | Top-level wrapper of every module-shipped page (form-action `edit`/`view`/`review`/`error`, check-action `edit`/`view`/`review`, `workflow-overview`) |
-| `layout.card`             | Each content section — form card, info card, action card on the overview page                                                                 |
-| `layout.floating-actions` | Sticky submit / approve / request-changes bar on `-edit` and `-review` pages                                                                  |
+| `layout.card`             | Each content section — form card, info card, action card on the overview page                                                                         |
+| `layout.floating-actions` | Sticky submit / approve / request-changes bar on `-edit` and `-review` pages                                                                          |
 
 `floating-actions` ships the button block tree; templates wire button events to the four page-event handlers (`onSubmit`, `onApprove`, `onRequestChanges`). The buttons themselves are template-shipped, not author-authored.
 

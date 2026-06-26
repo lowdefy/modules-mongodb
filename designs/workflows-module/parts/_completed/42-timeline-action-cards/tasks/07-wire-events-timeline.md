@@ -10,19 +10,22 @@ timeline renders live action cards **always** (D2), with no new author-facing
 config.
 
 By the time this task runs:
+
 - Task 1 moved the status enum to `modules/shared/enums/action_statuses.yaml`.
 - Task 5 created `modules/shared/workflow/timeline_action_lookup.yaml` (a
   multi-stage fragment, parameterized by `_var: app_name`).
 - Task 6 reconciled the block's `EventAction` to the enum's colour keys.
 
 The component (`modules/events/components/events-timeline.yaml`) already carries:
-- `display_key` (the app name — the idioms doc confirms `display_key` *is* the
+
+- `display_key` (the app name — the idioms doc confirms `display_key` _is_ the
   app name), used in the existing `$match`/`$addFields` via
   `_var: { key: display_key, default: { _module.var: display_key } }`.
 - `reference_value` as a request payload (`payload.reference_value`) — the id the
   whole timeline is keyed on.
 
 Two design decisions land here:
+
 - **D2 — always-on.** Splice the fragment on every fetch; the only parameter is
   `app_name`, passed from `display_key`. Safe with no actions: `$lookup` against a
   missing/empty `actions` collection yields empty arrays.
@@ -47,9 +50,9 @@ Target shape:
 properties:
   pipeline:
     _build.array.concat:
-      - - $match:                       # unchanged (reference key + display_key $ne null)
-            _object.fromEntries: [ ... ]
-      - _ref:                            # NEW — always spliced (D2)
+      - - $match: # unchanged (reference key + display_key $ne null)
+            _object.fromEntries: [...]
+      - _ref: # NEW — always spliced (D2)
           path: ../shared/workflow/timeline_action_lookup.yaml
           vars:
             app_name:
@@ -57,7 +60,7 @@ properties:
                 key: display_key
                 default:
                   _module.var: display_key
-      - - $addFields:                    # NEW — drop the timeline's own action card (D6)
+      - - $addFields: # NEW — drop the timeline's own action card (D6)
             actions:
               $filter:
                 input: $actions
@@ -66,16 +69,16 @@ properties:
                   $ne:
                     - $$a._id
                     - _payload: reference_value
-        - $sort:                         # unchanged
+        - $sort: # unchanged
             date: -1
-        - $addFields:                    # unchanged — title / description / info
+        - $addFields: # unchanged — title / description / info
             title: { ... }
             description: { ... }
             info: { ... }
 ```
 
 Preserve the existing `$match`, `$sort`, and title/description/info `$addFields`
-content exactly — only the pipeline *structure* (wrap in `_build.array.concat`)
+content exactly — only the pipeline _structure_ (wrap in `_build.array.concat`)
 and the two new stages change.
 
 ### 2. Pass `actionStatusConfig` to the block

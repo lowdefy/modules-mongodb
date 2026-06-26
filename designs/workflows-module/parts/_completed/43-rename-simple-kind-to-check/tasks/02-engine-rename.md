@@ -9,6 +9,7 @@ We are renaming the kind value `simple` to `check` — a pure vocabulary swap, n
 Current sites:
 
 `plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js`
+
 - Line ~31: comment "Same rule for form and simple kinds."
 - Line ~35: comment "Form kind (inherited by `simple` via the alias below)."
 - Lines ~139–142: the alias —
@@ -20,11 +21,13 @@ Current sites:
   ```
 
 `plugins/modules-mongodb-plugins/src/connections/shared/render/computeEngineLinks.js`
+
 - Lines ~16–18: doc comment describing `simple -> fixed module pages workflow-action-{verb}` and "no error page exists for the simple kind".
 - Line ~38: comment "shared by simple + form".
 - Lines ~117–120: the branch — `kind === 'simple' ? verb === 'error' ? 'workflow-action-view' : \`workflow-action-${verb}\` : ...`
 
 `plugins/modules-mongodb-plugins/src/connections/shared/types.js`
+
 - Line ~43: `@typedef {'form' | 'simple' | 'tracker'} ActionKind`
 
 ## Task

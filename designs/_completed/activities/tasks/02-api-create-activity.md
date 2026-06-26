@@ -52,7 +52,7 @@ routine:
     properties:
       doc:
         _id:
-          _payload: _id  # client-generated UUID
+          _payload: _id # client-generated UUID
         type:
           _payload: type
         title:

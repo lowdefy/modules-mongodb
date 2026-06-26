@@ -4,7 +4,7 @@
 
 `user-account` is universally present in every app (it owns profiles, the
 `user-contacts-collection` connection, `app_name`, and `avatar_colors`); `user-admin` is optional.
-A component that picks *any* app user therefore belongs in `user-account`. Today `user-selector`
+A component that picks _any_ app user therefore belongs in `user-account`. Today `user-selector`
 lives in `user-admin` and is exported from there.
 
 Two files move **as-is** (no behaviour change):
@@ -17,7 +17,7 @@ The request already uses `_module.connectionId: user-contacts-collection` and `_
 both of which user-account also defines — so it resolves identically once it ships in user-account.
 
 There is **no in-repo consumer** of `user-selector` or `get_users_for_selector` — a repo-wide grep
-finds only the user-admin manifest entries and one user-admin README line. `user-selector` *is*
+finds only the user-admin manifest entries and one user-admin README line. `user-selector` _is_
 consumed by external/downstream apps, so it is a real export, not dead code. This is a relocation of
 an externally-consumed export with no in-repo call sites to rewrite.
 
@@ -36,16 +36,16 @@ resolve against user-account's vars/connection unchanged.
 - Under the top-level `components:` block, add (alongside the existing `profile-avatar` entry):
 
   ```yaml
-    - id: user-selector
-      component:
-        _ref: components/user-selector.yaml
+  - id: user-selector
+    component:
+      _ref: components/user-selector.yaml
   ```
 
 - Under `exports.components:`, add (after the `profile-avatar` entry):
 
   ```yaml
-      - id: user-selector
-        description: Single-select autocomplete for picking one app user
+  - id: user-selector
+    description: Single-select autocomplete for picking one app user
   ```
 
   (No new request export — `get_users_for_selector` is internal to the component.)

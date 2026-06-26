@@ -10,14 +10,14 @@ This task replaces the raw badge with a status enum pill, adds an entity-type "e
 
 ### New prop interface
 
-| Prop | Type | Default | Purpose |
-| --- | --- | --- | --- |
-| `type` | string | `null` | Entity-type eyebrow label above the title. Hidden when `null`. Rendered uppercased by the component. |
-| `status` | string | `null` | Status slug (runtime), looked up in `status_enum`. Hidden when `null` or unmatched. |
-| `status_enum` | object | `null` | Status-enum map (build-time `_ref`) with the standard `{ color, borderColor, titleColor, title }` entry shape. |
-| `loading` | boolean | `false` | When truthy, title/subtitle/status render as skeletons. |
-| ~~`badge_text`~~ | — | — | **Removed**. |
-| ~~`badge_color`~~ | — | — | **Removed**. |
+| Prop              | Type    | Default | Purpose                                                                                                        |
+| ----------------- | ------- | ------- | -------------------------------------------------------------------------------------------------------------- |
+| `type`            | string  | `null`  | Entity-type eyebrow label above the title. Hidden when `null`. Rendered uppercased by the component.           |
+| `status`          | string  | `null`  | Status slug (runtime), looked up in `status_enum`. Hidden when `null` or unmatched.                            |
+| `status_enum`     | object  | `null`  | Status-enum map (build-time `_ref`) with the standard `{ color, borderColor, titleColor, title }` entry shape. |
+| `loading`         | boolean | `false` | When truthy, title/subtitle/status render as skeletons.                                                        |
+| ~~`badge_text`~~  | —       | —       | **Removed**.                                                                                                   |
+| ~~`badge_color`~~ | —       | —       | **Removed**.                                                                                                   |
 
 Existing props (`title`, `doc`, `page_actions`, `show_back_button`, `back_link`) are unchanged.
 
@@ -27,10 +27,10 @@ The status pill consumes the standard enum entry shape (the same one `action_sta
 
 ```yaml
 <slug>:
-  color: '#e6f7ff'        # → pill background
-  borderColor: '#91d5ff'  # → pill border
-  titleColor: '#096dd9'   # → pill text
-  title: In Progress      # → pill label
+  color: "#e6f7ff" # → pill background
+  borderColor: "#91d5ff" # → pill border
+  titleColor: "#096dd9" # → pill text
+  title: In Progress # → pill label
 ```
 
 ### Visual spec (source of truth; `mockups/mockup.html` mirrors it)
@@ -58,10 +58,10 @@ Keep the outer `Box` with `layout.selfAlign: middle` and the `_build.array.conca
 
 **2. Type eyebrow — its OWN sibling block above the title/subtitle block.**
 
-- It MUST be a separate sibling block, not folded into the title block. Lowdefy's loading mechanism swaps the *entire* block to its skeleton tree when `loading` is true (`CategorySwitch.js:34`); an eyebrow nested inside the title block would vanish whenever `loading` is set, breaking the "eyebrow renders immediately, never skeletoned" guarantee. Keep it a sibling with **no** `loading`/`skeleton` of its own.
+- It MUST be a separate sibling block, not folded into the title block. Lowdefy's loading mechanism swaps the _entire_ block to its skeleton tree when `loading` is true (`CategorySwitch.js:34`); an eyebrow nested inside the title block would vanish whenever `loading` is set, breaking the "eyebrow renders immediately, never skeletoned" guarantee. Keep it a sibling with **no** `loading`/`skeleton` of its own.
 - Gate it `_build`/runtime on `type != null` (hidden when `null`).
 - Render the `type` string uppercased (`text-transform: uppercase` styling — pass `type` in normal case; the component uppercases). Style per spec: ~11px, `letter-spacing` ~0.08em, secondary text colour.
-- Structurally the eyebrow sits directly above the title. The outer Box is a horizontal row (no `layout.direction`), so a bare preceding sibling would render *left-of* the title, not above it. Wrap the eyebrow + title/subtitle block in a **column** box (`layout.direction: column`, a small `gap` for the ~2px eyebrow→title spacing) and move the `flex: 1 0 auto` currently on the title `Html` onto that column wrapper. The eyebrow stays a separate block from the title/subtitle block (which carries `loading`), so the "never skeletoned" guarantee holds.
+- Structurally the eyebrow sits directly above the title. The outer Box is a horizontal row (no `layout.direction`), so a bare preceding sibling would render _left-of_ the title, not above it. Wrap the eyebrow + title/subtitle block in a **column** box (`layout.direction: column`, a small `gap` for the ~2px eyebrow→title spacing) and move the `flex: 1 0 auto` currently on the title `Html` onto that column wrapper. The eyebrow stays a separate block from the title/subtitle block (which carries `loading`), so the "never skeletoned" guarantee holds.
 
 **3. Title + subtitle block (the existing title `Html`).**
 

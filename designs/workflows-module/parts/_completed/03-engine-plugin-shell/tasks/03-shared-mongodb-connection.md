@@ -20,12 +20,16 @@ async function SubmitWorkflowAction(lowdefyContext) {
 }
 
 // inside handlers:
-const action = await context.mongoDBConnection('actions').MongoDBFindOne({
+const action = await context.mongoDBConnection("actions").MongoDBFindOne({
   query: { _id: actionId },
-  options: { projection: { /* ... */ } },
+  options: {
+    projection: {
+      /* ... */
+    },
+  },
 });
 
-await context.mongoDBConnection('actions').MongoDBInsertOne({ doc });
+await context.mongoDBConnection("actions").MongoDBInsertOne({ doc });
 ```
 
 Connection lifecycle, pooling, BSON serialization, and `changeLog` writes are owned by the community plugin. Every community-plugin handler opens a fresh `MongoClient` per request and closes it in a `finally` block — the same posture every other module in this repo uses. The engine adds no client management of its own.
@@ -41,7 +45,7 @@ Connection lifecycle, pooling, BSON serialization, and `changeLog` writes are ow
 Create `plugins/modules-mongodb-plugins/src/connections/shared/createMongoDBConnection.js`:
 
 ```js
-import { MongoDBCollection } from '@lowdefy/community-plugin-mongodb/connections';
+import { MongoDBCollection } from "@lowdefy/community-plugin-mongodb/connections";
 
 /**
  * Build a per-collection dispatcher over @lowdefy/community-plugin-mongodb's

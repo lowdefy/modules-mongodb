@@ -1,4 +1,4 @@
-import parseNunjucks from './parseNunjucks.js';
+import parseNunjucks from "./parseNunjucks.js";
 
 /**
  * Recursively walks an object/array tree, rendering every string as a Nunjucks
@@ -8,9 +8,9 @@ import parseNunjucks from './parseNunjucks.js';
  * edge cases (`undefined`, `Date`, reserved-char keys). Part 30 D13.
  */
 function renderTree(node, ctx) {
-  if (typeof node === 'string') return parseNunjucks(node, ctx);
+  if (typeof node === "string") return parseNunjucks(node, ctx);
   if (Array.isArray(node)) return node.map((n) => renderTree(n, ctx));
-  if (node && typeof node === 'object') {
+  if (node && typeof node === "object") {
     const out = {};
     for (const [k, v] of Object.entries(node)) out[k] = renderTree(v, ctx);
     return out;

@@ -8,10 +8,10 @@ The Lowdefy plugin loader discovers the plugin's surface from `src/types.js`. Th
 
 ```js
 // src/types.js
-import { extractBlockTypes } from '@lowdefy/block-utils';
-import * as actions from './actions.js';
-import * as connections from './connections.js';
-import * as metas from './metas.js';
+import { extractBlockTypes } from "@lowdefy/block-utils";
+import * as actions from "./actions.js";
+import * as connections from "./connections.js";
+import * as metas from "./metas.js";
 
 const blockTypes = extractBlockTypes(metas);
 export default {
@@ -28,7 +28,16 @@ export default {
 Each connection module exports `{ schema, requests: { RequestType: handlerFn } }`. Connection handler signature (per concept engine spec):
 
 ```js
-async ({ blockId, connection, connectionId, pageId, request, requestId, payload, context }) => result;
+async ({
+  blockId,
+  connection,
+  connectionId,
+  pageId,
+  request,
+  requestId,
+  payload,
+  context,
+}) => result;
 ```
 
 The package already builds with SWC via `pnpm build` → `swc src --out-dir dist --config-file ../../.swcrc --delete-dir-on-start --copy-files --strip-leading-paths`. The `.swcrc` at repo root targets es2020, classic React runtime, ES modules. The same `swc` invocation will pick up `src/connections/**` automatically.

@@ -7,12 +7,14 @@ timeline (design F12, superseding Part 51's narrower scope).
 
 `GetEventsTimeline.js` orders each event's action cards with a MongoDB aggregation
 stage (lines ~180–189):
+
 ```js
 { $addFields: { 'event.actions': { $sortArray: {
   input: '$event.actions',
   sortBy: { sort_order: 1, 'updated.timestamp': 1 },
 } } } },
 ```
+
 `sort_order` is always absent, so this effectively orders by `updated.timestamp`.
 
 This engine is different from the other three:

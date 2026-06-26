@@ -7,14 +7,17 @@ Walked the full part-05 tree against the review-1 decision register (14 findings
 ## Files Reviewed
 
 **Design:**
+
 - `parts/05-start-cancel-handlers/design.md`
 
 **Reviews:**
+
 - `parts/05-start-cancel-handlers/review/review-1.md` (14 findings, all annotated)
 
 **Tasks / Plans:** none.
 
 **Cross-referenced (read-only for anchor verification):**
+
 - `parts/04-workflow-config-schema/design.md`, `review/review-1.md`
 - `parts/07-group-state-machine/design.md` (specifically `### \`CancelWorkflow\` integration`)
 - `parts/22-workflows-e2e-suite/design.md`
@@ -56,6 +59,7 @@ Confirming coverage of the rest of the decision register — every review-1 reso
 - **#14** (helpers in `src/connections/shared/`) — `design.md:47` heading + body + contract at `design.md:85` match.
 
 **Anchor / link verification:**
+
 - All concept-spec anchors (`#capabilities`, `#client-and-transaction-model`, `#idempotency`, `#references-write-contract`) resolve to real headings.
 - The part 7 anchor (`#cancelworkflow-integration`) resolves to `### \`CancelWorkflow\` integration`.
 - Cross-references to parts 6, 7, 8, 10, 19, 22 and the part-04 review-1 file are all live.

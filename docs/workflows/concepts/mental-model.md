@@ -21,11 +21,11 @@ The `workflows` module gives an app structured, multi-step business processes on
 
 The `kind:` field is required on every action. Three values:
 
-| Kind | What authors write | How users interact |
-|---|---|---|
-| `form` | `kind: form` + a `form:` block | Opens a dedicated edit page with the declared form schema |
-| `check` | `kind: check` (no `form:`, no `tracker:`) | Opens a shared edit page with assignee + due-date + comment inputs |
-| `tracker` | `kind: tracker` + a `tracker:` block | Renders inline; mirrors a child workflow's lifecycle automatically |
+| Kind      | What authors write                        | How users interact                                                 |
+| --------- | ----------------------------------------- | ------------------------------------------------------------------ |
+| `form`    | `kind: form` + a `form:` block            | Opens a dedicated edit page with the declared form schema          |
+| `check`   | `kind: check` (no `form:`, no `tracker:`) | Opens a shared edit page with assignee + due-date + comment inputs |
+| `tracker` | `kind: tracker` + a `tracker:` block      | Renders inline; mirrors a child workflow's lifecycle automatically |
 
 A **form action** is for domain-specific data capture. A **check action** is for lightweight task tracking ("did this happen?"). A **tracker action** is a live link to another workflow running on a different entity — its status updates automatically when the child workflow transitions.
 
@@ -34,6 +34,7 @@ A **form action** is for domain-specific data capture. A **check action** is for
 Every status change is driven by a **signal** — a named message fired against an action. The engine looks up `(currentStatus, signal) → newStatus` in a per-kind table. You never hard-code target statuses; you fire intent ("`submit`", "`approve`", "`not_required`") and the engine resolves where the action lands.
 
 This means:
+
 - The `submit` signal lands `in-review` if the action has a `review` verb declared in its `access` map, otherwise `done`.
 - Signals against states that don't listen to them no-op silently — re-fires are structurally safe.
 - Pre-hooks can emit signals against other actions, but the current action always lands per the signal the user fired.
@@ -63,9 +64,9 @@ starting_actions:
   - { type: schedule-followup, status: blocked }
   - { type: track-installation, status: blocked }
 actions:
-  - _ref: ./qualify.yaml            # form action, action_group: discovery
-  - _ref: ./send-quote.yaml         # form action, blocked_by: [qualify]
-  - _ref: ./schedule-followup.yaml  # check action, blocked_by: [send-quote]
+  - _ref: ./qualify.yaml # form action, action_group: discovery
+  - _ref: ./send-quote.yaml # form action, blocked_by: [qualify]
+  - _ref: ./schedule-followup.yaml # check action, blocked_by: [send-quote]
   - _ref: ./track-installation.yaml # tracker action, blocked_by: [schedule-followup]
 ```
 

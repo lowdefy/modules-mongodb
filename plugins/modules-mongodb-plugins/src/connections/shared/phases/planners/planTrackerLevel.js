@@ -1,9 +1,9 @@
-import { WorkflowEngineError } from '../../errors.js';
-import planActionTransition from './planActionTransition.js';
-import planAutoUnblock from './planAutoUnblock.js';
-import planWorkflowRecompute from './planWorkflowRecompute.js';
-import planEventDispatch from './planEventDispatch.js';
-import planChangeLog from './planChangeLog.js';
+import { WorkflowEngineError } from "../../errors.js";
+import planActionTransition from "./planActionTransition.js";
+import planAutoUnblock from "./planAutoUnblock.js";
+import planWorkflowRecompute from "./planWorkflowRecompute.js";
+import planEventDispatch from "./planEventDispatch.js";
+import planChangeLog from "./planChangeLog.js";
 
 /**
  * Plan-phase orchestrator for ONE tracker-cascade level (design D3 / D10 / D12;
@@ -85,9 +85,9 @@ function planTrackerLevel(
   if (!targetAction || !actionConfig) {
     throw new WorkflowEngineError(
       `planTrackerLevel: parent action ${parentActionId} ${
-        !targetAction ? 'not found on' : 'has no config in'
+        !targetAction ? "not found on" : "has no config in"
       } workflow ${workflow._id} (${workflow.workflow_type}) — dangling tracker parent reference.`,
-      { code: 'missing_target' },
+      { code: "missing_target" },
     );
   }
 
@@ -95,7 +95,7 @@ function planTrackerLevel(
   const targetEntry = planActionTransition({
     action: targetAction,
     signal,
-    source: 'cascade',
+    source: "cascade",
     payload: payload ?? {},
     actionConfig,
     loadedWorkflow: workflow,
@@ -142,7 +142,7 @@ function planTrackerLevel(
   const event = planEventDispatch({
     event_id,
     user: now?.user,
-    handlerType: 'tracker-mirror',
+    handlerType: "tracker-mirror",
     signal,
     plannedWorkflowDoc,
     plannedActionDoc: targetEntry.doc,
@@ -156,7 +156,7 @@ function planTrackerLevel(
   // ── Change-log ───────────────────────────────────────────────────────────
   const planWorkflow = {
     doc: plannedWorkflowDoc,
-    operation: 'update',
+    operation: "update",
     changeLog: { before: workflow, after: plannedWorkflowDoc },
   };
   const changeLog = planChangeLog({
@@ -171,14 +171,14 @@ function planTrackerLevel(
   const loadedStage = workflow.status?.[0]?.stage;
   const plannedStage = plannedWorkflowDoc.status?.[0]?.stage;
   const pushedCompleted =
-    plannedStage === 'completed' && loadedStage !== 'completed';
+    plannedStage === "completed" && loadedStage !== "completed";
   const trackerFires =
     pushedCompleted && workflow.parent_action_id != null
       ? [
           {
             parentWorkflowId: workflow.parent_workflow_id,
             parentActionId: workflow.parent_action_id,
-            signal: 'internal_mirror_child_completed',
+            signal: "internal_mirror_child_completed",
           },
         ]
       : [];

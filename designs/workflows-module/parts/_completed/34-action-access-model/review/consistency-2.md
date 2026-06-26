@@ -33,6 +33,7 @@ The Consumers list described Part 13 as consuming a "hook auth gate rule" from P
 Q1's resolution mandates a lint-warn (not a hard-error) when `edit`, `review`, or `error` are declared without `view`, and claims the rule is "Captured in D4 and in the per-verb shape rules." D4 captured "no implication" but not the lint-warn. The Verification § Build-time bullet on resolver validation also did not mention the warning.
 
 **Resolution:**
+
 - Added a paragraph to D4 spelling out the lint-warn behaviour and the rationale (the omission may be intentional for role-only-edits-no-read workflows, so the schema warns rather than rejects).
 - Added a Build-time verification bullet pointing at D4.
 

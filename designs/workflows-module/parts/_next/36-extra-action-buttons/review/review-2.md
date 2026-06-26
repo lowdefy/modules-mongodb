@@ -20,9 +20,9 @@ v0 confirms the split: `technician-on-site.yaml` opens its `Modal` via `toggleOp
 
 Three places assert that the request-changes modal overrides live under `buttons.request_changes.modal.{title,content,visible}` "per the shipped `review.yaml.njk`": the action-authoring files-changed row (line 155), the ui files-changed row (line 156), and the README row's "(with the request-changes modal example)" (line 145).
 
-The shipped `review.yaml.njk` reads only `page_config.buttons.request_changes.visible` (line 230) and `.disabled` (line 242); the request-changes modal itself (`review.yaml.njk:317`) is mandatory and carries **no** title/content/visible knobs. The `.modal.{title,content}` knob shape exists for the *other* buttons: `submit_edit` (`edit.yaml.njk:343,348`), `not_required` (`edit.yaml.njk:397,402`), `approve` (`review.yaml.njk:389,394`), `resolve_error` (`error.yaml.njk:312,320`). Part 39 keeps this split — its both-payload-copies rule (Part 39 design line 65) lists modal-knob buttons as `submit`/`not_required` (edit), `approve` (review), `resolve_error` (error); request_changes stays a mandatory comment modal.
+The shipped `review.yaml.njk` reads only `page_config.buttons.request_changes.visible` (line 230) and `.disabled` (line 242); the request-changes modal itself (`review.yaml.njk:317`) is mandatory and carries **no** title/content/visible knobs. The `.modal.{title,content}` knob shape exists for the _other_ buttons: `submit_edit` (`edit.yaml.njk:343,348`), `not_required` (`edit.yaml.njk:397,402`), `approve` (`review.yaml.njk:389,394`), `resolve_error` (`error.yaml.njk:312,320`). Part 39 keeps this split — its both-payload-copies rule (Part 39 design line 65) lists modal-knob buttons as `submit`/`not_required` (edit), `approve` (review), `resolve_error` (error); request_changes stays a mandatory comment modal.
 
-**Fix:** Everywhere the design describes the `buttons.{signal}.modal` knob, use `approve` (or `submit`) as the worked example, and describe `request_changes` as carrying `.visible`/`.disabled` only. The concept-doc correction tasks must write *this* shape, or they replace one stale doc claim with another.
+**Fix:** Everywhere the design describes the `buttons.{signal}.modal` knob, use `approve` (or `submit`) as the worked example, and describe `request_changes` as carrying `.visible`/`.disabled` only. The concept-doc correction tasks must write _this_ shape, or they replace one stale doc claim with another.
 
 ### 3. "Visibility and role gating" is wrong on both mechanics: the state key is per-verb, and there is no role-based redirect
 
@@ -33,7 +33,7 @@ Line 125 claims "The action's role gate writes `action_allowed: true/false` into
 Both are wrong against the shipped code:
 
 - `components/action_role_check.yaml` writes an **object** — `action_allowed: { view, edit, review, error }` — and the templates read the verb-specific bool (`_state: action_allowed.edit` at `edit.yaml.njk:207,270`). The design's `disabled: { _ne: [{ _state: action_allowed }, true] }` compares an object to `true` and is **always disabled**.
-- There is no role-based mount redirect. The component header says explicitly "defence in depth only … decide which controls to show"; the only mount redirect on edit is the stale-*status* guard (`edit.yaml.njk:65` `redirect_stale_status`). "Extras inherit the page-level role gate implicitly" is therefore false — an extra with no `visible`/`disabled` gate renders fully clickable for users without the verb role (server-side checks still protect engine writes, but an extra's `CallAPI` to an *app* endpoint is only as protected as that endpoint).
+- There is no role-based mount redirect. The component header says explicitly "defence in depth only … decide which controls to show"; the only mount redirect on edit is the stale-_status_ guard (`edit.yaml.njk:65` `redirect_stale_status`). "Extras inherit the page-level role gate implicitly" is therefore false — an extra with no `visible`/`disabled` gate renders fully clickable for users without the verb role (server-side checks still protect engine writes, but an extra's `CallAPI` to an _app_ endpoint is only as protected as that endpoint).
 
 **Fix:** Change the example and prose to `_state: action_allowed.{verb}` (the verb of the page the extra is on), delete the redirect claim, and state plainly that extras get **no** implicit role gating — authors who need it must gate `visible`/`disabled` themselves, and app endpoints called from extras must do their own server-side checks.
 
@@ -43,7 +43,7 @@ Both are wrong against the shipped code:
 
 Line 123 cites "Resend Reminder only on `in-progress`" as a v0 stage-gating example. The shared `appointment_reminder_button.yaml` has no stage constraint — it's visible when `appointment_date` and `technician.contact_id` exist. The site-check "Save In Progress" citation (stages `[action-required, in-progress, changes-required]`) is correct and suffices.
 
-**Fix:** Drop or correct the Resend Reminder citation (it's also reused at line 5 and in the YAML example's stage list — the example itself is fine as an *illustration*, just don't attribute the stage gate to v0).
+**Fix:** Drop or correct the Resend Reminder citation (it's also reused at line 5 and in the YAML example's stage list — the example itself is fine as an _illustration_, just don't attribute the stage gate to v0).
 
 ### 5. v0 declares modals in `formHeader`, not `formFooter`
 
@@ -61,13 +61,13 @@ Lines 107 and 117 claim declaring modals in `formFooter` "matches the v0 pattern
 
 Proposed Change item 3 and the `makeWorkflowsConfig.js` files-changed row describe the check as "for each verb that supports a bar (`edit`, `review`, `error`), if `pages.{verb}.buttons.extra` is set, assert …". Verification test (g) expects "`buttons.extra` on `view` rejected". Those two contradict: a loop over `edit`/`review`/`error` never visits `pages.view`, and the validator today performs **no** `pages` structure validation at all (`validateAction`, `makeWorkflowsConfig.js:274-304`) and does not reject unknown keys — `pages.view.buttons.extra` would pass through to the view template and be silently dropped.
 
-**Fix:** Either (a) add an explicit rejection: for verbs *without* the slot (`view`), error if `pages.{verb}.buttons.extra` is present — this is the right call given the design's own out-of-scope note ("a follow-on adds `view`"), since silent ignore is exactly the drift the validator exists to prevent; or (b) drop test (g) and document that `buttons.extra` on view is ignored. Pick (a) and word the validator spec to match.
+**Fix:** Either (a) add an explicit rejection: for verbs _without_ the slot (`view`), error if `pages.{verb}.buttons.extra` is present — this is the right call given the design's own out-of-scope note ("a follow-on adds `view`"), since silent ignore is exactly the drift the validator exists to prevent; or (b) drop test (g) and document that `buttons.extra` on view is ignored. Pick (a) and word the validator spec to match.
 
 ### 7. The reserved set omits the non-signal bar buttons (`button_edit` today; view's Edit-nav button post-Part 39)
 
 > **Resolved.** Added `button_edit` (review) to the reserved set with the rationale spelled out — the collision check is about block ids in the bar, not signals, so nav buttons reserve too. Added test case (f2): `id: button_edit` rejected on review. View needs no entry: the validator rejects `pages.view.buttons.extra` outright (finding #6), so the view Edit-nav id (unnamed in Part 39; `button_edit` the obvious mirror) becomes the concern of the follow-on that opens extras on view.
 
-The reserved-id rationale (line 191) is block-id collisions *in the bar* — duplicate ids, ambiguous Playwright selectors. That rationale applies to every template-shipped block in the bar, not just signal buttons. Today's review bar ships `button_edit` (`review.yaml.njk:195`, a navigation button), and Part 39's view bar carries an Edit navigation button (Part 39 design line 76). Neither appears in `RESERVED_BUTTON_IDS` (Part 39's rebase notes at line 212 omit it too — but that list was explicitly "to be folded into Part 36's design", and Part 36 owns the constant).
+The reserved-id rationale (line 191) is block-id collisions _in the bar_ — duplicate ids, ambiguous Playwright selectors. That rationale applies to every template-shipped block in the bar, not just signal buttons. Today's review bar ships `button_edit` (`review.yaml.njk:195`, a navigation button), and Part 39's view bar carries an Edit navigation button (Part 39 design line 76). Neither appears in `RESERVED_BUTTON_IDS` (Part 39's rebase notes at line 212 omit it too — but that list was explicitly "to be folded into Part 36's design", and Part 36 owns the constant).
 
 **Fix:** Add the nav-button ids to the reserved set for the pages that ship them (`button_edit` on review; whatever id Part 39's view nav button gets — coordinate the name with Part 39 before either lands), or state why only signal-button ids are reserved despite the collision rationale covering nav buttons.
 

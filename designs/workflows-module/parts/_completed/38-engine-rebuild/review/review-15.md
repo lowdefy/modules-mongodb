@@ -18,7 +18,7 @@ The fix is one line per emitter: `type: 'InternalApi'` in `emitHookApi` and `emi
 
 ## Stale text the task leaves behind
 
-### 2. The legacy hook invokers' docstrings state the *inverted* rationale — item 7 should fix them the way item 5 fixes `commitPlan`'s
+### 2. The legacy hook invokers' docstrings state the _inverted_ rationale — item 7 should fix them the way item 5 fixes `commitPlan`'s
 
 > **Resolved (auto).** Item 7 now instructs fixing both invokers' docstring headers (the `{ id, module: 'workflows' }` rationale becomes the inverse of the contract) the same way item 5 fixes `commitPlan`'s.
 
@@ -26,11 +26,11 @@ The fix is one line per emitter: `type: 'InternalApi'` in `emitHookApi` and `emi
 
 ## Verification gap
 
-### 3. Every acceptance criterion is mock- or grep-based; nothing checks the *resolved* wiring — and the build performs no existence check on endpoint ids
+### 3. Every acceptance criterion is mock- or grep-based; nothing checks the _resolved_ wiring — and the build performs no existence check on endpoint ids
 
 > **Resolved.** Added the un-mocked acceptance criterion as proposed: after `pnpm build` on the demo, the built artifact must show the connection's resolved `endpoints` map (`events/new-event`, `notifications/send-notification`) and emitted submit Apis' hook values as `workflows/...` strings matching emitted Api ids in the same build output. Verified `resolveModuleEndpointId` (walker.js:449–474) only concatenates — no existence check — so this is the sole build-level check of the real wiring.
 
-`resolveModuleEndpointId` (`walker.js:449–474`) only concatenates `${targetEntry.id}/${arg.id}` — it never validates that the target module actually exports an endpoint with that id. A typo (`id: new-events`) builds clean and fails at runtime with `ConfigError`, which is precisely the failure class this task exists to eliminate: the landed code shipped broken because "all unit tests pass because they mock the invented contract" (task Context), and criterion 9's re-mocked tests are equally blind to a wrong endpoint *string*. The only non-mock criterion is "the demo app builds", which catches a missing dependency declaration (`resolveDepTarget` throws) but not a wrong id.
+`resolveModuleEndpointId` (`walker.js:449–474`) only concatenates `${targetEntry.id}/${arg.id}` — it never validates that the target module actually exports an endpoint with that id. A typo (`id: new-events`) builds clean and fails at runtime with `ConfigError`, which is precisely the failure class this task exists to eliminate: the landed code shipped broken because "all unit tests pass because they mock the invented contract" (task Context), and criterion 9's re-mocked tests are equally blind to a wrong endpoint _string_. The only non-mock criterion is "the demo app builds", which catches a missing dependency declaration (`resolveDepTarget` throws) but not a wrong id.
 
 Add one un-mocked acceptance criterion against the built demo artifact: the workflow-api connection's resolved properties carry `endpoints: { new_event: 'events/new-event', send_notification: 'notifications/send-notification' }`, and at least one emitted submit Api's `hooks.{interaction}.{pre|post}` values are `workflows/...` strings that exactly match emitted Api ids in the same build output. Cheap (read the build dir after `pnpm build` on the demo), and it closes the loop the mocks can't. Part 45's e2e covers this eventually, but that is bands away — the same "verified only by mocks" gap shouldn't ship twice.
 

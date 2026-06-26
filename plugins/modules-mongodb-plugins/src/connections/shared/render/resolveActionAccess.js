@@ -13,7 +13,7 @@
  *   - `resolveButtons`   — six-key button visibility map based on stage + access
  */
 
-import { gateAllows, SIGNAL_VERBS } from '../phases/loadWorkflowState.js';
+import { gateAllows, SIGNAL_VERBS } from "../phases/loadWorkflowState.js";
 
 export { gateAllows };
 
@@ -26,19 +26,19 @@ export { gateAllows };
  * suite in resolveActionAccess.test.js (set equality per signal).
  */
 export const BUTTON_SIGNAL_SOURCES = {
-  submit: ['action-required', 'in-progress', 'changes-required', 'done'],
-  progress: ['action-required', 'in-progress'],
+  submit: ["action-required", "in-progress", "changes-required", "done"],
+  progress: ["action-required", "in-progress"],
   not_required: [
-    'action-required',
-    'in-progress',
-    'changes-required',
-    'blocked',
-    'in-review',
-    'error',
+    "action-required",
+    "in-progress",
+    "changes-required",
+    "blocked",
+    "in-review",
+    "error",
   ],
-  approve: ['in-review'],
-  request_changes: ['in-review', 'done'],
-  resolve_error: ['error'],
+  approve: ["in-review"],
+  request_changes: ["in-review", "done"],
+  resolve_error: ["error"],
 };
 
 /**
@@ -104,7 +104,7 @@ export function resolveButtons({ stage, allowed, allow_not_required }) {
     const verbs = SIGNAL_VERBS[signal];
     let visible =
       sources.includes(stage) && verbs.some((verb) => allowed[verb]);
-    if (signal === 'not_required') {
+    if (signal === "not_required") {
       visible = visible && allow_not_required === true;
     }
     result[signal] = Boolean(visible);

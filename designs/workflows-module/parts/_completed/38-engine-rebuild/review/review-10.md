@@ -32,7 +32,7 @@ payload") assert `buildHookPayload.js` is unchanged. It can't be:
   task 19's emitted payload list has neither. The "unchanged" payload would
   carry `interaction: undefined, current_status: null`.
 
-The *intent* ("the payload contract authors code against doesn't change
+The _intent_ ("the payload contract authors code against doesn't change
 gratuitously") is right; the literal file can't survive the field rename. Fix:
 
 - Task 14 specs the wrapper's resolution key as `params.hooks?.[params.signal]`.
@@ -58,7 +58,7 @@ re-key (and `progress`) to task 19's scope.
 
 > **Resolved.** As proposed: the author-facing post-hook payload keeps the `buildHookPayload` envelope (with finding-1's field fixes), but `context` is populated from the **planned** docs (`{ workflow: plan.workflow.doc, action: <planned target-action doc> }`) — the concrete mechanism behind D6's fresh-state promise — and `result` is pinned to today's bag `{ action_ids, completed_groups, event_id, tracker_fired }` (`completed_groups` from the planned group recompute; `tracker_fired` the cascade's per-level `[{ parent_action_id, parent_workflow_id, new_status }]`). `dispatchErrors` is deliberately not exposed (the handler's `post_commit_dispatch_failed` throw is the surfacing mechanism). Task 14's input gains the cascade fire list; its AC asserts plan-visible freshness and the exact `result` shape; design.md's data-flow lines and D6 now match.
 
-Task 14 specs only the *function input* (`LoadedState` + committed `Plan` +
+Task 14 specs only the _function input_ (`LoadedState` + committed `Plan` +
 `CommitResult`) and promises "Authors see fresh state via the Plan — no
 re-read." But what goes over `callApi` to the hook routine — the thing authors
 actually receive — is pinned nowhere, and the three existing descriptions
@@ -74,7 +74,7 @@ conflict:
   a completely different envelope, and one that leaks engine-internal types
   (the whole Plan incl. changeLog deltas) into the author contract.
 - Today's `result` bag is `{ action_ids, completed_groups, event_id,
-  tracker_fired }` (`handleSubmit.js:353-358`); the data flow's `CommitResult`
+tracker_fired }` (`handleSubmit.js:353-358`); the data flow's `CommitResult`
   is `{ action_ids, event_ids, ... }` — plural, no `completed_groups`.
 
 Task 14 must pin the author-facing payload. Proposed: keep the
@@ -180,7 +180,7 @@ code (e.g. `prehook_redirect`, or one `invalid_prehook_response` code for all
 shape rejections), added to D13's list and asserted by code in the task's
 redirect-rejection test. Without this, the implementer's most likely reach is
 a bare `Error` or — worse — `UserError`, which D13 explicitly reserves for the
-hook's *own* `:reject`.
+hook's _own_ `:reject`.
 
 ## Contract carry-over
 
@@ -229,7 +229,7 @@ remains under `utils/`.
   (`pre_hook_response: null` in the return payload; exposed by
   `makeWorkflowApis.js`'s `:return` block). Task 14's empty-result default
   (`{ actions: [], event_overrides: {}, form_overrides: {} }`) is right as
-  *plan input*, but if the wrapper's return is also what task 15 surfaces,
+  _plan input_, but if the wrapper's return is also what task 15 surfaces,
   "no hook" and "hook returned nothing" become indistinguishable to callers.
   One sentence in task 14 settles it (e.g. wrapper returns the normalized
   result plus the raw response, or task 15 surfaces `null` when no hook was

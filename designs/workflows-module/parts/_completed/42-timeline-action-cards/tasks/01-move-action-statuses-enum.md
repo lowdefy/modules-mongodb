@@ -50,7 +50,7 @@ from any workflows-module file the new path is `../shared/enums/action_statuses.
    (line ~124): "Typically loaded from enums/action_statuses.yaml" → the new
    canonical path `modules/shared/enums/action_statuses.yaml`.
 
-Do **not** touch references to the *component* `components/action_statuses.yaml`
+Do **not** touch references to the _component_ `components/action_statuses.yaml`
 (used by `pages/group-overview.yaml` and `pages/workflow-overview.yaml`) — the
 component file's own path is unchanged; only the enum it points to moved.
 

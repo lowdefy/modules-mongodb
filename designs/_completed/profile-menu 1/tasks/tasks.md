@@ -6,13 +6,13 @@ Replace the build-time `extra_profile_links` concatenation in the sider-menu lay
 
 ## Tasks
 
-| #   | File                                          | Summary                                                                                    | Depends On |
-| --- | --------------------------------------------- | ------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-lowdefy-filter-menu-dividers.md`          | Lowdefy API: pass `MenuDivider` through `filterMenuList`, add `cleanDividers` post-pass, tests | —          |
-| 2   | `02-add-profile-default-menu.md`              | `user-account`: add `profile-default` menu export (Profile + Divider + Logout)             | —          |
-| 3   | `03-switch-layout-to-menu-operator.md`        | `layout-sider-menu` + demo cutover: replace `extra_profile_links` with `profile_menu_id` + `_menu`  | 1, 2       |
-| 4   | `04-remove-deprecated-profile-components.md`  | Delete `profile-links` / `profile-actions` components and their exports                    | 3          |
-| 5   | `05-update-readmes.md`                        | Document the new pattern in `layout-sider-menu/README.md` and create `user-account/README.md` | 3          |
+| #   | File                                         | Summary                                                                                            | Depends On |
+| --- | -------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-lowdefy-filter-menu-dividers.md`         | Lowdefy API: pass `MenuDivider` through `filterMenuList`, add `cleanDividers` post-pass, tests     | —          |
+| 2   | `02-add-profile-default-menu.md`             | `user-account`: add `profile-default` menu export (Profile + Divider + Logout)                     | —          |
+| 3   | `03-switch-layout-to-menu-operator.md`       | `layout-sider-menu` + demo cutover: replace `extra_profile_links` with `profile_menu_id` + `_menu` | 1, 2       |
+| 4   | `04-remove-deprecated-profile-components.md` | Delete `profile-links` / `profile-actions` components and their exports                            | 3          |
+| 5   | `05-update-readmes.md`                       | Document the new pattern in `layout-sider-menu/README.md` and create `user-account/README.md`      | 3          |
 
 ## Ordering Rationale
 

@@ -12,9 +12,9 @@ The cycle-check pipeline in `design.md` (Cycle-check step layout, lines ~362–4
 
 ```yaml
 - $match:
-    _id: { $in: <payload.parent_ids> }    # one doc per matched candidate parent
+    _id: { $in: <payload.parent_ids> } # one doc per matched candidate parent
 - $graphLookup:
-    startWith: "$_id"                      # per-doc starting point
+    startWith: "$_id" # per-doc starting point
     connectFromField: parent_ids
     connectToField: _id
     as: __ancestors
@@ -23,16 +23,18 @@ The cycle-check pipeline in `design.md` (Cycle-check step layout, lines ~362–4
       $in: [<self._id>, $concatArrays: [["$_id"], "$__ancestors._id"]]
 ```
 
-The pipeline produces **one document per matched candidate parent**. The downstream `_step.cycle_check.0.has_cycle` reads only the **first** doc's projection. If `payload.parent_ids = ["A", "B"]`, the cycle exists *only via B*, and A is matched first, the check reads `A.has_cycle = false` and lets the update through — even though B would close a loop.
+The pipeline produces **one document per matched candidate parent**. The downstream `_step.cycle_check.0.has_cycle` reads only the **first** doc's projection. If `payload.parent_ids = ["A", "B"]`, the cycle exists _only via B_, and A is matched first, the check reads `A.has_cycle = false` and lets the update through — even though B would close a loop.
 
 **Fix:** OR-reduce across all candidate parent docs. Two viable approaches:
 
 1. Add a `$group` stage that aggregates `has_cycle` with `$max` (booleans `true > false`) into a single doc:
+
    ```yaml
    - $group:
        _id: null
        has_cycle: { $max: "$has_cycle" }
    ```
+
    Then `_step.cycle_check.0.has_cycle` is the OR across all matched candidates.
 
 2. Restructure to a single `$graphLookup` from a synthetic root document holding all candidate parent_ids in one array, then check via a single `$expr`. More invasive.
@@ -43,11 +45,11 @@ Approach 1 is the smallest change. Update both the design's "Cycle-check step la
 
 > **Resolved.** Hardcoded `from: companies` in tasks 2, 4, and 8. Verified via `modules/companies/connections/companies-collection.yaml:6` that the literal collection name is `companies`. Updated the "Notes" sections in all three tasks to explain that no `_module.collection` resolver exists in Lowdefy and that hardcoding is safe across consumer connection remappings (a remapped connection points at a different collection, where this design's data wouldn't exist anyway). The earlier "<companies-collection name — see Notes>" placeholders are gone.
 
-Tasks 2, 4, and 8 each defer the `from:` value with a "see Notes" comment that says "Lowdefy doesn't support `_module.collection` directly; use whichever pattern existing requests use for `$lookup.from`". A grep across `modules/` shows **no `$lookup` or `$graphLookup` usage anywhere** — only doc references in `contacts/README.md:123` and `companies/README.md:174` describe the *concept*. This design is the first to add either.
+Tasks 2, 4, and 8 each defer the `from:` value with a "see Notes" comment that says "Lowdefy doesn't support `_module.collection` directly; use whichever pattern existing requests use for `$lookup.from`". A grep across `modules/` shows **no `$lookup` or `$graphLookup` usage anywhere** — only doc references in `contacts/README.md:123` and `companies/README.md:174` describe the _concept_. This design is the first to add either.
 
-The literal collection name *is* available — `modules/companies/connections/companies-collection.yaml:6` declares `collection: companies`. So `from: companies` is the only practical answer.
+The literal collection name _is_ available — `modules/companies/connections/companies-collection.yaml:6` declares `collection: companies`. So `from: companies` is the only practical answer.
 
-**Fix:** in tasks 2, 4, and 8, replace the "<companies-collection name — see Notes>" placeholder with `from: companies` directly, and drop the "first existing pattern" hand-wave. Add a short note on the design ("Related cleanup" or directly in the API section): `$graphLookup.from` is hardcoded to the literal collection name `companies` because Lowdefy has no `_module.collection` resolver. If a consuming app remaps the connection via `connections:`, they're remapping to a different *connection*, not a different collection name — so the hardcode is safe across remappings.
+**Fix:** in tasks 2, 4, and 8, replace the "<companies-collection name — see Notes>" placeholder with `from: companies` directly, and drop the "first existing pattern" hand-wave. Add a short note on the design ("Related cleanup" or directly in the API section): `$graphLookup.from` is hardcoded to the literal collection name `companies` because Lowdefy has no `_module.collection` resolver. If a consuming app remaps the connection via `connections:`, they're remapping to a different _connection_, not a different collection name — so the hardcode is safe across remappings.
 
 ### 3. Edit-page `onMount` is three steps, not two — design promises something the tasks don't deliver
 
@@ -112,7 +114,7 @@ _build.object.assign:
       else: {}
 ```
 
-The `_build.object.assign` operator exists (verified at `modules/layout/components/page.yaml:24,131`). And merging `{}` is a no-op. So this *should* work — but no existing usage in the repo combines `_build.object.assign` with a `_build.if` returning `{}` for key omission. The closest precedent is `page.yaml:142–155`, which uses `_build.if` *as a value* (not for key omission), and the value can be `null`.
+The `_build.object.assign` operator exists (verified at `modules/layout/components/page.yaml:24,131`). And merging `{}` is a no-op. So this _should_ work — but no existing usage in the repo combines `_build.object.assign` with a `_build.if` returning `{}` for key omission. The closest precedent is `page.yaml:142–155`, which uses `_build.if` _as a value_ (not for key omission), and the value can be `null`.
 
 **Fix:** verify the pattern works at implementation time by checking task 1's build output with `hierarchy.enabled: false` is byte-identical to today's. If `_build.object.assign` doesn't merge `{}` cleanly (e.g., adds an explicit `parent_ids: undefined` field), fall back to wrapping the entire `doc:` block in a `_build.if` with two duplicated branches — verbose but works.
 
@@ -147,7 +149,7 @@ The intent is "value is undefined unless the consuming app sets it; the usage si
 
 **Fix:** if Lowdefy requires defaults, set `default: null` explicitly (the `_if_none` chain treats `null` the same as undefined). If null is also rejected, set default to the `_string.concat` expression directly — but that requires the var resolver to evaluate operators in defaults, which may not work either.
 
-Add a verification step to task 1's acceptance criteria: build the demo app *without* `hierarchy.parent_label` / `children_label` set in vars, and confirm the build doesn't fail and the labels render as "Parent Companies" / "Child Companies".
+Add a verification step to task 1's acceptance criteria: build the demo app _without_ `hierarchy.parent_label` / `children_label` set in vars, and confirm the build doesn't fail and the labels render as "Parent Companies" / "Child Companies".
 
 ### 8. Task 9 tile structure under-specified
 
@@ -161,14 +163,14 @@ The design itself only describes the tile in prose ("two stacked sections, each 
 
 ### 9. Task 5 changes `get_companies_for_selector.yaml` for everyone
 
-> **Resolved.** Grep confirms that *no in-repo file* `_ref`s `module: companies, component: company-selector` — only `modules/companies/module.lowdefy.yaml` references it (the export declaration). Apps consume it externally via their `lowdefy.yaml`. So the projection change has no in-repo blast radius today; the new `parent_selector.yaml` from task 6 becomes the second consumer. External consumer apps will see the extra `disabled` field on every option result, but their selectors don't read `disabledField` (only `company-selector.yaml` adds it, per task 5 step B.2), so the change is behaviourally backward-compatible. Updated task 5's "Notes" section to enumerate this finding and recommend `pnpm ldf:b:i` against the demo plus any consumer app the implementer is testing.
+> **Resolved.** Grep confirms that _no in-repo file_ `_ref`s `module: companies, component: company-selector` — only `modules/companies/module.lowdefy.yaml` references it (the export declaration). Apps consume it externally via their `lowdefy.yaml`. So the projection change has no in-repo blast radius today; the new `parent_selector.yaml` from task 6 becomes the second consumer. External consumer apps will see the extra `disabled` field on every option result, but their selectors don't read `disabledField` (only `company-selector.yaml` adds it, per task 5 step B.2), so the change is behaviourally backward-compatible. Updated task 5's "Notes" section to enumerate this finding and recommend `pnpm ldf:b:i` against the demo plus any consumer app the implementer is testing.
 
 Task 5 adds a `payload.cycle_check_ids` block and a `$cond`-based `disabled` projection to `get_companies_for_selector.yaml`. This request is referenced by `company-selector.yaml`, which is referenced by:
 
 - The companies module itself (for parent-picking, post-task-7).
 - Other module pages that `_ref` `module: companies, component: company-selector` to embed a company selector.
 
-The change is backward-compatible (the `_if_none` fallback to `[]` means no rows are disabled when `cycle_check_ids` isn't set). But it does alter the projection shape returned to *every* consumer — adds a `disabled` field to every option. The task's acceptance criteria mention contacts but don't enumerate consumers comprehensively.
+The change is backward-compatible (the `_if_none` fallback to `[]` means no rows are disabled when `cycle_check_ids` isn't set). But it does alter the projection shape returned to _every_ consumer — adds a `disabled` field to every option. The task's acceptance criteria mention contacts but don't enumerate consumers comprehensively.
 
 **Fix:** add a step to task 5 that grep's for `_ref:.*company-selector` across the repo and lists every consumer in the task's "Notes" so the implementer can spot-check each one builds and renders unchanged.
 
@@ -176,7 +178,7 @@ The change is backward-compatible (the `_if_none` fallback to `[]` means no rows
 
 > **Resolved.** Made the fix explicit in `tasks/10-list-filter.md`'s "Notes" section: when `hierarchy.enabled`, the Clear button's `onClick` action chain inserts a `re_resolve_descendants` Request action between `Reset` and the existing `actions/search.yaml`. After Reset, `state.filter.parent_scope` is undefined → the descendants request's `_if_none` fallback chain produces an empty `ids` array → the conditional `must` clause skips → the list returns to unscoped. Concrete YAML included.
 
-Task 10 (Notes) flags that the existing "Clear" button at `filter_companies.yaml:29-41` runs `Reset` then `actions/search.yaml`. `Reset` clears state, but the *cached request result* of `get_descendant_company_ids` may still hold the previously-resolved descendant ids. The next `get_all_companies` fire reads `_request: get_descendant_company_ids.0.ids` — which could be stale.
+Task 10 (Notes) flags that the existing "Clear" button at `filter_companies.yaml:29-41` runs `Reset` then `actions/search.yaml`. `Reset` clears state, but the _cached request result_ of `get_descendant_company_ids` may still hold the previously-resolved descendant ids. The next `get_all_companies` fire reads `_request: get_descendant_company_ids.0.ids` — which could be stale.
 
 The task says "verify when implementing" but doesn't propose a fix. The fix is straightforward: extend the Clear button's `onClick` action chain to re-fire `get_descendant_company_ids` after `Reset` and before `actions/search.yaml`, similar to how the new selector's `onChange` chain works.
 
@@ -203,7 +205,7 @@ onClick:
 
 > **Resolved.** Updated `tasks/07-edit-form-wiring.md` step 4 to drop the page-level `get_companies_for_selector.yaml` registration. The page only adds `get_descendant_company_ids.yaml` to its `requests:` list; the selector's options request stays declared inside `parent_selector.yaml` (per task 6), matching the convention `company-selector.yaml` already uses today.
 
-Task 6 puts `requests: [_ref: requests/get_companies_for_selector.yaml]` inside `parent_selector.yaml`. Task 7 then says to also add `get_companies_for_selector.yaml` to the *page's* `requests:` list. Lowdefy's request resolution may dedupe these, or it may complain about duplicate IDs. No precedent in the repo combines a component's own `requests:` block with the page's — `company-selector.yaml` (the existing) declares its own `requests:`, and the pages that use it via `_ref` *don't* re-declare the request at page level.
+Task 6 puts `requests: [_ref: requests/get_companies_for_selector.yaml]` inside `parent_selector.yaml`. Task 7 then says to also add `get_companies_for_selector.yaml` to the _page's_ `requests:` list. Lowdefy's request resolution may dedupe these, or it may complain about duplicate IDs. No precedent in the repo combines a component's own `requests:` block with the page's — `company-selector.yaml` (the existing) declares its own `requests:`, and the pages that use it via `_ref` _don't_ re-declare the request at page level.
 
 **Fix:** drop the page-level `get_companies_for_selector.yaml` registration in task 7's edit-page changes. Let `parent_selector.yaml`'s own `requests:` block carry the registration, matching how `company-selector.yaml` already works elsewhere.
 

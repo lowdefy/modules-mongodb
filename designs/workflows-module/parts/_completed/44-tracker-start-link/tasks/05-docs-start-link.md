@@ -9,7 +9,7 @@ The division of labour to document (D6): a **trigger** is a one-shot human task 
 Three doc surfaces, all currently describing trackers as display-only with a `workflow_type`-only block:
 
 - `modules/workflows/README.md` — consumer-facing module reference. "Authoring actions" (line ~86) has subsections for `access:`, `status_map:`, signals, hooks; trackers are only mentioned in passing ("tracker actions emit none", line ~174/217).
-- `designs/workflows-module-concept/action-authoring/design.md` — Decision 5 ("Tracker action YAML", line ~294): YAML shape, runtime linking, hard-coded child-stage map, and "Two paired actions, not one" (line ~387) which currently presents the paired pattern as *the* recommended shape.
+- `designs/workflows-module-concept/action-authoring/design.md` — Decision 5 ("Tracker action YAML", line ~294): YAML shape, runtime linking, hard-coded child-stage map, and "Two paired actions, not one" (line ~387) which currently presents the paired pattern as _the_ recommended shape.
 - `designs/workflows-module-concept/action-authoring/spec.md` — the schema spec the README names as source of truth alongside `makeWorkflowsConfig.js`: kind table (~82), validation rules (~98–100), tracker YAML section (~442–461), "Recommended shape: paired trigger + tracker actions" (~498).
 
 ## Task

@@ -4,7 +4,7 @@
 
 The notifications module's [`send-notification` Api](../../../../../modules/notifications/api/send-notification.yaml) is an `InternalApi` whose routine is supplied by the consuming app via `_module.var: send_routine`. When apps wire the workflows module + notifications module together, the routine receives `event_ids` on its payload and resolves recipients by re-fetching the event doc.
 
-Spec ([submit-pipeline/design.md § Side effects](../../../../workflows-module-concept/submit-pipeline/design.md)): *"that routine reads the event doc by id, resolves recipients (typically from `event.references` or the action's role declarations), and dispatches via whatever channels the app wires"*.
+Spec ([submit-pipeline/design.md § Side effects](../../../../workflows-module-concept/submit-pipeline/design.md)): _"that routine reads the event doc by id, resolves recipients (typically from `event.references` or the action's role declarations), and dispatches via whatever channels the app wires"_.
 
 So the engine's dispatch is dead simple: call `send-notification` with `{ event_ids: [eventId] }` and nothing else. Apps that haven't wired a `send_routine` get a silent no-op because the notifications module's default `send_routine` is `[]`.
 
@@ -34,17 +34,17 @@ Create [plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
  */
 async function dispatchNotifications(context, eventId) {
   const result = await context.callApi(
-    { id: 'send-notification', module: 'notifications' },
+    { id: "send-notification", module: "notifications" },
     { event_ids: [eventId] },
     { user: context.user },
   );
 
   if (!result.success) {
     const err = new Error(
-      `dispatchNotifications: send-notification failed: ${result.error?.message ?? 'unknown'}`,
+      `dispatchNotifications: send-notification failed: ${result.error?.message ?? "unknown"}`,
     );
     err.cause = result.error;
-    err.step = 'dispatch-notifications';
+    err.step = "dispatch-notifications";
     throw err;
   }
 }

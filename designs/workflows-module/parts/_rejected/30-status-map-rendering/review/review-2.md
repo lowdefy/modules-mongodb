@@ -94,7 +94,7 @@ Per the "One correct way" principle, the walker should live in one place — lik
 
 [`StartWorkflow.js:117-128`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js) calls `updateAction({ actionId: parent_action_id, newStage: 'in-progress', fields: { child_workflow_id, child_entity_id, child_entity_collection } })` to advance the parent tracker. With render moved inside `updateAction`, this path inherits — but per finding #2, tracker link computation needs `child_workflow_id`, which is being set by this very call.
 
-The design's D11 pipeline puts `...fields` (caller-supplied $set) and `...engineLinks` into the same `$set`. If `engineLinks` is computed pre-pipeline using `actionDocBeforeWrite` only, the parent's `in-progress` cell gets `link: { workflow_id: null }` because the fetched doc still has `child_workflow_id: null`.
+The design's D11 pipeline puts `...fields` (caller-supplied $set) and `...engineLinks` into the same `$set`. If `engineLinks`is computed pre-pipeline using`actionDocBeforeWrite`only, the parent's`in-progress`cell gets`link: { workflow_id: null }`because the fetched doc still has`child_workflow_id: null`.
 
 **Fix:** compute engineLinks against `{ ...actionDocBeforeWrite, ...fields }` so caller-supplied fields participate. Document the rule in D10 (render context) and D4 (link computation).
 

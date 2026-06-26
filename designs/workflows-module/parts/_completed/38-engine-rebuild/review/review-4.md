@@ -17,7 +17,7 @@ existing behaviour that neither the design nor the task list carries forward.
 
 ### 1. The `upsert: true` mid-workflow spawn path has no home in the phase model — and D13 actively breaks it
 
-> **Resolved.** Preserved the spawn — and folded creation *into the FSM* rather than carrying a `status`-seed exception. Confirmed the feature is heavily used out-of-repo (the reference app spawns keyed actions throughout: `site-visit-report`, `_uuid`-keyed child tickets, forced `request_changes`/`block` upserts), though the in-repo demo uses it nowhere — so "drop" was off the table. Added a **`none` creation source state** to `state-machine.md`: `none` is a transient resolution-time sentinel (never a stored status), and the spawning signal resolves through the `none` row to the birth stage (`activate → action-required`, `block → blocked`, `request_changes → changes-required`, `error → error`), extensible by adding edges. A pre-hook `actions[]` entry is now uniformly `{ target, signal }` with optional `upsert: true`; on a missing target, `upsert: true` resolves via `none` → `operation: "insert"`, while a missing target *without* `upsert` throws (D13 (2), reconciled with state-machine.md Open Question 1). Updated Part 38 D4/D5/D13, the data flow, Files-changed (gave `mergePreHookActions.js` + `utils/shouldCreate.js` a deletion disposition — logic folds into `planActionTransition`), the test strategy (spawn integration test), and tasks 02 (the `none` row), 09 (`PreHookResult.upsert?`), 10 (the insert trigger). `StartWorkflow` draft-birth is left as a possible future unification onto the same `none` mechanism, not done here.
+> **Resolved.** Preserved the spawn — and folded creation _into the FSM_ rather than carrying a `status`-seed exception. Confirmed the feature is heavily used out-of-repo (the reference app spawns keyed actions throughout: `site-visit-report`, `_uuid`-keyed child tickets, forced `request_changes`/`block` upserts), though the in-repo demo uses it nowhere — so "drop" was off the table. Added a **`none` creation source state** to `state-machine.md`: `none` is a transient resolution-time sentinel (never a stored status), and the spawning signal resolves through the `none` row to the birth stage (`activate → action-required`, `block → blocked`, `request_changes → changes-required`, `error → error`), extensible by adding edges. A pre-hook `actions[]` entry is now uniformly `{ target, signal }` with optional `upsert: true`; on a missing target, `upsert: true` resolves via `none` → `operation: "insert"`, while a missing target _without_ `upsert` throws (D13 (2), reconciled with state-machine.md Open Question 1). Updated Part 38 D4/D5/D13, the data flow, Files-changed (gave `mergePreHookActions.js` + `utils/shouldCreate.js` a deletion disposition — logic folds into `planActionTransition`), the test strategy (spawn integration test), and tasks 02 (the `none` row), 09 (`PreHookResult.upsert?`), 10 (the insert trigger). `StartWorkflow` draft-birth is left as a possible future unification onto the same `none` mechanism, not done here.
 
 The current engine supports a pre-hook `actions[]` entry that **spawns a new keyed
 action instance** mid-submit. `handleSubmit.js` (step 4 loop) branches on
@@ -27,7 +27,7 @@ through. This is a designed, concept-level feature, not vestigial:
 
 - `action-authoring/design.md:884`: "A pre-hook return's `actions[]` array … can
   append `{ type: proof-of-installation, key: device-456, status: action-required,
-  upsert: true }` to spawn a new instance. `status` here is the new doc's **initial
+upsert: true }` to spawn a new instance. `status` here is the new doc's **initial
   status** (a creation seed), not an FSM transition — **the one place `actions[]`
   carries `status` instead of `signal`**, valid only with `upsert: true`."
 - `submit-pipeline/design.md:258`–261 documents the same `upsert` + seed-`status`
@@ -37,7 +37,7 @@ Part 38 erases this in two ways:
 
 1. **No phase owns it.** D5 and the data flow describe `preHookResult.actions[]` as
    uniformly `{ target, signal }` resolved through the FSM. `planActionTransition`
-   "resolves a signal through the FSM"; but an `upsert` entry carries a *status seed*,
+   "resolves a signal through the FSM"; but an `upsert` entry carries a _status seed_,
    **not** a signal, and there is no FSM lookup for a doc that doesn't exist yet.
    `plan.actions[].operation: "insert"` exists in the Plan type (D3), and the design
    says `planActionTransition` "handles both insert and update" — but the **Submit-time
@@ -45,8 +45,8 @@ Part 38 erases this in two ways:
    insert is StartWorkflow's initial drafts; the mid-submit spawn is absent.
 2. **D13 (2) contradicts it.** D13 says a pre-hook `actions[]` entry whose target
    doesn't exist → **planner throws** ("Unknown target … Planner throws (today's
-   `actions[]` behaviour for missing targets)"). But an `upsert: true` spawn is *by
-   definition* a target that doesn't exist yet — under D13 it would throw instead of
+   `actions[]` behaviour for missing targets)"). But an `upsert: true` spawn is _by
+   definition_ a target that doesn't exist yet — under D13 it would throw instead of
    creating. So the one rule Part 38 does state for missing targets directly defeats
    the spawn feature.
 
@@ -55,6 +55,7 @@ from a pre-hook) becomes unreachable, and the design doesn't flag it as either
 preserved or dropped.
 
 **Fix.** Decide explicitly:
+
 - **Preserve:** state that `preHookResult.actions[]` entries are either
   `{ target, signal }` (FSM transition) **or** `{ type, key, status, upsert: true }`
   (insert with a seed status, no FSM lookup); `planActionTransition` routes upsert
@@ -94,13 +95,13 @@ Two distinct losses:
   (a group id) is never unblocked by the rebuild, because the planner only inspects
   per-action terminality. This is a live feature (Part 7 group state machine;
   `computeAutoUnblocks` resolves `declaredGroupIds`).
-- **Ordering is inverted.** Group-gated unblock needs the *recomputed* group status.
+- **Ordering is inverted.** Group-gated unblock needs the _recomputed_ group status.
   The current engine runs unblock in **two passes**: `computeAutoUnblocks` pre-write
-  (action-type deps), then `reevaluateBlockedActions` *after* `recomputeGroups`
+  (action-type deps), then `reevaluateBlockedActions` _after_ `recomputeGroups`
   (group-status deps, reading the post-recompute `groups[]`). Part 38's data flow
   orders "auto-unblock fixpoint" **before** "recompute groups + summary"
   (design.md:456–457). So even if group resolution were added, the fixpoint would read
-  the *loaded* (pre-transition) group status and miss the unblock.
+  the _loaded_ (pre-transition) group status and miss the unblock.
 
 Concrete failure: action C is `blocked_by: [install-group]`; a submit completes the
 last action in `install-group`. Current engine: recompute flips the group to `done`,
@@ -109,7 +110,7 @@ then unblock fires C. Part 38 as specced: the fixpoint runs while the group is s
 an unrelated later submit triggers another recompute. Silent regression.
 
 **Fix.** In D4 / `planAutoUnblock` (task 10) and the data flow:
-(a) restore group-id resolution (a `blocked_by` entry satisfied iff the *planned*
+(a) restore group-id resolution (a `blocked_by` entry satisfied iff the _planned_
 group status is `done`) and the keyed-action "all docs of a type terminal" rule;
 (b) interleave group recompute with the unblock fixpoint (recompute groups against
 the planned actions, then unblock against the recomputed groups, iterating to a
@@ -124,8 +125,10 @@ fixpoint), or run the unblock pass after `planWorkflowRecompute` and feed the pl
 action declares `required_after_close: true`**:
 
 ```js
-if ((workflowStage === "completed" || workflowStage === "cancelled") &&
-    actionConfig.required_after_close !== true) {
+if (
+  (workflowStage === "completed" || workflowStage === "cancelled") &&
+  actionConfig.required_after_close !== true
+) {
   throw new Error(`… workflow is ${workflowStage}; action … does not have
     required_after_close: true`);
 }
@@ -134,8 +137,8 @@ if ((workflowStage === "completed" || workflowStage === "cancelled") &&
 This is a live, tested feature (`handleSubmit.test.js`, `CloseWorkflow.test.js`,
 `makeActionPages.js`, `makeWorkflowsConfig.js`, `templates/view.yaml.njk` all
 reference `required_after_close`). Part 38 D2 and task `09-load-phase-and-types.md:34`
-reduce the load-phase invariant to a bare *"workflow stage doesn't accept
-submissions."* That phrasing drops the `required_after_close` carve-out — under it,
+reduce the load-phase invariant to a bare _"workflow stage doesn't accept
+submissions."_ That phrasing drops the `required_after_close` carve-out — under it,
 **every** submit on a closed workflow throws, breaking the post-close required-action
 path.
 
@@ -149,7 +152,7 @@ load-phase test for the allowed case (mirroring the current `handleSubmit.test.j
 
 > **Resolved.** Confirmed: plugin `dependencies` are only `{ dayjs, dompurify }`, no `mongodb`; it resolves today only by pnpm-hoist (`mongodb@6.21.0` at the root `^6.10.0`), while the community plugin pins an exact `mongodb@6.3.0`. Added `mongodb: "^6"` to the plugin's **`peerDependencies`** (peer, not bundled `dependency`, so the consuming app dedupes to one v6 driver build rather than carrying a second copy — matching the existing `community-plugin-mongodb: ^3` peer). Recorded in task 01 (task text + Files-changed + AC), the design's Files-changed (new `mongo/` section), and a D8 note stating the single-driver-version expectation (the community plugin's exact 6.3.0 pin is an external choice; both being v6, `findOneAndUpdate` returns the doc/`null` directly as D15 assumes, so a skew is benign). The actual `package.json` edit lands when task 01 is implemented.
 
-D8 and task `01-mongo-driver-layer.md` have `getMongoDb.js` *construct* a
+D8 and task `01-mongo-driver-layer.md` have `getMongoDb.js` _construct_ a
 `MongoClient` from `databaseUri` (`import { MongoClient } from "mongodb"`). But the
 plugin's `package.json` declares **no** `mongodb` dependency — `dependencies` is only
 `{ dayjs, dompurify }`, and `peerDependencies` lists `@lowdefy/community-plugin-mongodb`
@@ -179,7 +182,7 @@ single-driver-version expectation so the two clients share one driver build.
 
 D7 says each `log-changes` entry carries `blockId` / `connectionId` / `pageId` /
 `requestId` "populated from the engine handler's request context." The community
-plugin gets these because it executes as a Lowdefy *request* handler. The WorkflowAPI
+plugin gets these because it executes as a Lowdefy _request_ handler. The WorkflowAPI
 **connection** handler may not have `pageId` / `blockId` in scope (a connection can be
 invoked from contexts without a page/block). This is unverified in the design.
 
@@ -204,5 +207,5 @@ entries — the explicit goal of D7.
 - **Notifications** are an existing concern (`dispatchNotifications` is a real
   step-8 today), so `plan.notifications[]` carries forward a real surface, and
   `notification_roles` is correctly deferred to Part 41 (review-3 #6).
-</content>
-</invoke>
+  </content>
+  </invoke>

@@ -42,7 +42,7 @@ Place this either inline in `handleSubmit.js` or extract to `./utils/findMatchin
 ### 2. Per-entry loop
 
 ```js
-import updateAction from '../../shared/updateAction.js';
+import updateAction from "../../shared/updateAction.js";
 // ...
 
 // Step 4 — Write action transitions (per-entry loop with priority rule).

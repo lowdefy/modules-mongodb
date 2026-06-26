@@ -21,17 +21,19 @@ Tasks 1–5 ship the building blocks; this task wires them into the lifecycle.
 ## Task
 
 1. **Import the new utils + invoker** in `handleSubmit.js`:
+
    ```js
-   import resolveTargetStatus from './resolveTargetStatus.js';
-   import mergePreHookActions from './mergePreHookActions.js';
-   import mergeEventOverrides from './mergeEventOverrides.js';
-   import mergeFormOverrides from './mergeFormOverrides.js';
-   import invokePreHook from './invokePreHook.js';
+   import resolveTargetStatus from "./resolveTargetStatus.js";
+   import mergePreHookActions from "./mergePreHookActions.js";
+   import mergeEventOverrides from "./mergeEventOverrides.js";
+   import mergeFormOverrides from "./mergeFormOverrides.js";
+   import invokePreHook from "./invokePreHook.js";
    ```
 
 2. **Step 1 status call site** — change the existing `resolveTargetStatus({ interaction, actionConfig, params })` call ([handleSubmit.js:136](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) to pass `yamlInteractions: params.interactions, preHookStatus: undefined` initially — this produces the engine-default + YAML resolution before the pre-hook returns. Use this value as the initial `targetStatus` for the step-1 `currentActionEntry` build.
 
 3. **Step 2 — pre-hook invocation:** insert after `internal` is constructed and before step 3:
+
    ```js
    // Step 2 — Pre-hook. Throws propagate transparently (incl. :reject as UserError(isReject: true)).
    const preHookResponse = await invokePreHook(context);
@@ -40,6 +42,7 @@ Tasks 1–5 ship the building blocks; this task wires them into the lifecycle.
    Note: `await invokePreHook(...)` outside the try/catch wrapper that protects steps 4–6. A pre-hook throw must propagate up the handler — must **not** be caught by the mid-write `try` (which would push an `error` transition the design forbids on the pre-hook path).
 
 4. **Re-resolve target status** using the pre-hook return:
+
    ```js
    const resolvedTargetStatus = resolveTargetStatus({
      interaction: params.interaction,
@@ -53,6 +56,7 @@ Tasks 1–5 ship the building blocks; this task wires them into the lifecycle.
    Update `logEventInputBag.status_after = resolvedTargetStatus;`. Update the step-1 `currentActionEntry`'s `status` field to `resolvedTargetStatus` (the entry was initialized with the pre-hook-unaware target; refresh it now). Keep the existing `currentActionEntry` reference; just mutate its `status` (or rebuild the entry — either is fine, but make sure the entry that flows into `mergePreHookActions` carries the resolved value).
 
 5. **Step 3 — replace the append-only auto-unblock merge with `mergePreHookActions`:**
+
    ```js
    internal.actions = mergePreHookActions({
      currentActionEntry: internal.actions[0],
@@ -61,9 +65,11 @@ Tasks 1–5 ship the building blocks; this task wires them into the lifecycle.
      resolvedStatus: resolvedTargetStatus,
    });
    ```
+
    Drop the existing `internal.actions.push(...autoUnblockEntries)`. Remove the PART 9 EXTENSION comment block at lines 176–179.
 
 6. **Step 4 — upsert handling:** Task 2's merge passes `upsert: true` through; Part 6's per-entry write loop already has a TODO branch at [handleSubmit.js:196–202](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js). Replace the TODO with the create branch:
+
    ```js
    if (matchingDocs.length === 0) {
      if (entry.upsert === true) {
@@ -74,9 +80,11 @@ Tasks 1–5 ship the building blocks; this task wires them into the lifecycle.
      continue;
    }
    ```
+
    Import `createAction` from `../../shared/createAction.js` (Part 5's helper). If the helper's exact signature differs, mirror its caller pattern from Part 5's `StartWorkflow` for consistency. Surface the new doc in the in-memory cache so step 5's recompute sees it.
 
 7. **Step 6 — form-overrides merge:**
+
    ```js
    const formMerged = mergeFormOverrides({
      form: context.params.form,
@@ -84,9 +92,11 @@ Tasks 1–5 ship the building blocks; this task wires them into the lifecycle.
      preHookOverrides: preHookResponse?.form_overrides,
    });
    ```
+
    Replace the inline `{ ...form, ...form_review }` spread at [handleSubmit.js:274–277](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js). Remove the PART 9 EXTENSION comment block at lines 278–280.
 
 8. **Step 7 — event-overrides merge:** before calling `dispatchLogEvent(context, logEventInputBag)`, compose the merged event payload. The simplest seam is to extend `dispatchLogEvent` to accept an `overrides` argument that gets merged on top of the default — but per Part 9's design the merge function should compose the layers visibly here in the handler. Inline:
+
    ```js
    const defaultEventPayload = buildDefaultLogEventPayload({
      workflow: context.workflow,
@@ -105,12 +115,15 @@ Tasks 1–5 ship the building blocks; this task wires them into the lifecycle.
      preHookOverride: preHookResponse?.event_overrides,
    });
    ```
+
    Then dispatch via `context.callApi({ id: 'new-event', module: 'events' }, { _id: context.eventId, ...mergedEventPayload }, { user: context.user })` — copying the shape from [dispatchLogEvent.js:105–110](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js). Either refactor `dispatchLogEvent` to take a pre-built payload, or have the handler bypass the wrapper and call `callApi` directly here. **Preferred:** keep `dispatchLogEvent` as the seam for the actual `callApi`+error-wrap, but add a `payload` argument so it accepts the merged result. Internally `dispatchLogEvent` then just dispatches and surfaces errors; the build + merge moves into the handler.
 
    Refactor target signature:
+
    ```js
    async function dispatchLogEvent(context, payload) { ... }
    ```
+
    Update the one existing call site, the colocated tests, and the [`dispatchLogEvent.test.js`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.test.js) test bag accordingly.
 
 9. **Success return** — set `pre_hook_response: preHookResponse` on the success return at [handleSubmit.js:366–373](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js). Task 8 will fill `post_hook_response`. Defaults to `null` when no pre-hook declared — `invokePreHook` already returns `null` in that case.

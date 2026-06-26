@@ -19,11 +19,11 @@ The shared page title bar (`modules/shared/layout/title-block.yaml`) currently s
 
 ```yaml
 <slug>:
-  color: '#e6f7ff'        # light fill (pill background)
-  borderColor: '#91d5ff'  # pill border
-  titleColor: '#096dd9'   # pill text
-  title: Action Required  # display label
-  priority: 6             # optional, used elsewhere for sorting
+  color: "#e6f7ff" # light fill (pill background)
+  borderColor: "#91d5ff" # pill border
+  titleColor: "#096dd9" # pill text
+  title: Action Required # display label
+  priority: 6 # optional, used elsewhere for sorting
 ```
 
 The status pill consumes exactly these keys (`color`→background, `borderColor`→border, `titleColor`→text, `title`→label). No new contract is invented, and any existing status enum is usable as a `status_enum` as-is.
@@ -34,7 +34,7 @@ The status pill consumes exactly these keys (`color`→background, `borderColor`
 
 **The verb lives in the eyebrow on edit/new pages.** Rather than "Edit {label}: {name}" in the title, the eyebrow shows "EDIT COMPANY" / "NEW COMPANY" and the title holds just the entity name (or is empty on a new record). The eyebrow stays the consistent place a reader looks for "what kind of thing is this", regardless of view/edit/new.
 
-**Loading is opt-in and defaults off.** The skeleton guidance is explicit that *static* page titles (a list page's "Contacts" heading) should not skeleton. Entity view/detail pages are the opposite case — title and status are data-driven. A `loading` var defaulting to `false` keeps static titles untouched while letting data pages gate on their own load: `loading: { _not: { _request: get_contact } }` for request-backed pages (contacts/activities/user-admin view all have a `get_*` request), or `loading: { _not: { _state: workflow } }` for the CallAPI+SetState pages (workflow overview/group overview load via `CallAPI` → `SetState`, so there is no request to gate on). The type eyebrow is never skeletoned because it comes from static module config, not the request.
+**Loading is opt-in and defaults off.** The skeleton guidance is explicit that _static_ page titles (a list page's "Contacts" heading) should not skeleton. Entity view/detail pages are the opposite case — title and status are data-driven. A `loading` var defaulting to `false` keeps static titles untouched while letting data pages gate on their own load: `loading: { _not: { _request: get_contact } }` for request-backed pages (contacts/activities/user-admin view all have a `get_*` request), or `loading: { _not: { _state: workflow } }` for the CallAPI+SetState pages (workflow overview/group overview load via `CallAPI` → `SetState`, so there is no request to gate on). The type eyebrow is never skeletoned because it comes from static module config, not the request.
 
 ## Current state
 
@@ -60,18 +60,18 @@ In every case `label` (or `app_title`) is already a module var — the entity ty
 
 The title bar gains three new props and drops two:
 
-| Prop | Type | Default | Purpose |
-| --- | --- | --- | --- |
-| `type` | string | `null` | Entity-type eyebrow label above the title (e.g. `Company`, `Edit Company`). Hidden when `null`. Rendered uppercased by the component — callers pass normal case. |
-| `status` | string | `null` | Current status slug (runtime). Looked up in `status_enum`. Hidden when `null` or unmatched. |
-| `status_enum` | object | `null` | Status-enum map (build-time `_ref`) with the standard `{ color, borderColor, titleColor, title }` entry shape. |
-| `loading` | boolean | `false` | When truthy, title/subtitle/status render as skeletons. Gate on `_not: _request: <id>`. |
-| ~~`badge_text`~~ | — | — | **Removed** — replaced by `status` + `status_enum`. |
-| ~~`badge_color`~~ | — | — | **Removed**. |
+| Prop              | Type    | Default | Purpose                                                                                                                                                          |
+| ----------------- | ------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`            | string  | `null`  | Entity-type eyebrow label above the title (e.g. `Company`, `Edit Company`). Hidden when `null`. Rendered uppercased by the component — callers pass normal case. |
+| `status`          | string  | `null`  | Current status slug (runtime). Looked up in `status_enum`. Hidden when `null` or unmatched.                                                                      |
+| `status_enum`     | object  | `null`  | Status-enum map (build-time `_ref`) with the standard `{ color, borderColor, titleColor, title }` entry shape.                                                   |
+| `loading`         | boolean | `false` | When truthy, title/subtitle/status render as skeletons. Gate on `_not: _request: <id>`.                                                                          |
+| ~~`badge_text`~~  | —       | —       | **Removed** — replaced by `status` + `status_enum`.                                                                                                              |
+| ~~`badge_color`~~ | —       | —       | **Removed**.                                                                                                                                                     |
 
 Existing props (`title`, `doc`, `page_actions`, `show_back_button`, `back_link`) are unchanged.
 
-`type` and `title` are arbitrary string-valued expressions — the component owns only the *structure* (eyebrow placement, uppercasing, the pill), never the string content. Each page builds its own `type`/`title`; the component stays generic. To keep the eyebrows consistent across modules, callers follow these conventions:
+`type` and `title` are arbitrary string-valued expressions — the component owns only the _structure_ (eyebrow placement, uppercasing, the pill), never the string content. Each page builds its own `type`/`title`; the component stays generic. To keep the eyebrows consistent across modules, callers follow these conventions:
 
 - **`title`** holds just the entity name/identifier — never a `"{type}: {name}"` concatenation.
 - **`type`** holds the entity type, optionally prefixed by a verb:
@@ -89,14 +89,14 @@ The "type" string is inherently caller-specific (it may fold in a `label` var, a
 ```yaml
 title:
   _state: workflow.title
-type: Workflow                       # eyebrow
+type: Workflow # eyebrow
 status:
-  _state: workflow.status.0.stage    # slug, runtime
+  _state: workflow.status.0.stage # slug, runtime
 status_enum:
-  _ref: components/workflow_lifecycle_stages.yaml   # override-merged map, build-time
+  _ref: components/workflow_lifecycle_stages.yaml # override-merged map, build-time
 loading:
   _not:
-    _state: workflow                 # CallAPI+SetState page — gate on state, not a request
+    _state: workflow # CallAPI+SetState page — gate on state, not a request
 ```
 
 The two `_get` blocks that previously sat in the page disappear — the title block does the lookup.
@@ -105,9 +105,9 @@ The two `_get` blocks that previously sat in the page disappear — the title bl
 
 ```yaml
 type:
-  _module.var: label            # "Company"
+  _module.var: label # "Company"
 title:
-  _nunjucks:                    # just the entity name now
+  _nunjucks: # just the entity name now
     template: "{% if profile %}{{ profile.title }}{{ '.' if profile.title }} {{ profile.name | safe }}{% endif %}"
     on:
       _request: get_contact.0
@@ -120,16 +120,16 @@ loading:
 
 ```yaml
 type:
-  _string.concat: ["Edit ", { _module.var: label }]   # "Edit Company"
+  _string.concat: ["Edit ", { _module.var: label }] # "Edit Company"
 title:
-  _request: get_contact.0.profile.name                # name only; no "Edit … :" prefix
+  _request: get_contact.0.profile.name # name only; no "Edit … :" prefix
 ```
 
 **New page:**
 
 ```yaml
 type:
-  _string.concat: ["New ", { _module.var: label }]     # "New Company"
+  _string.concat: ["New ", { _module.var: label }] # "New Company"
 # title omitted / empty — eyebrow carries the context
 ```
 
@@ -162,7 +162,7 @@ Rendered for reference in `mockups/mockup.html` (the spec below is the source of
 
 In `title-block.yaml`:
 
-- **Type eyebrow** — its **own** block (not folded into the title/subtitle block), gated `_build`/runtime on `type != null`, with `text-transform: uppercase` styling. It must be separate: Lowdefy's loading mechanism swaps the *entire* block to its skeleton tree when `loading` is true (`CategorySwitch.js:34`), so an eyebrow nested inside the title block would vanish whenever `loading` is set — breaking the "eyebrow renders immediately, never skeletoned" guarantee. Keeping it a separate block with no `loading`/`skeleton` of its own is the only structure where that guarantee holds. **It cannot be a bare preceding sibling, though:** the title block's outer `Box` has no `layout.direction`, so it renders as a horizontal row (`.lf-row`) and a bare sibling would land *to the left of* the title, not above it. So wrap the eyebrow and the title/subtitle block in a **column** box (`layout.direction: column`, a small `gap` for the ~2px eyebrow→title spacing), and move the title `Html`'s flex onto that column wrapper. This satisfies both constraints at once — the eyebrow sits visually above the title *and* stays outside the block that skeletons. The wrapper takes **`flex: 1 1 0`** (basis 0) and the change-stamp subtitle must **wrap** (no `white-space: nowrap`). Reason, verified in a headless-Chrome render of this exact DOM: Lowdefy compiles `layout.flex` to a bare `flex:` on the item with no `min-width: 0`, and a block's `style` prop lands on the inner content div — not this flex item — so `min-width: 0` can't be injected to make an ellipsis-truncating nowrap line shrink. The browser collects flex lines using the column's **min-content** width; with a `nowrap` subtitle that min-content is the full line, so the row overflows and `page-actions` wraps to the next row (with `flex: 1 0 auto` it also can't shrink back). Letting the subtitle wrap collapses min-content to the longest word, and `flex: 1 1 0` then collects the column small and grows it (grow 1) to fill the space left by the pill and page-actions — keeping the bar on one row and wrapping the subtitle within it. `page-actions` carries `flex: 0 0 auto` so it always holds its natural width at the right edge.
+- **Type eyebrow** — its **own** block (not folded into the title/subtitle block), gated `_build`/runtime on `type != null`, with `text-transform: uppercase` styling. It must be separate: Lowdefy's loading mechanism swaps the _entire_ block to its skeleton tree when `loading` is true (`CategorySwitch.js:34`), so an eyebrow nested inside the title block would vanish whenever `loading` is set — breaking the "eyebrow renders immediately, never skeletoned" guarantee. Keeping it a separate block with no `loading`/`skeleton` of its own is the only structure where that guarantee holds. **It cannot be a bare preceding sibling, though:** the title block's outer `Box` has no `layout.direction`, so it renders as a horizontal row (`.lf-row`) and a bare sibling would land _to the left of_ the title, not above it. So wrap the eyebrow and the title/subtitle block in a **column** box (`layout.direction: column`, a small `gap` for the ~2px eyebrow→title spacing), and move the title `Html`'s flex onto that column wrapper. This satisfies both constraints at once — the eyebrow sits visually above the title _and_ stays outside the block that skeletons. The wrapper takes **`flex: 1 1 0`** (basis 0) and the change-stamp subtitle must **wrap** (no `white-space: nowrap`). Reason, verified in a headless-Chrome render of this exact DOM: Lowdefy compiles `layout.flex` to a bare `flex:` on the item with no `min-width: 0`, and a block's `style` prop lands on the inner content div — not this flex item — so `min-width: 0` can't be injected to make an ellipsis-truncating nowrap line shrink. The browser collects flex lines using the column's **min-content** width; with a `nowrap` subtitle that min-content is the full line, so the row overflows and `page-actions` wraps to the next row (with `flex: 1 0 auto` it also can't shrink back). Letting the subtitle wrap collapses min-content to the longest word, and `flex: 1 1 0` then collects the column small and grows it (grow 1) to fill the space left by the pill and page-actions — keeping the bar on one row and wrapping the subtitle within it. `page-actions` carries `flex: 0 0 auto` so it always holds its natural width at the right edge.
 - **Status pill** — replaces the current `title-badge` `Tag`. Built only when `status_enum`/`status` is wired. Resolves the entry via `_get` from `status_enum` keyed by the `status` slug; reads `.title` for the label and `.color` / `.borderColor` / `.titleColor` into the pill style. `visible` is gated on **`loading` OR the resolved status being non-null** — Lowdefy skips a block's `loading`/`skeleton` evaluation entirely when `visible` is `false` (`Block.js:250`), so gating purely on the resolved status (which is null during load) would suppress the skeleton and make the pill pop in without one. Once loaded, an unmatched/null status hides the pill (no empty placeholder). The three-colour contract (independent fill/border/text) **cannot** ride antd `Tag`'s single-value `color` prop — use a `Box`/`Html` with explicit `backgroundColor` / `borderColor` / `color` style bindings instead. (Likewise, don't use `Tag` inside the `skeleton:` tree — see Loading.) The pill block carries `layout.selfAlign: middle` so it centres against the taller eyebrow+title column instead of stretching to full height — the row's default cross-axis alignment is stretch (the old badge relied on it with `selfAlign: stretch` + `height: 100%`), so without this the pill silently reproduces the full-height look the design is moving away from. Per-block `selfAlign` is preferable to a row-wide `align: middle`, which would also re-centre the back button and page-actions.
 - **Loading** — the title/subtitle container and the status pill each carry `loading: { _var: loading }` + a `skeleton:` block tree (a `Skeleton` sized to the title and a thinner one for the subtitle; a `Skeleton` pill for the status). The status skeleton only appears when status is wired, so pages without a status don't flash a placeholder pill.
 

@@ -11,24 +11,24 @@
 // `progress` is the form pre-review step (task 12). The remaining four are
 // review-outcome signals (D12 rename from old interaction names).
 export const HOOK_SIGNALS = [
-  'submit',
-  'progress',
-  'not_required',
-  'resolve_error',
-  'approve',
-  'request_changes',
+  "submit",
+  "progress",
+  "not_required",
+  "resolve_error",
+  "approve",
+  "request_changes",
 ];
 
-export const HOOK_PHASES = ['pre', 'post'];
+export const HOOK_PHASES = ["pre", "post"];
 
 // Mirror signals fired against tracker actions when a child workflow reaches
 // a terminal state. Only valid as event: keys on kind: tracker actions (D4).
 export const MIRROR_SIGNALS = [
-  'internal_mirror_child_active',
-  'internal_mirror_child_completed',
-  'internal_mirror_child_cancelled',
+  "internal_mirror_child_active",
+  "internal_mirror_child_completed",
+  "internal_mirror_child_cancelled",
 ];
 
 // Workflow-level lifecycle signals. Valid as keys in the workflow.event map
 // (D8). Delivered via {type}-start/cancel/close endpoints (task 9).
-export const LIFECYCLE_SIGNALS = ['started', 'cancelled', 'closed'];
+export const LIFECYCLE_SIGNALS = ["started", "cancelled", "closed"];

@@ -78,7 +78,7 @@ When `hierarchy.enabled: false` (the default), every hierarchy-related block, re
 User chose both. Why each is needed:
 
 - **API (server-side)** is the authoritative guard. Without it, a direct `update-company` call from a tool, a bad migration, or any path that bypasses the form can corrupt the graph into a cycle. `$graphLookup` then truncates silently at `maxDepth` (default 20), which surfaces as data the operator can investigate rather than runaway requests — but the API guard is what stops the corruption from being written in the first place.
-- **UI (client-side)** is the user-experience layer. Self is filtered out of the options entirely (a company can't be its own parent — there's nothing useful to communicate by showing it greyed-out). Descendants stay in the list as **disabled options with a "(child of this company)" suffix**, telling the user *up front* which companies aren't valid parents and *why*. Hiding descendants entirely was the alternative considered, but it would leave users searching for a company that genuinely exists and getting nothing back — a worse experience than seeing it greyed out with an explanation.
+- **UI (client-side)** is the user-experience layer. Self is filtered out of the options entirely (a company can't be its own parent — there's nothing useful to communicate by showing it greyed-out). Descendants stay in the list as **disabled options with a "(child of this company)" suffix**, telling the user _up front_ which companies aren't valid parents and _why_. Hiding descendants entirely was the alternative considered, but it would leave users searching for a company that genuinely exists and getting nothing back — a worse experience than seeing it greyed out with an explanation.
 
 The two checks read the same source of truth (`$graphLookup` from `_state._id` down through `parent_ids` to enumerate descendants on the edit page; `$graphLookup` from each candidate parent down through `parent_ids` to check whether self appears in the descendants on the API). Both rely on the same multikey index on `parent_ids`.
 
@@ -98,7 +98,7 @@ The check is one `$match` followed by one `$graphLookup` per update:
 
 If `<self._id>` appears in the `_id` field of any matched candidate parent or any document in `__ancestors`, the update is rejected. Equivalent to: "is self in the ancestor closure of the candidate parent set?". The concrete projection at the end (see "Cycle-check step layout" below) folds these two cases into one boolean by `$concatArrays: [["$_id"], "$__ancestors._id"]`.
 
-(Direction note: `parent_ids` points from a child to its parents, so walking *from* `parent_ids` *to* `_id` walks *upward* — toward roots. The cycle check confirms self is not above its own would-be parents.)
+(Direction note: `parent_ids` points from a child to its parents, so walking _from_ `parent_ids` _to_ `_id` walks _upward_ — toward roots. The cycle check confirms self is not above its own would-be parents.)
 
 ### Children are reverse-queried, not denormalised
 
@@ -119,7 +119,7 @@ A multikey index on `parent_ids` (added in the index design step, not in this de
 
 ### Descendants computed on demand, not stored as ancestor cache
 
-Same trade-off, different field. Storing `hierarchy.ancestors: [...]` on every doc would make the list filter a single `$match` instead of a `$graphLookup`. But it requires cascading rewrites: changing one company's parents means rewriting the ancestor cache on that company *and all of its descendants* — a recursive update that's awkward to express in a single MongoDB pipeline, and especially awkward in a DAG where one descendant has multiple ancestor paths to merge.
+Same trade-off, different field. Storing `hierarchy.ancestors: [...]` on every doc would make the list filter a single `$match` instead of a `$graphLookup`. But it requires cascading rewrites: changing one company's parents means rewriting the ancestor cache on that company _and all of its descendants_ — a recursive update that's awkward to express in a single MongoDB pipeline, and especially awkward in a DAG where one descendant has multiple ancestor paths to merge.
 
 For typical depths (< 6 levels) and typical company counts (< 10K), `$graphLookup` on an indexed multikey `parent_ids` is well under 100ms. Keep on-demand traversal, revisit if a real perf issue surfaces.
 
@@ -133,7 +133,7 @@ Order is not preserved or interpreted. There is no "primary parent". The selecto
 
 ### `$graphLookup.from` resolved via `_ref` to the connection file
 
-`$graphLookup.from` is a MongoDB pipeline argument that needs the literal collection name — Lowdefy's `_module.connectionId` returns the connection's *ID*, not its target collection name, and there's no `_module.collection` resolver. Rather than hardcoding `from: companies`, every `$graphLookup` (and `$lookup`) in this design reads the collection name from the connection file at build time:
+`$graphLookup.from` is a MongoDB pipeline argument that needs the literal collection name — Lowdefy's `_module.connectionId` returns the connection's _ID_, not its target collection name, and there's no `_module.collection` resolver. Rather than hardcoding `from: companies`, every `$graphLookup` (and `$lookup`) in this design reads the collection name from the connection file at build time:
 
 ```yaml
 from:
@@ -146,13 +146,13 @@ The `_ref` resolves to whatever `properties.collection` is set to in `modules/co
 
 Module-internal `_ref` paths resolve from the module root, so `path: connections/companies-collection.yaml` works regardless of which file is doing the reference.
 
-This **does not** insulate against consumer connection remappings via the entry's `connections:` mapping. If a consumer remaps `companies-collection` to a different connection that targets a renamed underlying collection, the `_ref` still resolves to whatever the *module's* connection file says (`companies`). Consumers who rename the underlying collection would need to fork or supply their own version of the request — but that's out of scope: the realistic remap scenario is "different connection details, same collection name".
+This **does not** insulate against consumer connection remappings via the entry's `connections:` mapping. If a consumer remaps `companies-collection` to a different connection that targets a renamed underlying collection, the `_ref` still resolves to whatever the _module's_ connection file says (`companies`). Consumers who rename the underlying collection would need to fork or supply their own version of the request — but that's out of scope: the realistic remap scenario is "different connection details, same collection name".
 
 ### `$graphLookup` capped at `hierarchy.max_depth` (default 20)
 
 Every `$graphLookup` in this design — descendants, ancestors, cycle check — passes `maxDepth: { _module.var: hierarchy.max_depth }`. The default is 20, which comfortably exceeds typical org-structure depths (<10) while preventing any cycle that slipped past the API guard from running unbounded.
 
-This is a defensive backstop, not the primary safety. The cycle check (see "Cycle prevention") is what *prevents* cycles from being written. `maxDepth` only matters if a cycle somehow exists in the data — at which point an uncapped `$graphLookup` could run unboundedly, while a capped one truncates silently. Truncation is preferable to runaway in that scenario; the cycle would still surface as a data corruption that operators can investigate, but it wouldn't hang requests.
+This is a defensive backstop, not the primary safety. The cycle check (see "Cycle prevention") is what _prevents_ cycles from being written. `maxDepth` only matters if a cycle somehow exists in the data — at which point an uncapped `$graphLookup` could run unboundedly, while a capped one truncates silently. Truncation is preferable to runaway in that scenario; the cycle would still surface as a data corruption that operators can investigate, but it wouldn't hang requests.
 
 Apps with unusually deep hierarchies can override via `hierarchy.max_depth: 50` in their entry vars. The var is exposed alongside `enabled`, `parent_label`, and `children_label`.
 
@@ -186,7 +186,7 @@ The alternative — passing `restrictSearchWithMatch: { removed: { $ne: true } }
 Top-level field added to the company document:
 
 ```yaml
-parent_ids: string[]    # _ids of zero or more other companies (DAG edges from child up to parents)
+parent_ids: string[] # _ids of zero or more other companies (DAG edges from child up to parents)
 ```
 
 Default on insert (when hierarchy enabled): `[]`. When `hierarchy.enabled: false`, the field is omitted from the insert template entirely — non-hierarchy documents stay byte-identical to today's documents.
@@ -255,7 +255,7 @@ modules:
 
 ### Edit form (when `hierarchy.enabled`)
 
-The edit page's `onMount` becomes a **three-step sequence** so the parent-selector's options request fires *after* both the descendants resolve and the resulting id list is written to state. This avoids a first-render flash where self briefly appears as a valid parent.
+The edit page's `onMount` becomes a **three-step sequence** so the parent-selector's options request fires _after_ both the descendants resolve and the resulting id list is written to state. This avoids a first-render flash where self briefly appears as a valid parent.
 
 ```yaml
 onMount:
@@ -264,7 +264,7 @@ onMount:
     params:
       - get_company
       - get_company_contact_ids
-      - get_descendant_company_ids   # parallel with the others; shared request
+      - get_descendant_company_ids # parallel with the others; shared request
   - id: set_state
     type: SetState
     params:
@@ -273,7 +273,7 @@ onMount:
         _if_none: [_request: get_company.0.parent_ids, []]
       cycle_check_ids:
         _if_none: [_request: get_descendant_company_ids.0.ids, []]
-  - id: fetch_selector_options       # runs after set_state — Lowdefy actions sequential by default
+  - id: fetch_selector_options # runs after set_state — Lowdefy actions sequential by default
     type: Request
     params: get_companies_for_selector
 ```
@@ -349,7 +349,7 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
                - "$__descendants._id"
    ```
 
-   When `filter.parent_scope` is unset *and* `_id` is unset (e.g. on a brand-new page with no doc context), the `$match` returns no rows, the request result is `[]`, and downstream consumers see no ids.
+   When `filter.parent_scope` is unset _and_ `_id` is unset (e.g. on a brand-new page with no doc context), the `$match` returns no rows, the request result is `[]`, and downstream consumers see no ids.
 
    **`filter_companies.yaml`** appends the new selector with a chained `onChange` that resolves descendants then re-fetches the list:
 
@@ -358,7 +358,7 @@ The list filter is the **lowest-priority** piece of this design — schedule it 
      - id: resolve_descendants
        type: Request
        params: get_descendant_company_ids
-     - _ref: actions/search.yaml      # re-fires get_all_companies
+     - _ref: actions/search.yaml # re-fires get_all_companies
    ```
 
    **`get_all_companies.yaml`** gains a payload field pulling from the descendants request, and a conditional `must` clause inside the existing Atlas Search compound filter:
@@ -436,7 +436,7 @@ Lowdefy API routines provide a `:reject:` routine control that aborts the routin
             $in:
               - { _payload: _id }
               - $concatArrays:
-                  - [ "$_id" ]
+                  - ["$_id"]
                   - "$__ancestors._id"
       # OR-reduce across all matched candidate parents into a single doc.
       # Without this stage, the projection produces one doc per matched
@@ -459,7 +459,7 @@ Lowdefy API routines provide a `:reject:` routine control that aborts the routin
 Three notes on this layout:
 
 - **`cycle_check` projects a single boolean per matched candidate parent, then OR-reduces to a single doc.** The `$project` stage runs once per matched candidate parent doc (one per `_id` in `payload.parent_ids`), each producing its own `has_cycle` flag. The `$group` stage then OR-reduces (`$max` on booleans gives `true || false → true`) into a single output doc. Without the `$group`, downstream `_step.cycle_check.0.has_cycle` would only inspect the first matched candidate's flag and miss cycles formed via the second-or-later candidate. With `$group`, the result is always a one-element array whose `has_cycle` is the OR across all candidates.
-- **Why a `$match` before `$graphLookup`.** `$graphLookup` needs a starting document set; the simplest is to start at *the candidate parents themselves*, treat each as the root of an upward walk, and check whether self appears at any node visited (the candidate parents themselves count, hence the `$concatArrays` with `["$_id"]`).
+- **Why a `$match` before `$graphLookup`.** `$graphLookup` needs a starting document set; the simplest is to start at _the candidate parents themselves_, treat each as the root of an upward walk, and check whether self appears at any node visited (the candidate parents themselves count, hence the `$concatArrays` with `["$_id"]`).
 - **`:reject:` cleanly aborts.** No need to decorate every subsequent step with `skip:` — `:reject:` halts the routine entirely. The existing `update`, `unlink-old-contacts`, `link-new-contacts`, `new-event`, and `:return: success` steps stay unchanged when `hierarchy.enabled: true`; only the two cycle-check steps are added via `_build.if`. When `hierarchy.enabled: false`, neither step is emitted and the routine is identical to today's.
 
 For `create-company`, no `cycle_check` is needed — a fresh doc has no descendants, so the cycle invariant cannot be broken on insert. The only build-gated change there is accepting `parent_ids` in the `MongoDBInsertConsecutiveId.doc` block.
@@ -509,4 +509,3 @@ The soft-delete audit done while writing this design surfaced two pre-existing i
 - Edge-level metadata (e.g., "what kind of relationship is this — ownership, partnership, franchise?"). The DAG carries unweighted, untyped edges in v1; if a use case for typed edges appears, it would justify promoting `parent_ids: [string]` to `parents: [{ id, type, ... }]` in a follow-up.
 - A general-purpose "hierarchy" plugin pattern reusable across modules. Companies is the first concrete instance; if a second module needs the same shape, the abstraction can be extracted then.
 - Bulk re-parent operations (move-with-subgraph, drag-and-drop graph editor). v1 supports re-parenting one company at a time via the edit form; descendants follow automatically since they reference the changed company by `_id`, not by path.
-

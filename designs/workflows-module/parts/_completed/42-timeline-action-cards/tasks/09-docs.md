@@ -58,13 +58,14 @@ explanations. Relevant existing anchors include `#event-display` and `#slots`.
      ```yaml
      pipeline:
        _build.array.concat:
-         - - $match: { ... }        # entity + category-chip filtering, app-authored
+         - - $match: { ... } # entity + category-chip filtering, app-authored
          - _ref:
              module: workflows
              component: timeline-action-lookup
              vars: { app_name: my-app }
-         - - $facet: { ... }        # pagination, app-authored
+         - - $facet: { ... } # pagination, app-authored
      ```
+
    - Note category-chip filtering and pagination stay app-authored (non-goals).
 
 ## Acceptance Criteria

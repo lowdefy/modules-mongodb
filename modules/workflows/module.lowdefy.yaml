@@ -208,8 +208,8 @@ pages:
             _module.var: title_acronyms
 
 plugins:
-  - name: '@lowdefy/modules-mongodb-plugins'
-    version: '^0.6.0'
+  - name: "@lowdefy/modules-mongodb-plugins"
+    version: "^0.6.0"
 
 secrets:
   - name: MONGODB_URI

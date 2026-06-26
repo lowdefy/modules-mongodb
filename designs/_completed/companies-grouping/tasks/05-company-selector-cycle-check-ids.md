@@ -36,12 +36,12 @@ properties:
         label:
           $concat:
             - _build.string.concat:
-                - '$'
+                - "$"
                 - _module.var: name_field
-            - ' ('
-            - '$_id'
-            - ')'
-        value: '$_id'
+            - " ("
+            - "$_id"
+            - ")"
+        value: "$_id"
     - $sort:
         label: 1
 ```
@@ -77,17 +77,17 @@ properties:
                 - _payload: cycle_check_ids
             then:
               $concat:
-                - _build.string.concat: ['$', _module.var: name_field]
-                - ' ('
-                - '$_id'
-                - ') (child of this company)'
+                - _build.string.concat: ["$", _module.var: name_field]
+                - " ("
+                - "$_id"
+                - ") (child of this company)"
             else:
               $concat:
-                - _build.string.concat: ['$', _module.var: name_field]
-                - ' ('
-                - '$_id'
-                - ')'
-        value: '$_id'
+                - _build.string.concat: ["$", _module.var: name_field]
+                - " ("
+                - "$_id"
+                - ")"
+        value: "$_id"
         disabled:
           $cond:
             if:

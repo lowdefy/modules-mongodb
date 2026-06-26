@@ -1,6 +1,9 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import findDocs from '../../mongo/findDocs.js';
-import { computeAllowed, resolveButtons } from '../../shared/render/resolveActionAccess.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import findDocs from "../../mongo/findDocs.js";
+import {
+  computeAllowed,
+  resolveButtons,
+} from "../../shared/render/resolveActionAccess.js";
 
 /**
  * GetWorkflowAction — server-side detail-page read method (Part 46 task 5).
@@ -37,11 +40,11 @@ import { computeAllowed, resolveButtons } from '../../shared/render/resolveActio
 
 // Structural component types that may contain nested form fields.
 const STRUCTURAL_COMPONENTS = new Set([
-  'controlled_list',
-  'section',
-  'box',
-  'label',
-  'file_upload',
+  "controlled_list",
+  "section",
+  "box",
+  "label",
+  "file_upload",
 ]);
 
 /**
@@ -85,9 +88,9 @@ function collectFormKeys(formArray) {
  * Keys not starting with `'form.'` are not persisted and contribute nothing.
  */
 function formKeyToSliceProp(dotPath) {
-  if (!dotPath.startsWith('form.')) return null;
-  const rest = dotPath.slice('form.'.length);
-  const dot = rest.indexOf('.');
+  if (!dotPath.startsWith("form.")) return null;
+  const rest = dotPath.slice("form.".length);
+  const dot = rest.indexOf(".");
   return dot === -1 ? rest : rest.slice(0, dot);
 }
 
@@ -97,7 +100,7 @@ function formKeyToSliceProp(dotPath) {
  * Returns an object containing only the matching properties.
  */
 function projectFormSlice(slice, allowedKeys) {
-  if (slice == null || typeof slice !== 'object' || Array.isArray(slice)) {
+  if (slice == null || typeof slice !== "object" || Array.isArray(slice)) {
     return {};
   }
   const projected = {};
@@ -119,9 +122,9 @@ async function GetWorkflowAction(lowdefyContext) {
   const { action_id } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
-  const workflowsCollection = connection.workflowsCollection ?? 'workflows';
-  const actionsCollection = connection.actionsCollection ?? 'actions';
-  const contactsCollection = connection.contactsCollection ?? 'user-contacts';
+  const workflowsCollection = connection.workflowsCollection ?? "workflows";
+  const actionsCollection = connection.actionsCollection ?? "actions";
+  const contactsCollection = connection.contactsCollection ?? "user-contacts";
   const entities = connection.entities ?? {};
 
   // ── Step 1: Read the action doc ──
@@ -138,14 +141,21 @@ async function GetWorkflowAction(lowdefyContext) {
   }
 
   // ── Step 4: Access gate ──
-  const allowed = computeAllowed({ access: action.access, app_name, userRoles });
+  const allowed = computeAllowed({
+    access: action.access,
+    app_name,
+    userRoles,
+  });
   if (!allowed.view) {
     return null;
   }
 
   // ── Step 2b: Resolve workflowConfig + actionConfig ──
-  const wfConfig = (workflowsConfig ?? []).find((wc) => wc.type === action.workflow_type);
-  const actionConfig = (wfConfig?.actions ?? []).find((ac) => ac.type === action.type) ?? {};
+  const wfConfig = (workflowsConfig ?? []).find(
+    (wc) => wc.type === action.workflow_type,
+  );
+  const actionConfig =
+    (wfConfig?.actions ?? []).find((ac) => ac.type === action.type) ?? {};
 
   // ── Step 5: Button resolution ──
   const stage = action.status?.[0]?.stage ?? null;
@@ -164,7 +174,7 @@ async function GetWorkflowAction(lowdefyContext) {
 
   // ── Workflow closed flag ──
   const wfStage = wfDoc?.status?.[0]?.stage ?? null;
-  const workflow_closed = wfStage === 'completed' || wfStage === 'cancelled';
+  const workflow_closed = wfStage === "completed" || wfStage === "cancelled";
 
   // ── Assignee display docs (Part 24) — the universal-fields display mode
   //    renders one avatar per assignee, which needs user docs, not ids.
@@ -192,7 +202,11 @@ async function GetWorkflowAction(lowdefyContext) {
   const formKeys = collectFormKeys(formMeta?.form);
   const formReviewKeys = collectFormKeys(formMeta?.form_review);
   const formErrorKeys = collectFormKeys(formMeta?.form_error);
-  const allFormKeys = new Set([...formKeys, ...formReviewKeys, ...formErrorKeys]);
+  const allFormKeys = new Set([
+    ...formKeys,
+    ...formReviewKeys,
+    ...formErrorKeys,
+  ]);
 
   let form_values = {};
   if (allFormKeys.size > 0 && wfDoc) {
@@ -203,7 +217,7 @@ async function GetWorkflowAction(lowdefyContext) {
       // Keyed action: form_data[type][key]
       const keyedSlice =
         typeSlice != null &&
-        typeof typeSlice === 'object' &&
+        typeof typeSlice === "object" &&
         !Array.isArray(typeSlice)
           ? typeSlice[action.key]
           : null;

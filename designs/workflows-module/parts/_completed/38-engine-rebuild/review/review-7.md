@@ -29,7 +29,7 @@ neither the task nor D2 says where `current_app` comes from. The established
 plumbing is the connection field `app_name`: `WorkflowAPI/schema.js:79` declares it
 ("Apps wire this from `_module.var: app_name`"), and the current engine reads it as
 `context.connection?.app_name` (`handleSubmit.js:325`; `event-id-round-trip.test.js:89`).
-The load gate is the *one* new reader of this value in Part 38, so leaving the source
+The load gate is the _one_ new reader of this value in Part 38, so leaving the source
 implicit invites an implementer to re-derive it differently from how
 `planEventDispatch` keys `display.{appName}` — the two must agree.
 
@@ -43,7 +43,7 @@ input description (line 31 currently lists only "params, user, connection").
 
 The reads bullet names `payload.action_id` (line 32) as the target-action key, but
 the access-gate bullet says only "resolve the signal's required verb" (line 36)
-without stating the signal *is* `payload.signal`. `resolveSignal` (task 2) and the
+without stating the signal _is_ `payload.signal`. `resolveSignal` (task 2) and the
 verb table both key on the signal; the load gate must read it from the same payload
 field the planner later applies to the target action (design.md:139, "Submit applies
 this to the target action identified by `payload.action_id`"). One clause closes it.
@@ -89,7 +89,7 @@ central fence and the inner gate return coherent responses.
 
 ## Consistency / clarity
 
-### 5. The gate *replaces* the old `access.roles` intersection — say so
+### 5. The gate _replaces_ the old `access.roles` intersection — say so
 
 > **Resolved (auto).** Task 9 now states the per-verb gate replaces the action-wide `access.roles` intersection at `handleSubmit.js:104` (Part 34 D4 removes that shape; resolver hard-errors on it) and instructs not to preserve both checks.
 
@@ -116,6 +116,7 @@ a convenience alias for `actions.find(a => a._id === payload.action_id)`.
 > **Resolved.** Task 9 now names the config lookups (`context.workflowsConfig.find(... workflow_type)` → `workflowConfig.actions.find(... action type)`, per `handleSubmit.js:81–102`) and states the stage check is Submit-specific, with lifecycle preconditions scoped to task 17. Verified the actual lifecycle semantics before pointing there (the review's examples were part-hypothetical): Close guards today (completed → idempotent no-op, cancelled → throw, now `WorkflowEngineError` `code: "stage_rejects_close"` added to D13); Cancel deliberately has no stage guard; Start inserts a fresh doc so a started-already check can't apply. Task 17 records these — preserve, no new guards.
 
 Two small omissions:
+
 - "Resolves `workflowConfig` and (Submit) the `actionConfig`" (line 33) doesn't name
   the source. Today it's `context.workflowsConfig.find(... workflow_type)` then
   `workflowConfig.actions.find(... action type)` (`handleSubmit.js:81–102`). Name it
@@ -134,5 +135,5 @@ signal, and `_user.apps…roles` but sources none of them, and the throw shape i
 unspecified — an implementer cannot write the gate without inventing all four. They
 are grounded in existing plumbing (`schema.js:79` `app_name`, `handleSubmit.js:325`,
 task 5's oracle signature, `UserError.js`), so each has a concrete, low-churn fix.
-Findings 5–7 are clarifications, with 5 flagging that the gate must *replace* (not
+Findings 5–7 are clarifications, with 5 flagging that the gate must _replace_ (not
 coexist with) the old `access.roles` check the rebuild deletes.

@@ -10,7 +10,7 @@ Status is **not a single field** — it's an array of `{ stage, created: change_
 
 ```yaml
 new:
-  color: '#73C0DE'
+  color: "#73C0DE"
   title: New
   final: false
   order: 1
@@ -20,6 +20,7 @@ new:
 Common fields: `color` (hex), `title` (display label), `icon` (React Icons name). Optional: `final` (terminal state flag), `order` (sort weight for kanban/reports), `description` (tooltip/docs), `clientTitle` (different label for external-facing apps), `path` (SVG icon path for specialized renderers).
 
 **Enums are loaded into `_global`** via the app's `lowdefy.yaml` global config:
+
 ```yaml
 global:
   enums:
@@ -32,6 +33,7 @@ global:
 This makes them accessible everywhere via `_global: enums.{type}` — in cell renderers, filter options, transition logic, and reports.
 
 **Status transitions** define which status changes are allowed per role. A transitions config maps `role → current_status → { action: [...], selector: [...] }`:
+
 - `action` — statuses reachable via buttons (one-click actions like "Close", "Escalate")
 - `selector` — statuses reachable via a dropdown selector (for flexible navigation between states)
 
@@ -47,7 +49,7 @@ $push:
   status:
     $position: 0
     $each:
-      - stage: {NEW_STAGE}
+      - stage: { NEW_STAGE }
         created:
           _ref: ../shared/change_stamp.yaml
 ```
@@ -71,18 +73,21 @@ Enum YAML → _global: enums.{type} (loaded at app startup)
 ## Variations
 
 **Simple enum (event types, categories)** — color + title + icon, no status array:
+
 ```yaml
 create-contact:
-  color: '#1890ff'
+  color: "#1890ff"
   title: Contact Created
   icon: AiOutlineUserAdd
 ```
+
 Used by events-timeline and display renderers. Not stored as arrays.
 
 **Status enum with workflow metadata** — adds `final`, `order`, `description`:
+
 ```yaml
 await-client:
-  color: '#EE6666'
+  color: "#EE6666"
   title: Awaiting Client
   clientTitle: Feedback Required
   final: false
@@ -91,6 +96,7 @@ await-client:
 ```
 
 **Role-based transition config** — per-role allowed transitions with action vs selector split:
+
 ```yaml
 roles:
   developer:
@@ -106,6 +112,7 @@ roles:
 ```
 
 **Enum-to-selector transform** — `options_enum.yaml` converts enum map into `{ label, value, style, tag }` for MultipleSelector/Selector options:
+
 ```yaml
 _mql.aggregate:
   - - _var: enum
@@ -116,11 +123,14 @@ _mql.aggregate:
         label: $items.v.title
         value: $items.k
         style: { color: $items.v.color }
-        tag: { color: $items.v.color, icon: $items.v.icon, title: $items.v.title }
+        tag:
+          { color: $items.v.color, icon: $items.v.icon, title: $items.v.title }
 ```
+
 Usage: `_ref: { path: ../shared/enums/options_enum.yaml, vars: { enum: { _global: enums.ticket_statuses } } }`
 
 **Module-level status (simple `$push` in API routine):**
+
 ```yaml
 $push:
   status:
@@ -136,7 +146,7 @@ $push:
 ## Anti-patterns
 
 - **Don't store status as a single string** — always use the array pattern with `{ stage, created }` entries. A flat string loses all history and auditability.
-- **Don't forget `$position: 0`** — without it, `$push` appends to the end, making `status.0` the *oldest* entry instead of the current one.
+- **Don't forget `$position: 0`** — without it, `$push` appends to the end, making `status.0` the _oldest_ entry instead of the current one.
 - **Don't `$set` the status array directly** — use `$push` to prepend. `$set` replaces the entire history.
 - **Don't forget to update `updated` alongside status** — the document-level `updated` stamp must be refreshed on every status change for optimistic concurrency and "Last modified" display.
 - **Don't hardcode allowed transitions in the UI** — use a transitions config file and compute available transitions from the user's roles at runtime. This keeps role logic centralized and auditable.
@@ -150,24 +160,26 @@ $push:
 ## Template
 
 **Status enum definition:**
+
 ```yaml
 # shared/enums/{entity}_statuses.yaml
-{status-slug}:
-  color: '{hex_color}'
-  title: {Display Title}
-  icon: {AiOutlineIcon}
+{ status-slug }:
+  color: "{hex_color}"
+  title: { Display Title }
+  icon: { AiOutlineIcon }
   final: false
-  order: {sort_weight}
+  order: { sort_weight }
 
-{another-status}:
-  color: '{hex_color}'
-  title: {Display Title}
-  icon: {AiOutlineIcon}
+{ another-status }:
+  color: "{hex_color}"
+  title: { Display Title }
+  icon: { AiOutlineIcon }
   final: true
-  order: {sort_weight}
+  order: { sort_weight }
 ```
 
 **Status update request:**
+
 ```yaml
 # requests/update_{entity}_status.yaml
 id: update_{entity}_status
@@ -197,6 +209,7 @@ properties:
 ```
 
 **Reading current status in aggregation:**
+
 ```yaml
 - $addFields:
     current_status:

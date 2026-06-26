@@ -6,16 +6,16 @@ These tasks implement Part 37, a documentation-only change that pins down the mi
 
 ## Tasks
 
-| #   | File                              | Summary                                                                                              | Depends On |
-| --- | --------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-document-indexes.md`          | Add a standalone `## Indexes` section to the workflows README and amend the CLAUDE.md README template | —          |
-| 2   | `02-correct-tracker-claim.md`     | Flip the incorrect tracker-subscription mechanism wording in the tasks-module-plan concept doc        | —          |
+| #   | File                          | Summary                                                                                               | Depends On |
+| --- | ----------------------------- | ----------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-document-indexes.md`      | Add a standalone `## Indexes` section to the workflows README and amend the CLAUDE.md README template | —          |
+| 2   | `02-correct-tracker-claim.md` | Flip the incorrect tracker-subscription mechanism wording in the tasks-module-plan concept doc        | —          |
 
 ## Ordering Rationale
 
 The two tasks are fully independent and can run in parallel — they touch disjoint files and neither depends on the other's output.
 
-The README `## Indexes` section (item 1 in the design) and the CLAUDE.md fixed-template amendment (item 5) are bundled into **one** task because they have a hard consistency requirement: the template list must name `Indexes` in exactly the position the section is placed (between `Exports` and `Vars`). Splitting them risks the template and the section drifting, and the CLAUDE.md one-liner is meaningless without the section it documents. The design's item 2 (no-validator constraint) and item 3 (non-partial constraint) are not separate edits — they are content *inside* the README section, so they fold into Task 1.
+The README `## Indexes` section (item 1 in the design) and the CLAUDE.md fixed-template amendment (item 5) are bundled into **one** task because they have a hard consistency requirement: the template list must name `Indexes` in exactly the position the section is placed (between `Exports` and `Vars`). Splitting them risks the template and the section drifting, and the CLAUDE.md one-liner is meaningless without the section it documents. The design's item 2 (no-validator constraint) and item 3 (non-partial constraint) are not separate edits — they are content _inside_ the README section, so they fold into Task 1.
 
 The concept-doc correction (item 4) is a self-contained one-bullet flip in a different file with its own verification (the mechanism in `fireTrackerSubscription.js`), so it stands alone as Task 2.
 

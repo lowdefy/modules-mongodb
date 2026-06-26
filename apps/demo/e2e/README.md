@@ -51,18 +51,18 @@ See `example.spec.js` for working examples you can copy and modify.
 ### Basic Test Structure
 
 ```javascript
-import { test, expect } from './fixtures.js';
+import { test, expect } from "./fixtures.js";
 
-test('page loads correctly', async ({ ldf }) => {
-  await ldf.goto('/my-page');
+test("page loads correctly", async ({ ldf }) => {
+  await ldf.goto("/my-page");
 
   // Interact with blocks
-  await ldf.block('my_input').do.fill('Hello');
-  await ldf.block('submit_btn').do.click();
+  await ldf.block("my_input").do.fill("Hello");
+  await ldf.block("submit_btn").do.click();
 
   // Assert block state
-  await ldf.block('success_message').expect.visible();
-  await ldf.block('result').expect.text('Hello');
+  await ldf.block("success_message").expect.visible();
+  await ldf.block("result").expect.text("Hello");
 });
 ```
 
@@ -70,40 +70,40 @@ test('page loads correctly', async ({ ldf }) => {
 
 ```javascript
 // Text inputs
-await ldf.block('name_input').do.fill('John Doe');
-await ldf.block('name_input').do.clear();
+await ldf.block("name_input").do.fill("John Doe");
+await ldf.block("name_input").do.clear();
 
 // Buttons
-await ldf.block('submit_btn').do.click();
+await ldf.block("submit_btn").do.click();
 
 // Selectors
-await ldf.block('priority').do.select('high');
+await ldf.block("priority").do.select("high");
 
 // Get the underlying Playwright locator for custom actions
-const locator = ldf.block('my_block').locator();
+const locator = ldf.block("my_block").locator();
 await locator.scrollIntoViewIfNeeded();
 ```
 
 ### Block Assertions
 
 ```javascript
-await ldf.block('alert').expect.visible();
-await ldf.block('alert').expect.hidden();
-await ldf.block('title').expect.text('Welcome');
-await ldf.block('btn').expect.disabled();
-await ldf.block('btn').expect.enabled();
-await ldf.block('items_list').expect.itemCount(5);
+await ldf.block("alert").expect.visible();
+await ldf.block("alert").expect.hidden();
+await ldf.block("title").expect.text("Welcome");
+await ldf.block("btn").expect.disabled();
+await ldf.block("btn").expect.enabled();
+await ldf.block("items_list").expect.itemCount(5);
 ```
 
 ### Waiting for Requests
 
 ```javascript
 // Wait for a request to complete
-await ldf.request('fetch_data').expect.toFinish();
+await ldf.request("fetch_data").expect.toFinish();
 
 // Assert request payload
-await ldf.request('submit_form').expect.toHavePayload({
-  name: 'Test User',
+await ldf.request("submit_form").expect.toHavePayload({
+  name: "Test User",
 });
 ```
 
@@ -111,11 +111,11 @@ await ldf.request('submit_form').expect.toHavePayload({
 
 ```javascript
 // Assert state values
-await ldf.state('form_submitted').expect.toBe(true);
-await ldf.state('items').expect.toBe([{ id: 1, name: 'Item' }]);
+await ldf.state("form_submitted").expect.toBe(true);
+await ldf.state("items").expect.toBe([{ id: 1, name: "Item" }]);
 
 // Get state value for custom assertions
-const items = await ldf.state('items').value();
+const items = await ldf.state("items").value();
 expect(items.length).toBeGreaterThan(0);
 ```
 
@@ -125,8 +125,12 @@ Set a user session for tests that require authentication. The e2e server reads t
 
 ```javascript
 // Set user before navigating to a protected page
-await ldf.user({ name: 'Test User', email: 'test@example.com', roles: ['admin'] });
-await ldf.goto('/admin-dashboard');
+await ldf.user({
+  name: "Test User",
+  email: "test@example.com",
+  roles: ["admin"],
+});
+await ldf.goto("/admin-dashboard");
 
 // Clear user session
 await ldf.user(null);
@@ -148,13 +152,13 @@ Override per-test with `ldf.user({ ... })` or clear with `ldf.user(null)`.
 
 ```javascript
 // Mock a request response
-await ldf.mock.request('search_products', {
-  response: { products: [{ id: 1, title: 'Mock Product' }] },
+await ldf.mock.request("search_products", {
+  response: { products: [{ id: 1, title: "Mock Product" }] },
 });
 
 // Mock an error
-await ldf.mock.request('fetch_user', {
-  error: 'User not found',
+await ldf.mock.request("fetch_user", {
+  error: "User not found",
 });
 ```
 
@@ -165,15 +169,17 @@ await ldf.mock.request('fetch_user', {
 When a form submit navigates away from the page (e.g., `Link: back`, redirects), use `Promise.all` with `page.waitForURL()` and the click action:
 
 ```javascript
-test('submits form and navigates back', async ({ ldf, page }) => {
-  await ldf.goto('/my-form');
+test("submits form and navigates back", async ({ ldf, page }) => {
+  await ldf.goto("/my-form");
 
-  await ldf.block('name_input').do.fill('Test');
+  await ldf.block("name_input").do.fill("Test");
 
   // Wait for navigation and click simultaneously
   await Promise.all([
-    page.waitForURL((url) => !url.pathname.includes('/my-form'), { timeout: 30000 }),
-    ldf.block('submit_btn').do.click(),
+    page.waitForURL((url) => !url.pathname.includes("/my-form"), {
+      timeout: 30000,
+    }),
+    ldf.block("submit_btn").do.click(),
   ]);
 });
 ```
@@ -186,29 +192,29 @@ Edit `playwright.config.js` to customize test behavior.
 
 ### Configuration Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `appDir` | `'./'` | Path to your Lowdefy app root (relative to cwd) |
-| `buildDir` | `'.lowdefy/server/build'` | Build output directory (relative to appDir) |
-| `mocksFile` | `'e2e/mocks.yaml'` | Static mocks file path (relative to appDir) |
-| `port` | `3000` | Port for the test server |
-| `testDir` | `'.'` | Directory containing test files (relative to config) |
-| `testMatch` | `'**/*.spec.js'` | Glob pattern for test files |
-| `timeout` | `180000` | Build and server start timeout in ms (3 min default) |
-| `screenshot` | `'only-on-failure'` | When to capture screenshots: `'off'`, `'on'`, or `'only-on-failure'` |
-| `outputDir` | `'test-results'` | Directory for test artifacts |
+| Option       | Default                   | Description                                                          |
+| ------------ | ------------------------- | -------------------------------------------------------------------- |
+| `appDir`     | `'./'`                    | Path to your Lowdefy app root (relative to cwd)                      |
+| `buildDir`   | `'.lowdefy/server/build'` | Build output directory (relative to appDir)                          |
+| `mocksFile`  | `'e2e/mocks.yaml'`        | Static mocks file path (relative to appDir)                          |
+| `port`       | `3000`                    | Port for the test server                                             |
+| `testDir`    | `'.'`                     | Directory containing test files (relative to config)                 |
+| `testMatch`  | `'**/*.spec.js'`          | Glob pattern for test files                                          |
+| `timeout`    | `180000`                  | Build and server start timeout in ms (3 min default)                 |
+| `screenshot` | `'only-on-failure'`       | When to capture screenshots: `'off'`, `'on'`, or `'only-on-failure'` |
+| `outputDir`  | `'test-results'`          | Directory for test artifacts                                         |
 
 ### Example Customization
 
 ```javascript
-import { createConfig } from '@lowdefy/e2e-utils/config';
+import { createConfig } from "@lowdefy/e2e-utils/config";
 
 export default createConfig({
-  appDir: './',
-  port: 3001,                    // Use different port
-  timeout: 300000,               // 5 min timeout for slow builds
-  screenshot: 'on',              // Always capture screenshots
-  testMatch: '**/*.e2e.js',      // Different file pattern
+  appDir: "./",
+  port: 3001, // Use different port
+  timeout: 300000, // 5 min timeout for slow builds
+  screenshot: "on", // Always capture screenshots
+  testMatch: "**/*.e2e.js", // Different file pattern
 });
 ```
 
@@ -217,14 +223,14 @@ export default createConfig({
 For monorepos with multiple Lowdefy apps:
 
 ```javascript
-import { createMultiAppConfig } from '@lowdefy/e2e-utils/config';
+import { createMultiAppConfig } from "@lowdefy/e2e-utils/config";
 
 export default createMultiAppConfig({
   apps: [
-    { name: 'admin', appDir: './apps/admin', port: 3001 },
-    { name: 'customer', appDir: './apps/customer', port: 3002 },
+    { name: "admin", appDir: "./apps/admin", port: 3001 },
+    { name: "customer", appDir: "./apps/customer", port: 3002 },
   ],
-  testDir: '.',
+  testDir: ".",
   timeout: 180000,
 });
 ```
@@ -234,19 +240,19 @@ export default createMultiAppConfig({
 The config helpers return a standard Playwright config object. You can spread and extend it:
 
 ```javascript
-import { createConfig } from '@lowdefy/e2e-utils/config';
+import { createConfig } from "@lowdefy/e2e-utils/config";
 
 const baseConfig = createConfig({ port: 3000 });
 
 export default {
   ...baseConfig,
   retries: 2,
-  reporter: [['html', { open: 'never' }]],
+  reporter: [["html", { open: "never" }]],
   projects: [
     ...baseConfig.projects,
     {
-      name: 'firefox',
-      use: { browserName: 'firefox' },
+      name: "firefox",
+      use: { browserName: "firefox" },
     },
   ],
 };
@@ -280,18 +286,16 @@ api: []
 If MongoDB support is enabled, use the `mdb` fixture. See `mongodb.spec.js` for examples.
 
 ```javascript
-test('database operations', async ({ ldf, mdb }) => {
+test("database operations", async ({ ldf, mdb }) => {
   // Seed test data
-  await mdb.seed('items', [
-    { _id: 'item-1', name: 'Test Item', price: 10 },
-  ]);
+  await mdb.seed("items", [{ _id: "item-1", name: "Test Item", price: 10 }]);
 
-  await ldf.goto('/items');
-  await ldf.request('get_items').expect.toFinish();
+  await ldf.goto("/items");
+  await ldf.request("get_items").expect.toFinish();
 
   // Verify using native MongoDB driver
-  const doc = await mdb.collection('items').findOne({ _id: 'item-1' });
-  expect(doc.name).toBe('Test Item');
+  const doc = await mdb.collection("items").findOne({ _id: "item-1" });
+  expect(doc.name).toBe("Test Item");
 });
 ```
 
@@ -301,10 +305,10 @@ Save and load database snapshots for repeatable test data:
 
 ```javascript
 // Load from e2e/snaps/my-snap/collection.yaml
-await mdb.load('my-snap');
+await mdb.load("my-snap");
 
 // Save current database state to snap files
-await mdb.snap('my-snap', ['items', 'users']);
+await mdb.snap("my-snap", ["items", "users"]);
 ```
 
 Snap files are YAML and can be version controlled:

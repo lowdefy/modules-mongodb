@@ -38,9 +38,10 @@ The contract:
 3. Build the payload exactly as specified above. Read fields from `context.params` for runtime values and `context.workflow` / `context.action` for the read-only context bag.
 
 4. Invoke:
+
    ```js
    const response = await context.callApi(
-     { id: hookId, module: 'workflows' },
+     { id: hookId, module: "workflows" },
      payload,
      { user: context.user },
    );

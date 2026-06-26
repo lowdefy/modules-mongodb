@@ -29,11 +29,13 @@ Pull the resolver out of `handleSubmit.js` into its own util so it has a clear u
 2. Compute the engine default exactly as the inlined version does today (preserve `submit_edit` task branch on `params.current_status`, `review` verb detection for `submit_edit` / `resolve_error`, terminal mapping for `not_required` / `approve` / `request_changes`).
 
 3. Apply layered overrides last-wins:
+
    ```js
    const engineDefault = /* current resolveTargetStatus logic */;
    const yamlOverride = yamlInteractions?.[interaction]?.status;
    return preHookStatus ?? yamlOverride ?? engineDefault;
    ```
+
    (`undefined` skips a layer; a string value wins over lower layers.)
 
 4. Move the existing tests for status resolution that live inside `handleSubmit.test.js` into a colocated `resolveTargetStatus.test.js`. Add cases for:
@@ -62,5 +64,5 @@ Pull the resolver out of `handleSubmit.js` into its own util so it has a clear u
 
 ## Notes
 
-- The resolved value still passes through Part 6's priority rule at the per-entry write site — do **not** apply the priority rule here. This util produces the *intent*; the write loop owns enforcement.
+- The resolved value still passes through Part 6's priority rule at the per-entry write site — do **not** apply the priority rule here. This util produces the _intent_; the write loop owns enforcement.
 - The util is called once per submit, at step 1. Task 7 may invoke it a second time after the pre-hook returns to graft the resolved status onto a `currentActionId` replacement entry; that re-call uses the same util with `preHookStatus` populated.

@@ -21,6 +21,7 @@ Choose the simplest correct shape — walking the tree once and replacing values
 Name is `substituteActionIdSentinel` to avoid collision with the existing `connections/shared/populateIds.js` (UUID assigner for new action drafts).
 
 Add `substituteActionIdSentinel.test.js` covering:
+
 - A `link.urlQuery.action_id: true` in a custom-kind cell is swapped to the UUID string.
 - Other primitive values (`true` outside the `action_id` key) pass through unchanged.
 - Nested structures are walked correctly.

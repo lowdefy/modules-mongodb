@@ -14,9 +14,21 @@ test("recomputeGroups: three declared groups, all empty → three done/{0,0,0} e
     actions: [],
   });
   expect(result).toEqual([
-    { id: "a", status: "done", summary: { done: 0, not_required: 0, total: 0 } },
-    { id: "b", status: "done", summary: { done: 0, not_required: 0, total: 0 } },
-    { id: "c", status: "done", summary: { done: 0, not_required: 0, total: 0 } },
+    {
+      id: "a",
+      status: "done",
+      summary: { done: 0, not_required: 0, total: 0 },
+    },
+    {
+      id: "b",
+      status: "done",
+      summary: { done: 0, not_required: 0, total: 0 },
+    },
+    {
+      id: "c",
+      status: "done",
+      summary: { done: 0, not_required: 0, total: 0 },
+    },
   ]);
 });
 
@@ -69,14 +81,14 @@ test("recomputeGroups: 1 action-required + 1 blocked → in-progress / {0,0,2}",
 test("recomputeGroups: three groups + one action each, declaration order preserved", () => {
   const result = recomputeGroups({
     declaredGroups: [{ id: "a" }, { id: "b" }, { id: "c" }],
-    actions: [
-      a("done", "a"),
-      a("blocked", "b"),
-      a("action-required", "c"),
-    ],
+    actions: [a("done", "a"), a("blocked", "b"), a("action-required", "c")],
   });
   expect(result).toEqual([
-    { id: "a", status: "done", summary: { done: 1, not_required: 0, total: 1 } },
+    {
+      id: "a",
+      status: "done",
+      summary: { done: 1, not_required: 0, total: 1 },
+    },
     {
       id: "b",
       status: "blocked",

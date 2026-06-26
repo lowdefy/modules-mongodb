@@ -12,6 +12,7 @@ references. There is no hard dependency on the other tasks, but land it alongsid
 after them.
 
 The demo configs that still declare `sort_order:` (confirmed via grep):
+
 - `apps/demo/modules/workflows/workflow_config/onboarding/`: `qualify.yaml`,
   `site-visit.yaml`, `send-quote.yaml`, `schedule-followup.yaml`, `upload-po.yaml`,
   `track-company-setup.yaml`

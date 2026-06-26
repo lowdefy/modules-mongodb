@@ -65,7 +65,7 @@ Doc shape (matches `ActionDoc` typedef in `shared/types.js`, minus `entity_type`
 
 ```js
 const doc = {
-  ...action.references,    // spread first
+  ...action.references, // spread first
   _id: actionId,
   workflow_id: workflow._id,
   // ... rest of core fields ...

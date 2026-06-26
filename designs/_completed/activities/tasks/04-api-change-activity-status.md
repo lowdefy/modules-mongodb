@@ -119,9 +119,10 @@ routine:
 **Important:** `$each` is required whenever `$position` is specified in `$push` — without it MongoDB rejects the update. The `[ stage, created ]` object goes inside `$each`'s array.
 
 The display-block runtime dispatch on event type is non-trivial — the merged `event_display` has separate templates per event type, and the API needs to render the one matching the runtime-computed `type` (complete/cancel/reopen). Two options:
+
 - **(a)** Build all three template-rendered titles at build time (one per event type) and pick at runtime via `_if`. Verbose but works.
 - **(b)** Restructure the `display` build chain to use `_payload.stage` as the iteration key. Closer to the `update-company` shape but needs a stage→event-type mapping inside the build operators.
-Implementer's call — verify by emitting all three transitions and confirming the right template lands in the events collection.
+  Implementer's call — verify by emitting all three transitions and confirming the right template lands in the events collection.
 
 ### Action wrappers
 

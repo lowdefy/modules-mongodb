@@ -1,9 +1,9 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from "node:crypto";
 
-import loadWorkflowState from './loadWorkflowState.js';
-import commitPlan from './commitPlan.js';
-import planTrackerLevel from './planners/planTrackerLevel.js';
-import { TrackerCascadeDepthError } from '../errors.js';
+import loadWorkflowState from "./loadWorkflowState.js";
+import commitPlan from "./commitPlan.js";
+import planTrackerLevel from "./planners/planTrackerLevel.js";
+import { TrackerCascadeDepthError } from "../errors.js";
 
 // Chain-depth guard (NOT a loop-iteration counter — a wide-but-shallow cascade
 // must not trip it; a genuinely deep cycle must). Each fire carries its own
@@ -14,7 +14,11 @@ const MAX_DEPTH = 10;
 const MAX_ATTEMPTS = 3;
 // The closed set the cascade RECORDS (records `{ fire, error }`, continues) on:
 // CAS exhaustion + gone-parent. Everything else propagates.
-const RECORDED_CODES = ['concurrent_submit', 'workflow_not_found', 'missing_target'];
+const RECORDED_CODES = [
+  "concurrent_submit",
+  "workflow_not_found",
+  "missing_target",
+];
 
 /**
  * Tracker cascade orchestrator (design D3 / D10; task 16).
@@ -116,7 +120,7 @@ async function runTrackerCascade(initialFires, baseContext) {
         break;
       } catch (error) {
         // Bounded per-level CAS retry — fresh load → plan → commit each attempt.
-        if (error.code === 'concurrent_submit' && ++attempts < MAX_ATTEMPTS) {
+        if (error.code === "concurrent_submit" && ++attempts < MAX_ATTEMPTS) {
           continue;
         }
         if (RECORDED_CODES.includes(error.code)) {

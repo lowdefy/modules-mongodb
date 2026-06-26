@@ -55,7 +55,7 @@ The companies module's tile pattern (verified against `modules/companies/compone
 
 1. Tile-frame is `_ref: { module: layout, component: card }` with a `title:` and `blocks:` var.
 2. The `blocks` is a Box that owns the requests (via `requests:` block) and the rendering.
-3. The actual rendering is an `Html` block with an `_nunjucks` template — *not* `List` + `itemTemplate`. Loops, conditionals, and per-item access all happen in the Nunjucks template, which receives the request results via the `on:` map.
+3. The actual rendering is an `Html` block with an `_nunjucks` template — _not_ `List` + `itemTemplate`. Loops, conditionals, and per-item access all happen in the Nunjucks template, which receives the request results via the `on:` map.
 
 Mirror that pattern for `tile_hierarchy`. The `Html` template renders both Parents and Children sections inline, with section visibility handled by `{% if parents.length %}` / `{% if children.length %}` Nunjucks conditionals. The whole tile hides when both arrays are empty using a `visible:` expression on the outer card.
 
@@ -236,4 +236,4 @@ Two changes:
 - **Nunjucks template, not `List` + `itemTemplate`.** The companies module renders array data in tiles via `Html` + `_nunjucks` template (see `modules/companies/components/contact_list_items.yaml:20-72`), not via Lowdefy's `List` block. The Nunjucks template handles loop, conditionals, and per-item access — all in one block. Following this convention for `tile_hierarchy` keeps the rendering pattern consistent across the module and avoids questions about how `List` + `itemTemplate` exposes iterated items.
 - **`$ifNull` on `parent_ids` in task 8's `$lookup`.** Without it, `parents: undefined` shows up on docs without a `parent_ids` field; the tile's `_if_none` gracefully handles undefined. Both task 8 and this tile defensively coalesce.
 - **TreeSelector future.** The design notes a TreeSelector-style nested view as a future iteration. Don't pre-build for it; the flat sections are right for v1.
-- **Sidebar slot ordering.** The existing `_module.var: components.sidebar_slots` (consumer slot) currently comes after the static tiles. Place `tile_hierarchy` between the static tiles and the consumer slot — that way an app's custom sidebar tiles appear *below* the hierarchy tile, matching how the existing static tiles already work.
+- **Sidebar slot ordering.** The existing `_module.var: components.sidebar_slots` (consumer slot) currently comes after the static tiles. Place `tile_hierarchy` between the static tiles and the consumer slot — that way an app's custom sidebar tiles appear _below_ the hierarchy tile, matching how the existing static tiles already work.

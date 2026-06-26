@@ -2,7 +2,7 @@
 
 ## Context
 
-The two generators from Tasks 3 and 4 each expose a `--check` mode (regenerate to temp, fail on diff; the llms generator also lints front-matter). Generation only removes drift when a check *enforces* regeneration — otherwise the committed `vars.md` / `llms.txt` go stale silently. This task exposes a single `pnpm docs:check` and adds the repo's **first PR-CI workflow** to run it on every pull request. This is a deliberate, in-scope new cost: without the gate, the design carries the same drift risk it set out to eliminate.
+The two generators from Tasks 3 and 4 each expose a `--check` mode (regenerate to temp, fail on diff; the llms generator also lints front-matter). Generation only removes drift when a check _enforces_ regeneration — otherwise the committed `vars.md` / `llms.txt` go stale silently. This task exposes a single `pnpm docs:check` and adds the repo's **first PR-CI workflow** to run it on every pull request. This is a deliberate, in-scope new cost: without the gate, the design carries the same drift risk it set out to eliminate.
 
 The repo currently has only `.github/workflows/release.yaml` — no `pull_request`-triggered CI.
 
@@ -17,6 +17,7 @@ The repo currently has only `.github/workflows/release.yaml` — no `pull_reques
 The order runs the var generator check first (cheaper, module-scoped), then the llms.txt + front-matter check. Both must pass. Optionally add a convenience `docs:gen` that runs both generators in write mode (`node scripts/gen-var-docs.mjs && node scripts/gen-llms-txt.mjs`) so authors can regenerate in one command.
 
 **2. Add `.github/workflows/ci.yaml`** — a `pull_request`-triggered workflow that:
+
 - Checks out the repo.
 - Sets up Node and pnpm matching the repo's versions (`packageManager: pnpm@10.6.2` in `package.json`; check `release.yaml` for the established Node/pnpm setup actions and reuse them for consistency).
 - Runs `pnpm install` (frozen lockfile).

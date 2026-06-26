@@ -5,6 +5,7 @@
 The titles strategy introduces a convention authors need to understand: titles derive from slugs by default and are overridden only when the default is wrong; the acronym dictionary is app-extensible via `title_acronyms`; and event messages use a curated per-signal verb map. This must be documented so authors know the rule without reading the resolver code.
 
 The repo's documentation layout (per `CLAUDE.md`):
+
 - `modules/workflows/README.md` — per-module reference (Description, Dependencies, How to Use, Exports, Vars, Secrets, Notes…). Already documents the `workflows_config` shape and the `action_statuses_display` var.
 - `docs/idioms.md` — single page of cross-cutting idioms with stable anchors (`#change-stamps`, `#event-display`, `#slots`, `#app-name`, `#avatar-colors`, `#secrets`). Per-module READMEs link to anchors here.
 - The manifest (`module.lowdefy.yaml`) is the source of truth for var schema (handled in task 4); the README restates it for readers.

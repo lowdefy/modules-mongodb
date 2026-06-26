@@ -41,6 +41,7 @@ And [design.md:62](../design.md): "part 10 reads workflow status changes and fir
 Part 10's "Trigger sites" section ([10-tracker-subscription/design.md:11–16](../../10-tracker-subscription/design.md)) is explicit:
 
 > The subscription fires inside every handler that changes a workflow's status:
+>
 > - `SubmitWorkflowAction` — light up the body of step 10 …
 > - `CancelWorkflow` — after the final summary + groups writeback …
 
@@ -134,7 +135,7 @@ await context.mongoDBConnection('actions').MongoDBUpdateMany({
 });
 ```
 
-Part 5's task 6 explicitly picked bulk over per-action loop ([_completed/05-start-cancel-handlers/tasks/06-cancel-workflow.md:80–84](../../_completed/05-start-cancel-handlers/tasks/06-cancel-workflow.md)):
+Part 5's task 6 explicitly picked bulk over per-action loop ([\_completed/05-start-cancel-handlers/tasks/06-cancel-workflow.md:80–84](../../_completed/05-start-cancel-handlers/tasks/06-cancel-workflow.md)):
 
 > Pick the bulk path — `MongoDBUpdateMany` is one round trip vs N. v0 does this for the same reason. `updateAction` (task 3) stays the single-doc helper; the cancel path doesn't gain anything by using it.
 
@@ -194,6 +195,7 @@ That's the contradiction. The shipped behaviour silently violates the spec; clos
 This is bigger than "open question for a follow-up." If close honors the filter and cancel doesn't, the two terminations have inconsistent semantics for the same flag, which is a spec violation on the cancel side. The open question should either be **closed** (committing one direction with a Part 5 follow-up filed) or **escalated** to top-level consistency review.
 
 **Fix.** Either:
+
 - Close the question in favor of "yes, cancel adopts the same filter" and file a follow-on against shipped part 5 to fix it; or
 - Close the question in favor of "no, cancel's blanket-sweep is the v1 contract" and amend `action-authoring/spec.md:181` to say `required_after_close` only applies to `completed`, not `cancelled`.
 

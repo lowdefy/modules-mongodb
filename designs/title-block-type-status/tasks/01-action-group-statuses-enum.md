@@ -14,10 +14,10 @@ Status enums in this repo follow a standard entry shape consumed by the new titl
 
 ```yaml
 <slug>:
-  color: '#e6f7ff'        # light fill (pill background)
-  borderColor: '#91d5ff'  # pill border
-  titleColor: '#096dd9'   # pill text
-  title: Action Required  # display label
+  color: "#e6f7ff" # light fill (pill background)
+  borderColor: "#91d5ff" # pill border
+  titleColor: "#096dd9" # pill text
+  title: Action Required # display label
 ```
 
 ## Task

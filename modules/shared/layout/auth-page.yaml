@@ -57,7 +57,7 @@ blocks:
                   bordered: false
                   theme:
                     borderRadiusLG: 12
-                    bodyPadding: '28px 32px 28px 32px'
+                    bodyPadding: "28px 32px 28px 32px"
                 slots:
                   cover:
                     blocks:
@@ -67,10 +67,10 @@ blocks:
                           justify: center
                           selfAlign: middle
                         style:
-                          padding: '32px 32px 24px 32px'
+                          padding: "32px 32px 24px 32px"
                           background:
                             _module.var: auth_page.cover_background
-                          borderRadius: '12px 12px 0 0'
+                          borderRadius: "12px 12px 0 0"
                         blocks:
                           - id: auth-logo
                             type: Img
@@ -88,8 +88,8 @@ blocks:
                           _build.ne:
                             - _var:
                                 key: title
-                                default: ''
-                            - ''
+                                default: ""
+                            - ""
                         then:
                           - id: auth-title
                             type: Title
@@ -117,7 +117,7 @@ blocks:
                       marginTop: 24
                       textAlign: center
                       fontSize: 12
-                      color: 'var(--ant-color-text-secondary)'
+                      color: "var(--ant-color-text-secondary)"
                     blocks:
                       _module.var: footer
                 else: []

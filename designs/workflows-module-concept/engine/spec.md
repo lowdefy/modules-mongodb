@@ -120,23 +120,23 @@ Connection lifecycle, change-log writes (the `changeLog` block on the connection
 
 ### Action doc
 
-| Field                            | Type           | Notes                                                                                |
-| -------------------------------- | -------------- | ------------------------------------------------------------------------------------ |
-| `_id`                            | string         | server-generated                                                                     |
-| `workflow_id`                    | string         | parent workflow's `_id`                                                              |
-| `type`                           | string         | from YAML                                                                            |
-| `kind`                           | string         | `form` \| `check` \| `tracker`                                                       |
-| `key`                            | string \| null | for fan-out actions (non-tracker); domain id like a device serial                    |
-| `status`                         | array          | history, newest at index 0                                                           |
-| `entity_id`, `entity_collection` | various        | matches parent workflow                                                              |
-| `assignees`                      | string[]       | universal field                                                                      |
-| `due_date`                       | Date \| null   | universal field                                                                      |
+| Field                            | Type                     | Notes                                                                                                               |
+| -------------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `_id`                            | string                   | server-generated                                                                                                    |
+| `workflow_id`                    | string                   | parent workflow's `_id`                                                                                             |
+| `type`                           | string                   | from YAML                                                                                                           |
+| `kind`                           | string                   | `form` \| `check` \| `tracker`                                                                                      |
+| `key`                            | string \| null           | for fan-out actions (non-tracker); domain id like a device serial                                                   |
+| `status`                         | array                    | history, newest at index 0                                                                                          |
+| `entity_id`, `entity_collection` | various                  | matches parent workflow                                                                                             |
+| `assignees`                      | string[]                 | universal field                                                                                                     |
+| `due_date`                       | Date \| null             | universal field                                                                                                     |
 | `description`                    | `{ text, html }` \| null | universal field (rich text; the `text` shadow serves plain-text search/length checks — mirrors the `comment` shape) |
-| `tracker`                        | object \| null | `{ workflow_type }` on tracker actions only                                          |
-| `child_workflow_id`              | string \| null | tracker actions; set when child workflow is started (the child workflow doc's `_id`) |
-| `child_entity_id`                | string \| null | tracker actions; set when child workflow is started                                  |
-| `child_entity_collection`        | string \| null | tracker actions; collection connection id                                            |
-| `<reference keys>`               | various        | spread from `references` payload                                                     |
+| `tracker`                        | object \| null           | `{ workflow_type }` on tracker actions only                                                                         |
+| `child_workflow_id`              | string \| null           | tracker actions; set when child workflow is started (the child workflow doc's `_id`)                                |
+| `child_entity_id`                | string \| null           | tracker actions; set when child workflow is started                                                                 |
+| `child_entity_collection`        | string \| null           | tracker actions; collection connection id                                                                           |
+| `<reference keys>`               | various                  | spread from `references` payload                                                                                    |
 
 ### Form data layout
 
@@ -171,7 +171,7 @@ form_data: {
 
 Two entry paths push an action into `error` (both form and check kind):
 
-- **Pre-hook `error` signal.** A pre-hook fires `error` against *another* action via `actions: [{ type, signal: error }]` ([submit-pipeline § Pre-hook return](../submit-pipeline/spec.md#pre-hook-return-all-fields-optional)). The form/check FSM accepts `error` from every non-terminal state (`action-required`, `in-progress`, `in-review`, `changes-required`, `blocked`) → `error`. This replaces the v0 `{ ..., status: 'error' }` return. There is no way to error the *current* action from its own pre-hook — to fail a submission, `:reject` / `throw` instead.
+- **Pre-hook `error` signal.** A pre-hook fires `error` against _another_ action via `actions: [{ type, signal: error }]` ([submit-pipeline § Pre-hook return](../submit-pipeline/spec.md#pre-hook-return-all-fields-optional)). The form/check FSM accepts `error` from every non-terminal state (`action-required`, `in-progress`, `in-review`, `changes-required`, `blocked`) → `error`. This replaces the v0 `{ ..., status: 'error' }` return. There is no way to error the _current_ action from its own pre-hook — to fail a submission, `:reject` / `throw` instead.
 - **External systems.** Out-of-band processes (backend microservices, scheduled lambdas) write directly to the action doc, or in future will go through a follow-on injection API.
 
 The engine never sets `error` itself — engine sub-step failures **throw**, surfacing as an API-level reject/error toast (submit-pipeline), not an action-status transition.
@@ -314,11 +314,11 @@ Every status mutation is the result of a named **signal** fired against an actio
 - **A listed cell** gives the new status; the engine writes it.
 - **An unlisted cell** is a silent no-op — no write, no error. This replaces the priority rule's strict-less-than ordering: re-fires against states past a signal's reach (and signals against terminal states) can't regress an action.
 
-`currentActionId` carries the user-fired action's id — the per-action endpoint's `action_id` payload field maps directly to `currentActionId` inside the handler. The current action lands per the signal the user fired; a pre-hook cannot re-signal it. Every `actions[]` entry names its own *other* target and signal.
+`currentActionId` carries the user-fired action's id — the per-action endpoint's `action_id` payload field maps directly to `currentActionId` inside the handler. The current action lands per the signal the user fired; a pre-hook cannot re-signal it. Every `actions[]` entry names its own _other_ target and signal.
 
 **Three emitters, one resolution.** Signals come from (1) user button clicks, (2) engine cascades (`unblock` on `blocked_by` satisfaction, `internal_mirror_child_*` from the tracker subscription, `internal_cancel_action` from `CancelWorkflow`), and (3) pre-hook `actions[]` entries against other actions. All resolve through the same FSM lookup. There is no separate user-driven-vs-auxiliary code path — the old `currentActionId` self-exception is gone (the tables list same-state transitions explicitly where wanted, e.g. `in-progress → progress → in-progress`).
 
-**Unknown signal names throw.** The signal vocabulary is engine-locked in v1, so the handler has the complete known-signal list at entry. A signal name not in that list is a programming error and throws (same posture as a missing `actions[]` target) — distinct from an *unlisted transition* (known signal, state doesn't accept it), which is the meaningful silent no-op.
+**Unknown signal names throw.** The signal vocabulary is engine-locked in v1, so the handler has the complete known-signal list at entry. A signal name not in that list is a programming error and throws (same posture as a missing `actions[]` target) — distinct from an _unlisted transition_ (known signal, state doesn't accept it), which is the meaningful silent no-op.
 
 **No `force: true`.** All mutations go through the FSM; there is no per-call or per-entry bypass. Migrations and admin overrides stay out-of-band (direct DB writes). Engine-internal write paths use explicit `internal_*` signals declared in the FSM tables (`internal_cancel_action`, `internal_mirror_child_*`) — the backward moves tracker writes used to need `force` for (e.g. a child uncancelling to push the parent `not-required → in-progress`) are now listed transitions in the tracker table.
 

@@ -27,15 +27,15 @@ So this task is **not blocked on part 2**. It can ship as soon as task 2 has lan
 Add to `vars:` block in [module.lowdefy.yaml](../../../../modules/workflows/module.lowdefy.yaml):
 
 ```yaml
-  workflows_config:
-    type: array
-    required: true
-    description: >
-      Array of workflow definitions consumed by every build-time resolver in this
-      module (parts 4, 12, 13, 15). Host app supplies via the entry's `vars` block,
-      e.g. `vars: { _ref: workflow_config/workflows.yaml }`. Each entry is a workflow
-      object with `type`, `entity_collection`, `starting_actions`, `action_groups`,
-      and `actions` (see workflows-module-concept/action-authoring/spec.md).
+workflows_config:
+  type: array
+  required: true
+  description: >
+    Array of workflow definitions consumed by every build-time resolver in this
+    module (parts 4, 12, 13, 15). Host app supplies via the entry's `vars` block,
+    e.g. `vars: { _ref: workflow_config/workflows.yaml }`. Each entry is a workflow
+    object with `type`, `entity_collection`, `starting_actions`, `action_groups`,
+    and `actions` (see workflows-module-concept/action-authoring/spec.md).
 ```
 
 If part 4's task 3 already added this var, leave the existing declaration in place — do not duplicate.

@@ -11,15 +11,15 @@ deletes the workflows-module duplicate, and turns enrichment on in the demo.
 
 ## Tasks
 
-| #   | File                                   | Summary                                                                                    | Depends On |
-| --- | -------------------------------------- | ------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-denormalise-sort-indices.md`       | Stamp `group_index` / `decl_index` onto action docs at build time and write time           | —          |
-| 2   | `02-config-free-comparator.md`         | Comparator reads stamped indices; drop `workflowsConfig` from all 4 read engines           | 1          |
-| 3   | `03-events-timeline-connection.md`     | New read-only `EventsTimeline` plugin connection type exposing `GetEventsTimeline`         | 2          |
-| 4   | `04-events-module-enrich.md`           | Events module: enrichment vars, connection, component rewrite, click handler, dead-config  | 3          |
-| 5   | `05-demo-turn-on-enrichment.md`        | Demo: set `actions_collection`/`contacts_collection`, repoint `lead-view` to the events tile | 4        |
-| 6   | `06-delete-workflows-duplicate.md`     | Delete the workflows-module timeline duplicate; de-register `GetEventsTimeline` from `WorkflowAPI` | 5    |
-| 7   | `07-docs.md`                           | Document the enrichment vars + one-timeline model; remove two-timeline/swap material       | 4, 6       |
+| #   | File                               | Summary                                                                                            | Depends On |
+| --- | ---------------------------------- | -------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-denormalise-sort-indices.md`   | Stamp `group_index` / `decl_index` onto action docs at build time and write time                   | —          |
+| 2   | `02-config-free-comparator.md`     | Comparator reads stamped indices; drop `workflowsConfig` from all 4 read engines                   | 1          |
+| 3   | `03-events-timeline-connection.md` | New read-only `EventsTimeline` plugin connection type exposing `GetEventsTimeline`                 | 2          |
+| 4   | `04-events-module-enrich.md`       | Events module: enrichment vars, connection, component rewrite, click handler, dead-config          | 3          |
+| 5   | `05-demo-turn-on-enrichment.md`    | Demo: set `actions_collection`/`contacts_collection`, repoint `lead-view` to the events tile       | 4          |
+| 6   | `06-delete-workflows-duplicate.md` | Delete the workflows-module timeline duplicate; de-register `GetEventsTimeline` from `WorkflowAPI` | 5          |
+| 7   | `07-docs.md`                       | Document the enrichment vars + one-timeline model; remove two-timeline/swap material               | 4, 6       |
 
 ## Ordering Rationale
 

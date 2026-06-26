@@ -9,6 +9,7 @@ After Tasks 7 + 9, requests and internal display components exist. This task bui
 - `tile_activities` — self-contained tile (`layout.card` + `activities-timeline` content + `capture_activity` in header buttons). Apps drop this into companies'/contacts' sidebar slots.
 
 Reference shapes:
+
 - `modules/companies/components/company-selector.yaml` — template for `activity-selector`.
 - `modules/events/components/events-timeline.yaml` — template for `activities-timeline`.
 
@@ -21,6 +22,7 @@ All three go in `modules/activities/components/`.
 Mirror `company-selector.yaml`'s shape. Single-or-multi-select picker over all active activities, fed by `get_activity_options` (Task 7).
 
 Vars accepted (per `company-selector` convention — verify):
+
 - `multiple: true | false`
 - `value` — bound state path
 - `title` — display label
@@ -128,13 +130,13 @@ _ref:
     title:
       _if_none:
         - _state: vars.title
-        - Activity   # default
+        - Activity # default
     header_buttons:
       _if:
         test:
           _if_none:
             - _state: vars.show_capture
-            - true   # default to showing the capture button
+            - true # default to showing the capture button
         then:
           - _ref:
               module: activities
@@ -146,11 +148,11 @@ _ref:
                 size: small
                 mode: modal
                 prefill:
-                  _state: vars.prefill   # forwarded from the host's slot ref
+                  _state: vars.prefill # forwarded from the host's slot ref
                 on_created:
                   - id: refetch_activities
                     type: Request
-                    params: get_activities_for_entity   # auto-wired refetch
+                    params: get_activities_for_entity # auto-wired refetch
         else: []
     blocks:
       - _ref:
@@ -165,13 +167,13 @@ _ref:
 
 Vars (consumer-passed):
 
-| Var | Required? | Default | Purpose |
-| --- | --- | --- | --- |
-| `reference_field` | yes | — | Filter field on activities (`contact_ids`, `company_ids`, future `deal_ids`). |
-| `reference_value` | yes | — | The entity ID to filter on. Typically `{ _url_query: _id }` for detail-page hosts. |
-| `title` | no | `Activity` | Card title override. |
-| `prefill` | no | `{}` | Forwarded to the embedded `capture_activity`'s `prefill` var so logged activities pre-link to the host. |
-| `show_capture` | no | `true` | Set `false` to hide the header capture button (read-only sidebar tile). |
+| Var               | Required? | Default    | Purpose                                                                                                 |
+| ----------------- | --------- | ---------- | ------------------------------------------------------------------------------------------------------- |
+| `reference_field` | yes       | —          | Filter field on activities (`contact_ids`, `company_ids`, future `deal_ids`).                           |
+| `reference_value` | yes       | —          | The entity ID to filter on. Typically `{ _url_query: _id }` for detail-page hosts.                      |
+| `title`           | no        | `Activity` | Card title override.                                                                                    |
+| `prefill`         | no        | `{}`       | Forwarded to the embedded `capture_activity`'s `prefill` var so logged activities pre-link to the host. |
+| `show_capture`    | no        | `true`     | Set `false` to hide the header capture button (read-only sidebar tile).                                 |
 
 Verify the `_state: vars.<X>` pattern resolves — Lowdefy's component-var passing might surface vars as `_state.vars.X` or directly as `_state.X`. Mirror whatever pattern other parameterised cross-module components in this codebase use.
 

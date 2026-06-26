@@ -9,16 +9,15 @@ concepts: [workflows, actions, fsm, signals, hooks, trackers]
 
 Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine — authors do not hand-write status transitions. The engine ships shared action pages, six operational APIs, and a resolver-emitted dynamic surface: one page set per form action and one submit endpoint per form/check action, both derived from the app's `workflows_config`.
 
-
 ## Dependencies
 
-| Module | Why |
-|---|---|
-| [layout](../../modules/layout/README.md) | Page wrapper consumed by every shared page |
-| [events](../../modules/events/README.md) | Provides the `change_stamp` component and the `new-event` API the engine dispatches the per-invocation log event to |
-| [notifications](../../modules/notifications/README.md) | Provides the `send-notification` InternalApi the engine dispatches after each committed event |
-| [contacts](../../modules/contacts/README.md) | Provides the `contact-selector` component wrapped by `contact` / `multiple_contact` form fields |
-| [user-account](../../modules/user-account/README.md) | Supplies the `user-multi-selector` and `user-avatar` components used by the universal-fields surface |
+| Module                                                 | Why                                                                                                                 |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| [layout](../../modules/layout/README.md)               | Page wrapper consumed by every shared page                                                                          |
+| [events](../../modules/events/README.md)               | Provides the `change_stamp` component and the `new-event` API the engine dispatches the per-invocation log event to |
+| [notifications](../../modules/notifications/README.md) | Provides the `send-notification` InternalApi the engine dispatches after each committed event                       |
+| [contacts](../../modules/contacts/README.md)           | Provides the `contact-selector` component wrapped by `contact` / `multiple_contact` form fields                     |
+| [user-account](../../modules/user-account/README.md)   | Supplies the `user-multi-selector` and `user-avatar` components used by the universal-fields surface                |
 
 The `events` and `notifications` dispatch targets are resolved at app build time via `_module.endpointId` into the `workflow-api` connection's `endpoints` property.
 

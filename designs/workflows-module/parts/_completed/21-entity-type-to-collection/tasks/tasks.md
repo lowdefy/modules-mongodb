@@ -6,13 +6,13 @@ Tasks implement the schema simplification in [design.md](../design.md): drop `en
 
 ## Tasks
 
-| #   | File                                          | Summary                                                                                                          | Depends On |
-| --- | --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-concept-doc-updates.md`                   | Strip `entity_type` from every non-review file under `designs/workflows-module-concept/`; update index recs + reserved-keys list. | —          |
-| 2   | `02-plugin-schema.md`                         | Update `workflowsConfig` JSON schema in the plugin: required + description swap.                                  | —          |
-| 3   | `03-plugin-typedefs-and-projection.md`        | Drop `entity_type` from `WorkflowDoc` / `ActionDoc` JSDoc and `getActionFields.js` projection.                    | —          |
-| 4   | `04-resolver-rename-and-rejection-check.md`   | `makeWorkflowsConfig`: swap `WORKFLOW_FIELDS`, add the legacy-key rejection check, add unit tests.                | 2          |
-| 5   | `05-sibling-part-design-audit.md`             | Audit parts 5, 12, 19 designs for stragglers; confirm part 18 unaffected and parts 3/4/14 untouched.              | 1          |
+| #   | File                                        | Summary                                                                                                                           | Depends On |
+| --- | ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-concept-doc-updates.md`                 | Strip `entity_type` from every non-review file under `designs/workflows-module-concept/`; update index recs + reserved-keys list. | —          |
+| 2   | `02-plugin-schema.md`                       | Update `workflowsConfig` JSON schema in the plugin: required + description swap.                                                  | —          |
+| 3   | `03-plugin-typedefs-and-projection.md`      | Drop `entity_type` from `WorkflowDoc` / `ActionDoc` JSDoc and `getActionFields.js` projection.                                    | —          |
+| 4   | `04-resolver-rename-and-rejection-check.md` | `makeWorkflowsConfig`: swap `WORKFLOW_FIELDS`, add the legacy-key rejection check, add unit tests.                                | 2          |
+| 5   | `05-sibling-part-design-audit.md`           | Audit parts 5, 12, 19 designs for stragglers; confirm part 18 unaffected and parts 3/4/14 untouched.                              | 1          |
 
 ## Ordering Rationale
 

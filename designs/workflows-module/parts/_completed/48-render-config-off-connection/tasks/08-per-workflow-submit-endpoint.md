@@ -36,7 +36,11 @@ render_config:
   onboarding-tracker: # ancestor (traced via child_workflow_type)
     install-tracker:
       event_overrides:
-        internal_mirror_child_completed: { display: { team-app: { title: "{{ ticket }} closed by {{ agent }}" } } }
+        internal_mirror_child_completed:
+          {
+            display:
+              { team-app: { title: "{{ ticket }} closed by {{ agent }}" } },
+          }
 ```
 
 **3. `handleSubmit.js` — the re-slice (Part 47's engine change, verbatim):** after the `loadWorkflowState` call and before `invokePreHook`:

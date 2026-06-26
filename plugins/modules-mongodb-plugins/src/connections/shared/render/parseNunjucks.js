@@ -1,4 +1,4 @@
-import { nunjucksFunction } from '@lowdefy/nunjucks';
+import { nunjucksFunction } from "@lowdefy/nunjucks";
 
 /**
  * Renders a single Nunjucks template string against a vars context.

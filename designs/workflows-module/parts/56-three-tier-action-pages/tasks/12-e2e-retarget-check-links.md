@@ -3,10 +3,11 @@
 ## Context
 
 Retargeting check links to the per-workflow `{workflow_type}-check` page (Tasks 2
-+ 10) and retiring the shared pages (Task 11) breaks every e2e spec that
-navigates to, waits for, or asserts the old `workflow-action-{view,edit,review}`
-URLs for a **check** action. Those specs and their fixture comments must move to
-the new page id. (Form-action navigations are unaffected.)
+
+- 10. and retiring the shared pages (Task 11) breaks every e2e spec that
+      navigates to, waits for, or asserts the old `workflow-action-{view,edit,review}`
+      URLs for a **check** action. Those specs and their fixture comments must move to
+      the new page id. (Form-action navigations are unaffected.)
 
 ## Task
 

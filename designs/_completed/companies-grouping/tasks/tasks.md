@@ -6,19 +6,19 @@ Implements the companies-grouping design: a DAG model (`parent_ids: string[]`) o
 
 ## Tasks
 
-| #   | File                                          | Summary                                                                                  | Depends On |
-| --- | --------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-module-manifest.md`                       | Add `hierarchy` var to `module.lowdefy.yaml`; bump version                               | —          |
-| 2   | `02-descendants-request.md`                   | Add shared `get_descendant_company_ids` request                                          | 1          |
-| 3   | `03-create-company-parent-ids.md`             | Build-gate `parent_ids` in `create-company`                                              | 1          |
-| 4   | `04-update-company-cycle-check.md`            | Cycle check + `parent_ids` write in `update-company`                                     | 1          |
-| 5   | `05-company-selector-cycle-check-ids.md`      | Extend `company-selector` + `get_companies_for_selector` to support `cycle_check_ids`    | 1          |
-| 6   | `06-parent-selector-wrapper.md`               | Create `parent_selector` wrapper component (no own `onMount`)                            | 5          |
-| 7   | `07-edit-form-wiring.md`                      | Append parent selector to `form_company`; three-step `onMount` on `edit.yaml`            | 1, 2, 6    |
-| 8   | `08-get-company-parents-lookup.md`            | Extend `get_company` with parents `$lookup` (filtered to non-removed)                    | 1          |
-| 9   | `09-view-page-hierarchy-tile.md`              | Add `get_company_children`, create `tile_hierarchy`, wire into `pages/view.yaml`         | 1, 8       |
-| 10  | `10-list-filter.md`                           | Parent-scope filter on `filter_companies`; Atlas Search `must` clause on `get_all_companies` (**deferred** — lowest priority, implement later if/when needed) | 1, 2       |
-| 11  | `11-demo-and-readme.md`                       | Enable hierarchy in `apps/demo/modules/companies/vars.yaml`; update `modules/companies/README.md` | 1          |
+| #   | File                                     | Summary                                                                                                                                                       | Depends On |
+| --- | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-module-manifest.md`                  | Add `hierarchy` var to `module.lowdefy.yaml`; bump version                                                                                                    | —          |
+| 2   | `02-descendants-request.md`              | Add shared `get_descendant_company_ids` request                                                                                                               | 1          |
+| 3   | `03-create-company-parent-ids.md`        | Build-gate `parent_ids` in `create-company`                                                                                                                   | 1          |
+| 4   | `04-update-company-cycle-check.md`       | Cycle check + `parent_ids` write in `update-company`                                                                                                          | 1          |
+| 5   | `05-company-selector-cycle-check-ids.md` | Extend `company-selector` + `get_companies_for_selector` to support `cycle_check_ids`                                                                         | 1          |
+| 6   | `06-parent-selector-wrapper.md`          | Create `parent_selector` wrapper component (no own `onMount`)                                                                                                 | 5          |
+| 7   | `07-edit-form-wiring.md`                 | Append parent selector to `form_company`; three-step `onMount` on `edit.yaml`                                                                                 | 1, 2, 6    |
+| 8   | `08-get-company-parents-lookup.md`       | Extend `get_company` with parents `$lookup` (filtered to non-removed)                                                                                         | 1          |
+| 9   | `09-view-page-hierarchy-tile.md`         | Add `get_company_children`, create `tile_hierarchy`, wire into `pages/view.yaml`                                                                              | 1, 8       |
+| 10  | `10-list-filter.md`                      | Parent-scope filter on `filter_companies`; Atlas Search `must` clause on `get_all_companies` (**deferred** — lowest priority, implement later if/when needed) | 1, 2       |
+| 11  | `11-demo-and-readme.md`                  | Enable hierarchy in `apps/demo/modules/companies/vars.yaml`; update `modules/companies/README.md`                                                             | 1          |
 
 ## Ordering Rationale
 

@@ -1,6 +1,11 @@
-import { HOOK_SIGNALS, HOOK_PHASES, MIRROR_SIGNALS, LIFECYCLE_SIGNALS } from './hookSignals.js';
-import { collectTrackerEdges } from './trackerEdges.js';
-import { humanizeSlug } from './humanizeSlug.js';
+import {
+  HOOK_SIGNALS,
+  HOOK_PHASES,
+  MIRROR_SIGNALS,
+  LIFECYCLE_SIGNALS,
+} from "./hookSignals.js";
+import { collectTrackerEdges } from "./trackerEdges.js";
+import { humanizeSlug } from "./humanizeSlug.js";
 
 // Engine-runtime needs + per-action UI lookups. Build-time-only fields
 // (form, form_review, form_error, pages, hooks, event) are excluded —
@@ -15,27 +20,27 @@ import { humanizeSlug } from './humanizeSlug.js';
 // still runs against the raw workflow — the field is validated here even though
 // it's no longer carried on the blob.
 const ACTION_FIELDS = [
-  'type',
-  'title',
-  'kind',
-  'key',
-  'tracker',
-  'blocked_by',
-  'action_group',
-  'required_after_close',
-  'allow_not_required',
-  'access',
-  'universal_fields',
+  "type",
+  "title",
+  "kind",
+  "key",
+  "tracker",
+  "blocked_by",
+  "action_group",
+  "required_after_close",
+  "allow_not_required",
+  "access",
+  "universal_fields",
 ];
 
 const WORKFLOW_FIELDS = [
-  'type',
-  'title',
-  'entity_collection',
-  'entity_ref_key',
-  'display_order',
-  'starting_actions',
-  'action_groups',
+  "type",
+  "title",
+  "entity_collection",
+  "entity_ref_key",
+  "display_order",
+  "starting_actions",
+  "action_groups",
 ];
 
 // --- form_meta projection (ported from makeActionFormConfigs.js) ------------
@@ -45,21 +50,21 @@ const WORKFLOW_FIELDS = [
 // continues to work once they switch to reading from workflowsConfig.
 
 const STRUCTURAL_COMPONENTS = [
-  'controlled_list',
-  'section',
-  'box',
-  'label',
-  'file_upload',
+  "controlled_list",
+  "section",
+  "box",
+  "label",
+  "file_upload",
 ];
 
-const METADATA_FIELDS = ['component', 'key', 'required', 'title', 'validate'];
+const METADATA_FIELDS = ["component", "key", "required", "title", "validate"];
 
 function pickMetadata(entry) {
   const node = {};
   for (const field of METADATA_FIELDS) {
     if (field in entry) node[field] = entry[field];
   }
-  if (!('required' in node)) node.required = false;
+  if (!("required" in node)) node.required = false;
   return node;
 }
 
@@ -75,31 +80,31 @@ function describeForm(formArray) {
   return (formArray ?? []).map(toMetadataNode);
 }
 
-const ACTION_KINDS = ['form', 'check', 'tracker'];
+const ACTION_KINDS = ["form", "check", "tracker"];
 
 const ACTION_STATUSES = [
-  'not-required',
-  'error',
-  'changes-required',
-  'done',
-  'in-review',
-  'in-progress',
-  'action-required',
-  'blocked',
+  "not-required",
+  "error",
+  "changes-required",
+  "done",
+  "in-review",
+  "in-progress",
+  "action-required",
+  "blocked",
 ];
 
 // The two legal direct-seed statuses for starting_actions (Part 45 review 2 #2;
 // task 17). Creation at workflow start is not an FSM transition, so a seed may
 // only land at one of the two non-terminal birth stages.
-const LEGAL_SEED_STATUSES = ['action-required', 'blocked'];
+const LEGAL_SEED_STATUSES = ["action-required", "blocked"];
 
 // Part 34 access verbs. Vocabulary is closed in v1 (Part 34 D4 / per-app block).
-const ACCESS_VERBS = ['view', 'edit', 'review', 'error'];
+const ACCESS_VERBS = ["view", "edit", "review", "error"];
 
 // Part 24: the three universal action fields an author may declare for the UI
 // presence list. The action doc always physically carries all three; this list
 // only controls which the templates render.
-const UNIVERSAL_FIELDS = ['assignees', 'due_date', 'description'];
+const UNIVERSAL_FIELDS = ["assignees", "due_date", "description"];
 
 function pick(source, fields) {
   const picked = {};
@@ -110,7 +115,9 @@ function pick(source, fields) {
 }
 
 function fail(workflowType, message) {
-  throw new Error(`makeWorkflowsConfig: workflow "${workflowType}": ${message}`);
+  throw new Error(
+    `makeWorkflowsConfig: workflow "${workflowType}": ${message}`,
+  );
 }
 
 function validateHooks(workflow, action) {
@@ -120,38 +127,38 @@ function validateHooks(workflow, action) {
     if (!HOOK_SIGNALS.includes(signal)) {
       fail(
         workflow.type,
-        `${where} hooks key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}).`
+        `${where} hooks key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(", ")}).`,
       );
     }
     const phases = action.hooks[signal];
-    if (phases === null || typeof phases !== 'object') {
+    if (phases === null || typeof phases !== "object") {
       fail(
         workflow.type,
-        `${where} hooks.${signal} must be an object with pre/post phase entries (got: ${JSON.stringify(phases)}).`
+        `${where} hooks.${signal} must be an object with pre/post phase entries (got: ${JSON.stringify(phases)}).`,
       );
     }
     for (const phase of Object.keys(phases)) {
       if (!HOOK_PHASES.includes(phase)) {
         fail(
           workflow.type,
-          `${where} hooks.${signal} phase "${phase}" is invalid (expected "pre" or "post").`
+          `${where} hooks.${signal} phase "${phase}" is invalid (expected "pre" or "post").`,
         );
       }
       const value = phases[phase];
-      if (typeof value === 'string') {
+      if (typeof value === "string") {
         fail(
           workflow.type,
-          `${where} hooks.${signal}.${phase} is a string ("${value}") — the legacy shape pointing at an external Api id. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Action hooks contract".`
+          `${where} hooks.${signal}.${phase} is a string ("${value}") — the legacy shape pointing at an external Api id. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Action hooks contract".`,
         );
       }
       if (
         value === null ||
-        typeof value !== 'object' ||
+        typeof value !== "object" ||
         !Array.isArray(value.routine)
       ) {
         fail(
           workflow.type,
-          `${where} hooks.${signal}.${phase} must be an object with a routine: array (got: ${JSON.stringify(value)}).`
+          `${where} hooks.${signal}.${phase} must be an object with a routine: array (got: ${JSON.stringify(value)}).`,
         );
       }
     }
@@ -164,19 +171,23 @@ function validateHooks(workflow, action) {
 // hard-errors at build. `entryWhere` names the offending event entry.
 function rejectAuthoredDescription(workflow, entryEntry, entryWhere) {
   const display = entryEntry?.display;
-  if (display === null || typeof display !== 'object' || Array.isArray(display)) {
+  if (
+    display === null ||
+    typeof display !== "object" ||
+    Array.isArray(display)
+  ) {
     return;
   }
   for (const [app, bucket] of Object.entries(display)) {
     if (
       bucket !== null &&
-      typeof bucket === 'object' &&
+      typeof bucket === "object" &&
       !Array.isArray(bucket) &&
-      'description' in bucket
+      "description" in bucket
     ) {
       fail(
         workflow.type,
-        `${entryWhere} display "${app}" has a "description" — event descriptions are owned by the action comment and cannot be authored; set only "title" here.`
+        `${entryWhere} display "${app}" has a "description" — event descriptions are owned by the action comment and cannot be authored; set only "title" here.`,
       );
     }
   }
@@ -185,43 +196,50 @@ function rejectAuthoredDescription(workflow, entryEntry, entryWhere) {
 function validateEvent(workflow, action) {
   if (!action.event) return;
   const where = `action "${action.type}"`;
-  const isTracker = action.kind === 'tracker';
+  const isTracker = action.kind === "tracker";
   for (const signal of Object.keys(action.event)) {
-    if (HOOK_SIGNALS.includes(signal) || (isTracker && MIRROR_SIGNALS.includes(signal))) {
-      rejectAuthoredDescription(workflow, action.event[signal], `${where} event "${signal}"`);
+    if (
+      HOOK_SIGNALS.includes(signal) ||
+      (isTracker && MIRROR_SIGNALS.includes(signal))
+    ) {
+      rejectAuthoredDescription(
+        workflow,
+        action.event[signal],
+        `${where} event "${signal}"`,
+      );
       continue;
     }
     if (!isTracker && MIRROR_SIGNALS.includes(signal)) {
       fail(
         workflow.type,
-        `${where} event key "${signal}" is a mirror signal and is only valid on kind: tracker actions (allowed for tracker: ${[...HOOK_SIGNALS, ...MIRROR_SIGNALS].join(', ')}; allowed for non-tracker: ${HOOK_SIGNALS.join(', ')}).`
+        `${where} event key "${signal}" is a mirror signal and is only valid on kind: tracker actions (allowed for tracker: ${[...HOOK_SIGNALS, ...MIRROR_SIGNALS].join(", ")}; allowed for non-tracker: ${HOOK_SIGNALS.join(", ")}).`,
       );
     }
     fail(
       workflow.type,
-      `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(', ')}${isTracker ? `, ${MIRROR_SIGNALS.join(', ')}` : ''}).`
+      `${where} event key "${signal}" is not a known signal (expected one of: ${HOOK_SIGNALS.join(", ")}${isTracker ? `, ${MIRROR_SIGNALS.join(", ")}` : ""}).`,
     );
   }
 }
 
 function validateGroupOnComplete(workflow, group) {
-  if (!('on_complete' in group)) return;
+  if (!("on_complete" in group)) return;
   const where = `action_groups "${group.id}"`;
   const value = group.on_complete;
-  if (typeof value === 'string') {
+  if (typeof value === "string") {
     fail(
       workflow.type,
-      `${where} on_complete is a string ("${value}") — the legacy shape pointing at a YAML path. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Workflow YAML".`
+      `${where} on_complete is a string ("${value}") — the legacy shape pointing at a YAML path. Convert to an inline routine object: { routine: [ ... ] }. See action-authoring/spec.md "Workflow YAML".`,
     );
   }
   if (
     value === null ||
-    typeof value !== 'object' ||
+    typeof value !== "object" ||
     !Array.isArray(value.routine)
   ) {
     fail(
       workflow.type,
-      `${where} on_complete must be an object with a routine: array (got: ${JSON.stringify(value)}).`
+      `${where} on_complete must be an object with a routine: array (got: ${JSON.stringify(value)}).`,
     );
   }
 }
@@ -236,36 +254,36 @@ function validateActionAccess(workflow, action) {
   const where = `action "${action.type}"`;
   const access = action.access;
 
-  if (access === null || typeof access !== 'object' || Array.isArray(access)) {
+  if (access === null || typeof access !== "object" || Array.isArray(access)) {
     fail(
       workflow.type,
-      `${where} access must be a map of {app_name}: { verb: gate } (got: ${JSON.stringify(access)}).`
+      `${where} access must be a map of {app_name}: { verb: gate } (got: ${JSON.stringify(access)}).`,
     );
   }
 
   for (const [appName, block] of Object.entries(access)) {
-    if (appName === 'roles') {
+    if (appName === "roles") {
       fail(
         workflow.type,
-        `${where} access.roles (the action-wide role gate) is removed (Part 34 D4). Every gate is per-app per-verb — move it under access.{app}.{verb}.`
+        `${where} access.roles (the action-wide role gate) is removed (Part 34 D4). Every gate is per-app per-verb — move it under access.{app}.{verb}.`,
       );
     }
-    if (appName === 'notification_roles') {
+    if (appName === "notification_roles") {
       fail(
         workflow.type,
-        `${where} notification_roles lives at the action root, not under access (Part 34 D9).`
+        `${where} notification_roles lives at the action root, not under access (Part 34 D9).`,
       );
     }
     if (Array.isArray(block)) {
       fail(
         workflow.type,
-        `${where} access.${appName} is the removed shorthand list form (Part 34 D1). Use the verb→gate map: access.${appName}.{verb}: true | [roles].`
+        `${where} access.${appName} is the removed shorthand list form (Part 34 D1). Use the verb→gate map: access.${appName}.{verb}: true | [roles].`,
       );
     }
-    if (block === null || typeof block !== 'object') {
+    if (block === null || typeof block !== "object") {
       fail(
         workflow.type,
-        `${where} access.${appName} must be a verb→gate map object (got: ${JSON.stringify(block)}).`
+        `${where} access.${appName} must be a verb→gate map object (got: ${JSON.stringify(block)}).`,
       );
     }
 
@@ -273,31 +291,31 @@ function validateActionAccess(workflow, action) {
       if (!ACCESS_VERBS.includes(verb)) {
         fail(
           workflow.type,
-          `${where} access.${appName} has unknown verb key "${verb}" (expected one of: ${ACCESS_VERBS.join(', ')}).`
+          `${where} access.${appName} has unknown verb key "${verb}" (expected one of: ${ACCESS_VERBS.join(", ")}).`,
         );
       }
       if (Array.isArray(gate) && gate.length === 0) {
         fail(
           workflow.type,
-          `${where} access.${appName}.${verb} is the empty list [] — invalid. Omit the verb key to deny access instead (Part 34).`
+          `${where} access.${appName}.${verb} is the empty list [] — invalid. Omit the verb key to deny access instead (Part 34).`,
         );
       }
       const gateOk =
         gate === true ||
-        (Array.isArray(gate) && gate.every((r) => typeof r === 'string'));
+        (Array.isArray(gate) && gate.every((r) => typeof r === "string"));
       if (!gateOk) {
         fail(
           workflow.type,
-          `${where} access.${appName}.${verb} gate must be true or a non-empty array of role strings (got: ${JSON.stringify(gate)}).`
+          `${where} access.${appName}.${verb} gate must be true or a non-empty array of role strings (got: ${JSON.stringify(gate)}).`,
         );
       }
     }
 
     const declaresPrivileged =
-      'edit' in block || 'review' in block || 'error' in block;
-    if (!('view' in block) && declaresPrivileged) {
+      "edit" in block || "review" in block || "error" in block;
+    if (!("view" in block) && declaresPrivileged) {
       console.warn(
-        `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${appName} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`
+        `makeWorkflowsConfig: workflow "${workflow.type}": ${where} access.${appName} declares edit/review/error without view — users granted those verbs may be unable to read the action. Add "view" if that's unintended (Part 34 D4).`,
       );
     }
   }
@@ -310,24 +328,24 @@ function validateActionAccess(workflow, action) {
 // require the full workflow set). The legacy key tracker.workflow_type
 // hard-errors with a rename hint.
 function validateTrackerChildWorkflowType(workflow, action) {
-  if (action.kind !== 'tracker') return;
+  if (action.kind !== "tracker") return;
   const where = `action "${action.type}"`;
   const tracker = action.tracker;
 
-  if ('workflow_type' in tracker) {
+  if ("workflow_type" in tracker) {
     fail(
       workflow.type,
-      `${where} tracker.workflow_type is renamed — use tracker.child_workflow_type (Part 48 D6).`
+      `${where} tracker.workflow_type is renamed — use tracker.child_workflow_type (Part 48 D6).`,
     );
   }
 
   if (
-    typeof tracker.child_workflow_type !== 'string' ||
-    tracker.child_workflow_type === ''
+    typeof tracker.child_workflow_type !== "string" ||
+    tracker.child_workflow_type === ""
   ) {
     fail(
       workflow.type,
-      `${where} tracker.child_workflow_type must be a non-empty string (got: ${JSON.stringify(tracker.child_workflow_type)}).`
+      `${where} tracker.child_workflow_type must be a non-empty string (got: ${JSON.stringify(tracker.child_workflow_type)}).`,
     );
   }
 }
@@ -339,8 +357,8 @@ function validateTrackerChildWorkflowType(workflow, action) {
 // other key at the top level (e.g. title:) hard-errors because the engine-link
 // shape only supports pageId / urlQuery — title is familiar from custom-kind
 // cell links but is not valid here.
-const TRACKER_START_LINK_ALLOWED_KEYS = new Set(['pageId', 'urlQuery']);
-const TRACKER_URL_QUERY_SENTINEL_KEYS = new Set(['action_id', 'entity_id']);
+const TRACKER_START_LINK_ALLOWED_KEYS = new Set(["pageId", "urlQuery"]);
+const TRACKER_URL_QUERY_SENTINEL_KEYS = new Set(["action_id", "entity_id"]);
 
 function validateTrackerStartLink(workflow, action) {
   if (!action.tracker?.start_link) return;
@@ -349,12 +367,12 @@ function validateTrackerStartLink(workflow, action) {
 
   if (
     startLink === null ||
-    typeof startLink !== 'object' ||
+    typeof startLink !== "object" ||
     Array.isArray(startLink)
   ) {
     fail(
       workflow.type,
-      `${where} tracker.start_link must be a plain object (got: ${JSON.stringify(startLink)}).`
+      `${where} tracker.start_link must be a plain object (got: ${JSON.stringify(startLink)}).`,
     );
   }
 
@@ -362,25 +380,29 @@ function validateTrackerStartLink(workflow, action) {
     if (!TRACKER_START_LINK_ALLOWED_KEYS.has(key)) {
       fail(
         workflow.type,
-        `${where} tracker.start_link has unknown key "${key}" — only pageId and urlQuery are allowed (note: "title" is not part of the engine-link shape).`
+        `${where} tracker.start_link has unknown key "${key}" — only pageId and urlQuery are allowed (note: "title" is not part of the engine-link shape).`,
       );
     }
   }
 
   const { pageId, urlQuery } = startLink;
 
-  if (typeof pageId !== 'string' || pageId === '') {
+  if (typeof pageId !== "string" || pageId === "") {
     fail(
       workflow.type,
-      `${where} tracker.start_link.pageId must be a non-empty string (got: ${JSON.stringify(pageId)}).`
+      `${where} tracker.start_link.pageId must be a non-empty string (got: ${JSON.stringify(pageId)}).`,
     );
   }
 
   if (urlQuery !== undefined) {
-    if (urlQuery === null || typeof urlQuery !== 'object' || Array.isArray(urlQuery)) {
+    if (
+      urlQuery === null ||
+      typeof urlQuery !== "object" ||
+      Array.isArray(urlQuery)
+    ) {
       fail(
         workflow.type,
-        `${where} tracker.start_link.urlQuery must be a plain object (got: ${JSON.stringify(urlQuery)}).`
+        `${where} tracker.start_link.urlQuery must be a plain object (got: ${JSON.stringify(urlQuery)}).`,
       );
     }
 
@@ -389,14 +411,14 @@ function validateTrackerStartLink(workflow, action) {
         if (value !== true) {
           fail(
             workflow.type,
-            `${where} tracker.start_link.urlQuery.${key} is a reserved sentinel key — its value must be exactly true (got: ${JSON.stringify(value)}).`
+            `${where} tracker.start_link.urlQuery.${key} is a reserved sentinel key — its value must be exactly true (got: ${JSON.stringify(value)}).`,
           );
         }
       } else {
-        if (typeof value !== 'string') {
+        if (typeof value !== "string") {
           fail(
             workflow.type,
-            `${where} tracker.start_link.urlQuery.${key} must be a string (static param passed through verbatim) (got: ${JSON.stringify(value)}).`
+            `${where} tracker.start_link.urlQuery.${key} must be a string (static param passed through verbatim) (got: ${JSON.stringify(value)}).`,
           );
         }
       }
@@ -411,48 +433,48 @@ function validateTrackerStartLink(workflow, action) {
 function validateStatusMapCells(workflow, action) {
   if (!action.status_map) return;
   const where = `action "${action.type}"`;
-  const isCustom = action.kind === 'custom';
+  const isCustom = action.kind === "custom";
 
   for (const [stage, cell] of Object.entries(action.status_map)) {
     if (!ACTION_STATUSES.includes(stage)) {
       fail(
         workflow.type,
-        `${where} status_map key "${stage}" is not a member of action_statuses.`
+        `${where} status_map key "${stage}" is not a member of action_statuses.`,
       );
     }
-    if (cell === null || typeof cell !== 'object' || Array.isArray(cell)) {
+    if (cell === null || typeof cell !== "object" || Array.isArray(cell)) {
       fail(
         workflow.type,
-        `${where} status_map.${stage} must be an object of {slug}: { message? } cells (got: ${JSON.stringify(cell)}).`
+        `${where} status_map.${stage} must be an object of {slug}: { message? } cells (got: ${JSON.stringify(cell)}).`,
       );
     }
 
     for (const [key, value] of Object.entries(cell)) {
-      if (key === 'status_title') {
-        if (!(value === null || typeof value === 'string')) {
+      if (key === "status_title") {
+        if (!(value === null || typeof value === "string")) {
           fail(
             workflow.type,
-            `${where} status_map.${stage}.status_title must be a string or null (got: ${JSON.stringify(value)}).`
+            `${where} status_map.${stage}.status_title must be a string or null (got: ${JSON.stringify(value)}).`,
           );
         }
         continue;
       }
-      if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+      if (value === null || typeof value !== "object" || Array.isArray(value)) {
         fail(
           workflow.type,
-          `${where} status_map.${stage}.${key} must be a cell object (got: ${JSON.stringify(value)}).`
+          `${where} status_map.${stage}.${key} must be a cell object (got: ${JSON.stringify(value)}).`,
         );
       }
-      if ('link' in value && !isCustom) {
+      if ("link" in value && !isCustom) {
         fail(
           workflow.type,
-          `${where} status_map.${stage}.${key}: link is engine-managed for kind: ${action.kind}; remove it from status_map.${stage}.${key}. To restrict navigation per slug, edit access.${key} verbs instead.`
+          `${where} status_map.${stage}.${key}: link is engine-managed for kind: ${action.kind}; remove it from status_map.${stage}.${key}. To restrict navigation per slug, edit access.${key} verbs instead.`,
         );
       }
-      if ('message' in value && typeof value.message !== 'string') {
+      if ("message" in value && typeof value.message !== "string") {
         fail(
           workflow.type,
-          `${where} status_map.${stage}.${key}.message must be a string (got: ${JSON.stringify(value.message)}).`
+          `${where} status_map.${stage}.${key}.message must be a string (got: ${JSON.stringify(value.message)}).`,
         );
       }
     }
@@ -464,10 +486,10 @@ function validateStatusMapCells(workflow, action) {
 // assignees / due_date / description with no duplicates. Anything else hard-
 // errors (a bare `true`, a string, unknown field names, a non-array non-false).
 function validateUniversalFields(workflow, action) {
-  if (!('universal_fields' in action)) return;
+  if (!("universal_fields" in action)) return;
   const where = `action "${action.type}"`;
   const value = action.universal_fields;
-  const legal = `omit the key (all three), false / [] (none), or an array drawn from ${UNIVERSAL_FIELDS.join(', ')}`;
+  const legal = `omit the key (all three), false / [] (none), or an array drawn from ${UNIVERSAL_FIELDS.join(", ")}`;
 
   if (value === false) return;
 
@@ -502,37 +524,40 @@ function validateAction(workflow, action) {
   if (!ACTION_KINDS.includes(action.kind)) {
     fail(
       workflow.type,
-      `${where} has unknown kind "${action.kind}" (expected form, check, or tracker).`
+      `${where} has unknown kind "${action.kind}" (expected form, check, or tracker).`,
     );
   }
 
-  if (action.kind === 'form' && !action.form) {
+  if (action.kind === "form" && !action.form) {
     fail(workflow.type, `${where} has kind "form" but no form: block.`);
   }
-  if (action.kind === 'tracker' && !action.tracker) {
+  if (action.kind === "tracker" && !action.tracker) {
     fail(workflow.type, `${where} has kind "tracker" but no tracker: block.`);
   }
-  if (action.kind === 'check' && (action.form || action.tracker)) {
+  if (action.kind === "check" && (action.form || action.tracker)) {
     fail(
       workflow.type,
-      `${where} has kind "check" but defines form: or tracker:.`
+      `${where} has kind "check" but defines form: or tracker:.`,
     );
   }
   if (action.form && action.tracker) {
     fail(workflow.type, `${where} cannot define both form: and tracker:.`);
   }
 
-  if ('allow_not_required' in action && typeof action.allow_not_required !== 'boolean') {
+  if (
+    "allow_not_required" in action &&
+    typeof action.allow_not_required !== "boolean"
+  ) {
     fail(
       workflow.type,
-      `${where} allow_not_required must be a boolean (got: ${JSON.stringify(action.allow_not_required)}).`
+      `${where} allow_not_required must be a boolean (got: ${JSON.stringify(action.allow_not_required)}).`,
     );
   }
 
-  if ('title' in action && typeof action.title !== 'string') {
+  if ("title" in action && typeof action.title !== "string") {
     fail(
       workflow.type,
-      `${where} title must be a string when present (got: ${JSON.stringify(action.title)}).`
+      `${where} title must be a string when present (got: ${JSON.stringify(action.title)}).`,
     );
   }
 
@@ -551,47 +576,51 @@ function validateAction(workflow, action) {
 function validateWorkflowEvent(workflow) {
   if (!workflow.event) return;
   const event = workflow.event;
-  if (event === null || typeof event !== 'object' || Array.isArray(event)) {
+  if (event === null || typeof event !== "object" || Array.isArray(event)) {
     fail(
       workflow.type,
-      `workflow event must be a plain object keyed by lifecycle signals (expected keys: ${LIFECYCLE_SIGNALS.join(', ')}).`
+      `workflow event must be a plain object keyed by lifecycle signals (expected keys: ${LIFECYCLE_SIGNALS.join(", ")}).`,
     );
   }
   for (const signal of Object.keys(event)) {
     if (!LIFECYCLE_SIGNALS.includes(signal)) {
       fail(
         workflow.type,
-        `workflow event key "${signal}" is not a known lifecycle signal (expected one of: ${LIFECYCLE_SIGNALS.join(', ')}).`
+        `workflow event key "${signal}" is not a known lifecycle signal (expected one of: ${LIFECYCLE_SIGNALS.join(", ")}).`,
       );
     }
     // Lifecycle events carry no comment, so a static description is dead config
     // (Part 33 D4) — reject it the same way as per-action events.
-    rejectAuthoredDescription(workflow, event[signal], `workflow event "${signal}"`);
+    rejectAuthoredDescription(
+      workflow,
+      event[signal],
+      `workflow event "${signal}"`,
+    );
   }
 }
 
 function validateWorkflow(workflow) {
-  if ('entity_type' in workflow) {
+  if ("entity_type" in workflow) {
     fail(
       workflow.type,
-      'legacy "entity_type" field is no longer supported; rename to "entity_collection" (a MongoDB collection connection id like "leads-collection").'
+      'legacy "entity_type" field is no longer supported; rename to "entity_collection" (a MongoDB collection connection id like "leads-collection").',
     );
   }
 
   if (
-    typeof workflow.entity_ref_key !== 'string' ||
-    workflow.entity_ref_key === ''
+    typeof workflow.entity_ref_key !== "string" ||
+    workflow.entity_ref_key === ""
   ) {
     fail(
       workflow.type,
-      'missing required "entity_ref_key" — the event-references key for the workflow\'s entity (e.g. "lead_ids"), written into event docs so events surface on the entity.'
+      'missing required "entity_ref_key" — the event-references key for the workflow\'s entity (e.g. "lead_ids"), written into event docs so events surface on the entity.',
     );
   }
 
-  if ('title' in workflow && typeof workflow.title !== 'string') {
+  if ("title" in workflow && typeof workflow.title !== "string") {
     fail(
       workflow.type,
-      `workflow title must be a string when present (got: ${JSON.stringify(workflow.title)}).`
+      `workflow title must be a string when present (got: ${JSON.stringify(workflow.title)}).`,
     );
   }
 
@@ -614,14 +643,14 @@ function validateWorkflow(workflow) {
     if (actionTypes.has(group.id)) {
       fail(
         workflow.type,
-        `action_groups id "${group.id}" collides with an action type.`
+        `action_groups id "${group.id}" collides with an action type.`,
       );
     }
     groupIds.add(group.id);
-    if ('title' in group && typeof group.title !== 'string') {
+    if ("title" in group && typeof group.title !== "string") {
       fail(
         workflow.type,
-        `action_groups "${group.id}" title must be a string when present (got: ${JSON.stringify(group.title)}).`
+        `action_groups "${group.id}" title must be a string when present (got: ${JSON.stringify(group.title)}).`,
       );
     }
     validateGroupOnComplete(workflow, group);
@@ -632,7 +661,7 @@ function validateWorkflow(workflow) {
     if (action.action_group && !groupIds.has(action.action_group)) {
       fail(
         workflow.type,
-        `action "${action.type}" references unknown action_group "${action.action_group}".`
+        `action "${action.type}" references unknown action_group "${action.action_group}".`,
       );
     }
     const blockedBy = action.blocked_by ?? [];
@@ -640,7 +669,7 @@ function validateWorkflow(workflow) {
       if (!groupIds.has(entry) && !actionTypes.has(entry)) {
         fail(
           workflow.type,
-          `action "${action.type}" blocked_by entry "${entry}" resolves to neither a declared action_groups[].id nor a declared actions[].type.`
+          `action "${action.type}" blocked_by entry "${entry}" resolves to neither a declared action_groups[].id nor a declared actions[].type.`,
         );
       }
     }
@@ -650,19 +679,19 @@ function validateWorkflow(workflow) {
     if (!actionTypes.has(entry.type)) {
       fail(
         workflow.type,
-        `starting_actions entry references unknown action type "${entry.type}".`
+        `starting_actions entry references unknown action type "${entry.type}".`,
       );
     }
     if (!ACTION_STATUSES.includes(entry.status)) {
       fail(
         workflow.type,
-        `starting_actions entry for "${entry.type}" has invalid status "${entry.status}".`
+        `starting_actions entry for "${entry.type}" has invalid status "${entry.status}".`,
       );
     }
     if (!LEGAL_SEED_STATUSES.includes(entry.status)) {
       fail(
         workflow.type,
-        `starting_actions entry for "${entry.type}" seeds status "${entry.status}" — only ${LEGAL_SEED_STATUSES.join(' | ')} are legal seeds (creation at workflow start is not an FSM transition). Re-author to a legal seed.`
+        `starting_actions entry for "${entry.type}" seeds status "${entry.status}" — only ${LEGAL_SEED_STATUSES.join(" | ")} are legal seeds (creation at workflow start is not an FSM transition). Re-author to a legal seed.`,
       );
     }
   }
@@ -680,7 +709,7 @@ function validateTrackerEdges(workflows) {
   for (const { parentType, childType } of edges) {
     if (!declaredTypes.has(childType)) {
       throw new Error(
-        `makeWorkflowsConfig: workflow "${parentType}": tracker action declares child_workflow_type "${childType}" which is not a declared workflow type.`
+        `makeWorkflowsConfig: workflow "${parentType}": tracker action declares child_workflow_type "${childType}" which is not a declared workflow type.`,
       );
     }
   }
@@ -694,7 +723,9 @@ function validateTrackerEdges(workflows) {
   }
 
   // DFS with three-colour marking: white (unvisited), grey (in-stack), black (done).
-  const WHITE = 0, GREY = 1, BLACK = 2;
+  const WHITE = 0,
+    GREY = 1,
+    BLACK = 2;
   const colour = new Map();
 
   function dfs(node, stack) {
@@ -703,10 +734,8 @@ function validateTrackerEdges(workflows) {
       if (colour.get(child) === GREY) {
         // Cycle detected — reconstruct the cycle path from the stack.
         const cycleStart = stack.indexOf(child);
-        const cyclePath = [...stack.slice(cycleStart), child].join(' → ');
-        throw new Error(
-          `makeWorkflowsConfig: tracker cycle: ${cyclePath}`
-        );
+        const cyclePath = [...stack.slice(cycleStart), child].join(" → ");
+        throw new Error(`makeWorkflowsConfig: tracker cycle: ${cyclePath}`);
       }
       if ((colour.get(child) ?? WHITE) === WHITE) {
         dfs(child, [...stack, child]);
@@ -743,7 +772,7 @@ function makeWorkflowsConfig(_, vars) {
       // Attach form_meta for form-kind actions. Ported from makeActionFormConfigs
       // so the per-action metadata rides the validated config directly (no
       // cross-workflow action.type collision).
-      if (action.kind === 'form') {
+      if (action.kind === "form") {
         picked.form_meta = {
           form: describeForm(action.form),
           ...(action.form_review

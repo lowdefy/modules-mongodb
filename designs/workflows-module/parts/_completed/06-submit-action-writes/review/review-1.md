@@ -119,10 +119,10 @@ i.e. validation that catches an issue **after** the action lookup writes an `err
 
 This splits cleanly:
 
-| When validation fires            | Action doc exists? | Path                                                  |
-| -------------------------------- | ------------------ | ----------------------------------------------------- |
+| When validation fires             | Action doc exists? | Path                                                  |
+| --------------------------------- | ------------------ | ----------------------------------------------------- |
 | Payload schema / role / no action | No                 | throw — caller sees structured error (CallApi result) |
-| After action lookup, mid-write   | Yes                | engine-driven `error` transition (force-pushed)       |
+| After action lookup, mid-write    | Yes                | engine-driven `error` transition (force-pushed)       |
 
 **Fix.** Replace the open question with a committed Validation sub-section in [design.md:15](../design.md) (the `1. Validate` bullet) noting both paths and pointing the second at [engine/spec.md § Action `error` transition](../../../workflows-module-concept/engine/spec.md#action-error-transition). The throw-only path matches every other handler in the repo (`StartWorkflow.js:19,22,25` already throws on missing payload fields).
 

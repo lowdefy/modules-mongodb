@@ -34,17 +34,17 @@ Server-side only (no jsdom needed in v1 — every test file in this module is pl
 ```js
 /** @type {import('jest').Config} */
 const config = {
-  testEnvironment: 'node',
-  testMatch: ['**/*.test.js'],
+  testEnvironment: "node",
+  testMatch: ["**/*.test.js"],
   transform: {
-    '^.+\\.js$': ['@swc/jest', { jsc: { target: 'es2022' } }],
+    "^.+\\.js$": ["@swc/jest", { jsc: { target: "es2022" } }],
   },
   // Skip Lowdefy's own `apps/demo/.lowdefy/` build cache and any dist directories.
   testPathIgnorePatterns: [
-    '/node_modules/',
-    '/dist/',
-    '/apps/demo/\\.lowdefy/',
-    '/apps/demo/e2e/', // Playwright lives here; let Playwright run it.
+    "/node_modules/",
+    "/dist/",
+    "/apps/demo/\\.lowdefy/",
+    "/apps/demo/e2e/", // Playwright lives here; let Playwright run it.
   ],
   // mongodb-memory-server boots can be slow on first download; allow 60s per file.
   testTimeout: 60000,
@@ -60,8 +60,8 @@ Location: `plugins/modules-mongodb-plugins/src/connections/shared/inMemoryMongo.
 Contract:
 
 ```js
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MongoClient } from 'mongodb';
+import { MongoMemoryServer } from "mongodb-memory-server";
+import { MongoClient } from "mongodb";
 
 /**
  * Boots a `MongoMemoryServer`, returns `{ uri, mongoClient, db, cleanup }`.
@@ -102,20 +102,20 @@ Existing file uses `test` from `node:test` and `assert` from `node:assert/strict
 Example shape (existing file's first test, post-rewrite):
 
 ```js
-import makeWorkflowsConfig from './makeWorkflowsConfig.js';
+import makeWorkflowsConfig from "./makeWorkflowsConfig.js";
 
 const validWorkflow = {
-  type: 'onboarding',
-  entity_collection: 'leads-collection',
+  type: "onboarding",
+  entity_collection: "leads-collection",
   display_order: 1,
-  starting_actions: [{ type: 'do-it', status: 'action-required' }],
-  actions: [{ type: 'do-it', kind: 'task' }],
+  starting_actions: [{ type: "do-it", status: "action-required" }],
+  actions: [{ type: "do-it", kind: "task" }],
 };
 
-test('makeWorkflowsConfig: entity_collection flows through and no entity_type appears on the normalized output', () => {
+test("makeWorkflowsConfig: entity_collection flows through and no entity_type appears on the normalized output", () => {
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
-  expect(out.entity_collection).toBe('leads-collection');
-  expect('entity_type' in out).toBe(false);
+  expect(out.entity_collection).toBe("leads-collection");
+  expect("entity_type" in out).toBe(false);
 });
 ```
 

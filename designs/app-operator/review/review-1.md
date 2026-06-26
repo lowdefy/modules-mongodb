@@ -26,7 +26,7 @@ display:
               _build.if_none:
                 - _module.var: event_display
                 - _build.object.fromEntries:
-                    - - _module.var: app_name      # <-- build-time key
+                    - - _module.var: app_name # <-- build-time key
                       - _ref: defaults/event_display.yaml
 ```
 
@@ -50,7 +50,7 @@ The design proposes defaulting `app_title` to `{ _app: name }` (§"Default `user
 
 **Proposed fix.** Pick one:
 
-1. **Keep a build-time slug var on modules that need it.** Modules with `_build.*` consumers (companies, contacts, user-account, user-admin, workflows) keep an `app_slug` (or `app_name`) manifest var as `required: true`. Consumers set it to a literal (typically the same as `lowdefy.yaml`'s `slug:`). Only the *runtime*-only modules (notifications) drop the var. This is half a migration and reintroduces the drift the design is trying to eliminate, but it's mechanically possible today.
+1. **Keep a build-time slug var on modules that need it.** Modules with `_build.*` consumers (companies, contacts, user-account, user-admin, workflows) keep an `app_slug` (or `app_name`) manifest var as `required: true`. Consumers set it to a literal (typically the same as `lowdefy.yaml`'s `slug:`). Only the _runtime_-only modules (notifications) drop the var. This is half a migration and reintroduces the drift the design is trying to eliminate, but it's mechanically possible today.
 
 2. **Refactor build-time sites to runtime.** Replace the `_build.object.fromEntries` event-display wrapping with `_object.fromEntries` evaluated at request time; replace `_build.string.concat` titles with `_nunjucks` templates that read `_app: name` at render time. The `makeActionPages` resolver is harder — page generation is fundamentally build-time, and dropping per-action pages can't be moved to runtime. The resolver would need a parallel Lowdefy primitive that exposes app metadata at build time (out of scope here, but a candidate for a follow-up `_build.app` operator or a new resolver-context arg).
 
@@ -64,7 +64,7 @@ Whichever path is chosen, the design needs to call out the build-time sites expl
 
 Today each consuming module declares `app_name: { required: true }` — six places, but the build fails fast if any are missing. After migration, the only build-time check on slug is the kebab-case pattern (`lowdefySchema.js:1547-1554`), which only runs if `slug` is **set**. `buildApp.js:49` does `slug: components.slug ?? null`. So an app that forgets to add `slug:` to `lowdefy.yaml` builds cleanly, every `_app: slug` returns `null`, and every module read silently filters by `created.app_name: null` — matching only legacy docs with a null stamp, which is undetectable from logs.
 
-The design's "Why now" argues this migration *removes* a drift class. It does — but it introduces a new and worse one (silent null instead of explicit unset).
+The design's "Why now" argues this migration _removes_ a drift class. It does — but it introduces a new and worse one (silent null instead of explicit unset).
 
 **Proposed fix.** Add a build-time check in this repo, since Lowdefy doesn't enforce `slug` presence. Options:
 
@@ -98,7 +98,7 @@ Not a correctness issue, but the task breakdown will derive from these numbers �
 
 > **Rejected.** The reviewer asks us to pin the invariant "Lowdefy passes operator-object manifest-var defaults through unevaluated" with a test in this repo, in case a future Lowdefy refactor changes that behaviour. That's defending against a speculative upstream change — not our contract to enforce. The current behaviour is already proven by `change_stamp`, which uses `_user: id` and `_date: now` inside its default. If Lowdefy ever changes default-resolution semantics, every module using `change_stamp` breaks, not just this design — that's a Lowdefy compatibility concern, not a per-design one. No design change.
 
-The design relies on `default: { _app: slug }` being passed through the build as an operator object and evaluated per request at the consumption site. This works today because `_module.var` substitution is a literal copy and the consumption sites (`_string.concat`, MongoDB filters, change-stamp templates) are runtime. But the invariant — *"a manifest var default that is a runtime operator object is evaluated at the consumption site, not at the default-resolution site"* — is load-bearing for this design and isn't tested in the Lowdefy build test suite directly (test `67-module-var-defaults` covers literal defaults, not operator-object defaults). The design references `change_stamp` as precedent (it uses `_user`/`_date` inside its default), which is good evidence — but worth calling out as a hard requirement and adding a test in this repo's build pipeline (or upstream) so a future Lowdefy refactor of default resolution doesn't silently break every consuming module.
+The design relies on `default: { _app: slug }` being passed through the build as an operator object and evaluated per request at the consumption site. This works today because `_module.var` substitution is a literal copy and the consumption sites (`_string.concat`, MongoDB filters, change-stamp templates) are runtime. But the invariant — _"a manifest var default that is a runtime operator object is evaluated at the consumption site, not at the default-resolution site"_ — is load-bearing for this design and isn't tested in the Lowdefy build test suite directly (test `67-module-var-defaults` covers literal defaults, not operator-object defaults). The design references `change_stamp` as precedent (it uses `_user`/`_date` inside its default), which is good evidence — but worth calling out as a hard requirement and adding a test in this repo's build pipeline (or upstream) so a future Lowdefy refactor of default resolution doesn't silently break every consuming module.
 
 ### 5. `display_key` consumption site is fine but worth checking once
 

@@ -6,15 +6,15 @@ Ship the five module-shipped Lowdefy APIs that consuming apps call to manage wor
 
 ## Tasks
 
-| #   | File                                  | Summary                                                                                                                  | Depends On |
-| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-cancel-workflow-api.md`           | Create `modules/workflows/api/` directory and ship `cancel-workflow.yaml` — the smallest handler-wrapper routine.        | —          |
-| 2   | `02-start-workflow-api.md`            | Ship `start-workflow.yaml` — handler-wrapper with optional `parent_action_id`, `actions`, `references` payload fields.    | 1          |
-| 3   | `03-close-workflow-api.md`            | Ship `close-workflow.yaml` — handler-wrapper for the part-23 `CloseWorkflow` request type.                               | 1          |
-| 4   | `04-access-filter-stage.md`           | Extract `api/stages/access_filter.yaml` — reusable MongoDB `$match` stage implementing verb-union + role-gate filtering. | —          |
-| 5   | `05-get-entity-workflows-api.md`      | Ship `get-entity-workflows.yaml` — aggregation: find workflows for entity, lookup + filter actions, sort + group.        | 4          |
-| 6   | `06-get-workflow-overview-api.md`     | Ship `get-workflow-overview.yaml` — aggregation: find one workflow, lookup + order + filter actions, null short-circuit. | 4          |
-| 7   | `07-register-apis-in-manifest.md`     | Wire all five APIs into `modules/workflows/module.lowdefy.yaml` (`api:` array + `exports.api`).                          | 1, 2, 3, 5, 6 |
+| #   | File                              | Summary                                                                                                                  | Depends On    |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------- |
+| 1   | `01-cancel-workflow-api.md`       | Create `modules/workflows/api/` directory and ship `cancel-workflow.yaml` — the smallest handler-wrapper routine.        | —             |
+| 2   | `02-start-workflow-api.md`        | Ship `start-workflow.yaml` — handler-wrapper with optional `parent_action_id`, `actions`, `references` payload fields.   | 1             |
+| 3   | `03-close-workflow-api.md`        | Ship `close-workflow.yaml` — handler-wrapper for the part-23 `CloseWorkflow` request type.                               | 1             |
+| 4   | `04-access-filter-stage.md`       | Extract `api/stages/access_filter.yaml` — reusable MongoDB `$match` stage implementing verb-union + role-gate filtering. | —             |
+| 5   | `05-get-entity-workflows-api.md`  | Ship `get-entity-workflows.yaml` — aggregation: find workflows for entity, lookup + filter actions, sort + group.        | 4             |
+| 6   | `06-get-workflow-overview-api.md` | Ship `get-workflow-overview.yaml` — aggregation: find one workflow, lookup + order + filter actions, null short-circuit. | 4             |
+| 7   | `07-register-apis-in-manifest.md` | Wire all five APIs into `modules/workflows/module.lowdefy.yaml` (`api:` array + `exports.api`).                          | 1, 2, 3, 5, 6 |
 
 ## Ordering Rationale
 

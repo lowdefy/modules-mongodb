@@ -16,7 +16,7 @@ Three coherent approaches; each is a self-consistent design point with its own c
 
 **Why chosen.** Right call at project scale. Pinned-version models pay overhead (definition stores, version-aware lookups, migration APIs) that only earns its keep with many concurrent in-flight instances of long-running workflows. The current project has neither.
 
-**What makes it robust.** The mechanism is light; the *discipline* is what does the work:
+**What makes it robust.** The mechanism is light; the _discipline_ is what does the work:
 
 - **`definition_hash` stamped on each workflow instance at `start-workflow`.** Content hash of the resolved workflow definition. Cheap, write-once, never read by the engine at runtime. Buys drift detection: an admin view lists instances whose hash doesn't match the current definition — your "are migrations needed?" report.
 - **`declared_action_types: [...]` stamped on the workflow doc at start.** The minimum schema-level pinning. Lets migrations precisely identify what's missing vs current definition without re-parsing the YAML.
@@ -27,21 +27,21 @@ Three coherent approaches; each is a self-consistent design point with its own c
 
 **Change-type taxonomy** (for the PR checklist):
 
-| Change kind                                                  | Migration?                          | Why                                                                                                                                                |
-| ------------------------------------------------------------ | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `status_map` message text / colors / titles                  | No                                  | Display-only; reads from latest at render time.                                                                                                    |
-| Adding a new optional `view` verb for an existing app        | No                                  | UI affordance; doesn't affect engine state.                                                                                                        |
-| Adding a hook (`pre`, `post`) to an existing interaction     | No                                  | Affects future submits only; no past state to migrate.                                                                                             |
-| Adding a new action whose `blocked_by` keeps it blocked for old instances | Sometimes                | If new action applies to in-flight, migration spawns the action doc. If it only applies to new instances, document and skip.                       |
-| Adding a new required action gated on existing terminal actions | **Yes**                          | In-flight instances may already be `completed`. Migration decides policy: leave them completed, or re-open.                                        |
-| Removing an action                                           | **Yes**                             | Orphaned action docs on in-flight instances. Migration: mark `not_required` (preserves audit) or delete.                                           |
-| Renaming an action type / `action_group` id / `blocked_by` ref | **Yes**                          | Action docs reference the old name. Migration: rewrite the field on all matching docs.                                                             |
-| Changing `blocked_by` of an existing action                  | Sometimes                           | Loosening (removes blockers): in-flight `blocked` actions may need re-evaluation. Tightening: usually moot for past transitions.                   |
-| Changing `kind` (form ↔ task ↔ tracker)                      | **Yes — probably new workflow type** | Engine semantics differ per kind; in-flight instances can't reasonably run as another kind.                                                       |
-| Changing the form schema (adding fields, removing fields)    | Usually no                          | `form_data` is sparse; missing fields read undefined. Removed-field data lingers — cleanup optional.                                               |
-| Changing `access.roles` or per-app `access` lists            | No                                  | Affects future submits only.                                                                                                                       |
-| Changing default interaction → status mapping                | No                                  | Affects future submits; past audit history preserved.                                                                                              |
-| Changing the FSM transitions table (when FSM lands)          | No                                  | Affects future transitions only. In-flight actions in legal states stay in legal states.                                                           |
+| Change kind                                                               | Migration?                           | Why                                                                                                                              |
+| ------------------------------------------------------------------------- | ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| `status_map` message text / colors / titles                               | No                                   | Display-only; reads from latest at render time.                                                                                  |
+| Adding a new optional `view` verb for an existing app                     | No                                   | UI affordance; doesn't affect engine state.                                                                                      |
+| Adding a hook (`pre`, `post`) to an existing interaction                  | No                                   | Affects future submits only; no past state to migrate.                                                                           |
+| Adding a new action whose `blocked_by` keeps it blocked for old instances | Sometimes                            | If new action applies to in-flight, migration spawns the action doc. If it only applies to new instances, document and skip.     |
+| Adding a new required action gated on existing terminal actions           | **Yes**                              | In-flight instances may already be `completed`. Migration decides policy: leave them completed, or re-open.                      |
+| Removing an action                                                        | **Yes**                              | Orphaned action docs on in-flight instances. Migration: mark `not_required` (preserves audit) or delete.                         |
+| Renaming an action type / `action_group` id / `blocked_by` ref            | **Yes**                              | Action docs reference the old name. Migration: rewrite the field on all matching docs.                                           |
+| Changing `blocked_by` of an existing action                               | Sometimes                            | Loosening (removes blockers): in-flight `blocked` actions may need re-evaluation. Tightening: usually moot for past transitions. |
+| Changing `kind` (form ↔ task ↔ tracker)                                   | **Yes — probably new workflow type** | Engine semantics differ per kind; in-flight instances can't reasonably run as another kind.                                      |
+| Changing the form schema (adding fields, removing fields)                 | Usually no                           | `form_data` is sparse; missing fields read undefined. Removed-field data lingers — cleanup optional.                             |
+| Changing `access.roles` or per-app `access` lists                         | No                                   | Affects future submits only.                                                                                                     |
+| Changing default interaction → status mapping                             | No                                   | Affects future submits; past audit history preserved.                                                                            |
+| Changing the FSM transitions table (when FSM lands)                       | No                                   | Affects future transitions only. In-flight actions in legal states stay in legal states.                                         |
 
 **What this approach gives up.**
 
@@ -62,7 +62,7 @@ Three coherent approaches; each is a self-consistent design point with its own c
 - **Runtime resolution.** Every `SubmitWorkflowAction` and `get-entity-workflows` reads the definition by `(workflow_type, workflow_definition_version)` from the store. Cache in memory by version key.
 - **Migration API.** Admin operation: `migrate-workflow-instance(workflow_id, target_version, action_mapping)`. Validates mapping (old action_type → new action_type), rewrites the instance's action docs, increments version. Dry-run mode for safety.
 
-**Why it doesn't fit cleanly here.** The module's architecture is built on **build-time resolvers** that compile workflow YAML into generated pages and endpoints. Versioning assumes the engine *interprets* a definition at runtime. The two assumptions conflict:
+**Why it doesn't fit cleanly here.** The module's architecture is built on **build-time resolvers** that compile workflow YAML into generated pages and endpoints. Versioning assumes the engine _interprets_ a definition at runtime. The two assumptions conflict:
 
 - **`makeActionPages`** emits one page per `(workflow_type, action_type, verb)`. With N versions in flight, you either emit `(workflow_type, version, action_type, verb)` pages (proliferation) or move form schema, status_map, and button bar to runtime resolution (major shift).
 - **`makeWorkflowApis`** bakes `hooks`, `event_overrides`, and `interactions` into per-action endpoints as build-time literals. Old versions may reference hook semantics the current build doesn't ship. Same fork: per-version endpoints or runtime-resolved hook lookup.
@@ -83,20 +83,20 @@ Going to full Camunda-style pinning would require an architectural shift away fr
 
 ## The deeper axis: build-time vs data-driven
 
-The versioning question surfaces a more fundamental architectural axis. Camunda-style pinning fights the codebase because Camunda is *data-driven* and the module is *build-time-compiled*. Understanding this axis matters because it shapes what's possible long-term.
+The versioning question surfaces a more fundamental architectural axis. Camunda-style pinning fights the codebase because Camunda is _data-driven_ and the module is _build-time-compiled_. Understanding this axis matters because it shapes what's possible long-term.
 
 ### What "data-driven" means concretely
 
 Not just dynamic forms — the whole resolver pipeline collapses into runtime interpretation:
 
-| Build-time (today)                                                  | Data-driven equivalent                                                          |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `makeActionPages` emits one page per `(workflow, action, verb)`     | One generic `workflows/action-edit?action_id=X` that resolves schema at render  |
-| `makeWorkflowApis` emits one endpoint per action with hooks baked   | One generic `update-action` endpoint; engine resolves hooks at runtime          |
-| `makeActionsForm` substitutes components into block tree at build   | Runtime form renderer reading form schema from the pinned definition           |
-| Workflow YAML in repo → CI → deploy                                 | Workflow definitions in MongoDB; edited via admin UI or API                     |
-| Components library (`components/fields/`) substituted at build       | Component registry resolved at runtime                                          |
-| Hook references baked into endpoint as literals                     | Hook references resolved at submit time from pinned definition                 |
+| Build-time (today)                                                | Data-driven equivalent                                                         |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `makeActionPages` emits one page per `(workflow, action, verb)`   | One generic `workflows/action-edit?action_id=X` that resolves schema at render |
+| `makeWorkflowApis` emits one endpoint per action with hooks baked | One generic `update-action` endpoint; engine resolves hooks at runtime         |
+| `makeActionsForm` substitutes components into block tree at build | Runtime form renderer reading form schema from the pinned definition           |
+| Workflow YAML in repo → CI → deploy                               | Workflow definitions in MongoDB; edited via admin UI or API                    |
+| Components library (`components/fields/`) substituted at build    | Component registry resolved at runtime                                         |
+| Hook references baked into endpoint as literals                   | Hook references resolved at submit time from pinned definition                 |
 
 The keystone is a `DynamicForm` block plugin that takes a form schema as a runtime prop and renders the right inputs. Lowdefy can support this — `AgGridBalham` already does runtime-driven structure (columns are data); `List` and `ControlledList` do runtime-driven repetition. A custom block that interprets the form-components vocabulary at runtime is plausible, just real engineering.
 
@@ -117,14 +117,14 @@ The costs are usually understated. Honest accounting:
 
 2. **Loss of build-time guarantees.** Today, a typo in workflow YAML breaks the build. With data-driven, a typo persists silently until someone hits the broken path at runtime. Recouping this means a definition validator that runs on save — basically reimplementing `makeWorkflowsConfig`'s build-time validation as a runtime gate.
 
-3. **Governance layer.** This is the underappreciated cost. Today, workflow changes go through PR review, CI checks, Git history, audit log, dev/staging/prod environment isolation — *all provided for free by the YAML-in-repo model*. With data-driven, you need to recreate:
+3. **Governance layer.** This is the underappreciated cost. Today, workflow changes go through PR review, CI checks, Git history, audit log, dev/staging/prod environment isolation — _all provided for free by the YAML-in-repo model_. With data-driven, you need to recreate:
    - Audit log of definition changes (who edited what, when).
    - Review/approval workflow for definition changes (especially production).
    - Environment isolation (dev definitions don't leak to prod).
    - Rollback ("undo to last week's version").
    - Diff view ("what's about to change?").
 
-   Camunda solves this by *deployment* — the Modeler tool produces a BPMN file, you check it into a repo, CI deploys to the engine. So they get version pinning AND Git review. The cleanest hybrid is the same shape here: workflows authored in YAML in repo, deployed to a `workflow_definitions` collection via a deploy step, instances reference by version. Keep the authoring DX of build-time; get the runtime benefits of data-driven.
+   Camunda solves this by _deployment_ — the Modeler tool produces a BPMN file, you check it into a repo, CI deploys to the engine. So they get version pinning AND Git review. The cleanest hybrid is the same shape here: workflows authored in YAML in repo, deployed to a `workflow_definitions` collection via a deploy step, instances reference by version. Keep the authoring DX of build-time; get the runtime benefits of data-driven.
 
 4. **Hook execution model.** Today hooks are Lowdefy Apis (YAML, deployed). With data-driven definitions, two options:
    - Keep hooks as deployed Apis (definitions reference them by ID; commit to additive-only changes — Camunda's pattern: "delegates registered at runtime, referenced by name").
@@ -161,12 +161,12 @@ First triggers push toward per-instance snapshot (cheap, build-time stays intact
 
 ## Summary
 
-| Approach                | Versioning      | Architecture                | Authoring        | Effort to add  |
-| ----------------------- | --------------- | --------------------------- | ---------------- | -------------- |
-| Latest-wins + migrations | None            | Build-time (today)          | YAML in repo     | None (current) |
-| Per-instance snapshot   | Per-instance    | Build-time                  | YAML in repo     | Small          |
-| Snapshot + dynamic forms| Per-instance    | Hybrid                      | YAML in repo     | Medium         |
-| Full data-driven        | Per-definition  | Runtime (Camunda-style)     | Admin UI or YAML | Large          |
-| Camunda-style pinning (without dynamic) | Per-definition | Hybrid (fights build-time)  | YAML in repo     | Large + fights architecture |
+| Approach                                | Versioning     | Architecture               | Authoring        | Effort to add               |
+| --------------------------------------- | -------------- | -------------------------- | ---------------- | --------------------------- |
+| Latest-wins + migrations                | None           | Build-time (today)         | YAML in repo     | None (current)              |
+| Per-instance snapshot                   | Per-instance   | Build-time                 | YAML in repo     | Small                       |
+| Snapshot + dynamic forms                | Per-instance   | Hybrid                     | YAML in repo     | Medium                      |
+| Full data-driven                        | Per-definition | Runtime (Camunda-style)    | Admin UI or YAML | Large                       |
+| Camunda-style pinning (without dynamic) | Per-definition | Hybrid (fights build-time) | YAML in repo     | Large + fights architecture |
 
 The bottom row — Camunda-style pinning without going data-driven — is the trap. It promises versioning benefits but pays full architectural cost because it fights the build-time resolver pipeline. If pressure mounts, go to per-instance snapshot first; if more pressure, go fully data-driven. Don't half-step into Camunda's model.

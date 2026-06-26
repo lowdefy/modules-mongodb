@@ -25,9 +25,9 @@ Create `modules/workflows/components/action_role_check.yaml` as an action-sequen
     path: ../components/action_role_check.yaml
     vars:
       action_config:
-        _var: action_config        # Part 16 form templates
+        _var: action_config # Part 16 form templates
         # or
-        _request: get_action        # Part 17 task pages
+        _request: get_action # Part 17 task pages
 ```
 
 Either source provides an object with `access.roles` (and `access.{app_name}` — unused here). The component must work with both.

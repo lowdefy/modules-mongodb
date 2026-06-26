@@ -13,7 +13,7 @@ Part 10 has shipped. The helper lives at `plugins/modules-mongodb-plugins/src/co
 ```js
 const trackerFired = await fireTrackerSubscription(context, {
   workflowId: payload.workflow_id,
-  newStage: 'cancelled',
+  newStage: "cancelled",
   depth: 0,
 });
 ```
@@ -29,7 +29,7 @@ The design's Returns line reflects this: `{ action_ids, event_id: null, tracker_
 At the top of `CloseWorkflow.js`:
 
 ```js
-import fireTrackerSubscription from '../SubmitWorkflowAction/fireTrackerSubscription.js';
+import fireTrackerSubscription from "../SubmitWorkflowAction/fireTrackerSubscription.js";
 ```
 
 ### 2. Call the subscription after Task 5's writeback
@@ -42,7 +42,7 @@ After the recompute writeback `MongoDBUpdateOne`:
 // when the workflow has no parent_action_id, so safe to call unconditionally.
 const trackerFired = await fireTrackerSubscription(context, {
   workflowId: payload.workflow_id,
-  newStage: 'completed',
+  newStage: "completed",
   depth: 0,
 });
 ```

@@ -26,7 +26,7 @@ Signature:
  * @returns {Promise<Object | null>} — the action doc or null if not found.
  */
 async function getCurrentAction(context, { actionId }) {
-  return context.mongoDBConnection('actions').MongoDBFindOne({
+  return context.mongoDBConnection("actions").MongoDBFindOne({
     query: { _id: actionId },
   });
 }

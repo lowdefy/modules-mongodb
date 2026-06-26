@@ -6,11 +6,11 @@ These tasks implement `designs/demo-notifications/design.md`: rewrite the demo a
 
 ## Tasks
 
-| #   | File                                 | Summary                                                                                  | Depends On |
-| --- | ------------------------------------ | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-enums-event-types.md`            | Wire `global.enums.event_types` in the demo app and add the `action-approve` enum entry  | —          |
-| 2   | `02-send-routine-quote-approved.md`  | Rewrite `send-routine.yaml` with the quote-approved branch; enable the `send_routine` var | —          |
-| 3   | `03-send-routine-invite-mock.md`     | Add the invite/resend mock-email branch to the routine                                    | 2          |
+| #   | File                                | Summary                                                                                   | Depends On |
+| --- | ----------------------------------- | ----------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-enums-event-types.md`           | Wire `global.enums.event_types` in the demo app and add the `action-approve` enum entry   | —          |
+| 2   | `02-send-routine-quote-approved.md` | Rewrite `send-routine.yaml` with the quote-approved branch; enable the `send_routine` var | —          |
+| 3   | `03-send-routine-invite-mock.md`    | Add the invite/resend mock-email branch to the routine                                    | 2          |
 
 ## Ordering Rationale
 

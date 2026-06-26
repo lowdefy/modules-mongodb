@@ -26,7 +26,7 @@ modules:
           page_id: lead-view
           id_query_key: _id
           title: Lead
-          get_entity_endpoint: get-lead-summary    # NEW
+          get_entity_endpoint: get-lead-summary # NEW
 ```
 
 Field shape:
@@ -46,7 +46,7 @@ Today, part 16's `view.yaml.njk` (et al.) emit:
 - _ref:
     path: ../requests/get_entity.yaml.njk
     vars:
-      entity_collection: {{ entity_collection }}
+      entity_collection: { { entity_collection } }
 ```
 
 After this part:

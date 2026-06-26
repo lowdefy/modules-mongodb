@@ -140,12 +140,12 @@ The honest distinction is:
 
 Make this trade-off explicit. Concretely: catch every `callApi` error
 inside `fireGroupOnComplete.js`, log with structured context (workflow
-id, group id, on_complete api id, error), continue with the next entry.
+id, group id, on*complete api id, error), continue with the next entry.
 Match Part 8's `result.success` check shape but invert the policy on
 failure — log instead of throw. Don't reach the outer
 [`handleSubmit.js:370–401`](../../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)
 catch, because that path writes `action.status: error` on the user's
-submitted action which is wrong (the action _did_ transition; only the
+submitted action which is wrong (the action \_did* transition; only the
 post-write hook failed).
 
 ### 5. Tracker-propagated parent group completions aren't addressed
@@ -249,9 +249,9 @@ await context.callApi(
     group_id,
     group_title,
     event_id: context.eventId,
-    user: context.user,            // <-- explicit on payload
+    user: context.user, // <-- explicit on payload
   },
-  { user: context.user },          // <-- auth context, separate
+  { user: context.user }, // <-- auth context, separate
 );
 ```
 
@@ -289,7 +289,7 @@ unimplementability today, that assertion is the most important one
 to add — once finding #1 lands, add a test like:
 
 > Given a fixture with `action_groups: [{ id: 'phase-1',
-> on_complete: { routine: [...] } }]` and `workflow_type: onboarding`,
+on_complete: { routine: [...] } }]` and `workflow_type: onboarding`,
 > a submit that completes phase-1 fires `callApi` with
 > `{ id: 'workflow-onboarding-group-phase-1-on-complete', module: 'workflows' }`.
 

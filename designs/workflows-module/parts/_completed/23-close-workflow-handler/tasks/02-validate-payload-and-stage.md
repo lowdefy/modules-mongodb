@@ -9,12 +9,12 @@ After Task 1, `CloseWorkflow.js` is a skeleton that throws "not implemented" onc
 
 The validation is a runtime check at handler entry — three distinct outcomes per current `status[0].stage`:
 
-| Current stage     | Outcome                                                  |
-| ----------------- | -------------------------------------------------------- |
-| (no workflow)     | Throw `"CloseWorkflow: workflow <id> not found"`         |
-| `active`          | Proceed to writes (Tasks 3–6)                            |
-| `completed`       | No-op: return `{ action_ids: [], event_id: null, tracker_fired: [] }` silently |
-| `cancelled`       | Throw `"CloseWorkflow: workflow <id> is cancelled; cannot close"` |
+| Current stage | Outcome                                                                        |
+| ------------- | ------------------------------------------------------------------------------ |
+| (no workflow) | Throw `"CloseWorkflow: workflow <id> not found"`                               |
+| `active`      | Proceed to writes (Tasks 3–6)                                                  |
+| `completed`   | No-op: return `{ action_ids: [], event_id: null, tracker_fired: [] }` silently |
+| `cancelled`   | Throw `"CloseWorkflow: workflow <id> is cancelled; cannot close"`              |
 
 The idempotent no-op on already-`completed` matches the design's "already-`completed` is a no-op (idempotent)" line. Returning the empty action-ids shape keeps the return contract consistent for downstream callers; they don't need to special-case the no-op.
 
@@ -24,7 +24,7 @@ Inside `CloseWorkflow.js`, after the `workflow_id` payload check, add a workflow
 
 ```js
 const workflowDoc = await context
-  .mongoDBConnection('workflows')
+  .mongoDBConnection("workflows")
   .MongoDBFindOne({
     query: { _id: payload.workflow_id },
     options: {
@@ -35,18 +35,16 @@ const workflowDoc = await context
   });
 
 if (!workflowDoc) {
-  throw new Error(
-    `CloseWorkflow: workflow ${payload.workflow_id} not found`,
-  );
+  throw new Error(`CloseWorkflow: workflow ${payload.workflow_id} not found`);
 }
 
 const currentStage = workflowDoc.status?.[0]?.stage;
 
-if (currentStage === 'completed') {
+if (currentStage === "completed") {
   return { action_ids: [], event_id: null, tracker_fired: [] };
 }
 
-if (currentStage === 'cancelled') {
+if (currentStage === "cancelled") {
   throw new Error(
     `CloseWorkflow: workflow ${payload.workflow_id} is cancelled; cannot close`,
   );

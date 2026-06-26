@@ -17,7 +17,7 @@ In cancel, every action is terminal after the blanket sweep, so every group deri
 `recomputeGroups` lives at `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/recomputeGroups.js` — same import path `CancelWorkflow.js:2` uses. Its signature (from shipped code):
 
 ```js
-recomputeGroups({ declaredGroups, actions })
+recomputeGroups({ declaredGroups, actions });
 ```
 
 - `declaredGroups`: array from `workflowConfig.action_groups` (or `[]` if absent).
@@ -40,14 +40,15 @@ const declaredGroups = workflowConfig?.action_groups ?? [];
 ### 2. Re-read all actions with the recompute projection
 
 ```js
-const allActions = await context.mongoDBConnection('actions').MongoDBFind({
-  query: { workflow_id: payload.workflow_id },
-  options: {
-    // Project the first status entry as a 1-element slice — MongoDB can't
-    // dot-project nested-array-index fields like `status.0.stage`.
-    projection: { status: { $slice: 1 }, action_group: 1 },
-  },
-}) ?? [];
+const allActions =
+  (await context.mongoDBConnection("actions").MongoDBFind({
+    query: { workflow_id: payload.workflow_id },
+    options: {
+      // Project the first status entry as a 1-element slice — MongoDB can't
+      // dot-project nested-array-index fields like `status.0.stage`.
+      projection: { status: { $slice: 1 }, action_group: 1 },
+    },
+  })) ?? [];
 ```
 
 Same projection shape as `CancelWorkflow.js:103–109`.
@@ -56,9 +57,9 @@ Same projection shape as `CancelWorkflow.js:103–109`.
 
 ```js
 const total = allActions.length;
-const done = allActions.filter((a) => a.status?.[0]?.stage === 'done').length;
+const done = allActions.filter((a) => a.status?.[0]?.stage === "done").length;
 const not_required = allActions.filter(
-  (a) => a.status?.[0]?.stage === 'not-required',
+  (a) => a.status?.[0]?.stage === "not-required",
 ).length;
 ```
 
@@ -67,7 +68,7 @@ const not_required = allActions.filter(
 ### 4. Recompute groups
 
 ```js
-import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
+import recomputeGroups from "../SubmitWorkflowAction/recomputeGroups.js";
 // (at top of file)
 
 const groups = recomputeGroups({ declaredGroups, actions: allActions });
@@ -78,7 +79,7 @@ The default groups-derivation logic handles the asymmetry automatically: groups 
 ### 5. Write back
 
 ```js
-await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+await context.mongoDBConnection("workflows").MongoDBUpdateOne({
   filter: { _id: payload.workflow_id },
   update: {
     $set: {

@@ -2,7 +2,8 @@
 title: Access
 module: workflows
 type: concept
-concepts: [access, verbs, roles, per-app, review, request-changes, visible-verbs]
+concepts:
+  [access, verbs, roles, per-app, review, request-changes, visible-verbs]
 ---
 
 # Workflows — Access
@@ -16,11 +17,11 @@ Every action declares an `access:` block:
 ```yaml
 access:
   my-team-app:
-    view: true                           # any authenticated user of my-team-app
+    view: true # any authenticated user of my-team-app
     edit: [account-manager, account-rep] # role-gated
-    review: [account-manager]            # reviewer role only
+    review: [account-manager] # reviewer role only
   my-customer-app:
-    view: [customer-lead]                # customers can view but not interact
+    view: [customer-lead] # customers can view but not interact
   # any other app → action invisible there
 ```
 
@@ -30,12 +31,12 @@ Each key under `access:` is an app name. Under each app name, the keys are **ver
 
 Four verbs exist, each with independent meaning:
 
-| Verb | Effect |
-|---|---|
-| `view` | Shows the action in the `actions-on-entity` component; renders read-only detail pages |
-| `edit` | Renders the submit form — form-action `-edit` page, check-action `workflow-action-edit` page |
+| Verb     | Effect                                                                                                                                        |
+| -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `view`   | Shows the action in the `actions-on-entity` component; renders read-only detail pages                                                         |
+| `edit`   | Renders the submit form — form-action `-edit` page, check-action `workflow-action-edit` page                                                  |
 | `review` | Renders the review page — form-action `-review` page, check-action `workflow-action-review` page. Ships `approve` / `request_changes` buttons |
-| `error` | Renders the recovery page for form actions in `error` state |
+| `error`  | Renders the recovery page for form actions in `error` state                                                                                   |
 
 **Verbs are independent.** Granting `edit` does not grant `view`. An author who wants "everyone can see, only managers edit" writes both:
 
@@ -71,11 +72,11 @@ An empty array `[]` is invalid — omit the verb key instead.
 
 The signal-to-verb mapping:
 
-| Signal | Required verb |
-|---|---|
-| `submit`, `progress`, `not_required` | `edit` |
-| `approve`, `request_changes` | `review` |
-| `resolve_error` | `error` |
+| Signal                               | Required verb |
+| ------------------------------------ | ------------- |
+| `submit`, `progress`, `not_required` | `edit`        |
+| `approve`, `request_changes`         | `review`      |
+| `resolve_error`                      | `error`       |
 
 ## The review-verb signal flip
 
@@ -124,8 +125,8 @@ access:
     edit: [account-manager]
     review: [account-manager]
   my-customer-app:
-    view: [customer-lead]          # customers can only view
-    edit: [customer-admin]         # customer admins can submit
+    view: [customer-lead] # customers can only view
+    edit: [customer-admin] # customer admins can submit
     # no review verb → submit lands at done for customer-admin
 ```
 

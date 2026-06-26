@@ -67,7 +67,7 @@ Skeleton:
               _state: _id
             entity_collection: leads-collection
       - id: refetch
-        type: Reset   # or whatever triggers actions-on-entity to refetch
+        type: Reset # or whatever triggers actions-on-entity to refetch
 ```
 
 ### 3. Admin-style "Close installation child" + "Cancel installation child" buttons

@@ -4,7 +4,7 @@
 
 Task 1 gave the companies module an `on_create_routine` var (routine steps spliced into `create-company` before the `:return:`; the new page forwards its URL query under the reserved `url_query` payload key). Task 2 authored the `company-setup` workflow. This task wires the demo app's side:
 
-- **Every** new company gets a `company-setup` workflow (design D3): the injected steps call the workflows `start-workflow` endpoint unconditionally, with `parent_action_id` from `url_query.action_id` — absent when the page wasn't reached via the onboarding tracker's start link; `StartWorkflow` already treats that as "no parent". Conversion-from-lead is the *linked special case*, not a separate path: a `convert-lead` event is logged behind a routine `:if` on `url_query.entity_id`.
+- **Every** new company gets a `company-setup` workflow (design D3): the injected steps call the workflows `start-workflow` endpoint unconditionally, with `parent_action_id` from `url_query.action_id` — absent when the page wasn't reached via the onboarding tracker's start link; `StartWorkflow` already treats that as "no parent". Conversion-from-lead is the _linked special case_, not a separate path: a `convert-lead` event is logged behind a routine `:if` on `url_query.entity_id`.
 - The workflows panel is slotted into the companies **view** page via the module's existing `components.sidebar_slots`/`main_slots` var (design D5) — newly possible because the entry-vars cross-module-`_ref` limitation recorded at `apps/demo/modules/companies/vars.yaml:29-46` was fixed by the deferred two-phase entry-vars resolve (lowdefy `22d4e60`, present in the pinned build). The stale limitation comment is removed.
 - The workflows module's `entities` var gains a `companies-collection` entry so workflow pages' entity back-links resolve for the child workflow. Module page ids are entry-scoped as `{entryId}/{pageId}` — verified against the demo build output: `build/pages/companies/view`.
 
@@ -96,7 +96,7 @@ entities:
 
 ## Acceptance Criteria
 
-- Saving a company on `companies/new` (reached *without* URL params) creates the company **and** a `company-setup` workflow on it with no parent link and no `convert-lead` event.
+- Saving a company on `companies/new` (reached _without_ URL params) creates the company **and** a `company-setup` workflow on it with no parent link and no `convert-lead` event.
 - Saving a company on `companies/new?action_id=<tracker_id>&entity_id=<lead_id>` additionally links the child to the tracker (tracker flips `in-progress`) and logs a `convert-lead` event referencing both the lead and the company.
 - `companies/view` renders the slotted workflows panel showing `company-setup` with its full scope.
 - The workflows module's overview pages back-link "Company" to `companies/view?_id=...` for child workflows.

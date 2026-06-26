@@ -26,7 +26,7 @@ Task line 11 and AC line 26 enumerate the mapping as "`signal`, `comment`, `meta
 
 - `action_id` — `loadWorkflowState`'s Submit mode is `{ actionId, signal }` (landed `loadWorkflowState.js:71`); D4 source 1: "Submit applies this to the target action identified by `payload.action_id`".
 - `current_key` — task 12's event `metadata` composition carries it (`{ action_type, workflow_type, signal, current_key, … }`), and the keyed form_data path needs it (Q6 / `planFormDataMerge` keyed vs unkeyed).
-- `fields` — `planActionTransition` sets `payload.fields` onto the planned doc (landed `planActionTransition.js:128,136`); for `kind: simple` the submission content *is* the fields bag (design D14 planner note, state-machine.md "Simple kind").
+- `fields` — `planActionTransition` sets `payload.fields` onto the planned doc (landed `planActionTransition.js:128,136`); for `kind: simple` the submission content _is_ the fields bag (design D14 planner note, state-machine.md "Simple kind").
 
 The current mapping (`makeWorkflowApis.js:65-78`) passes all three, plus the baked literals `action_type` / `workflow_type`. An implementer reading the task's list as the full mapping would delete them — Submit then can't locate its target action and simple submissions lose their content, with nothing in the task's AC catching it.
 
@@ -36,7 +36,7 @@ The current mapping (`makeWorkflowApis.js:65-78`) passes all three, plus the bak
 
 > **Resolved (auto).** Reworded task 19: the payload bullet now states the real deltas (drop `interaction`/`current_status`, add `metadata`) and notes `force` never appeared in this mapping — the existing no-force assertion stays green. AC and Files entries updated to match.
 
-`makeWorkflowApis.js` has never passed `force` — verified at the pre-task-6 revision (`git show f944850` — no `force` in `emitActionEndpoint`'s properties); `force` was a pre-hook-return / `updateAction` flag, never an emitted-payload field. The no-force assertion already exists (`makeWorkflowApis.test.js:189-197`). The real payload-mapping deltas this task lands are: `interaction` → `signal`, drop `current_status`, **add `metadata`** (currently absent from the mapping). Minor accuracy fix so the implementer doesn't hunt for a `force` line to delete: reword to "asserts `force` stays absent (it never appeared in this mapping; the force *model* died with D4)".
+`makeWorkflowApis.js` has never passed `force` — verified at the pre-task-6 revision (`git show f944850` — no `force` in `emitActionEndpoint`'s properties); `force` was a pre-hook-return / `updateAction` flag, never an emitted-payload field. The no-force assertion already exists (`makeWorkflowApis.test.js:189-197`). The real payload-mapping deltas this task lands are: `interaction` → `signal`, drop `current_status`, **add `metadata`** (currently absent from the mapping). Minor accuracy fix so the implementer doesn't hunt for a `force` line to delete: reword to "asserts `force` stays absent (it never appeared in this mapping; the force _model_ died with D4)".
 
 ## Cross-Task Gaps
 

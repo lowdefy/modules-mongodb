@@ -55,7 +55,7 @@ Change 1 says the two indices are "computed from the config the plan already hol
 declaration indices join [`doc.access`] there." That is true of the **caller**, not of
 `planActionTransition` itself. Its signature (`planActionTransition.js:100–114`) receives
 only the single `actionConfig` entry plus `loadedWorkflow` — neither carries the
-`action_groups[]` array, so the *group's position* (the first sort key,
+`action_groups[]` array, so the _group's position_ (the first sort key,
 `compareActionOrder.js:41`) is not derivable inside the function. `loadedWorkflow` holds
 only `_id`/`workflow_type`/`entity_id`/`entity_collection`.
 
@@ -115,13 +115,13 @@ D4 and the worked example claim that with `actions_collection: null` the timelin
   (`GetEventsTimeline.js:303–306`); with no actions that is `actions: []`. The current
   `get-events` request (`events-timeline.yaml`, `$match`/`$sort`/`$addFields` only) emits
   no `actions` field at all.
-- **Author-avatar resolution is new behaviour, gated by a *different* var.** The engine
+- **Author-avatar resolution is new behaviour, gated by a _different_ var.** The engine
   always runs the contacts `$lookup` and writes `created.user.picture`
   (`GetEventsTimeline.js:223–238`); today's events-only timeline does no contacts join.
   So even with `actions_collection` null, setting `contacts_collection` changes output.
 
 Neither breaks rendering (the `EventsTimeline` block already reads `actions` and falls
-back to initials when `picture` is absent), so the *user-visible* claim survives. But
+back to initials when `picture` is absent), so the _user-visible_ claim survives. But
 soften "byte-for-byte/identical output" to "renders identically," and confirm the block
 tolerates an empty `actions` array.
 
@@ -156,6 +156,6 @@ the `not-required` sink. Confirm the de-configured comparator still derives `not
 from `status` (it reads `action.status` tolerantly today, `:43`) and still falls back to
 `action.key ?? ''` then `String(action._id)` — and that the engine keeps those fields on
 the raw action docs until after `rawActions.sort()` (it does today: the trim happens in
-the enrichment loop *after* the sort, `:263` then `:266`). No change needed if the
+the enrichment loop _after_ the sort, `:263` then `:266`). No change needed if the
 denormalised indices are projected through the `$lookup` (the sub-pipeline does no
 narrowing `$project`, so they survive) — just verify this in the design.

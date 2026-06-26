@@ -2,7 +2,8 @@
 title: Events
 module: workflows
 type: concept
-concepts: [events, log-events, audit-trail, event-overrides, timeline, references]
+concepts:
+  [events, log-events, audit-trail, event-overrides, timeline, references]
 ---
 
 # Workflows — Events
@@ -24,12 +25,12 @@ type: qualify
 kind: form
 event:
   submit:
-    type: lead-qualified       # overrides the default "action-submit" type
+    type: lead-qualified # overrides the default "action-submit" type
     display:
       my-app:
         title: Lead qualified
     metadata:
-      custom_field: value      # merged with default metadata
+      custom_field: value # merged with default metadata
   approve:
     type: lead-approved
 ```

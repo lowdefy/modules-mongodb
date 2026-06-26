@@ -13,7 +13,7 @@ existing widgets, and must not be merged with either:
 
 `user-avatar` is a user-account **module export**, **doc-shaped** (callers pass a user-contacts doc),
 rendering a compact inline chip (avatar + name, no email/card) for assignee lists and timelines. It
-must be an export because its first consumer (Part 24) lives in a *different module* and needs
+must be an export because its first consumer (Part 24) lives in a _different module_ and needs
 `_ref: { module: user-account, component: user-avatar }`. The shared `icon: UserOutlined` fallback is
 a coincidence of both using the Avatar block, not reuse.
 
@@ -63,26 +63,26 @@ blocks:
 
 Vars contract:
 
-| Var         | Type    | Default | Description                                                                  |
-| ----------- | ------- | ------- | ---------------------------------------------------------------------------- |
+| Var         | Type    | Default | Description                                                                                 |
+| ----------- | ------- | ------- | ------------------------------------------------------------------------------------------- |
 | `user`      | object  | —       | A user-contacts doc (or projection) — needs `profile.picture` and `profile.name`. Required. |
-| `show_name` | boolean | `true`  | Render the name beside the avatar. Set `false` for compact / avatar-only displays. |
+| `show_name` | boolean | `true`  | Render the name beside the avatar. Set `false` for compact / avatar-only displays.          |
 
 **2. Register in `modules/user-account/module.lowdefy.yaml`:**
 
 - Under the top-level `components:` block:
 
   ```yaml
-    - id: user-avatar
-      component:
-        _ref: components/user-avatar.yaml
+  - id: user-avatar
+    component:
+      _ref: components/user-avatar.yaml
   ```
 
 - Under `exports.components:`:
 
   ```yaml
-      - id: user-avatar
-        description: Inline avatar + name chip rendered from a user-contacts doc
+  - id: user-avatar
+    description: Inline avatar + name chip rendered from a user-contacts doc
   ```
 
   (No new request — callers `_ref` it inline with a user record they already loaded.)

@@ -38,7 +38,7 @@ routine:
         _id:
           _payload: _id
         updated.timestamp:
-          _payload: updated.timestamp  # optimistic concurrency
+          _payload: updated.timestamp # optimistic concurrency
       update:
         _build.array.concat:
           - - $set:

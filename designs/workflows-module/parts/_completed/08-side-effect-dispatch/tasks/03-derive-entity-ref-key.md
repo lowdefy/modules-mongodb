@@ -38,13 +38,13 @@ Create [plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
  * @returns {string}
  */
 function deriveEntityRefKey(entityCollection) {
-  if (typeof entityCollection !== 'string' || entityCollection.length === 0) {
-    throw new Error('deriveEntityRefKey: entityCollection is required');
+  if (typeof entityCollection !== "string" || entityCollection.length === 0) {
+    throw new Error("deriveEntityRefKey: entityCollection is required");
   }
-  const stripped = entityCollection.endsWith('-collection')
-    ? entityCollection.slice(0, -'-collection'.length)
+  const stripped = entityCollection.endsWith("-collection")
+    ? entityCollection.slice(0, -"-collection".length)
     : entityCollection;
-  return `${stripped.replace(/-/g, '_')}_ids`;
+  return `${stripped.replace(/-/g, "_")}_ids`;
 }
 
 export default deriveEntityRefKey;
@@ -54,12 +54,12 @@ Create the colocated test file [deriveEntityRefKey.test.js](../../../../../plugi
 
 Table-driven, four cases minimum:
 
-| `entityCollection`  | expected            |
-| ------------------- | ------------------- |
-| `leads-collection`  | `leads_ids`         |
-| `tickets-collection`| `tickets_ids`       |
-| `user-contacts`     | `user_contacts_ids` |
-| `contacts`          | `contacts_ids`      |
+| `entityCollection`   | expected            |
+| -------------------- | ------------------- |
+| `leads-collection`   | `leads_ids`         |
+| `tickets-collection` | `tickets_ids`       |
+| `user-contacts`      | `user_contacts_ids` |
+| `contacts`           | `contacts_ids`      |
 
 Plus throw cases for empty string and non-string input.
 

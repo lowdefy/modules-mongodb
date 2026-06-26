@@ -41,7 +41,7 @@ submit's `event_id` as `_id` → duplicate-key on the events collection → a
 step-3 dispatch failure recorded on every cascade-bearing invocation → every
 such submit ends in `post_commit_dispatch_failed`. It also breaks the
 one-`event_id`-per-invocation invariant on the parent's `status[]` entries
-(the parent tracker action's status entry would point at the *child* submit's
+(the parent tracker action's status entry would point at the _child_ submit's
 event).
 
 Fix: spec that the loop runs the task-15 shared invocation-setup step per
@@ -73,7 +73,7 @@ FSM-no-ops against the already-transitioned action, and `planActionTransition`
 throws `signal_not_allowed` (task 10 / D13 (3)). So the one documented
 recovery for this error cannot recover it, and the mirror is permanently
 lost. This isn't a rare corner: the parent workflow is a live workflow other
-users submit against — concurrent writes there are the *expected* CAS case.
+users submit against — concurrent writes there are the _expected_ CAS case.
 
 Fix — decide the policy in the design, don't leave it to the implementer.
 The clean option: **per-level bounded retry inside the cascade**. On a CAS
@@ -87,7 +87,7 @@ and on exhaustion record `{ fire, error }` on the cascade's error accumulation
 into the handler's end-of-invocation throw alongside `dispatchErrors` — the
 same "committed work always finishes; failures surface at the end" shape the
 rest of the invocation already follows. While here, state explicitly that
-`TrackerCascadeDepthError` *does* propagate immediately (a depth cycle is a
+`TrackerCascadeDepthError` _does_ propagate immediately (a depth cycle is a
 config bug, not a transient race) — the asymmetry is correct but should be
 written down.
 
@@ -104,7 +104,7 @@ sketch (lines 11–24), which is duplicated verbatim in design.md D10:
   `commitPlan(levelContext, levelPlan)`; the task's own no-op bullet (line 34)
   and acceptance criterion say the loop "skips `commitPlan` for that level
   entirely." The sketch needs the `if (isEmptyPlan(levelPlan)) continue;`
-  branch — and should pin *how* the loop detects it (e.g. `planTrackerLevel`
+  branch — and should pin _how_ the loop detects it (e.g. `planTrackerLevel`
   returns `null`, mirroring `planActionTransition`'s no-op convention), since
   D3 makes the caller own the skip.
 - **No error accumulation.** `commitResult` is assigned and never used; the
@@ -130,7 +130,7 @@ keeping today's `{ parent_action_id, parent_workflow_id, new_status }` keys
 The landed `loadWorkflowState` in `{ workflowId }` mode returns only
 `{ workflow, actions, workflowConfig }` — no `targetAction`, no `actionConfig`
 (`loadWorkflowState.js:120–122`; the doc comment says so explicitly). But
-`planActionTransition` *requires* `actionConfig` (and `entry_id`,
+`planActionTransition` _requires_ `actionConfig` (and `entry_id`,
 `loadedWorkflow`) as inputs. So `planTrackerLevel` must itself locate
 `fire.parentActionId` within `levelLoaded.actions` and resolve its config
 from `workflowConfig.actions` — work the Submit path gets from the load phase.
@@ -140,7 +140,7 @@ signature hides it.
 The unspecced half that matters is the failure policy. Today's code silently
 stops the chain when the parent action doc is missing
 (`fireTrackerSubscription.js:53–57`, `if (!tracker) return []`). Under D13,
-"missing target" throws — but that rule was written for *pre-hook* entries
+"missing target" throws — but that rule was written for _pre-hook_ entries
 (D13 (2)); cascade signals are the deliberately-permissive class (D13 (3)).
 Recommend: a fire whose `parentActionId` matches no doc (or whose action type
 is no longer in the workflow config) **skips that level silently**, preserving
@@ -155,7 +155,7 @@ lose it).
 
 Not re-filing review-11 #1, but its resolution must account for this task's
 side of it: the sketch reads `levelPlan.trackerFires`, so `planTrackerLevel`
-must *produce* next-level fires when the parent's recompute pushes
+must _produce_ next-level fires when the parent's recompute pushes
 `completed` and `levelLoaded.workflow.parent_action_id != null` — and the
 grandparent's `parentWorkflowId` has the same not-purely-derivable problem at
 every level (it's the `workflow_id` of an action doc in a workflow this
@@ -164,7 +164,7 @@ review-11 #1's option (a): fires carry `parentActionId` only, and
 `runTrackerCascade` — already the impure orchestration layer — resolves
 `parentActionId → parentWorkflowId` with one `findDocs` read at the top of
 each level. One mechanism then serves Submit, Start, Cancel/Close (task 17),
-*and* every cascade level. Whichever option is chosen, also spec the
+_and_ every cascade level. Whichever option is chosen, also spec the
 next-level fire's `signal` derivation in `planTrackerLevel`: an auto-complete
 push emits `internal_mirror_child_completed` (the only stage a recompute can
 push is `completed`, so it's a constant — say so).

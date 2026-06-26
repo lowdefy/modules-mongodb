@@ -18,7 +18,8 @@ Fixed open contract (any host wires it the same way — design D5):
 - type: SetState
   params: { check_action_modal: { action_id: <id> } }
 - type: CallMethod
-  params: { blockId: check_action_modal, method: setOpen, args: [{ open: true }] }
+  params:
+    { blockId: check_action_modal, method: setOpen, args: [{ open: true }] }
 ```
 
 On open the modal runs the **same fetch the pages' `onMount` runs** — one
@@ -87,6 +88,7 @@ D1) — `view` mode's status history (stateful List, no request) is modal-safe.
 
        i.e. the host-supplied refetch runs first, then the modal closes
        (design D5: "runs the host-supplied onComplete refetch and closes").
+
    - **Component vars**: `on_complete` (optional actions array, default `[]`)
      — the host's refetch sequence.
    - **Header comment**: the open contract (verbatim YAML), the
@@ -100,7 +102,7 @@ D1) — `view` mode's status history (stateful List, no request) is modal-safe.
    - `components:` list — `id: check-action-modal`, `_ref` the file;
    - `exports.components` — same id with a description (host pages compose it
      with `EventsTimeline.onActionClick`; `actions-on-entity` bundles it).
-   The surface (task 3) stays unregistered/internal.
+     The surface (task 3) stays unregistered/internal.
 
 ## Acceptance Criteria
 

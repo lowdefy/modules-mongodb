@@ -6,26 +6,26 @@ These tasks implement `designs/documentation-v2/design.md`: replacing the per-mo
 
 ## Tasks
 
-| #   | File                              | Summary                                                                 | Depends On       |
-| --- | --------------------------------- | ----------------------------------------------------------------------- | ---------------- |
-| 1   | `01-manifest-reconciliation.md`   | Phase 0: resolve workflows `contacts_collection` TODO + layout `logo.*` keys | —                |
-| 2   | `02-docs-skeleton-and-index.md`   | Create `docs/` skeleton, front-matter schema, move root README → `docs/index.md`, README stub | —                |
-| 3   | `03-gen-var-docs.md`              | `scripts/gen-var-docs.mjs` — generate `reference/vars.md` from manifests (`--check`) | 1, 2             |
-| 4   | `04-gen-llms-txt.md`             | `scripts/gen-llms-txt.mjs` — generate `docs/llms.txt` + front-matter linter (`--check`) | 2                |
-| 5   | `05-docs-check-ci.md`            | `pnpm docs:check` script + first PR-CI workflow (`.github/workflows/ci.yaml`) | 3, 4             |
-| 6   | `06-split-idioms.md`            | Phase 2: split `docs/idioms.md` → `docs/shared/*.md`, fold conventions into CLAUDE.md, delete idioms.md | 2                |
-| 7   | `07-workflows-index-reference.md` | Phase 3a: workflows `index.md` + `reference/` pages (incl. generated `vars.md`) | 2, 3             |
-| 8   | `08-workflows-concepts.md`       | Phase 3b: workflows `concepts/` (7 files migrated from designs)          | 2, 6             |
-| 9   | `09-workflows-how-to.md`         | Phase 3c: workflows `how-to/` (6 task guides from demo configs)          | 2, 6             |
-| 10  | `10-remaining-modules.md`        | Phase 4: migrate the other ten modules → `docs/{module}/` + stubs, delete `VARS.md` | 2, 3, 6          |
-| 11  | `11-plugin-docs.md`             | Phase 5a: migrate plugin package + 6 block READMEs → `docs/plugins/` + stubs | 2, 4             |
-| 12  | `12-finalize.md`                | Phase 5b: amend CLAUDE.md principle + layout, regen `llms.txt`, all var tables, final audit | 5, 7, 8, 9, 10, 11 |
+| #   | File                              | Summary                                                                                                 | Depends On         |
+| --- | --------------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------ |
+| 1   | `01-manifest-reconciliation.md`   | Phase 0: resolve workflows `contacts_collection` TODO + layout `logo.*` keys                            | —                  |
+| 2   | `02-docs-skeleton-and-index.md`   | Create `docs/` skeleton, front-matter schema, move root README → `docs/index.md`, README stub           | —                  |
+| 3   | `03-gen-var-docs.md`              | `scripts/gen-var-docs.mjs` — generate `reference/vars.md` from manifests (`--check`)                    | 1, 2               |
+| 4   | `04-gen-llms-txt.md`              | `scripts/gen-llms-txt.mjs` — generate `docs/llms.txt` + front-matter linter (`--check`)                 | 2                  |
+| 5   | `05-docs-check-ci.md`             | `pnpm docs:check` script + first PR-CI workflow (`.github/workflows/ci.yaml`)                           | 3, 4               |
+| 6   | `06-split-idioms.md`              | Phase 2: split `docs/idioms.md` → `docs/shared/*.md`, fold conventions into CLAUDE.md, delete idioms.md | 2                  |
+| 7   | `07-workflows-index-reference.md` | Phase 3a: workflows `index.md` + `reference/` pages (incl. generated `vars.md`)                         | 2, 3               |
+| 8   | `08-workflows-concepts.md`        | Phase 3b: workflows `concepts/` (7 files migrated from designs)                                         | 2, 6               |
+| 9   | `09-workflows-how-to.md`          | Phase 3c: workflows `how-to/` (6 task guides from demo configs)                                         | 2, 6               |
+| 10  | `10-remaining-modules.md`         | Phase 4: migrate the other ten modules → `docs/{module}/` + stubs, delete `VARS.md`                     | 2, 3, 6            |
+| 11  | `11-plugin-docs.md`               | Phase 5a: migrate plugin package + 6 block READMEs → `docs/plugins/` + stubs                            | 2, 4               |
+| 12  | `12-finalize.md`                  | Phase 5b: amend CLAUDE.md principle + layout, regen `llms.txt`, all var tables, final audit             | 5, 7, 8, 9, 10, 11 |
 
 ## Ordering Rationale
 
 The work is a dependency chain anchored on two independent foundations that can start in parallel:
 
-- **Task 1 (manifest reconciliation)** is a prerequisite for any *generated* var table — `gen-var-docs.mjs` (Task 3) cannot emit clean output from a manifest that still carries a TODO or mismatched keys.
+- **Task 1 (manifest reconciliation)** is a prerequisite for any _generated_ var table — `gen-var-docs.mjs` (Task 3) cannot emit clean output from a manifest that still carries a TODO or mismatched keys.
 - **Task 2 (skeleton + front-matter schema)** establishes the output tree and front-matter contract that every generator and content task targets.
 
 From there:

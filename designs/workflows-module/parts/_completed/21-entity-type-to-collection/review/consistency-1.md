@@ -7,16 +7,20 @@ Scanned part 21's `design.md`, its `review-1.md` annotations, and the two siblin
 ## Files Reviewed
 
 **Design (this part):**
+
 - `designs/workflows-module/parts/21-entity-type-to-collection/design.md`
 
 **Reviews (this part):**
+
 - `designs/workflows-module/parts/21-entity-type-to-collection/review/review-1.md`
 
 **Sibling part designs touched in the same PR:**
+
 - `designs/workflows-module/parts/05-start-cancel-handlers/design.md` — checked lines 14, 15, 23, 25.
 - `designs/workflows-module/parts/19-operational-apis/design.md` — checked lines 14, 15, 29.
 
 **Sibling reviewed but not edited (no `entity_type` references):**
+
 - `designs/workflows-module/parts/18-entity-components/design.md`
 
 **No tasks or plan files exist for part 21 yet.**

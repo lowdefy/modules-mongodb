@@ -31,7 +31,7 @@ _ref:
           _build.string.trim:
             _build.string.concat:
               - _module.var: app_title
-              - ' User Admin'
+              - " User Admin"
         pageId:
           _module.pageId: all
       - label: Edit User

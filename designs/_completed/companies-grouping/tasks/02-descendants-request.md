@@ -11,7 +11,7 @@ The request walks the graph **downward**: starts at the root, follows the invers
 
 The repo-wide soft-delete idiom is a boolean — documents are inserted with `removed: null` and soft-deleted by setting `removed: true`. Plain-aggregation queries filter via `removed: { $ne: true }` (see `modules/companies/requests/get_company.yaml:13`, `get_companies_for_selector.yaml:8`).
 
-Per the design's "$graphLookup traversal does not skip soft-deleted nodes" decision, the `$graphLookup` runs without `restrictSearchWithMatch` — soft-deleted intermediate nodes are still traversed. Only the **root match** filters on `removed: { $ne: true }`, so picking a deleted root returns no descendants (and an empty result is the correct response in that case).
+Per the design's "$graphLookup traversal does not skip soft-deleted nodes" decision, the `$graphLookup`runs without`restrictSearchWithMatch`— soft-deleted intermediate nodes are still traversed. Only the **root match** filters on`removed: { $ne: true }`, so picking a deleted root returns no descendants (and an empty result is the correct response in that case).
 
 ## Task
 
@@ -73,6 +73,6 @@ The `payload.root_id` uses `_if_none` to fall back from `state.filter.parent_sco
 
 ## Notes
 
-- **`$graphLookup.from` via `_ref` to the connection file.** `$graphLookup.from` is a MongoDB pipeline argument that needs the literal collection name — Lowdefy's `_module.connectionId` returns the connection's *ID*, not its target collection name. Rather than hardcoding `from: companies`, the lookup uses `_ref: { path: connections/companies-collection.yaml, key: properties.collection }` to read the collection name from the connection file at build time. Verified working at build. If the module ever targets a renamed collection, every lookup updates automatically. Module-internal `_ref` paths resolve from the module root, so the path is the same regardless of which file refers to it.
+- **`$graphLookup.from` via `_ref` to the connection file.** `$graphLookup.from` is a MongoDB pipeline argument that needs the literal collection name — Lowdefy's `_module.connectionId` returns the connection's _ID_, not its target collection name. Rather than hardcoding `from: companies`, the lookup uses `_ref: { path: connections/companies-collection.yaml, key: properties.collection }` to read the collection name from the connection file at build time. Verified working at build. If the module ever targets a renamed collection, every lookup updates automatically. Module-internal `_ref` paths resolve from the module root, so the path is the same regardless of which file refers to it.
 - **Direction of walk.** `connectFromField: _id` + `connectToField: parent_ids` walks **downward** (root → children → grandchildren). The cycle-check request in task 4 walks **upward** (`connectFromField: parent_ids`, `connectToField: _id`). Don't confuse the two.
 - **No `_build.if` gating.** This request file is added unconditionally — it doesn't read `hierarchy.enabled`. The request is harmless when no consumer invokes it. If desired, page-level `_build.if` gating happens in the consuming pages (tasks 7 and 10), not here.

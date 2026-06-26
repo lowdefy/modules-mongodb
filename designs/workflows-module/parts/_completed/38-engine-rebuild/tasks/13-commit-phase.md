@@ -13,18 +13,24 @@ The commit phase is the single point that touches multiple collections. It write
 **Write ordering (D9) — workflow-first:**
 
 1. **Workflow** — `findOneAndUpdateDoc` on the workflows collection with the planned post-commit doc, carrying the **CAS filter**:
+
    ```js
    findOneAndUpdateDoc({
      mongoDb: context.mongoDb,
      collection: "workflows",
-     filter: { _id: workflow._id, "updated.timestamp": loadedState.workflow.updated.timestamp },
+     filter: {
+       _id: workflow._id,
+       "updated.timestamp": loadedState.workflow.updated.timestamp,
+     },
      update: { $set: plannedWorkflowDoc }, // whole doc minus _id (Q1)
      session, // undefined on the standalone fallback path
    });
    ```
+
    This is the **claim step**: a `null` return (filter matched zero docs → concurrent submit moved the workflow between load and commit) → **throw `ConcurrentSubmitError` before any action write**. Pin the **timestamp scalar**, not the whole `updated` sub-document (order/shape-independent compare).
 
    Step 1 branches on `plan.workflow.operation` (D3): `"update"` (Submit/Cancel/Close/tracker — the default) → the CAS `findOneAndUpdateDoc` above; `"insert"` (StartWorkflow, task 17 — there is no loaded workflow and no timestamp to pin) → `insertOneDoc` with **no CAS filter** — a freshly minted `_id` can't race, there is nothing to claim. Steps 2–5 are identical in both modes, and the transaction still wraps steps 1–2 for both.
+
 2. **Actions** — `bulkWriteActions` with all inserts + updates from `plan.actions` (whole-doc `$set` minus `_id` per op).
 3. **Events** — the single per-invocation dispatch of `plan.event` (D3 — exactly one per invocation): `context.callApi({ id: "new-event", module: "events" }, { _id: event_id, display, references, type, metadata }, { user: context.user })` — the real three-argument shape; both existing call sites pass the `{ user }` third argument (`dispatchLogEvent.js:107–111`). **`callApi` does not throw** — it returns `{ success, error }`; the success-check-and-throw lives in `dispatchLogEvent.js:113–121` today, which task 15 deletes, so `commitPlan` must reproduce the check — a `!result.success` return is a step-3 failure, recorded per the failure policy below (not thrown) — or event failures pass silently. **Outside the transaction; community-plugin client** (it can't join the engine session — D8/D9).
 4. **Notifications** — `dispatchNotifications(context, event_id)` → `context.callApi({ id: "send-notification", module: "notifications" }, { event_ids: [event_id] }, { user: context.user })`, one call carrying the `_id` of the event written in step 3. **The engine builds no notification doc and inserts nothing.** This is the surviving `dispatchNotifications.js` helper, **unchanged**: its `(context, eventId)` signature already wraps the id into the batch-shaped `event_ids` wire field (the notifications endpoint's existing contract — the field stays plural on the wire even though the engine always sends exactly one). The dispatch mechanic is unchanged: the notifications module's `send-notification` endpoint runs the app's `send_routine`, which re-fetches each event doc and owns fan-out + any notification-doc write — nothing in the repo produces a `NotificationDoc`, so composing one would be speculative surface. Must run after step 3 (the routine reads the committed event). Outside the transaction; community-plugin client. Silent no-op when no `send_routine` is wired.
@@ -41,7 +47,9 @@ async function commitPlan(context, plan) {
       // re-runs its whole callback on transient errors, and a retried step 3/4/5
       // would double-fire events/notifications/change-log (their writes are on
       // other clients / outside the txn, so our abort doesn't roll them back).
-      await session.withTransaction(() => commitWorkflowAndActions(context, plan, session));
+      await session.withTransaction(() =>
+        commitWorkflowAndActions(context, plan, session),
+      );
     } finally {
       await session.endSession();
     }
@@ -52,9 +60,9 @@ async function commitPlan(context, plan) {
   // Each is caught + recorded on CommitResult.dispatchErrors (step 4 skipped when
   // step 3 failed) — the handler throws post_commit_dispatch_failed after the
   // cascade + post-hook (failure policy below / task 15).
-  const event_id = await dispatchEvent(context, plan);     // step 3
-  await dispatchNotifications(context, event_id);          // step 4
-  await writeChangeLog(context, plan);                     // step 5
+  const event_id = await dispatchEvent(context, plan); // step 3
+  await dispatchNotifications(context, event_id); // step 4
+  await writeChangeLog(context, plan); // step 5
   return buildCommitResult(plan);
 }
 ```

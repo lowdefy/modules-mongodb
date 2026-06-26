@@ -1,5 +1,5 @@
-import { test as base } from '@lowdefy/e2e-utils/fixtures';
-import { expect } from '@playwright/test';
+import { test as base } from "@lowdefy/e2e-utils/fixtures";
+import { expect } from "@playwright/test";
 
 // The `workflow` fixture: thin wire drivers + DB readers, NOT a DSL. Every
 // helper either POSTs a real emitted Lowdefy endpoint (the per-workflow write
@@ -28,7 +28,7 @@ import { expect } from '@playwright/test';
 // — the engine mints `_id`s with randomUUID, so they come back, and are stored,
 // as plain strings). `success` is false when status is error/reject.
 
-const ENDPOINT_BASE = '/api/endpoints/';
+const ENDPOINT_BASE = "/api/endpoints/";
 
 // Engine `_id`s are UUID strings (createEngineContext: newId: randomUUID), so
 // query by `_id` with the raw wire id — no ObjectId coercion.
@@ -47,11 +47,15 @@ export const workflowTest = base.extend({
     // assert (access-verb / close-rejection specs assert rejections).
     async function post(endpointId, payload, { expectError = false } = {}) {
       const res = await page.request.post(ENDPOINT_BASE + endpointId, {
-        data: { blockId: 'e2e', pageId: 'e2e', payload },
+        data: { blockId: "e2e", pageId: "e2e", payload },
       });
       const body = await res.json();
       if (expectError) {
-        return { error: body.error, status: body.status, success: body.success };
+        return {
+          error: body.error,
+          status: body.status,
+          success: body.success,
+        };
       }
       if (!res.ok() || body.success === false) {
         const message =
@@ -59,8 +63,8 @@ export const workflowTest = base.extend({
           `endpoint ${endpointId} failed (HTTP ${res.status()})`;
         throw new Error(
           `workflow POST ${endpointId} failed: ${
-            typeof message === 'string' ? message : JSON.stringify(message)
-          }`
+            typeof message === "string" ? message : JSON.stringify(message)
+          }`,
         );
       }
       return body.response;
@@ -70,10 +74,12 @@ export const workflowTest = base.extend({
     // endpoint id for cancel/close).
     async function workflowTypeOf(workflowId) {
       const wf = await mdb
-        .collection('workflows')
+        .collection("workflows")
         .findOne({ _id: toId(workflowId) });
       if (!wf) {
-        throw new Error(`workflow: no workflow doc for workflow_id ${workflowId}`);
+        throw new Error(
+          `workflow: no workflow doc for workflow_id ${workflowId}`,
+        );
       }
       return wf.workflow_type;
     }
@@ -85,10 +91,12 @@ export const workflowTest = base.extend({
     // the payload (the handler re-slices `hooks` by the loaded action's type).
     async function submitEndpointId(actionId) {
       const action = await mdb
-        .collection('actions')
+        .collection("actions")
         .findOne({ _id: toId(actionId) });
       if (!action) {
-        throw new Error(`workflow.submit: no action doc for action_id ${actionId}`);
+        throw new Error(
+          `workflow.submit: no action doc for action_id ${actionId}`,
+        );
       }
       const workflow_type = await workflowTypeOf(action.workflow_id);
       return `workflows/${workflow_type}-submit`;
@@ -110,7 +118,7 @@ export const workflowTest = base.extend({
       async start({
         workflow_type,
         entity_id,
-        entity_collection = 'things-collection',
+        entity_collection = "things-collection",
         ...overrides
       } = {}) {
         const payload = {
@@ -135,7 +143,7 @@ export const workflowTest = base.extend({
           current_key,
           metadata,
         } = {},
-        options = {}
+        options = {},
       ) {
         const endpointId = await submitEndpointId(action_id);
         const payload = {
@@ -159,7 +167,7 @@ export const workflowTest = base.extend({
         return post(
           `workflows/${workflow_type}-cancel`,
           { workflow_id, reason },
-          options
+          options,
         );
       },
 
@@ -168,7 +176,11 @@ export const workflowTest = base.extend({
       // workflow_id.
       async close(workflow_id, options = {}) {
         const workflow_type = await workflowTypeOf(workflow_id);
-        return post(`workflows/${workflow_type}-close`, { workflow_id }, options);
+        return post(
+          `workflows/${workflow_type}-close`,
+          { workflow_id },
+          options,
+        );
       },
 
       // ── Operational read endpoints (Part 19) ───────────────────────────────
@@ -179,18 +191,24 @@ export const workflowTest = base.extend({
 
       // GET-style read over POST (the Lowdefy endpoint envelope is always POST):
       // returns { workflows: [...] } for an entity.
-      async getEntityWorkflows({ entity_id, entity_collection = 'things-collection' }) {
-        return post('workflows/get-entity-workflows', { entity_id, entity_collection });
+      async getEntityWorkflows({
+        entity_id,
+        entity_collection = "things-collection",
+      }) {
+        return post("workflows/get-entity-workflows", {
+          entity_id,
+          entity_collection,
+        });
       },
 
       // Returns { workflow, groups } for a workflow_id.
       async getWorkflowOverview(workflow_id) {
-        return post('workflows/get-workflow-overview', { workflow_id });
+        return post("workflows/get-workflow-overview", { workflow_id });
       },
 
       // Returns { workflow, group, actions } for a workflow_id + group_id.
       async getActionGroupOverview(workflow_id, group_id) {
-        return post('workflows/get-action-group-overview', {
+        return post("workflows/get-action-group-overview", {
           workflow_id,
           group_id,
         });
@@ -206,8 +224,8 @@ export const workflowTest = base.extend({
         await expect
           .poll(
             () =>
-              mdb.collection('workflows').findOne({ _id: toId(workflow_id) }),
-            { timeout: 10_000 }
+              mdb.collection("workflows").findOne({ _id: toId(workflow_id) }),
+            { timeout: 10_000 },
           )
           .toEqual(expect.objectContaining(expected));
       },
@@ -221,8 +239,8 @@ export const workflowTest = base.extend({
         await expect
           .poll(
             () =>
-              mdb.collection('workflows').findOne({ _id: toId(workflow_id) }),
-            { timeout: 10_000 }
+              mdb.collection("workflows").findOne({ _id: toId(workflow_id) }),
+            { timeout: 10_000 },
           )
           .toEqual(expect.objectContaining(expected));
       },
@@ -230,25 +248,24 @@ export const workflowTest = base.extend({
       // Poll the `actions` doc. If `expected` is a string, match
       // status[0].stage; if an object, expect.objectContaining against the doc.
       async assertStatus(action_id, expected) {
-        if (typeof expected === 'string') {
+        if (typeof expected === "string") {
           await expect
             .poll(
               async () => {
                 const doc = await mdb
-                  .collection('actions')
+                  .collection("actions")
                   .findOne({ _id: toId(action_id) });
                 return doc?.status?.[0]?.stage;
               },
-              { timeout: 10_000 }
+              { timeout: 10_000 },
             )
             .toBe(expected);
           return;
         }
         await expect
           .poll(
-            () =>
-              mdb.collection('actions').findOne({ _id: toId(action_id) }),
-            { timeout: 10_000 }
+            () => mdb.collection("actions").findOne({ _id: toId(action_id) }),
+            { timeout: 10_000 },
           )
           .toEqual(expect.objectContaining(expected));
       },
@@ -261,10 +278,10 @@ export const workflowTest = base.extend({
       // the engine writes (status is an array; status[0] is current).
       async setStage(action_id, stage) {
         await mdb
-          .collection('actions')
+          .collection("actions")
           .updateOne(
             { _id: toId(action_id) },
-            { $set: { 'status.0.stage': stage } }
+            { $set: { "status.0.stage": stage } },
           );
       },
     };
@@ -273,4 +290,4 @@ export const workflowTest = base.extend({
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect } from "@playwright/test";

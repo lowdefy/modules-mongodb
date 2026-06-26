@@ -10,6 +10,7 @@ the design's own `open-questions.md` §6, the tasks are known-stale and slated f
 review pins exactly what must change so the regenerated band-1 tasks are correct.
 
 Code facts verified this pass:
+
 - `modules/workflows/enums/button_signal_sources.yaml` exists with the six-signal source-stage map
   Task 3 quotes (Part 39 shipped it). ✓
 - `modules/workflows/components/action_role_check.yaml` writes the per-verb map to a **root**
@@ -37,7 +38,7 @@ surface — no config map, no resolver, no global." There is no `simple_action_b
 anymore, and `grep` confirms none in code.
 
 What D3 actually requires of `makeWorkflowsConfig` is one line in the Files-changed table
-(`design.md:211`): *"Validate the authored `allow_not_required` action-root key (boolean, optional)."*
+(`design.md:211`): _"Validate the authored `allow_not_required` action-root key (boolean, optional)."_
 That is the real band-1 resolver task, and it is **not** tasked anywhere — Task 01 tasks the dead
 feature instead.
 
@@ -74,7 +75,7 @@ to it: drop the global term from the five fixed buttons, and give `not_required`
 simple_action_buttons`") and the Notes "<type>" paragraph (L119), which only exists to serve the dead
 per-type lookup.
 
-### 3. Tasks 03 & 04 render the Part 33 events-timeline *inside* the surface — review-2 #4 made it page-level
+### 3. Tasks 03 & 04 render the Part 33 events-timeline _inside_ the surface — review-2 #4 made it page-level
 
 > **Deferred to task regeneration.** The design is already correct (D1, `design.md:68`; D5, `:163`): the
 > Part 33 events-timeline is page-level chrome on `workflow-action-view`, **below** the surface `_ref`,
@@ -84,8 +85,8 @@ per-type lookup.
 
 Task 03 (mode table L32, body L35, view-mode L97) and Task 04 (L13, L19) put the events-timeline `_ref`
 inside the surface's `view` mode ("now living **inside** the surface component"). Review-2 #4 (resolved)
-moved it out: D1 (`design.md:68`) states *"The Part 33 events timeline is page-level chrome, **not** part
-of the surface,"* rendered by `workflow-action-view` **below** the surface `_ref`; the modal omits it.
+moved it out: D1 (`design.md:68`) states _"The Part 33 events timeline is page-level chrome, **not** part
+of the surface,"_ rendered by `workflow-action-view` **below** the surface `_ref`; the modal omits it.
 The design gives a hard build reason, not just a preference: a second `events-timeline` instance would
 collide on the component's fixed `get-events` request id (request ids are not `_ref`-scoped → Lowdefy
 build throws `Duplicate requestId`).
@@ -119,8 +120,8 @@ key (verified — `action_role_check.yaml` `SetState` target is root `action_all
 page as `_state: action_allowed.{verb}`) and **drop `action_allowed` from the `surface.*` contract**,
 because it has one writer and is computed output, not collision-prone input state.
 
-Task 04 even prescribes the glue the recommendation explicitly rejects (L61: *"either by parameterising
-the component's target key, or by a following `SetState` that maps it"* → "relocates the opt-in-correctness
+Task 04 even prescribes the glue the recommendation explicitly rejects (L61: _"either by parameterising
+the component's target key, or by a following `SetState` that maps it"_ → "relocates the opt-in-correctness
 drift rather than removing it; a trailing remap `SetState` is glue").
 
 This is decision-before-implementation: if the recommendation is accepted, tasks 03/04 should read
@@ -143,7 +144,7 @@ confirm it **already shipped** — `action_role_check.yaml` + `evaluateVerbGate.
 `{view, edit, review, error}` map today. Cut the "must land before" cross-wave caveat from all three; the
 surface can be written against the per-verb shape with no upstream wait.
 
-### 6. The `allow_not_required` *engine* work (persist + server gate) is untasked in either band
+### 6. The `allow_not_required` _engine_ work (persist + server gate) is untasked in either band
 
 > **Resolved.** Decision 2026-06-08: the `allow_not_required` engine work becomes a **dedicated engine
 > task in Band 1** — (a) stamp the flag from config in `planActionTransition`'s per-transition denorm
@@ -165,7 +166,7 @@ client-side.
 Consequence for band 1 specifically: Task 03 renders the `not_required` button gated on
 `surface.action.allow_not_required`, but nothing persists that field onto the doc, so in band 1 the button
 is **permanently hidden** and **unenforced**. That may be an acceptable band-1 stub — but it must be a
-*stated* one. `tasks.md`'s "Known stubs accepted in this band" list (L28) doesn't mention it.
+_stated_ one. `tasks.md`'s "Known stubs accepted in this band" list (L28) doesn't mention it.
 
 **Fix.** Add an engine task (persist in `planActionTransition` + load-phase gate in `loadWorkflowState`,
 with unit coverage for set/absent/never-copied-forward and the gate rejecting user-driven `not_required`

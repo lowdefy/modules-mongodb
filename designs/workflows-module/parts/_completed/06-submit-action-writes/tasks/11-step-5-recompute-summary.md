@@ -26,14 +26,15 @@ Replace the `// Step 5 — Recompute workflow summary` TODO in `handleSubmit.js`
 ```js
 // Step 5 — Recompute workflow summary (counts only; groups[] → part 7).
 const summary = {
-  done: context.workflowActions.filter((doc) => doc.status[0]?.stage === 'done').length,
+  done: context.workflowActions.filter((doc) => doc.status[0]?.stage === "done")
+    .length,
   not_required: context.workflowActions.filter(
-    (doc) => doc.status[0]?.stage === 'not-required'
+    (doc) => doc.status[0]?.stage === "not-required",
   ).length,
   total: context.workflowActions.length,
 };
 
-await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+await context.mongoDBConnection("workflows").MongoDBUpdateOne({
   filter: { _id: context.workflow._id },
   update: {
     $set: {

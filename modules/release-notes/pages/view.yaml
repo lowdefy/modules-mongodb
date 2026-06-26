@@ -22,8 +22,8 @@ _ref:
                       - _string.trim:
                           _if_none:
                             - _module.var: content
-                            - ''
-                      - ''
-                  then: 'No release notes available yet.'
+                            - ""
+                      - ""
+                  then: "No release notes available yet."
                   else:
                     _module.var: content

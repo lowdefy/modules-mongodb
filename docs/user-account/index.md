@@ -10,10 +10,10 @@ Self-service account pages — passwordless login, email-verification confirmati
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
+| Module                       | Why                                               |
+| ---------------------------- | ------------------------------------------------- |
 | [layout](../layout/index.md) | Page wrapper, auth-page wrapper, profile dropdown |
-| [events](../events/index.md) | Audit logging and `change_stamp` |
+| [events](../events/index.md) | Audit logging and `change_stamp`                  |
 
 ## When to use
 

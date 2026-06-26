@@ -32,7 +32,7 @@ Part 38 D4 (`hasReview`, app-agnostic `resolveSignal`).
 **Resolution:** Auto-resolved. The signal-inventory `submit` cell read "Lands
 `in-review` if the action declares the `review` verb in its `access.{app_name}`
 map" — the per-app reading review-3 #2 flagged as wrong (a `team-app` submit would
-land `in-review` while a `support-app` submit on the *same* action lands `done`).
+land `in-review` while a `support-app` submit on the _same_ action lands `done`).
 review-3 #2's resolution updated Part 34 D6 and Part 38 D4 but did not propagate back
 to the concept doc. Rewrote the cell to "Lands `in-review` if **any** app's `access`
 block declares the `review` verb … an **action-global** property — one action doc is
@@ -101,5 +101,5 @@ Re-verified, with no residual drift:
   with Part 38 D4/D13 and tasks 02/16/17. The line-366 "items 1–4 carried out" note is
   accurate; the only genuinely-open concept item (simple `error`-recovery page) is a
   ui follow-on, out of Part 38's scope and not contradicted by it.
-</content>
-</invoke>
+  </content>
+  </invoke>

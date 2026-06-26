@@ -27,7 +27,7 @@ A worked example uses it in production — [`dist/.../site-check.yaml:157-160`](
 
 The intent: "show on view-mode renders, hide on edit-mode renders." The author wants a timestamp/status field visible when the form is rendered read-only but suppressed when rendered as an editable form.
 
-v1's Part 15 resolver has no `viewOnly` handling. The closest v1 mechanism is **whole-form alternate slices** (`form:` vs `form_review:` vs `form_error:`), but those are page-verb-scoped slices of the *entire* form, not per-field visibility within one slice. Per [part 16 design.md:19-24](../../16-page-templates/design.md), the **view page renders `form:` read-only** — the same array the edit page renders editable. There's no separate `form_view:` slice to put `viewOnly` fields under.
+v1's Part 15 resolver has no `viewOnly` handling. The closest v1 mechanism is **whole-form alternate slices** (`form:` vs `form_review:` vs `form_error:`), but those are page-verb-scoped slices of the _entire_ form, not per-field visibility within one slice. Per [part 16 design.md:19-24](../../16-page-templates/design.md), the **view page renders `form:` read-only** — the same array the edit page renders editable. There's no separate `form_view:` slice to put `viewOnly` fields under.
 
 Authors moving from v0 to v1 lose this capability outright. Possible v1 paths:
 
@@ -47,7 +47,8 @@ Whichever path lands, the design needs to call this out — either as "in scope"
 v0's [`makeActionsForm.js:11-13, 40`](../../../../dist/workflows-module/ui/current_workflow_utils/resolvers/makeActionsForm.js) conditionally wraps the form body in a `Card` block with a specific shadow style:
 
 ```js
-const useCard = !vars.init && !vars.form[0]?.form && vars.useCard && vars.form.length > 0;
+const useCard =
+  !vars.init && !vars.form[0]?.form && vars.useCard && vars.form.length > 0;
 // ...
 return useCard ? makeCard(blocks) : blocks;
 ```

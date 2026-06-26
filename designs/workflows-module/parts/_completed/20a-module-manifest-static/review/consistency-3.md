@@ -21,15 +21,19 @@ Three inconsistencies found after task-file creation. All resolved — two auto-
 **Resolution:** **Option (a) selected by user.** `events` returns to `dependencies` because `workflow-api.yaml` consumes the events module's `change_stamp` component. The design's `### dependencies` section was rewritten to list both `layout` and `events` with concrete per-dependency rationales, and the paragraph that previously argued "events is not used at all" was replaced with a corrected version explaining that `events` is real (via `changeStamp`) and `notifications` alone defers to 20b. `review-1.md` finding #4's resolution annotation was updated to record the original (b) decision being revised by this consistency review. Tasks 1 and 2 already matched option (a), so no task-file changes were needed.
 
 **Quote — design.md line 52–56:**
+
 > ### `dependencies`
+>
 > - `layout` — consumed by every shared page (`module: layout` refs in `pages/task-edit.yaml`, ...).
 >
 > The static surface does not consume `events` or `notifications` anywhere — a grep over `modules/workflows/{pages,components,api}/` finds no `module: events` or `module: notifications` refs. Those modules become real dependencies in part 20b once the per-action endpoint lands...
 
 **Quote — `tasks/01-add-connection-files.md` (workflow-api.yaml spec):**
+
 > - `changeStamp: { _ref: { module: events, component: change_stamp } }` — wires the events module's change_stamp into engine writes
 
 **Quote — `tasks/02-manifest-deltas.md`:**
+
 > ```yaml
 > dependencies:
 >   - id: layout
@@ -37,9 +41,9 @@ Three inconsistencies found after task-file creation. All resolved — two auto-
 >     description: Provides the `change_stamp` component referenced by the `workflow-api` connection.
 > ```
 
-**Why the design's grep missed this.** The design's grep was over `modules/workflows/{pages,components,api}/` — none of those exist yet for the connection layer. The grep correctly reported "no cross-module refs in the directories that already exist," but the new `connections/` directory the tasks create *will* contain a cross-module ref if `changeStamp` is wired.
+**Why the design's grep missed this.** The design's grep was over `modules/workflows/{pages,components,api}/` — none of those exist yet for the connection layer. The grep correctly reported "no cross-module refs in the directories that already exist," but the new `connections/` directory the tasks create _will_ contain a cross-module ref if `changeStamp` is wired.
 
-**Why `changeStamp` matters.** The plugin schema at `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` line 54–58 documents `changeStamp` as "resolves to the events module change_stamp at app build time (typically via `_ref: { module: events, component: change_stamp }`). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`." It is *optional* in the schema (`required: ['databaseUri']` only), so the connection file can omit it — but then engine writes go un-stamped.
+**Why `changeStamp` matters.** The plugin schema at `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` line 54–58 documents `changeStamp` as "resolves to the events module change_stamp at app build time (typically via `_ref: { module: events, component: change_stamp }`). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`." It is _optional_ in the schema (`required: ['databaseUri']` only), so the connection file can omit it — but then engine writes go un-stamped.
 
 **Two valid paths.** (a) Wire `changeStamp` in the connection and add `events` to dependencies (matches the on-disk plugin pattern, contradicts the design's "no `events` dep" line). (b) Drop the `changeStamp` ref from `workflow-api.yaml` and leave engine writes un-stamped in 20a, deferring the dep to 20b alongside the rest of the events/notifications wiring.
 

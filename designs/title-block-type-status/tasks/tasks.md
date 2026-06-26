@@ -6,16 +6,16 @@ These tasks implement `designs/title-block-type-status/design.md`: the shared pa
 
 ## Tasks
 
-| #   | File                                   | Summary                                                                 | Depends On |
-| --- | -------------------------------------- | ----------------------------------------------------------------------- | ---------- |
-| 1   | `01-action-group-statuses-enum.md`     | Add `action_group_statuses.yaml` enum (done / in-progress / blocked)    | —          |
-| 2   | `02-title-block-component.md`          | Rewrite `title-block.yaml` + thread vars through `page.yaml`            | —          |
-| 3   | `03-migrate-workflow-overview.md`      | Migrate workflow-overview to `type`/`status`/`status_enum`/`loading`   | 2          |
-| 4   | `04-migrate-workflow-group-overview.md`| Migrate group-overview; wire the new group-status enum                  | 1, 2       |
-| 5   | `05-migrate-contacts-pages.md`         | Migrate contacts view/edit/new (type out of title; loading on view)     | 2          |
-| 6   | `06-migrate-activities-pages.md`       | Migrate activities view/edit/new (same)                                 | 2          |
-| 7   | `07-migrate-user-admin-pages.md`       | Migrate user-admin view/edit/new (`app_title`/`User` → eyebrow)         | 2          |
-| 8   | `08-docs-and-changeset.md`             | Document the title-bar prop interface; add the breaking-change changeset| 2          |
+| #   | File                                    | Summary                                                                  | Depends On |
+| --- | --------------------------------------- | ------------------------------------------------------------------------ | ---------- |
+| 1   | `01-action-group-statuses-enum.md`      | Add `action_group_statuses.yaml` enum (done / in-progress / blocked)     | —          |
+| 2   | `02-title-block-component.md`           | Rewrite `title-block.yaml` + thread vars through `page.yaml`             | —          |
+| 3   | `03-migrate-workflow-overview.md`       | Migrate workflow-overview to `type`/`status`/`status_enum`/`loading`     | 2          |
+| 4   | `04-migrate-workflow-group-overview.md` | Migrate group-overview; wire the new group-status enum                   | 1, 2       |
+| 5   | `05-migrate-contacts-pages.md`          | Migrate contacts view/edit/new (type out of title; loading on view)      | 2          |
+| 6   | `06-migrate-activities-pages.md`        | Migrate activities view/edit/new (same)                                  | 2          |
+| 7   | `07-migrate-user-admin-pages.md`        | Migrate user-admin view/edit/new (`app_title`/`User` → eyebrow)          | 2          |
+| 8   | `08-docs-and-changeset.md`              | Document the title-bar prop interface; add the breaking-change changeset | 2          |
 
 ## Ordering Rationale
 

@@ -8,18 +8,18 @@
 
 ## Status
 
-| Task | Summary | State |
-| ---- | ------- | ----- |
-| 1 | `ActionSteps.onActionClick` generic event + navigate default | ✅ committed; plugin build + 670 unit tests green |
-| 2 | `EventsTimeline` converge onto the same contract | ✅ committed; build + tests green |
-| 3 | shared `check-action-surface.yaml` | ✅ committed (incl. the deviation below) |
-| 4 | `workflow-action-edit` thin container | ✅ committed |
-| 5 | `workflow-action-review` thin container (guard → `[in-review]`) | ✅ committed |
-| 6 | `workflow-action-view` thin container (+ `resolve_error`) | ✅ committed |
-| 7 | standalone `check-action-modal` + manifest export | ✅ committed |
-| 8 | `actions-on-entity` bundles modal; `workflows-events-timeline` `on_action_click` passthrough | ✅ committed |
-| 9 | README / parent design / implementation-plan + verification | ✅ committed |
-| 10 | Part 22 e2e supplements | ⏸️ **deferred to Part 22** — see disposition below |
+| Task | Summary                                                                                      | State                                              |
+| ---- | -------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| 1    | `ActionSteps.onActionClick` generic event + navigate default                                 | ✅ committed; plugin build + 670 unit tests green  |
+| 2    | `EventsTimeline` converge onto the same contract                                             | ✅ committed; build + tests green                  |
+| 3    | shared `check-action-surface.yaml`                                                           | ✅ committed (incl. the deviation below)           |
+| 4    | `workflow-action-edit` thin container                                                        | ✅ committed                                       |
+| 5    | `workflow-action-review` thin container (guard → `[in-review]`)                              | ✅ committed                                       |
+| 6    | `workflow-action-view` thin container (+ `resolve_error`)                                    | ✅ committed                                       |
+| 7    | standalone `check-action-modal` + manifest export                                            | ✅ committed                                       |
+| 8    | `actions-on-entity` bundles modal; `workflows-events-timeline` `on_action_click` passthrough | ✅ committed                                       |
+| 9    | README / parent design / implementation-plan + verification                                  | ✅ committed                                       |
+| 10   | Part 22 e2e supplements                                                                      | ⏸️ **deferred to Part 22** — see disposition below |
 
 **Build/test state after Part 40:**
 
@@ -56,7 +56,7 @@ green until this is reconciled across the wave.
 
 - **Resolver** `modules/workflows/resolvers/makeWorkflowApis.js:72` emits submit
   endpoints as **`{workflow_type}-{action_type}-submit`** (e.g.
-  `onboarding-qualify-submit`). `makeWorkflowApis.test.js` *asserts* ids never
+  `onboarding-qualify-submit`). `makeWorkflowApis.test.js` _asserts_ ids never
   start with `update-action-`.
 - **UI references** (all of them) resolve **`update-action-{action_type}`**:
   - `templates/edit.yaml.njk:230` (and view/review/error njk) —
@@ -68,7 +68,7 @@ green until this is reconciled across the wave.
     mandates the `update-action-{type}` form, so the surface matches the design
     and the shipped precedent — the design's endpoint contract is itself stale.
 - **Nothing generates `update-action-{type}`** — grep across `modules/`,
-  `plugins/`, `apps/demo/` finds only *references*, never a definition.
+  `plugins/`, `apps/demo/` finds only _references_, never a definition.
 
 → 19 demo build errors: `CallAPI ... references non-existent endpoint
 "workflows/update-action-{qualify|send-quote|upload-po|billing-details}"`.
@@ -80,7 +80,7 @@ check pages **cannot build it at runtime** — `GetWorkflowAction`
 `workflow_type` ("Raw engine internals are NOT shipped: access, workflow_type,
 metadata"). The surface only has the action `type` (`current_action.type`), not
 the workflow type. The form templates know both at build time; the shared pages
-know neither's *workflow* component at runtime.
+know neither's _workflow_ component at runtime.
 
 **Resolution options (for the wave owners to decide — do not pick unilaterally):**
 
@@ -148,7 +148,7 @@ endpoints:
   serving check actions via their real buttons; includes a `review`-verbed check
   action (the review-verb fixture task 10 also wanted).
 - **`tasks/06-cluster-error-recovery.md`** — the `error → resolve_error →
-  in-review → approve → done` recovery flow plus real cross-module `callApi`.
+in-review → approve → done` recovery flow plus real cross-module `callApi`.
 
 Authoring Part 40's own `check-action-surfaces.spec.js` / `check-action-modal.spec.js`
 now would (a) duplicate Part 22's planned fixtures, (b) collide with the

@@ -5,20 +5,29 @@
 Part 5 shipped a `force: true`-only scaffold of `updateAction.js` at `plugins/modules-mongodb-plugins/src/connections/shared/updateAction.js`. Its current body:
 
 ```js
-async function updateAction(context, { actionId, newStage, fields = {}, eventId = null, force }) {
+async function updateAction(
+  context,
+  { actionId, newStage, fields = {}, eventId = null, force },
+) {
   if (force !== true) {
     throw new Error(
-      'updateAction: priority-rule path is part 06 scope; this scaffold requires force: true'
+      "updateAction: priority-rule path is part 06 scope; this scaffold requires force: true",
     );
   }
-  return context.mongoDBConnection('actions').MongoDBUpdateOne({
+  return context.mongoDBConnection("actions").MongoDBUpdateOne({
     filter: { _id: actionId },
     update: {
       $set: { updated: context.changeStamp, ...fields },
       $push: {
         status: {
           $position: 0,
-          $each: [{ stage: newStage, event_id: eventId, created: context.changeStamp }],
+          $each: [
+            {
+              stage: newStage,
+              event_id: eventId,
+              created: context.changeStamp,
+            },
+          ],
         },
       },
     },
@@ -78,7 +87,14 @@ Accept `currentActionId` (for the self-exception). Make `force` optional (defaul
  */
 async function updateAction(
   context,
-  { actionId, newStage, fields = {}, eventId = null, currentActionId = null, force = false }
+  {
+    actionId,
+    newStage,
+    fields = {},
+    eventId = null,
+    currentActionId = null,
+    force = false,
+  },
 ) {
   // ...
 }
@@ -89,8 +105,8 @@ async function updateAction(
 Imports at the top of the file:
 
 ```js
-import getCurrentAction from '../WorkflowAPI/SubmitWorkflowAction/utils/getCurrentAction.js';
-import shouldUpdate from '../WorkflowAPI/SubmitWorkflowAction/utils/shouldUpdate.js';
+import getCurrentAction from "../WorkflowAPI/SubmitWorkflowAction/utils/getCurrentAction.js";
+import shouldUpdate from "../WorkflowAPI/SubmitWorkflowAction/utils/shouldUpdate.js";
 ```
 
 (The utilities live under `SubmitWorkflowAction/utils/` per part 6's Sub-modules list and tasks 2/3. The import path crosses connection-handler boundaries but the file layout already permits that — `shared/createMongoDBConnection.js` is imported into all three handlers, mirroring the same shape.)
@@ -99,7 +115,14 @@ Body:
 
 ```js
 async function updateAction(context, options) {
-  const { actionId, newStage, fields = {}, eventId = null, currentActionId = null, force = false } = options;
+  const {
+    actionId,
+    newStage,
+    fields = {},
+    eventId = null,
+    currentActionId = null,
+    force = false,
+  } = options;
 
   if (force !== true) {
     const fetchedAction = await getCurrentAction(context, { actionId });
@@ -117,14 +140,20 @@ async function updateAction(context, options) {
     }
   }
 
-  return context.mongoDBConnection('actions').MongoDBUpdateOne({
+  return context.mongoDBConnection("actions").MongoDBUpdateOne({
     filter: { _id: actionId },
     update: {
       $set: { updated: context.changeStamp, ...fields },
       $push: {
         status: {
           $position: 0,
-          $each: [{ stage: newStage, event_id: eventId, created: context.changeStamp }],
+          $each: [
+            {
+              stage: newStage,
+              event_id: eventId,
+              created: context.changeStamp,
+            },
+          ],
         },
       },
     },
@@ -167,6 +196,6 @@ Drop the "v1 scope: supports `force: true` only" line. Replace with: "Part 6 ext
 
 ## Notes
 
-- **Cross-package-path import.** Importing `getCurrentAction` and `shouldUpdate` from `../WorkflowAPI/SubmitWorkflowAction/utils/` is a slightly unusual shape — utilities are usually consumed by code within the same handler directory. But the design's [Sub-modules list](../design.md#sub-modules) puts these utilities under `SubmitWorkflowAction/utils/` (matching v0's layout) while keeping `updateAction.js` in `shared/` (so parts 5/10/23 can import it without crossing into a sibling handler directory). The asymmetry is intentional — `updateAction` is a *shared* helper that *uses* a SubmitWorkflowAction-specific utility, but parts 5/10/23 don't need to see the utility, only the extended `updateAction` interface.
-- The `actionEntry.force = false` hard-coded value inside `shouldUpdate` is correct because the outer `force !== true` check on `options.force` already filtered the force case. Don't worry about it being a per-entry vs per-call confusion — there is no per-call surface; `options.force` *is* the per-entry force flag (the loop in task 10 passes it through from each entry).
+- **Cross-package-path import.** Importing `getCurrentAction` and `shouldUpdate` from `../WorkflowAPI/SubmitWorkflowAction/utils/` is a slightly unusual shape — utilities are usually consumed by code within the same handler directory. But the design's [Sub-modules list](../design.md#sub-modules) puts these utilities under `SubmitWorkflowAction/utils/` (matching v0's layout) while keeping `updateAction.js` in `shared/` (so parts 5/10/23 can import it without crossing into a sibling handler directory). The asymmetry is intentional — `updateAction` is a _shared_ helper that _uses_ a SubmitWorkflowAction-specific utility, but parts 5/10/23 don't need to see the utility, only the extended `updateAction` interface.
+- The `actionEntry.force = false` hard-coded value inside `shouldUpdate` is correct because the outer `force !== true` check on `options.force` already filtered the force case. Don't worry about it being a per-entry vs per-call confusion — there is no per-call surface; `options.force` _is_ the per-entry force flag (the loop in task 10 passes it through from each entry).
 - Existing callers in part 5 pass `force: true` explicitly. They keep working unchanged. The `currentActionId` field defaults to `null` — engine-internal callers (parts 5, 10, 23) don't need to pass it.

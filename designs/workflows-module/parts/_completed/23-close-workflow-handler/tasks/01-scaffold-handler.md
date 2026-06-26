@@ -5,10 +5,10 @@
 The workflows plugin lives at `plugins/modules-mongodb-plugins/`. Its server-side connection `WorkflowAPI` already ships three handlers — `StartWorkflow`, `CancelWorkflow`, `SubmitWorkflowAction` — each in its own directory under `src/connections/WorkflowAPI/`. The connection registers them via `WorkflowAPI.js`:
 
 ```js
-import schema from './schema.js';
-import StartWorkflow from './StartWorkflow/StartWorkflow.js';
-import CancelWorkflow from './CancelWorkflow/CancelWorkflow.js';
-import SubmitWorkflowAction from './SubmitWorkflowAction/SubmitWorkflowAction.js';
+import schema from "./schema.js";
+import StartWorkflow from "./StartWorkflow/StartWorkflow.js";
+import CancelWorkflow from "./CancelWorkflow/CancelWorkflow.js";
+import SubmitWorkflowAction from "./SubmitWorkflowAction/SubmitWorkflowAction.js";
 
 const WorkflowAPI = {
   schema,
@@ -33,7 +33,7 @@ Create `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CloseWorkflo
 ### 2. Create `CloseWorkflow.js`
 
 ```js
-import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
+import createMongoDBConnection from "../../shared/createMongoDBConnection.js";
 
 async function CloseWorkflow(lowdefyContext) {
   const { request: payload = {}, connection } = lowdefyContext;
@@ -47,11 +47,11 @@ async function CloseWorkflow(lowdefyContext) {
   };
 
   if (!payload.workflow_id) {
-    throw new Error('CloseWorkflow: workflow_id is required');
+    throw new Error("CloseWorkflow: workflow_id is required");
   }
 
   // Body lands in Tasks 2–6.
-  throw new Error('CloseWorkflow: not implemented');
+  throw new Error("CloseWorkflow: not implemented");
 }
 
 CloseWorkflow.schema = {};
@@ -68,7 +68,7 @@ export default CloseWorkflow;
 Add the import + entry alongside the existing three handlers in `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/WorkflowAPI.js`:
 
 ```js
-import CloseWorkflow from './CloseWorkflow/CloseWorkflow.js';
+import CloseWorkflow from "./CloseWorkflow/CloseWorkflow.js";
 
 const WorkflowAPI = {
   schema,

@@ -130,7 +130,7 @@ load-bearing:
 
 Task 12 specs none of this, and for the **lifecycle events**
 (`workflow-started`/`-cancelled`/`-closed`) the references/metadata content is
-undefined anywhere — D12 defines only their *render context*, and task 17
+undefined anywhere — D12 defines only their _render context_, and task 17
 defers to task 12 ("`planEventDispatch` already branches on type"). An
 implementer following the task text produces lifecycle event docs with no
 references, which silently breaks the entity timeline for the new event types
@@ -202,7 +202,7 @@ reference it, but YAML override keying and `metadata.interaction` do).
 > **Resolved (auto).** Task 15's mint-at-entry step now threads `{ blockId, connectionId, pageId, requestId }` from `lowdefyContext` into the engine context via the same shared invocation-setup step, with a note that task 17's handlers get it through the same setup. Task 12 keeps the consumer-side sentence.
 
 Line 40: "the entry-point handler (`SubmitWorkflowAction.js` et al.) threads
-them into the engine context." Review-4 #5 verified the fields are *available*
+them into the engine context." Review-4 #5 verified the fields are _available_
 on `lowdefyContext` — but neither task 15 nor task 17 (the tasks that rewrite
 those handlers) mentions threading `{ blockId, connectionId, pageId, requestId }`,
 and the current `SubmitWorkflowAction.js:6–19` does not thread them. As tasked,

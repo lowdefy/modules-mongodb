@@ -11,16 +11,16 @@ The design's "Proposed shape" splices `timeline_action_lookup.yaml` into `events
 ```yaml
 pipeline:
   - $match: { ... }
-  - _ref:                                 # NEW — always spliced
+  - _ref: # NEW — always spliced
       path: ../shared/workflow/timeline_action_lookup.yaml
       vars: { app_name: ... }
-  - $addFields: { ... }                   # D6 filter
+  - $addFields: { ... } # D6 filter
   - $sort: { date: -1 }
 ```
 
 and the app-developer re-export example does the same (design.md:184-191, `- _ref: { module: workflows, component: timeline-action-lookup }` between `$match` and `$facet`).
 
-But `timeline_action_lookup.yaml` is a **multi-stage YAML sequence** (`$lookup` → `$unwind` → `$setWindowFields` → `$group` → … — see task 5). Lowdefy `_ref` substitutes a node *in place* and does **not** splice a list into the parent array — a list-valued `_ref` placed as one pipeline element nests, producing `[ $match, [ …8 fragment stages… ], $addFields, $sort ]`, which is an invalid pipeline. This is not speculative: it is exactly the behaviour the repo's own shared stages are built around — `visible_verbs.yaml:18-21` and `visible_verbs_filter.yaml:8-11` both keep themselves to a *single* `$addFields`/`$match` precisely because "a two-stage list `_ref`'d mid-pipeline would nest, not flatten." A multi-stage fragment cannot be one of those single-node refs.
+But `timeline_action_lookup.yaml` is a **multi-stage YAML sequence** (`$lookup` → `$unwind` → `$setWindowFields` → `$group` → … — see task 5). Lowdefy `_ref` substitutes a node _in place_ and does **not** splice a list into the parent array — a list-valued `_ref` placed as one pipeline element nests, producing `[ $match, [ …8 fragment stages… ], $addFields, $sort ]`, which is an invalid pipeline. This is not speculative: it is exactly the behaviour the repo's own shared stages are built around — `visible_verbs.yaml:18-21` and `visible_verbs_filter.yaml:8-11` both keep themselves to a _single_ `$addFields`/`$match` precisely because "a two-stage list `_ref`'d mid-pipeline would nest, not flatten." A multi-stage fragment cannot be one of those single-node refs.
 
 The fragment must be spliced with `_build.array.concat` (the operator the contacts/layout modules already use for exactly this — e.g. `modules/contacts/requests/get_contact.yaml:16`). Task 5 (Notes, lines 188-195) and task 7 already caught this and prescribe `_build.array.concat`; the **design's proposed-shape sketches were never corrected** and still show the nesting form in both places.
 
@@ -30,13 +30,14 @@ This also softens **D1**'s re-export ergonomics claim (design.md:34, "a clean `_
 
 ## Design vs. shipped code
 
-### 2. `visible_verbs.yaml` is listed as **New** and framed as factored-out *by this part* — but Part 38 already shipped it, and the real delta is a `_module.var` → `_var` re-parameterization that ripples to three existing callers
+### 2. `visible_verbs.yaml` is listed as **New** and framed as factored-out _by this part_ — but Part 38 already shipped it, and the real delta is a `_module.var` → `_var` re-parameterization that ripples to three existing callers
 
-The Files-changed table (design.md:198) marks `modules/shared/workflow/visible_verbs.yaml` as **New**, and D5 (design.md:85) frames the factoring as Part 42 work ("This is the *compute* half of Part 38's `visible_verbs_filter.yaml`, factored out … Part 38's `visible_verbs_filter.yaml` becomes this stage + its `$match` drop"). On disk, Part 38 has **already** done that factoring: `modules/shared/workflow/visible_verbs.yaml` exists as the standalone compute stage, and `get-entity-workflows.yaml:34`, `get-workflow-overview.yaml:52`, `get-action-group-overview.yaml:28` already `_ref` it.
+The Files-changed table (design.md:198) marks `modules/shared/workflow/visible_verbs.yaml` as **New**, and D5 (design.md:85) frames the factoring as Part 42 work ("This is the _compute_ half of Part 38's `visible_verbs_filter.yaml`, factored out … Part 38's `visible_verbs_filter.yaml` becomes this stage + its `$match` drop"). On disk, Part 38 has **already** done that factoring: `modules/shared/workflow/visible_verbs.yaml` exists as the standalone compute stage, and `get-entity-workflows.yaml:34`, `get-workflow-overview.yaml:52`, `get-action-group-overview.yaml:28` already `_ref` it.
 
-The shipped stage reads the app name via `_module.var: app_name` (visible_verbs.yaml:35, 69, 103, 137). Part 42's *actual* change — correctly identified only in task 2 — is to **re-parameterize** it to `_var: app_name` so the dependency-free events module (which has no `app_name` var, only `display_key`) can supply it via `_ref` vars. That conversion is not cost-free: it forces all **three existing callers** to switch from a bare `_ref` to `_ref … vars: { app_name: { _module.var: app_name } }`, or `_var: app_name` resolves to nothing and every action's access gate silently breaks.
+The shipped stage reads the app name via `_module.var: app_name` (visible_verbs.yaml:35, 69, 103, 137). Part 42's _actual_ change — correctly identified only in task 2 — is to **re-parameterize** it to `_var: app_name` so the dependency-free events module (which has no `app_name` var, only `display_key`) can supply it via `_ref` vars. That conversion is not cost-free: it forces all **three existing callers** to switch from a bare `_ref` to `_ref … vars: { app_name: { _module.var: app_name } }`, or `_var: app_name` resolves to nothing and every action's access gate silently breaks.
 
 Per the project's "designs are the source of truth" rule, the design should reflect reality:
+
 - Reclassify `visible_verbs.yaml` from **New** to **Modify** (re-parameterize `_module.var: app_name` → `_var: app_name`).
 - Add the three read APIs' `visible_verbs` `_ref`-call update (bare → `vars: { app_name }`) to the Files-changed table — currently only the `resolve_action_link` adoption is listed for those APIs (design.md:200), but they also need the `app_name` var threaded for finding #2's parameterization.
 - Adjust D5's "factored out" wording to "re-parameterized" (Part 38 owns the factoring; Part 42 owns making it consumer-supplied).
@@ -45,9 +46,9 @@ Task 2 already documents this as a "Deviation from the design's Files table" —
 
 ## Minor
 
-### 3. On an action-keyed timeline, a co-referenced action's card attaches to the latest *matched* event, not its true latest event
+### 3. On an action-keyed timeline, a co-referenced action's card attaches to the latest _matched_ event, not its true latest event
 
-D6 correctly strips the timeline's own action card. But the fragment runs *after* the reference `$match`, so its "latest referencing event" partition is scoped to the matched subset (D4 acknowledges this scoping, and it's correct for entity timelines). On the Part 33 action-view-page timeline (`reference_field: action_ids`, `reference_value: this action`), an event that references *both* this action and another action B will surface B's card — attached to the latest *this-action-referencing* event, which need not be B's globally-latest event. The card is for a related action so it's arguably fine, but the attachment point can be slightly off. v0 had the same property; worth a one-line acknowledgement in D6 that the "latest event" scoping interacts with multi-action events on a single-action timeline, or an explicit statement that this is accepted.
+D6 correctly strips the timeline's own action card. But the fragment runs _after_ the reference `$match`, so its "latest referencing event" partition is scoped to the matched subset (D4 acknowledges this scoping, and it's correct for entity timelines). On the Part 33 action-view-page timeline (`reference_field: action_ids`, `reference_value: this action`), an event that references _both_ this action and another action B will surface B's card — attached to the latest _this-action-referencing_ event, which need not be B's globally-latest event. The card is for a related action so it's arguably fine, but the attachment point can be slightly off. v0 had the same property; worth a one-line acknowledgement in D6 that the "latest event" scoping interacts with multi-action events on a single-action timeline, or an explicit statement that this is accepted.
 
 ### 4. Confirm the workflows manifest has an `exports:` block to extend
 

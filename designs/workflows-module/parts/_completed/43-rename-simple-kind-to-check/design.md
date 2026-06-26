@@ -6,7 +6,7 @@ The workflow-action kind currently spelled `simple` is renamed to `check`. `simp
 
 ## Proposed change
 
-1. **Rename the kind value `simple` → `check`** across the config-schema validator (`ACTION_KINDS`), the engine FSM kind tables and resolver branches, the `ActionKind` typedef, the demo `workflow_config`, tests, and the README/concept terminology. The mental model is "check off": you *fill in* a form, you *check off* a check.
+1. **Rename the kind value `simple` → `check`** across the config-schema validator (`ACTION_KINDS`), the engine FSM kind tables and resolver branches, the `ActionKind` typedef, the demo `workflow_config`, tests, and the README/concept terminology. The mental model is "check off": you _fill in_ a form, you _check off_ a check.
 2. **Record the tasks-module page boundary**: adhoc tasks get their own `/tasks/*` pages in the future tasks module; the shared read-only detail surface is reused as a **component** (`_ref`), never as a cross-module shared page. Captured in [tasks-module-plan](../../../../workflows-module-concept/tasks-module-plan/design.md); no code here.
 3. **Sequence as a discrete part after [Part 40](../40-simple-action-surfaces/design.md)** — so the sweep runs once against a stable tree, modelled on Part 35.
 
@@ -20,25 +20,25 @@ The five kinds all answer one question: **where does the action's resolution com
 - `external` — from an external system driving it (planned)
 - `check` — **from a human just declaring "I did the thing"**
 
-`check` earns its place by pairing against `form`: a form *captures input*, a check *captures nothing — you mark it off*. That contrast — input-surface vs no-input-surface — is exactly the differentiator the taxonomy hinges on. The honest situation is that the single best word is *task*, which was deliberately spent on the adhoc concept (Part 35); `check` is the strongest remaining word that names the *surface* rather than the implementation.
+`check` earns its place by pairing against `form`: a form _captures input_, a check _captures nothing — you mark it off_. That contrast — input-surface vs no-input-surface — is exactly the differentiator the taxonomy hinges on. The honest situation is that the single best word is _task_, which was deliberately spent on the adhoc concept (Part 35); `check` is the strongest remaining word that names the _surface_ rather than the implementation.
 
 Rejected alternatives (this round):
 
 - `simple` (incumbent) — describes the implementation ("the easy case"), not the thing; faint "trivial/dumb" connotation undersells an action with assignees, deadline, dependencies, and downstream effects.
 - `job` — matches the prose ("a job a user should do") but collides with the software sense of a background/cron job, awkward next to `external` (system-driven).
-- `checkbox` — implies a *binary* done/not-done. These move through `action-required → in-progress → done`, plus `not-required` — four states, not a checkbox. `check` (the *act* of checking off) doesn't misdescribe the surface.
+- `checkbox` — implies a _binary_ done/not-done. These move through `action-required → in-progress → done`, plus `not-required` — four states, not a checkbox. `check` (the _act_ of checking off) doesn't misdescribe the surface.
 - `check-off` / `checkoff` — disambiguates but breaks the one-word `kind:` pattern (`form` / `tracker` / `custom` / `external`) and reads clunky.
 - `manual` / `step` / `status` / `user_task` / `mark` — all rejected in Part 35 for reasons that still hold (undifferentiated, misleading, or verbose).
 
-**The one cost:** "check" has a second reading — *inspect / verify* ("check the work") — and the access model already has a `review` verb. So within this system there's a nearby "verify" concept a `check` action could blur into. In practice the to-do reading ("check it off the list", next to `form`) dominates, and — crucially — the shared pages are route-anchored on `workflow-action-*` (Part 38 task 18), so the kind name never reaches a user-facing surface. It lives purely as an internal discriminator in `kind:` data and engine branches, plus the authoring grammar (`kind: check` in `workflow_config`).
+**The one cost:** "check" has a second reading — _inspect / verify_ ("check the work") — and the access model already has a `review` verb. So within this system there's a nearby "verify" concept a `check` action could blur into. In practice the to-do reading ("check it off the list", next to `form`) dominates, and — crucially — the shared pages are route-anchored on `workflow-action-*` (Part 38 task 18), so the kind name never reaches a user-facing surface. It lives purely as an internal discriminator in `kind:` data and engine branches, plus the authoring grammar (`kind: check` in `workflow_config`).
 
 ## Interaction with the tasks module
 
 Two questions settled here so the tasks-module design inherits the boundary rather than re-deriving it:
 
-- **Tasks get their own view/edit pages — in their own module.** Adhoc tasks ship in a separate `tasks` module, scoped `/tasks/view`, `/tasks/edit`. No collision with `/workflows/workflow-action-*`. Separate page sets is *correct*, not duplication, because the write models genuinely differ: workflow `check` actions edit via nullary signal buttons → the engine resolver API (FSM resolves the target status); tasks edit via direct status writes → `update-task`. Different write paths ⇒ different edit pages.
+- **Tasks get their own view/edit pages — in their own module.** Adhoc tasks ship in a separate `tasks` module, scoped `/tasks/view`, `/tasks/edit`. No collision with `/workflows/workflow-action-*`. Separate page sets is _correct_, not duplication, because the write models genuinely differ: workflow `check` actions edit via nullary signal buttons → the engine resolver API (FSM resolves the target status); tasks edit via direct status writes → `update-task`. Different write paths ⇒ different edit pages.
 - **The read view is a shared component, not a shared page.** The detail shape (header, universal fields, status history, comments) is identical across both streams, so the reuse is a `_ref`'d component (the way `workflow-action-view` already renders the shipped `universal-fields` component), not a cross-module page dependency. Shared collection → shared rendering, without coupling the modules.
-- **External actions have no surface.** `kind: external` is system-driven with no user-facing page; it has no edit/review. If one ever needs a read view, the generic `workflow-action-view` renders it — which is the argument *for* the generic page name over the kind name.
+- **External actions have no surface.** `kind: external` is system-driven with no user-facing page; it has no edit/review. If one ever needs a read view, the generic `workflow-action-view` renders it — which is the argument _for_ the generic page name over the kind name.
 
 ## Sequencing — a discrete part after Part 40
 
@@ -50,7 +50,7 @@ The same carry-forward caveat Part 35 raised still binds: **this must land befor
 
 ## Surfaces changed
 
-Exact files and line numbers are deliberately not enumerated — Parts 38/39/40 are reshaping this tree, so the concrete sites resolve against the post-40 state at task-breakdown time. The *surfaces* are stable:
+Exact files and line numbers are deliberately not enumerated — Parts 38/39/40 are reshaping this tree, so the concrete sites resolve against the post-40 state at task-breakdown time. The _surfaces_ are stable:
 
 **Kind value (`simple` → `check`)**
 

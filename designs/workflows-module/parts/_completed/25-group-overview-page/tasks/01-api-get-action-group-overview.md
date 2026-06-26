@@ -20,6 +20,7 @@ Structure modeled on [`api/get-workflow-overview.yaml`](../../../../modules/work
   - `_ref: stages/access_filter.yaml` (existing reusable stage at [`modules/workflows/api/stages/access_filter.yaml`](../../../../modules/workflows/api/stages/access_filter.yaml)).
   - `$sort` by `sort_order: 1`, `_id: 1` (drop `_group_index` — single group, the cross-group ordering layer is dead weight).
 - **Return shape:**
+
   ```js
   // success
   { workflow: { _id, workflow_type, entity_id, entity_collection, status, summary, groups, ... },
@@ -29,6 +30,7 @@ Structure modeled on [`api/get-workflow-overview.yaml`](../../../../modules/work
   // access-denied / missing
   { workflow: null, group: null, actions: [] }
   ```
+
 - **`group` resolution:** look up `workflow.groups[]` entry where `id === payload.group_id` and project `{ id, status, summary }`. Do **not** include `title` — `groups[]` on the persisted doc carries only `{ id, status, summary }` and the static title lives in build-time `workflowsConfig.{type}.action_groups[]`, unreachable from Mongo. The page resolves the title client-side.
 - **Access-vs-existence collapse:** when no actions survive the access filter, return `{ workflow: null, group: null, actions: [] }`. `workflow` collapses to `null` per the same `_if` test `get-workflow-overview.yaml` uses (`actions.length > 0`); `group` collapses alongside `workflow` (this Api's one deliberate divergence from `get-workflow-overview` — the group payload is only meaningful in the context of a visible workflow).
 
@@ -36,12 +38,12 @@ Structure modeled on [`api/get-workflow-overview.yaml`](../../../../modules/work
 
 - Append to `exports.api`:
   ```yaml
-      - id: get-action-group-overview
-        description: Return one workflow + one action group's metadata + ordered + filtered actions in that group. Backs the shipped group-overview page.
+  - id: get-action-group-overview
+    description: Return one workflow + one action group's metadata + ordered + filtered actions in that group. Backs the shipped group-overview page.
   ```
 - Append to the top-level `api:` block:
   ```yaml
-    - _ref: api/get-action-group-overview.yaml
+  - _ref: api/get-action-group-overview.yaml
   ```
 - Update the leading comment block at the top of the file to mention Part 25 alongside the other shipped parts (matching how the comment lists parts 4 / 15 / 17 / 18 / 19).
 

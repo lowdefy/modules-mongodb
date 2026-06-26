@@ -2,7 +2,7 @@
 
 ## Context
 
-Each form-action verb template renders a sticky button bar via `_ref: { module: layout, component: floating-actions }`, passing a **static** `actions:` array of template-shipped signal-button blocks. The layout component (`modules/shared/layout/floating-actions.yaml`) renders `actions` as card blocks with `direction: row-reverse`, so the *first* array entry sits visually rightmost (primary position).
+Each form-action verb template renders a sticky button bar via `_ref: { module: layout, component: floating-actions }`, passing a **static** `actions:` array of template-shipped signal-button blocks. The layout component (`modules/shared/layout/floating-actions.yaml`) renders `actions` as card blocks with `direction: row-reverse`, so the _first_ array entry sits visually rightmost (primary position).
 
 Current bar contents (pre-Part-39 names shown; Part 39 renames/adds buttons but does not change the bar structure):
 
@@ -10,7 +10,7 @@ Current bar contents (pre-Part-39 names shown; Part 39 renames/adds buttons but 
 - `review.yaml.njk` (~line 187): `button_edit` (navigation), `button_request_changes`, `button_approve`.
 - `error.yaml.njk` (~line 224): `button_resolve_error`.
 
-Part 36 makes the bar's *composition* (not the signal vocabulary) extensible: authored `pages.{verb}.buttons.extra` entries — already forwarded verbatim to templates as the `page_config` var by `makeActionPages.js` (`page_config: action.pages?.[verb] ?? {}`) — are appended after the template buttons. Appending means extras render leftmost under `row-reverse`; signal buttons keep the primary visual position (design Decision 1).
+Part 36 makes the bar's _composition_ (not the signal vocabulary) extensible: authored `pages.{verb}.buttons.extra` entries — already forwarded verbatim to templates as the `page_config` var by `makeActionPages.js` (`page_config: action.pages?.[verb] ?? {}`) — are appended after the template buttons. Appending means extras render leftmost under `row-reverse`; signal buttons keep the primary visual position (design Decision 1).
 
 `view.yaml.njk` is **unchanged** by this part — extras on view are deferred (design "Out of scope").
 

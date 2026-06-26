@@ -61,6 +61,7 @@ Rewrite `modules/workflows/pages/workflow-action-view.yaml`:
    Delete the `action_card` header/fields blocks (`:55–127`) and the
    `status_history_card` (`:128–195`) — both absorbed. Keep the
    `comments_card` and its `get_comment_events` request exactly as shipped.
+
 3. **Header comment** — update `:1–8`: thin container + surface, error
    recovery via `resolve_error` (D4), Comments card retained pending Part 33.
 

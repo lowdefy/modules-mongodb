@@ -14,11 +14,11 @@ back_link: { ... }
 badge_text:
   _get:
     from: { _ref: components/workflow_lifecycle_stages.yaml }
-    key: { _string.concat: [ { _state: workflow.status.0.stage }, .title ] }
+    key: { _string.concat: [{ _state: workflow.status.0.stage }, .title] }
 badge_color:
   _get:
     from: { _ref: components/workflow_lifecycle_stages.yaml }
-    key: { _string.concat: [ { _state: workflow.status.0.stage }, .titleColor ] }
+    key: { _string.concat: [{ _state: workflow.status.0.stage }, .titleColor] }
 ```
 
 The two `_get` blocks re-derive the label and colour from the lifecycle-stages enum — exactly the resolution the title block now owns internally.

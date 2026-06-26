@@ -7,6 +7,7 @@
 Per design D11, the wire shape becomes a loop of `MongoDBUpdateOne` — one community-plugin call per affected action. The community plugin (`@lowdefy/community-plugin-mongodb`) deliberately omits `MongoDBBulkWrite` because its change-log feature relies on per-op before/after reads that don't compose with a single bulk round-trip. Every other engine write goes through the change-logged single-doc paths; the cascade staying on that pattern keeps the engine's write surface uniform. Cancel/Close are infrequent user-triggered operations — sub-second sweep latency on typical 20-100 affected actions, and per-action change-log entries improve audit granularity over today's single `MongoDBUpdateMany` log entry.
 
 Per-action loop steps:
+
 1. Fetch the non-terminal action.
 2. Build merged doc — cascade does not pass caller fields, so `mergedActionDoc = actionDocBeforeWrite`.
 3. Run `renderStatusMap` + `computeEngineLinks` against the merged doc. Pass `entryId: context.entry_id` into `computeEngineLinks` (per Task 6 + Task 3 — engine-written `link.pageId` must be prefixed with the workflows module entry id).

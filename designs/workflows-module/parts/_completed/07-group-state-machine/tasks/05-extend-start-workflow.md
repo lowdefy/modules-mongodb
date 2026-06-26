@@ -5,6 +5,7 @@
 [StartWorkflow.js:83](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js) currently writes `groups: []` as a literal placeholder. Part 7's design commits to replacing this with the full pre-populated array: every declared `action_groups[]` entry gets a `{ id, status, summary }` slot at workflow creation, with statuses derived from the just-built starting actions.
 
 Why pre-populate at creation rather than lazily on first submit:
+
 - Apps that read `groups[]` positionally (UI per [part 18](../../18-entity-components/design.md), analytics) see the full array from day 1.
 - Groups that never get touched by a submit (e.g. emergency-only phases) still appear in the workflow doc.
 - Lets the submit-side recompute stay incremental (only the affected group needs updating on each transition).
@@ -20,7 +21,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflo
 1. **Import `recomputeGroups`** (task 3) at the top of the file:
 
    ```js
-   import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
+   import recomputeGroups from "../SubmitWorkflowAction/recomputeGroups.js";
    ```
 
    The import path crosses handler folders — `SubmitWorkflowAction/` owns the helper because that's where the rest of the group-state-machine code lives. Matches the existing `createAction.js` cross-handler pattern (lives in `shared/`, consumed by `StartWorkflow`).
@@ -48,9 +49,9 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflo
      _id: randomUUID(),
      workflow_type: payload.workflow_type,
      // ...
-     status: [{ stage: 'active', created: context.changeStamp }],
+     status: [{ stage: "active", created: context.changeStamp }],
      summary: { done: 0, not_required: 0, total: 0 },
-     groups: [],                       // populated below
+     groups: [], // populated below
      form_data: {},
      // ...
    };
@@ -60,7 +61,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflo
    );
 
    const notRequiredCount = actionDrafts.filter(
-     (a) => a.status[0]?.stage === 'not-required',
+     (a) => a.status[0]?.stage === "not-required",
    ).length;
    workflowDoc.summary = {
      done: 0,

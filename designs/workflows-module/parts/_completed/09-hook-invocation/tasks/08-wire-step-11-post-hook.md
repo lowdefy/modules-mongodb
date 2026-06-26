@@ -26,11 +26,13 @@ This task fills in `post_hook_response` by invoking the post-hook after step 10 
 ## Task
 
 1. **Import the invoker** in `handleSubmit.js`:
+
    ```js
-   import invokePostHook from './invokePostHook.js';
+   import invokePostHook from "./invokePostHook.js";
    ```
 
 2. **Replace the step 11 stub** ([handleSubmit.js:364](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)):
+
    ```js
    // Step 11 — Post-hook. Throws propagate; success return still includes raw
    // pre/post hook responses even though side-effects 4-10 have landed.

@@ -1,9 +1,9 @@
-import findOneAndUpdateDoc from '../../mongo/findOneAndUpdateDoc.js';
-import insertOneDoc from '../../mongo/insertOneDoc.js';
-import bulkWriteActions from '../../mongo/bulkWriteActions.js';
-import insertManyDocs from '../../mongo/insertManyDocs.js';
-import dispatchNotifications from '../../WorkflowAPI/SubmitWorkflowAction/dispatchNotifications.js';
-import { ConcurrentSubmitError } from '../errors.js';
+import findOneAndUpdateDoc from "../../mongo/findOneAndUpdateDoc.js";
+import insertOneDoc from "../../mongo/insertOneDoc.js";
+import bulkWriteActions from "../../mongo/bulkWriteActions.js";
+import insertManyDocs from "../../mongo/insertManyDocs.js";
+import dispatchNotifications from "../../WorkflowAPI/SubmitWorkflowAction/dispatchNotifications.js";
+import { ConcurrentSubmitError } from "../errors.js";
 
 /**
  * Build the bulkWrite operations array from the plan's actions array.
@@ -20,7 +20,7 @@ import { ConcurrentSubmitError } from '../errors.js';
  */
 function buildActionOperations(actions) {
   return actions.map(({ doc, operation }) => {
-    if (operation === 'insert') {
+    if (operation === "insert") {
       return { insertOne: { document: doc } };
     }
     // operation === 'update'
@@ -57,8 +57,9 @@ function buildActionOperations(actions) {
  * @param {import('mongodb').ClientSession | undefined} session
  */
 async function commitWorkflowAndActions(context, plan, session) {
-  const workflowsCollection = context.connection?.workflowsCollection ?? 'workflows';
-  const actionsCollection = context.connection?.actionsCollection ?? 'actions';
+  const workflowsCollection =
+    context.connection?.workflowsCollection ?? "workflows";
+  const actionsCollection = context.connection?.actionsCollection ?? "actions";
 
   // Workflow-less plan (Part 24 UpdateActionFields): no workflow doc is written
   // — summary/groups/form_data are unaffected by action metadata. Skip step 1
@@ -79,7 +80,7 @@ async function commitWorkflowAndActions(context, plan, session) {
   const { doc: plannedWorkflowDoc, operation } = plan.workflow;
 
   // Step 1 — claim the workflow (workflow-first ordering, D9).
-  if (operation === 'insert') {
+  if (operation === "insert") {
     // StartWorkflow: no CAS filter — a freshly minted _id can't race.
     await insertOneDoc({
       mongoDb: context.mongoDb,
@@ -95,7 +96,7 @@ async function commitWorkflowAndActions(context, plan, session) {
       collection: workflowsCollection,
       filter: {
         _id: plannedWorkflowDoc._id,
-        'updated.timestamp': context.loadedState.workflow.updated.timestamp,
+        "updated.timestamp": context.loadedState.workflow.updated.timestamp,
       },
       update: { $set: plannedWorkflowDoc },
       session,
@@ -279,4 +280,8 @@ async function commitPlan(context, plan) {
 }
 
 export default commitPlan;
-export { ConcurrentSubmitError, commitWorkflowAndActions, buildActionOperations };
+export {
+  ConcurrentSubmitError,
+  commitWorkflowAndActions,
+  buildActionOperations,
+};

@@ -26,7 +26,7 @@ return (declaredGroups ?? []).map((group) => {
 
 `get-entity-workflows.yaml` (shipped) projects the workflow doc straight through — no title enrichment. So a client component reading `workflow.groups[i].title` gets `undefined`.
 
-Part 25 hit the same problem and resolved it by deriving the title from "the workflow's static `action_groups[]` (looked up by id)" — but it doesn't say *where* the client gets that static config from on the page (Part 25's title resolution is a single-group payload from the Api, distinct from Part 18's many-workflow client-side join).
+Part 25 hit the same problem and resolved it by deriving the title from "the workflow's static `action_groups[]` (looked up by id)" — but it doesn't say _where_ the client gets that static config from on the page (Part 25's title resolution is a single-group payload from the Api, distinct from Part 18's many-workflow client-side join).
 
 Fix options, ordered by least disruption:
 
@@ -104,7 +104,7 @@ Fix: add a "Consumers" section listing `actions-on-entity` (this part) and `work
 
 > **Resolved.** All three components now carry an explicit `_ref` call example, a `vars:` table, and a "what it renders / does" section. `action_role_check` (`action_config: object, required`) and `workflow-header` (`workflow: object, blocks: array, collapsed_default: boolean`) were folded in by findings #2 and #4. `actions-on-entity`'s contract (`entity_id: string`, `entity_collection: string` — both required) was added in this resolution, along with a `collapsed_default` wiring rule that auto-collapses completed-workflow rows. Matches the convention used in parts 24 and 25.
 
-Standard for every other component-shipping Part design (e.g. [part 24 design.md:17-29](../../24-universal-fields/design.md), [part 25 design.md:21-26](../../25-group-overview-page/design.md)) is to spell out the `_ref` call shape with `vars:` keys, types, and defaults. Part 18's design lists fields the components *read* (e.g. "Reads `_user: roles`", "Title from `workflow.title`") but never says what the caller passes in.
+Standard for every other component-shipping Part design (e.g. [part 24 design.md:17-29](../../24-universal-fields/design.md), [part 25 design.md:21-26](../../25-group-overview-page/design.md)) is to spell out the `_ref` call shape with `vars:` keys, types, and defaults. Part 18's design lists fields the components _read_ (e.g. "Reads `_user: roles`", "Title from `workflow.title`") but never says what the caller passes in.
 
 Inferred from shipped Part 16 templates and Part 17's commitments:
 

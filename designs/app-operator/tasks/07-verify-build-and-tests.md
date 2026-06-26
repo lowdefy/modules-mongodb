@@ -4,27 +4,33 @@
 
 The migration changes the source of the slug everywhere it's read. Two regression classes to catch:
 
-1. **Missed site** — a `_module.var: app_name` left behind on a module that no longer declares the var resolves to `null`, scoping MongoDB filters to `created.app_name: null` and stamping `null` on writes. (Lowdefy's required-when-referenced guard catches a missing `slug:`, but not a missed *site* that still reads the dropped module var.)
+1. **Missed site** — a `_module.var: app_name` left behind on a module that no longer declares the var resolves to `null`, scoping MongoDB filters to `created.app_name: null` and stamping `null` on writes. (Lowdefy's required-when-referenced guard catches a missing `slug:`, but not a missed _site_ that still reads the dropped module var.)
 2. **Wrong operator at a build site** — using `_app` where `_build.app` is required (the `_build.object.fromEntries` keys and the workflows resolver) either fails the build or, for the resolver, silently emits zero per-action pages.
 
 ## Task
 
 1. **Static sweep** (repo root):
+
    ```bash
    grep -rn "_module.var: app_name" modules/ apps/      # expect zero
    grep -rn "app_name" modules/*/module.lowdefy.yaml    # expect no var declarations
    ```
+
    Then confirm the build-time sites use the build form:
+
    ```bash
    grep -rn "_app: slug" modules/*/api/*.yaml | grep -i fromEntries -B2   # spot-check
    grep -rn "app_name:" modules/workflows/module.lowdefy.yaml             # resolver var → _build.app: slug
    ```
+
    Any `_build.object.fromEntries` event-display key still on `_app: slug` (rather than `_build.app: slug`) is a bug.
 
    Then confirm the `app_name` → `slug` rename (Task 4) left no code identifiers behind:
+
    ```bash
    grep -rn "app_name\|appName" modules/workflows/ plugins/modules-mongodb-plugins/src/
    ```
+
    Every remaining hit must be a stored-data reference (a `created.app_name` test fixture, or a comment about the stored field) — **not** a variable, property, parameter, or YAML key. Eyeball each one.
 
 2. **Build.** `pnpm ldf:b` must succeed with no unresolved-operator or missing-var warnings.

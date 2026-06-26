@@ -9,13 +9,13 @@ leaves the build clean.
 
 ## Tasks
 
-| #   | File                              | Summary                                                                 | Depends On |
-| --- | --------------------------------- | ----------------------------------------------------------------------- | ---------- |
-| 1   | `01-migrate-user-selector.md`     | Move `user-selector` + `get_users_for_selector` request to user-account; rewire both manifests + READMEs; delete user-admin copies | —          |
-| 2   | `02-add-user-multi-selector.md`   | Add `user-multi-selector` component in user-account (reuses the moved request) | 1          |
-| 3   | `03-add-user-avatar.md`           | Add `user-avatar` component in user-account                             | —          |
-| 4   | `04-demo-verification-pages.md`   | Add demo sample pages exercising `user-avatar` and `user-multi-selector` | 2, 3       |
-| 5   | `05-changeset.md`                 | Write the changeset documenting the relocation as a breaking change under a minor bump | 1, 2, 3    |
+| #   | File                            | Summary                                                                                                                            | Depends On |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-migrate-user-selector.md`   | Move `user-selector` + `get_users_for_selector` request to user-account; rewire both manifests + READMEs; delete user-admin copies | —          |
+| 2   | `02-add-user-multi-selector.md` | Add `user-multi-selector` component in user-account (reuses the moved request)                                                     | 1          |
+| 3   | `03-add-user-avatar.md`         | Add `user-avatar` component in user-account                                                                                        | —          |
+| 4   | `04-demo-verification-pages.md` | Add demo sample pages exercising `user-avatar` and `user-multi-selector`                                                           | 2, 3       |
+| 5   | `05-changeset.md`               | Write the changeset documenting the relocation as a breaking change under a minor bump                                             | 1, 2, 3    |
 
 ## Ordering Rationale
 

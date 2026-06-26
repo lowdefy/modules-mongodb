@@ -2,7 +2,8 @@
 title: Write a Hook
 module: workflows
 type: how-to
-concepts: [hooks, pre-hook, post-hook, submit-pipeline, form-overrides, event-overrides]
+concepts:
+  [hooks, pre-hook, post-hook, submit-pipeline, form-overrides, event-overrides]
 ---
 
 # Write a hook
@@ -13,12 +14,12 @@ concepts: [hooks, pre-hook, post-hook, submit-pipeline, form-overrides, event-ov
 
 ## When to use which phase
 
-| Use pre-hook when… | Use post-hook when… |
-|---|---|
-| You need to validate and potentially abort the submit | You need to fire external integrations (Slack, CRM sync) |
-| You need to spawn/signal other actions in this workflow | You need to copy data to another entity after the action commits |
-| You need to normalize form data before it is written | You need to use `result.event_id` or `result.action_ids` |
-| The write must happen atomically with the status transition | The write can tolerate being missed on retry |
+| Use pre-hook when…                                          | Use post-hook when…                                              |
+| ----------------------------------------------------------- | ---------------------------------------------------------------- |
+| You need to validate and potentially abort the submit       | You need to fire external integrations (Slack, CRM sync)         |
+| You need to spawn/signal other actions in this workflow     | You need to copy data to another entity after the action commits |
+| You need to normalize form data before it is written        | You need to use `result.event_id` or `result.action_ids`         |
+| The write must happen atomically with the status transition | The write can tolerate being missed on retry                     |
 
 Pre-hook failures abort the submit — no engine writes happen. Post-hook failures do not roll back engine writes; the action transition is permanent. Write post-hooks to be idempotent.
 
@@ -60,7 +61,7 @@ hooks:
 ```yaml
 hooks:
   submit:
-    pre: onboarding-qualify-pre-submit    # Lowdefy Api id
+    pre: onboarding-qualify-pre-submit # Lowdefy Api id
     post: onboarding-qualify-post-submit
 ```
 
@@ -133,15 +134,15 @@ A pre-hook's `:return:` can carry three optional keys:
 
 ```yaml
 :return:
-  actions:                           # signal other actions in this workflow
+  actions: # signal other actions in this workflow
     - type: send-quote
-      signal: unblock                # fire unblock against a blocked action
+      signal: unblock # fire unblock against a blocked action
     - type: site-visit
       signal: activate
-      upsert: true                   # spawn if not yet exists
-  form_overrides:                    # merge into form_data (pre-hook wins on collision)
+      upsert: true # spawn if not yet exists
+  form_overrides: # merge into form_data (pre-hook wins on collision)
     contact_name: Normalized Name
-  event_overrides:                   # merge into the default log-event shape
+  event_overrides: # merge into the default log-event shape
     type: lead-qualified
     display:
       my-app:

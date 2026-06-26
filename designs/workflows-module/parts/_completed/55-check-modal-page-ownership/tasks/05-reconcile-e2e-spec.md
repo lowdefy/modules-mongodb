@@ -14,19 +14,30 @@ After this design, both pages keep the modal (Task 3) and a check-row click open
 Each of the four steps currently follows this pattern:
 
 ```js
-const link = page.locator('a', { hasText: '<row text>' }).first();
-await link.waitFor({ state: 'visible', timeout: 10_000 });
+const link = page.locator("a", { hasText: "<row text>" }).first();
+await link.waitFor({ state: "visible", timeout: 10_000 });
 await link.click();
-await page.waitForURL((url) => url.href.includes('workflow-action-edit'), { timeout: 15_000 });
+await page.waitForURL((url) => url.href.includes("workflow-action-edit"), {
+  timeout: 15_000,
+});
 
-await ldf.block('status').do.select('done');
+await ldf.block("status").do.select("done");
 
 await Promise.all([
-  page.waitForURL((url) => !url.href.includes('workflow-action-edit'), { timeout: 30_000 }),
-  ldf.block('button_submit_edit').do.click(),
+  page.waitForURL((url) => !url.href.includes("workflow-action-edit"), {
+    timeout: 30_000,
+  }),
+  ldf.block("button_submit_edit").do.click(),
 ]);
 
-await expect.poll(async () => { /* find actions doc */ }, { timeout: 10_000 }).toBe('done');
+await expect
+  .poll(
+    async () => {
+      /* find actions doc */
+    },
+    { timeout: 10_000 },
+  )
+  .toBe("done");
 ```
 
 The modal wraps the **same** `check-action-surface` body the full-page `workflow-action-edit` renders, so the in-modal status selector and submit button keep the same block ids: `ldf.block('status')` and `ldf.block('button_submit_edit')`. The difference is no URL change — the modal opens over the entity page and closes on submit.

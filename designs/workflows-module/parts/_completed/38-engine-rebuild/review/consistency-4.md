@@ -39,13 +39,13 @@ drift:
   `updated.timestamp` scalar. Consistent throughout.
 - **review-1 #3 (concept drifts):** no `submit_edit` / `save_draft` / `target_status`
   / current-action-redirect terms remain; the worked example uses nullary `signal:
-  submit` and explicitly notes "no `target_status`."
+submit` and explicitly notes "no `target_status`."
 - **review-1 #4 (kind naming):** `task` appears only in the Prerequisite line
   explaining the Part 35 rename and in `FSM tables key on simple (not task)`; all
   active references are `simple`. Part 35 sequencing and the `resolveTargetStatus.js`
   "renamed by Part 35, deleted here" annotation are present.
 - **review-1 #6 (events write path):** data-flow step 3 shows `callApi('new-event',
-  …)` only — no `insertOneDoc(events, …)` remains; D7 reuses the community
+…)` only — no `insertOneDoc(events, …)` remains; D7 reuses the community
   `log-changes` contract (no bespoke `change_log` collection).
 - **review-1 #7 (tracker depth):** D10 carries a per-fire `depth` field, not a loop
   counter.
@@ -64,7 +64,7 @@ drift:
   Files-changed entry both carry the `actionsEnum[].priority` and `changeLog`
   description rewrites.
 - **review-2 #5 (FSM alias):** Files-changed specifies `FSM_TABLES.simple =
-  FSM_TABLES.form` (aliased, not copied); no "three tables" phrasing remains;
+FSM_TABLES.form` (aliased, not copied); no "three tables" phrasing remains;
   `tables.test.js` asserts the alias identity.
 - **review-3 #1 (`workflow-` prefix):** derived ids stay `{workflow_type}-…`
   (unprefixed, entry-scoped) in proposed-change items 5/14, D16,
@@ -84,5 +84,5 @@ drift:
   present and justified by the greenfield assumption.
 - **review-3 #8 / #9:** annotation-only / D2 intentional-property note both present
   (the "do not move the check after the pre-hook" sentence is in D2).
-</content>
-</invoke>
+  </content>
+  </invoke>

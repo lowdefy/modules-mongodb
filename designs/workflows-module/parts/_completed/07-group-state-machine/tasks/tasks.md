@@ -6,17 +6,17 @@ Promote `action_group` from UI label to engine concept. Lands one pure derivatio
 
 ## Tasks
 
-| #   | File                                                | Summary                                                                                                                                          | Depends On |
-| --- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-derive-group-status.md`                         | `deriveGroupStatus.js` — pure 3-value enum derivation over a group's actions.                                                                    | —          |
-| 2   | `02-validator-blocked-by-resolution.md`             | Extend `makeWorkflowsConfig.js` with the build-time `blocked_by` resolution check; fail the build on unresolved entries.                         | —          |
-| 3   | `03-recompute-groups.md`                            | `recomputeGroups.js` — pure helper that builds the full `groups[]` array (one entry per declared group) from actions + config.                   | 1          |
-| 4   | `04-push-workflow-status.md`                        | `shared/pushWorkflowStatus.js` — workflow-status push helper with the same-stage no-op guard; consumed by auto-complete (and future callers).    | —          |
-| 5   | `05-extend-start-workflow.md`                       | Extend shipped `StartWorkflow.js` to pre-populate `groups[]` at workflow creation (replacing the `groups: []` placeholder).                      | 1, 3       |
-| 6   | `06-extend-compute-auto-unblocks.md`                | Extend shipped `computeAutoUnblocks.js` with the group-id resolution branch (reads group status from the workflow's in-memory `groups[]`).       | 1          |
-| 7   | `07-reevaluate-blocked-actions.md`                  | `reevaluateBlockedActions.js` — post-write walk (sub-step 4b) that pushes `action-required` on every blocked action whose deps are now satisfied.| 1          |
-| 8   | `08-wire-substeps-into-handle-submit.md`            | Wire sub-steps 4a (group recompute), 4b (walk), 4c (auto-complete stage) into `handleSubmit.js`; extend step 5's `$set`; populate `completed_groups`. | 3, 6, 7    |
-| 9   | `09-extend-cancel-workflow.md`                      | Extend shipped `CancelWorkflow.js`: fold `groups[]` into the existing summary recompute (extend projection + same `$set`).                       | 1, 3       |
+| #   | File                                     | Summary                                                                                                                                               | Depends On |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-derive-group-status.md`              | `deriveGroupStatus.js` — pure 3-value enum derivation over a group's actions.                                                                         | —          |
+| 2   | `02-validator-blocked-by-resolution.md`  | Extend `makeWorkflowsConfig.js` with the build-time `blocked_by` resolution check; fail the build on unresolved entries.                              | —          |
+| 3   | `03-recompute-groups.md`                 | `recomputeGroups.js` — pure helper that builds the full `groups[]` array (one entry per declared group) from actions + config.                        | 1          |
+| 4   | `04-push-workflow-status.md`             | `shared/pushWorkflowStatus.js` — workflow-status push helper with the same-stage no-op guard; consumed by auto-complete (and future callers).         | —          |
+| 5   | `05-extend-start-workflow.md`            | Extend shipped `StartWorkflow.js` to pre-populate `groups[]` at workflow creation (replacing the `groups: []` placeholder).                           | 1, 3       |
+| 6   | `06-extend-compute-auto-unblocks.md`     | Extend shipped `computeAutoUnblocks.js` with the group-id resolution branch (reads group status from the workflow's in-memory `groups[]`).            | 1          |
+| 7   | `07-reevaluate-blocked-actions.md`       | `reevaluateBlockedActions.js` — post-write walk (sub-step 4b) that pushes `action-required` on every blocked action whose deps are now satisfied.     | 1          |
+| 8   | `08-wire-substeps-into-handle-submit.md` | Wire sub-steps 4a (group recompute), 4b (walk), 4c (auto-complete stage) into `handleSubmit.js`; extend step 5's `$set`; populate `completed_groups`. | 3, 6, 7    |
+| 9   | `09-extend-cancel-workflow.md`           | Extend shipped `CancelWorkflow.js`: fold `groups[]` into the existing summary recompute (extend projection + same `$set`).                            | 1, 3       |
 
 ## Ordering Rationale
 
@@ -25,6 +25,7 @@ Promote `action_group` from UI label to engine concept. Lands one pure derivatio
 **Pure helpers next (3, 4).** `recomputeGroups` builds the full `groups[]` array — needed by both `StartWorkflow` (initial population) and `handleSubmit` step 4a (incremental recompute). `pushWorkflowStatus` is the shared workflow-status helper consumed by auto-complete in task 8. Both depend only on task 1 (or are independent). Can ship in parallel after task 1.
 
 **Handler extensions in two parallel branches (5, 6, 7).** Once tasks 1, 3, 4 land:
+
 - Task 5 extends `StartWorkflow.js` — depends on 1 + 3 (uses `deriveGroupStatus` + `recomputeGroups`). Independent of the submit / cancel paths.
 - Task 6 extends `computeAutoUnblocks.js` — depends only on task 1; consumed by step 3 of the submit lifecycle (already wired in part 6's handleSubmit).
 - Task 7 ships `reevaluateBlockedActions.js` — depends only on task 1 (also uses shipped `shared/updateAction.js` from part 6). It's a new file; the wiring lands in task 8.

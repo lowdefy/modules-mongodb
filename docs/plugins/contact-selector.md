@@ -23,7 +23,7 @@ The block stores the selected contact ids as its value (an array). It owns three
         input:
           _state: subscribers_input
       properties:
-        pipeline: [...]   # match against `input`, return [{ value: <id>, label: <html>, contact: {...} }]
+        pipeline: [...] # match against `input`, return [{ value: <id>, label: <html>, contact: {...} }]
     - id: get_contact
       type: MongoDBAggregation
       connectionId: contacts-collection
@@ -31,7 +31,7 @@ The block stores the selected contact ids as its value (an array). It owns three
         user_id:
           _state: subscribers_contact_id
       properties:
-        pipeline: [...]   # return one contact for the edit form
+        pipeline: [...] # return one contact for the edit form
     - id: get_contacts_data
       type: MongoDBAggregation
       connectionId: contacts-collection
@@ -39,7 +39,7 @@ The block stores the selected contact ids as its value (an array). It owns three
         contact_ids:
           _state: subscribers_fetch_contacts
       properties:
-        pipeline: [...]   # enrich each selected id with display fields
+        pipeline: [...] # enrich each selected id with display fields
   events:
     onAddContact:
       - id: create
@@ -95,78 +95,78 @@ The form rendered inside the modal lives in the block's children. Inputs should 
 
 ## Properties
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `title` | string | — | Header rendered above the list of selected contacts. |
-| `placeholder` | string | `Select item` | Placeholder for the search input. |
-| `notFoundContent` | string | `Not found` | Empty-results text shown in the dropdown. |
-| `size` | `"small"` \| `"middle"` \| `"large"` | — | Antd `Select` size. |
-| `bordered` | boolean | `true` | Borderless variant when `false`. |
-| `variant` | string | — | Antd `Select` `variant` (e.g. `"outlined"`, `"filled"`). |
-| `autoFocus` | boolean | `false` | Focus the search input on mount. |
-| `disabled` | boolean | `false` | Disable the search input. Also disabled automatically when `max` is reached. |
-| `showSearch` | boolean | `true` | Enable client-side filter on the dropdown options. |
-| `suffixIcon` | object | — | Lowdefy `Icon` properties for the suffix slot. |
-| `max` | number | — | Maximum number of contacts that can be selected. |
-| `allowNewContacts` | boolean | `true` | Show an "Add … as new contact" row in the dropdown when the search has no exact match. |
-| `allowEdit` | boolean | `true` | Show the edit button on each row. |
-| `allowVerify` | boolean | `false` | Replace the edit button with a `Verify` button on rows where `contact.verified !== true`. Submitting still fires `onEditContact`. |
-| `allowDelete` | boolean | `true` | Show the delete button on each row. |
-| `options` | array | `[]` | Search results from the `searchContactsRequest`, optionally concatenated with extra ad-hoc options. Each item: `{ value, label, contact }`. |
-| `optionsLoading` | boolean | `false` | Show a loading indicator on the dropdown. |
-| `data` | array | — | Result of `getContactsDataRequest`. Provides display fields (`name`, `email`, …) for each selected contact id. |
-| `searchContactsRequest` | string | — | Request id used for searches. Required. |
-| `getContactRequest` | string | — | Request id used to load a contact for editing. Required. |
-| `getContactsDataRequest` | string | — | Request id used to enrich the selected list. Required. |
-| `list` | object | — | Configuration for the list of selected contacts. |
-| `list.title` | string | — | Title rendered above the list. |
-| `list.placeholder` | string | — | Text shown when no contact is selected. |
-| `list.item.title` | string (Nunjucks) | `{{ name }}` | Per-row title template. Receives the contact's enrichment fields. |
-| `list.item.description` | string (Nunjucks) | `{{ email }}` | Per-row description template. |
-| `modal` | object | — | Configuration for the add/edit contact modal. |
-| `modal.title` | string | `Add contact` | Modal title in add mode. |
-| `modal.editTitle` | string | `Edit contact` | Modal title in edit mode. |
-| `modal.okText` | string | `Save` | Submit button label. |
-| `label` | object | — | Forwarded to the Antd `Label` wrapper (extra, tooltip, …). |
+| Property                 | Type                                 | Default        | Description                                                                                                                                 |
+| ------------------------ | ------------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`                  | string                               | —              | Header rendered above the list of selected contacts.                                                                                        |
+| `placeholder`            | string                               | `Select item`  | Placeholder for the search input.                                                                                                           |
+| `notFoundContent`        | string                               | `Not found`    | Empty-results text shown in the dropdown.                                                                                                   |
+| `size`                   | `"small"` \| `"middle"` \| `"large"` | —              | Antd `Select` size.                                                                                                                         |
+| `bordered`               | boolean                              | `true`         | Borderless variant when `false`.                                                                                                            |
+| `variant`                | string                               | —              | Antd `Select` `variant` (e.g. `"outlined"`, `"filled"`).                                                                                    |
+| `autoFocus`              | boolean                              | `false`        | Focus the search input on mount.                                                                                                            |
+| `disabled`               | boolean                              | `false`        | Disable the search input. Also disabled automatically when `max` is reached.                                                                |
+| `showSearch`             | boolean                              | `true`         | Enable client-side filter on the dropdown options.                                                                                          |
+| `suffixIcon`             | object                               | —              | Lowdefy `Icon` properties for the suffix slot.                                                                                              |
+| `max`                    | number                               | —              | Maximum number of contacts that can be selected.                                                                                            |
+| `allowNewContacts`       | boolean                              | `true`         | Show an "Add … as new contact" row in the dropdown when the search has no exact match.                                                      |
+| `allowEdit`              | boolean                              | `true`         | Show the edit button on each row.                                                                                                           |
+| `allowVerify`            | boolean                              | `false`        | Replace the edit button with a `Verify` button on rows where `contact.verified !== true`. Submitting still fires `onEditContact`.           |
+| `allowDelete`            | boolean                              | `true`         | Show the delete button on each row.                                                                                                         |
+| `options`                | array                                | `[]`           | Search results from the `searchContactsRequest`, optionally concatenated with extra ad-hoc options. Each item: `{ value, label, contact }`. |
+| `optionsLoading`         | boolean                              | `false`        | Show a loading indicator on the dropdown.                                                                                                   |
+| `data`                   | array                                | —              | Result of `getContactsDataRequest`. Provides display fields (`name`, `email`, …) for each selected contact id.                              |
+| `searchContactsRequest`  | string                               | —              | Request id used for searches. Required.                                                                                                     |
+| `getContactRequest`      | string                               | —              | Request id used to load a contact for editing. Required.                                                                                    |
+| `getContactsDataRequest` | string                               | —              | Request id used to enrich the selected list. Required.                                                                                      |
+| `list`                   | object                               | —              | Configuration for the list of selected contacts.                                                                                            |
+| `list.title`             | string                               | —              | Title rendered above the list.                                                                                                              |
+| `list.placeholder`       | string                               | —              | Text shown when no contact is selected.                                                                                                     |
+| `list.item.title`        | string (Nunjucks)                    | `{{ name }}`   | Per-row title template. Receives the contact's enrichment fields.                                                                           |
+| `list.item.description`  | string (Nunjucks)                    | `{{ email }}`  | Per-row description template.                                                                                                               |
+| `modal`                  | object                               | —              | Configuration for the add/edit contact modal.                                                                                               |
+| `modal.title`            | string                               | `Add contact`  | Modal title in add mode.                                                                                                                    |
+| `modal.editTitle`        | string                               | `Edit contact` | Modal title in edit mode.                                                                                                                   |
+| `modal.okText`           | string                               | `Save`         | Submit button label.                                                                                                                        |
+| `label`                  | object                               | —              | Forwarded to the Antd `Label` wrapper (extra, tooltip, …).                                                                                  |
 
 ## Events
 
-| Event | When | Payload |
-|---|---|---|
-| `onChange` | Selected contact set changes (add or remove). | — |
-| `onFocus` | Search input gains focus. | — |
-| `onBlur` | Search input loses focus. | — |
-| `onClear` | Search input is cleared. | — |
-| `afterSearch` | A search query runs. | `{ value }` — the query string. |
-| `onOpen` | Add/edit modal opens. | — |
-| `onClose` | Add/edit modal closes. | — |
-| `onCancel` | Modal is dismissed via Cancel. | — |
-| `afterClose` | Modal close animation completes. | — |
-| `onAddContact` | Add-contact form is submitted. | The form state at `{blockId}_contact` (read by the actions you attach). |
-| `onEditContact` | Edit-contact form is submitted. | Same as `onAddContact`, with `{blockId}_contact._id` set. |
+| Event           | When                                          | Payload                                                                 |
+| --------------- | --------------------------------------------- | ----------------------------------------------------------------------- |
+| `onChange`      | Selected contact set changes (add or remove). | —                                                                       |
+| `onFocus`       | Search input gains focus.                     | —                                                                       |
+| `onBlur`        | Search input loses focus.                     | —                                                                       |
+| `onClear`       | Search input is cleared.                      | —                                                                       |
+| `afterSearch`   | A search query runs.                          | `{ value }` — the query string.                                         |
+| `onOpen`        | Add/edit modal opens.                         | —                                                                       |
+| `onClose`       | Add/edit modal closes.                        | —                                                                       |
+| `onCancel`      | Modal is dismissed via Cancel.                | —                                                                       |
+| `afterClose`    | Modal close animation completes.              | —                                                                       |
+| `onAddContact`  | Add-contact form is submitted.                | The form state at `{blockId}_contact` (read by the actions you attach). |
+| `onEditContact` | Edit-contact form is submitted.               | Same as `onAddContact`, with `{blockId}_contact._id` set.               |
 
 ## Methods
 
-| Method | Args | Effect |
-|---|---|---|
+| Method          | Args                     | Effect                                                                                                                      |
+| --------------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
 | `appendContact` | `{ contact, contactId }` | Add a contact to the selection after `onAddContact` resolves with the new id. Call from the action chain on `onAddContact`. |
 
 ## Slots
 
-| Slot | Purpose |
-|---|---|
+| Slot      | Purpose                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------- |
 | `content` | The form rendered inside the add/edit contact modal. Input blocks should bind to `{blockId}_contact.*` state. |
-| `footer` | Optional replacement for the default modal OK / Cancel buttons. |
+| `footer`  | Optional replacement for the default modal OK / Cancel buttons.                                               |
 
 ## CSS Keys
 
-| Key | Element |
-|---|---|
-| `element` | Outer container. |
-| `selector` | Search/select input wrapper. |
-| `list` | Selected-contacts list container. |
-| `listItem` | Individual selected-contact row. |
-| `modal` | Add/edit contact modal wrapper. |
+| Key        | Element                           |
+| ---------- | --------------------------------- |
+| `element`  | Outer container.                  |
+| `selector` | Search/select input wrapper.      |
+| `list`     | Selected-contacts list container. |
+| `listItem` | Individual selected-contact row.  |
+| `modal`    | Add/edit contact modal wrapper.   |
 
 ## Notes
 

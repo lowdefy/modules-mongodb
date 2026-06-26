@@ -47,7 +47,12 @@ Signature:
  *   `{ _id, status: [{ stage, ... }, ...], ... }`.
  * @returns {boolean}
  */
-function shouldUpdate({ actionsEnum, currentActionId, actionEntry, fetchedAction }) {
+function shouldUpdate({
+  actionsEnum,
+  currentActionId,
+  actionEntry,
+  fetchedAction,
+}) {
   // ...
 }
 
@@ -62,7 +67,7 @@ Behaviour:
 
    ```js
    throw new Error(
-     `shouldUpdate: target status "${actionEntry.status}" not found in actionsEnum (typo or missing display config?)`
+     `shouldUpdate: target status "${actionEntry.status}" not found in actionsEnum (typo or missing display config?)`,
    );
    ```
 

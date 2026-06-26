@@ -51,7 +51,7 @@ module's `events-timeline` component:
       reference_field: lead_ids
       reference_value:
         _url_query: _id
-      contact_page_url: '/contacts/view?_id={id}'
+      contact_page_url: "/contacts/view?_id={id}"
 ```
 
 (Carry over any other vars the old drop passed that the events component supports.)

@@ -20,7 +20,7 @@ This task adds the tracker subscription fire after step 3, before the return. Th
 At the top of [CancelWorkflow.js](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js):
 
 ```js
-import fireTrackerSubscription from '../SubmitWorkflowAction/fireTrackerSubscription.js';
+import fireTrackerSubscription from "../SubmitWorkflowAction/fireTrackerSubscription.js";
 ```
 
 ### 2. Extend the context object with `eventId: null`.
@@ -97,6 +97,7 @@ Replace with:
 ```
 
 Notes:
+
 - Call unconditionally (no `if (parent_action_id)` guard). The subscription itself reads the workflow's `parent_action_id` and returns `[]` when null — pushing the guard into the helper keeps the call site simple and matches `SubmitWorkflowAction`'s posture (it guards on `shouldPushCompleted`, not on parent presence).
 - The subscription propagates whatever `context.eventId` is — explicitly `null` here per step 2 above. Parent action's status entry gets `event_id: null`.
 

@@ -44,7 +44,7 @@ button payload
 
 (D1). Remove the
 
-fields: { _state: fields }
+fields: { \_state: fields }
 
 line from the submit
 
@@ -136,10 +136,10 @@ Rationale to preserve:
 
 in edit mode the universal-fields component primes
 
-_state.fields.*
+\_state.fields.\*
 
 from the loaded action doc, so if submit kept sending
 
-fields: { _state: fields }
+fields: { \_state: fields }
 
 , the guard's "present" branch would fire and submit would overwrite whatever the sidebar last saved with stale primed state — defeating the decoupling. Simple-kind pages are out of Part 39's scope (they keep writing fields on submit), so this change is form-templates-only.

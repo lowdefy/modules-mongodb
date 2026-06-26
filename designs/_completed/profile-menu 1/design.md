@@ -7,8 +7,12 @@ The header profile dropdown (in `PageSiderMenu.profile.links`) is currently asse
 ```yaml
 links:
   _build.array.concat:
-    - _ref: { module: user-account, component: profile-links }   # Profile link
-    - _var: { key: extra_profile_links, default: { _module.var: extra_profile_links } }
+    - _ref: { module: user-account, component: profile-links } # Profile link
+    - _var:
+        {
+          key: extra_profile_links,
+          default: { _module.var: extra_profile_links },
+        }
     - _ref: { module: user-account, component: profile-actions } # Logout link
 ```
 
@@ -182,19 +186,19 @@ function filterMenuList(context, { menuList }) {
   const { authorize } = context;
   const filtered = menuList
     .map((item) => {
-      if (item.type === 'MenuLink') {
+      if (item.type === "MenuLink") {
         return authorize(item) ? item : null;
       }
-      if (item.type === 'MenuGroup') {
+      if (item.type === "MenuGroup") {
         const filteredSubItems = filterMenuList(context, {
-          menuList: get(item, 'links', { default: [] }),
+          menuList: get(item, "links", { default: [] }),
         });
         if (filteredSubItems.length > 0) {
           return { ...item, links: filteredSubItems };
         }
         return null;
       }
-      if (item.type === 'MenuDivider') {
+      if (item.type === "MenuDivider") {
         return item;
       }
       return null;
@@ -205,15 +209,15 @@ function filterMenuList(context, { menuList }) {
 
 function cleanDividers(items) {
   let start = 0;
-  while (start < items.length && items[start].type === 'MenuDivider') start++;
+  while (start < items.length && items[start].type === "MenuDivider") start++;
   let end = items.length;
-  while (end > start && items[end - 1].type === 'MenuDivider') end--;
+  while (end > start && items[end - 1].type === "MenuDivider") end--;
   const result = [];
   for (let i = start; i < end; i++) {
     const item = items[i];
     if (
-      item.type === 'MenuDivider' &&
-      result[result.length - 1]?.type === 'MenuDivider'
+      item.type === "MenuDivider" &&
+      result[result.length - 1]?.type === "MenuDivider"
     ) {
       continue;
     }
@@ -259,15 +263,18 @@ Cleanup runs at every recursion level, so the same behaviour applies inside `Men
 ## Files Changed
 
 **Lowdefy (prerequisite — separate PR, must land and release before this design ships)**
+
 - `packages/api/src/routes/rootConfig/menus/filterMenuList.js` — pass `MenuDivider` items through; add `cleanDividers` post-pass (strip leading/trailing, collapse consecutive)
 - `packages/api/src/routes/rootConfig/menus/getMenus.test.js` — add divider coverage per the prerequisite section
 
 **modules-mongodb**
 
 **New**
+
 - `modules/user-account/menus/profile-default.yaml`
 
 **Modified**
+
 - `modules/layout-sider-menu/module.lowdefy.yaml` — drop `extra_profile_links` var, add `profile_menu_id` var
 - `modules/layout-sider-menu/components/page.yaml` — replace `_build.array.concat` block with `_menu: { _module.var: profile_menu_id }`, drop the TODO comment
 - `modules/user-account/module.lowdefy.yaml` — remove `profile-links` / `profile-actions` component exports, register `profile-default` menu export
@@ -276,6 +283,7 @@ Cleanup runs at every recursion level, so the same behaviour applies inside `Men
 - `apps/demo/modules/layout/vars.yaml` — remove `extra_profile_links`
 
 **Deleted**
+
 - `modules/user-account/components/profile-links.yaml`
 - `modules/user-account/components/profile-actions.yaml`
 

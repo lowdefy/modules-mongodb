@@ -108,7 +108,7 @@ design.md:124). Read literally, "forward `fire.payload` into …
 `payload.fields`" (Task bullet + AC) means
 `payload: { fields: fire.payload }` — producing
 `fields: { fields: { … } }` on the doc. The correct operation is passing
-the bag whole: `payload: fire.payload ?? {}` (the fire's payload *is* the
+the bag whole: `payload: fire.payload ?? {}` (the fire's payload _is_ the
 planner's payload bag, fields-only). The described test would catch the
 mistake, but one clause prevents it: say "pass the fire's `payload` bag
 through as `planActionTransition`'s `payload` (its `fields` key lands as

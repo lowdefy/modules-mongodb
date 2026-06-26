@@ -2,7 +2,8 @@
 title: Action Kinds
 module: workflows
 type: concept
-concepts: [form, check, tracker, kinds, instanced-actions, start-link, form-data]
+concepts:
+  [form, check, tracker, kinds, instanced-actions, start-link, form-data]
 ---
 
 # Workflows — Action kinds
@@ -32,6 +33,7 @@ form:
 ```
 
 **What the module emits for form actions:**
+
 - A set of pages per declared verb: `{workflow_type}-{action_type}-edit`, `-view`, `-review`, `-error`. A page is only emitted when its verb key is present in the action's `access.{app_name}` map.
 - One submit endpoint: `{workflow_type}-{action_type}-submit`. Every button on every page for this action calls this endpoint with a different `signal` value.
 
@@ -75,14 +77,14 @@ blocked_by: [schedule-followup]
 access:
   my-app:
     view: true
-    edit: [account-manager]  # controls start-link visibility
+    edit: [account-manager] # controls start-link visibility
 tracker:
   child_workflow_type: device-installation
   start_link:
     pageId: ticket-new
     urlQuery:
-      action_id: true   # substituted with tracker action _id at render time
-      entity_id: true   # substituted with parent entity _id at render time
+      action_id: true # substituted with tracker action _id at render time
+      entity_id: true # substituted with parent entity _id at render time
 ```
 
 **No pages, no submit endpoint.** Tracker actions have no edit page and no resolver-emitted endpoint. The engine writes their status via the tracker subscription.
@@ -90,10 +92,10 @@ tracker:
 **How status mirrors.** The child workflow's stage maps to the tracker action's status:
 
 | Child workflow stage | Parent tracker action status |
-|---|---|
-| `active` | `in-progress` |
-| `completed` | `done` |
-| `cancelled` | `not-required` |
+| -------------------- | ---------------------------- |
+| `active`             | `in-progress`                |
+| `completed`          | `done`                       |
+| `cancelled`          | `not-required`               |
 
 This mapping is fixed by the module — no per-action override. Apps that need different semantics use a form action with a manual pre-hook mirror instead.
 
@@ -105,11 +107,11 @@ Before a child workflow exists, the tracker row sits at `action-required` with n
 tracker:
   child_workflow_type: device-installation
   start_link:
-    pageId: ticket-new       # page where the user creates the child entity
+    pageId: ticket-new # page where the user creates the child entity
     urlQuery:
-      action_id: true        # → tracker action _id — pass as parent_action_id to start-workflow
-      entity_id: true        # → parent entity _id — prefill the child doc's parent reference
-      source: onboarding     # static params pass through verbatim
+      action_id: true # → tracker action _id — pass as parent_action_id to start-workflow
+      entity_id: true # → parent entity _id — prefill the child doc's parent reference
+      source: onboarding # static params pass through verbatim
 ```
 
 `action_id: true` and `entity_id: true` are the two reserved `urlQuery` keys. They substitute runtime values at render time. All other keys pass through as-is.
@@ -119,6 +121,7 @@ The link is active while the tracker is `action-required` with no `child_workflo
 The `start_link` is only shown to users with the `edit` verb. Trackers without `edit` in their access map remain display-only regardless.
 
 **When to use `start_link` vs a paired trigger action:**
+
 - **App page owns creation → `start_link`.** When the child entity is created on a normal app page (a new-ticket form, etc.), add `start_link` to the tracker. No separate trigger action needed.
 - **Inline form owns creation → paired trigger + tracker.** When creation is a small inline form with no existing app page, use a `kind: form` trigger action to create the entity and call `start-workflow`, plus a separate tracker action to mirror the child's lifecycle.
 
@@ -140,10 +143,11 @@ The bidirectional link between a tracker action and its child workflow is establ
   payload:
     entity_id: { _step: create_ticket.insertedId }
     entity_collection: tickets-collection
-    parent_action_id: { _state: parent_action_id }  # the tracker action's _id
+    parent_action_id: { _state: parent_action_id } # the tracker action's _id
 ```
 
 One `CallApi` is all that's needed. The engine writes:
+
 1. The new child workflow doc (with back-references to the parent).
 2. The child's starting action docs.
 3. The parent tracker action's `child_workflow_id`, `child_entity_id`, `child_entity_collection` fields, and the `in-progress` transition.
@@ -155,10 +159,11 @@ All in one server-side call. No follow-up API call to wire the link — see [Tra
 Some actions exist as N instances per workflow — for example, one proof-of-installation action per device, each with its own form data and status.
 
 **Declaring an instanced action:**
+
 ```yaml
 type: proof-of-installation
 kind: form
-key: $device_id   # symbolic placeholder — resolved at start time
+key: $device_id # symbolic placeholder — resolved at start time
 form:
   - component: file_upload
     key: form.installation_files
@@ -172,6 +177,7 @@ status_map:
 **Form data path changes.** For instanced actions, the engine writes to `form_data.{action_type}.{key}.{field}` instead of `form_data.{action_type}.{field}`. If you read form data from the workflow doc in a pre-hook or post-hook, account for the extra key segment.
 
 **Spawning instances:**
+
 - At workflow start: include `{ type: proof-of-installation, key: device-123, status: action-required }` in the `start-workflow` payload's `actions:` list.
 - Mid-workflow: return `{ type: proof-of-installation, key: device-456, signal: activate, upsert: true }` from a pre-hook.
 

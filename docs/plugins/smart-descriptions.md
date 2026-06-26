@@ -58,50 +58,50 @@ This is the path most consumers want — it lets a single field config drive bot
 
 ## Properties
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `data` | object | — | The source data. Field paths in `fields` resolve via dot-notation against this object. |
-| `fields` | array | — | Lowdefy block definitions used as field hints. When provided, only these fields render. Without it, the block flattens `data` and renders every recognised leaf. |
-| `title` | string (HTML) | — | Header rendered above the items. Sanitised through `renderHtml`. |
-| `bordered` | boolean | `true` | Render items in the bordered table layout. |
-| `colon` | boolean | — | Show a colon after each label. |
-| `column` | number \| object | `2` | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`. |
-| `layout` | `"horizontal"` \| `"vertical"` | — | Label position relative to value. |
-| `size` | `"default"` \| `"small"` | — | Antd `Descriptions` size. |
-| `theme` | object | — | Antd design token overrides. See the [Antd docs](https://ant.design/components/descriptions#design-token). |
-| `disableCrmLinks` | boolean | `false` | Disable hyperlinks on detected `contact` and `company` values. |
-| `contactDetailPageId` | string | `contacts/view` | Page id used to build contact detail links. |
-| `companyDetailPageId` | string | `companies/view` | Page id used to build company detail links. |
-| `s3GetPolicyRequestId` | string | — | Request id resolving to an S3 download-policy URL. Required for `file` and `fileList` field types to render download links. |
+| Property               | Type                           | Default          | Description                                                                                                                                                      |
+| ---------------------- | ------------------------------ | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `data`                 | object                         | —                | The source data. Field paths in `fields` resolve via dot-notation against this object.                                                                           |
+| `fields`               | array                          | —                | Lowdefy block definitions used as field hints. When provided, only these fields render. Without it, the block flattens `data` and renders every recognised leaf. |
+| `title`                | string (HTML)                  | —                | Header rendered above the items. Sanitised through `renderHtml`.                                                                                                 |
+| `bordered`             | boolean                        | `true`           | Render items in the bordered table layout.                                                                                                                       |
+| `colon`                | boolean                        | —                | Show a colon after each label.                                                                                                                                   |
+| `column`               | number \| object               | `2`              | Number of items per row, or breakpoint object `{ xs, sm, md, lg, xl }`.                                                                                          |
+| `layout`               | `"horizontal"` \| `"vertical"` | —                | Label position relative to value.                                                                                                                                |
+| `size`                 | `"default"` \| `"small"`       | —                | Antd `Descriptions` size.                                                                                                                                        |
+| `theme`                | object                         | —                | Antd design token overrides. See the [Antd docs](https://ant.design/components/descriptions#design-token).                                                       |
+| `disableCrmLinks`      | boolean                        | `false`          | Disable hyperlinks on detected `contact` and `company` values.                                                                                                   |
+| `contactDetailPageId`  | string                         | `contacts/view`  | Page id used to build contact detail links.                                                                                                                      |
+| `companyDetailPageId`  | string                         | `companies/view` | Page id used to build company detail links.                                                                                                                      |
+| `s3GetPolicyRequestId` | string                         | —                | Request id resolving to an S3 download-policy URL. Required for `file` and `fileList` field types to render download links.                                      |
 
 ### `fields` items
 
 Each entry is a `{ id, type?, properties? }` object — usually one of the input block configs already used in a form:
 
-| Key | Description |
-|---|---|
-| `id` | Dot-notation path into `data` (e.g. `profile.role`). The last segment is auto-formatted as the label fallback. |
-| `type` | Lowdefy input block type (e.g. `TextInput`, `Selector`, `DateSelector`, `PhoneNumberInput`). Mapped to a renderer (see [Block-type mapping](#block-type-mapping)). Unknown types fall back to value-based auto-detection. |
-| `properties.title` | Custom label for the field. |
-| `properties.options` | Forwarded to `selector` renderers — accepts a string array or `[{label, value}]`. |
+| Key                  | Description                                                                                                                                                                                                               |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`                 | Dot-notation path into `data` (e.g. `profile.role`). The last segment is auto-formatted as the label fallback.                                                                                                            |
+| `type`               | Lowdefy input block type (e.g. `TextInput`, `Selector`, `DateSelector`, `PhoneNumberInput`). Mapped to a renderer (see [Block-type mapping](#block-type-mapping)). Unknown types fall back to value-based auto-detection. |
+| `properties.title`   | Custom label for the field.                                                                                                                                                                                               |
+| `properties.options` | Forwarded to `selector` renderers — accepts a string array or `[{label, value}]`.                                                                                                                                         |
 
 ### Block-type mapping
 
-| Lowdefy block type | Renderer |
-|---|---|
-| `TextInput` | `string` |
-| `TextArea` | `longText` (full-width) |
-| `NumberInput` | `number` |
-| `Selector`, `MultipleSelector`, `RadioSelector`, `ButtonSelector`, `CheckboxSelector` | `selector` (renders as tags) |
-| `Switch`, `CheckboxSwitch` | `boolean` (Yes/No) |
-| `DateSelector` | `date` |
-| `DateTimeSelector` | `datetime` |
-| `DateRangeSelector` | `dateRange` |
-| `PhoneNumberInput` | `phoneNumber` (with flag, `tel:` link) |
-| `LocationSelector` | `location` (Google Maps link, full-width) |
-| `S3UploadButton` | `fileList` |
-| `TiptapInput` | `richText` (full-width) |
-| `ContactSelectorNumberRequired` | `contact` |
+| Lowdefy block type                                                                    | Renderer                                  |
+| ------------------------------------------------------------------------------------- | ----------------------------------------- |
+| `TextInput`                                                                           | `string`                                  |
+| `TextArea`                                                                            | `longText` (full-width)                   |
+| `NumberInput`                                                                         | `number`                                  |
+| `Selector`, `MultipleSelector`, `RadioSelector`, `ButtonSelector`, `CheckboxSelector` | `selector` (renders as tags)              |
+| `Switch`, `CheckboxSwitch`                                                            | `boolean` (Yes/No)                        |
+| `DateSelector`                                                                        | `date`                                    |
+| `DateTimeSelector`                                                                    | `datetime`                                |
+| `DateRangeSelector`                                                                   | `dateRange`                               |
+| `PhoneNumberInput`                                                                    | `phoneNumber` (with flag, `tel:` link)    |
+| `LocationSelector`                                                                    | `location` (Google Maps link, full-width) |
+| `S3UploadButton`                                                                      | `fileList`                                |
+| `TiptapInput`                                                                         | `richText` (full-width)                   |
+| `ContactSelectorNumberRequired`                                                       | `contact`                                 |
 
 For unknown types the block runs the same value-based detection it uses in auto-discovery mode.
 
@@ -115,17 +115,17 @@ In the no-`fields` path:
 
 ## Slots
 
-| Slot | Purpose |
-|---|---|
+| Slot    | Purpose                                                     |
+| ------- | ----------------------------------------------------------- |
 | `extra` | Extra content rendered in the header (e.g. action buttons). |
 
 ## CSS Keys
 
-| Key | Element |
-|---|---|
+| Key       | Element                           |
+| --------- | --------------------------------- |
 | `element` | The outer `Descriptions` wrapper. |
-| `content` | Each item's content cell. |
-| `label` | Each item's label cell. |
+| `content` | Each item's content cell.         |
+| `label`   | Each item's label cell.           |
 
 ## Notes
 

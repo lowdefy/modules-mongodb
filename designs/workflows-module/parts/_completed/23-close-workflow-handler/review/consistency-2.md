@@ -84,6 +84,7 @@ Carried forward from [review-1](designs/workflows-module/parts/_completed/23-clo
 The helper's docstring names this part as a future caller, but the helper's signature can't carry `reason` on the entry or a `$set` of defended `references` — both of which the close-write needs.
 
 **Resolution:** Rewrote the Helpers-used list:
+
 - Kept `recomputeGroups.js` (genuinely reused).
 - Added `fireTrackerSubscription.js` (added per #1's cascade).
 - Replaced the `pushWorkflowStatus.js` entry with a note explaining why the helper is NOT invoked here despite its docstring forward-reference, pointing readers at the inline `MongoDBUpdateOne` in Write sequence step 1.

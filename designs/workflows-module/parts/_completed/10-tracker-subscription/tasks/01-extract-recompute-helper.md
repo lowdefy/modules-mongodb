@@ -64,7 +64,10 @@ Sequence:
    ```js
    const declaredGroups = workflowConfig.action_groups ?? [];
    const groupsBefore = workflow.groups ?? [];
-   let groupsAfter = recomputeGroups({ declaredGroups, actions: workflowActions });
+   let groupsAfter = recomputeGroups({
+     declaredGroups,
+     actions: workflowActions,
+   });
    ```
 5. **Sub-step 4b — re-evaluate blocked_by walk.** Import `reevaluateBlockedActions` from [SubmitWorkflowAction/reevaluateBlockedActions.js](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/reevaluateBlockedActions.js). The walk needs `actionsConfig` (the workflow's actions array from config) on `context`. Set it before calling, mirroring how `handleSubmit` does at [handleSubmit.js:100](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js): `context.actionsConfig = workflowConfig.actions ?? []`. Then:
    ```js
@@ -79,9 +82,15 @@ Sequence:
    If `reEvaluatedIds.length > 0`, refetch actions and recompute groups again (mirrors [handleSubmit.js:261–272](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)):
    ```js
    if (reEvaluatedIds.length > 0) {
-     const refreshed = await getActions(context.mongoDBConnection, workflow._id);
+     const refreshed = await getActions(
+       context.mongoDBConnection,
+       workflow._id,
+     );
      workflowActions.splice(0, workflowActions.length, ...refreshed);
-     groupsAfter = recomputeGroups({ declaredGroups, actions: workflowActions });
+     groupsAfter = recomputeGroups({
+       declaredGroups,
+       actions: workflowActions,
+     });
    }
    ```
 6. **Sub-step 4c — auto-complete predicate.** Same logic as [handleSubmit.js:274–285](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js):
@@ -97,20 +106,34 @@ Sequence:
      currentWorkflowStage !== "cancelled";
    ```
 7. **Step 5 — bundled `$set` + optional `$push`.** Same shape as [handleSubmit.js:287–321](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js):
+
    ```js
    const summary = {
-     done: workflowActions.filter((d) => d.status?.[0]?.stage === "done").length,
-     not_required: workflowActions.filter((d) => d.status?.[0]?.stage === "not-required").length,
+     done: workflowActions.filter((d) => d.status?.[0]?.stage === "done")
+       .length,
+     not_required: workflowActions.filter(
+       (d) => d.status?.[0]?.stage === "not-required",
+     ).length,
      total: workflowActions.length,
    };
-   const setBlock = { summary, groups: groupsAfter, updated: context.changeStamp };
+   const setBlock = {
+     summary,
+     groups: groupsAfter,
+     updated: context.changeStamp,
+   };
    const update = shouldPushCompleted
      ? {
          $set: setBlock,
          $push: {
            status: {
              $position: 0,
-             $each: [{ stage: "completed", event_id: context.eventId, created: context.changeStamp }],
+             $each: [
+               {
+                 stage: "completed",
+                 event_id: context.eventId,
+                 created: context.changeStamp,
+               },
+             ],
            },
          },
        }
@@ -120,6 +143,7 @@ Sequence:
      update,
    });
    ```
+
    Wrap in `try/catch` and rethrow with `err.step = err.step ?? "recompute-summary"` to preserve the existing error-step propagation that `handleSubmit`'s outer `try` block reads.
 
 8. **Return the result object** with the fields named in the JSDoc above.
@@ -141,7 +165,9 @@ const beforeById = new Map(recomputeResult.groupsBefore.map((g) => [g.id, g]));
 for (const after of recomputeResult.groupsAfter) {
   const before = beforeById.get(after.id);
   if (after.status === "done" && before?.status !== "done") {
-    const cfg = (workflowConfig.action_groups ?? []).find((g) => g.id === after.id);
+    const cfg = (workflowConfig.action_groups ?? []).find(
+      (g) => g.id === after.id,
+    );
     completedGroups.push({
       workflow_id: context.workflow._id,
       id: after.id,

@@ -43,6 +43,7 @@ Part 17 § "Task pages" (line 14) says:
 The priority rule needs three inputs: (1) the action's **current** stage, (2) the full status enum with priorities, (3) the `currentActionId` self-exception ([engine spec § "Status enum priority rule"](../../../../workflows-module-concept/engine/spec.md), lines 297–303). Input (1) lives at `_request: get_action.status[0].stage` — but part 17 doesn't reference any `get_action` fetch. There's no `onMount` sequence documented for task pages at all.
 
 Also missing:
+
 - **`not-required` terminal case.** Engine spec line 303 says "`not-required` (priority 0) is the universal terminal — only per-entry `force: true` moves it." UI spec line 225 confirms: "If current stage is `not-required` (priority 0, universal terminal), selector is disabled with a 'no transitions available' message." Part 17 doesn't carry this rule.
 - **App-supplied display merges.** UI spec line 222 says the selector reads `global.action_statuses` "with app-supplied display merges from `vars.action_statuses_display`." Part 17 doesn't mention this.
 - **`required_after_close` interaction.** [action-authoring/spec.md:185](../../../../workflows-module-concept/action-authoring/spec.md) — when the workflow is `completed`, submits reject unless `required_after_close: true`. Part 17 should say whether `task-edit` hides the Save button (or whole page) when the workflow is closed, or whether it relies on the server-side reject and surfaces the error. Mirror part 16's `_state.action_allowed` gate.
@@ -58,6 +59,7 @@ Part 17 § "Page event wiring" (line 51) says task pages use the "Same `onMount`
 If the eight-step sequence is implemented twice (once per template suite), they'll drift. Apps that customize via `pages.{verb}.events.{handler}` will hit subtly different state shapes between form `-edit` and `task-edit`.
 
 **Fix.** Pick one of:
+
 - (a) **Shared Nunjucks include.** Extract the `onMount` chain into a partial (e.g. `templates/_action_page_onMount.yaml.njk` or a YAML fragment in `requests/`) and `_ref` it from both part 16 templates and part 17 task pages. Document this in part 17.
 - (b) **Duplicate with explicit `Notes` about drift risk.** Spell out the exact sequence on both sides and reference part 16 as the canonical source.
 
@@ -72,6 +74,7 @@ Part 17 § "Workflow overview page" (line 40):
 > Card body: empty-state or DataView over `form_data` using the metadata trees at `global.action_form_configs.{action_type}.form` / `.form_review` from [part 15](../../15-resolver-form-builder/design.md). Switch on each node's `component` to pick the read-only renderer; recurse into the nested `form:` array on structural components (`controlled_list`, `section`, `box`, `label`, `file_upload`).
 
 Then line 42:
+
 > Keyed actions render as N cards within their group slot.
 
 The `action_form_configs` map is keyed by `action_type` only (per [part 15 design.md:10](../../_completed/15-resolver-form-builder/design.md): "Emits a build-time `global.action_form_configs` object keyed by `{action_type}` (the action_type is the schema identity; per-instance keys on keyed actions vary at runtime and don't affect schema, so they don't appear in this map)"). Good — the schema is shared. But the `form_data` on the workflow doc is `form_data.{action_type}.{key}.{field}` per [part 16:138](../../16-page-templates/design.md) and [ui spec](../../../../workflows-module-concept/ui/spec.md). Part 17 doesn't say how the overview's DataView selects the right slice per instance card.
@@ -100,11 +103,11 @@ Part 17 doesn't carry any redirect guards. The "Page event wiring" section just 
 
 **Fix.** Add an allowlist table for task pages. Reasonable v1 stance:
 
-| Template      | Allowed stages                                       |
-| ------------- | ---------------------------------------------------- |
+| Template      | Allowed stages                                                           |
+| ------------- | ------------------------------------------------------------------------ |
 | `task-edit`   | `[action-required, in-progress, changes-required]` (same as form `edit`) |
-| `task-view`   | (no guard) |
-| `task-review` | `[in-review, error]` (same as form `review`) |
+| `task-view`   | (no guard)                                                               |
+| `task-review` | `[in-review, error]` (same as form `review`)                             |
 
 If task actions don't have an `error` stage in practice, drop it from `task-review`. Document the decision.
 
@@ -142,6 +145,7 @@ The header "Shared module-shipped requests" (line 45) implies these are Lowdefy 
 If the intent is "request blocks fired on mount" (like part 16's `get_action.yaml`), then they're shared with part 16 and should be in the same `modules/workflows/requests/` directory — and part 17 task pages also need `get_action.yaml` (issue 2). If the intent is "Api endpoints," they conflict with part 19's `get-workflow-overview` (issue 1).
 
 **Fix.** Resolve the terminology. Either:
+
 - Delete the section (per issues 1, 2) and reference part 16's `requests/` directory.
 - Rename the section "Page-level requests" and describe the two `Request` files explicitly as page-mounted finds (and resolve the `get-workflow-overview` Api duplication).
 

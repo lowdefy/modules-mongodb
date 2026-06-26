@@ -11,6 +11,7 @@ The README must include a worked example for `vars.entities` because that var is
 The fixed README template: **Description, Dependencies, How to Use, Exports (Pages / Components / API Endpoints / Connections / Menus), Vars, Secrets, Plugins, Notes**.
 
 Reference patterns:
+
 - `modules/contacts/README.md` (full reusable-module README at v0.6.0).
 - `modules/events/README.md` (smallest reusable-module README).
 - The on-disk `modules/workflows/module.lowdefy.yaml` (post-task-2) — source of truth for every var description and export ID.
@@ -26,6 +27,7 @@ One-paragraph summary: multi-workflow engine that lets apps declare workflow YAM
 ### Dependencies
 
 Restate from manifest:
+
 - `layout` — page layout wrapper consumed by every shared page.
 - `events` — provides the `change_stamp` component referenced by the `workflow-api` connection.
 
@@ -57,6 +59,7 @@ Show a minimal `apps/{app}/modules.yaml` entry wiring the module:
 ```
 
 Annotate each var:
+
 - `workflows_config` — the app's workflow YAML (one entry per workflow type, with actions and action_groups). Schema validated by `makeWorkflowsConfig` at build time.
 - `app_name` — host app's deployment name; filters per-action access and keys the default log event's display block.
 - `entities` — map keyed by `entity_collection` → `{ page_id, id_query_key, title }`. Used for back-link URLs from workflow-overview and entity-kind labels in workflow-header. **Every `entity_collection` referenced in `workflows_config` must have a matching key here** — the part-4 build validator fails the build if any are missing.

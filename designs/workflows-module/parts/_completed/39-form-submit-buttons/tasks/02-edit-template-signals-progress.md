@@ -66,7 +66,8 @@ Add a new `button_progress` button to the floating-actions `actions` array. It m
             params:
               endpointId:
                 _module.endpointId:
-                  _build.string.concat: [update-action-, { _var: action_config.type }]
+                  _build.string.concat:
+                    [update-action-, { _var: action_config.type }]
               payload:
                 action_id: { _state: action._id }
                 signal: progress

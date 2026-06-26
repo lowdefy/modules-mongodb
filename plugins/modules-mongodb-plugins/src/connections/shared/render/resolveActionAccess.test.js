@@ -4,16 +4,16 @@ import {
   collapseLink,
   resolveButtons,
   BUTTON_SIGNAL_SOURCES,
-} from './resolveActionAccess.js';
-import { FSM_TABLES } from '../fsm/tables.js';
-import gateCases from '../../../../../../modules/workflows/resolvers/__fixtures__/gates.fixtures.js';
+} from "./resolveActionAccess.js";
+import { FSM_TABLES } from "../fsm/tables.js";
+import gateCases from "../../../../../../modules/workflows/resolvers/__fixtures__/gates.fixtures.js";
 
 // ---------------------------------------------------------------------------
 // gateAllows — shared oracle
 // ---------------------------------------------------------------------------
 
 test.each(gateCases)(
-  'gateAllows matches the oracle: $name',
+  "gateAllows matches the oracle: $name",
   ({ gate, userRoles, expected }) => {
     expect(gateAllows(gate, userRoles)).toBe(expected);
   },
@@ -23,11 +23,11 @@ test.each(gateCases)(
 // computeAllowed — four-key access bag
 // ---------------------------------------------------------------------------
 
-test('computeAllowed: true gate grants all four verbs when declared', () => {
+test("computeAllowed: true gate grants all four verbs when declared", () => {
   const access = {
     demo: { view: true, edit: true, review: true, error: true },
   };
-  expect(computeAllowed({ access, app_name: 'demo', userRoles: [] })).toEqual({
+  expect(computeAllowed({ access, app_name: "demo", userRoles: [] })).toEqual({
     view: true,
     edit: true,
     review: true,
@@ -35,69 +35,85 @@ test('computeAllowed: true gate grants all four verbs when declared', () => {
   });
 });
 
-test('computeAllowed: array gate with matching role grants verb', () => {
+test("computeAllowed: array gate with matching role grants verb", () => {
   const access = {
-    demo: { view: ['account-manager'], edit: ['account-manager'] },
+    demo: { view: ["account-manager"], edit: ["account-manager"] },
   };
   expect(
-    computeAllowed({ access, app_name: 'demo', userRoles: ['account-manager'] }),
+    computeAllowed({
+      access,
+      app_name: "demo",
+      userRoles: ["account-manager"],
+    }),
   ).toEqual({ view: true, edit: true, review: false, error: false });
 });
 
-test('computeAllowed: array gate with no matching role denies verb', () => {
-  const access = { demo: { view: ['manager'], edit: ['manager'] } };
+test("computeAllowed: array gate with no matching role denies verb", () => {
+  const access = { demo: { view: ["manager"], edit: ["manager"] } };
   expect(
-    computeAllowed({ access, app_name: 'demo', userRoles: ['support-rep'] }),
+    computeAllowed({ access, app_name: "demo", userRoles: ["support-rep"] }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
 });
 
-test('computeAllowed: absent verb key denies that verb', () => {
+test("computeAllowed: absent verb key denies that verb", () => {
   const access = { demo: { view: true } };
   expect(
-    computeAllowed({ access, app_name: 'demo', userRoles: ['any-role'] }),
+    computeAllowed({ access, app_name: "demo", userRoles: ["any-role"] }),
   ).toEqual({ view: true, edit: false, review: false, error: false });
 });
 
-test('computeAllowed: absent app block denies every verb', () => {
+test("computeAllowed: absent app block denies every verb", () => {
   const access = { other_app: { view: true, edit: true } };
   expect(
-    computeAllowed({ access, app_name: 'demo', userRoles: ['account-manager'] }),
+    computeAllowed({
+      access,
+      app_name: "demo",
+      userRoles: ["account-manager"],
+    }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
 });
 
-test('computeAllowed: null access denies every verb', () => {
+test("computeAllowed: null access denies every verb", () => {
   expect(
-    computeAllowed({ access: null, app_name: 'demo', userRoles: ['account-manager'] }),
+    computeAllowed({
+      access: null,
+      app_name: "demo",
+      userRoles: ["account-manager"],
+    }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
 });
 
-test('computeAllowed: undefined access denies every verb', () => {
+test("computeAllowed: undefined access denies every verb", () => {
   expect(
-    computeAllowed({ access: undefined, app_name: 'demo', userRoles: ['account-manager'] }),
+    computeAllowed({
+      access: undefined,
+      app_name: "demo",
+      userRoles: ["account-manager"],
+    }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
 });
 
-test('computeAllowed: undefined userRoles treated as empty array', () => {
-  const access = { demo: { view: ['manager'] } };
+test("computeAllowed: undefined userRoles treated as empty array", () => {
+  const access = { demo: { view: ["manager"] } };
   expect(
-    computeAllowed({ access, app_name: 'demo', userRoles: undefined }),
+    computeAllowed({ access, app_name: "demo", userRoles: undefined }),
   ).toEqual({ view: false, edit: false, review: false, error: false });
 });
 
-test('computeAllowed: true gate passes with undefined userRoles', () => {
+test("computeAllowed: true gate passes with undefined userRoles", () => {
   const access = { demo: { view: true } };
   expect(
-    computeAllowed({ access, app_name: 'demo', userRoles: undefined }),
+    computeAllowed({ access, app_name: "demo", userRoles: undefined }),
   ).toEqual({ view: true, edit: false, review: false, error: false });
 });
 
 // Agreement with gates.fixtures.js oracle on the `view` verb for the app.
 // This is the equivalent of `visible_verbs_filter.test.js` for the JS runtime.
 test.each(gateCases)(
-  'computeAllowed view-verb matches the oracle: $name',
+  "computeAllowed view-verb matches the oracle: $name",
   ({ gate, userRoles, expected }) => {
     const access = gate === undefined ? {} : { demo: { view: gate } };
-    const allowed = computeAllowed({ access, app_name: 'demo', userRoles });
+    const allowed = computeAllowed({ access, app_name: "demo", userRoles });
     expect(allowed.view).toBe(expected);
     // Other verbs are absent → false
     expect(allowed.edit).toBe(false);
@@ -110,73 +126,95 @@ test.each(gateCases)(
 // collapseLink — priority collapse (edit > review > error > view)
 // ---------------------------------------------------------------------------
 
-const EDIT_LINK = { pageId: 'workflows/action-edit', urlQuery: { action_id: 'a1' } };
-const REVIEW_LINK = { pageId: 'workflows/action-review', urlQuery: { action_id: 'a1' } };
-const ERROR_LINK = { pageId: 'workflows/action-error', urlQuery: { action_id: 'a1' } };
-const VIEW_LINK = { pageId: 'workflows/action-view', urlQuery: { action_id: 'a1' } };
+const EDIT_LINK = {
+  pageId: "workflows/action-edit",
+  urlQuery: { action_id: "a1" },
+};
+const REVIEW_LINK = {
+  pageId: "workflows/action-review",
+  urlQuery: { action_id: "a1" },
+};
+const ERROR_LINK = {
+  pageId: "workflows/action-error",
+  urlQuery: { action_id: "a1" },
+};
+const VIEW_LINK = {
+  pageId: "workflows/action-view",
+  urlQuery: { action_id: "a1" },
+};
 
-const ALL_LINKS = { view: VIEW_LINK, edit: EDIT_LINK, review: REVIEW_LINK, error: ERROR_LINK };
+const ALL_LINKS = {
+  view: VIEW_LINK,
+  edit: EDIT_LINK,
+  review: REVIEW_LINK,
+  error: ERROR_LINK,
+};
 
-test('collapseLink: edit is highest priority when allowed and non-null', () => {
+test("collapseLink: edit is highest priority when allowed and non-null", () => {
   const allowed = { view: true, edit: true, review: true, error: true };
   expect(collapseLink({ links: ALL_LINKS, allowed })).toEqual(EDIT_LINK);
 });
 
-test('collapseLink: review wins when edit is null', () => {
+test("collapseLink: review wins when edit is null", () => {
   const links = { ...ALL_LINKS, edit: null };
   const allowed = { view: true, edit: true, review: true, error: true };
   expect(collapseLink({ links, allowed })).toEqual(REVIEW_LINK);
 });
 
-test('collapseLink: review wins when edit not allowed', () => {
+test("collapseLink: review wins when edit not allowed", () => {
   const allowed = { view: true, edit: false, review: true, error: true };
   expect(collapseLink({ links: ALL_LINKS, allowed })).toEqual(REVIEW_LINK);
 });
 
-test('collapseLink: error wins when edit and review are null/denied', () => {
-  const links = { view: VIEW_LINK, edit: null, review: null, error: ERROR_LINK };
+test("collapseLink: error wins when edit and review are null/denied", () => {
+  const links = {
+    view: VIEW_LINK,
+    edit: null,
+    review: null,
+    error: ERROR_LINK,
+  };
   const allowed = { view: true, edit: false, review: false, error: true };
   expect(collapseLink({ links, allowed })).toEqual(ERROR_LINK);
 });
 
-test('collapseLink: view wins when edit/review/error are null or denied', () => {
+test("collapseLink: view wins when edit/review/error are null or denied", () => {
   const links = { view: VIEW_LINK, edit: null, review: null, error: null };
   const allowed = { view: true, edit: false, review: false, error: false };
   expect(collapseLink({ links, allowed })).toEqual(VIEW_LINK);
 });
 
-test('collapseLink: null when all verbs denied', () => {
+test("collapseLink: null when all verbs denied", () => {
   const allowed = { view: false, edit: false, review: false, error: false };
   expect(collapseLink({ links: ALL_LINKS, allowed })).toBeNull();
 });
 
-test('collapseLink: null when all link cells are null (state-side)', () => {
+test("collapseLink: null when all link cells are null (state-side)", () => {
   const links = { view: null, edit: null, review: null, error: null };
   const allowed = { view: true, edit: true, review: true, error: true };
   expect(collapseLink({ links, allowed })).toBeNull();
 });
 
-test('collapseLink: null when links is null', () => {
+test("collapseLink: null when links is null", () => {
   const allowed = { view: true, edit: true, review: true, error: true };
   expect(collapseLink({ links: null, allowed })).toBeNull();
 });
 
-test('collapseLink: null when links is undefined', () => {
+test("collapseLink: null when links is undefined", () => {
   const allowed = { view: true, edit: true, review: true, error: true };
   expect(collapseLink({ links: undefined, allowed })).toBeNull();
 });
 
-test('collapseLink: view-only user, pre-child tracker (view null) → null', () => {
+test("collapseLink: view-only user, pre-child tracker (view null) → null", () => {
   // Matches the pre-child tracker scenario from resolve_action_link.test.js
   const links = { view: null, edit: EDIT_LINK, review: null, error: null };
   const allowed = { view: true, edit: false, review: false, error: false };
   expect(collapseLink({ links, allowed })).toBeNull();
 });
 
-test('collapseLink: edit user, pre-child tracker (view null) → edit link', () => {
+test("collapseLink: edit user, pre-child tracker (view null) → edit link", () => {
   const startLink = {
-    pageId: 'ticket-new',
-    urlQuery: { action_id: 'a1', entity_id: 'ent-1' },
+    pageId: "ticket-new",
+    urlQuery: { action_id: "a1", entity_id: "ent-1" },
   };
   const links = { view: null, edit: startLink, review: null, error: null };
   const allowed = { view: true, edit: true, review: false, error: false };
@@ -190,9 +228,9 @@ test('collapseLink: edit user, pre-child tracker (view null) → edit link', () 
 const FULL_ALLOWED = { view: true, edit: true, review: true, error: true };
 const NO_ALLOWED = { view: false, edit: false, review: false, error: false };
 
-test('resolveButtons: at action-required with edit, submit and progress and not_required visible (not_required only when allow_not_required)', () => {
+test("resolveButtons: at action-required with edit, submit and progress and not_required visible (not_required only when allow_not_required)", () => {
   const result = resolveButtons({
-    stage: 'action-required',
+    stage: "action-required",
     allowed: FULL_ALLOWED,
     allow_not_required: true,
   });
@@ -204,26 +242,26 @@ test('resolveButtons: at action-required with edit, submit and progress and not_
   expect(result.resolve_error).toBe(false);
 });
 
-test('resolveButtons: not_required false when allow_not_required is false', () => {
+test("resolveButtons: not_required false when allow_not_required is false", () => {
   const result = resolveButtons({
-    stage: 'action-required',
+    stage: "action-required",
     allowed: FULL_ALLOWED,
     allow_not_required: false,
   });
   expect(result.not_required).toBe(false);
 });
 
-test('resolveButtons: not_required false when allow_not_required is omitted', () => {
+test("resolveButtons: not_required false when allow_not_required is omitted", () => {
   const result = resolveButtons({
-    stage: 'action-required',
+    stage: "action-required",
     allowed: FULL_ALLOWED,
   });
   expect(result.not_required).toBe(false);
 });
 
-test('resolveButtons: at in-review with review allowed, approve and request_changes visible', () => {
+test("resolveButtons: at in-review with review allowed, approve and request_changes visible", () => {
   const result = resolveButtons({
-    stage: 'in-review',
+    stage: "in-review",
     allowed: { view: true, edit: false, review: true, error: false },
     allow_not_required: false,
   });
@@ -236,9 +274,9 @@ test('resolveButtons: at in-review with review allowed, approve and request_chan
   expect(result.not_required).toBe(false);
 });
 
-test('resolveButtons: at error stage with error allowed, only resolve_error visible', () => {
+test("resolveButtons: at error stage with error allowed, only resolve_error visible", () => {
   const result = resolveButtons({
-    stage: 'error',
+    stage: "error",
     allowed: { view: true, edit: false, review: false, error: true },
     allow_not_required: true,
   });
@@ -252,9 +290,9 @@ test('resolveButtons: at error stage with error allowed, only resolve_error visi
   expect(result.not_required).toBe(false);
 });
 
-test('resolveButtons: all false when no verbs allowed', () => {
+test("resolveButtons: all false when no verbs allowed", () => {
   const result = resolveButtons({
-    stage: 'in-review',
+    stage: "in-review",
     allowed: NO_ALLOWED,
     allow_not_required: true,
   });
@@ -268,9 +306,9 @@ test('resolveButtons: all false when no verbs allowed', () => {
   });
 });
 
-test('resolveButtons: all false for non-source stage (blocked)', () => {
+test("resolveButtons: all false for non-source stage (blocked)", () => {
   const result = resolveButtons({
-    stage: 'blocked',
+    stage: "blocked",
     allowed: FULL_ALLOWED,
     allow_not_required: true,
   });
@@ -284,9 +322,9 @@ test('resolveButtons: all false for non-source stage (blocked)', () => {
   expect(result.not_required).toBe(true);
 });
 
-test('resolveButtons: all false for unknown stage', () => {
+test("resolveButtons: all false for unknown stage", () => {
   const result = resolveButtons({
-    stage: 'nonexistent-stage',
+    stage: "nonexistent-stage",
     allowed: FULL_ALLOWED,
     allow_not_required: true,
   });
@@ -300,7 +338,7 @@ test('resolveButtons: all false for unknown stage', () => {
   });
 });
 
-test('resolveButtons: all false for undefined stage', () => {
+test("resolveButtons: all false for undefined stage", () => {
   const result = resolveButtons({
     stage: undefined,
     allowed: FULL_ALLOWED,
@@ -316,9 +354,9 @@ test('resolveButtons: all false for undefined stage', () => {
   });
 });
 
-test('resolveButtons: submit at done stage with edit allowed', () => {
+test("resolveButtons: submit at done stage with edit allowed", () => {
   const result = resolveButtons({
-    stage: 'done',
+    stage: "done",
     allowed: { view: true, edit: true, review: false, error: false },
     allow_not_required: false,
   });
@@ -330,9 +368,9 @@ test('resolveButtons: submit at done stage with edit allowed', () => {
   expect(result.request_changes).toBe(true);
 });
 
-test('resolveButtons: request_changes at done stage with review allowed', () => {
+test("resolveButtons: request_changes at done stage with review allowed", () => {
   const result = resolveButtons({
-    stage: 'done',
+    stage: "done",
     allowed: { view: true, edit: true, review: true, error: false },
     allow_not_required: false,
   });
@@ -344,9 +382,9 @@ test('resolveButtons: request_changes at done stage with review allowed', () => 
 // request_changes passes on view OR edit OR review (Part 49); approve stays
 // review-only.
 
-test('resolveButtons: request_changes visible with view-only access at in-review', () => {
+test("resolveButtons: request_changes visible with view-only access at in-review", () => {
   const result = resolveButtons({
-    stage: 'in-review',
+    stage: "in-review",
     allowed: { view: true, edit: false, review: false, error: false },
     allow_not_required: false,
   });
@@ -354,9 +392,9 @@ test('resolveButtons: request_changes visible with view-only access at in-review
   expect(result.approve).toBe(false);
 });
 
-test('resolveButtons: request_changes visible with edit-only access (no view — the lint-warned edge)', () => {
+test("resolveButtons: request_changes visible with edit-only access (no view — the lint-warned edge)", () => {
   const result = resolveButtons({
-    stage: 'in-review',
+    stage: "in-review",
     allowed: { view: false, edit: true, review: false, error: false },
     allow_not_required: false,
   });
@@ -364,9 +402,9 @@ test('resolveButtons: request_changes visible with edit-only access (no view —
   expect(result.approve).toBe(false);
 });
 
-test('resolveButtons: request_changes visible with review-only access (no view — the lint-warned edge)', () => {
+test("resolveButtons: request_changes visible with review-only access (no view — the lint-warned edge)", () => {
   const result = resolveButtons({
-    stage: 'in-review',
+    stage: "in-review",
     allowed: { view: false, edit: false, review: true, error: false },
     allow_not_required: false,
   });
@@ -374,24 +412,29 @@ test('resolveButtons: request_changes visible with review-only access (no view �
   expect(result.approve).toBe(true);
 });
 
-test('resolveButtons: output never contains internal signals', () => {
+test("resolveButtons: output never contains internal signals", () => {
   const result = resolveButtons({
-    stage: 'action-required',
+    stage: "action-required",
     allowed: FULL_ALLOWED,
     allow_not_required: true,
   });
   const keys = Object.keys(result);
-  expect(keys).not.toContain('activate');
-  expect(keys).not.toContain('block');
+  expect(keys).not.toContain("activate");
+  expect(keys).not.toContain("block");
   // The output has exactly the six user-facing signals
-  expect(keys.sort()).toEqual(
-    ['approve', 'not_required', 'progress', 'request_changes', 'resolve_error', 'submit'],
-  );
+  expect(keys.sort()).toEqual([
+    "approve",
+    "not_required",
+    "progress",
+    "request_changes",
+    "resolve_error",
+    "submit",
+  ]);
 });
 
-test('resolveButtons: changes-required stage shows submit and not_required (with allow)', () => {
+test("resolveButtons: changes-required stage shows submit and not_required (with allow)", () => {
   const result = resolveButtons({
-    stage: 'changes-required',
+    stage: "changes-required",
     allowed: { view: true, edit: true, review: false, error: false },
     allow_not_required: true,
   });
@@ -415,26 +458,28 @@ test('resolveButtons: changes-required stage shows submit and not_required (with
 // ---------------------------------------------------------------------------
 
 const BUTTON_SIGNALS = [
-  'submit',
-  'progress',
-  'not_required',
-  'approve',
-  'request_changes',
-  'resolve_error',
+  "submit",
+  "progress",
+  "not_required",
+  "approve",
+  "request_changes",
+  "resolve_error",
 ];
 
 function deriveSourceStages(signal) {
   return Object.keys(FSM_TABLES.form).filter(
-    (stage) => stage !== 'none' && signal in FSM_TABLES.form[stage],
+    (stage) => stage !== "none" && signal in FSM_TABLES.form[stage],
   );
 }
 
-test('BUTTON_SIGNAL_SOURCES contains exactly the six button-surfaced signals', () => {
-  expect(Object.keys(BUTTON_SIGNAL_SOURCES).sort()).toEqual([...BUTTON_SIGNALS].sort());
+test("BUTTON_SIGNAL_SOURCES contains exactly the six button-surfaced signals", () => {
+  expect(Object.keys(BUTTON_SIGNAL_SOURCES).sort()).toEqual(
+    [...BUTTON_SIGNALS].sort(),
+  );
 });
 
 test.each(BUTTON_SIGNALS)(
-  'BUTTON_SIGNAL_SOURCES: %s source-stages match FSM table (set equality, none excluded)',
+  "BUTTON_SIGNAL_SOURCES: %s source-stages match FSM table (set equality, none excluded)",
   (signal) => {
     const tableStages = new Set(BUTTON_SIGNAL_SOURCES[signal]);
     const derivedStages = new Set(deriveSourceStages(signal));

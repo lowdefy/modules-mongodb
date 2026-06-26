@@ -49,8 +49,8 @@ Key requirements, each mapping to a design decision:
 - **`groupIndex` is the primary key** (D1). Unknown/removed group or no config →
   `findIndex` returns `-1` → map to `Infinity` so it sorts after all declared
   groups. Ungrouped actions (`action_group: null`) likewise resolve to `-1` → last.
-- **`notRequired` is the *second* key — after `groupIndex`, before `declIndex`** (D4).
-  A `not-required` action sinks to the bottom of *its own group* without escaping
+- **`notRequired` is the _second_ key — after `groupIndex`, before `declIndex`** (D4).
+  A `not-required` action sinks to the bottom of _its own group_ without escaping
   it (groups stay contiguous). Reading `stage` must tolerate **both** doc shapes:
   the raw `status` array (`[{ stage }]`, as the three findDocs-based engines pass)
   **and** the scalar that the timeline's `$lookup` has already rewritten — hence the
@@ -76,13 +76,13 @@ follow `resolveActionAccess.test.js`). Cover:
 - **Cross-group ordering** — actions in earlier-declared groups sort first
   regardless of `declIndex`; reproduce the design's worked example
   (groups `[qualification, quoting, order, conversion]`; actions `qualify,
-  site-visit, send-quote, schedule-followup, upload-po, track-company-setup` →
+site-visit, send-quote, schedule-followup, upload-po, track-company-setup` →
   that exact output order).
 - **Within-group declaration order** — two actions in the same group sort by
   `declIndex`.
 - **`not-required` sinks within its group** — a `not-required` action sorts after
-  an `action-required` sibling in the same group *even when its `declIndex` is
-  lower*, but **does not** leave its group (a later-group action still sorts after
+  an `action-required` sibling in the same group _even when its `declIndex` is
+  lower_, but **does not** leave its group (a later-group action still sorts after
   it). Test with both the array `status` shape and the scalar shape.
 - **Ungrouped (null-group) actions** sort after all declared groups.
 - **Keyed siblings** — same `type`/`action_group`, distinct `key` → ordered by
@@ -118,7 +118,7 @@ follow `resolveActionAccess.test.js`). Cover:
 
 - Do **not** read `blocked_by` for ordering. The concept doc once described a
   topological fallback over `blocked_by`; it was never implemented and is rejected
-  outright (D1, rejected alternative). Declaration order is *the* model, not a
+  outright (D1, rejected alternative). Declaration order is _the_ model, not a
   fallback.
 - This task only creates the comparator and its tests; wiring into engines is tasks
   2–4. Nothing imports it yet after this task.

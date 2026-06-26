@@ -10,48 +10,48 @@
 // `title_acronyms` module var (merged in by the resolvers). Kept deliberately
 // small — domain acronyms (BOM, SKU, …) come from apps, not from here.
 export const BASE_ACRONYMS = [
-  'PO',
-  'ID',
-  'URL',
-  'API',
-  'CRM',
-  'SLA',
-  'KPI',
-  'VAT',
-  'PDF',
-  'CSV',
-  'FAQ',
-  'KYC',
-  'RFQ',
+  "PO",
+  "ID",
+  "URL",
+  "API",
+  "CRM",
+  "SLA",
+  "KPI",
+  "VAT",
+  "PDF",
+  "CSV",
+  "FAQ",
+  "KYC",
+  "RFQ",
 ];
 
 // Minor words lowercased in the middle of a title (never first or last token).
 // Exactly the design's list — do not add to it.
 const MINOR_WORDS = new Set([
-  'a',
-  'an',
-  'and',
-  'as',
-  'at',
-  'but',
-  'by',
-  'for',
-  'from',
-  'in',
-  'nor',
-  'of',
-  'on',
-  'or',
-  'the',
-  'to',
-  'via',
-  'with',
+  "a",
+  "an",
+  "and",
+  "as",
+  "at",
+  "but",
+  "by",
+  "for",
+  "from",
+  "in",
+  "nor",
+  "of",
+  "on",
+  "or",
+  "the",
+  "to",
+  "via",
+  "with",
 ]);
 
 // Split on `-`, `_`, whitespace, and camelCase boundaries (lower/digit → upper).
 function splitTokens(slug) {
   return String(slug)
-    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
     .split(/[-_\s]+/)
     .filter(Boolean);
 }
@@ -91,7 +91,7 @@ export function humanizeSlug(slug, acronyms = []) {
       if (!isFirst && !isLast && MINOR_WORDS.has(lower)) return lower;
       return titleCaseToken(token);
     })
-    .join(' ');
+    .join(" ");
 }
 
 export default humanizeSlug;

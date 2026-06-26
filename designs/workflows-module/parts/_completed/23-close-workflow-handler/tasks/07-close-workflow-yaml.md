@@ -7,11 +7,13 @@ The plugin's `CloseWorkflow` handler is the engine-side implementation; consumin
 From [design.md § `close-workflow` operational API](../design.md):
 
 > Add a fifth operational API to part 19:
+>
 > - `close-workflow.yaml` — single-step routine invoking `CloseWorkflow` from this part. Payload: `workflow_id` required; `reason`, `references` optional. Returns `{ action_ids, event_id, tracker_fired }`.
 
 Part 19 hasn't shipped yet — none of the four other operational API yaml files (`start-workflow.yaml`, `cancel-workflow.yaml`, `get-entity-workflows.yaml`, `get-workflow-overview.yaml`) exist in the tree. Part 23's contract is to create just `close-workflow.yaml`; Part 19 will create the others (and wire them all into the module manifest in Part 20).
 
 The routine's payload shape matches the handler ([design.md:19–22](../design.md)):
+
 - Required: `workflow_id`.
 - Optional: `reason`.
 - Optional: `references` (passed through unchanged — the handler's `RESERVED_WORKFLOW_KEYS` defense validates).

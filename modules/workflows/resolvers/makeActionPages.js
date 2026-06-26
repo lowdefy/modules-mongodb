@@ -68,7 +68,9 @@ function emitForAction(workflow, action, appName, titleAcronyms) {
 
   // Normalize universal_fields to a concrete array so templates can gate the
   // sidebar column on non-emptiness with no type juggling (Part 24).
-  actionConfig.universal_fields = normalizeUniversalFields(action.universal_fields);
+  actionConfig.universal_fields = normalizeUniversalFields(
+    action.universal_fields,
+  );
 
   // Resolve the action title identically to makeWorkflowsConfig (this resolver
   // reads raw YAML, not the materialized config, so it must re-derive rather

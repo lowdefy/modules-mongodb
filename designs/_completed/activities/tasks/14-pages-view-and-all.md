@@ -8,6 +8,7 @@ After Tasks 9 + 11, internal display components and the timeline export exist. T
 - `pages/all.yaml` — list (with URL hydration for `contact_id` / `company_id` filter pre-population).
 
 Reference shapes:
+
 - `modules/companies/pages/view.yaml` — template for `view.yaml`.
 - `modules/companies/pages/all.yaml` — template for `all.yaml`.
 
@@ -22,6 +23,7 @@ Detail page. Resolves the activity by `_url_query: _id`, renders `view_activity`
 Layout mirrors `modules/companies/pages/view.yaml`. Two-column layout: main + sidebar.
 
 **Main column blocks:**
+
 1. `_ref: ../components/view_activity.yaml` — SmartDescriptions of the activity.
 2. Status history timeline (reads `state.<doc>.status` array, shown newest-first).
 3. Events timeline scoped to this activity:
@@ -36,6 +38,7 @@ Layout mirrors `modules/companies/pages/view.yaml`. Two-column layout: main + si
    ```
 
 **Sidebar tiles:**
+
 - Files: inline `files.file-card` ref (no local wrapper — per `decisions.md` §4):
   ```yaml
   - _ref:
@@ -51,6 +54,7 @@ Layout mirrors `modules/companies/pages/view.yaml`. Two-column layout: main + si
 - Plus consumer hook: `_module.var: components.sidebar_slots`.
 
 **Header actions** (placed in the page header bar):
+
 - Edit button → Link to `pageId: edit` with `?_id=<id>`.
 - Mark done / Reopen / Cancel — conditional buttons using the action wrappers from Task 4. Visibility: "Mark done" if `current_stage === 'open'`; "Reopen" if `done`/`cancelled`; "Cancel" if `open` or `done` (not already cancelled).
 - Delete button → CallApi to `delete-activity` with `?_id=<id>`. Confirmation dialog (use Lowdefy's confirm-modal pattern from companies' delete flow if such exists).
@@ -93,7 +97,7 @@ events:
           date_from: null
           date_to: null
           contact_id:
-            _url_query: contact_id    # from tile "View all" link
+            _url_query: contact_id # from tile "View all" link
           company_id:
             _url_query: company_id
         sort:
@@ -109,6 +113,7 @@ events:
 ```
 
 **Page blocks:**
+
 1. Filter panel: `_ref: ../components/filter_activities.yaml`.
 2. Excel download: `_ref: ../components/excel_download.yaml`.
 3. Table: `_ref: ../components/table_activities.yaml`.

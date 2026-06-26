@@ -1,7 +1,7 @@
-import { extractBlockTypes } from '@lowdefy/block-utils';
-import * as actions from './actions.js';
-import * as connections from './connections.js';
-import * as metas from './metas.js';
+import { extractBlockTypes } from "@lowdefy/block-utils";
+import * as actions from "./actions.js";
+import * as connections from "./connections.js";
+import * as metas from "./metas.js";
 
 const blockTypes = extractBlockTypes(metas);
 export default {

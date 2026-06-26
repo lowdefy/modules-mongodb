@@ -63,13 +63,13 @@ Endpoint calls share a per-chain depth cap of **10** with routine `:call_api` st
 
 The originally proposed surface (preserved in [Part 1's design](../../workflows-module/parts/_completed/01-call-api-primitive/design.md) for history) was never built. Shipped differences:
 
-| Proposed | Shipped |
-| --- | --- |
-| `callApi(endpoint, payload, options?)` — positional args | `callApi({ endpointId, payload })` — single destructured object |
+| Proposed                                                         | Shipped                                                                          |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `callApi(endpoint, payload, options?)` — positional args         | `callApi({ endpointId, payload })` — single destructured object                  |
 | `endpoint: string \| { id, module }` — runtime module resolution | `endpointId: string` — opaque, pre-scoped at build time via `_module.endpointId` |
-| Returns `{ success, response, error? }`; never throws | Returns the `:return` value (or `null`); **throws** on failure |
-| `options.user` identity override | No override — caller identity always |
-| `options.pageId`, `options.timeout` | Not built |
+| Returns `{ success, response, error? }`; never throws            | Returns the `:return` value (or `null`); **throws** on failure                   |
+| `options.user` identity override                                 | No override — caller identity always                                             |
+| `options.pageId`, `options.timeout`                              | Not built                                                                        |
 
 Any resolver code that passes `{ id, module }` as the first argument, passes a third `{ user }` argument, or inspects `result.success` is written against the unshipped proposal and fails at runtime — `endpointId` destructures to `undefined` (ConfigError), and no shipped routine returns a `success` field. See Part 38 task 22 for the engine-side fix.
 

@@ -22,16 +22,17 @@ required.
 
 **Out of scope, flagged:** reviews 12, 13, 14, and 15 (~22 findings against
 tasks 16, 17, 18, 22 + adjacent surfaces) carry **no resolution annotations** —
-they are not actioned, and their recommendations are deliberately *not*
+they are not actioned, and their recommendations are deliberately _not_
 treated as decisions by this pass. `tasks/tasks.md` now warns: action
 review-15 (task 22) before implementing task 22, reviews 12–13 before
 implementing Band 4, review-14 before Band 5. One
 premise note for the action-review: review-13 #1's subject (Start direct-seed
-+ tracker `none`-row flip) was already applied to task 17 / task 19 /
-design.md / state-machine.md before review-13 was written — mark it stale-
-premise when actioning; its secondary asks (seeding mechanism, legal-seed
-validation home) are now partially in task 17 (runtime legal-seed check,
-`makeWorkflowsConfig` restriction) but findings 2–7 remain live.
+
+- tracker `none`-row flip) was already applied to task 17 / task 19 /
+  design.md / state-machine.md before review-13 was written — mark it stale-
+  premise when actioning; its secondary asks (seeding mechanism, legal-seed
+  validation home) are now partially in task 17 (runtime legal-seed check,
+  `makeWorkflowsConfig` restriction) but findings 2–7 remain live.
 
 ## Files Reviewed
 

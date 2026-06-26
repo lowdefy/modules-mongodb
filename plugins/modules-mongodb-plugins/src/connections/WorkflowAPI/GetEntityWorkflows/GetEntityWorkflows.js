@@ -1,7 +1,10 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import findDocs from '../../mongo/findDocs.js';
-import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
-import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import findDocs from "../../mongo/findDocs.js";
+import {
+  computeAllowed,
+  collapseLink,
+} from "../../shared/render/resolveActionAccess.js";
+import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 
 /**
  * GetEntityWorkflows — server-side replacement for the get-entity-workflows.yaml
@@ -26,8 +29,8 @@ async function GetEntityWorkflows(lowdefyContext) {
   const app_name = connection.app_name;
   const entry_id = connection.entry_id;
   const userRoles = context.user?.roles;
-  const workflowsCollection = connection.workflowsCollection ?? 'workflows';
-  const actionsCollection = connection.actionsCollection ?? 'actions';
+  const workflowsCollection = connection.workflowsCollection ?? "workflows";
+  const actionsCollection = connection.actionsCollection ?? "actions";
   const entities = connection.entities ?? {};
 
   // ── Load: all workflows for the entity, sorted by display_order asc, created desc ──
@@ -35,7 +38,7 @@ async function GetEntityWorkflows(lowdefyContext) {
     mongoDb,
     collection: workflowsCollection,
     query: { entity_collection, entity_id },
-    options: { sort: { display_order: 1, 'created.timestamp': -1 } },
+    options: { sort: { display_order: 1, "created.timestamp": -1 } },
   });
 
   if (workflowDocs.length === 0) {
@@ -83,7 +86,11 @@ async function GetEntityWorkflows(lowdefyContext) {
     // ── Access filter + link collapse per action ──
     const visibleActions = [];
     for (const action of rawActions) {
-      const allowed = computeAllowed({ access: action.access, app_name, userRoles });
+      const allowed = computeAllowed({
+        access: action.access,
+        app_name,
+        userRoles,
+      });
       if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
         continue; // drop: no verb accessible
       }
@@ -143,9 +150,8 @@ async function GetEntityWorkflows(lowdefyContext) {
       // Find the workflow doc's runtime group entry (status/summary).
       const wfGroupEntry = (wfDoc.groups ?? []).find((g) => g.id === group_id);
 
-      const groupLink = group_id != null
-        ? buildGroupLink(wfDoc._id, group_id)
-        : null;
+      const groupLink =
+        group_id != null ? buildGroupLink(wfDoc._id, group_id) : null;
 
       groupEntries.push({
         id: group_id,

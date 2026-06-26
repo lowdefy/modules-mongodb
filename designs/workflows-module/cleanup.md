@@ -1,6 +1,4 @@
-
-
-## 1. Comments 
+## 1. Comments
 
 Comments referencing design parts or tasks
 

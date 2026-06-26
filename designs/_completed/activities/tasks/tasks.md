@@ -6,26 +6,26 @@ These tasks implement the `activities` module described in `designs/activities/d
 
 ## Tasks
 
-| #   | File                                          | Summary                                                                                       | Depends On |
-| --- | --------------------------------------------- | --------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-module-skeleton.md`                       | Module skeleton: manifest, package.json, README/CHANGELOG/VARS, menus, connection, enums, defaults, validate | —          |
-| 2   | `02-api-create-activity.md`                   | API: `create-activity` + shared `defaults/event_target.yaml`                                  | 1          |
-| 3   | `03-api-update-activity.md`                   | API: `update-activity`                                                                        | 1, 2       |
-| 4   | `04-api-change-activity-status.md`            | API: `change-activity-status` + three action wrappers (complete/cancel/reopen)                | 1, 2       |
-| 5   | `05-api-delete-activity.md`                   | API: `delete-activity` (soft-delete)                                                          | 1, 2       |
-| 6   | `06-request-stages.md`                        | Shared pipeline stages: `add_derived_fields`, `match_filter`, `lookup_contacts`, `lookup_companies` | 1          |
-| 7   | `07-requests.md`                              | Requests: list, detail, selector feed, for-entity, Excel data                                 | 1, 6       |
-| 8   | `08-form-and-fields.md`                       | Form: `form_activity` + `fields/core` + `fields/links`                                        | 1          |
-| 9   | `09-display-components.md`                    | Internal display: `view_activity`, `table_activities`, `filter_activities`, `excel_download`  | 1, 7       |
-| 10  | `10-chips.md`                                 | Chips: `contact_list_items`, `company_list_items` (no `tile_files` — view page refs `files.file-card` inline) | 1          |
-| 11  | `11-export-selector-and-timeline.md`          | Cross-module exports: `activity-selector`, `activities-timeline`, `tile_activities` (self-contained drop-in) | 1, 7, 9, 12 |
-| 12  | `12-export-capture-flow.md`                   | Cross-module exports: `capture_activity` (button + modal), `open_capture` (action sequence)   | 1, 8       |
-| 13  | `13-pages-new-edit.md`                        | Pages: `new` (with URL prefill) and `edit`                                                    | 1, 8, 12   |
-| 14  | `14-pages-view-and-all.md`                    | Pages: `view` (detail) and `all` (list, with URL hydration)                                   | 1, 9, 11   |
-| 15  | `15-companies-wiring.md`                      | Companies: `tile_events` "Activity"→"History" rename only (no activities dep, no tile_activities embed — apps wire via slots) | 1          |
-| 16  | `16-contacts-wiring.md`                       | Contacts: `tile_events` "Activity"→"History" rename only (mirror of Task 15)                  | 1          |
-| 17  | `17-shared-event-types-ref.md`                | Add activities event_types `_ref` to `modules/shared/enums/event_types.yaml`                  | 1          |
-| 18  | `18-demo-app-integration.md`                  | Demo app: register module + slot `tile_activities` into companies/contacts sidebar overrides + nav + home `capture_activity` | 1, 11, 12, 14, 15, 16 |
+| #   | File                                 | Summary                                                                                                                       | Depends On            |
+| --- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | --------------------- |
+| 1   | `01-module-skeleton.md`              | Module skeleton: manifest, package.json, README/CHANGELOG/VARS, menus, connection, enums, defaults, validate                  | —                     |
+| 2   | `02-api-create-activity.md`          | API: `create-activity` + shared `defaults/event_target.yaml`                                                                  | 1                     |
+| 3   | `03-api-update-activity.md`          | API: `update-activity`                                                                                                        | 1, 2                  |
+| 4   | `04-api-change-activity-status.md`   | API: `change-activity-status` + three action wrappers (complete/cancel/reopen)                                                | 1, 2                  |
+| 5   | `05-api-delete-activity.md`          | API: `delete-activity` (soft-delete)                                                                                          | 1, 2                  |
+| 6   | `06-request-stages.md`               | Shared pipeline stages: `add_derived_fields`, `match_filter`, `lookup_contacts`, `lookup_companies`                           | 1                     |
+| 7   | `07-requests.md`                     | Requests: list, detail, selector feed, for-entity, Excel data                                                                 | 1, 6                  |
+| 8   | `08-form-and-fields.md`              | Form: `form_activity` + `fields/core` + `fields/links`                                                                        | 1                     |
+| 9   | `09-display-components.md`           | Internal display: `view_activity`, `table_activities`, `filter_activities`, `excel_download`                                  | 1, 7                  |
+| 10  | `10-chips.md`                        | Chips: `contact_list_items`, `company_list_items` (no `tile_files` — view page refs `files.file-card` inline)                 | 1                     |
+| 11  | `11-export-selector-and-timeline.md` | Cross-module exports: `activity-selector`, `activities-timeline`, `tile_activities` (self-contained drop-in)                  | 1, 7, 9, 12           |
+| 12  | `12-export-capture-flow.md`          | Cross-module exports: `capture_activity` (button + modal), `open_capture` (action sequence)                                   | 1, 8                  |
+| 13  | `13-pages-new-edit.md`               | Pages: `new` (with URL prefill) and `edit`                                                                                    | 1, 8, 12              |
+| 14  | `14-pages-view-and-all.md`           | Pages: `view` (detail) and `all` (list, with URL hydration)                                                                   | 1, 9, 11              |
+| 15  | `15-companies-wiring.md`             | Companies: `tile_events` "Activity"→"History" rename only (no activities dep, no tile_activities embed — apps wire via slots) | 1                     |
+| 16  | `16-contacts-wiring.md`              | Contacts: `tile_events` "Activity"→"History" rename only (mirror of Task 15)                                                  | 1                     |
+| 17  | `17-shared-event-types-ref.md`       | Add activities event_types `_ref` to `modules/shared/enums/event_types.yaml`                                                  | 1                     |
+| 18  | `18-demo-app-integration.md`         | Demo app: register module + slot `tile_activities` into companies/contacts sidebar overrides + nav + home `capture_activity`  | 1, 11, 12, 14, 15, 16 |
 
 ## Ordering Rationale
 
@@ -46,6 +46,7 @@ These tasks implement the `activities` module described in `designs/activities/d
 **Layer 8 — Demo app (Task 18):** Final integration in `apps/demo/`. Registers the module, wires deps, adds nav link, drops a reference `capture_activity` on the home page.
 
 **Parallel-safe pairs:**
+
 - Tasks 2/3/5 (different APIs) — can be done in any order after Task 1.
 - Tasks 6 and 8 — pipeline stages and form/fields work in parallel.
 - Tasks 13 and 14 — different pages (new+edit vs view+all) can be in parallel.

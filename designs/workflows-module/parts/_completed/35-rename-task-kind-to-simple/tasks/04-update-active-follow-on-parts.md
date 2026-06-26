@@ -5,6 +5,7 @@
 The workflows-module design is split into numbered parts under `designs/workflows-module/parts/`. Several active (not-yet-shipped, or mid-flight) follow-on parts reference `kind: task` or the shared page IDs `task-edit` / `task-view` / `task-review` in their design.md. As part of the rename, these references flip in place so the design surface stays consistent with the renamed code.
 
 **Scope rules:**
+
 - **Active parts only.** Anything under `designs/workflows-module/parts/_completed/` (frozen, shipped) and `_rejected/` (frozen, superseded) stays as-is.
 - **`design.md` only.** `review/` subfolders and `review-*.md` files at the top level of each part stay frozen — they describe the world at the time of review and are historical.
 - **The current part (35) is excluded** — the rename design itself uses `kind: task` and `task-*` as the rename source, which is correct.
@@ -12,13 +13,13 @@ The workflows-module design is split into numbered parts under `designs/workflow
 
 The parts in scope (per the design's "Files changed — active follow-on parts" table):
 
-| Part | Files | Approx site count |
-| ---- | ----- | ----------------- |
-| 22-workflows-e2e-suite | `design.md` | 3 |
-| 24-universal-fields | `design.md` | 5 |
-| 28-custom-action-kind | `design.md` | 6 |
-| 33-comment-rendering | `design.md` | 3 |
-| 34-action-access-model | `design.md` | 12 |
+| Part                   | Files       | Approx site count |
+| ---------------------- | ----------- | ----------------- |
+| 22-workflows-e2e-suite | `design.md` | 3                 |
+| 24-universal-fields    | `design.md` | 5                 |
+| 28-custom-action-kind  | `design.md` | 6                 |
+| 33-comment-rendering   | `design.md` | 3                 |
+| 34-action-access-model | `design.md` | 12                |
 
 > **Part 30 (status-map-rendering) is excluded.** Part 38 (engine-rebuild) supersedes Part 30 and moves it to `_rejected/`. Renaming a design slated for rejection is wasted churn (same reason `_completed/` parts are out of scope), so Part 30's `design.md` and its six `tasks/*.md` files — formerly the largest single cluster in this part — are not touched. See the design's Out-of-scope section.
 

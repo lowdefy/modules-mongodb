@@ -7,18 +7,23 @@ Checked `design.md` against `review-1.md` for drift. Found 2 review-vs-design in
 ## Files Reviewed
 
 **Design**
+
 - `designs/profile-menu/design.md`
 
 **Supporting**
+
 - (none)
 
 **Reviews**
+
 - `designs/profile-menu/review/review-1.md`
 
 **Tasks**
+
 - (none — no `tasks.md` or `tasks/` directory)
 
 **Plans**
+
 - (none — no `plan/` directory)
 
 ## Inconsistencies Found
@@ -31,6 +36,7 @@ Checked `design.md` against `review-1.md` for drift. Found 2 review-vs-design in
 **Resolution:** Rewrote the finding #2 `> **Resolved.**` annotation. Old annotation claimed `profile-default` was redefined as `_build.array.concat` of `_ref: { module: layout, menu: profile-start-links }` and `_ref: { module: layout, menu: profile-end-links }`. New annotation states the start/end split was dropped entirely; `profile-default` is a single literal menu (`Profile → Divider → Logout`) owned by `user-account`, with rationale pointing to Key Decisions #3 and #4.
 
 Design evidence of supersession:
+
 - Design lines 68–90 define `profile-default` as a single literal menu in `modules/user-account/menus/profile-default.yaml`.
 - Key Decision #3 (line 251): "`user-account` owns `profile-default`, not layout."
 - Key Decision #4 (line 253): "An earlier iteration split the default into `profile-start-links` + `profile-end-links` … The simpler contract is: take the default whole, or write your own whole."
@@ -46,6 +52,7 @@ Design evidence of supersession:
 ## No Issues
 
 Checked and confirmed consistent:
+
 - Finding #1 (Resolved) → `filterMenuList` prerequisite section in `design.md` (lines 171–243) matches the annotation: pass `MenuDivider`, add `cleanDividers` post-pass, tests enumerated, prerequisite PR called out in Files Changed.
 - Finding #3 (Resolved) → No `user-admin/menus/profile-links.yaml` in Files Changed; Key Decision #5 (line 255) confirms per-module fragment pattern is dropped.
 - Finding #5 (Accepted) → `_module.var: profile_menu_id` nested inside `_menu` matches design lines 46–48 and `module.lowdefy.yaml` var declaration (lines 52–60).

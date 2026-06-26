@@ -1,6 +1,9 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
-import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import {
+  computeAllowed,
+  collapseLink,
+} from "../../shared/render/resolveActionAccess.js";
+import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 
 /**
  * GetEventsTimeline — cross-stream events timeline method (Part 46 task 6).
@@ -32,9 +35,9 @@ async function GetEventsTimeline(lowdefyContext) {
   const { reference_field, reference_value } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
-  const eventsCollection = connection.eventsCollection ?? 'log-events';
-  const actionsCollection = connection.actionsCollection ?? 'actions';
-  const contactsCollection = connection.contactsCollection ?? 'user-contacts';
+  const eventsCollection = connection.eventsCollection ?? "log-events";
+  const actionsCollection = connection.actionsCollection ?? "actions";
+  const contactsCollection = connection.contactsCollection ?? "user-contacts";
 
   // ── Step 1: Events $match + actions $lookup in ONE aggregation ──
   //
@@ -71,9 +74,9 @@ async function GetEventsTimeline(lowdefyContext) {
     {
       $lookup: {
         from: actionsCollection,
-        localField: 'action_ids',
-        foreignField: '_id',
-        as: 'actions',
+        localField: "action_ids",
+        foreignField: "_id",
+        as: "actions",
         pipeline: [
           // Card-worthiness filter (from timeline_action_lookup.yaml):
           //   1. Current stage must not be 'blocked'.
@@ -84,23 +87,17 @@ async function GetEventsTimeline(lowdefyContext) {
               $expr: {
                 $and: [
                   {
-                    $ne: [
-                      { $arrayElemAt: ['$status.stage', 0] },
-                      'blocked',
-                    ],
+                    $ne: [{ $arrayElemAt: ["$status.stage", 0] }, "blocked"],
                   },
                   {
                     $gt: [
                       {
                         $size: {
                           $filter: {
-                            input: '$status.stage',
+                            input: "$status.stage",
                             cond: {
                               $not: {
-                                $in: [
-                                  '$$this',
-                                  ['blocked', 'not-required'],
-                                ],
+                                $in: ["$$this", ["blocked", "not-required"]],
                               },
                             },
                           },
@@ -117,7 +114,7 @@ async function GetEventsTimeline(lowdefyContext) {
           // stage that reads status as a scalar).
           {
             $addFields: {
-              status: { $arrayElemAt: ['$status.stage', 0] },
+              status: { $arrayElemAt: ["$status.stage", 0] },
             },
           },
           // Project only the fields needed for dedup/sort/enrichment.
@@ -133,19 +130,19 @@ async function GetEventsTimeline(lowdefyContext) {
 
     {
       $unwind: {
-        path: '$actions',
+        path: "$actions",
         preserveNullAndEmptyArrays: true,
       },
     },
 
     {
       $setWindowFields: {
-        partitionBy: '$actions._id',
-        sortBy: { 'created.timestamp': 1 },
+        partitionBy: "$actions._id",
+        sortBy: { "created.timestamp": 1 },
         output: {
           last_event_id: {
-            $last: '$_id',
-            window: { documents: ['current', 'unbounded'] },
+            $last: "$_id",
+            window: { documents: ["current", "unbounded"] },
           },
         },
       },
@@ -153,15 +150,11 @@ async function GetEventsTimeline(lowdefyContext) {
 
     {
       $group: {
-        _id: '$_id',
-        event: { $first: '$$ROOT' },
+        _id: "$_id",
+        event: { $first: "$$ROOT" },
         actions: {
           $push: {
-            $cond: [
-              { $eq: ['$last_event_id', '$_id'] },
-              '$actions',
-              null,
-            ],
+            $cond: [{ $eq: ["$last_event_id", "$_id"] }, "$actions", null],
           },
         },
       },
@@ -172,16 +165,16 @@ async function GetEventsTimeline(lowdefyContext) {
     // the workflowsConfig, which is unavailable inside the aggregation pipeline).
     {
       $addFields: {
-        'event.actions': {
+        "event.actions": {
           $filter: {
-            input: '$actions',
-            cond: { $ne: ['$$this', null] },
+            input: "$actions",
+            cond: { $ne: ["$$this", null] },
           },
         },
       },
     },
 
-    { $replaceRoot: { newRoot: '$event' } },
+    { $replaceRoot: { newRoot: "$event" } },
 
     // Remove the scratch field.
     { $project: { last_event_id: 0 } },
@@ -193,8 +186,8 @@ async function GetEventsTimeline(lowdefyContext) {
       $addFields: {
         actions: {
           $filter: {
-            input: '$actions',
-            cond: { $ne: ['$$this._id', reference_value] },
+            input: "$actions",
+            cond: { $ne: ["$$this._id", reference_value] },
           },
         },
       },
@@ -223,16 +216,16 @@ async function GetEventsTimeline(lowdefyContext) {
     {
       $lookup: {
         from: contactsCollection,
-        localField: 'created.user.id',
-        foreignField: '_id',
-        as: 'author_contact',
-        pipeline: [{ $project: { _id: 0, picture: '$profile.picture' } }],
+        localField: "created.user.id",
+        foreignField: "_id",
+        as: "author_contact",
+        pipeline: [{ $project: { _id: 0, picture: "$profile.picture" } }],
       },
     },
     {
       $addFields: {
-        'created.user.picture': {
-          $ifNull: [{ $arrayElemAt: ['$author_contact.picture', 0] }, null],
+        "created.user.picture": {
+          $ifNull: [{ $arrayElemAt: ["$author_contact.picture", 0] }, null],
         },
       },
     },
@@ -268,8 +261,17 @@ async function GetEventsTimeline(lowdefyContext) {
 
       if (action.workflow_id != null) {
         // ── Workflow card: apply access gate + link collapse ──
-        const allowed = computeAllowed({ access: action.access, app_name, userRoles });
-        if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
+        const allowed = computeAllowed({
+          access: action.access,
+          app_name,
+          userRoles,
+        });
+        if (
+          !allowed.view &&
+          !allowed.edit &&
+          !allowed.review &&
+          !allowed.error
+        ) {
           // Drop: user holds no verb on this card.
           continue;
         }

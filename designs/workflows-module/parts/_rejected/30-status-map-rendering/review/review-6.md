@@ -13,7 +13,7 @@ D14 ([design.md:280-308](../design.md)) names two event-display source layers �
 ```js
 const mergedEventPayload = mergeEventOverrides({
   defaultPayload: defaultEventPayload,
-  yamlOverride: params.event_overrides?.[params.interaction],   // ← third channel, unnamed in D14
+  yamlOverride: params.event_overrides?.[params.interaction], // ← third channel, unnamed in D14
   preHookOverride: preHookResponse?.event_overrides,
 });
 ```
@@ -47,6 +47,7 @@ await context.mongoDBConnection("workflows").MongoDBUpdateOne({
 That write lands `form_data.{action.type}[.current_key].{field}` on the workflow doc in Mongo, but doesn't touch `context.workflow` in memory. Step 7's `dispatchLogEvent` (line 334) then renders against `context.workflow`. D14's `workflow` binding exposes `form_data` ([design.md:300](../design.md)) — an event template referencing `"{{ workflow.form_data.install-step.physical_id }}"` resolves against pre-submit state and reads `undefined` / empty.
 
 Three concrete patterns this breaks:
+
 - Engine-default detail templates (or a future addition) that quote a submitted form field.
 - App-authored YAML / pre-hook event-display templates that reach into `workflow.form_data.*` to summarise what just landed.
 - Notification templates downstream of the event (Part 8 / events module) that read the same `display.{app}` block.
@@ -56,7 +57,11 @@ Three concrete patterns this breaks:
 ```js
 context.workflow = {
   ...context.workflow,
-  form_data: mergeFormDataInto(context.workflow.form_data, formDataPathPrefix, formMerged),
+  form_data: mergeFormDataInto(
+    context.workflow.form_data,
+    formDataPathPrefix,
+    formMerged,
+  ),
   updated: context.changeStamp,
 };
 ```
@@ -71,8 +76,8 @@ If keeping `workflow.form_data` post-write-fresh is genuinely out of scope, the 
 
 D4 ([design.md:88-91](../design.md)) commits the engine to compose:
 
-| Kind   | `pageId`                                                       |
-| ------ | -------------------------------------------------------------- |
+| Kind   | `pageId`                                                          |
+| ------ | ----------------------------------------------------------------- |
 | `form` | `${entryId}/${actionDoc.workflow_type}-${actionDoc.type}-${verb}` |
 
 and remarks "kind: form uses the same stage × verbs shape against form-emitted page IDs from Part 13" ([design.md:83](../design.md)). The convention is asserted, not verified — Part 13 (resolver-apis) isn't in `_completed/` yet, and the form-page emission lives in Part 15 ([`_completed/15-resolver-form-builder/design.md`](../../../_completed/15-resolver-form-builder/design.md)). The worked example in this part uses `kind: task` so a `kind: form` link is never exercised by Part 30's test plan.
@@ -95,7 +100,7 @@ D13 ([design.md:262-275](../design.md)) defines the walker as: string → `parse
 
 ### 5. Stale Part 32 cross-references
 
-> **Resolved.** Dropped the "Cross-reference Part 32" callout from D14 (the five-line block at design.md lines 319-324: the "_nunjucks evaluation — equivalence verified" callback, the two-bullet "edits Part 32 needs", and the "Land Part 30 before Part 32" ordering line) and rewrote the Related-section entry (line 697) to describe Part 32 accurately ("narrowed status overrides to the pre-hook channel") as an adjacent topic with no shared edits. Part 32 is shipped; the follow-on edits the original cross-reference cited came from Part 32 review-1 thread content, not its design, and were never actionable. The author-facing impact the cross-reference was trying to mitigate — apps still using the `_nunjucks: { template, on }` event-display idiom — is already covered by Task 15's README updates (the engine-renders contract + explicit contrast with the cross-repo idiom). No new task needed.
+> **Resolved.** Dropped the "Cross-reference Part 32" callout from D14 (the five-line block at design.md lines 319-324: the "\_nunjucks evaluation — equivalence verified" callback, the two-bullet "edits Part 32 needs", and the "Land Part 30 before Part 32" ordering line) and rewrote the Related-section entry (line 697) to describe Part 32 accurately ("narrowed status overrides to the pre-hook channel") as an adjacent topic with no shared edits. Part 32 is shipped; the follow-on edits the original cross-reference cited came from Part 32 review-1 thread content, not its design, and were never actionable. The author-facing impact the cross-reference was trying to mitigate — apps still using the `_nunjucks: { template, on }` event-display idiom — is already covered by Task 15's README updates (the engine-renders contract + explicit contrast with the cross-repo idiom). No new task needed.
 
 Design.md lines [319-324](../design.md) and [697](../design.md) list "Two follow-on edits Part 32 needs" — the Case B pre-hook example and the "`_nunjucks` evaluation — equivalence verified" section — and recommends "Land Part 30 before Part 32 (or fold the two edits into Part 32's open work)". But Part 32 is in [`_completed/`](../../_completed/32-drop-static-overrides/) and its design.md (152 lines, no mention of `event_overrides` / `_nunjucks` / "Case B") shipped without those sections — the references in Part 30 are to **review-1 of Part 32**, which is review feedback, not design content. So:
 

@@ -6,13 +6,13 @@ Mirror child workflow status changes onto the parent tracker action, synchronous
 
 ## Tasks
 
-| #   | File                                       | Summary                                                                                                                                                                | Depends On |
-| --- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-extract-recompute-helper.md`           | Extract sub-steps 4a/4b/4c/5 from `handleSubmit` into `shared/recomputeWorkflowAfterActionWrite.js`. Pure refactor; existing tests pass unchanged.                     | —          |
-| 2   | `02-fire-tracker-subscription.md`          | `fireTrackerSubscription.js` — `CHILD_STAGE_MAP`, same-stage guard, parent `updateAction(force:true)` write, parent recompute via task 1's helper, depth-limit recurse. | 1          |
-| 3   | `03-wire-into-handle-submit.md`            | Replace `handleSubmit`'s step 10 TODO with the subscription call; swap success-path `tracker_fired: null` for the populated array.                                     | 2          |
-| 4   | `04-wire-into-cancel-workflow.md`          | Wire the subscription into `CancelWorkflow` after the final summary + groups writeback; set `context.eventId = null`; swap `tracker_fired: null` literal.              | 2          |
-| 5   | `05-multi-level-integration-test.md`       | Multi-level integration coverage: 3-level chain (cache invariant + eventId threading), depth-limit overflow, cancel-path multi-level fan-up.                           | 3, 4       |
+| #   | File                                 | Summary                                                                                                                                                                 | Depends On |
+| --- | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-extract-recompute-helper.md`     | Extract sub-steps 4a/4b/4c/5 from `handleSubmit` into `shared/recomputeWorkflowAfterActionWrite.js`. Pure refactor; existing tests pass unchanged.                      | —          |
+| 2   | `02-fire-tracker-subscription.md`    | `fireTrackerSubscription.js` — `CHILD_STAGE_MAP`, same-stage guard, parent `updateAction(force:true)` write, parent recompute via task 1's helper, depth-limit recurse. | 1          |
+| 3   | `03-wire-into-handle-submit.md`      | Replace `handleSubmit`'s step 10 TODO with the subscription call; swap success-path `tracker_fired: null` for the populated array.                                      | 2          |
+| 4   | `04-wire-into-cancel-workflow.md`    | Wire the subscription into `CancelWorkflow` after the final summary + groups writeback; set `context.eventId = null`; swap `tracker_fired: null` literal.               | 2          |
+| 5   | `05-multi-level-integration-test.md` | Multi-level integration coverage: 3-level chain (cache invariant + eventId threading), depth-limit overflow, cancel-path multi-level fan-up.                            | 3, 4       |
 
 ## Ordering Rationale
 

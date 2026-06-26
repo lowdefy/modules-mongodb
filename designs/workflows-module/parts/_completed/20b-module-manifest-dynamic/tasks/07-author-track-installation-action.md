@@ -36,7 +36,7 @@ See [action-authoring spec § Tracker action lines 423–440](modules-mongodb/de
 - `tracker.workflow_type: installation` set.
 - `status_map` covers `blocked`, `in-progress`, `done`, `not-required` at minimum.
 - `apps/demo` builds without errors.
-- The build does *not* emit `onboarding-track-installation-edit` / `-view` / etc. pages, nor an `update-action-track-installation` endpoint (resolvers skip tracker actions).
+- The build does _not_ emit `onboarding-track-installation-edit` / `-view` / etc. pages, nor an `update-action-track-installation` endpoint (resolvers skip tracker actions).
 
 ## Files
 

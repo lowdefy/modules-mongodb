@@ -21,7 +21,7 @@ Update the component reference entries (around lines 312–316, 329) to match:
 
 - **`actions-on-entity`** (line ~312) — Drop any "bundles/owns the modal" language; it renders the per-workflow action list only. Keep `entity_id` + `entity_collection`.
 - **`check-action-modal`** (line ~315) — Replace "**Bundled automatically by `actions-on-entity`** (and, opt-in, by `workflows-events-timeline` via its `include_modal` var)" with the page-drop contract: the **page** drops it exactly once (a single `_ref`) and owns `on_complete` (the refetch sequence run after a successful signal, default `[]`). Keep the open contract, the fixed blockId, the once-per-page rule, and the `get_workflow_action`-collision warning. Note the click handler is `check` → try the modal, falling back to navigation when absent.
-- **`check-action-click`** (line ~316) — Update to reflect the `try`/`catch` shape: `check` cards *try* to open `check_action_modal` and, when no modal is on the page, navigate to `action.link`; every other kind navigates directly. Still baked into both hosts — consumers wire no click handler.
+- **`check-action-click`** (line ~316) — Update to reflect the `try`/`catch` shape: `check` cards _try_ to open `check_action_modal` and, when no modal is on the page, navigate to `action.link`; every other kind navigates directly. Still baked into both hosts — consumers wire no click handler.
 - **`workflows-events-timeline`** (line ~329) — Remove the `include_modal` and `on_action_complete` sentences. Keep the required/optional surviving vars and the baked-in click-handler note; state the in-context modal is dropped by the page.
 
 Mirror the manifest wording where they overlap; if they disagree, the manifest wins.

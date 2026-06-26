@@ -13,12 +13,12 @@ Part 42 D3 makes the shared enum the single source of status display across the
 workflow pages and the timeline. Rather than maintain a second colour schema,
 **reconcile the block to the enum**. Mapping:
 
-| `EventAction` usage      | Reads today    | Reads after   |
-| ------------------------ | -------------- | ------------- |
-| Card background          | `card_color`   | `color`       |
-| Card border              | `border_color` | `borderColor` |
-| Status badge dot / text  | `color`        | `titleColor`  |
-| Badge label fallback     | `title`        | `title` (unchanged) |
+| `EventAction` usage     | Reads today    | Reads after         |
+| ----------------------- | -------------- | ------------------- |
+| Card background         | `card_color`   | `color`             |
+| Card border             | `border_color` | `borderColor`       |
+| Status badge dot / text | `color`        | `titleColor`        |
+| Badge label fallback    | `title`        | `title` (unchanged) |
 
 The component is at
 `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/EventsTimeline.js`,

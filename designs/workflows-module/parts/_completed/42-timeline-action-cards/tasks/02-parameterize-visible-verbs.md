@@ -35,7 +35,7 @@ silently resolve to `null` in every existing caller — each `_ref` opens a fres
 var scope, there is no build error — and break every access gate at request time.
 
 > **Deviation from the design's Files table:** it lists `visible_verbs.yaml` as
-> **New**. It already exists (Part 38). This task *converts* it, not creates it.
+> **New**. It already exists (Part 38). This task _converts_ it, not creates it.
 
 ## Task
 
@@ -78,11 +78,11 @@ untouched.
 
 - The `_var` object form `{ key, default }` is supported by the build
   (`walker.js:255-257`); the default is used only when the key is absent from the
-  ref's var scope. Object-valued ref vars are resolved in the *parent's* var
+  ref's var scope. Object-valued ref vars are resolved in the _parent's_ var
   context before the child resolves, so the events fragment can pass
   `app_name: { _var: { key: display_key, default: ... } }` through.
 - Task 3 applies the **same pattern** to `resolve_action_link.yaml`, which lets
-  Task 4 insert that stage into the three APIs as a *bare* ref.
+  Task 4 insert that stage into the three APIs as a _bare_ ref.
 - Considered and rejected: threading `app_name` explicitly (stage `_var` +
   filter passes it down + the three APIs pass `_module.var: app_name` into the
   filter ref). Works (var chaining is supported), but touches 5 files and makes

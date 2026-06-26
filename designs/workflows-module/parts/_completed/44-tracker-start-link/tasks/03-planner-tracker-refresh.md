@@ -21,7 +21,7 @@ Design D1: the planner refreshes the tracker block from config **on every plan**
 
    ```js
    doc.tracker =
-     actionConfig.kind === 'tracker'
+     actionConfig.kind === "tracker"
        ? {
            workflow_type: actionConfig.tracker.workflow_type,
            ...(actionConfig.tracker.start_link != null

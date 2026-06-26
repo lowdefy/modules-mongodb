@@ -16,12 +16,13 @@ $push:
   status:
     $position: 0
     $each:
-      - stage: {new_stage}
+      - stage: { new_stage }
         created:
           _ref: ../shared/change_stamp.yaml
 ```
 
 **Reading current status** in queries and aggregations:
+
 - In `$match`: `'status.0.stage': { $in: [...] }` or `'status.0.stage': 'value'`
 - In `$addFields`/`$project`: `$arrayElemAt: [$status.stage, 0]`
 - In Lowdefy state: `_state: entity.status.0.stage`
@@ -29,23 +30,29 @@ $push:
 **Status enum** defines display properties for each stage slug (see enums guide). The stage value stored in the array must match a key in the enum.
 
 **Transitions config** controls which status changes are allowed per user role. A transitions file maps `role → current_status → { action: [...], selector: [...] }`:
+
 - `action` — statuses reachable via one-click buttons (e.g., "Close", "Escalate")
 - `selector` — statuses reachable via a dropdown (for flexible navigation between states)
 
 A `SetState` action computes available transitions at runtime by intersecting the user's roles with the current status:
 
 ```js
-const userRoles = user('roles') || [];
-const currentStatus = state('current_status') || '';
-const rolesConfig = lowdefyGlobal('enums.task_transitions')?.roles || {};
+const userRoles = user("roles") || [];
+const currentStatus = state("current_status") || "";
+const rolesConfig = lowdefyGlobal("enums.task_transitions")?.roles || {};
 const selectorTransitions = new Set();
 const actionTransitions = new Set();
 userRoles.forEach((role) => {
   const transitions = rolesConfig[role]?.transitions?.[currentStatus];
-  if (transitions?.action) transitions.action.forEach(s => actionTransitions.add(s));
-  if (transitions?.selector) transitions.selector.forEach(s => selectorTransitions.add(s));
+  if (transitions?.action)
+    transitions.action.forEach((s) => actionTransitions.add(s));
+  if (transitions?.selector)
+    transitions.selector.forEach((s) => selectorTransitions.add(s));
 });
-return { selectorTransitions: [...selectorTransitions], actionTransitions: [...actionTransitions] };
+return {
+  selectorTransitions: [...selectorTransitions],
+  actionTransitions: [...actionTransitions],
+};
 ```
 
 **Displaying status** uses the enum lookup pattern — look up `status.0.stage` in `_global: enums.{type}_statuses` and render a colored badge:
@@ -75,7 +82,7 @@ _nunjucks:
 - :if:
     _eq: [_state: enum, null]
   :then:
-    :throw: 'Unknown Status'
+    :throw: "Unknown Status"
 ```
 
 ## Data Flow
@@ -118,7 +125,7 @@ update:
 - :set_state:
     enum: { _get: { from: { _ref: enums.yaml }, key: { _state: new_status } } }
 - :if: { _eq: [_state: enum, null] }
-  :then: { :throw: 'Unknown Status' }
+  :then: { :throw: "Unknown Status" }
 - :if: { _ne: [_step: get_entity.status.0.stage, _state: new_status] }
   :then:
     - id: update_status
@@ -162,7 +169,7 @@ properties:
 ## Anti-patterns
 
 - **Don't store status as a single string** — a flat string loses all history and auditability. Always use the array pattern.
-- **Don't forget `$position: 0`** — without it, `$push` appends to the end, making `status.0` the *oldest* entry instead of the current one.
+- **Don't forget `$position: 0`** — without it, `$push` appends to the end, making `status.0` the _oldest_ entry instead of the current one.
 - **Don't `$set` the status array directly** — `$set` replaces the entire history. Use `$push` to prepend.
 - **Don't forget to update `updated` alongside status** — the document-level `updated` stamp must be refreshed for optimistic concurrency and "Last modified" display.
 - **Don't hardcode transitions in the UI** — use a transitions config and compute available transitions from user roles at runtime. Centralizes role logic and is auditable.

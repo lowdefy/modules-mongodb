@@ -64,7 +64,7 @@ hierarchy:
 - `modules/companies/module.lowdefy.yaml` has `version: 0.3.0`.
 - The `vars:` block has a new `hierarchy` entry with the three properties (`enabled`, `parent_label`, `children_label`) and the descriptions above.
 - `pnpm ldf:b:i` builds without errors against an app that does not set `hierarchy.enabled` — i.e. the manifest changes are backward compatible (the manifest is the only thing that changed; nothing else in the module reads the new var yet).
-- **Verification step**: build the demo app *without* setting `hierarchy.parent_label` or `hierarchy.children_label` in `apps/demo/modules/companies/vars.yaml`. Confirm the build does not fail and that `_module.var: hierarchy.parent_label` resolves to `null` (which `_if_none` chains in downstream tasks correctly fall through). Every other typed var in this manifest has an explicit `default:` value (verified against `module.lowdefy.yaml` lines 17–112), so explicit `default: null` matches the convention and avoids any "missing default" build error.
+- **Verification step**: build the demo app _without_ setting `hierarchy.parent_label` or `hierarchy.children_label` in `apps/demo/modules/companies/vars.yaml`. Confirm the build does not fail and that `_module.var: hierarchy.parent_label` resolves to `null` (which `_if_none` chains in downstream tasks correctly fall through). Every other typed var in this manifest has an explicit `default:` value (verified against `module.lowdefy.yaml` lines 17–112), so explicit `default: null` matches the convention and avoids any "missing default" build error.
 
 ## Files
 

@@ -47,7 +47,7 @@ Checked the full design tree (`design.md`, `review-1.md`, `review-3.md`, prior `
 **Type:** Internal Contradiction (cross-design)
 **Source of truth:** Part 48 D1/D5 (the later, reviewed decisions) — Part 48's Related section already records "D1 here narrows its D3"
 **Files affected:** `46-debundle-workflow-config/design.md` (D3)
-**Resolution:** Part 46 D3 says "the connection keeps the **full** validated config" and its third bullet argues *for* the generic Start/Cancel/Close endpoints ("per-workflow variants would force every generic caller to construct endpoint ids from runtime data") — the exact endpoints Part 48 D5 retires and the exact regression D5 deliberately accepts. Part 47 carries a supersession banner but Part 46 had no equivalent note, so a reader of 46 alone would treat D3 as permanent. Added a blockquote under the D3 heading: narrowed by Part 48 — D1 moves `status_map` off the blob, D5 retires the generic endpoints, accepting the third bullet's regression.
+**Resolution:** Part 46 D3 says "the connection keeps the **full** validated config" and its third bullet argues _for_ the generic Start/Cancel/Close endpoints ("per-workflow variants would force every generic caller to construct endpoint ids from runtime data") — the exact endpoints Part 48 D5 retires and the exact regression D5 deliberately accepts. Part 47 carries a supersession banner but Part 46 had no equivalent note, so a reader of 46 alone would treat D3 as permanent. Added a blockquote under the D3 heading: narrowed by Part 48 — D1 moves `status_map` off the blob, D5 retires the generic endpoints, accepting the third bullet's regression.
 
 ## Flagged, not edited
 

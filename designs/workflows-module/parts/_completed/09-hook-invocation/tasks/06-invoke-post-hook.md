@@ -31,9 +31,10 @@ This is a deliberate departure from [submit-pipeline/spec.md § Post-hook return
 3. Build the payload: identical to Task 5's pre-hook payload **plus** `result`. Factor the shared payload-construction code into a small local helper or a separate util — if extracted, place it at `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/utils/buildHookPayload.js` and import from both invokers.
 
 4. Invoke:
+
    ```js
    const response = await context.callApi(
-     { id: hookId, module: 'workflows' },
+     { id: hookId, module: "workflows" },
      payload,
      { user: context.user },
    );

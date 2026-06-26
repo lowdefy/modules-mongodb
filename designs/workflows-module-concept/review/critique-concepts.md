@@ -1,6 +1,6 @@
 # Workflow Engine Concepts — Workflows Module
 
-Reviewer notes on the engine's *concept model* — what the model represents, what authors declare, how the runtime interprets it. Each section is a recommendation rooted in patterns from XState, BPMN engines (Camunda, Flowable), ServiceNow case management, and Temporal.
+Reviewer notes on the engine's _concept model_ — what the model represents, what authors declare, how the runtime interprets it. Each section is a recommendation rooted in patterns from XState, BPMN engines (Camunda, Flowable), ServiceNow case management, and Temporal.
 
 The unifying recommendation is: **describe the system with a finite-state machine, declared per action, with named transitions.** Several other recommendations fall out of that one.
 
@@ -13,26 +13,26 @@ The unifying recommendation is: **describe the system with a finite-state machin
 ```yaml
 transitions:
   action-required:
-    submit_edit:  in-review     # or done if no review verb
-    save_draft:   in-progress
+    submit_edit: in-review # or done if no review verb
+    save_draft: in-progress
     not_required: not-required
   in-progress:
-    submit_edit:  in-review
-    save_draft:   in-progress    # no-op transition; only form_data writes
+    submit_edit: in-review
+    save_draft: in-progress # no-op transition; only form_data writes
     not_required: not-required
   in-review:
-    approve:         done
+    approve: done
     request_changes: changes-required
-    withdraw:        action-required
+    withdraw: action-required
   changes-required:
-    submit_edit:  in-review
+    submit_edit: in-review
     not_required: not-required
   error:
     resolve_error: in-review
-  done: {}              # terminal — no outgoing transitions
-  not-required: {}      # terminal
+  done: {} # terminal — no outgoing transitions
+  not-required: {} # terminal
   blocked:
-    unblock: action-required    # engine-driven event
+    unblock: action-required # engine-driven event
 ```
 
 The engine ships defaults per `kind` (form / task / tracker); authors override per-action only when needed.
@@ -40,7 +40,7 @@ The engine ships defaults per `kind` (form / task / tracker); authors override p
 **What this buys you:**
 
 - `force: true` shrinks to admin/migration use only.
-- Auxiliary writes (engine unblock, tracker subscription) emit *events* against the target action's FSM; if the current state doesn't declare a listener for the event, the write no-ops silently — the "A → done re-fires shouldn't regress B" guarantee is structural, not rule-based.
+- Auxiliary writes (engine unblock, tracker subscription) emit _events_ against the target action's FSM; if the current state doesn't declare a listener for the event, the write no-ops silently — the "A → done re-fires shouldn't regress B" guarantee is structural, not rule-based.
 - Custom interactions (when added later) just add a row to the table.
 - Resubmit flows are first-class (`changes-required → submit_edit → in-review`), no force needed.
 - Recovery flows are first-class (`error → resolve_error → in-review`), no force needed.
@@ -78,7 +78,7 @@ The existing proposal to split metadata edits from submissions is the same split
 
 **Today.** Templates ship a fixed five-button bar (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`).
 
-**Recommended.** Templates ship a *button-bar component* that reads the action's transitions table and renders one button per legal transition from the current state. The five interactions you ship today become defaults in the table, not hard-coded UI.
+**Recommended.** Templates ship a _button-bar component_ that reads the action's transitions table and renders one button per legal transition from the current state. The five interactions you ship today become defaults in the table, not hard-coded UI.
 
 - An action in `action-required` with the default form-action table renders `submit_edit` + `save_draft` + `not_required`.
 - An action in `in-review` renders `approve` + `request_changes` (+ `withdraw` if added, + `reject` if the author declares it).
@@ -119,7 +119,7 @@ This works under the existing priority rule (no FSM refactor needed to restore t
 - `mirror_child_active` / `mirror_child_completed` / `mirror_child_cancelled` — tracker subscription emits these.
 - `cancel_action` — `CancelWorkflow` emits this on every open action.
 
-Each is a declared transition in the default FSM. The engine *can't* write a status that isn't declared as a transition.
+Each is a declared transition in the default FSM. The engine _can't_ write a status that isn't declared as a transition.
 
 This sounds like overhead but it's actually a reduction: today the engine has two write paths (priority-rule path + `force` path); with this you have one (FSM events), and the events have names. `force: true` shrinks to genuine admin/migration overrides.
 
@@ -152,16 +152,16 @@ Recommendation: don't design timer mechanics now, but reserve the event vocabula
 
 ## Summary of the concept shift
 
-| Concept                | Today                                          | Recommended                                                                       |
-| ---------------------- | ---------------------------------------------- | --------------------------------------------------------------------------------- |
-| Transition legality    | Global priority order + `force: true`          | Per-state FSM table; no force on normal paths                                     |
-| Interaction vocabulary | Fixed 5 buttons hard-coded in templates        | Derived from transitions table; engine ships defaults                             |
-| Auxiliary writes       | Same payload as user writes; priority-rule gated | Separate `signal` path; FSM ignores signals to non-listening states             |
-| Metadata edits         | Bundled into `submit_edit` `fields`            | Separate "operations" category with own endpoint                                  |
-| Engine-internal writes | Code paths with `force: true`                  | Named FSM events (`unblock`, `mirror_child_*`, `cancel_action`)                   |
-| Save-draft             | No path lands in `in-progress`                 | First-class `save_draft` transition                                               |
-| Custom verbs/statuses  | Locked                                         | Engine ignores unknown interaction names; statuses become a manifest var         |
-| Time                   | Field only                                     | Reserve event vocabulary for v2                                                   |
+| Concept                | Today                                            | Recommended                                                              |
+| ---------------------- | ------------------------------------------------ | ------------------------------------------------------------------------ |
+| Transition legality    | Global priority order + `force: true`            | Per-state FSM table; no force on normal paths                            |
+| Interaction vocabulary | Fixed 5 buttons hard-coded in templates          | Derived from transitions table; engine ships defaults                    |
+| Auxiliary writes       | Same payload as user writes; priority-rule gated | Separate `signal` path; FSM ignores signals to non-listening states      |
+| Metadata edits         | Bundled into `submit_edit` `fields`              | Separate "operations" category with own endpoint                         |
+| Engine-internal writes | Code paths with `force: true`                    | Named FSM events (`unblock`, `mirror_child_*`, `cancel_action`)          |
+| Save-draft             | No path lands in `in-progress`                   | First-class `save_draft` transition                                      |
+| Custom verbs/statuses  | Locked                                           | Engine ignores unknown interaction names; statuses become a manifest var |
+| Time                   | Field only                                       | Reserve event vocabulary for v2                                          |
 
 ## Priority order
 

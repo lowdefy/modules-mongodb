@@ -10,11 +10,11 @@ Derived from `designs/workflows-module/parts/12-resolver-pages/design.md`.
 
 Status legend: `✅ done` · `🚧 in progress` · `⏸ blocked` · empty = not started.
 
-| #   | File                          | Summary                                                                                                                                                                                                       | Depends On               | Status                  |
-| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ----------------------- |
-| 1   | `01-placeholder-templates.md` | Ship four `.yaml.njk` placeholder templates at `templates/{edit,view,review,error}.yaml.njk` so the resolver's emitted `_ref` paths resolve from day one (Lowdefy fails the build on missing `_ref` targets). | —                        | ✅ done                  |
-| 2   | `02-make-action-pages.md`     | Write `resolvers/makeActionPages.js` — verb-gating, page-shell emission, build-time validation, plus a self-contained `node:test` spec exercising the worked-example fixture.                                 | 1                        | ✅ done                  |
-| 3   | `03-manifest-wiring.md`       | Register the resolver in `modules/workflows/module.lowdefy.yaml` under the dynamic-pages resolver channel from part 2.                                                                                        | 2; **blocked on part 2** | ⏸ blocked on part 2     |
+| #   | File                          | Summary                                                                                                                                                                                                       | Depends On               | Status              |
+| --- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ | ------------------- |
+| 1   | `01-placeholder-templates.md` | Ship four `.yaml.njk` placeholder templates at `templates/{edit,view,review,error}.yaml.njk` so the resolver's emitted `_ref` paths resolve from day one (Lowdefy fails the build on missing `_ref` targets). | —                        | ✅ done             |
+| 2   | `02-make-action-pages.md`     | Write `resolvers/makeActionPages.js` — verb-gating, page-shell emission, build-time validation, plus a self-contained `node:test` spec exercising the worked-example fixture.                                 | 1                        | ✅ done             |
+| 3   | `03-manifest-wiring.md`       | Register the resolver in `modules/workflows/module.lowdefy.yaml` under the dynamic-pages resolver channel from part 2.                                                                                        | 2; **blocked on part 2** | ⏸ blocked on part 2 |
 
 ## Ordering Rationale
 

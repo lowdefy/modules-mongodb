@@ -11,7 +11,7 @@ lines 697–730). The recently-added `access` / `workflow_type` denormalisation
 
 ### 1. The declared input can't produce the declared doc — `event_id` / `created` / insert `_id` are missing
 
-> **Resolved.** Added `event_id`, `now`, and an injected id source `newId` to `planActionTransition`'s input contract (task 10), with a note that all three are minted **once per invocation** and injected, never generated inside the pure planner. Task 15 now states the handler entry mints `{ event_id, now, newId }` (mirroring today's `context.eventId` / `context.changeStamp`) via a shared invocation-setup step and threads them into the plan inputs. Task 12 line 31 reworded from implying `planEventDispatch` *produces* the id to "*receives* the per-invocation `event_id` … uses it as the event doc `_id`," noting it's the same id `planActionTransition` stamps on the action `status[]` entries. design.md:740 test-strategy input list updated to match. Mint site chosen as the handler entry (not the load phase): the id/clock are invocation metadata, not loaded state; keeping them out of `load` preserves its "reads only" contract and deterministic tests; matches today's code.
+> **Resolved.** Added `event_id`, `now`, and an injected id source `newId` to `planActionTransition`'s input contract (task 10), with a note that all three are minted **once per invocation** and injected, never generated inside the pure planner. Task 15 now states the handler entry mints `{ event_id, now, newId }` (mirroring today's `context.eventId` / `context.changeStamp`) via a shared invocation-setup step and threads them into the plan inputs. Task 12 line 31 reworded from implying `planEventDispatch` _produces_ the id to "_receives_ the per-invocation `event_id` … uses it as the event doc `_id`," noting it's the same id `planActionTransition` stamps on the action `status[]` entries. design.md:740 test-strategy input list updated to match. Mint site chosen as the handler entry (not the load phase): the id/clock are invocation metadata, not loaded state; keeping them out of `load` preserves its "reads only" contract and deterministic tests; matches today's code.
 
 `planActionTransition`'s input is `{ action, signal, payload, actionConfig, plannedWorkflowDoc }`
 (line 11). But the doc it must compose includes a `status[]` entry
@@ -20,7 +20,7 @@ lines 697–730). The recently-added `access` / `workflow_type` denormalisation
 derivable from the listed inputs.
 
 The design already settled that `event_id` is minted **once per invocation** and
-reused: the worked example stamps the *same* `e1` onto multiple action docs and
+reused: the worked example stamps the _same_ `e1` onto multiple action docs and
 the event doc in one submit (design.md:697–698, 730), and review-1 confirmed
 `new-event` accepts a supplied `_id` so the engine passes `event_id` in as the
 event doc `_id` (review-1 lines 179, 244). So the value exists before planning —
@@ -28,7 +28,7 @@ it is simply absent from task 10's input list.
 
 This also collides with task 12: line 31 says `planEventDispatch` "produces" the
 `event_id`, yet `planEventDispatch` consumes `plannedActionDoc` (D12 render
-context `action: plannedActionDoc`), so it runs *after* `planActionTransition`. If
+context `action: plannedActionDoc`), so it runs _after_ `planActionTransition`. If
 the id were minted there it wouldn't exist when task 10 stamps the status entry.
 The only consistent model — and the one D3/the worked example imply — is: mint
 `event_id` (plus a `now` stamp and any insert `_id`s) up front per invocation and
@@ -44,10 +44,10 @@ the id/clock is minted (handler entry or load phase).
 
 ### 2. `plannedWorkflowDoc` as an input is an ordering smell; `workflow_type` is immutable
 
-> **Resolved.** Dropped `plannedWorkflowDoc` from `planActionTransition`'s input; the planner now takes `loadedWorkflow` and reads the immutable `workflow_type` off it (task 10 lines 11, 19, 28, with a note on why the recomputed doc can't be the source — it's composed *after* action-transition planning inside the recompute fixpoint). design.md:740 input list renamed to match. Chose to pass the whole `loadedWorkflow` doc (not just the `workflow_type` string) for symmetry with the other planners' `loadedState.workflow` input.
+> **Resolved.** Dropped `plannedWorkflowDoc` from `planActionTransition`'s input; the planner now takes `loadedWorkflow` and reads the immutable `workflow_type` off it (task 10 lines 11, 19, 28, with a note on why the recomputed doc can't be the source — it's composed _after_ action-transition planning inside the recompute fixpoint). design.md:740 input list renamed to match. Chose to pass the whole `loadedWorkflow` doc (not just the `workflow_type` string) for symmetry with the other planners' `loadedState.workflow` input.
 
 Lines 11 and 17 read `workflow_type` from `plannedWorkflowDoc`. But
-`plannedWorkflowDoc` is recomputed *from* planned action states by
+`plannedWorkflowDoc` is recomputed _from_ planned action states by
 `planWorkflowRecompute` (task 11), inside the auto-unblock⇄recompute fixpoint that
 `planAutoUnblock` (this same task) drives — so it does not exist when the first
 action transition is planned. `workflow_type` is immutable (set at workflow
@@ -78,7 +78,7 @@ same per-invocation id from finding #1).
 
 ### 4. Change-log delta boundary with task 12 `planChangeLog` is uncross-referenced
 
-> **Resolved.** Task 10's delta bullet now states it emits **only** the raw `{ before, after }` pair on `plan.actions[i].changeLog` and explicitly *not* a community-schema entry; task 12's `planChangeLog` bullet now names its inputs (`plan.actions[i].changeLog` + `plan.workflow.changeLog`) and states it is the single owner of the community-schema transform, collecting finished entries onto `plan.changeLog[]`.
+> **Resolved.** Task 10's delta bullet now states it emits **only** the raw `{ before, after }` pair on `plan.actions[i].changeLog` and explicitly _not_ a community-schema entry; task 12's `planChangeLog` bullet now names its inputs (`plan.actions[i].changeLog` + `plan.workflow.changeLog`) and states it is the single owner of the community-schema transform, collecting finished entries onto `plan.changeLog[]`.
 >
 > **Adjacent fix (raised during review, not in the original finding).** The `Plan` type (D3 design.md:77–99 and task 9) declared only the per-doc `changeLog: ChangeLogDelta` deltas but no top-level field to hold `planChangeLog`'s finished entries — yet the data-flow (design.md:471, 480) and commit (task 13 step 5) both consume `plan.changeLog`. Added a top-level `changeLog: ChangeLogEntry[]` to the `Plan` type in both D3 and task 9, with comments distinguishing the per-doc raw delta from the transformed top-level entries.
 
@@ -97,7 +97,7 @@ implementer could build full community-schema entries in both places.
 > **Resolved (auto).** Task 10 line 14 now names the source: "merge the incoming `metadata` (from `payload.metadata`; metadata wins …)". Verified against the worked example (design.md:663 — caller submits `metadata: { physical_id: "D-42" }`) and the `planActionTransition` input contract, which includes `payload`.
 
 Line 14 ("merge `metadata`, metadata wins over action-doc-field collisions") does
-not say where the *incoming* metadata comes from (presumably `payload.metadata`).
+not say where the _incoming_ metadata comes from (presumably `payload.metadata`).
 One word removes the ambiguity.
 
 ## Summary

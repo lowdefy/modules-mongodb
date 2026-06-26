@@ -166,7 +166,7 @@ $lookup:
           $exists: false
     - $project:
         _id: 1
-        profile: 1  # name, email, etc.
+        profile: 1 # name, email, etc.
 ```
 
 The exact `$project` keys depend on what the contact chips need (Task 10 — `contact_list_items`). Default to `_id` + `profile` (since that's where contact name + email live in the contacts module). Verify against `modules/contacts/requests/get_contact.yaml`'s projection.
@@ -190,7 +190,7 @@ $lookup:
           $exists: false
     - $project:
         _id: 1
-        trading_name: 1  # or whatever name_field defaults to in companies
+        trading_name: 1 # or whatever name_field defaults to in companies
 ```
 
 Check `modules/companies/module.lowdefy.yaml`'s `name_field` default — it's `trading_name`. Either project just that field or include enough for the company chip rendering (Task 10).

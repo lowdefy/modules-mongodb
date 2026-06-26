@@ -32,7 +32,7 @@ _build.object.assign:
   - _ref: ../../user-account/enums/event_types.yaml
   - _ref: ../../contacts/enums/event_types.yaml
   - _ref: ../../companies/enums/event_types.yaml
-  - _ref: ../../activities/enums/event_types.yaml   # add
+  - _ref: ../../activities/enums/event_types.yaml # add
 ```
 
 The order matters only if event-type keys collide (later entries override earlier). Activities' six event types (`create-activity`, etc.) are unique to this module, so order is non-load-bearing. Append at the end for clarity.

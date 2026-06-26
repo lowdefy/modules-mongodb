@@ -2,7 +2,7 @@
 
 ## Context
 
-`modules/workflows/resolvers/makeWorkflowsConfig.js` validates the raw workflow YAML at build time. `validateAction` (called per action from `validateWorkflow`) already runs structural checks for `access`, `status_map`, `hooks`, and `event`. The raw action object still carries `pages` at validation time (it's only excluded from the *normalized output* via `ACTION_FIELDS`), so per-verb page config is reachable as `action.pages?.[verb]`.
+`modules/workflows/resolvers/makeWorkflowsConfig.js` validates the raw workflow YAML at build time. `validateAction` (called per action from `validateWorkflow`) already runs structural checks for `access`, `status_map`, `hooks`, and `event`. The raw action object still carries `pages` at validation time (it's only excluded from the _normalized output_ via `ACTION_FIELDS`), so per-verb page config is reachable as `action.pages?.[verb]`.
 
 Part 36 introduces a new authoring slot, `pages.{verb}.buttons.extra: [...]` — an array of author-composed Lowdefy `Button` blocks that the verb templates concatenate into the `floating-actions` bar (task 2). The validator must check the slot's structure and keep author ids from colliding with the template-shipped bar-button block ids (signal buttons plus the review page's `button_edit` navigation button — the collision rationale is about block ids in the bar, not signals).
 
@@ -24,19 +24,19 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
    // part touches both (Part 36 item 3). Reservation is global: any reserved
    // id is rejected on every verb page, not just the page whose bar ships it.
    const RESERVED_BUTTON_IDS = [
-     'button_submit',
-     'button_progress',
-     'button_not_required',
-     'button_approve',
-     'button_request_changes',
-     'button_resolve_error',
-     'button_edit',
+     "button_submit",
+     "button_progress",
+     "button_not_required",
+     "button_approve",
+     "button_request_changes",
+     "button_resolve_error",
+     "button_edit",
    ];
 
    // Verbs whose form-action templates offer the `buttons.extra` slot.
    // `view` has a bar (Part 39 D4) but extras on view are deferred (Part 36
    // "Out of scope") — declaring the slot there is a build error.
-   const EXTRA_BUTTON_VERBS = ['edit', 'review', 'error'];
+   const EXTRA_BUTTON_VERBS = ["edit", "review", "error"];
    ```
 
 2. Add a `validateButtonsExtra(workflow, action)` function and call it from `validateAction` **for `kind: form` actions only** (the slot only exists on form-action pages; check-action pages share one experience per verb). Behaviour:
@@ -85,4 +85,4 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`:
 ## Notes
 
 - The reserved set is deliberately duplicated against the hardcoded `id:` values in the verb templates — collapsing it into a single source was considered and rejected as heavier than the duplication is worth (design item 3). Keep the comment on the constant pointing at this tradeoff.
-- The check is *not* a security boundary; the error message for reserved-id collisions should say it prevents duplicate block ids in the bar, not that it protects the engine.
+- The check is _not_ a security boundary; the error message for reserved-id collisions should say it prevents duplicate block ids in the bar, not that it protects the engine.

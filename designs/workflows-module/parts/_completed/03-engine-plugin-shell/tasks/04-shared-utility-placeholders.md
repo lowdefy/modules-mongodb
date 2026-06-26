@@ -26,7 +26,7 @@ Create three files. Each is small, pure, and matches the contract its downstream
 
 ```js
 async function getActions(mongoDBConnection, workflowId) {
-  return mongoDBConnection('actions').MongoDBFind({
+  return mongoDBConnection("actions").MongoDBFind({
     query: { workflow_id: workflowId },
   });
 }
@@ -40,7 +40,7 @@ No projection — handlers consume whatever fields they need.
 
 ```js
 async function getActionFields(mongoDBConnection, actionId) {
-  return mongoDBConnection('actions').MongoDBFindOne({
+  return mongoDBConnection("actions").MongoDBFindOne({
     query: { _id: actionId },
     options: {
       projection: {
@@ -66,7 +66,7 @@ The projection list is the **engine-spec-defined core field set**. Don't add fie
 ### 3. `src/connections/shared/populateIds.js`
 
 ```js
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from "node:crypto";
 
 function populateIds(actions) {
   for (const action of actions) {

@@ -36,9 +36,9 @@ the rebuild, no task owns it:
 - Task 13's commit writes the plan verbatim — "No reads. No renders. No logic
   that wasn't in the plan."
 
-If the planned doc carries the *loaded* `updated` through, commit writes the old
+If the planned doc carries the _loaded_ `updated` through, commit writes the old
 timestamp back. A concurrent submit B that loaded the same state then CAS-matches
-*after* A committed — filter pins the old timestamp, the stored value is still
+_after_ A committed — filter pins the old timestamp, the stored value is still
 the old timestamp — and **both submits win**. The whole-doc `$set` makes this a
 silent lost update: no error, and no test fails unless a test asserts the stamp
 advanced. The task-13 acceptance tests ("concurrent submit — one wins, one
@@ -50,7 +50,7 @@ workflow doc carries `updated: { timestamp: now, user }` from the per-invocation
 mint (task 15 already threads `now`; add the user). Add a task-13 acceptance
 criterion: post-commit `workflow.updated.timestamp` differs from
 `loadedState.workflow.updated.timestamp` (the concurrent-submit test depends on
-it). While there, confirm task 10's *update* path also stamps the action doc's
+it). While there, confirm task 10's _update_ path also stamps the action doc's
 `updated` (today's `updateAction.js:67` does; task 10 only lists it for inserts)
 — not CAS-relevant, but a behaviour-preservation drop of the same kind.
 
@@ -100,7 +100,7 @@ runs all five steps) tells an implementer `commitWithSession` runs all five too 
 **inside the transaction callback**. `withTransaction` re-runs the whole callback
 on a `TransientTransactionError`: steps 1–2 roll back and retry cleanly, but a
 retried callback would re-fire `callApi("new-event")` (a different client — its
-write is *not* rolled back by our abort), re-dispatch notifications, and
+write is _not_ rolled back by our abort), re-dispatch notifications, and
 double-insert change-log entries. The design's own retry note (task 13 line 42)
 covers only the CAS behaviour under retry, not the side-effect steps.
 
@@ -117,7 +117,9 @@ async function commitPlan(context, plan) {
   if (context.useTransactions) {
     const session = context.mongoClient.startSession();
     try {
-      await session.withTransaction(() => commitWorkflowAndActions(context, plan, session));
+      await session.withTransaction(() =>
+        commitWorkflowAndActions(context, plan, session),
+      );
     } finally {
       await session.endSession();
     }
@@ -125,9 +127,9 @@ async function commitPlan(context, plan) {
     await commitWorkflowAndActions(context, plan); // D9 ordered fallback, CAS-gated
   }
   // steps 3–5 — once, both paths, never inside the driver's retry loop
-  const event_ids = await dispatchEvents(context, plan);      // step 3
-  await dispatchNotifications(context, event_ids);            // step 4
-  await writeChangeLog(context, plan);                        // step 5
+  const event_ids = await dispatchEvents(context, plan); // step 3
+  await dispatchNotifications(context, event_ids); // step 4
+  await writeChangeLog(context, plan); // step 5
   return buildCommitResult(plan);
 }
 ```
@@ -140,7 +142,7 @@ of steps 1–2 can never re-fire them.
 
 ### 4. Failure policy for steps 3–5 is unspecified — and it decides whether the tracker cascade and post-hook run
 
-> **Resolved.** Adopted a defer-throw policy (a synthesis beyond the review's two options): steps 1–2 throw; steps 3–5 are caught per step and recorded on `CommitResult.dispatchErrors[]` (step 4 skipped when step 3 failed; step 5 always runs); the cascade and post-hook always run; then the **handler** throws `post_commit_dispatch_failed` (cause-chained, message states the commit succeeded) when any errors were recorded. Rationale: catch-and-continue would bury failures in a side log the engine doesn't have, while immediate throw strands `trackerFires` unrecoverably — defer-throw keeps the state work *and* surfaces the failure through Lowdefy's real error-reporting path. Deliberate behaviour change from today's throwing dispatch helpers, noted in task 13. Specced in task 13 (catch + record + criteria), task 15 (end-of-handler throw + criterion), task 16 (cascade collects per-level errors, never stops for them), design.md D9/D11/D13.
+> **Resolved.** Adopted a defer-throw policy (a synthesis beyond the review's two options): steps 1–2 throw; steps 3–5 are caught per step and recorded on `CommitResult.dispatchErrors[]` (step 4 skipped when step 3 failed; step 5 always runs); the cascade and post-hook always run; then the **handler** throws `post_commit_dispatch_failed` (cause-chained, message states the commit succeeded) when any errors were recorded. Rationale: catch-and-continue would bury failures in a side log the engine doesn't have, while immediate throw strands `trackerFires` unrecoverably — defer-throw keeps the state work _and_ surfaces the failure through Lowdefy's real error-reporting path. Deliberate behaviour change from today's throwing dispatch helpers, noted in task 13. Specced in task 13 (catch + record + criteria), task 15 (end-of-handler throw + criterion), task 16 (cascade collects per-level errors, never stops for them), design.md D9/D11/D13.
 
 If step 3, 4, or 5 throws and `commitPlan` propagates, the handler aborts
 **after** the workflow + actions committed: the caller gets an error for a submit
@@ -151,7 +153,7 @@ notifications are "best-effort downstream dispatch," while today's helpers
 **throw** on `!result.success` (`dispatchLogEvent.js:113–121`,
 `dispatchNotifications.js:24–31`) and run before tracker fire
 (`handleSubmit.js:334–345`), so today a notification failure does abort the
-cascade. D9's partial-failure bullets describe resulting *states* ("flag in
+cascade. D9's partial-failure bullets describe resulting _states_ ("flag in
 monitoring", "log loudly") without saying throw-or-continue. Task 13 inherits the
 ambiguity; an implementer must invent the policy.
 
@@ -173,7 +175,7 @@ and the cascade runs").
 
 ### 5. `callApi` mechanics: arity, success-check, and the `dispatchNotifications` signature change
 
-> **Resolved (auto).** Task 13 step 3 now shows the real three-arg `context.callApi({ id, module }, payload, { user })` shape, states that `callApi` returns `{ success, error }` rather than throwing, and requires `commitPlan` to reproduce the deleted `dispatchLogEvent.js` success-check. Step 4 now states the `dispatchNotifications` signature update from `(context, eventId)` singular to the `(context, { event_ids })` batch (one call, no per-event fan-out), with JSDoc + test updates; the file added to the task's Files list. *(Batch-signature part later superseded by #9's singular-`Plan.event` resolution: the helper keeps `(context, eventId)` unchanged.)*
+> **Resolved (auto).** Task 13 step 3 now shows the real three-arg `context.callApi({ id, module }, payload, { user })` shape, states that `callApi` returns `{ success, error }` rather than throwing, and requires `commitPlan` to reproduce the deleted `dispatchLogEvent.js` success-check. Step 4 now states the `dispatchNotifications` signature update from `(context, eventId)` singular to the `(context, { event_ids })` batch (one call, no per-event fan-out), with JSDoc + test updates; the file added to the task's Files list. _(Batch-signature part later superseded by #9's singular-`Plan.event` resolution: the helper keeps `(context, eventId)` unchanged.)_
 
 Three concrete mismatches against the code this step absorbs:
 
@@ -231,7 +233,7 @@ to the real API so the implementer prompt and the committed code agree.
 
 D3: "commit on an empty Plan is a no-op write of just the workflow's `updated`
 stamp if anything else changed, or a complete no-op if nothing changed." Commit
-is barred from logic that isn't in the plan, so *something else* must decide
+is barred from logic that isn't in the plan, so _something else_ must decide
 "nothing changed" — and no task says what. The live producer of empty plans is
 the tracker level (task 16: a mirror signal that FSM-no-ops against the parent).
 Pick one: the planner/handler short-circuits and never calls `commitPlan` when
@@ -243,7 +245,7 @@ mirror event + change-log entry (presumably not — nothing changed).
 
 ### 9. `CommitResult` shape: singular vs plural `event_id`
 
-> **Resolved.** Pinned **singular end-to-end** — further than the review's plural suggestion, for a reason the finding surfaced on interrogation: the id model *forbids* a second event per Plan (the event doc's `_id` IS the per-invocation `event_id`, so two entries would collide), making the `Plan.events[]` array unusable headroom — speculative surface. Now: `Plan.event: { doc }` (D3 + task 9), `CommitResult = { workflow_id, action_ids, event_id, dispatchErrors }` (task 13 + flow diagram), commit step 3 is a single dispatch, and the handler's existing singular `event_id` return needs no mapping (the live YAML consumers — cancel/close API routines, demo post-hook — stay untouched). The one plural that remains is the `send-notification` wire field `event_ids: [event_id]` — the notifications endpoint's existing contract. Supersedes part of #5's resolution: `dispatchNotifications.js` keeps its `(context, eventId)` signature unchanged; no batch update.
+> **Resolved.** Pinned **singular end-to-end** — further than the review's plural suggestion, for a reason the finding surfaced on interrogation: the id model _forbids_ a second event per Plan (the event doc's `_id` IS the per-invocation `event_id`, so two entries would collide), making the `Plan.events[]` array unusable headroom — speculative surface. Now: `Plan.event: { doc }` (D3 + task 9), `CommitResult = { workflow_id, action_ids, event_id, dispatchErrors }` (task 13 + flow diagram), commit step 3 is a single dispatch, and the handler's existing singular `event_id` return needs no mapping (the live YAML consumers — cancel/close API routines, demo post-hook — stay untouched). The one plural that remains is the `send-notification` wire field `event_ids: [event_id]` — the notifications endpoint's existing contract. Supersedes part of #5's resolution: `dispatchNotifications.js` keeps its `(context, eventId)` signature unchanged; no batch update.
 
 Task 13's output line says `CommitResult` carries "`action_ids`, `event_ids`, …"
 while the design's worked example returns `{ action_ids: [...], event_id: e1, ... }`

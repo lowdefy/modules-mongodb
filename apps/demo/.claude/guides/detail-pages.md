@@ -181,7 +181,7 @@ _ref:
       - label:
           _module.var:
             key: label_plural
-            default: {Entity Plural}
+            default: { Entity Plural }
         pageId:
           _module.pageId: all
       - label:

@@ -21,11 +21,11 @@ The design (§Open questions, line 221) says it "cannot ship without falling bac
 
 > Affects: §"Build-time and runtime usage" (whole section), §"Migration of `change_stamp`", §Files changed, and tasks 3–8.
 
-The design's load-bearing assumption (§"Build-time and runtime usage", lines 57–67) is a *single* `_app` "evaluable at **both** build time and runtime", and it proposes `_app: slug` at every one of the ~72 sites uniformly. The shipped reality, per `_app.yaml`:
+The design's load-bearing assumption (§"Build-time and runtime usage", lines 57–67) is a _single_ `_app` "evaluable at **both** build time and runtime", and it proposes `_app: slug` at every one of the ~72 sites uniformly. The shipped reality, per `_app.yaml`:
 
 > In most positions, write `_app: slug` — the build bakes it into the artifact. **Inside a `_build.*` operator** (for example as a `_build.object.fromEntries` map key), **use the `_build.app` form** so it resolves in time to be consumed by the surrounding build operator.
 
-So `_app: slug` is correct "at any level" **except** when it sits directly inside a `_build.*` operator's arguments — there you must write `_build.app: slug`. The design's three build-time classes (§lines 61–65) are correctly *identified*; only the operator spelled at those sites must change from `_app` to `_build.app`. Add a short rule to the design: *runtime and ordinary build positions → `_app: slug`; arguments to a `_build.*` operator → `_build.app: slug`.*
+So `_app: slug` is correct "at any level" **except** when it sits directly inside a `_build.*` operator's arguments — there you must write `_build.app: slug`. The design's three build-time classes (§lines 61–65) are correctly _identified_; only the operator spelled at those sites must change from `_app` to `_build.app`. Add a short rule to the design: _runtime and ordinary build positions → `_app: slug`; arguments to a `\_build._`operator →`\_build.app: slug`.\*
 
 ### 3. Exact build-time sites that need `_build.app: slug` (everything else is `_app: slug`)
 
@@ -34,6 +34,7 @@ So `_app: slug` is correct "at any level" **except** when it sits directly insid
 I grepped the current tree. Only two patterns are inside `_build.*`:
 
 **a. Event-display map key — `_build.object.fromEntries`.** The `- - _module.var: app_name` line nested under `_build.object.fromEntries` → `_build.if_none` → `_build.object.fromEntries`:
+
 - `modules/companies/api/create-company.yaml:130`, `update-company.yaml:203`
 - `modules/contacts/api/create-contact.yaml:103`, `update-contact.yaml:75`
 - `modules/user-account/api/create-profile.yaml:77`, `update-profile.yaml:76`
@@ -44,6 +45,7 @@ These nine sites → `_build.app: slug`.
 **b. `makeActionPages` resolver vars.** `modules/workflows/module.lowdefy.yaml:170–171` passes `app_name: { _module.var: app_name }` into a `_ref` resolver that consumes it at build time (`makeActionPages.js:77` destructures `vars.app_name`, throws if falsy, and gates page emission on `action.access?.[appName]`). An unevaluated `{ _app: slug }` object passes the truthy `if (!appName)` guard, then `access?.[ {…} ]` is `undefined` → **every per-action page silently drops** (review-1 finding #1c, still live). → `_build.app: slug`.
 
 **All other `_module.var: app_name` sites are runtime → `_app: slug`:**
+
 - All `notifications/requests/*` and `components/unread-count-request.yaml`: the request declares `payload: { app_name: { _module.var: app_name } }` and filters `created.app_name: { _payload: app_name }`. Swap the payload default only.
 - user-admin `requests/*` `$match` filters, and `api/{update-user,invite-user}` field paths built with **runtime** `_string.concat: ["apps.", { _module.var: app_name }, ".roles"]` (note: `_string.concat`, **not** `_build.string.concat` — these are runtime).
 - user-admin/user-account/notifications stamp/payload fields `app_name: { _module.var: app_name }`.
@@ -67,7 +69,7 @@ General principle worth stating in the design: **a manifest var default consumed
 
 > Affects: §"Keep `display_key` as a manifest var", task 02.
 
-`display_key` (currently `required: true`, manifest line 21–23) is consumed only at runtime in `events-timeline.yaml` (`_object.fromEntries` + `_string.concat`, per review-1 finding #5, re-confirmed: no `_build.*` consumer). So `default: { _app: slug }` works. This is fine to keep as-is, but the design should say *why* `display_key` gets `_app` while `app_title` (finding #4) needs `_build.app`: display_key has no build-time consumer, app_title does. If a future build-time consumer of `display_key` appears, it would need flipping to `_build.app`.
+`display_key` (currently `required: true`, manifest line 21–23) is consumed only at runtime in `events-timeline.yaml` (`_object.fromEntries` + `_string.concat`, per review-1 finding #5, re-confirmed: no `_build.*` consumer). So `default: { _app: slug }` works. This is fine to keep as-is, but the design should say _why_ `display_key` gets `_app` while `app_title` (finding #4) needs `_build.app`: display_key has no build-time consumer, app_title does. If a future build-time consumer of `display_key` appears, it would need flipping to `_build.app`.
 
 ## Drift — claims that went stale since 2026-06-05
 
@@ -101,6 +103,7 @@ The migration splits cleanly into **two kinds of work**, and that — not module
 - **Careful (build-time):** the nine `_build.object.fromEntries` keys + the workflows resolver vars → `_build.app: slug`, and `app_title`'s default → `_build.app: name` (#3, #4). This is the only part that needs thought and a build to verify.
 
 Suggested collapse from 14 → ~6:
+
 1. **Demo app shell** — merge tasks 01, 09, 10, 11: add `slug: demo`, set `name:`, swap the two demo-events `_ref`s, demo chrome `_app: name`, delete `app_config.yaml`.
 2. **events `display_key` default** (task 02, tiny — keep).
 3. **Runtime swap** — all runtime `_module.var: app_name` → `_app: slug` across contacts/companies/notifications/user-account/user-admin + drop the manifest vars. One task with a grep checklist.

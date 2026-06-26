@@ -2,7 +2,7 @@
 
 A forward-looking concept for a future `tasks` module that lives next to `workflows` and shares the same `actions` collection. Workflow actions are pre-defined steps inside a `workflow_config`; tasks are adhoc todos that users (or external systems) create at runtime. Both are work items the same user does — putting them in one collection means a single "my work" view can surface both, and lets us reuse the status enum, change-stamp, references shape, and events-as-comments pattern already shipped.
 
-This design is **not** the tasks module's implementation design. It's the boundary contract: what the `workflows` module must lock in *now* so the future `tasks` module can be built on the same collection without contortions or rewrites.
+This design is **not** the tasks module's implementation design. It's the boundary contract: what the `workflows` module must lock in _now_ so the future `tasks` module can be built on the same collection without contortions or rewrites.
 
 ## Proposed change
 
@@ -17,14 +17,14 @@ This design is **not** the tasks module's implementation design. It's the bounda
 
 Every mature work-tracker collapses "work item" into one logical collection with optional structural parents:
 
-| Tool    | Collection | Optional parent / container               |
-| ------- | ---------- | ----------------------------------------- |
+| Tool    | Collection | Optional parent / container                 |
+| ------- | ---------- | ------------------------------------------- |
 | Linear  | Issues     | Project / Cycle / Initiative (all optional) |
-| Jira    | Issues     | Epic / Sprint                             |
-| Asana   | Tasks      | Project / Section (My Tasks = no project) |
-| GitHub  | Issues     | Milestone / Project                       |
-| ClickUp | Tasks      | List / Folder                             |
-| Monday  | Items      | Board                                     |
+| Jira    | Issues     | Epic / Sprint                               |
+| Asana   | Tasks      | Project / Section (My Tasks = no project)   |
+| GitHub  | Issues     | Milestone / Project                         |
+| ClickUp | Tasks      | List / Folder                               |
+| Monday  | Items      | Board                                       |
 
 Workflow vs adhoc maps cleanly onto "in a project" vs "no project". Splitting into two collections would mean a second status taxonomy, a duplicate notifications path, two access models, and a "my work" view that has to merge from two sources. The shared-collection direction is the well-trodden one.
 
@@ -85,7 +85,7 @@ These are the things the workflows module ships must respect so the tasks module
 - **No collection-level required fields** beyond `_id`, `kind`, `status`, `change_stamp`. In particular, `workflow_id`, `type`, `entity_id`, `entity_collection`, `action_group` must all be nullable at the schema level. (None of the shipped Mongo writes enforce these as required today — verified — but the constraint needs to stay.)
 - **No index assumes `workflow_id` is present.** The workflows module ships no documented index definitions on `actions` today — a separate gap to close, since other modules in this repo document required indexes in their README (e.g. `activities/README.md`). When workflows adds them, they must accept `workflow_id: null` docs. Non-partial indexes on `workflow_id` are fine — Mongo indexes nulls. Partial indexes filtered on `workflow_id` existing are fine as workflow-only optimisations but must not be the sole index serving a query path that both streams use.
 - **`type` is not required.** Workflow actions always have a `type`; tasks may not. If the field exists on a task, it's a free-form tag, not a workflow-config slug.
-- **The status enum stays a strict superset** of what adhoc tasks need. The shipped enum (`action_statuses`) already includes `action-required`, `in-progress`, `done`, `not-required` — the four states adhoc tasks need. No engine work assumes a workflow action will *never* sit in just those four states either.
+- **The status enum stays a strict superset** of what adhoc tasks need. The shipped enum (`action_statuses`) already includes `action-required`, `in-progress`, `done`, `not-required` — the four states adhoc tasks need. No engine work assumes a workflow action will _never_ sit in just those four states either.
 
 ## The kind rename and the action-page decouple
 
@@ -94,9 +94,9 @@ The workflow-action kind for "user does a real-world thing, marks it off, no inp
 1. **`task → simple`** — shipped as [Part 35](../../workflows-module/parts/_completed/35-rename-task-kind-to-simple/design.md). This freed "task" and ended the collision.
 2. **`simple → check`** — the deferred [Part 43](../../workflows-module/parts/_completed/43-rename-simple-kind-to-check/design.md). "Simple" describes the implementation, not the thing, and carries a faint "trivial" connotation that undersells an action with assignees, a deadline, dependencies, and downstream effects.
 
-**New name: `check`.** It pairs against `form` — you *fill in* a form, you *check off* a check — naming the input-surface vs no-input-surface contrast the taxonomy hinges on. The single best word is *task*, deliberately spent on the adhoc concept; `check` is the strongest remaining word that names the *surface* rather than the implementation. Rejected this round: `simple` (incumbent — implementation-flavoured, faintly trivial), `job` (collides with the background-job sense), `checkbox` (implies binary; the kind has four states), `check-off` / `checkoff` (breaks the one-word `kind:` pattern), plus the Part 35 rejections (`manual`, `step`, `status`, `user_task`, `mark`) that still hold.
+**New name: `check`.** It pairs against `form` — you _fill in_ a form, you _check off_ a check — naming the input-surface vs no-input-surface contrast the taxonomy hinges on. The single best word is _task_, deliberately spent on the adhoc concept; `check` is the strongest remaining word that names the _surface_ rather than the implementation. Rejected this round: `simple` (incumbent — implementation-flavoured, faintly trivial), `job` (collides with the background-job sense), `checkbox` (implies binary; the kind has four states), `check-off` / `checkoff` (breaks the one-word `kind:` pattern), plus the Part 35 rejections (`manual`, `step`, `status`, `user_task`, `mark`) that still hold.
 
-**The shared pages decouple from the kind name.** The three shared pages were renamed `simple-*` → **`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`** by [Part 38 task 18](../../workflows-module/parts/_completed/38-engine-rebuild/tasks/18-display-surface-renames.md) (pulled forward from Part 43 per Part 38 review-14 #1) — anchoring the route on the domain noun, not the kind, while the `workflow-` prefix keeps the pages inside the Part 34 D10 fixed-page glob. Three reasons: (a) the *view* shape (header, universal fields, status history, comments) is kind-agnostic and renders any kind, so `action-view` is honest where `check-view` would not be; (b) it survives future kind renames untouched — the kind never appears in a route again; (c) form actions use the verbose generated `workflow-{type}-{action_type}-{verb}` namespace, so `action-*` is free, and the `workflows` module prefix scopes it correctly (`/workflows/action-view` = "view a workflow action"). A useful consequence for the kind choice: `check` lives purely as an internal discriminator (`kind:` data, engine branches, authoring grammar) and never reaches a URL — so its faint verify/cheque ambiguity never surfaces to users.
+**The shared pages decouple from the kind name.** The three shared pages were renamed `simple-*` → **`workflow-action-edit` / `workflow-action-view` / `workflow-action-review`** by [Part 38 task 18](../../workflows-module/parts/_completed/38-engine-rebuild/tasks/18-display-surface-renames.md) (pulled forward from Part 43 per Part 38 review-14 #1) — anchoring the route on the domain noun, not the kind, while the `workflow-` prefix keeps the pages inside the Part 34 D10 fixed-page glob. Three reasons: (a) the _view_ shape (header, universal fields, status history, comments) is kind-agnostic and renders any kind, so `action-view` is honest where `check-view` would not be; (b) it survives future kind renames untouched — the kind never appears in a route again; (c) form actions use the verbose generated `workflow-{type}-{action_type}-{verb}` namespace, so `action-*` is free, and the `workflows` module prefix scopes it correctly (`/workflows/action-view` = "view a workflow action"). A useful consequence for the kind choice: `check` lives purely as an internal discriminator (`kind:` data, engine branches, authoring grammar) and never reaches a URL — so its faint verify/cheque ambiguity never surfaces to users.
 
 The mechanical sweep — kind value, FSM tables, demo config, tests, concept terminology (no page ids; those are already final) — is enumerated in [Part 43](../../workflows-module/parts/_completed/43-rename-simple-kind-to-check/design.md). It is sequenced **after [Part 40](../../workflows-module/parts/_completed/40-simple-action-surfaces/design.md)** (the part that rewrites these page surfaces) so it runs once against a stable tree, and must land before the first real app onboards a workflow config.
 
@@ -108,16 +108,16 @@ Adhoc tasks get their own view/edit pages in the future tasks module (`/tasks/vi
 
 Adhoc tasks use a fixed subset of `global.action_statuses`:
 
-| Status            | Default label    |
-| ----------------- | ---------------- |
-| `action-required` | Action Required  |
-| `in-progress`     | In Progress      |
-| `done`            | Done             |
-| `not-required`    | Not Required     |
+| Status            | Default label   |
+| ----------------- | --------------- |
+| `action-required` | Action Required |
+| `in-progress`     | In Progress     |
+| `done`            | Done            |
+| `not-required`    | Not Required    |
 
 The labels read identically across both streams. They were chosen against user research with business users who preferred them over the common "Todo / In Progress / Done / Cancelled" set:
 
-- **"Action Required"** depersonalises the work — *someone* needs to act. Fits an engine telling an assignee they're up *and* a creator filing a todo for a teammate. "Todo" carries an implicit "I" which mis-frames assigned work in both streams.
+- **"Action Required"** depersonalises the work — _someone_ needs to act. Fits an engine telling an assignee they're up _and_ a creator filing a todo for a teammate. "Todo" carries an implicit "I" which mis-frames assigned work in both streams.
 - **"Not Required"** reads as a rational decision that the work doesn't need to happen. "Cancelled" implied failure or interruption, which business users reacted negatively to. "Not Required" is neutral closure.
 
 The engine-vs-user origin of each transition (the engine skipping a step vs. a user deciding a todo doesn't matter) is an implementation mechanism, not a semantic split — the user-facing meaning is the same.
@@ -152,7 +152,7 @@ A single timeline component can render events filtered by `action_id` for both s
 
 ### Timeline action cards are cross-stream — but task auth/links are the tasks module's job
 
-[Part 46](../../workflows-module/parts/_completed/46-debundle-workflow-config/design.md) ports the events-timeline action-card lookup into a cross-stream engine method (`GetEventsTimeline`): it enriches a card for *any* action referenced by an event, branching on `workflow_id`. Workflow actions get the full treatment (verb-gate access filter + engine link); non-workflow actions (`workflow_id: null` tasks) **pass through** on the shared display fields — `status` and `<app-slug>.message`, which Decision 1 already has tasks write into the same fields workflow actions use — so a task card renders with **zero** workflow logic.
+[Part 46](../../workflows-module/parts/_completed/46-debundle-workflow-config/design.md) ports the events-timeline action-card lookup into a cross-stream engine method (`GetEventsTimeline`): it enriches a card for _any_ action referenced by an event, branching on `workflow_id`. Workflow actions get the full treatment (verb-gate access filter + engine link); non-workflow actions (`workflow_id: null` tasks) **pass through** on the shared display fields — `status` and `<app-slug>.message`, which Decision 1 already has tasks write into the same fields workflow actions use — so a task card renders with **zero** workflow logic.
 
 Part 46 deliberately does **not** build task-specific timeline behaviour (none exists yet, no task docs exist). Two things become the **tasks module's** responsibility when it ships, resolved on the tasks side and **not** injected into the workflows `GetEventsTimeline` method (so the two access models stay separate, per "Access model" below):
 
@@ -167,7 +167,7 @@ Workflow actions have a config-driven access model: `access.{app_name}` is a per
 
 Adhoc tasks have a doc-driven access model: creator can edit/delete, assignees can edit + change status + comment, optional team scope for view. The tasks module will define this in its own design; nothing about it touches the workflows engine.
 
-Both can co-exist because the access checks live in the *submit handler*, not in the collection. Workflow handlers gate on the workflow-config-derived rules; task handlers gate on the doc-level rules. The collection itself doesn't enforce either — the calling API does.
+Both can co-exist because the access checks live in the _submit handler_, not in the collection. Workflow handlers gate on the workflow-config-derived rules; task handlers gate on the doc-level rules. The collection itself doesn't enforce either — the calling API does.
 
 The constraint on workflows: don't put access-enforcement logic in a place (e.g., a collection-level read trigger, or a shared aggregation helper that assumes `workflow_id`) that would force tasks to participate in workflow access rules.
 

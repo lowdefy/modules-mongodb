@@ -1,6 +1,6 @@
 id:
   _build.string.concat:
-    - 'get_entity_files_'
+    - "get_entity_files_"
     - _var:
         key: block_id
         default: file_list

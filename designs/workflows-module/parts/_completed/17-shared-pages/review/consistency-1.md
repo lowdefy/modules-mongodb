@@ -19,7 +19,7 @@ Scanned part 17's small file tree (design.md + review-1.md) after the 13 review-
 **Source of truth:** Design should be readable standalone — review-finding numbers are sourcing artifacts.
 **Files affected:** `design.md` lines 96, 99 (steps 3 and 6 of the task-page `onMount` sequence).
 **Before:** "per the task-page allowlist defined in finding #7's resolution (covered in the dedicated subsection below)" and "covered by finding #6's resolution".
-**Resolution:** Step 3 now points at the "Stale-URL redirect guards (task pages)" subsection (also fixed "below" → "above" — the subsection sits *before* the `onMount` list in the document). Step 6 now points at the "Role gate" bullets on `task-edit` and `task-review`.
+**Resolution:** Step 3 now points at the "Stale-URL redirect guards (task pages)" subsection (also fixed "below" → "above" — the subsection sits _before_ the `onMount` list in the document). Step 6 now points at the "Role gate" bullets on `task-edit` and `task-review`.
 
 ### 2. `dist/...` path cited in design.md and review-1.md
 

@@ -24,7 +24,11 @@ const sendQuoteAction = {
   type: "send-quote",
   kind: "form",
   access: {
-    "my-team-app": { view: true, edit: ["account-manager"], review: ["account-manager"] },
+    "my-team-app": {
+      view: true,
+      edit: ["account-manager"],
+      review: ["account-manager"],
+    },
   },
   blocked_by: ["qualify"],
   status_map: {
@@ -45,7 +49,11 @@ const trackInstallationAction = {
   type: "track-installation",
   kind: "tracker",
   access: {
-    "my-team-app": { view: true, edit: ["account-manager"], review: ["account-manager"] },
+    "my-team-app": {
+      view: true,
+      edit: ["account-manager"],
+      review: ["account-manager"],
+    },
   },
   tracker: { child_workflow_type: "device-installation" },
 };
@@ -91,7 +99,9 @@ test("makeActionPages: adding error to access list emits -error; removing it doe
     workflows: [workflow([qualifyAction])],
     app_name: APP,
   });
-  expect(withoutErrorPages.some((p) => p.id === "onboarding-qualify-error")).toBe(false);
+  expect(
+    withoutErrorPages.some((p) => p.id === "onboarding-qualify-error"),
+  ).toBe(false);
 });
 
 test("makeActionPages: send-quote (form, access [view, edit, review]) emits -edit, -view, -review and no -error", () => {
@@ -195,7 +205,10 @@ test("makeActionPages: page_config var passes through action.pages.{verb} keys p
   const viewPage = pages.find((p) => p.id === "onboarding-qualify-view");
 
   // Author-supplied per-verb keys pass through; title defaults to the action title.
-  expect(editPage._ref.vars.page_config).toEqual({ maxWidth: 1200, title: "Qualify" });
+  expect(editPage._ref.vars.page_config).toEqual({
+    maxWidth: 1200,
+    title: "Qualify",
+  });
   expect(viewPage._ref.vars.page_config).toEqual({ title: "Qualify" });
 });
 
@@ -278,7 +291,10 @@ test("makeActionPages: action_config does not carry the `pages` slot (duplicate 
 // ── Part 24: universal_fields normalization on action_config ─────────────────
 
 test("makeActionPages: universal_fields omitted → all-three default on action_config", () => {
-  const pages = makeActionPages(null, { workflows: [workflow([qualifyAction])], app_name: APP });
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
   expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([
     "assignees",
     "due_date",
@@ -288,18 +304,31 @@ test("makeActionPages: universal_fields omitted → all-three default on action_
 
 test("makeActionPages: universal_fields false → [] on action_config", () => {
   const action = { ...qualifyAction, universal_fields: false };
-  const pages = makeActionPages(null, { workflows: [workflow([action])], app_name: APP });
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
   expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([]);
 });
 
 test("makeActionPages: universal_fields explicit subset passes through unchanged", () => {
   const action = { ...qualifyAction, universal_fields: ["assignees"] };
-  const pages = makeActionPages(null, { workflows: [workflow([action])], app_name: APP });
-  expect(pages[0]._ref.vars.action_config.universal_fields).toEqual(["assignees"]);
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
+  expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([
+    "assignees",
+  ]);
 });
 
 test("makeActionPages: universal_fields_required never appears in output", () => {
   const action = { ...qualifyAction, universal_fields_required: ["assignees"] };
-  const pages = makeActionPages(null, { workflows: [workflow([action])], app_name: APP });
-  expect("universal_fields_required" in pages[0]._ref.vars.action_config).toBe(false);
+  const pages = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  });
+  expect("universal_fields_required" in pages[0]._ref.vars.action_config).toBe(
+    false,
+  );
 });

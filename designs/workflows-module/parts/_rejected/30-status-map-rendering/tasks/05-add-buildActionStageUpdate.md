@@ -18,8 +18,8 @@ The pipeline replaces today's two-step `$set` + `$push` shape with a single `$se
         ],
       },
       metadata: mergedMetadata,
-      ...renderedCell,   // sticky author content (message, status_title)
-      ...engineLinks,    // built-in kinds: { [slug]: { $mergeObjects: ['$<slug>', { link }] } }; custom kind: {}
+      ...renderedCell, // sticky author content (message, status_title)
+      ...engineLinks, // built-in kinds: { [slug]: { $mergeObjects: ['$<slug>', { link }] } }; custom kind: {}
     },
   },
 ];
@@ -38,6 +38,7 @@ buildActionStageUpdate({ renderedCell, engineLinks, newStage, mergedMetadata, ev
 Output: a one-element array — the single-stage aggregation pipeline above.
 
 Add `buildActionStageUpdate.test.js` covering:
+
 - Pipeline is a one-element array with `$set` at the top level.
 - `$set.status` is a `$concatArrays` of `[{ new entry }]` and `'$status'`, in that order (new entry first → prepended).
 - The new status entry contains `{ stage: newStage, event_id: eventId, created: changeStamp }`.

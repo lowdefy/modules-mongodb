@@ -7,6 +7,7 @@ Two new caller-facing payload fields land with this part: `metadata` (accumulate
 `modules/workflows/README.md` documents the consumer-facing API surface. It needs entries for both fields under the Start / Submit payload documentation.
 
 Key wording requirements (per design D8):
+
 - `action_display` is the per-call override path for the **action**'s per-app cell.
 - Shape: `{ [slug]: cellShapeForKind }` — `{ message?: string }` for built-in kinds, `{ message?: string, link?: { pageId, urlQuery, input? } }` for custom kind.
 - Scoped to one transition; not persisted to the action config.
@@ -20,6 +21,7 @@ Key wording requirements (per design D8):
    - The `app_name` var documentation in the same README (so readers see the unified role of `app_name`).
 
 2. If the README has a Worked Example section, optionally add a small example showing:
+
    ```js
    submit({
      metadata: { physical_id: "D-42" },
@@ -28,6 +30,7 @@ Key wording requirements (per design D8):
      },
    });
    ```
+
    with a one-sentence note that the override is rendered against the same context as the cell.
 
 3. **Document the event-display authoring contract.** Under the README section that covers `event_overrides` (or add one if missing), state that authored event templates — `event.{interaction}.display.{app}.{field}` in the workflow's action YAML, and `event_overrides.display.{app}.{field}` returned from pre-hooks — are **plain Nunjucks template strings** rendered by the engine against the fixed context `{ user, action, workflow, interaction, status_before, status_after }` (per D14). Call out the contrast with the cross-repo [`event_display` idiom](../../../../docs/idioms.md#event-display) explicitly: the `_nunjucks: { template, on }` operator wrapping used elsewhere in modules-mongodb (e.g. `contacts/api/create-contact.yaml`) is **not** valid on the workflow engine path — Lowdefy's `evaluateOperators` pre-handler pass would pre-render it against the calling page's state (where engine bindings like `action.type` / `status_after` don't exist), producing silently-empty or wrong values. The engine intentionally renders only plain strings. List the bindings authors can reference, and link to D14 in this part's design.md for the full contract.

@@ -16,10 +16,10 @@ concepts: [tracker, start-link, child-workflow, parent-action]
 A tracker action has no submit endpoint and no edit page. Its status updates automatically whenever the child workflow transitions via the engine's tracker subscription. Once a child workflow is linked (via `start-workflow` with `parent_action_id`), the mapping is:
 
 | Child workflow stage | Parent tracker action status |
-|---|---|
-| `active` | `in-progress` |
-| `completed` | `done` |
-| `cancelled` | `not-required` |
+| -------------------- | ---------------------------- |
+| `active`             | `in-progress`                |
+| `completed`          | `done`                       |
+| `cancelled`          | `not-required`               |
 
 Before a child is linked, the tracker sits at `action-required`. `start_link` provides the navigation target for that state so users know where to go to create the child entity.
 
@@ -41,15 +41,15 @@ description: Tracks the company-setup workflow on the converted company.
 access:
   demo:
     view: true
-    edit: true   # controls start_link visibility
+    edit: true # controls start_link visibility
 tracker:
   child_workflow_type: company-setup
   start_link:
     pageId:
       _module.pageId: { id: new, module: companies }
     urlQuery:
-      action_id: true   # → tracker action _id (passed as parent_action_id to start-workflow)
-      entity_id: true   # → lead _id (referenced by the convert event)
+      action_id: true # → tracker action _id (passed as parent_action_id to start-workflow)
+      entity_id: true # → lead _id (referenced by the convert event)
 ```
 
 Key fields:
@@ -77,7 +77,7 @@ starting_actions:
   - type: upload-po
     status: blocked
   - type: track-company-setup
-    status: blocked        # ← unblocks once upload-po is done
+    status: blocked # ← unblocks once upload-po is done
 ```
 
 ### 3. Reference the tracker in the workflow's `actions:` list
@@ -89,7 +89,7 @@ actions:
   - _ref: modules/workflows/workflow_config/onboarding/send-quote.yaml
   - _ref: modules/workflows/workflow_config/onboarding/schedule-followup.yaml
   - _ref: modules/workflows/workflow_config/onboarding/upload-po.yaml
-  - _ref: modules/workflows/workflow_config/onboarding/track-company-setup.yaml  # ← add
+  - _ref: modules/workflows/workflow_config/onboarding/track-company-setup.yaml # ← add
 ```
 
 ### 4. Wire the child workflow's start endpoint on the child-creation page
@@ -104,14 +104,15 @@ On the page the `start_link` points to, call the child workflow type's `{type}-s
     _module.endpointId: { id: company-setup-start, module: workflows }
   payload:
     entity_id:
-      _state: company._id           # the just-created child entity id
+      _state: company._id # the just-created child entity id
     entity_collection:
       _module.connectionId: { id: companies-collection, module: companies }
     parent_action_id:
-      _url_query: action_id         # passed by the tracker's start_link urlQuery
+      _url_query: action_id # passed by the tracker's start_link urlQuery
 ```
 
 The engine writes in one call:
+
 1. The new child workflow doc (with back-references to the parent).
 2. The child's starting action docs.
 3. The parent tracker action's `child_workflow_id`, `child_entity_id`, and `child_entity_collection` fields, plus the `in-progress` transition.
@@ -149,9 +150,9 @@ status_map:
 access:
   demo:
     view: true
-    edit: true       # start_link visible in demo
+    edit: true # start_link visible in demo
   read-only-app:
-    view: true       # no start_link in read-only-app
+    view: true # no start_link in read-only-app
 ```
 
 ## When to use `start_link` vs a paired trigger action

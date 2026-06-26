@@ -6,7 +6,7 @@
 
 The state-machine design's default `view` bar surfaces two affordances:
 
-- An **Edit** button that *navigates* to the edit page (navigation, not a signal).
+- An **Edit** button that _navigates_ to the edit page (navigation, not a signal).
 - A **`request_changes`** button (behind a comment modal) for the `done → changes-required` revise-after-done path.
 
 This is the one net-new surface in Part 39. The concrete need is the **no-`review`-verb** configuration: an action with no `review` verb has `submit` land it straight to `done` and ships **no review page at all**, so `view` is the only surface from which it can be sent back.
@@ -65,9 +65,11 @@ Add `button_request_changes`, gated like every other template button (author opt
   type: Button
   visible:
     _and:
-      - _var: { key: page_config.buttons.request_changes.visible, default: false }
+      - _var:
+          { key: page_config.buttons.request_changes.visible, default: false }
       - _array.includes:
-          - _ref: { path: enums/button_signal_sources.yaml, key: request_changes }
+          - _ref:
+              { path: enums/button_signal_sources.yaml, key: request_changes }
           - _state: action.status.0.stage
       - _eq: [{ _state: action_allowed.view }, true]
   properties:
@@ -76,7 +78,8 @@ Add `button_request_changes`, gated like every other template button (author opt
     danger: true
     ghost: true
     disabled:
-      _var: { key: page_config.buttons.request_changes.disabled, default: false }
+      _var:
+        { key: page_config.buttons.request_changes.disabled, default: false }
   events:
     onClick:
       - id: open_request_changes_modal
@@ -110,7 +113,8 @@ Mirror `review.yaml.njk`'s `request_changes_modal` (mandatory comment, `maskClos
             params:
               endpointId:
                 _module.endpointId:
-                  _build.string.concat: [update-action-, { _var: action_config.type }]
+                  _build.string.concat:
+                    [update-action-, { _var: action_config.type }]
               payload:
                 action_id: { _state: action._id }
                 signal: request_changes

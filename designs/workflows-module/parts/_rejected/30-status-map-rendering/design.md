@@ -84,11 +84,11 @@ For `kind: task | form | tracker`, the engine writes `action[slug].link` on ever
 
 Per-kind rule (each cell is the `link` value engine writes per access-slug × stage; `{entry_id}` is the workflows module entry id, threaded into the engine — see mechanic below):
 
-| Kind      | `pageId`                                                                | `urlQuery`                                       |
-| --------- | ----------------------------------------------------------------------- | ------------------------------------------------ |
-| `task`    | `{entry_id}/task-{verb}` (per the stage × verb table above)             | `{ action_id: action_doc._id }`                  |
-| `form`    | `{entry_id}/{action_doc.workflow_type}-{action_doc.type}-{verb}`        | `{ action_id: action_doc._id }`                  |
-| `tracker` | `{entry_id}/workflow-overview`                                          | `{ workflow_id: action_doc.child_workflow_id }`  |
+| Kind      | `pageId`                                                         | `urlQuery`                                      |
+| --------- | ---------------------------------------------------------------- | ----------------------------------------------- |
+| `task`    | `{entry_id}/task-{verb}` (per the stage × verb table above)      | `{ action_id: action_doc._id }`                 |
+| `form`    | `{entry_id}/{action_doc.workflow_type}-{action_doc.type}-{verb}` | `{ action_id: action_doc._id }`                 |
+| `tracker` | `{entry_id}/workflow-overview`                                   | `{ workflow_id: action_doc.child_workflow_id }` |
 
 **Mechanic.** `_module.pageId` is a **build-time** operator — by the time the engine runs, all `_module.pageId: <name>` references in YAML have already been resolved to concrete strings of shape `${entryId}/${name}` (build/walker.js:387). The runtime engine has no `_module.pageId` to call, so it must compose the scoped id by hand. To do that the engine needs the module entry id at runtime:
 
@@ -295,7 +295,7 @@ Fix: render in the engine before `context.callApi`. Same `renderTree` helper as 
 
 **Why `action`, not `target` (the idiom's name).** The [`event_display` idiom](../../../../../docs/idioms.md#event-display) names the "entity being changed" binding `target` and documents the shape as module-specific. The spirit is "the noun is module-specific"; the workflow path uses `action` because every other surface in this module (designs, code, concept specs) calls it that. Renaming to `target` only at the template-binding layer is a context switch with no payoff — app authors writing workflow event-override templates are unlikely to also be authoring contacts/companies templates concurrently. Each module's README documents its binding noun; workflows = `action`.
 
-**`action` exposes the full post-write action doc:** `_id`, `workflow_id`, `workflow_type` (the *parent* workflow's type), `type`, `kind`, `key`, `action_group`, `status[]`, `entity_id`, `entity_collection`, `assignees[]`, `due_date`, `description`, `tracker.child_workflow_type` (tracker only — the *child* workflow's type, renamed from `tracker.workflow_type` to disambiguate from the top-level `workflow_type` — see Schema additions § Action doc), `child_workflow_id` (tracker only), `metadata`, `status_title`, `<app-slug>.message`, `<app-slug>.link`, `created`, `updated`, plus any caller-supplied `references`.
+**`action` exposes the full post-write action doc:** `_id`, `workflow_id`, `workflow_type` (the _parent_ workflow's type), `type`, `kind`, `key`, `action_group`, `status[]`, `entity_id`, `entity_collection`, `assignees[]`, `due_date`, `description`, `tracker.child_workflow_type` (tracker only — the _child_ workflow's type, renamed from `tracker.workflow_type` to disambiguate from the top-level `workflow_type` — see Schema additions § Action doc), `child_workflow_id` (tracker only), `metadata`, `status_title`, `<app-slug>.message`, `<app-slug>.link`, `created`, `updated`, plus any caller-supplied `references`.
 
 **`workflow` exposes workflow-level fields not denormalised onto the action:** `_id`, `key`, `display_order`, `status[]` (workflow open/closed/cancelled), `summary` (`{done, not_required, total}`), `form_data`, `parent_action_id` / `parent_entity_id` / `parent_entity_collection`, `created`, `updated`. (`workflow_type`, `entity_id`, `entity_collection` are on the action doc too — reach them via either binding.) `workflow.key` is the common reach; `workflow.summary` matters for group-complete and workflow-close events.
 
@@ -425,14 +425,14 @@ No template engine in the UI. No nested traversal. The action doc carries everyt
 
 New top-level fields written by the engine:
 
-| Field                   | Type           | Source                                                                                                                                       | Lifecycle                                                                                                                                           |
-| ----------------------- | -------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `<access-slug>.message` | string \| null | Rendered cell `message` for the slug, or unchanged from previous stage if cell omits the slug                                                | Sticky. Written when an authored cell sets it; persists across transitions until the next cell mentions it or an explicit `null` clears it.         |
-| `<access-slug>.link`    | object \| null | **Built-in kinds:** engine-computed from `(kind, stage, slug's access verbs)`. **Custom kind:** rendered from authored cell's `link:` field. | Recomputed every transition for built-in kinds — never stale. For custom kind, sticky like `message` — author re-authors per stage that changes it. |
-| `status_title`          | string \| null | Rendered cell `status_title`, or unchanged from previous stage if cell omits it                                                              | Sticky.                                                                                                                                             |
-| `metadata`              | object \| null | Caller-supplied; accumulated `{ ...old, ...new }`                                                                                            | Set on every write that includes `metadata` in payload.                                                                                             |
-| `workflow_type`         | string         | Copied from `workflow.workflow_type` at action-doc creation in `createAction.js`. Immutable thereafter.                                       | Set once at creation. Denormalised onto every action doc so report aggregations, downstream consumers, and the engine's form-link computation can read workflow type from a single action doc without joining to `workflows`. Matches the existing denormalisation of `entity_id` / `entity_collection`. Present on the reference implementation; absent in the current modules-mongodb implementation — Part 30 restores it. |
-| `tracker.child_workflow_type` | string (tracker only) | Copied from `actionConfig.tracker.workflow_type` at action-doc creation in `createAction.js`. Immutable thereafter.                  | **Renamed** from `tracker.workflow_type` to disambiguate from the new top-level `workflow_type` (parent workflow's type). The new name parallels the existing `child_workflow_id` / `child_entity_id` / `child_entity_collection` fields under `action.tracker` and matches "the child workflow this tracker subscribes to" semantically. Author-facing action config keeps `tracker.workflow_type: <child-type>` (no nested-doc collision at config-authoring time); only the action-doc field changes. |
+| Field                         | Type                  | Source                                                                                                                                       | Lifecycle                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ----------------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<access-slug>.message`       | string \| null        | Rendered cell `message` for the slug, or unchanged from previous stage if cell omits the slug                                                | Sticky. Written when an authored cell sets it; persists across transitions until the next cell mentions it or an explicit `null` clears it.                                                                                                                                                                                                                                                                                                                                                              |
+| `<access-slug>.link`          | object \| null        | **Built-in kinds:** engine-computed from `(kind, stage, slug's access verbs)`. **Custom kind:** rendered from authored cell's `link:` field. | Recomputed every transition for built-in kinds — never stale. For custom kind, sticky like `message` — author re-authors per stage that changes it.                                                                                                                                                                                                                                                                                                                                                      |
+| `status_title`                | string \| null        | Rendered cell `status_title`, or unchanged from previous stage if cell omits it                                                              | Sticky.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `metadata`                    | object \| null        | Caller-supplied; accumulated `{ ...old, ...new }`                                                                                            | Set on every write that includes `metadata` in payload.                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `workflow_type`               | string                | Copied from `workflow.workflow_type` at action-doc creation in `createAction.js`. Immutable thereafter.                                      | Set once at creation. Denormalised onto every action doc so report aggregations, downstream consumers, and the engine's form-link computation can read workflow type from a single action doc without joining to `workflows`. Matches the existing denormalisation of `entity_id` / `entity_collection`. Present on the reference implementation; absent in the current modules-mongodb implementation — Part 30 restores it.                                                                            |
+| `tracker.child_workflow_type` | string (tracker only) | Copied from `actionConfig.tracker.workflow_type` at action-doc creation in `createAction.js`. Immutable thereafter.                          | **Renamed** from `tracker.workflow_type` to disambiguate from the new top-level `workflow_type` (parent workflow's type). The new name parallels the existing `child_workflow_id` / `child_entity_id` / `child_entity_collection` fields under `action.tracker` and matches "the child workflow this tracker subscribes to" semantically. Author-facing action config keeps `tracker.workflow_type: <child-type>` (no nested-doc collision at config-authoring time); only the action-doc field changes. |
 
 Existing fields untouched (`_id`, `type`, `kind`, `key`, `status[]`, `action_group`, `entity_*`, `assignees`, `due_date`, `description`, etc.).
 
@@ -606,18 +606,31 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
     ...(shouldPushCompleted
       ? {
           status: [
-            { stage: 'completed', event_id: context.eventId, created: context.changeStamp },
+            {
+              stage: "completed",
+              event_id: context.eventId,
+              created: context.changeStamp,
+            },
             ...(workflow.status ?? []),
           ],
         }
       : {}),
   };
-  return { workflow: updatedWorkflow, workflowActions, groupsBefore, groupsAfter, reEvaluatedActionIds, shouldPushCompleted, summary };
+  return {
+    workflow: updatedWorkflow,
+    workflowActions,
+    groupsBefore,
+    groupsAfter,
+    reEvaluatedActionIds,
+    shouldPushCompleted,
+    summary,
+  };
   ```
 
   This makes `result.workflow` symmetric with what the helper writes to Mongo at lines 122-126 — one place encodes the composition, every caller (handleSubmit's event-dispatch path today, any future engine path) gets a fresh workflow object by reading `result.workflow` directly with no caller-side recipe to remember.
 
   **Forward-looking note.** Today only `handleSubmit` dispatches a log event after the recompute. `fireTrackerSubscription` already calls this helper but does **not** dispatch — so the staleness shape doesn't bite there. If a future part adds an engine-side log dispatch after the recompute (e.g. a "tracker advanced" event from inside `fireTrackerSubscription`, or any new caller of `recomputeWorkflowAfterActionWrite`), that path must render its event templates against `recomputeResult.workflow` — not against a parent workflow doc fetched earlier in the same handler — or it will hit the same `workflow.summary` staleness this fix closes.
+
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js` — already routes through `updateAction`. Four required edits:
   1. In the step-4 per-entry write loop, pass `actionDisplay: params.action_display` and `metadata: params.metadata` into the `updateAction` call (and into the `createAction` call on the upsert branch) so caller-supplied per-app overrides and the metadata bag reach the renderer.
   2. After the step-5 recompute, refresh `context.action` by picking the submitted action out of `recomputeResult.workflowActions` with `.find(a => a._id === context.action._id)`. The recompute already re-reads every action in this workflow from Mongo, so the post-write copy is in hand — no extra Mongo round-trip.
@@ -649,6 +662,7 @@ Note no cell exists for `blocked`. The transition still produces a clean doc: ev
      Kept inline (single caller, single shape) rather than extracted to a helper; if a second caller emerges or the form_data path layout changes, extract then. The `updated` stamp is mirrored too so any downstream reader of `workflow.updated` between step 6 and step 7 stays consistent with what was just written.
 
   Without edit 1, caller `action_display` / `metadata` are silently dropped. Without edits 2-3, `action.metadata`, `action.status[0].stage`, `action.<appName>.message`, and `workflow.summary.*` in event templates resolve to pre-write (or unset) values. Without edit 4, `workflow.form_data.*` in event templates resolves to pre-write values for any field touched by this submit.
+
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js` — three changes:
   1. Pass `payload.metadata` through to `createAction` for each starting action.
   2. The parent-tracker `updateAction` push at lines 117-128 inherits render + link computation from `updateAction`; it omits `actionDisplay` / `metadata` (relying on the safe defaults committed in D11 — `actionDisplay = {}`, `metadata = null`), and is the call site that produces the tracker's first non-null `link` once `child_workflow_id` is set. Sticky display + prior `action.metadata` cover the render context for this internal push. This is the canonical test case for D11's "Engine-link merge rule" — link computation must run against `{ ...actionDocBeforeWrite, ...fields }` so the `in-progress` cell's tracker link picks up the newly-set `child_workflow_id`.

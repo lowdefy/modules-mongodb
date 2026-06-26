@@ -58,9 +58,9 @@ Behaviour:
 1. **Resolve the current stage.** If `currentStage` was passed in, use it. Otherwise:
 
    ```js
-   const doc = await context.mongoDBConnection('workflows').MongoDBFindOne({
+   const doc = await context.mongoDBConnection("workflows").MongoDBFindOne({
      query: { _id: workflowId },
-     options: { projection: { 'status.0.stage': 1 } },
+     options: { projection: { "status.0.stage": 1 } },
    });
    const resolvedCurrent = doc?.status?.[0]?.stage ?? null;
    ```
@@ -70,7 +70,7 @@ Behaviour:
 3. **Push.** Otherwise issue:
 
    ```js
-   await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+   await context.mongoDBConnection("workflows").MongoDBUpdateOne({
      filter: { _id: workflowId },
      update: {
        $set: { updated: context.changeStamp },
@@ -78,7 +78,11 @@ Behaviour:
          status: {
            $position: 0,
            $each: [
-             { stage: newStage, event_id: eventId, created: context.changeStamp },
+             {
+               stage: newStage,
+               event_id: eventId,
+               created: context.changeStamp,
+             },
            ],
          },
        },

@@ -2,9 +2,9 @@
 
 ## Context
 
-Part 42 D5 moves link *resolution* from the view layer to a server-side
+Part 42 D5 moves link _resolution_ from the view layer to a server-side
 aggregation stage (`resolve_action_link.yaml`). The engine (Part 38) still
-**writes** the per-verb `links` map, but it no longer owns *which* link renders.
+**writes** the per-verb `links` map, but it no longer owns _which_ link renders.
 The design's proposed change #7 / Files table requires dropping the superseded
 "UI applies the per-verb selection rule" prose from Part 38 (its D14 display-surface
 note, D16, test strategy, Files-changed display row, and generated tasks 7 + 18).
@@ -25,7 +25,7 @@ complete, and only edit if a residual is found.
 
 1. Grep `designs/workflows-module/parts/38-engine-rebuild/design.md` and its
    `tasks/07-visible-verbs-read-path.md` and `tasks/18-display-surface-renames.md`
-   for residual prose that still attributes link *selection/collapsing/resolution*
+   for residual prose that still attributes link _selection/collapsing/resolution_
    to the UI / view layer / client (e.g. "UI applies", "view layer selects",
    "the card selects", "client picks the link"):
 
@@ -43,7 +43,7 @@ complete, and only edit if a residual is found.
 3. **Only if** a residual UI-selection statement is found: rewrite it to point at
    the server-side `resolve_action_link.yaml` resolution (priority
    `edit > review > error > view` over non-`null` ∩ visible cells), preserving the
-   engine's unchanged responsibility of *writing* the per-verb `links` map. Do not
+   engine's unchanged responsibility of _writing_ the per-verb `links` map. Do not
    alter any engine/write-contract prose.
 
 ## Acceptance Criteria
@@ -51,7 +51,7 @@ complete, and only edit if a residual is found.
 - The grep in step 1 returns no matches (no residual UI-selection attribution).
 - Part 38 `design.md`, task 07, and task 18 consistently attribute link resolution
   to the server-side `resolve_action_link.yaml` stage / Part 42 D5, and attribute
-  the per-verb `links` map *write* to the engine.
+  the per-verb `links` map _write_ to the engine.
 - If no edits were needed, record that explicitly (the reconciliation already
   landed in `d462706`); no design files are modified.
 

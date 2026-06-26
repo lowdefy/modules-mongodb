@@ -7,9 +7,9 @@ The workflows module's three entity-rendering APIs (`get-entity-workflows`, `get
 ```yaml
 # modules/workflows/api/get-entity-workflows.yaml lines 62–73 (current, broken)
 message:
-  _string.concat: [ $apps, ., { _module.var: app_name }, .message ]
+  _string.concat: [$apps, ., { _module.var: app_name }, .message]
 link:
-  _string.concat: [ $apps, ., { _module.var: app_name }, .link ]
+  _string.concat: [$apps, ., { _module.var: app_name }, .link]
 ```
 
 `_string.concat` joins operands as literals. `$apps` becomes the string `"$apps"`, not a Mongo projection. The result is a constant string on every action regardless of status.
@@ -31,12 +31,12 @@ message:
   _string.concat:
     - $
     - _module.var: app_name
-    - .message                              # → "$demo.message" at build time
+    - .message # → "$demo.message" at build time
 link:
   _string.concat:
     - $
     - _module.var: app_name
-    - .link                                 # → "$demo.link" at build time
+    - .link # → "$demo.link" at build time
 ```
 
 Both `message` and `link` swap. The placement of the projection within the `$group` / `$push` (or whichever pipeline stage carries it in each file) stays unchanged — only the operand list of the `_string.concat` changes.

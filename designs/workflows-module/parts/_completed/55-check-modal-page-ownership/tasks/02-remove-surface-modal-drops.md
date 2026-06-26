@@ -5,7 +5,7 @@
 Today the check-action modal is dropped by a surface component, not the page:
 
 - **`modules/workflows/components/actions-on-entity.yaml`** renders each workflow as `ActionSteps` and, at the end of its `blocks`, drops `check-action-modal` via `_ref`, hardcoding the modal's `on_complete` as `entity-workflows-refetch` concatenated with an `on_action_complete` var (default `[]`) threaded down from the page. This is the "actions-on-entity owns the modal" rule.
-- **`modules/workflows/components/workflows-events-timeline.yaml`** can *optionally* drop the modal via an `include_modal` flag (default `false`), inside a `_build.if`, hardcoding `on_complete` as `[Request get_events_timeline, …on_action_complete]`.
+- **`modules/workflows/components/workflows-events-timeline.yaml`** can _optionally_ drop the modal via an `include_modal` flag (default `false`), inside a `_build.if`, hardcoding `on_complete` as `[Request get_events_timeline, …on_action_complete]`.
 
 The design (D1, D4) moves the single modal drop up to the page (Task 3) and collapses these two parallel mechanisms into one. After this task **no surface component drops the modal**; surfaces only render their block (with the baked-in `check-action-click` handler from Task 1, which now degrades gracefully when no modal is present).
 

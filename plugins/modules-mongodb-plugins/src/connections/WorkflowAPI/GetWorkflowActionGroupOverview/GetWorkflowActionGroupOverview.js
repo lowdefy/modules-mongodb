@@ -1,7 +1,10 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import findDocs from '../../mongo/findDocs.js';
-import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
-import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import findDocs from "../../mongo/findDocs.js";
+import {
+  computeAllowed,
+  collapseLink,
+} from "../../shared/render/resolveActionAccess.js";
+import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 
 /**
  * GetWorkflowActionGroupOverview — server-side replacement for the
@@ -25,8 +28,8 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   const { workflow_id, group_id } = params;
   const app_name = connection.app_name;
   const userRoles = context.user?.roles;
-  const workflowsCollection = connection.workflowsCollection ?? 'workflows';
-  const actionsCollection = connection.actionsCollection ?? 'actions';
+  const workflowsCollection = connection.workflowsCollection ?? "workflows";
+  const actionsCollection = connection.actionsCollection ?? "actions";
   const entities = connection.entities ?? {};
 
   // ── Load: the workflow doc ──
@@ -40,7 +43,9 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     return { workflow: null, group: null, actions: [] };
   }
 
-  const wfConfig = (workflowsConfig ?? []).find((wc) => wc.type === wfDoc.workflow_type);
+  const wfConfig = (workflowsConfig ?? []).find(
+    (wc) => wc.type === wfDoc.workflow_type,
+  );
   const wfActionsConfig = wfConfig?.actions ?? [];
 
   // ── Load: actions for this workflow in this group only ──
@@ -53,7 +58,11 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   // ── Access filter + link collapse ──
   const visibleActions = [];
   for (const action of rawActions) {
-    const allowed = computeAllowed({ access: action.access, app_name, userRoles });
+    const allowed = computeAllowed({
+      access: action.access,
+      app_name,
+      userRoles,
+    });
     if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
       continue; // drop: no verb accessible
     }
@@ -73,19 +82,21 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     return wfActionsConfig.find((c) => c.type === type);
   }
 
-  const actionCards = visibleActions.map(({ action, allowed, link, message, status }) => {
-    const actionConfig = findActionConfig(action.type);
-    const form_meta = actionConfig?.form_meta ?? null;
-    return {
-      type: action.type,
-      key: action.key ?? null,
-      status,
-      message,
-      link,
-      allowed,
-      form_meta,
-    };
-  });
+  const actionCards = visibleActions.map(
+    ({ action, allowed, link, message, status }) => {
+      const actionConfig = findActionConfig(action.type);
+      const form_meta = actionConfig?.form_meta ?? null;
+      return {
+        type: action.type,
+        key: action.key ?? null,
+        status,
+        message,
+        link,
+        allowed,
+        form_meta,
+      };
+    },
+  );
 
   // ── Prune form_data to view-visible actions ──
   // form_data structure (per planFormDataMerge):
@@ -105,9 +116,12 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
     const type = action.type;
     const key = action.key ?? null;
     if (key == null) {
-      visibleKeysByType.set(type, 'unkeyed');
+      visibleKeysByType.set(type, "unkeyed");
     } else {
-      if (!visibleKeysByType.has(type) || visibleKeysByType.get(type) !== 'unkeyed') {
+      if (
+        !visibleKeysByType.has(type) ||
+        visibleKeysByType.get(type) !== "unkeyed"
+      ) {
         if (!visibleKeysByType.has(type)) {
           visibleKeysByType.set(type, new Set());
         }
@@ -119,11 +133,15 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   const prunedFormData = {};
   for (const [type, sentinel] of visibleKeysByType) {
     if (!(type in rawFormData)) continue;
-    if (sentinel === 'unkeyed') {
+    if (sentinel === "unkeyed") {
       prunedFormData[type] = rawFormData[type];
     } else {
       const typeSlice = rawFormData[type];
-      if (typeSlice != null && typeof typeSlice === 'object' && !Array.isArray(typeSlice)) {
+      if (
+        typeSlice != null &&
+        typeof typeSlice === "object" &&
+        !Array.isArray(typeSlice)
+      ) {
         const filtered = {};
         for (const k of sentinel) {
           if (k in typeSlice) {

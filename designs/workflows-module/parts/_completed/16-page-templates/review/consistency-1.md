@@ -7,10 +7,12 @@ Scanned part 16's design + review-1 against the cross-touched parts (12, 13, 17,
 ## Files Reviewed
 
 **Part 16 (the subject):**
+
 - `designs/workflows-module/parts/16-page-templates/design.md`
 - `designs/workflows-module/parts/16-page-templates/review/review-1.md`
 
 **Adjacent parts cross-touched by review-1 resolutions:**
+
 - `designs/workflows-module/parts/12-resolver-pages/design.md` + `tasks/02-make-action-pages.md` + `tasks/tasks.md` + `review/*.md`
 - `designs/workflows-module/parts/13-resolver-apis/design.md` + `tasks/02-make-workflow-apis.md` + `tasks/tasks.md`
 - `designs/workflows-module/parts/17-shared-pages/design.md`
@@ -19,12 +21,14 @@ Scanned part 16's design + review-1 against the cross-touched parts (12, 13, 17,
 - `designs/workflows-module/implementation-plan.md`
 
 **Concept (rationale-bearing):**
+
 - `designs/workflows-module-concept/ui/spec.md` + `ui/design.md`
 - `designs/workflows-module-concept/submit-pipeline/spec.md`
 - `designs/workflows-module-concept/action-authoring/spec.md` + `action-authoring/design.md`
 - `designs/workflows-module-concept/spec.md` + `design.md`
 
 **Resolver code (touched today):**
+
 - `modules/workflows/resolvers/makeActionPages.js` + `.test.js`
 - `modules/workflows/resolvers/makeWorkflowApis.js` + `.test.js`
 - `modules/workflows/resolvers/README.md`
@@ -126,6 +130,7 @@ All resolver tests pass (51/51).
 **Source of truth:** Review-1 #5 (comment) + review-1 #8 (part 24).
 **Files affected:** [part 17 design.md](../../../parts/17-shared-pages/design.md) lines 13–29 (task-edit / task-view / task-review descriptions); Depends-on section.
 **Resolution:**
+
 - Task-edit / task-view / task-review now describe the universal-fields band as `_ref` to part 24's component with explicit `mode` + `kind: task` vars (no inline assignees/due_date/description input authoring).
 - Task-edit's Save-button payload bullet now uses the corrected comment contract (top-level `comment` field with cross-reference to part 13 § Comment mapping).
 - Task-review's comment field bullet uses the same corrected contract.
@@ -139,6 +144,7 @@ All resolver tests pass (51/51).
 **Source of truth:** User clarified that tracker actions don't have a view surface — `actions-on-entity` is `status_map.message`-only.
 **Files affected:** [part 24 design.md](../../../parts/24-universal-fields/design.md) — Goal (line 7), component-vars `kind` enum, "Where the component renders" table, Display rules, Consumers section, Verification, Contract to neighbours; [implementation-plan.md](../../../../implementation-plan.md) Wave 6 rationale.
 **Resolution:** Adopted option (a) — narrow part 24's scope to form + task only. Edits:
+
 - Goal: drops "all action kinds" and the part-18 consumer reference; adds a one-paragraph note explaining why trackers are excluded (no view surface).
 - Component-vars: `kind` enum drops `'tracker'`.
 - "Where the component renders" table: tracker row removed.

@@ -22,10 +22,10 @@ Boots `mongodb-memory-server` via the shared `inMemoryMongo` helper. Reuses the 
 Structure:
 
 ```js
-import { inMemoryMongo } from '../../shared/inMemoryMongo.js';
-import SubmitWorkflowAction from './SubmitWorkflowAction.js';
+import { inMemoryMongo } from "../../shared/inMemoryMongo.js";
+import SubmitWorkflowAction from "./SubmitWorkflowAction.js";
 
-describe('Part 8 — worked-example onboarding smoke', () => {
+describe("Part 8 — worked-example onboarding smoke", () => {
   let mongo;
   let notificationCalls;
 
@@ -43,48 +43,56 @@ describe('Part 8 — worked-example onboarding smoke', () => {
     await seedWorkedExample(mongo);
   });
 
-  describe('with send_routine wired', () => {
-    it('writes a log event with the expected default shape', async () => {
-      const result = await SubmitWorkflowAction(buildContext({ mongo, notificationCalls, sendRoutineWired: true }));
+  describe("with send_routine wired", () => {
+    it("writes a log event with the expected default shape", async () => {
+      const result = await SubmitWorkflowAction(
+        buildContext({ mongo, notificationCalls, sendRoutineWired: true }),
+      );
 
-      const eventDoc = await mongo.db.collection('events').findOne({ _id: result.event_id });
+      const eventDoc = await mongo.db
+        .collection("events")
+        .findOne({ _id: result.event_id });
 
-      expect(eventDoc.type).toBe('action-submit_edit');
+      expect(eventDoc.type).toBe("action-submit_edit");
       // display keyed by the fixture app's app_name ('test-app')
-      expect(eventDoc['test-app']).toBeDefined();
-      expect(eventDoc['test-app'].title._nunjucks.template).toBe(
-        '{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}',
+      expect(eventDoc["test-app"]).toBeDefined();
+      expect(eventDoc["test-app"].title._nunjucks.template).toBe(
+        "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}",
       );
       // references include the entity-ref convention derived from
       // entity_collection (`leads-collection` → `leads_ids`)
-      expect(eventDoc.workflow_ids).toEqual(['W1']);
-      expect(eventDoc.action_ids).toEqual(['A1']);
-      expect(eventDoc.leads_ids).toEqual(['L1']);
+      expect(eventDoc.workflow_ids).toEqual(["W1"]);
+      expect(eventDoc.action_ids).toEqual(["A1"]);
+      expect(eventDoc.leads_ids).toEqual(["L1"]);
       // all six metadata fields
       expect(eventDoc.metadata).toEqual({
-        action_type: 'qualify',
-        workflow_type: 'onboarding',
-        interaction: 'submit_edit',
+        action_type: "qualify",
+        workflow_type: "onboarding",
+        interaction: "submit_edit",
         current_key: null,
-        status_before: 'action-required',
-        status_after: 'done', // worked example: qualify has no review verb, so default is 'done'
+        status_before: "action-required",
+        status_after: "done", // worked example: qualify has no review verb, so default is 'done'
       });
     });
 
-    it('dispatches send-notification with the just-emitted event_id', async () => {
-      const result = await SubmitWorkflowAction(buildContext({ mongo, notificationCalls, sendRoutineWired: true }));
+    it("dispatches send-notification with the just-emitted event_id", async () => {
+      const result = await SubmitWorkflowAction(
+        buildContext({ mongo, notificationCalls, sendRoutineWired: true }),
+      );
 
       expect(notificationCalls).toHaveLength(1);
       expect(notificationCalls[0]).toEqual({ event_ids: [result.event_id] });
     });
   });
 
-  describe('with send_routine unwired', () => {
-    it('does not throw — notifications module no-ops silently', async () => {
+  describe("with send_routine unwired", () => {
+    it("does not throw — notifications module no-ops silently", async () => {
       // The notifications module's send-notification Api is wired but its
       // send_routine is the empty default. The engine's dispatchNotifications
       // call still fires and returns { success: true }; nothing breaks.
-      const result = await SubmitWorkflowAction(buildContext({ mongo, notificationCalls, sendRoutineWired: false }));
+      const result = await SubmitWorkflowAction(
+        buildContext({ mongo, notificationCalls, sendRoutineWired: false }),
+      );
 
       expect(result.event_id).toBeDefined();
       // No assertions on notificationCalls — the stub's "unwired" path records nothing.
@@ -99,32 +107,32 @@ In the same test file:
 
 ```js
 async function resetCollections(mongo) {
-  await mongo.db.collection('workflows').deleteMany({});
-  await mongo.db.collection('actions').deleteMany({});
-  await mongo.db.collection('events').deleteMany({});
-  await mongo.db.collection('notifications').deleteMany({});
+  await mongo.db.collection("workflows").deleteMany({});
+  await mongo.db.collection("actions").deleteMany({});
+  await mongo.db.collection("events").deleteMany({});
+  await mongo.db.collection("notifications").deleteMany({});
 }
 
 async function seedWorkedExample(mongo) {
   // Single workflow: onboarding on a lead. Single action: qualify.
-  await mongo.db.collection('workflows').insertOne({
-    _id: 'W1',
-    workflow_type: 'onboarding',
-    entity_id: 'L1',
-    entity_collection: 'leads-collection',
-    status: [{ stage: 'active', created: { timestamp: new Date() } }],
+  await mongo.db.collection("workflows").insertOne({
+    _id: "W1",
+    workflow_type: "onboarding",
+    entity_id: "L1",
+    entity_collection: "leads-collection",
+    status: [{ stage: "active", created: { timestamp: new Date() } }],
     summary: { done: 0, not_required: 0, total: 1 },
     groups: [],
     created: { timestamp: new Date() },
     updated: { timestamp: new Date() },
   });
 
-  await mongo.db.collection('actions').insertOne({
-    _id: 'A1',
-    workflow_id: 'W1',
-    type: 'qualify',
+  await mongo.db.collection("actions").insertOne({
+    _id: "A1",
+    workflow_id: "W1",
+    type: "qualify",
     key: null,
-    status: [{ stage: 'action-required', created: { timestamp: new Date() } }],
+    status: [{ stage: "action-required", created: { timestamp: new Date() } }],
     created: { timestamp: new Date() },
     updated: { timestamp: new Date() },
   });
@@ -133,40 +141,40 @@ async function seedWorkedExample(mongo) {
 function buildContext({ mongo, notificationCalls, sendRoutineWired }) {
   return {
     request: {
-      action_id: 'A1',
-      interaction: 'submit_edit',
+      action_id: "A1",
+      interaction: "submit_edit",
     },
     connection: {
       databaseUri: mongo.uri,
-      workflowsCollection: 'workflows',
-      actionsCollection: 'actions',
-      app_name: 'test-app',
+      workflowsCollection: "workflows",
+      actionsCollection: "actions",
+      app_name: "test-app",
       workflowsConfig: [
         {
-          type: 'onboarding',
-          entity_collection: 'leads-collection',
-          starting_actions: [{ type: 'qualify', status: 'action-required' }],
+          type: "onboarding",
+          entity_collection: "leads-collection",
+          starting_actions: [{ type: "qualify", status: "action-required" }],
           actions: [
-            { type: 'qualify', kind: 'form', access: { roles: ['admin'] } },
+            { type: "qualify", kind: "form", access: { roles: ["admin"] } },
           ],
         },
       ],
       actionsEnum: {
-        'action-required': { priority: 10 },
+        "action-required": { priority: 10 },
         done: { priority: 100 },
       },
       changeStamp: { timestamp: new Date() },
     },
-    user: { id: 'U1', profile: { name: 'Test User' }, roles: ['admin'] },
+    user: { id: "U1", profile: { name: "Test User" }, roles: ["admin"] },
     callApi: makeCallApiStub({ mongo, notificationCalls, sendRoutineWired }),
   };
 }
 
 function makeCallApiStub({ mongo, notificationCalls, sendRoutineWired }) {
   return async ({ id, module }, payload, options) => {
-    if (module === 'events' && id === 'new-event') {
+    if (module === "events" && id === "new-event") {
       // Mirror new-event.yaml with task 1's _if_none extension.
-      const _id = payload._id ?? require('node:crypto').randomUUID();
+      const _id = payload._id ?? require("node:crypto").randomUUID();
       const doc = {
         _id,
         ...payload.display,
@@ -177,10 +185,10 @@ function makeCallApiStub({ mongo, notificationCalls, sendRoutineWired }) {
         metadata: payload.metadata,
         files: payload.files,
       };
-      await mongo.db.collection('events').insertOne(doc);
+      await mongo.db.collection("events").insertOne(doc);
       return { success: true, response: { eventId: _id } };
     }
-    if (module === 'notifications' && id === 'send-notification') {
+    if (module === "notifications" && id === "send-notification") {
       if (sendRoutineWired) {
         notificationCalls.push(payload);
       }

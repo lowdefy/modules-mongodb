@@ -12,11 +12,11 @@ This is the load-bearing handler extension. [Shipped `handleSubmit.js`](../../..
 
 Part 7's design slots three new sub-steps between step 4 and step 5:
 
-| Sub-step | Work | Helper |
-| --- | --- | --- |
-| 4a | Recompute the full `groups[]` array from post-step-4 actions + declared groups | `recomputeGroups` (task 3) |
-| 4b | Post-write walk: push `action-required` on every blocked action whose deps are now satisfied | `reevaluateBlockedActions` (task 7) |
-| 4c | Auto-complete check: if every action terminal, stage a `pushWorkflowStatus('completed')` for step 5's `$set` | `pushWorkflowStatus` (task 4) |
+| Sub-step | Work                                                                                                         | Helper                              |
+| -------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------- |
+| 4a       | Recompute the full `groups[]` array from post-step-4 actions + declared groups                               | `recomputeGroups` (task 3)          |
+| 4b       | Post-write walk: push `action-required` on every blocked action whose deps are now satisfied                 | `reevaluateBlockedActions` (task 7) |
+| 4c       | Auto-complete check: if every action terminal, stage a `pushWorkflowStatus('completed')` for step 5's `$set` | `pushWorkflowStatus` (task 4)       |
 
 Step 5 then writes `summary`, `groups[]`, and the (optional) `status` push in one Mongo `$set`. And the return shape's `completed_groups: []` placeholder gets swapped for the real entries — one per group that transitioned from non-`done` to `done` in this call.
 
@@ -27,8 +27,8 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
 1. **Imports.** Add at the top:
 
    ```js
-   import recomputeGroups from './recomputeGroups.js';
-   import reevaluateBlockedActions from './reevaluateBlockedActions.js';
+   import recomputeGroups from "./recomputeGroups.js";
+   import reevaluateBlockedActions from "./reevaluateBlockedActions.js";
    ```
 
    (No `pushWorkflowStatus` import — the auto-complete decision is computed inline and bundled into step 5's `$set`. See section 5.)
@@ -70,9 +70,11 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
 
    ```js
    if (reEvaluatedIds.length > 0) {
-     workflowActions = await context.mongoDBConnection('actions').MongoDBFind({
+     workflowActions = await context.mongoDBConnection("actions").MongoDBFind({
        query: { workflow_id: payload.workflow_id },
-       options: { /* same projection step 4 uses */ },
+       options: {
+         /* same projection step 4 uses */
+       },
      });
    }
    ```
@@ -81,13 +83,15 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
 
    ```js
    // Sub-step 4c — auto-complete check (stage for step 5's $set).
-   const TERMINAL = ['done', 'not-required'];
-   const allTerminal = workflowActions.every(
-     (a) => TERMINAL.includes(a.status?.[0]?.stage),
+   const TERMINAL = ["done", "not-required"];
+   const allTerminal = workflowActions.every((a) =>
+     TERMINAL.includes(a.status?.[0]?.stage),
    );
    const currentStage = workflow.status?.[0]?.stage;
    const shouldPushCompleted =
-     allTerminal && currentStage !== 'completed' && currentStage !== 'cancelled';
+     allTerminal &&
+     currentStage !== "completed" &&
+     currentStage !== "cancelled";
 
    // The actual push lands inside step 5's $set, NOT via pushWorkflowStatus's
    // own MongoDBUpdateOne call — bundling avoids a second round-trip.
@@ -105,7 +109,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
    const completedGroups = [];
    for (const after of groupsAfter) {
      const before = beforeById.get(after.id);
-     if (after.status === 'done' && before?.status !== 'done') {
+     if (after.status === "done" && before?.status !== "done") {
        const cfg = declaredGroups.find((g) => g.id === after.id);
        completedGroups.push({
          workflow_id: payload.workflow_id,
@@ -121,7 +125,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
 7. **Extend step 5's `$set` block** (around line 229–246). Today it issues:
 
    ```js
-   await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+   await context.mongoDBConnection("workflows").MongoDBUpdateOne({
      filter: { _id: payload.workflow_id },
      update: {
        $set: {
@@ -146,13 +150,17 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
          status: {
            $position: 0,
            $each: [
-             { stage: 'completed', event_id: eventId, created: context.changeStamp },
+             {
+               stage: "completed",
+               event_id: eventId,
+               created: context.changeStamp,
+             },
            ],
          },
        }
      : null;
 
-   await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+   await context.mongoDBConnection("workflows").MongoDBUpdateOne({
      filter: { _id: payload.workflow_id },
      update: pushBlock
        ? { $set: setBlock, $push: pushBlock }

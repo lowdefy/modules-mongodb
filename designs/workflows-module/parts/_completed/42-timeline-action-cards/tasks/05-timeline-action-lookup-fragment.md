@@ -13,6 +13,7 @@ The fragment is spliced into a pipeline that has **already `$match`ed events dow
 to the target reference** (Task 7 does the splicing for the events module). It is
 parameterized by one build-time `_var: app_name`. It composes the two shared
 stages from Tasks 2 and 3:
+
 - `../shared/workflow/visible_verbs.yaml` (compute `visible_verbs`)
 - `../shared/workflow/resolve_action_link.yaml` (collapse the per-verb `links` map
   to one access-aware `link`)
@@ -133,9 +134,9 @@ see Notes). Sketch:
           link: 1
           message:
             _string.concat:
-              - '$'
+              - "$"
               - _var: app_name
-              - '.message'
+              - ".message"
 - $unwind:
     path: $actions
     preserveNullAndEmptyArrays: true
@@ -246,6 +247,6 @@ or extend it if Part 38 added it. Match the placement/style of the existing
   `- _ref:` mid-pipeline; that nests. Task 7 (and any app developer) must wrap the
   pipeline in `_build.array.concat` with the fragment ref as one element. Document
   this in the re-export description and in Task 9's docs.
-- The fragment runs *after* the consumer's reference `$match`, so the
+- The fragment runs _after_ the consumer's reference `$match`, so the
   "latest event" partition is scoped to the entity/action whose timeline is shown
   (D4).

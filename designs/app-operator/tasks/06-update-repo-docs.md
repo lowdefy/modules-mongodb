@@ -22,7 +22,7 @@ Rewrite the "Using modules in an app" example to show a single `slug: my-app` on
    - App slug is declared once on the root of `lowdefy.yaml` (`slug: my-app`); modules read it via `_app: slug` — no per-module wiring.
    - Document the build-time/runtime split: **`_app: slug` in ordinary positions; `_build.app: slug` when the value is an argument to a `_build.*` operator** (e.g. a `_build.object.fromEntries` map key). This is the single most useful thing for a consumer authoring their own pages to know.
    - Document that `slug` is **required when referenced** — a missing `slug:` fails the build (this is the fail-fast guarantee, now from one declaration).
-   - Document the kebab-case format constraint (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`), which subsumes the old "no dots" rule (underscores also rejected). Keep the "MongoDB field paths can't contain dots" rationale, reframed as *why* the regex exists.
+   - Document the kebab-case format constraint (`^[a-z][a-z0-9]*(-[a-z0-9]+)*$`), which subsumes the old "no dots" rule (underscores also rejected). Keep the "MongoDB field paths can't contain dots" rationale, reframed as _why_ the regex exists.
    - Mention `_app: name` / `_app: description` for display metadata in pages, layouts, email templates. Use the demo home title and layout footer (Task 5) as worked examples.
 
 3. **Update the `## Change stamps` override example:** literal `app_name: my-app` → `app_name: { _app: slug }`; drop the `display_key: my-app` line (now defaults to `{ _app: slug }`).

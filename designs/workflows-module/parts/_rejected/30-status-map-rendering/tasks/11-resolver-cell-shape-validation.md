@@ -5,6 +5,7 @@
 `modules/workflows/resolvers/makeWorkflowsConfig.js` already validates that `status_map` keys are valid `ACTION_STATUSES` (lines 154-163). It does **not** validate the shape of cell values — built-in-kind cells can illegally declare `link:` today and nothing catches it. This task adds per-cell shape validation per design D9.
 
 Three rules:
+
 1. **Cell-stage key** must be a valid `ACTION_STATUS` (existing rule, unchanged).
 2. **Per-slug value shape**:
    - `kind: task | form | tracker`: `{ message?: string }` only. `link:` rejected with the message: `"link is engine-managed for kind: ${kind}; remove it from status_map.${stage}.${slug}. To restrict navigation per slug, edit access.{slug}.verbs instead."`.

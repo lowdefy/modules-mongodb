@@ -28,7 +28,7 @@ blocks:
           _build.function:
             id:
               _build.string.concat:
-                - 'role_tag_'
+                - "role_tag_"
                 - __build.args: 0
             type: Tag
             visible:

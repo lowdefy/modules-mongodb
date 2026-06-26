@@ -13,6 +13,7 @@ This task can run in parallel with Task 16 (the contacts-side rename is the mirr
 Single-line edit. Read the file. Change `title: Activity` to `title: History`. Leave the embedded `_ref: { module: events, component: events-timeline, ... }` untouched.
 
 Before:
+
 ```yaml
 _ref:
   module: layout
@@ -24,6 +25,7 @@ _ref:
 ```
 
 After:
+
 ```yaml
 _ref:
   module: layout

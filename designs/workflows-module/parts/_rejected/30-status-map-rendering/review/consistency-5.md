@@ -46,7 +46,7 @@ Task 8's Files list still said `handleSubmit.js — modify (three edits)` while 
 
 Task 8 acceptance criteria covered the `actionDisplay`/`metadata` pass-through and the `context.action` / `context.workflow` refresh, but had no acceptance criterion for the step-6 in-memory `form_data` mirror — even though the body documents the edit and the test plan asserts it.
 
-**Resolution:** Added an explicit acceptance criterion: "handleSubmit.js step 6 mirrors the form_data write into context.workflow in memory so step 7's event-display render reads post-write workflow.form_data.*."
+**Resolution:** Added an explicit acceptance criterion: "handleSubmit.js step 6 mirrors the form_data write into context.workflow in memory so step 7's event-display render reads post-write workflow.form_data.\*."
 
 ## No Issues
 

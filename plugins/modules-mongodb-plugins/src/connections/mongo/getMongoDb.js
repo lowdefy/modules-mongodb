@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb';
+import { MongoClient } from "mongodb";
 
 /**
  * Engine-owned MongoClient layer.
@@ -17,7 +17,7 @@ const clientCache = new Map();
 function detectUseTransactions(helloResult) {
   // Replica set carries `setName`; a mongos router answers `hello` with
   // `msg: "isdbgrid"`. Either supports multi-document transactions.
-  return Boolean(helloResult?.setName) || helloResult?.msg === 'isdbgrid';
+  return Boolean(helloResult?.setName) || helloResult?.msg === "isdbgrid";
 }
 
 async function connect(connection, logger) {
@@ -38,8 +38,8 @@ async function connect(connection, logger) {
   logger.log(
     `[workflow-engine] Mongo commit mode: ${
       useTransactions
-        ? 'transactional (replica set / mongos detected)'
-        : 'standalone ordered-writes (transactions unavailable)'
+        ? "transactional (replica set / mongos detected)"
+        : "standalone ordered-writes (transactions unavailable)"
     }`,
   );
 
@@ -54,7 +54,7 @@ async function connect(connection, logger) {
 async function getMongoDb(connection, { logger = console } = {}) {
   const { databaseUri } = connection ?? {};
   if (!databaseUri) {
-    throw new Error('getMongoDb: connection.databaseUri is required');
+    throw new Error("getMongoDb: connection.databaseUri is required");
   }
   if (!clientCache.has(databaseUri)) {
     const pending = connect(connection, logger).catch((error) => {

@@ -212,7 +212,7 @@ _ref:
         - id: set_state
           type: SetState
           params:
-            {entity}:
+            { entity }:
               _request: get_{entity}.0
     requests:
       - _ref: requests/get_{entity}.yaml
@@ -273,8 +273,8 @@ _ref:
                         endpointId:
                           _module.endpointId: update-{entity}
                         payload:
-                          {entity}:
-                            _state: {entity}
+                          { entity }:
+                            _state: { entity }
                       messages:
                         success:
                           _string.concat:
@@ -358,8 +358,8 @@ _ref:
                         endpointId:
                           _module.endpointId: create-{entity}
                         payload:
-                          {entity}:
-                            _state: {entity}
+                          { entity }:
+                            _state: { entity }
                       messages:
                         success:
                           _string.concat:

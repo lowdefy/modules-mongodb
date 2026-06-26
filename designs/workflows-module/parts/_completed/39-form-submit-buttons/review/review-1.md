@@ -11,7 +11,7 @@ The signal-vocabulary mapping is sound: I verified the proposed `button_signal_s
 131–140) cell-by-cell — every source list matches the stages where `formTable[stage][signal]`
 is defined. The guard-test derivation is correct.
 
-The findings below are about scope accuracy, the visibility *mechanism*, and gaps in the
+The findings below are about scope accuracy, the visibility _mechanism_, and gaps in the
 one net-new surface (`view`'s bar).
 
 ## Correctness / accuracy
@@ -30,7 +30,7 @@ explicitly: "ui `simple-edit` … all reflect this model"). Concretely:
   `request_changes` rows, and already FSM-references the target column. The block-tree sketch
   (`ui/design.md:134–158`) already emits `signal: submit`. There is **no `interaction` column
   to replace** and **no `submit_edit → submit` rename to do**. The only genuine change left is
-  *adding* the `view` `request_changes` row (and `view` is absent from the table today). The
+  _adding_ the `view` `request_changes` row (and `view` is absent from the table today). The
   reconciliation row as written would have an implementer hunt for prose that isn't there.
 - **`ui` Decision 7** (`ui/design.md:405–416`) is already titled "Signal buttons on
   `simple-edit` (no status selector)" and already describes the selector as removed and the
@@ -63,8 +63,8 @@ verb. `progress` does not fire `onSubmit`." But `ui/design.md:124` lists the `pr
 "Author event handler fired" as **`onSubmit`**. These disagree.
 
 This is a real design decision to make (I think D2's "no verb" is the better call — a draft
-save firing the submit-payload builder is surprising), but it's also a *reconciliation item
-the design missed*: if D2 stands, the `ui` D2 table's `progress` row must change from `onSubmit`
+save firing the submit-payload builder is surprising), but it's also a _reconciliation item
+the design missed_: if D2 stands, the `ui` D2 table's `progress` row must change from `onSubmit`
 to "—". Add it to the reconciliation list and resolve the contradiction.
 
 ### 3. `view`'s Edit-nav button will bounce off a `done` action unless it sets `skip_status_redirect`
@@ -91,7 +91,7 @@ Edit-nav button sets `input: { skip_status_redirect: true }`, mirroring `review.
 
 ### 4. Runtime `_global: workflow_button_sources` is the wrong tool — the module has no global-enum wiring, and this data is build-time
 
-> **Resolved.** Verified zero real `_global` enum wiring in the module (only a README example) and that the module already does build-time enum lookups via `_ref` (`edit.yaml.njk:276`). D3's mechanism rewritten to build-time `_ref` + `key`; both code samples (D2 `button_progress`, D3 `visible`) updated; the "Global wiring" Files-changed row deleted and the enum row corrected; the two Simple-actions references re-pointed at `button_signal_sources.yaml` via `_ref`. Added an explicit "Build-time list, runtime test" note: the source list resolves at build via `_ref`, but the membership test stays runtime `_array.includes` because pages are generated per action *type* and the loaded action's stage is only known at runtime (can't be `_build.array.includes`).
+> **Resolved.** Verified zero real `_global` enum wiring in the module (only a README example) and that the module already does build-time enum lookups via `_ref` (`edit.yaml.njk:276`). D3's mechanism rewritten to build-time `_ref` + `key`; both code samples (D2 `button_progress`, D3 `visible`) updated; the "Global wiring" Files-changed row deleted and the enum row corrected; the two Simple-actions references re-pointed at `button_signal_sources.yaml` via `_ref`. Added an explicit "Build-time list, runtime test" note: the source list resolves at build via `_ref`, but the membership test stays runtime `_array.includes` because pages are generated per action _type_ and the loaded action's stage is only known at runtime (can't be `_build.array.includes`).
 
 D3 (lines 123, 144–148) and the Files-changed table (lines 212–213) load
 `button_signal_sources.yaml` into `global.workflow_button_sources` and read it at runtime via
@@ -101,7 +101,7 @@ D3 (lines 123, 144–148) and the Files-changed table (lines 212–213) load
   under `modules/workflows/`, and nothing wires an enum into `global`. The design's "Global
   wiring — same enums-into-global convention used elsewhere" (line 213) points at a convention
   that isn't present. (The CLAUDE.md `_global: enums.X` convention is for app-level global
-  config populated by the *app*, not a mechanism a module can rely on.) So "load it into
+  config populated by the _app_, not a mechanism a module can rely on.) So "load it into
   global" is an unspecified new wiring step, not a reuse.
 - **The data is fully static at build time.** Source-stage lists are constants; `makeActionPages`
   renders these templates per action at build time. The module **already** consumes an enum at
@@ -109,7 +109,8 @@ D3 (lines 123, 144–148) and the Files-changed table (lines 212–213) load
   this design replaces (`edit.yaml.njk:274–278`, `statuses: { _ref: enums/action_statuses.yaml }`).
 
 **Fix:** Match the module's existing pattern — inline the source list with a build-time `_ref`
-+ `key`, dropping the runtime `_global` dependency and the "Global wiring" row entirely:
+
+- `key`, dropping the runtime `_global` dependency and the "Global wiring" row entirely:
 
 ```yaml
 - _array.includes:
@@ -143,18 +144,18 @@ rewrite doesn't silently flip it.
 
 ### 6. `view`'s `request_changes` cannot be review-verb-gated with the current primitive, and `view` has no stage guard
 
-> **Resolved** via option (a) + a reframing the review didn't surface. The button stays, gated by the **coarse `action_allowed`** like every other template button — the "reviewers only" framing is dropped, not implemented. The concrete justification is the **no-`review`-verb** config: such an action ships no review page, so `view` is the *only* surface to send it back (`done → changes-required`), and with no review verb there's no reviewer subset to gate on — coarse gating is correct, not a compromise. The button is also made **opt-in** (`visible` default `false`), so it's off unless the author wants it. The `in-review` stage overlap is **accepted** (FSM-legal; author hides it if unwanted) — no per-template stage narrowing, preserving the single shared source map. Verb-scoped gating (option b) is explicitly not built. Reconciliation added for `state-machine` line ~235 and `ui` D2 (drop "reviewers only"). Also added to D3: a full per-button-instance opt-out defaults table and the rule that `visible`/`disabled` accept an operator expression (AND'd with the gates → restrict-only), with a pass-through requirement on `makeActionPages`/the Part 36 validator.
+> **Resolved** via option (a) + a reframing the review didn't surface. The button stays, gated by the **coarse `action_allowed`** like every other template button — the "reviewers only" framing is dropped, not implemented. The concrete justification is the **no-`review`-verb** config: such an action ships no review page, so `view` is the _only_ surface to send it back (`done → changes-required`), and with no review verb there's no reviewer subset to gate on — coarse gating is correct, not a compromise. The button is also made **opt-in** (`visible` default `false`), so it's off unless the author wants it. The `in-review` stage overlap is **accepted** (FSM-legal; author hides it if unwanted) — no per-template stage narrowing, preserving the single shared source map. Verb-scoped gating (option b) is explicitly not built. Reconciliation added for `state-machine` line ~235 and `ui` D2 (drop "reviewers only"). Also added to D3: a full per-button-instance opt-out defaults table and the rule that `visible`/`disabled` accept an operator expression (AND'd with the gates → restrict-only), with a pass-through requirement on `makeActionPages`/the Part 36 validator.
 
 state-machine §235 and `ui` D2 specify that `request_changes` on `view` "surfaces only to users
 with `review` access, not to plain viewers." But the role primitive the templates use,
 `action_role_check.yaml`, computes a **single coarse `action_allowed`** from `access.roles`
-(lines 4–29) — it takes **no verb argument** and is not per-verb. (`ui/design.md:279` *describes*
+(lines 4–29) — it takes **no verb argument** and is not per-verb. (`ui/design.md:279` _describes_
 it as "verb-map + role-gate," but the shipped component is role-gate only — a pre-existing
-doc/impl gap.) So a `view`-bar `request_changes` gated on `action_allowed` will show to *anyone
-with action access*, not just reviewers.
+doc/impl gap.) So a `view`-bar `request_changes` gated on `action_allowed` will show to _anyone
+with action access_, not just reviewers.
 
 Compounding it: `view.yaml.njk` has **no stale-URL guard** (line 67: "Step 3 … intentionally
-omitted on view"), so `view` renders for *any* stage. With `request_changes`'s source list
+omitted on view"), so `view` renders for _any_ stage. With `request_changes`'s source list
 `[in-review, done]`, the button would also appear on `view` for an `in-review` action —
 duplicating the `review` page's button.
 

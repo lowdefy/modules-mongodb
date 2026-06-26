@@ -16,7 +16,7 @@ Lowdefy breadcrumb items spread their whole object onto the `Link` component
 
 - **Home** — the standard `- home: true` item every module page uses.
 - **Entity** — links via the action's `entity_link` (`{ pageId, urlQuery, title,
-  name }`). Label is the type (`entity_link.title`), plus `· {name}` when
+name }`). Label is the type (`entity_link.title`), plus `· {name}` when
   `entity_link.name` is set (D10).
 - **Workflow** — links to `workflow-overview?workflow_id=…` (D9). Label is the
   baked workflow title; `pageId` bakes via `_module.pageId: workflow-overview`;
@@ -49,7 +49,7 @@ Behaviour:
   `entity_link` is null (de-configured workflow — render type-only or skip
   gracefully).
 - Workflow segment: `{ label: workflow_title, pageId: _module.pageId
-  workflow-overview, urlQuery: { workflow_id } }`.
+workflow-overview, urlQuery: { workflow_id } }`.
 - Action segment: `{ label: action_label }` (no `pageId`).
 
 ## Acceptance Criteria
@@ -59,7 +59,7 @@ Behaviour:
 - The Entity label reads "{type} · {name}" when `entity_link.name` is set and
   "{type}" when null.
 - The Workflow item carries `pageId` (scoped `workflow-overview`) + `urlQuery:
-  { workflow_id }`; the Action item has no `pageId`.
+{ workflow_id }`; the Action item has no `pageId`.
 - A template (or a throwaway page) `_ref`ing the fragment compiles via
   `pnpm ldf:b`.
 

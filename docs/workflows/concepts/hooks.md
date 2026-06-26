@@ -2,7 +2,16 @@
 title: Hooks
 module: workflows
 type: concept
-concepts: [hooks, pre-hook, post-hook, submit-pipeline, out-of-band, failure, form-overrides]
+concepts:
+  [
+    hooks,
+    pre-hook,
+    post-hook,
+    submit-pipeline,
+    out-of-band,
+    failure,
+    form-overrides,
+  ]
 ---
 
 # Workflows — Hooks
@@ -37,7 +46,7 @@ type: qualify
 kind: form
 hooks:
   submit:
-    pre: lead-onboarding-qualify-pre-submit   # Lowdefy Api id
+    pre: lead-onboarding-qualify-pre-submit # Lowdefy Api id
     post: lead-onboarding-qualify-post-submit
   approve:
     pre: lead-onboarding-qualify-pre-approve
@@ -81,17 +90,17 @@ A pre-hook may return:
 
 ```yaml
 :return:
-  actions:                      # optional — signals against other actions in this workflow
+  actions: # optional — signals against other actions in this workflow
     - { type: send-quote, signal: unblock }
     - { type: upload-po, signal: not_required }
-    - { type: site-visit, signal: activate, upsert: true }  # spawn a new keyed instance
-  event_overrides:              # optional — merged over the engine's default log-event shape
+    - { type: site-visit, signal: activate, upsert: true } # spawn a new keyed instance
+  event_overrides: # optional — merged over the engine's default log-event shape
     type: lead-qualified
     display:
       my-app: { title: Lead qualified }
     metadata:
       custom_field: value
-  form_overrides:               # optional — written to form_data alongside user's submission
+  form_overrides: # optional — written to form_data alongside user's submission
     contact_name: Normalized Name
 ```
 

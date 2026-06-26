@@ -44,7 +44,7 @@ routine:
         _id:
           _payload: activity_id
         updated.timestamp:
-          _step: load.0.updated.timestamp  # optimistic concurrency
+          _step: load.0.updated.timestamp # optimistic concurrency
       update:
         $set:
           removed:

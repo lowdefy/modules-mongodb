@@ -8,7 +8,7 @@ _ref:
         type: Result
         style:
           .icon:
-            color: 'var(--ant-color-primary)'
+            color: "var(--ant-color-primary)"
         properties:
           icon: AiOutlineMail
           title: Check Your Email

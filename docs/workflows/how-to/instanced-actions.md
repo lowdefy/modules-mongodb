@@ -45,7 +45,7 @@ The `key:` value in the action config is a symbolic placeholder. Use a `$` prefi
 # workflow_config/installation/proof-of-delivery.yaml
 type: proof-of-delivery
 kind: form
-key: $device_id        # symbolic — resolved to an actual key at spawn time
+key: $device_id # symbolic — resolved to an actual key at spawn time
 action_group: delivery
 description: Capture proof of delivery for one device.
 access:
@@ -94,7 +94,7 @@ hooks:
         - :return:
             actions:
               _array.map:
-                - _payload: form.device_ids   # array of device ids from the form
+                - _payload: form.device_ids # array of device ids from the form
                 - _function:
                     args: [device_id]
                     body:
@@ -130,12 +130,12 @@ A post-hook receives the submitted fields directly under `_payload: form.{field}
   properties:
     filter:
       _id:
-        _payload: context.action.key    # the instance's key = device id
+        _payload: context.action.key # the instance's key = device id
     update:
       $set:
         delivery_confirmed: true
         delivery_notes:
-          _payload: form.notes          # direct from payload — no key needed
+          _payload: form.notes # direct from payload — no key needed
 ```
 
 ### 5. Blocking on instanced actions
@@ -147,7 +147,7 @@ A post-hook receives the submitted fields directly under `_payload: form.{field}
 type: close-delivery
 kind: check
 blocked_by:
-  - proof-of-delivery   # unblocks only when ALL proof-of-delivery instances are terminal
+  - proof-of-delivery # unblocks only when ALL proof-of-delivery instances are terminal
 ```
 
 This is valid. Unlike the [conditional-action anti-pattern](conditional-actions.md), instanced actions are always seeded at spawn time with a known count — the engine has docs to count.
@@ -158,11 +158,11 @@ Do not mix this with conditional instances: if a later pre-hook could spawn addi
 
 When any downstream logic (hook, API, analytics) reads form data from the workflow doc for an instanced action, the path must include the key:
 
-| Context | Path |
-|---|---|
-| Pre/post hook submitted data | `_payload: form.{field}` — no key |
-| Reading from workflow doc | `form_data.{action_type}.{key}.{field}` |
-| `_payload: context.workflow.form_data...` | Include key segment |
+| Context                                   | Path                                    |
+| ----------------------------------------- | --------------------------------------- |
+| Pre/post hook submitted data              | `_payload: form.{field}` — no key       |
+| Reading from workflow doc                 | `form_data.{action_type}.{key}.{field}` |
+| `_payload: context.workflow.form_data...` | Include key segment                     |
 
 ## See also
 

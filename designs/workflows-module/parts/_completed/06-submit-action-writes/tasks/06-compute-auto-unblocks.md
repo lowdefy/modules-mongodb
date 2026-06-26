@@ -48,7 +48,9 @@ Behaviour:
    ```js
    const terminalByType = new Map();
    for (const action of workflowActions) {
-     const isTerminal = ['done', 'not-required'].includes(action.status[0]?.stage);
+     const isTerminal = ["done", "not-required"].includes(
+       action.status[0]?.stage,
+     );
      if (!terminalByType.has(action.type)) {
        terminalByType.set(action.type, isTerminal);
      } else if (!isTerminal) {
@@ -68,7 +70,7 @@ Behaviour:
    ```js
    return [...new Set([...unblockedTypes])].map((type) => ({
      type,
-     status: 'action-required',
+     status: "action-required",
    }));
    ```
 

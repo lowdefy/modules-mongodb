@@ -2,7 +2,17 @@
 title: Authoring Grammar
 module: workflows
 type: reference
-concepts: [authoring, actions, access, hooks, trackers, starting-actions, blocked-by, status-map]
+concepts:
+  [
+    authoring,
+    actions,
+    access,
+    hooks,
+    trackers,
+    starting-actions,
+    blocked-by,
+    status-map,
+  ]
 ---
 
 # Workflows — Authoring grammar
@@ -12,18 +22,18 @@ Reference for the action YAML grammar. Schema source of truth: `resolvers/makeWo
 ## Workflow definition
 
 ```yaml
-type: <slug>                  # required — unique workflow type name; "workflow" is reserved
-entity_collection: <slug>     # required — MongoDB collection name for the workflow's entities
-entity_ref_key: <key>         # required — event-references key for the entity (e.g. lead_ids)
-title: <string>               # optional — human-readable title; derived from slug when omitted
-starting_actions:             # required — seed actions at workflow start
+type: <slug> # required — unique workflow type name; "workflow" is reserved
+entity_collection: <slug> # required — MongoDB collection name for the workflow's entities
+entity_ref_key: <key> # required — event-references key for the entity (e.g. lead_ids)
+title: <string> # optional — human-readable title; derived from slug when omitted
+starting_actions: # required — seed actions at workflow start
   - { type: <slug>, status: action-required | blocked }
-action_groups:                # optional — ordered group definitions
+action_groups: # optional — ordered group definitions
   - id: <slug>
-    title: <string>           # optional
-    on_complete:              # optional — routine fired when group reaches terminal status
-      routine: [ ... ]
-actions:                      # required — action definitions
+    title: <string> # optional
+    on_complete: # optional — routine fired when group reaches terminal status
+      routine: [...]
+actions: # required — action definitions
   - ...
 ```
 
@@ -31,13 +41,13 @@ actions:                      # required — action definitions
 
 ### Core fields
 
-| Field | Required | Description |
-|---|---|---|
-| `type` | yes | Action type slug — unique within the workflow |
-| `kind` | yes | `form`, `check`, or `tracker` |
-| `title` | no | Human-readable title; derived from slug when omitted |
-| `action_group` | no | Group ID this action belongs to |
-| `access` | yes | Per-app, per-verb role gate (see below) |
+| Field          | Required | Description                                          |
+| -------------- | -------- | ---------------------------------------------------- |
+| `type`         | yes      | Action type slug — unique within the workflow        |
+| `kind`         | yes      | `form`, `check`, or `tracker`                        |
+| `title`        | no       | Human-readable title; derived from slug when omitted |
+| `action_group` | no       | Group ID this action belongs to                      |
+| `access`       | yes      | Per-app, per-verb role gate (see below)              |
 
 ### Runtime-read fields (engine reads at runtime)
 
@@ -62,7 +72,12 @@ Emits per-verb pages (`-edit`, `-view`, `-review`, `-error`) and a submit endpoi
       view: true
       edit: [account-manager]
   form:
-    - { key: contact_name, component: text_input, title: Contact name, required: true }
+    - {
+        key: contact_name,
+        component: text_input,
+        title: Contact name,
+        required: true,
+      }
     - { key: notes, component: text_area, title: Qualification notes }
   status_map:
     action-required:
@@ -93,11 +108,11 @@ Mirrors a child workflow's lifecycle. Never submitted by a user. Emits no pages.
   kind: tracker
   tracker:
     child_workflow_type: company-setup
-    start_link:                         # optional — navigation target before child exists
+    start_link: # optional — navigation target before child exists
       pageId: company-new
       urlQuery:
-        action_id: true                 # → tracker action _id
-        entity_id: true                 # → parent workflow's entity _id
+        action_id: true # → tracker action _id
+        entity_id: true # → parent workflow's entity _id
 ```
 
 ## Access (`access:`)
@@ -149,7 +164,7 @@ Action-level field. A list of action types or group IDs whose terminal status un
 
 ```yaml
 blocked_by:
-  - quoting  # group id — unblocks when the group is done
+  - quoting # group id — unblocks when the group is done
 ```
 
 **Never name a conditional action type in `blocked_by`.** If a conditional action is never spawned, the entry resolves as unsatisfied forever. Use a group ID instead — group status is derived from whatever member docs actually exist; a never-spawned conditional is simply not counted.
@@ -178,9 +193,9 @@ To run custom logic around a transition, declare a hook keyed by signal. Each ho
 ```yaml
 hooks:
   submit:
-    pre: { routine: [ ... ] }
+    pre: { routine: [...] }
   approve:
-    post: { routine: [ ... ] }
+    post: { routine: [...] }
 ```
 
 ### Pre-hook `:return` shape
@@ -191,7 +206,14 @@ hooks:
     - { type: <action_type>, signal: <name> }
     - { action_id: <id>, signal: <name> }
     - { type: <action_type>, key: <key>, signal: <name>, upsert: true }
-    - { type: <action_type>, key: <key>, signal: <name>, upsert: true, fields: { ... }, metadata: { ... } }
+    - {
+        type: <action_type>,
+        key: <key>,
+        signal: <name>,
+        upsert: true,
+        fields: { ... },
+        metadata: { ... },
+      }
   form_overrides: { ... }
   event_overrides: { ... }
 ```
@@ -214,18 +236,18 @@ The post-hook payload `context` carries the committed workflow + action docs; `r
 
 ## Tracker `tracker:` block
 
-| Field | Required | Description |
-|---|---|---|
-| `child_workflow_type` | yes | Child workflow type to mirror |
-| `start_link` | no | Navigation target before child exists — `{ pageId, urlQuery? }` |
+| Field                 | Required | Description                                                     |
+| --------------------- | -------- | --------------------------------------------------------------- |
+| `child_workflow_type` | yes      | Child workflow type to mirror                                   |
+| `start_link`          | no       | Navigation target before child exists — `{ pageId, urlQuery? }` |
 
 ### `start_link.urlQuery` reserved keys
 
-| Key | Resolves to |
-|---|---|
-| `action_id: true` | Tracker action `_id` |
-| `entity_id: true` | Parent workflow's entity `_id` |
-| Any other key | Passed through verbatim (must be a string) |
+| Key               | Resolves to                                |
+| ----------------- | ------------------------------------------ |
+| `action_id: true` | Tracker action `_id`                       |
+| `entity_id: true` | Parent workflow's entity `_id`             |
+| Any other key     | Passed through verbatim (must be a string) |
 
 The `edit` verb gates the `start_link` — it appears only for apps that declare `edit` in the tracker's `access`.
 
@@ -236,16 +258,16 @@ Per-verb page customization. Supported verbs: `edit`, `view`, `review`, `error`.
 ```yaml
 pages:
   edit:
-    title: <string>                     # override page title
+    title: <string> # override page title
     buttons:
       submit:
-        successMessage: <string>        # override "Submitted successfully."
-        visible: <bool | operator>      # AND-combines with server boolean
+        successMessage: <string> # override "Submitted successfully."
+        visible: <bool | operator> # AND-combines with server boolean
       not_required:
         visible: <bool | operator>
       progress:
         visible: <bool | operator>
-      request_changes:                  # view page only; default false
+      request_changes: # view page only; default false
         visible: <bool | operator>
 ```
 

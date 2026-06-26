@@ -21,8 +21,9 @@ if (renderSlice) {
   for (const actionCfg of workflowConfig.actions ?? []) {
     const slice = renderSlice[actionCfg.type];
     if (!slice) continue;
-    if ('status_map' in slice) actionCfg.status_map = slice.status_map;
-    if ('event_overrides' in slice) actionCfg.event_overrides = slice.event_overrides;
+    if ("status_map" in slice) actionCfg.status_map = slice.status_map;
+    if ("event_overrides" in slice)
+      actionCfg.event_overrides = slice.event_overrides;
   }
 }
 ```

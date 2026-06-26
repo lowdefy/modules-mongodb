@@ -1,18 +1,18 @@
-import buildHookPayload from './buildHookPayload.js';
-import { WorkflowEngineError } from '../errors.js';
+import buildHookPayload from "./buildHookPayload.js";
+import { WorkflowEngineError } from "../errors.js";
 
 /**
  * Allowed keys on a PreHookResult `actions[]` entry (closed grammar, design D13).
  * Any key outside this set is a typo or a cross-workflow form (both invalid).
  */
 const ALLOWED_ENTRY_KEYS = new Set([
-  'type',
-  'key',
-  'action_id',
-  'signal',
-  'upsert',
-  'fields',
-  'metadata',
+  "type",
+  "key",
+  "action_id",
+  "signal",
+  "upsert",
+  "fields",
+  "metadata",
 ]);
 
 /**
@@ -110,18 +110,21 @@ async function invokePreHook(loadedState, params, user, callApi) {
     for (const key of Object.keys(entry)) {
       if (!ALLOWED_ENTRY_KEYS.has(key)) {
         throw new WorkflowEngineError(
-          `invokePreHook: pre-hook response entry has unknown key "${key}". Allowed keys: ${[...ALLOWED_ENTRY_KEYS].join(', ')}.`,
-          { code: 'invalid_prehook_response' },
+          `invokePreHook: pre-hook response entry has unknown key "${key}". Allowed keys: ${[...ALLOWED_ENTRY_KEYS].join(", ")}.`,
+          { code: "invalid_prehook_response" },
         );
       }
     }
 
     // No current-action signal redirect: the current action lands per the
     // signal the user fired (state-machine.md "How signals get emitted").
-    if (targetAction && resolvesToCurrentAction(entry, targetAction, currentKey)) {
+    if (
+      targetAction &&
+      resolvesToCurrentAction(entry, targetAction, currentKey)
+    ) {
       throw new WorkflowEngineError(
         `invokePreHook: pre-hook attempted to redirect the current action (type: "${targetAction.type}", key: ${JSON.stringify(currentKey)}). Pre-hooks may only target auxiliary actions.`,
-        { code: 'prehook_redirect' },
+        { code: "prehook_redirect" },
       );
     }
   }

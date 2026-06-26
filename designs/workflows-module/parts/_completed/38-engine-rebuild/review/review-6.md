@@ -13,7 +13,7 @@ arrays/scalars/`null` replace whole; lodash `mergeWith` customizer) matches
 design.md:790–792 exactly. The channel order and `submitted_form` exposure for the
 event context (task 11 lines 19, 25) match design.md:324–332 / 703. The findings
 below are guards and clarifications the task/design drop relative to the old code's
-*tested* behaviour, plus two ambiguities.
+_tested_ behaviour, plus two ambiguities.
 
 ## Behaviour-preservation gaps (correctness)
 
@@ -50,7 +50,7 @@ regression, not dead defensiveness.
 
 > **Resolved (auto).** Task 11 plan bullet + AC and design.md now state the full guard: no `completed` push when the current workflow stage is already `completed` **or** `cancelled` (idempotent on `required_after_close` re-submits). Both old test cases (already-completed, already-cancelled) added to the `planWorkflowRecompute.test.js` spec.
 
-`recomputeWorkflowAfterActionWrite.js:85–89` guards on the *current* stage:
+`recomputeWorkflowAfterActionWrite.js:85–89` guards on the _current_ stage:
 
 ```js
 const shouldPushCompleted =
@@ -64,7 +64,7 @@ Both branches are tested:
 shouldPushCompleted:false; no $push") and `:147` ("already-cancelled … → false").
 
 Task 11 line 14 and design.md:742 only say "`completed` and `cancelled` are mutually
-exclusive." That captures the *cancelled* branch but **not idempotency on
+exclusive." That captures the _cancelled_ branch but **not idempotency on
 `completed`**: a second submit on an already-`completed` workflow (the
 `required_after_close` path restored by review-4 #3) would push a second `completed`
 status entry. The guard is "no push when current stage is `completed` **or**
@@ -100,23 +100,24 @@ both test files.
 
 review-4 #2 / design.md:143 / consistency-5 (line 57) resolved that
 `planWorkflowRecompute`'s group recompute "participates in the fixpoint" that
-`planAutoUnblock` (task 10) drives — i.e. task 10 *consumes* the recompute task 11
-*exposes*. Yet `tasks.md` lists task 10's `Depends On` as `2, 3, 9` (no 11) and
+`planAutoUnblock` (task 10) drives — i.e. task 10 _consumes_ the recompute task 11
+_exposes_. Yet `tasks.md` lists task 10's `Depends On` as `2, 3, 9` (no 11) and
 Band 3 calls tasks 10/11 "parallel-safe after 9" — neither reflects the coupling.
 An agent implementing 10 before 11 hits a missing dependency.
 
 The clean resolution is already implied by task 15 line 47 ("keep and relocate …
 group-status derivation for `planWorkflowRecompute`"): the pure `recomputeGroups.js`
-+ `deriveGroupStatus.js` already exist and already emit
-`{ id, status, summary: { done, not_required, total } }` with correct `not-required`
-(hyphen) stage handling and the `blocked → in-progress` label logic the fixpoint
-needs. If **both** planners import that *relocated shared helper* (rather than task 10
-reaching into a function task 11 owns), they stay genuinely parallel-safe and the
-dependency table is correct as-is.
+
+- `deriveGroupStatus.js` already exist and already emit
+  `{ id, status, summary: { done, not_required, total } }` with correct `not-required`
+  (hyphen) stage handling and the `blocked → in-progress` label logic the fixpoint
+  needs. If **both** planners import that _relocated shared helper_ (rather than task 10
+  reaching into a function task 11 owns), they stay genuinely parallel-safe and the
+  dependency table is correct as-is.
 
 **Fix.** In task 11, state that group/summary recompute reuses the relocated
-`recomputeGroups` / `deriveGroupStatus` helpers (don't reimplement — *one correct
-way*), and that the fixpoint shares that helper rather than a `planWorkflowRecompute`
+`recomputeGroups` / `deriveGroupStatus` helpers (don't reimplement — _one correct
+way_), and that the fixpoint shares that helper rather than a `planWorkflowRecompute`
 export. Alternatively, if task 11 truly owns and exports the recompute, add `11` to
 task 10's `Depends On` and drop the "parallel-safe" claim for 10/11 in Band 3.
 
@@ -141,7 +142,7 @@ to the loaded action's `key`).
 
 Task 11 line 19 and design.md:790 say `submitted_form` is built by "merging the
 three channels in order" (`params.form` → `params.form_review` →
-`preHookResult.form_overrides`), but neither states whether *that* inter-channel
+`preHookResult.form_overrides`), but neither states whether _that_ inter-channel
 merge is shallow (old `mergeFormOverrides.js` does a flat top-level spread) or the
 same deep `mergeWith` used for the merge onto the loaded base. Line 23's "uniform
 across both channels" implies deep, but it's left implicit. If shallow,

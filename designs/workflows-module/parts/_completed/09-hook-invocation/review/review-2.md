@@ -77,7 +77,7 @@ either:
 
 - the merge function in this part needs to wrap each `key` into a single-
   entry `keys: [<key>]` array (and `key: null` / omitted into `keys:
-  [null]`); or
+[null]`); or
 - the loop needs to accept both shapes (added complexity in shipped Part 6
   code).
 
@@ -132,7 +132,7 @@ entry) or silently picks one of the above without a regression test.
 
 **Fix.** Pin the contract. Recommend (a) — it keeps the channels disjoint:
 top-level `status` controls the `currentActionId` entry's target stage;
-`actions[]` is for *additional* writes. State explicitly that a pre-hook
+`actions[]` is for _additional_ writes. State explicitly that a pre-hook
 `actions[]` entry whose `(type, key)` matches the `currentActionId` is
 collapsed into the top-level `status` channel (or rejected at merge time
 with a build-warning). Add a verification bullet covering it.
@@ -177,7 +177,7 @@ step 10, so the post-hook firing order needs to include it.
 > retry, and the pre-hook re-runs.
 
 The `:reject` branch has the same retry surface — `:reject` is the
-*user-facing-fixable* abort mode (per [](../../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-surfaces-as-a-rejection-at-the-calling-app)),
+_user-facing-fixable_ abort mode (per [](../../29-error-model-cleanup/design.md#d5-soft-reject-channel----reject-from-a-pre-hook-surfaces-as-a-rejection-at-the-calling-app)),
 which means the user can read the message, fix the form, and resubmit. The
 pre-hook re-runs on resubmit. Any side effects the hook performed before
 the `:reject` step (an HTTP call to a validator, a write to a staging
@@ -248,7 +248,7 @@ return (the full merged-into object, post-merge — or just the raw return,
 TBD) is surfaced as `pre_hook_response` on the API return." Or pick one
 shape and pin it — today's wording at
 [Part 6 § Lifecycle scaffold](../../06-submit-action-writes/design.md#lifecycle-scaffold)
-just says "populated by part 9" without committing to *what* gets put
+just says "populated by part 9" without committing to _what_ gets put
 there.
 
 ### 8. Worked-example fixture names

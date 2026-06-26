@@ -122,7 +122,7 @@ done" and "still open" states, but the supporting features that
 make tasks actually useful — `scheduled_at` / due-date, `assigned_to`,
 `priority` — are all explicitly out of scope for v1. A task without
 a due date or assignee is a thin entity. Sam's PR-32 review:
-*"Tasks should be actions, not an activity"* — directional pushback we
+_"Tasks should be actions, not an activity"_ — directional pushback we
 agreed with after surfacing the v1-thinness of the current model.
 
 **Where tasks belong:** A separate `tasks` (or `actions`) module,
@@ -182,8 +182,8 @@ timeline. Activities consumers continue using
 this pattern for note-taking; activities lives alongside, owning
 past-tense external-interaction logs only.
 
-**Sam's PR-32 review:** *"Don't know if notes are events (like
-comments currently) - think they should be. But not sure of that."*
+**Sam's PR-32 review:** _"Don't know if notes are events (like
+comments currently) - think they should be. But not sure of that."_
 The "comments currently" pointer is to the existing production-app
 pattern. Confirmed on inspection — directional pushback we agreed
 with after surfacing that activities' three motivations (lifecycle,
@@ -229,8 +229,8 @@ contacts' `components.sidebar_slots` from their own `vars.yaml`
 overrides; companies/contacts' module manifests are unchanged, no
 new files in their `components/` folders, no embeds in `view.yaml`.
 
-**Sam's PR-32 review:** *"Do these modules get a dependancy on
-activities now? Do we want this to be optional? I'm not sure."*
+**Sam's PR-32 review:** _"Do these modules get a dependancy on
+activities now? Do we want this to be optional? I'm not sure."_
 Pointed at the previous design which baked activities into
 companies/contacts as a required dep with local wrapper files
 (review-5 #4's resolution). After surfacing that not every consumer
@@ -299,7 +299,7 @@ questions but shape the design materially:
 - **Dedicated `delete-activity` API for soft-delete, not a flag on
   `update-activity`.** Mirrors `change-activity-status` (single-purpose
   endpoint) and the files module's `delete-file`. Sets `deleted:
-  change_stamp` + bumps `updated`, emits `delete-activity` with full
+change_stamp` + bumps `updated`, emits `delete-activity` with full
   references. Keeps `update-activity`'s editable-fields list clean and
   the event-emission contract obvious from the call site.
 - **No reverse denormalization of activity IDs onto parent entities.**

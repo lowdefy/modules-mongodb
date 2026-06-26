@@ -5,6 +5,7 @@
 Tasks 1 and 2 have landed: the workflows module's validator accepts `kind: simple` (and rejects `kind: task`), the three shared pages are renamed (`simple-edit.yaml`, `simple-view.yaml`, `simple-review.yaml`) with new inner IDs, and the manifest's `pages:` list references the new filenames.
 
 The demo app at `apps/demo/` has two workflow_config files that still declare `kind: task`:
+
 - `apps/demo/modules/workflows/workflow_config/installation/install-step.yaml`
 - `apps/demo/modules/workflows/workflow_config/onboarding/schedule-followup.yaml`
 

@@ -46,7 +46,7 @@ if (Object.keys(formMerged).length > 0) {
     setOps[`${formDataPathPrefix}.${field}`] = value;
   }
 
-  await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+  await context.mongoDBConnection("workflows").MongoDBUpdateOne({
     filter: { _id: context.workflow._id },
     update: { $set: setOps },
   });

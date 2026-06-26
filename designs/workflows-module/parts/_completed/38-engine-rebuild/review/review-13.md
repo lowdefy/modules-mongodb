@@ -124,7 +124,7 @@ recompute pushed `completed`") emitting `internal_mirror_child_completed` —
 the parent tracker mirrors to `done` instead of `not-required`.
 
 Close has the twin problem: it pushes `completed` itself, and the recompute
-*also* pushes `completed` → duplicate entries (except when a
+_also_ pushes `completed` → duplicate entries (except when a
 `required_after_close` survivor keeps `allTerminal` false — exactly the
 finding-2 case — which is why Close can't simply delegate its push to the
 recompute).
@@ -153,7 +153,7 @@ Line 12 puts "optional parent-tracker transition" **in Start's plan**;
 line 13 routes "the parent-tracker push → `runTrackerCascade`". These are
 different mechanisms with different problems:
 
-- **In-plan:** the parent action belongs to a *different* workflow — a
+- **In-plan:** the parent action belongs to a _different_ workflow — a
   cross-aggregate write. Start's commit has no CAS claim on the parent
   workflow and no parent recompute, so the parent's `groups[]`/`summary`
   go stale (the tracker leaving `blocked`/`action-required` →
@@ -177,7 +177,7 @@ review-12 #5 makes), with the fire entry gaining an optional
 (`internal_mirror_child_active`; FSM lands `in-progress` from
 `blocked`/`action-required`/`done`/`not-required`, `tables.js:103–127`,
 matching today's forced `in-progress`). Two consequences to state
-explicitly: Start uniquely *can* resolve `parentWorkflowId` purely (its
+explicitly: Start uniquely _can_ resolve `parentWorkflowId` purely (its
 load reads the parent action doc, which carries `workflow_id`) — fold that
 into review-11 #1's resolution; and the parent's timeline now gains an
 `action-internal-mirror-active` event where today the push is silent —

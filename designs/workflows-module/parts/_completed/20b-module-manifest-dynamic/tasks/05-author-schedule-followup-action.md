@@ -4,7 +4,7 @@
 
 `schedule-followup` is the task-kind action in the new `onboarding` worked example — `kind: task`, in group `g2` alongside `send-quote`. Task actions don't have their own `form:` block; they drive the shared `task-edit` page from `modules/workflows/pages/task-edit.yaml` (shipped by part 17), which renders universal fields (`due_date`, `assignees`, `description`) plus a status selector and `comment` field.
 
-`makeWorkflowApis` still emits a per-action endpoint for task actions (`update-action-schedule-followup`), but `makeActionPages` does *not* emit form pages for them ([makeActionPages.js:41](modules-mongodb/modules/workflows/resolvers/makeActionPages.js): `if (action.kind !== "form") return [];`). So this task only authors the action YAML — there's no `form:` block, no resolver-emitted pages.
+`makeWorkflowApis` still emits a per-action endpoint for task actions (`update-action-schedule-followup`), but `makeActionPages` does _not_ emit form pages for them ([makeActionPages.js:41](modules-mongodb/modules/workflows/resolvers/makeActionPages.js): `if (action.kind !== "form") return [];`). So this task only authors the action YAML — there's no `form:` block, no resolver-emitted pages.
 
 ## Task
 
@@ -39,5 +39,5 @@ See [action-authoring spec § Task action lines 395–421](modules-mongodb/desig
 
 ## Notes
 
-- This action depends on the universal-fields component from [part 24](modules-mongodb/designs/workflows-module/parts/24-universal-fields/design.md) at *runtime* (the shared `task-edit` page renders it). The action YAML doesn't reference universal-fields directly — `task-edit` does. As long as task-edit can build, this action can ship.
+- This action depends on the universal-fields component from [part 24](modules-mongodb/designs/workflows-module/parts/24-universal-fields/design.md) at _runtime_ (the shared `task-edit` page renders it). The action YAML doesn't reference universal-fields directly — `task-edit` does. As long as task-edit can build, this action can ship.
 - The `task-edit` page calls `update-action-{action_type}` with `interaction: submit_edit`, `current_status: <user-selected>`, `fields:` (universal-fields data), and a top-level `comment` (mapped to `event.metadata.comment` by the resolver-emitted API per [part 13 design.md § Comment mapping](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md)).

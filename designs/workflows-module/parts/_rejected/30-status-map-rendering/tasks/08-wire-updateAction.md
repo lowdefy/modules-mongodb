@@ -42,13 +42,25 @@ Two new keyed params vs today: `actionDisplay` (per-call cell override, D8) and 
      ...(shouldPushCompleted
        ? {
            status: [
-             { stage: 'completed', event_id: context.eventId, created: context.changeStamp },
+             {
+               stage: "completed",
+               event_id: context.eventId,
+               created: context.changeStamp,
+             },
              ...(workflow.status ?? []),
            ],
          }
        : {}),
    };
-   return { workflow: updatedWorkflow, workflowActions, groupsBefore, groupsAfter, reEvaluatedActionIds, shouldPushCompleted, summary };
+   return {
+     workflow: updatedWorkflow,
+     workflowActions,
+     groupsBefore,
+     groupsAfter,
+     reEvaluatedActionIds,
+     shouldPushCompleted,
+     summary,
+   };
    ```
 
    This makes `result.workflow` symmetric with what the helper writes to Mongo — one place encodes the composition, every caller (handleSubmit's event-dispatch path, any future engine path) gets a fresh workflow object by reading `result.workflow` directly with no caller-side recipe to remember.

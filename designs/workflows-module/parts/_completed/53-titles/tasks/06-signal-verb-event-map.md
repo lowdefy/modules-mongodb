@@ -6,17 +6,22 @@
 
 ```js
 const DEFAULT_TITLES = {
-  'workflow-started':   '{{ user.profile.name }} started {{ workflow.workflow_type }}',
-  'workflow-cancelled': '{{ user.profile.name }} cancelled {{ workflow.workflow_type }}',
-  'workflow-closed':    '{{ user.profile.name }} closed {{ workflow.workflow_type }}',
-  'action-event':       '{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}',
-  'tracker-mirror':     'Tracker mirrored child {{ status_after }}',
+  "workflow-started":
+    "{{ user.profile.name }} started {{ workflow.workflow_type }}",
+  "workflow-cancelled":
+    "{{ user.profile.name }} cancelled {{ workflow.workflow_type }}",
+  "workflow-closed":
+    "{{ user.profile.name }} closed {{ workflow.workflow_type }}",
+  "action-event":
+    "{{ user.profile.name }} marked {{ action.type }} as {{ status_after }}",
+  "tracker-mirror": "Tracker mirrored child {{ status_after }}",
 };
 ```
 
 This produces machine-y copy ("marked send-quote as in-review"). After task 5, the planned action doc carries `action.title` and the workflow doc carries `workflow.title`, both always present. The FSM signal is already known at dispatch — `eventType = action-${signal}` (line 137) for submits, and the tracker-mirror branch maps mirror signals. This task replaces the catch-all with a curated, signal-keyed verb map (the design supersedes Part 51 F24 / D6).
 
 Signal sets (from `modules/workflows/resolvers/hookSignals.js`):
+
 - `HOOK_SIGNALS`: `submit, progress, not_required, resolve_error, approve, request_changes`
 - `MIRROR_SIGNALS`: `internal_mirror_child_active, internal_mirror_child_completed, internal_mirror_child_cancelled`
 - `LIFECYCLE_SIGNALS`: `started, cancelled, closed`
@@ -31,23 +36,23 @@ Replace `DEFAULT_TITLES['action-event']` (and the tracker-mirror string) with a 
 
 1. **Actor-driven action signals** (submit path — a real user acts), `{{ user.profile.name }} <verb> {{ action.title }}`:
 
-   | Signal | status_after | Template |
-   |---|---|---|
-   | `submit` | `done` | `{{ user.profile.name }} completed {{ action.title }}` |
-   | `submit` | `in-review` | `{{ user.profile.name }} submitted {{ action.title }} for review` |
-   | `approve` | — | `{{ user.profile.name }} approved {{ action.title }}` |
-   | `request_changes` | — | `{{ user.profile.name }} requested changes on {{ action.title }}` |
-   | `progress` | — | `{{ user.profile.name }} started {{ action.title }}` |
-   | `not_required` | — | `{{ user.profile.name }} marked {{ action.title }} as not required` |
-   | `resolve_error` | — | `{{ user.profile.name }} resolved an error on {{ action.title }}` |
+   | Signal            | status_after | Template                                                            |
+   | ----------------- | ------------ | ------------------------------------------------------------------- |
+   | `submit`          | `done`       | `{{ user.profile.name }} completed {{ action.title }}`              |
+   | `submit`          | `in-review`  | `{{ user.profile.name }} submitted {{ action.title }} for review`   |
+   | `approve`         | —            | `{{ user.profile.name }} approved {{ action.title }}`               |
+   | `request_changes` | —            | `{{ user.profile.name }} requested changes on {{ action.title }}`   |
+   | `progress`        | —            | `{{ user.profile.name }} started {{ action.title }}`                |
+   | `not_required`    | —            | `{{ user.profile.name }} marked {{ action.title }} as not required` |
+   | `resolve_error`   | —            | `{{ user.profile.name }} resolved an error on {{ action.title }}`   |
 
    `submit` is the only signal whose verb branches on `status_after` (`in-review` → "submitted … for review"; anything else → "completed").
 
 2. **System-driven signals** (tracker-mirror — no human actor; do **not** reference the user):
 
-   | Signal | Template |
-   |---|---|
-   | `internal_mirror_child_active` | `{{ action.title }} started` |
+   | Signal                            | Template                       |
+   | --------------------------------- | ------------------------------ |
+   | `internal_mirror_child_active`    | `{{ action.title }} started`   |
    | `internal_mirror_child_completed` | `{{ action.title }} completed` |
    | `internal_mirror_child_cancelled` | `{{ action.title }} cancelled` |
 

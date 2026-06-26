@@ -6,15 +6,15 @@ Implements [Part 23 — `CloseWorkflow` handler](../design.md): a user-initiated
 
 ## Tasks
 
-| #   | File                                        | Summary                                                                                                  | Depends On |
-| --- | ------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-scaffold-handler.md`                    | Create `CloseWorkflow/` directory + `CloseWorkflow.js` skeleton; register it in `WorkflowAPI.js`         | —          |
-| 2   | `02-validate-payload-and-stage.md`          | Validate payload, fetch workflow, gate by current stage (`active` proceeds; `completed` no-op; `cancelled` rejects) | 1          |
+| #   | File                                         | Summary                                                                                                                                          | Depends On |
+| --- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| 1   | `01-scaffold-handler.md`                     | Create `CloseWorkflow/` directory + `CloseWorkflow.js` skeleton; register it in `WorkflowAPI.js`                                                 | —          |
+| 2   | `02-validate-payload-and-stage.md`           | Validate payload, fetch workflow, gate by current stage (`active` proceeds; `completed` no-op; `cancelled` rejects)                              | 1          |
 | 3   | `03-push-completed-and-defend-references.md` | `RESERVED_WORKFLOW_KEYS` defensive delete on `references`; push `completed` via an inline `MongoDBUpdateOne` (mirrors `CancelWorkflow.js:55–69`) | 2          |
-| 4   | `04-conditional-action-sweep.md`            | Three-step bulk sweep: fetch candidates → in-memory filter against `workflowsConfig` → `MongoDBUpdateMany` | 3          |
-| 5   | `05-recompute-summary-and-groups.md`        | Re-read actions, recompute `summary` + `groups[]` via `recomputeGroups`, one `MongoDBUpdateOne` writeback | 4          |
-| 6   | `06-tracker-subscription-and-return.md`     | Call `fireTrackerSubscription` after writeback; populate `tracker_fired` in return shape                 | 5          |
-| 7   | `07-close-workflow-yaml.md`                 | Create `modules/workflows/api/close-workflow.yaml` operational API routine                              | 1          |
+| 4   | `04-conditional-action-sweep.md`             | Three-step bulk sweep: fetch candidates → in-memory filter against `workflowsConfig` → `MongoDBUpdateMany`                                       | 3          |
+| 5   | `05-recompute-summary-and-groups.md`         | Re-read actions, recompute `summary` + `groups[]` via `recomputeGroups`, one `MongoDBUpdateOne` writeback                                        | 4          |
+| 6   | `06-tracker-subscription-and-return.md`      | Call `fireTrackerSubscription` after writeback; populate `tracker_fired` in return shape                                                         | 5          |
+| 7   | `07-close-workflow-yaml.md`                  | Create `modules/workflows/api/close-workflow.yaml` operational API routine                                                                       | 1          |
 
 ## Ordering Rationale
 

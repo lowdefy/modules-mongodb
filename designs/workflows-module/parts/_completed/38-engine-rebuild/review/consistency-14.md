@@ -17,7 +17,7 @@ resolver / demo inventory lines). No user decisions were required.
 
 **Out of scope, flagged:** reviews 10–13 (~31 findings against tasks 14, 15,
 16, 17 + adjacent surfaces) carry **no resolution annotations** — they have
-not been actioned, and their recommendations are deliberately *not* treated as
+not been actioned, and their recommendations are deliberately _not_ treated as
 decisions by this pass. The one apparent exception is review-13 #1's subject
 matter: the Part 45 review-1 #2 package (Start direct-seed, tracker `none`-row
 flip) **has** since been applied to task 17, task 19, design.md, and
@@ -90,7 +90,7 @@ the Part 33 wire-contract note (engine writes no `metadata.comment`).
 **Source of truth:** review-9 #3 resolution + task 12 Files —
 `mergeEventOverrides.js` (+ test) relocates to `shared/`;
 `utils/deriveEntityRefKey.js` (+ tests) is deleted, not relocated; and
-`planEventDispatch` absorbs the *whole* `buildDefaultLogEventPayload`
+`planEventDispatch` absorbs the _whole_ `buildDefaultLogEventPayload`
 composition, not just template constants.
 **Files affected:** `design.md` § Files changed
 **Resolution:** Added `deriveEntityRefKey.js` to the Deleted list; added the
@@ -148,7 +148,7 @@ Verified propagated with no drift:
   `connection.changeLog.collection` + empty-skip; the landed
   `insertManyDocs.js` JSDoc no longer mentions notifications.
 - **#8 (empty-plan skip):** D3 names the caller-short-circuit; task 16 owns
-  the skip with an AC. (The D10 / task-16 loop *sketches* still lack the skip
+  the skip with an AC. (The D10 / task-16 loop _sketches_ still lack the skip
   branch — that is review-12 #3's open finding, left for action-review.)
 - **#9 (singular event):** `Plan.event` singular in D3, task 9, `types.js`;
   `CommitResult.event_id` singular in task 13 + data flow + worked example;
@@ -166,8 +166,7 @@ Verified propagated with no drift:
   task 12 specs display/references/metadata per event type; the uniform
   all-touched-actions rule is in design "Engine entry points emit events" and
   Part 42 D4 (verified — its D4 carries the behaviour requirement and the
-  amended join-field note); `entity_ref_key` threads tasks 4 → 6 → 17 → 12 →
-  20. (Design inventory gaps fixed — findings 5–6.)
+  amended join-field note); `entity_ref_key` threads tasks 4 → 6 → 17 → 12 → 20. (Design inventory gaps fixed — findings 5–6.)
 - **#4 (merge scoped to Submit):** task 12 scopes the three-source merge,
   pins the signal-name YAML key, and asserts lifecycle/mirror render
   engine-default only.

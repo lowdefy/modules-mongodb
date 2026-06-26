@@ -35,7 +35,7 @@ access:
     view: true
     edit: true
     review:
-      - admin        # ← add this; roles that may approve the quote
+      - admin # ← add this; roles that may approve the quote
 form:
   - key: form.quote_total
     component: number
@@ -51,8 +51,8 @@ form:
 ```yaml
 my-app:
   view: true
-  edit: true          # submitters
-  review: [manager]  # reviewers
+  edit: true # submitters
+  review: [manager] # reviewers
 ```
 
 ### 2. Add per-app reviewer roles (if role-gated)
@@ -70,10 +70,10 @@ status_map:
       message: Build and send the quote.
   in-review:
     demo:
-      message: Quote awaiting approval.        # ← add
+      message: Quote awaiting approval. # ← add
   changes-required:
     demo:
-      message: Reviewer requested changes.     # ← add
+      message: Reviewer requested changes. # ← add
   done:
     demo:
       message: Quote approved and sent.
@@ -96,12 +96,12 @@ Run `pnpm ldf:b` from `apps/demo` to confirm the config compiles. The module emi
 
 ## What changes at runtime
 
-| Event | Before (no `review`) | After (with `review`) |
-|---|---|---|
-| User clicks Submit | Action → `done` | Action → `in-review` |
-| Reviewer clicks Approve | — | Action → `done` |
-| Reviewer clicks Request Changes | — | Action → `changes-required` |
-| User resubmits after changes-required | — | Action → `in-review` again |
+| Event                                 | Before (no `review`) | After (with `review`)       |
+| ------------------------------------- | -------------------- | --------------------------- |
+| User clicks Submit                    | Action → `done`      | Action → `in-review`        |
+| Reviewer clicks Approve               | —                    | Action → `done`             |
+| Reviewer clicks Request Changes       | —                    | Action → `changes-required` |
+| User resubmits after changes-required | —                    | Action → `in-review` again  |
 
 ## To remove a review step
 

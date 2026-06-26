@@ -29,7 +29,7 @@ compound:
 
 **Symptom.** Dropdown showed "No email" for every contact, even ones with valid email addresses.
 
-**Cause.** `returnStoredSource: true` returns only fields declared as stored in the Atlas search index config. For `user-contacts`, `email` is stored (the contacts list table reads `email` directly — confirmed at `modules/contacts/components/table_contacts.yaml:31`). `lowercase_email` is used for case-insensitive *search paths* but isn't in the index's storedSource declaration, so `$project { email: "$lowercase_email" }` produced null on every row.
+**Cause.** `returnStoredSource: true` returns only fields declared as stored in the Atlas search index config. For `user-contacts`, `email` is stored (the contacts list table reads `email` directly — confirmed at `modules/contacts/components/table_contacts.yaml:31`). `lowercase_email` is used for case-insensitive _search paths_ but isn't in the index's storedSource declaration, so `$project { email: "$lowercase_email" }` produced null on every row.
 
 **Fix.** Project `$email` first, fall back to `$lowercase_email` as secondary. Apply to both `search_contacts.yaml` and `get_contacts_data.yaml` (both feed the picker's row rendering; shape parity matters):
 
@@ -44,7 +44,7 @@ email:
 
 ### 3. Dropdown closed on every keystroke — root cause was the wrapper's `optionsLoading`, not the block
 
-**Symptom.** Typing in the picker's search input closed the dropdown ~1 second after each keystroke. Previously marked unresolved on branch `93a5294`; the v5 migration (`dfa11d5`) did *not* fix it despite design Resolved-questions #4 assuming otherwise.
+**Symptom.** Typing in the picker's search input closed the dropdown ~1 second after each keystroke. Previously marked unresolved on branch `93a5294`; the v5 migration (`dfa11d5`) did _not_ fix it despite design Resolved-questions #4 assuming otherwise.
 
 **Cause.** The wrapper set `optionsLoading: _request_details: {id}_contact_search.0.loading & input-non-empty`. `ContactSelector.js:78` passes that as the `loading` prop to `<Selector>`. `Selector.js:72-76`:
 

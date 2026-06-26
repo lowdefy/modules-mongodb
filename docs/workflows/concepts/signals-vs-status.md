@@ -66,10 +66,10 @@ When a pre-hook needs to signal another action, the return shape uses `signal:`,
 ```yaml
 # In a pre-hook's :return:
 actions:
-  - { type: send-quote, signal: unblock }        # was: { type: send-quote, status: action-required }
-  - { type: upload-po, signal: not_required }    # was: { type: upload-po, status: not-required }
-  - { type: flagged-action, signal: activate }   # was: { ..., status: action-required, force: true }
-  - { type: failed-action, signal: error }       # was: { ..., status: error }
+  - { type: send-quote, signal: unblock } # was: { type: send-quote, status: action-required }
+  - { type: upload-po, signal: not_required } # was: { type: upload-po, status: not-required }
+  - { type: flagged-action, signal: activate } # was: { ..., status: action-required, force: true }
+  - { type: failed-action, signal: error } # was: { ..., status: error }
 ```
 
 Use `activate` to push an action back to `action-required` from any state.

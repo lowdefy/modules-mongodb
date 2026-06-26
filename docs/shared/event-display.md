@@ -24,8 +24,8 @@ Alex Smith converted lead Test 4 to a customer
 ```
 
 - **Always lead with the actor** (`{{ user.profile.name }}`). Never write object-first ("Test 4 created") or passive ("Lead converted to customer.").
-- **Name the entity type after the verb** (`created company …`, `updated user …`). The timeline interleaves entity kinds, so the bare object name doesn't say *what* was touched. Skip the type word only when the verb already implies it (e.g. `invited Jane Doe` — you only invite people) or when the template already carries a type label (`activities` titles render `logged a {{ target.type_label }}: …`).
-- **No trailing period** — these are fragments, not full sentences. (Contrast with workflow `status_map` messages, which *are* full sentences and *do* end with a period: "Qualify the lead.", "Lead qualified.")
+- **Name the entity type after the verb** (`created company …`, `updated user …`). The timeline interleaves entity kinds, so the bare object name doesn't say _what_ was touched. Skip the type word only when the verb already implies it (e.g. `invited Jane Doe` — you only invite people) or when the template already carries a type label (`activities` titles render `logged a {{ target.type_label }}: …`).
+- **No trailing period** — these are fragments, not full sentences. (Contrast with workflow `status_map` messages, which _are_ full sentences and _do_ end with a period: "Qualify the lead.", "Lead qualified.")
 - **Use the standard variable shape** even for app-level events rendered inline: pass `user: { _user: true }` and `target: { name: … }`, then template with `{{ user.profile.name }}` / `{{ target.name }}` — identical to module-rendered titles, so the wording reads the same everywhere.
 
 ## Why per-app

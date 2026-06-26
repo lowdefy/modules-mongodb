@@ -10,9 +10,9 @@ shared module pages `workflow-action-{verb}`, with a special case that maps the
 
 ```js
 const page =
-  kind === 'check'
-    ? verb === 'error'
-      ? 'workflow-action-view'
+  kind === "check"
+    ? verb === "error"
+      ? "workflow-action-view"
       : `workflow-action-${verb}`
     : `${action.workflow_type}-${action.type}-${verb}`;
 ```
@@ -34,7 +34,7 @@ their `pageId` changes. This **collapses the `error`-verb special case**.
 
    ```js
    const page =
-     kind === 'check'
+     kind === "check"
        ? `${action.workflow_type}-check`
        : `${action.workflow_type}-${action.type}-${verb}`;
    ```

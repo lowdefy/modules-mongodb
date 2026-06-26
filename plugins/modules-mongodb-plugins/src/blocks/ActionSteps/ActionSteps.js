@@ -78,8 +78,11 @@ const ActionSteps = ({
   properties,
   styles = {},
 }) => {
-  const { actionGroupConfig = {}, actionStatusConfig = {}, items = [] } =
-    properties;
+  const {
+    actionGroupConfig = {},
+    actionStatusConfig = {},
+    items = [],
+  } = properties;
   const { token } = theme.useToken();
   return (
     <div
@@ -104,98 +107,102 @@ const ActionSteps = ({
       <ConfigProvider
         theme={{ components: { Steps: { colorPrimary: token.colorBorder } } }}
       >
-      <Steps
-        progressDot={properties.progressDot ?? false}
-        direction={properties.direction ?? "vertical"}
-        className={cn(classNames.steps)}
-        style={styles.steps}
-        items={[...items]
-          .sort(
-            (a, b) =>
-              actionGroupConfig[a.action_group]?.order -
-              actionGroupConfig[b.action_group]?.order,
-          )
-          .map((item, itemIdx) => {
-            const actionGroupStatus = setActionGroupStatus(item.actions);
-            const groupConfig = actionGroupConfig[item.action_group] ?? {};
-            const groupTitle = groupConfig.title;
-            const groupLink = groupConfig.link;
-            const groupLinkDisabled = groupLink?.disabled || !groupLink;
-            const titleHtml = renderHtml({
-              html:
-                actionGroupStatus === "not-required"
-                  ? `<strike>${groupTitle}</strike>`
-                  : groupTitle,
-              methods,
-            });
-            return {
-              title: groupLinkDisabled ? (
-                titleHtml
-              ) : (
-                <Link
-                  id={`${blockId}_group_link_${itemIdx}`}
-                  className={cn(classNames.groupLink)}
-                  style={styles.groupLink}
-                  pageId={groupLink?.pageId}
-                  urlQuery={groupLink?.urlQuery}
-                  input={groupLink?.input}
-                  newTab={groupLink?.newTab ?? false}
-                >
-                  {titleHtml}
-                </Link>
-              ),
-              status: actionStepStatusMap[actionGroupStatus],
-              icon: (
-                <Icon
-                  blockId={`${blockId}_icon_${itemIdx}`}
-                  properties={setActionGroupIcon({
-                    actionGroupStatus,
-                    item,
-                    actionGroupConfig,
-                    actionStatusConfig,
-                  })}
-                />
-              ),
-              description:
-                actionGroupStatus === "not-required" ? undefined : (
-                  // Stack each action on its own row. The column layout lives
-                  // on this container (not the per-badge `width: 100%` rule) so
-                  // stacking holds even if the stylesheet is absent. These are
-                  // plain layout primitives (no theme tokens), so inlining them
-                  // does not affect theming or CSS-variable overrides.
-                  <div
-                    className={cn("action-steps-actions", classNames.actions)}
-                    style={{
-                      display: "flex",
-                      flexDirection: "column",
-                      rowGap: 2,
-                      ...styles.actions,
-                    }}
+        <Steps
+          progressDot={properties.progressDot ?? false}
+          direction={properties.direction ?? "vertical"}
+          className={cn(classNames.steps)}
+          style={styles.steps}
+          items={[...items]
+            .sort(
+              (a, b) =>
+                actionGroupConfig[a.action_group]?.order -
+                actionGroupConfig[b.action_group]?.order,
+            )
+            .map((item, itemIdx) => {
+              const actionGroupStatus = setActionGroupStatus(item.actions);
+              const groupConfig = actionGroupConfig[item.action_group] ?? {};
+              const groupTitle = groupConfig.title;
+              const groupLink = groupConfig.link;
+              const groupLinkDisabled = groupLink?.disabled || !groupLink;
+              const titleHtml = renderHtml({
+                html:
+                  actionGroupStatus === "not-required"
+                    ? `<strike>${groupTitle}</strike>`
+                    : groupTitle,
+                methods,
+              });
+              return {
+                title: groupLinkDisabled ? (
+                  titleHtml
+                ) : (
+                  <Link
+                    id={`${blockId}_group_link_${itemIdx}`}
+                    className={cn(classNames.groupLink)}
+                    style={styles.groupLink}
+                    pageId={groupLink?.pageId}
+                    urlQuery={groupLink?.urlQuery}
+                    input={groupLink?.input}
+                    newTab={groupLink?.newTab ?? false}
                   >
-                    {item.actions.map((action, actionIdx) => {
-                      const linkDisabled =
-                        action?.link?.disabled || !action?.link;
-                      const secondaryText = ["blocked", "not-required"].includes(
-                        action.status,
-                      );
-                      const linkClassName = cn(
-                        secondaryText && "action-steps-link-secondary",
-                        linkDisabled && "action-steps-link-disabled",
-                        classNames.link,
-                      );
-                      const messageHtml = renderHtml({
-                        html:
-                          action.status === "not-required"
-                            ? `<strike>${action?.message}</strike>`
-                            : action?.message,
-                        methods,
-                      });
-                      const fireEvent =
-                        events.onActionClick !== undefined && !linkDisabled;
-                      return (
-                        <Badge
-                          key={action.id ?? actionIdx}
-                          className={cn("action-steps-badge", classNames.badge)}
+                    {titleHtml}
+                  </Link>
+                ),
+                status: actionStepStatusMap[actionGroupStatus],
+                icon: (
+                  <Icon
+                    blockId={`${blockId}_icon_${itemIdx}`}
+                    properties={setActionGroupIcon({
+                      actionGroupStatus,
+                      item,
+                      actionGroupConfig,
+                      actionStatusConfig,
+                    })}
+                  />
+                ),
+                description:
+                  actionGroupStatus === "not-required" ? undefined : (
+                    // Stack each action on its own row. The column layout lives
+                    // on this container (not the per-badge `width: 100%` rule) so
+                    // stacking holds even if the stylesheet is absent. These are
+                    // plain layout primitives (no theme tokens), so inlining them
+                    // does not affect theming or CSS-variable overrides.
+                    <div
+                      className={cn("action-steps-actions", classNames.actions)}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        rowGap: 2,
+                        ...styles.actions,
+                      }}
+                    >
+                      {item.actions.map((action, actionIdx) => {
+                        const linkDisabled =
+                          action?.link?.disabled || !action?.link;
+                        const secondaryText = [
+                          "blocked",
+                          "not-required",
+                        ].includes(action.status);
+                        const linkClassName = cn(
+                          secondaryText && "action-steps-link-secondary",
+                          linkDisabled && "action-steps-link-disabled",
+                          classNames.link,
+                        );
+                        const messageHtml = renderHtml({
+                          html:
+                            action.status === "not-required"
+                              ? `<strike>${action?.message}</strike>`
+                              : action?.message,
+                          methods,
+                        });
+                        const fireEvent =
+                          events.onActionClick !== undefined && !linkDisabled;
+                        return (
+                          <Badge
+                            key={action.id ?? actionIdx}
+                            className={cn(
+                              "action-steps-badge",
+                              classNames.badge,
+                            )}
                             style={styles.badge}
                             color={statusColor(
                               actionStatusConfig,
@@ -238,14 +245,14 @@ const ActionSteps = ({
                                 </Link>
                               )
                             }
-                        />
-                      );
-                    })}
-                  </div>
-                ),
-            };
-          })}
-      />
+                          />
+                        );
+                      })}
+                    </div>
+                  ),
+              };
+            })}
+        />
       </ConfigProvider>
     </div>
   );

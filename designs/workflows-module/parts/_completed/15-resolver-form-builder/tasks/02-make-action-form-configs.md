@@ -67,14 +67,14 @@ A single object keyed by `action_type`. Only **form actions** (`action.kind === 
 
 Each field node in the metadata tree carries:
 
-| Field       | Type                       | When present                                   |
-| ----------- | -------------------------- | ---------------------------------------------- |
-| `component` | string                     | Always — the author's `component:` name verbatim (`text_input`, `controlled_list`, `my-plugin:device_selector`, …). |
-| `key`       | string                     | When the authored entry declared one.          |
-| `required`  | boolean                    | Always — defaults to `false`.                  |
-| `title`     | string                     | When the authored entry declared one.          |
-| `validate`  | array                      | When the authored entry declared validate rules. |
-| `form`      | recursive array of nodes   | Only for structural components — see below.    |
+| Field       | Type                     | When present                                                                                                        |
+| ----------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `component` | string                   | Always — the author's `component:` name verbatim (`text_input`, `controlled_list`, `my-plugin:device_selector`, …). |
+| `key`       | string                   | When the authored entry declared one.                                                                               |
+| `required`  | boolean                  | Always — defaults to `false`.                                                                                       |
+| `title`     | string                   | When the authored entry declared one.                                                                               |
+| `validate`  | array                    | When the authored entry declared validate rules.                                                                    |
+| `form`      | recursive array of nodes | Only for structural components — see below.                                                                         |
 
 **Structural components** that nest a sub-form (and therefore carry a nested `form:` in the metadata):
 
@@ -121,9 +121,15 @@ ES-module JS following the pattern from [makeActionPages.js](../../../../modules
 Suggested top-level shape:
 
 ```js
-const STRUCTURAL_COMPONENTS = ['controlled_list', 'section', 'box', 'label', 'file_upload'];
+const STRUCTURAL_COMPONENTS = [
+  "controlled_list",
+  "section",
+  "box",
+  "label",
+  "file_upload",
+];
 
-const METADATA_FIELDS = ['component', 'key', 'required', 'title', 'validate'];
+const METADATA_FIELDS = ["component", "key", "required", "title", "validate"];
 
 function pickMetadata(entry) {
   // Pick METADATA_FIELDS from entry; default required to false if absent.
@@ -146,9 +152,10 @@ function makeActionFormConfigs(_, vars) {
   const out = {};
   for (const workflow of workflows) {
     for (const action of workflow.actions ?? []) {
-      if (action.kind !== 'form') continue;
+      if (action.kind !== "form") continue;
       const entry = { form: describeForm(action.form) };
-      if (action.form_review) entry.form_review = describeForm(action.form_review);
+      if (action.form_review)
+        entry.form_review = describeForm(action.form_review);
       if (action.form_error) entry.form_error = describeForm(action.form_error);
       out[action.type] = entry;
     }

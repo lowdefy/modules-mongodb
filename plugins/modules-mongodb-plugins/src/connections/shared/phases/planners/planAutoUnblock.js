@@ -1,7 +1,7 @@
-import planActionTransition from './planActionTransition.js';
-import recomputeGroups from './recomputeGroups.js';
+import planActionTransition from "./planActionTransition.js";
+import recomputeGroups from "./recomputeGroups.js";
 
-const TERMINAL = ['done', 'not-required'];
+const TERMINAL = ["done", "not-required"];
 
 /**
  * Auto-unblock ⇄ group-recompute fixpoint over the in-progress action plan
@@ -81,7 +81,7 @@ function planAutoUnblock({
 
     const satisfied = (entry) => {
       if (declaredGroupIds.has(entry)) {
-        return groupById.get(entry)?.status === 'done';
+        return groupById.get(entry)?.status === "done";
       }
       if (actionTypes.has(entry)) {
         return terminalByType.get(entry) === true;
@@ -90,7 +90,7 @@ function planAutoUnblock({
     };
 
     const candidates = view.filter((action) => {
-      if (action.status?.[0]?.stage !== 'blocked') return false;
+      if (action.status?.[0]?.stage !== "blocked") return false;
       const cfg = actionsConfig.find((c) => c.type === action.type);
       const blockedBy = cfg?.blocked_by ?? [];
       return blockedBy.length > 0 && blockedBy.every(satisfied);
@@ -101,8 +101,8 @@ function planAutoUnblock({
     for (const candidate of candidates) {
       const entry = planActionTransition({
         action: candidate,
-        signal: 'unblock',
-        source: 'cascade',
+        signal: "unblock",
+        source: "cascade",
         payload: {},
         actionConfig: actionsConfig.find((c) => c.type === candidate.type),
         loadedWorkflow,

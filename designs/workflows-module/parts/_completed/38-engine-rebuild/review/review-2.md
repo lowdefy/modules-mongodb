@@ -29,7 +29,7 @@ schema-doc staleness.
 > **Resolved.** Verified against state-machine.md (line 110: `block` is "Pre-hooks only. The engine does not auto-block on `blocked_by` dep regression"; line 179: "engine cascades monotonic (unblock-only)"). Dropped `block` from the engine cascade everywhere in Part 38: D4 source-3 (now "auto-unblock re-evaluation … emit `unblock`", with `block` named as a pre-hook-only auxiliary signal via `preHookResult.actions[]`), D4 fixpoint paragraph (reframed unblock-only; the bound is now trivial — each action unblocks at most once), data-flow line, `planAutoUnblock.js` files-changed entry, and `planAutoUnblock.test.js` (now asserts the engine never auto-emits `block`). Pre-hook-driven `block` is unaffected — it resolves through the same FSM as a source-2 auxiliary signal.
 
 Part 38 repeatedly describes the `blocked_by` re-evaluation as an
-**auto-unblock/auto-block** fixpoint that emits *both* signals:
+**auto-unblock/auto-block** fixpoint that emits _both_ signals:
 
 - Proposed change framing (D4, line 127): "auto-unblock/auto-block re-evaluation …
   Emit `unblock`/`block`/… signals against affected actions."
@@ -47,7 +47,7 @@ state-machine.md — the cited authority — says the opposite, explicitly and i
 places:
 
 - "How signals get emitted" → `blocked_by` re-evaluation (line 196): "The engine
-  does *not* emit `block` on dep regression — once unblocked, an action stays
+  does _not_ emit `block` on dep regression — once unblocked, an action stays
   unblocked unless an author explicitly re-blocks it via a pre-hook. This keeps
   engine cascades **monotonic (unblock-only)** and reserves `block` as a deliberate
   author signal."
@@ -69,12 +69,13 @@ regression, which is exactly the behavior state-machine.md removed. Review-1's o
 unblock-only per state-machine.md") — the design text didn't get updated to match.
 
 **Fix.** Drop `block` from the engine cascade everywhere in Part 38:
+
 - D4 line 127: "auto-unblock re-evaluation … emit `unblock` signals" (engine emits
   `unblock` only; `block` stays a pre-hook auxiliary signal that arrives via
   `preHookResult.actions[]`, resolved through the same FSM call — that path is fine
-  and should be named as the *only* `block` source).
+  and should be named as the _only_ `block` source).
 - D4 line 129: reframe the fixpoint as unblock-only. The termination argument gets
-  *simpler*, not weaker — a monotonic unblock-only cascade is trivially bounded
+  _simpler_, not weaker — a monotonic unblock-only cascade is trivially bounded
   (each action unblocks at most once; `unblock` no-ops from every non-`blocked`
   state per the FSM). Delete the `block`-based half of the bound argument.
 - Files changed line 512: "`planAutoUnblock.js` — fixpoint loop … emits `unblock`
@@ -83,14 +84,14 @@ unblock-only per state-machine.md") — the design text didn't get updated to ma
 - Data-flow line 410 and the worked example: "auto-unblock fixpoint."
 
 Pre-hook-driven `block` is unaffected — it's an `actions[]` auxiliary signal and
-resolves through the FSM like any other. The change is purely removing *engine*
+resolves through the FSM like any other. The change is purely removing _engine_
 auto-emission of `block`.
 
 ## Moderate
 
 ### 2. Whole-doc `$set` (Q1/D9) silently supersedes engine D5's per-field form_data write contract
 
-> **Deferred to open questions (Q6).** Valid, and bigger than the supersession framing. Reference-project archaeology (`device-installation` site-check) shows D5's per-field `$set` protects a *sequential* requirement — a single action accumulates form_data across multiple submits of different shapes (submitter overwrites its namespace; reviewer scopes `$set` to `workflows.site-check.validation` only), not just concurrency. Whole-doc `$set` can meet it only with a deep-merge-onto-loaded rule, and the imperative model's per-handler write flexibility (replace vs scoped-merge, removal-by-omission, array handling) doesn't reduce cleanly to one declarative rule. Concurrency trade (CAS-serialize instead of field-merge) is **accepted**. Recorded as design Q6 with the prod evidence; the D5 reframe + supersession annotation become bookkeeping once the merge rule is chosen.
+> **Deferred to open questions (Q6).** Valid, and bigger than the supersession framing. Reference-project archaeology (`device-installation` site-check) shows D5's per-field `$set` protects a _sequential_ requirement — a single action accumulates form_data across multiple submits of different shapes (submitter overwrites its namespace; reviewer scopes `$set` to `workflows.site-check.validation` only), not just concurrency. Whole-doc `$set` can meet it only with a deep-merge-onto-loaded rule, and the imperative model's per-handler write flexibility (replace vs scoped-merge, removal-by-omission, array handling) doesn't reduce cleanly to one declarative rule. Concurrency trade (CAS-serialize instead of field-merge) is **accepted**. Recorded as design Q6 with the prod evidence; the D5 reframe + supersession annotation become bookkeeping once the merge rule is chosen.
 
 `engine/design.md` Decision 5 ("Form data layout") specifies the workflow write as
 **field-level**:
@@ -110,10 +111,10 @@ Part 38 commits the workflow as a **whole-doc `$set`** of the planned doc:
 
 This is precisely the "wholesale overwrite" engine D5 says not to do, and it
 changes the concurrency story D5 relied on. D5's field-level merge let two
-concurrent submits writing *different* fields both succeed. Under Part 38's
+concurrent submits writing _different_ fields both succeed. Under Part 38's
 whole-doc `$set`, that race is instead caught by CAS on `updated.timestamp` (D15) —
 the second submit's filter misses and it throws `ConcurrentSubmitError`. That is a
-*defensible* trade (CAS is simpler and also protects summary/groups, which
+_defensible_ trade (CAS is simpler and also protects summary/groups, which
 field-level `$set` never did), but it's a real behavioral change — lower write
 concurrency on the same workflow — and Part 38 makes it without acknowledging that
 it supersedes engine D5.
@@ -137,7 +138,7 @@ real flows. (b) plus a stub annotation on D5 is cleanest.
 Proposed change #11 and "Engine entry points emit events" add four new
 workflow-lifecycle events (`workflow-started` / `workflow-cancelled` /
 `workflow-closed`, plus tracker-mirror). D12 then defines the **event render
-context** — but only the *action* event context:
+context** — but only the _action_ event context:
 
 ```js
 const renderCtx = {
@@ -152,7 +153,7 @@ Four of those six bindings (`action`, `status_before`, `status_after`,
 whole workflow and have no single target action and no submitted form. Yet
 `planEventDispatch.test.js` (test strategy) is asked to assert "render context
 bindings (`user`, `action`, `workflow`, `interaction`, `status_before`,
-`status_after`, `submitted_form`)" *and* "per-event-type defaults
+`status_after`, `submitted_form`)" _and_ "per-event-type defaults
 (`workflow-started` / `action-{interaction}` / `workflow-cancelled` /
 `workflow-closed`)" — i.e. the same context across both, which can't hold. The
 engine-default templates in the events table only reference `user.profile.name` and

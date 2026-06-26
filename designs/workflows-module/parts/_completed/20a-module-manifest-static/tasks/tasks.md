@@ -6,18 +6,18 @@ Ten ordered tasks that close the static-surface gap on `modules/workflows/module
 
 ## Tasks
 
-| #   | File                                             | Summary                                                                                                                              | Depends On |
-| --- | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-add-connection-files.md`                     | Author the three connection YAMLs under a new `modules/workflows/connections/` directory.                                            | —          |
-| 2   | `02-manifest-deltas.md`                          | Add `app_name` / `user_schema` / `entities` vars, `dependencies:`, `secrets:`, top-level `connections:`, and `exports.connections:`. | 1          |
-| 3   | `03-author-readme.md`                            | Author `modules/workflows/README.md` from the fixed-template scaffold with `vars.entities` worked example.                           | 2, 9       |
-| 4   | `04-demo-workflow-config.md`                     | Author the tracker-only onboarding workflow + the one-action installation child under `apps/demo/workflow_config/`.                  | —          |
-| 5   | `05-demo-leads-pages.md`                         | Add the `leads-collection` connection inline to `apps/demo/lowdefy.yaml` and four lead pages under `apps/demo/pages/leads/`.         | —          |
-| 6   | `06-wire-workflows-module-entry.md`              | Add the `workflows` module entry to `apps/demo/modules.yaml` with all four vars populated.                                           | 2, 4, 5    |
-| 7   | `07-lead-view-workflow-buttons.md`               | Add "Start onboarding" + admin-style "Close / Cancel installation child" buttons to `lead-view`.                                     | 6          |
-| 8   | `08-e2e-spec.md`                                 | Author `apps/demo/e2e/workflows/tracker-only-onboarding.spec.js` automating the six-step walk-through.                               | 7, 10      |
-| 9   | `09-migrate-global-to-components.md`             | Migrate `action_form_configs` from `global:` to `components:` in the manifest; align the concept spec.                               | —          |
-| 10  | `10-rewrite-global-consumer-sites.md`            | Rewrite every `_global:` read site inside the workflows module to use build-time component refs.                                     | 9          |
+| #   | File                                  | Summary                                                                                                                              | Depends On |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| 1   | `01-add-connection-files.md`          | Author the three connection YAMLs under a new `modules/workflows/connections/` directory.                                            | —          |
+| 2   | `02-manifest-deltas.md`               | Add `app_name` / `user_schema` / `entities` vars, `dependencies:`, `secrets:`, top-level `connections:`, and `exports.connections:`. | 1          |
+| 3   | `03-author-readme.md`                 | Author `modules/workflows/README.md` from the fixed-template scaffold with `vars.entities` worked example.                           | 2, 9       |
+| 4   | `04-demo-workflow-config.md`          | Author the tracker-only onboarding workflow + the one-action installation child under `apps/demo/workflow_config/`.                  | —          |
+| 5   | `05-demo-leads-pages.md`              | Add the `leads-collection` connection inline to `apps/demo/lowdefy.yaml` and four lead pages under `apps/demo/pages/leads/`.         | —          |
+| 6   | `06-wire-workflows-module-entry.md`   | Add the `workflows` module entry to `apps/demo/modules.yaml` with all four vars populated.                                           | 2, 4, 5    |
+| 7   | `07-lead-view-workflow-buttons.md`    | Add "Start onboarding" + admin-style "Close / Cancel installation child" buttons to `lead-view`.                                     | 6          |
+| 8   | `08-e2e-spec.md`                      | Author `apps/demo/e2e/workflows/tracker-only-onboarding.spec.js` automating the six-step walk-through.                               | 7, 10      |
+| 9   | `09-migrate-global-to-components.md`  | Migrate `action_form_configs` from `global:` to `components:` in the manifest; align the concept spec.                               | —          |
+| 10  | `10-rewrite-global-consumer-sites.md` | Rewrite every `_global:` read site inside the workflows module to use build-time component refs.                                     | 9          |
 
 ## Ordering rationale
 

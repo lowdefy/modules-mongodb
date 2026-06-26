@@ -59,7 +59,7 @@ properties:
                   - $project:
                       _id: 1
                       <name_field>:
-                        _module.var: name_field   # see Notes — projecting via _build.object.fromEntries
+                        _module.var: name_field # see Notes — projecting via _build.object.fromEntries
                 as: parents
           else: []
       - - $addFields:
@@ -100,6 +100,7 @@ properties:
   ```
 
   Or, if the existing pipelines use a different idiom for "project a configurable-name field", match that pattern. The view block in task 9 reads the resolved key via `_module.var: name_field`, so whatever the projection key is here must match.
+
 - **`localField` + `foreignField` + `pipeline` (MongoDB 5.0+).** All three can be combined: the local/foreign match runs first (with native multikey expansion when `localField` is an array), then the sub-pipeline filters and projects the joined docs. An earlier version of this task used `let` + `$expr` + `$in` thinking the shorthand and sub-pipeline were mutually exclusive — they're not. The current form is simpler.
-- **Cycle interaction.** `$lookup` doesn't recurse — it returns *direct parents only*. That's correct for the view-page tile, which shows direct parents and direct children separately. Ancestors aren't displayed.
+- **Cycle interaction.** `$lookup` doesn't recurse — it returns _direct parents only_. That's correct for the view-page tile, which shows direct parents and direct children separately. Ancestors aren't displayed.
 - **Empty `parent_ids`.** When the field is `[]` or missing, `localField: parent_ids` produces no matches and `parents:` resolves to `[]` automatically. No `$ifNull` needed.

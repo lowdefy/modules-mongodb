@@ -2,7 +2,7 @@
 
 **Status:** Draft / open for team discussion. Out of scope for Part 9; surfaced from [Part 9 § Review 3 finding #1](../../_completed/09-hook-invocation/review/review-3.md).
 
-**Source rationale:** [workflows-module/parts/_completed/07-group-state-machine/design.md](../../_completed/07-group-state-machine/design.md), [workflows-module/parts/_completed/06-submit-action-writes/design.md § Per-entry write loop](../../_completed/06-submit-action-writes/design.md). **Layer:** engine handlers. **Size:** S–M (depends on chosen approach). **Repo:** `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/`.
+**Source rationale:** [workflows-module/parts/\_completed/07-group-state-machine/design.md](../../_completed/07-group-state-machine/design.md), [workflows-module/parts/\_completed/06-submit-action-writes/design.md § Per-entry write loop](../../_completed/06-submit-action-writes/design.md). **Layer:** engine handlers. **Size:** S–M (depends on chosen approach). **Repo:** `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/`.
 
 ## Problem
 
@@ -40,12 +40,12 @@ if (key === null || key === undefined) {
    - **(c) Author-controlled** — let the workflow author declare the fan-out policy on the action config; default to (a).
 3. **Producer vs write-loop responsibility.** Two implementation shapes:
    - **Producer fans out.** `computeAutoUnblocks` emits one entry per `(type, key)` pair (`{ type, keys: [k1, k2, ...] }` or one entry per key), and the write loop stays as-is. Keeps the write loop's `(type, key)` contract pure.
-   - **Write loop fans out.** Producer stays keyless; write loop, on a keyless entry, finds *every* blocked doc of that type (not just `key === null`) and transitions each. Smaller change to the producer but couples the write loop to "keyless means all blocked instances of this type."
+   - **Write loop fans out.** Producer stays keyless; write loop, on a keyless entry, finds _every_ blocked doc of that type (not just `key === null`) and transitions each. Smaller change to the producer but couples the write loop to "keyless means all blocked instances of this type."
 4. **Interaction with Part 9 collision rule.** Part 9's pre-hook `actions[]` merge collides on `(type, key)`. If the producer fans out across keys (option 3 producer-fans-out), Part 9's collision pass naturally extends — a pre-hook entry for `(B, k1)` replaces the auto-unblock for that pair only. If the write loop fans out (option 3 write-loop-fans-out), Part 9's normalization-then-collide pipeline needs a different story for keyless entries.
 
 ## Why this is out of scope today
 
-Part 9's review surfaced the keyless shape and asked for bilateral normalization (so the collision pass works for non-keyed actions). That fix is sufficient for Part 9 to ship: non-keyed auto-unblock + non-keyed pre-hook collision works correctly. The keyed-fan-out gap is a separate behavioural question about what auto-unblock should *do* for keyed types, not a Part 9 contract gap. Holding it for team discussion avoids baking a snap decision into Part 9.
+Part 9's review surfaced the keyless shape and asked for bilateral normalization (so the collision pass works for non-keyed actions). That fix is sufficient for Part 9 to ship: non-keyed auto-unblock + non-keyed pre-hook collision works correctly. The keyed-fan-out gap is a separate behavioural question about what auto-unblock should _do_ for keyed types, not a Part 9 contract gap. Holding it for team discussion avoids baking a snap decision into Part 9.
 
 ## Depends on
 

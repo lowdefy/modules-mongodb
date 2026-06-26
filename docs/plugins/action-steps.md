@@ -6,7 +6,7 @@ type: reference
 
 # ActionSteps
 
-A vertical (or horizontal) Antd `Steps` view of grouped actions. Each `item` is an *action group* rendered as one step; its child `actions` render in the step description as badged, optionally linked rows. The group's rolled-up status drives the step icon and styling.
+A vertical (or horizontal) Antd `Steps` view of grouped actions. Each `item` is an _action group_ rendered as one step; its child `actions` render in the step description as badged, optionally linked rows. The group's rolled-up status drives the step icon and styling.
 
 Useful for showing a checklist-style progression where each stage has multiple sub-tasks — e.g. a workflow gate's required actions, or an onboarding stage's outstanding items.
 
@@ -62,15 +62,15 @@ Useful for showing a checklist-style progression where each stage has multiple s
 
 ## Properties
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `title` | string | — | Heading rendered above the steps. |
-| `direction` | `"vertical"` \| `"horizontal"` | `"vertical"` | Antd `Steps` direction. |
-| `progressDot` | boolean | `false` | Render progress dots instead of icons. |
-| `items` | array | `[]` | Action groups. Each item: `{ action_group, actions[] }`. |
-| `actionGroupConfig` | object | — | Map of `action_group` key → `{ order, title, icon, link? }`. Required — items without a matching entry won't render correctly. `link` (optional) wraps the group title in a clickable Link. |
-| `actionStatusConfig` | object | — | Map of action status key → display config from the shared `action_statuses` enum. The enum's `titleColor` drives the badge-dot and group-icon colour — the single source of truth for status colours. Pass `_ref: components/action_statuses.yaml`. Without it, badges/icons render uncoloured. |
-| `theme` | object | — | Antd `Steps` design-token overrides — forwarded to `ConfigProvider` as `theme.components.Steps` for this block only. See the [Steps design tokens](https://ant.design/components/steps#design-token). |
+| Property             | Type                           | Default      | Description                                                                                                                                                                                                                                                                                     |
+| -------------------- | ------------------------------ | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `title`              | string                         | —            | Heading rendered above the steps.                                                                                                                                                                                                                                                               |
+| `direction`          | `"vertical"` \| `"horizontal"` | `"vertical"` | Antd `Steps` direction.                                                                                                                                                                                                                                                                         |
+| `progressDot`        | boolean                        | `false`      | Render progress dots instead of icons.                                                                                                                                                                                                                                                          |
+| `items`              | array                          | `[]`         | Action groups. Each item: `{ action_group, actions[] }`.                                                                                                                                                                                                                                        |
+| `actionGroupConfig`  | object                         | —            | Map of `action_group` key → `{ order, title, icon, link? }`. Required — items without a matching entry won't render correctly. `link` (optional) wraps the group title in a clickable Link.                                                                                                     |
+| `actionStatusConfig` | object                         | —            | Map of action status key → display config from the shared `action_statuses` enum. The enum's `titleColor` drives the badge-dot and group-icon colour — the single source of truth for status colours. Pass `_ref: components/action_statuses.yaml`. Without it, badges/icons render uncoloured. |
+| `theme`              | object                         | —            | Antd `Steps` design-token overrides — forwarded to `ConfigProvider` as `theme.components.Steps` for this block only. See the [Steps design tokens](https://ant.design/components/steps#design-token).                                                                                           |
 
 ### Item shape
 
@@ -97,16 +97,16 @@ Useful for showing a checklist-style progression where each stage has multiple s
 
 Badge-dot and group-icon colours come from `actionStatusConfig` — the shared `action_statuses` enum — using each status' `titleColor`. This is the single source of truth for status colour across the workflows surfaces.
 
-| Status | Step status | Notes |
-|---|---|---|
-| `blocked` | `wait` | Greyed, secondary text. |
-| `action-required` | `process` | |
-| `in-progress` | `process` | Badge animates (`processing`); enum colour is a distinct teal. |
-| `in-review` | `wait` | |
-| `changes-required` | `error` | |
-| `done` | `finish` | Step icon overridden to `AiOutlineCheckCircle`. |
-| `error` | `error` | |
-| `not-required` | `wait` | Message and group title rendered with `<strike>`. |
+| Status             | Step status | Notes                                                          |
+| ------------------ | ----------- | -------------------------------------------------------------- |
+| `blocked`          | `wait`      | Greyed, secondary text.                                        |
+| `action-required`  | `process`   |                                                                |
+| `in-progress`      | `process`   | Badge animates (`processing`); enum colour is a distinct teal. |
+| `in-review`        | `wait`      |                                                                |
+| `changes-required` | `error`     |                                                                |
+| `done`             | `finish`    | Step icon overridden to `AiOutlineCheckCircle`.                |
+| `error`            | `error`     |                                                                |
+| `not-required`     | `wait`      | Message and group title rendered with `<strike>`.              |
 
 ### Group status rollup
 
@@ -121,8 +121,8 @@ The group's effective status is derived from its actions in this order:
 
 ## Events
 
-| Event | Fires with | When |
-|---|---|---|
+| Event           | Fires with                                                                                         | When                                                       |
+| --------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | `onActionClick` | `{ action }` — the full action object that was clicked (`{ _id, kind, status, link, message, … }`) | A linked action row is clicked **and** the event is wired. |
 
 ### `onActionClick` — fire instead of navigate
@@ -151,13 +151,13 @@ Group-title links (`actionGroupConfig[group].link`) are unaffected; `onActionCli
 
 ## CSS Keys
 
-| Key | Element |
-|---|---|
-| `element` | The outer container. |
-| `title` | The `Typography.Title` heading above the steps. |
-| `steps` | The Antd `Steps` component. |
-| `badge` | Each action's status `Badge`. |
-| `link` | Each action's `Link` wrapper. |
+| Key         | Element                                                                          |
+| ----------- | -------------------------------------------------------------------------------- |
+| `element`   | The outer container.                                                             |
+| `title`     | The `Typography.Title` heading above the steps.                                  |
+| `steps`     | The Antd `Steps` component.                                                      |
+| `badge`     | Each action's status `Badge`.                                                    |
+| `link`      | Each action's `Link` wrapper.                                                    |
 | `groupLink` | Each group title's `Link` wrapper (when `actionGroupConfig[group].link` is set). |
 
 ## Notes

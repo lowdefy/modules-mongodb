@@ -1,15 +1,15 @@
-import { WorkflowEngineError } from '../../errors.js';
-import resolveSignal from '../../fsm/resolveSignal.js';
-import computeEngineLinks from '../../render/computeEngineLinks.js';
-import renderStatusMap from '../../render/renderStatusMap.js';
-import deepMerge from './deepMerge.js';
+import { WorkflowEngineError } from "../../errors.js";
+import resolveSignal from "../../fsm/resolveSignal.js";
+import computeEngineLinks from "../../render/computeEngineLinks.js";
+import renderStatusMap from "../../render/renderStatusMap.js";
+import deepMerge from "./deepMerge.js";
 
 // Part 24: the three action-level universal fields. On the UPDATE path (a user
 // submit transitioning an existing action) they are written only for
 // `kind: check` — the kind whose submission content IS those fields. For
 // `kind: form` / `tracker` they're owned exclusively by the `UpdateActionFields`
 // operation, so a stray `fields` payload on their submit must be inert.
-const UNIVERSAL_FIELDS = ['assignees', 'due_date', 'description'];
+const UNIVERSAL_FIELDS = ["assignees", "due_date", "description"];
 
 /**
  * Apply the kind-based universal-fields rule to the update-path `fields` bag:
@@ -20,7 +20,7 @@ const UNIVERSAL_FIELDS = ['assignees', 'due_date', 'description'];
  */
 function applyUpdateFieldsRule(fields, kind) {
   if (fields == null) return {};
-  if (kind === 'check') return fields;
+  if (kind === "check") return fields;
   const filtered = { ...fields };
   for (const key of UNIVERSAL_FIELDS) delete filtered[key];
   return filtered;
@@ -101,7 +101,7 @@ function planActionTransition({
   action,
   signal,
   seedStage,
-  source = 'user',
+  source = "user",
   payload = {},
   actionConfig,
   loadedWorkflow,
@@ -116,25 +116,25 @@ function planActionTransition({
     if (signal != null) {
       throw new WorkflowEngineError(
         `seedStage "${seedStage}" and signal "${signal}" are mutually exclusive — a direct seed is not an FSM transition.`,
-        { code: 'invalid_seed' },
+        { code: "invalid_seed" },
       );
     }
     if (action != null) {
       throw new WorkflowEngineError(
         `seedStage "${seedStage}" is insert-only but a loaded action doc was passed (action type "${actionConfig?.type}").`,
-        { code: 'invalid_seed' },
+        { code: "invalid_seed" },
       );
     }
   }
 
-  const operation = action == null ? 'insert' : 'update';
+  const operation = action == null ? "insert" : "update";
 
   if (seedStage == null && action == null && upsert !== true) {
     throw new WorkflowEngineError(
       `Signal "${signal}" targets action type "${actionConfig?.type}" (key: ${JSON.stringify(
         key,
       )}) but no matching action doc exists and the entry does not carry upsert: true.`,
-      { code: 'missing_target' },
+      { code: "missing_target" },
     );
   }
 
@@ -145,15 +145,21 @@ function planActionTransition({
   } else {
     // Upsert spawn resolves against a pseudo-action at the FSM `none` creation
     // row; the birth stage comes from the signal, not a status seed.
-    const resolutionTarget =
-      action ?? { kind: actionConfig.kind, status: [{ stage: 'none' }] };
-    targetStage = resolveSignal({ action: resolutionTarget, signal, actionConfig });
+    const resolutionTarget = action ?? {
+      kind: actionConfig.kind,
+      status: [{ stage: "none" }],
+    };
+    targetStage = resolveSignal({
+      action: resolutionTarget,
+      signal,
+      actionConfig,
+    });
 
     if (targetStage == null) {
-      if (source === 'user') {
+      if (source === "user") {
         throw new WorkflowEngineError(
           `Signal "${signal}" is not allowed from stage "${resolutionTarget.status?.[0]?.stage}" for kind "${resolutionTarget.kind}".`,
-          { code: 'signal_not_allowed' },
+          { code: "signal_not_allowed" },
         );
       }
       return null; // auxiliary/cascade no-op — FSM structural safety
@@ -163,7 +169,7 @@ function planActionTransition({
   const statusEntry = { stage: targetStage, event_id, created: now };
 
   let doc;
-  if (operation === 'insert') {
+  if (operation === "insert") {
     // Full draft: createAction.js fields + the new denormalised fields below.
     doc = {
       _id: newId(),
@@ -213,7 +219,7 @@ function planActionTransition({
   // every transition — insert and update, new and pre-existing actions.
   doc.title = actionConfig.title;
   doc.tracker =
-    actionConfig.kind === 'tracker'
+    actionConfig.kind === "tracker"
       ? {
           child_workflow_type: actionConfig.tracker.child_workflow_type,
           ...(actionConfig.tracker.start_link != null

@@ -16,6 +16,7 @@ concepts: [conditional-actions, hooks, pre-hook, upsert, blocked-by, groups]
 A conditional action does not exist at workflow start. It is spawned by a pre-hook's `upsert: true` return only when runtime conditions warrant it. In the `onboarding` demo workflow, `site-visit` is the canonical example: it is spawned by the `qualify` action's pre-submit hook only when the lead flags a site visit is required.
 
 Key properties:
+
 - Not listed in `starting_actions` — it has no doc until a pre-hook spawns it.
 - The spawning hook returns `{ type: site-visit, signal: activate, upsert: true }`.
 - **Must not be named in any action's `blocked_by` list** — see the anti-pattern below.
@@ -53,7 +54,7 @@ The action carries no `blocked_by` — it is spawned already at `action-required
 # onboarding/onboarding.yaml
 actions:
   - _ref: modules/workflows/workflow_config/onboarding/qualify.yaml
-  - _ref: modules/workflows/workflow_config/onboarding/site-visit.yaml   # ← add
+  - _ref: modules/workflows/workflow_config/onboarding/site-visit.yaml # ← add
   - _ref: modules/workflows/workflow_config/onboarding/send-quote.yaml
   # ...
 ```
@@ -117,18 +118,20 @@ The pre-hook form data path is `_payload: form.{field}` — the `form.` prefix m
 If `site-visit` is never spawned, the engine finds no doc for that type, evaluates the `blocked_by` entry as unsatisfied, and the dependent action remains blocked forever with no recovery path.
 
 **Wrong:**
+
 ```yaml
 # send-quote.yaml
 blocked_by:
-  - site-visit   # WRONG: send-quote is permanently blocked if site-visit is never spawned
+  - site-visit # WRONG: send-quote is permanently blocked if site-visit is never spawned
 ```
 
 **Right — use the group ID instead:**
+
 ```yaml
 # send-quote.yaml
 blocked_by:
-  - quoting      # RIGHT: group status is "done" once all existing quoting members are terminal
-                 #         a never-spawned site-visit is simply not in the member set
+  - quoting # RIGHT: group status is "done" once all existing quoting members are terminal
+    #         a never-spawned site-visit is simply not in the member set
 ```
 
 Group status derives from whatever member docs actually exist. A never-spawned conditional is absent from the member set and doesn't hold up group completion. See [Groups and blocking](../concepts/groups-and-blocking.md) for the full anti-pattern explanation.
@@ -139,12 +142,12 @@ When `site-visit` is spawned, it lands in `action_group: quoting`. Any action th
 
 ## Summary of the pattern
 
-| Step | File | What to do |
-|---|---|---|
-| Define action | `site-visit.yaml` | Normal action config; no `blocked_by` needed on the conditional |
-| Reference in workflow | `onboarding.yaml` `actions:` | Add `_ref` — but do NOT add to `starting_actions` |
-| Spawn from pre-hook | `qualify.yaml` `hooks.submit.pre` | Return `{ type: site-visit, signal: activate, upsert: true }` |
-| Downstream blocking | Any downstream action | Use the group ID, never the conditional action type |
+| Step                  | File                              | What to do                                                      |
+| --------------------- | --------------------------------- | --------------------------------------------------------------- |
+| Define action         | `site-visit.yaml`                 | Normal action config; no `blocked_by` needed on the conditional |
+| Reference in workflow | `onboarding.yaml` `actions:`      | Add `_ref` — but do NOT add to `starting_actions`               |
+| Spawn from pre-hook   | `qualify.yaml` `hooks.submit.pre` | Return `{ type: site-visit, signal: activate, upsert: true }`   |
+| Downstream blocking   | Any downstream action             | Use the group ID, never the conditional action type             |
 
 ## See also
 

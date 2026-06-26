@@ -12,10 +12,10 @@ Every file in `docs/` must open with a YAML front-matter block. The linter (`scr
 
 ```yaml
 ---
-title: Signals vs Status          # required — human-readable page title
-module: workflows                 # required — see values below
-type: concept                     # required — see values below
-concepts: [signals, fsm, status]  # optional — string array of key concepts covered
+title: Signals vs Status # required — human-readable page title
+module: workflows # required — see values below
+type: concept # required — see values below
+concepts: [signals, fsm, status] # optional — string array of key concepts covered
 ---
 ```
 
@@ -23,22 +23,22 @@ concepts: [signals, fsm, status]  # optional — string array of key concepts co
 
 The module this file belongs to, or one of the special values:
 
-| Value | Meaning |
-|---|---|
-| `root` | Repo-level docs (index, this file) |
-| `shared` | Cross-cutting idioms under `docs/shared/` |
-| `plugins` | Plugin package docs under `docs/plugins/` |
+| Value           | Meaning                                                          |
+| --------------- | ---------------------------------------------------------------- |
+| `root`          | Repo-level docs (index, this file)                               |
+| `shared`        | Cross-cutting idioms under `docs/shared/`                        |
+| `plugins`       | Plugin package docs under `docs/plugins/`                        |
 | _(module name)_ | A module under `modules/` — e.g. `workflows`, `layout`, `events` |
 
 ### `type`
 
-| Value | When to use |
-|---|---|
-| `index` | Root index or module landing page |
-| `concept` | Explains a concept — what it is, why it exists, how it works |
-| `how-to` | Goal-oriented guide — step-by-step instructions for a specific task |
-| `reference` | Exhaustive enumeration — vars, exports, API shapes, option tables |
-| `shared` | Cross-module idiom docs living under `docs/shared/` |
+| Value       | When to use                                                         |
+| ----------- | ------------------------------------------------------------------- |
+| `index`     | Root index or module landing page                                   |
+| `concept`   | Explains a concept — what it is, why it exists, how it works        |
+| `how-to`    | Goal-oriented guide — step-by-step instructions for a specific task |
+| `reference` | Exhaustive enumeration — vars, exports, API shapes, option tables   |
+| `shared`    | Cross-module idiom docs living under `docs/shared/`                 |
 
 ### `concepts`
 

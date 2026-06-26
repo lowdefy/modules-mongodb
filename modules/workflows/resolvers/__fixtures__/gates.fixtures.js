@@ -24,19 +24,19 @@
 const gateCases = [
   // --- `true` gate → always pass, regardless of roles (incl. empty) ---
   {
-    name: 'true gate, user has roles → pass',
+    name: "true gate, user has roles → pass",
     gate: true,
-    userRoles: ['account-manager'],
+    userRoles: ["account-manager"],
     expected: true,
   },
   {
-    name: 'true gate, empty user roles → pass',
+    name: "true gate, empty user roles → pass",
     gate: true,
     userRoles: [],
     expected: true,
   },
   {
-    name: 'true gate, no roles list at all → pass',
+    name: "true gate, no roles list at all → pass",
     gate: true,
     userRoles: undefined,
     expected: true,
@@ -44,49 +44,49 @@ const gateCases = [
 
   // --- array gate intersecting user roles → pass ---
   {
-    name: 'array gate, single overlapping role → pass',
-    gate: ['account-manager'],
-    userRoles: ['account-manager'],
+    name: "array gate, single overlapping role → pass",
+    gate: ["account-manager"],
+    userRoles: ["account-manager"],
     expected: true,
   },
   {
-    name: 'array gate, one of several user roles overlaps → pass',
-    gate: ['device-manager', 'device-team'],
-    userRoles: ['support-rep', 'device-team'],
+    name: "array gate, one of several user roles overlaps → pass",
+    gate: ["device-manager", "device-team"],
+    userRoles: ["support-rep", "device-team"],
     expected: true,
   },
 
   // --- array gate with empty intersection → fail ---
   {
-    name: 'array gate, no overlapping role → fail',
-    gate: ['device-manager'],
-    userRoles: ['support-rep'],
+    name: "array gate, no overlapping role → fail",
+    gate: ["device-manager"],
+    userRoles: ["support-rep"],
     expected: false,
   },
   {
-    name: 'array gate, disjoint role sets → fail',
-    gate: ['device-manager', 'device-team'],
-    userRoles: ['account-manager', 'support-rep'],
+    name: "array gate, disjoint role sets → fail",
+    gate: ["device-manager", "device-team"],
+    userRoles: ["account-manager", "support-rep"],
     expected: false,
   },
 
   // --- undeclared / missing verb (gate absent) → fail ---
   {
-    name: 'absent gate (undeclared verb), user has roles → fail',
+    name: "absent gate (undeclared verb), user has roles → fail",
     gate: undefined,
-    userRoles: ['device-manager'],
+    userRoles: ["device-manager"],
     expected: false,
   },
 
   // --- empty user-roles vs non-`true` gate → fail ---
   {
-    name: 'array gate, empty user roles → fail',
-    gate: ['device-manager'],
+    name: "array gate, empty user roles → fail",
+    gate: ["device-manager"],
     userRoles: [],
     expected: false,
   },
   {
-    name: 'absent gate, empty user roles → fail',
+    name: "absent gate, empty user roles → fail",
     gate: undefined,
     userRoles: [],
     expected: false,

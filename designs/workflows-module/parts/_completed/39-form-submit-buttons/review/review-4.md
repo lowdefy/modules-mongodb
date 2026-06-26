@@ -52,7 +52,7 @@ verb** since no coarse value exists: `action_allowed.view` is the one that match
 gate returns `false` when the verb is absent from `access` (`action_role_check.yaml:34–38`), so
 review-gating would permanently hide the button in exactly the no-`review`-verb configuration
 that justifies it. Relatedly, D4's claim that "the verb-scoped gating it would require is not
-built" is now stale — the primitive *is* per-verb; the right rationale is that review-gating
+built" is now stale — the primitive _is_ per-verb; the right rationale is that review-gating
 dead-ends the no-review-verb case, not that the capability is missing. Update D3's sample, D4's
 prose, and all four task files.
 

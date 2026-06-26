@@ -26,7 +26,7 @@
 class WorkflowEngineError extends Error {
   constructor(message, { code, cause } = {}) {
     super(message, { cause });
-    this.name = 'WorkflowEngineError';
+    this.name = "WorkflowEngineError";
     this.code = code;
   }
 }
@@ -44,8 +44,8 @@ class WorkflowEngineError extends Error {
  */
 class ConcurrentSubmitError extends WorkflowEngineError {
   constructor(message, { cause } = {}) {
-    super(message, { code: 'concurrent_submit', cause });
-    this.name = 'ConcurrentSubmitError';
+    super(message, { code: "concurrent_submit", cause });
+    this.name = "ConcurrentSubmitError";
   }
 }
 
@@ -60,8 +60,8 @@ class ConcurrentSubmitError extends WorkflowEngineError {
  */
 class TrackerCascadeDepthError extends WorkflowEngineError {
   constructor(message, { fire, cause } = {}) {
-    super(message, { code: 'tracker_depth_exceeded', cause });
-    this.name = 'TrackerCascadeDepthError';
+    super(message, { code: "tracker_depth_exceeded", cause });
+    this.name = "TrackerCascadeDepthError";
     this.fire = fire;
   }
 }

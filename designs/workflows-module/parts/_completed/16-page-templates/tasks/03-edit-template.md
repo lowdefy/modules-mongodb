@@ -30,7 +30,7 @@ requests:
       - _ref:
           path: ../requests/get_entity.yaml.njk
           vars:
-            entity_collection: {{ entity_collection }}
+            entity_collection: { { entity_collection } }
     - _var:
         key: page_config.requests
         default: []
@@ -465,7 +465,7 @@ Append two `ConfirmModal` blocks **outside** `layout.card` (siblings to the floa
 - **`endpointId` shape.** Lowdefy's `_module.endpointId` accepts either a string id or an `{ id, module }` object. The endpoint is in the same module so the `module: workflows` is redundant but matches the cross-module-pattern in `dist/.../update-action-{action_type}` references. Either form works.
 - **`status_map` and `interactions` are not read from `action_config` here.** Those are engine-side concerns. The template doesn't switch on them.
 - **Stale-URL guard's `_input: skip_status_redirect` escape hatch.** Set by task 4's `Edit` navigation button on review (so reviewers can round-trip into edit even when the action is sitting in `in-review`).
-- **Outer-card suppression doesn't apply to the comment input or universal-fields band.** Suppression is conditional on `action_config.form[0]?.form` only — when the *first form entry* owns its outer chrome, the outer `layout.card` is suppressed but the universal-fields band, comment, etc. all still render inside `layout.page` (just without the card wrap). The form body's own chrome (provided by the structural component) is the visual frame in that case.
+- **Outer-card suppression doesn't apply to the comment input or universal-fields band.** Suppression is conditional on `action_config.form[0]?.form` only — when the _first form entry_ owns its outer chrome, the outer `layout.card` is suppressed but the universal-fields band, comment, etc. all still render inside `layout.page` (just without the card wrap). The form body's own chrome (provided by the structural component) is the visual frame in that case.
 - **v0 parity gotcha re `box` first.** Per the design's "Outer-card suppression" subsection: "`box` declares `form:` (per part 15's sub-form-var allowlist) but emits a transparent `Box`, so a `box`-first form will incorrectly suppress the outer card. v1 accepts this v0 behavior verbatim." Authors who hit it work around by leading their form with a non-`box` entry.
 - **`comment` field uses TiptapInput.** v0 used TiptapInput for the comment (rich text). v1 inherits that. If a host app doesn't have the TiptapInput plugin registered, it'll surface a block-not-found build error — that's a host-app concern (plugin manifest), not a template concern.
 - **`status_map.error` link.** Outside this template's scope. Whether the host app surfaces a recovery link from view / review to error is governed by `status_map.error.{app_name}` (concept ui spec).

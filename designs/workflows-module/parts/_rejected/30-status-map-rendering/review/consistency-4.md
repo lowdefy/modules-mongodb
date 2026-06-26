@@ -72,6 +72,7 @@ Task 8 documented the `handleSubmit.js` reassignment but **did not** modify the 
 With Task 3 / Task 6 corrected (findings 1 and 2 above), the three engine writers must pass `entryId: context.entry_id` into `computeEngineLinks` on every call. Tasks 7, 8, and 9 all called `computeEngineLinks` with the positional / no-entryId form.
 
 **Resolution:**
+
 - Task 7: updated the `createAction` call snippet to `computeEngineLinks({ actionConfig, stage: initialStage, actionDoc: draft, entryId: context.entry_id })`. Added a test asserting every emitted built-in-kind `link.pageId` is prefixed with `${context.entry_id}/`.
 - Task 8: updated the `updateAction` call snippet to `computeEngineLinks({ actionConfig, stage: newStage, actionDoc: mergedActionDoc, entryId: context.entry_id })`. Added a test asserting the entry-id threading. Added an acceptance-criteria line.
 - Task 9: added "Pass `entryId: context.entry_id` into `computeEngineLinks`" to step 3 of the per-action loop with a forward reference to Tasks 6 and 3.

@@ -11,7 +11,14 @@ Part 48 adds two authoring surfaces that `makeWorkflowsConfig` (`modules/workflo
 workflow:
   type: onboarding
   event:
-    started: { display: { demo: { title: "Onboarding kicked off for {{ workflow.entity_id }}" } } }
+    started:
+      {
+        display:
+          {
+            demo:
+              { title: "Onboarding kicked off for {{ workflow.entity_id }}" },
+          },
+      }
     cancelled: { display: { demo: { title: "…" } } }
     closed: { display: { demo: { title: "…" } } }
 ```
@@ -26,12 +33,12 @@ Validation depth should match the existing `validateEvent`: it checks **signal k
 
 ```js
 export const MIRROR_SIGNALS = [
-  'internal_mirror_child_active',
-  'internal_mirror_child_completed',
-  'internal_mirror_child_cancelled',
+  "internal_mirror_child_active",
+  "internal_mirror_child_completed",
+  "internal_mirror_child_cancelled",
 ];
 
-export const LIFECYCLE_SIGNALS = ['started', 'cancelled', 'closed'];
+export const LIFECYCLE_SIGNALS = ["started", "cancelled", "closed"];
 ```
 
 2. **`validateEvent` (per-action):** allowed `event:` keys become `HOOK_SIGNALS` for every action, **plus `MIRROR_SIGNALS` when `action.kind === 'tracker'`**. A mirror-signal key on a non-tracker action hard-errors (mirror events only ever fire against tracker actions); the error message should say so and name the allowed sets. `hooks:` validation is untouched — hooks remain user-signal-only.

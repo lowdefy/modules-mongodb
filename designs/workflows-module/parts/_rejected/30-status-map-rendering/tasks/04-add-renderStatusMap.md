@@ -11,7 +11,7 @@ Render context (per design D10) is the merged action doc plus merged metadata:
 ```js
 const renderCtx = {
   ...mergedActionDoc, // pre-write doc, or in-memory draft on initial insert
-  ...mergedMetadata,  // { ...actionDoc.metadata, ...payload.metadata }
+  ...mergedMetadata, // { ...actionDoc.metadata, ...payload.metadata }
 };
 ```
 
@@ -28,6 +28,7 @@ renderStatusMap({ actionConfig, stage, mergedActionDoc, actionDisplay, mergedMet
 ```
 
 Inputs:
+
 - `actionConfig` — resolved per-action config; carries `kind` and `status_map`.
 - `stage` — the new stage.
 - `mergedActionDoc` — `{ ...actionDocBeforeWrite, ...callerFields }` at the call site, or the in-memory draft for the initial-insert path.
@@ -38,6 +39,7 @@ Inputs:
 Output: `{ renderedCell }` — an object ready to spread onto the `$set` payload. `{}` when no cell exists and no override is supplied.
 
 Steps:
+
 1. Look up `cell = actionConfig.status_map?.[stage]`. If absent and no `actionDisplay` keys apply, return `{ renderedCell: {} }`.
 2. Deep-clone the cell (so mutation of the clone doesn't mutate config). Start from `{}` if no cell.
 3. For each slug in `actionDisplay`, replace `clone[slug]` with the override's slug subtree.
@@ -47,6 +49,7 @@ Steps:
 7. Return `{ renderedCell: rendered }`.
 
 Add `renderStatusMap.test.js` covering:
+
 - Cell renders against `mergedActionDoc` fields (e.g. `{{ key }}`, `{{ assignees[0].name }}`).
 - Cell renders against merged metadata (e.g. `{{ physical_id }}` where `mergedMetadata.physical_id = 'D-42'`).
 - Absent cell returns `{ renderedCell: {} }`.

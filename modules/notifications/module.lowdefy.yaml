@@ -77,5 +77,5 @@ secrets:
     description: Public S3 bucket name for notification attachments
 
 plugins:
-  - name: '@lowdefy/community-plugin-mongodb'
-    version: '^3'
+  - name: "@lowdefy/community-plugin-mongodb"
+    version: "^3"

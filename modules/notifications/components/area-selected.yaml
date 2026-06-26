@@ -23,7 +23,7 @@ blocks:
       title: No Selected Notification
       icon:
         name: AiOutlineFileExclamation
-        color: '#d9d9d9'
+        color: "#d9d9d9"
   - id: selected_item
     type: Box
     visible:

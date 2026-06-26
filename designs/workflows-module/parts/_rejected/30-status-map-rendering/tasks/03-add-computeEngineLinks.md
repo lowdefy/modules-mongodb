@@ -19,11 +19,11 @@ For built-in action kinds (`task`, `form`, `tracker`), the engine writes `action
 
 Per-kind URL shape (every `pageId` is prefixed with `${entryId}/` so engine-written links match Lowdefy's build-time `_module.pageId` scoping at runtime — see design D4 § Mechanic):
 
-| Kind      | `pageId`                                                       | `urlQuery`                                       |
-| --------- | -------------------------------------------------------------- | ------------------------------------------------ |
-| `task`    | `{entryId}/task-{verb}` (per stage × verb table above)         | `{ action_id: actionDoc._id }`                   |
-| `form`    | `{entryId}/{actionDoc.workflow_type}-{actionDoc.type}-{verb}`  | `{ action_id: actionDoc._id }`                   |
-| `tracker` | `{entryId}/workflow-overview`                                  | `{ workflow_id: actionDoc.child_workflow_id }`   |
+| Kind      | `pageId`                                                      | `urlQuery`                                     |
+| --------- | ------------------------------------------------------------- | ---------------------------------------------- |
+| `task`    | `{entryId}/task-{verb}` (per stage × verb table above)        | `{ action_id: actionDoc._id }`                 |
+| `form`    | `{entryId}/{actionDoc.workflow_type}-{actionDoc.type}-{verb}` | `{ action_id: actionDoc._id }`                 |
+| `tracker` | `{entryId}/workflow-overview`                                 | `{ workflow_id: actionDoc.child_workflow_id }` |
 
 `tracker` returns `link: null` when `actionDoc.child_workflow_id` is null (tracker not yet started).
 
@@ -40,18 +40,21 @@ computeEngineLinks({ actionConfig, stage, actionDoc, entryId }) →
 ```
 
 Inputs:
+
 - `actionConfig` — the resolved per-action config; carries `kind` and `access`.
 - `stage` — the new stage being transitioned to.
 - `actionDoc` — the merged action doc (`{ ...actionDocBeforeWrite, ...callerFields }` at the call site, or the in-memory draft for the initial-insert path). Read `_id`, `type`, `workflow_type`, `child_workflow_id` off this.
 - `entryId` — the workflows module entry id (from `context.entry_id`). Required for built-in kinds; the helper prefixes every emitted `pageId` with `${entryId}/`. Throw if missing on a built-in-kind path (engine-runtime safety — a build that forgot to wire `entry_id` should fail loudly).
 
 Implementation outline:
+
 1. If `actionConfig.kind === 'custom'`, return `{}`.
 2. Discover slugs: keys of `actionConfig.access` excluding the reserved `roles` and `notification_roles`.
 3. For each slug, compute the link object (or `null`) from the per-kind rule above against the slug's access verbs and the new stage. Compose every non-null `pageId` as `${entryId}/<convention-name>` (e.g. `${entryId}/task-edit`, `${entryId}/${actionDoc.workflow_type}-${actionDoc.type}-edit`, `${entryId}/workflow-overview`).
 4. Wrap each slug's update as a `$mergeObjects` expression so existing slug subtree fields (notably the rendered `message`) survive: `{ [slug]: { $mergeObjects: [`$${slug}`, { link: <computed> }] } }`.
 
 Add `computeEngineLinks.test.js` covering:
+
 - `task` kind: edit slug at every stage (`action-required` → `task-edit`, `done` → `task-view`, `blocked` → `null`, etc.).
 - `task` kind: view-only slug always lands on `task-view` for non-null stages.
 - `task` kind: `review` verb at `in-review` produces `task-review`; without the `review` verb it falls back to `task-view`.

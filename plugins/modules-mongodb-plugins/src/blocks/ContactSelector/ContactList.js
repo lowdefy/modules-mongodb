@@ -46,7 +46,8 @@ const ContactList = ({
   }
 
   const hasItems = selectedContacts?.length > 0;
-  const showActionsHeader = hasItems && (allowEdit || allowVerify || allowDelete);
+  const showActionsHeader =
+    hasItems && (allowEdit || allowVerify || allowDelete);
 
   return (
     <div className={classNames.element} style={containerStyle}>
@@ -62,9 +63,7 @@ const ContactList = ({
             borderBottom: `1px solid ${token.colorBorderSecondary}`,
           }}
         >
-          <span style={{ flex: 1 }}>
-            {properties?.title ?? "Details"}
-          </span>
+          <span style={{ flex: 1 }}>{properties?.title ?? "Details"}</span>
           {showActionsHeader && (
             <span style={{ width: 120, textAlign: "center" }}>Actions</span>
           )}

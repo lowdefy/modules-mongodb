@@ -6,16 +6,16 @@ These tasks implement [Part 29](../design.md): the engine stops force-writing `e
 
 ## Tasks
 
-| #   | File                                       | Summary                                                                                                            | Depends On |
-| --- | ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-upstream-lowdefy-reject-flag.md`       | **Done — shipped as `cc18b41e9`.** Upstream PR landing `UserError.isReject`, `controlReject` flag, `runRoutine` reclassification. Remaining: pin the SDK version this monorepo consumes to a release that includes `cc18b41e9` | —          |
-| 2   | `02-concept-spec-amendments.md`            | Edit `engine/spec.md`, `submit-pipeline/spec.md`, `ui/spec.md` to the new error model                              | —          |
-| 3   | `03-part-1-and-part-6-design-notes.md`     | Add Part 1 callApi-throws deviation note; rewrite Part 6 § Failure shape for uniform status entries                | —          |
-| 4   | `04-types-cleanup.md`                      | Drop polymorphic fields from `StatusEntry` typedef and `error_transition` from the handler return-type docs        | —          |
-| 5   | `05-handlesubmit-remove-catch-converter.md`| Remove the steps 4–11 catch-converter from `handleSubmit.js`, drop `error_transition`, rewrite the two existing failing-step tests | 4          |
-| 6   | `06-handlesubmit-new-failure-tests.md`     | Add new unit tests covering the propagate-everywhere failure model and the `:reject` pre-hook path                 | 5          |
-| 7   | `07-part-13-no-trailing-reject-step.md`    | Verify Part 13's in-flight design and any draft implementation do not emit a trailing `:if`/`:reject` step         | —          |
-| 8   | `08-part-22-e2e-specs.md`                  | Add Part 22 E2E specs for the retry-after-transient-throw path and the author-driven `error → resolve_error` path  | 1, 5       |
+| #   | File                                        | Summary                                                                                                                                                                                                                        | Depends On |
+| --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| 1   | `01-upstream-lowdefy-reject-flag.md`        | **Done — shipped as `cc18b41e9`.** Upstream PR landing `UserError.isReject`, `controlReject` flag, `runRoutine` reclassification. Remaining: pin the SDK version this monorepo consumes to a release that includes `cc18b41e9` | —          |
+| 2   | `02-concept-spec-amendments.md`             | Edit `engine/spec.md`, `submit-pipeline/spec.md`, `ui/spec.md` to the new error model                                                                                                                                          | —          |
+| 3   | `03-part-1-and-part-6-design-notes.md`      | Add Part 1 callApi-throws deviation note; rewrite Part 6 § Failure shape for uniform status entries                                                                                                                            | —          |
+| 4   | `04-types-cleanup.md`                       | Drop polymorphic fields from `StatusEntry` typedef and `error_transition` from the handler return-type docs                                                                                                                    | —          |
+| 5   | `05-handlesubmit-remove-catch-converter.md` | Remove the steps 4–11 catch-converter from `handleSubmit.js`, drop `error_transition`, rewrite the two existing failing-step tests                                                                                             | 4          |
+| 6   | `06-handlesubmit-new-failure-tests.md`      | Add new unit tests covering the propagate-everywhere failure model and the `:reject` pre-hook path                                                                                                                             | 5          |
+| 7   | `07-part-13-no-trailing-reject-step.md`     | Verify Part 13's in-flight design and any draft implementation do not emit a trailing `:if`/`:reject` step                                                                                                                     | —          |
+| 8   | `08-part-22-e2e-specs.md`                   | Add Part 22 E2E specs for the retry-after-transient-throw path and the author-driven `error → resolve_error` path                                                                                                              | 1, 5       |
 
 ## Ordering Rationale
 

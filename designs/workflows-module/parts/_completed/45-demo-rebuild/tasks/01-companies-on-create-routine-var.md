@@ -37,7 +37,7 @@ This task touches only `modules/companies/` — no workflows-engine dependency; 
    - New fourth segment: `_module.var: on_create_routine` (the var itself is the segment — it's already an array of steps).
    - New fifth segment: `- :return:` (the existing return, moved verbatim).
 
-   Plain concatenation — the var defaults to `[]`, so **no `_build.if` guard** (the existing `request_stages.write` guard skips its *wrapper step*, not the concat; an empty array concatenates to nothing).
+   Plain concatenation — the var defaults to `[]`, so **no `_build.if` guard** (the existing `request_stages.write` guard skips its _wrapper step_, not the concat; an empty array concatenates to nothing).
 
 3. **`modules/companies/pages/new.yaml`** — the save button's `create_company` CallAPI payload (`_build.object.assign`, first object) gains:
 
@@ -56,7 +56,7 @@ This task touches only `modules/companies/` — no workflows-engine dependency; 
 - `create-company.yaml`'s routine concat has the new segment order: insert → write-stages guard → link-contacts + new-event → `on_create_routine` → `:return:`. With the var unset, the built routine is behaviorally identical to today's.
 - `new.yaml`'s create payload includes `url_query: { _url_query: true }`.
 - README Vars section documents the contract.
-- The demo app build does not break on the companies module (`pnpm build` in `apps/demo`, or the repo's standard demo build check). Note: at this point in the sequence the demo build may still fail on the *workflows* config (see tasks.md Prerequisites) — the check here is that no **new** companies-module error appears.
+- The demo app build does not break on the companies module (`pnpm build` in `apps/demo`, or the repo's standard demo build check). Note: at this point in the sequence the demo build may still fail on the _workflows_ config (see tasks.md Prerequisites) — the check here is that no **new** companies-module error appears.
 
 ## Files
 

@@ -31,6 +31,7 @@ Design D11 was rewritten to use a per-action `MongoDBUpdateOne` loop because the
 **Files affected:** `tasks/08-wire-updateAction.md`
 
 Design.md enumerates three explicit edits to `handleSubmit.js`:
+
 1. Pass `actionDisplay: params.action_display` and `metadata: params.metadata` into `updateAction` / `createAction` in the step-4 loop.
 2. Refresh `context.action = recomputeResult.workflowActions.find(a => a._id === context.action._id)` after step-5 recompute.
 3. Reassign `context.workflow = recomputeResult.workflow` after step-5 recompute.

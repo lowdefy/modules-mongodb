@@ -16,7 +16,7 @@ This task also aligns the `install-step` demo with the design's worked example: 
 
      ```yaml
      action-required:
-       demo: { message: 'Install {{ metadata.physical_id }}.' }
+       demo: { message: "Install {{ metadata.physical_id }}." }
        customer: { message: Installation pending. }
        status_title: Installation pending
      ```

@@ -20,7 +20,7 @@ for (const action of actions) {
   if (action.action_group && !groupIds.has(action.action_group)) {
     fail(
       workflow.type,
-      `action "${action.type}" references unknown action_group "${action.action_group}".`
+      `action "${action.type}" references unknown action_group "${action.action_group}".`,
     );
   }
   // NEW: blocked_by resolution check.
@@ -29,7 +29,7 @@ for (const action of actions) {
     if (!groupIds.has(entry) && !actionTypes.has(entry)) {
       fail(
         workflow.type,
-        `action "${action.type}" blocked_by entry "${entry}" resolves to neither a declared action_groups[].id nor a declared actions[].type.`
+        `action "${action.type}" blocked_by entry "${entry}" resolves to neither a declared action_groups[].id nor a declared actions[].type.`,
       );
     }
   }
@@ -67,6 +67,6 @@ Verify the failure message includes:
 ## Notes
 
 - Per the [project rule § YAML block sequences for operators](../../../../CLAUDE.md): test fixtures use YAML block sequences. Inline JS arrays inside `_js` operators are fine; YAML inputs to `makeWorkflowsConfig` should mirror the production YAML grammar.
-- The id-vs-type collision check at lines 109–118 already runs *before* this loop. By the time the new walk runs, `groupIds` and `actionTypes` are guaranteed disjoint — so a single `entry` can match at most one of them. The order of the two `.has()` checks doesn't matter for correctness; lean on declarative readability (group ids first to mirror the runtime resolution precedence in part 7's design).
-- The runtime resolution precedence in part 7 is "groups first, then action types." The build-time validator's failure message doesn't need to encode precedence (only that the entry doesn't resolve to *anything*).
+- The id-vs-type collision check at lines 109–118 already runs _before_ this loop. By the time the new walk runs, `groupIds` and `actionTypes` are guaranteed disjoint — so a single `entry` can match at most one of them. The order of the two `.has()` checks doesn't matter for correctness; lean on declarative readability (group ids first to mirror the runtime resolution precedence in part 7's design).
+- The runtime resolution precedence in part 7 is "groups first, then action types." The build-time validator's failure message doesn't need to encode precedence (only that the entry doesn't resolve to _anything_).
 - This task is independent of every engine task — it only touches the resolver and its tests. Can ship in its own PR.

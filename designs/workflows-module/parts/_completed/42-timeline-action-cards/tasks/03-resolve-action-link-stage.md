@@ -12,6 +12,7 @@ stage — so the timeline card, the entity widget, the workflow overview, and th
 group overview all render an identical, access-correct link.
 
 The selection rule accounts for **two** dimensions:
+
 - **State** — a cell is `null` where the stage doesn't offer that verb (e.g. a
   `done` action has `edit`/`review`/`error` = `null`, so it resolves to `view`).
   Selection must skip `null` cells.

@@ -108,6 +108,7 @@ Per [part 17 design.md:13–28](../../17-shared-pages/design.md), the module als
 > **Resolved.** Dropped the redundant `track-installation` line in [part 12 design.md](modules-mongodb/designs/workflows-module/parts/_completed/12-resolver-pages/design.md); the stronger "tracker actions skipped even when carrying `access.{app}: [view]`" assertion remains.
 
 Verification (lines 58–59):
+
 - "`track-installation` (tracker) emits nothing."
 - "Tracker actions skipped even when carrying `access.{app}: [view]`."
 

@@ -2,7 +2,7 @@
 
 ## Context
 
-The workflows module needs human-readable **titles** for workflows, actions, action groups, action pages, and event verbs. Author-defined slugs (`workflow.type`, `action.type`, group `id`) currently have no default and no humanizer anywhere in the repo, so unset titles surface as raw slugs (`send-quote`). This task adds the single pure helper that turns a slug into a good Title Case string — the thing that makes every derived default in later tasks *good* rather than merely mechanical.
+The workflows module needs human-readable **titles** for workflows, actions, action groups, action pages, and event verbs. Author-defined slugs (`workflow.type`, `action.type`, group `id`) currently have no default and no humanizer anywhere in the repo, so unset titles surface as raw slugs (`send-quote`). This task adds the single pure helper that turns a slug into a good Title Case string — the thing that makes every derived default in later tasks _good_ rather than merely mechanical.
 
 The helper lives in the module's build-side resolver utilities (`modules/workflows/resolvers/`), alongside `makeWorkflowsConfig.js`, `makeActionPages.js`, etc. It is a pure function with unit tests, mirroring the existing resolver test style (`*.test.js` next to the source, run under the repo's vitest setup — see `makeWorkflowsConfig.test.js` for the pattern).
 

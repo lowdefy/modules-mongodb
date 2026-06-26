@@ -1,15 +1,15 @@
 active:
-  color: '#e6f7ff'
-  borderColor: '#91d5ff'
-  titleColor: '#096dd9'
+  color: "#e6f7ff"
+  borderColor: "#91d5ff"
+  titleColor: "#096dd9"
   title: Active
 completed:
-  color: '#f6ffed'
-  borderColor: '#b7eb8f'
-  titleColor: '#389e0d'
+  color: "#f6ffed"
+  borderColor: "#b7eb8f"
+  titleColor: "#389e0d"
   title: Completed
 cancelled:
-  color: '#fafafa'
-  borderColor: '#d9d9d9'
-  titleColor: '#595959'
+  color: "#fafafa"
+  borderColor: "#d9d9d9"
+  titleColor: "#595959"
   title: Cancelled

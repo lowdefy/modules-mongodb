@@ -22,7 +22,7 @@ Part 39's actual `visible` term is build-time:
 
 So there is no `global.workflow_button_sources` to reuse. The fix is mechanical and keeps "reuse verbatim" intact: the shared surface should read the FSM source-stages with the same **build-time `_ref`** Part 39 uses (`_ref` works in a static component, not just `.yaml.njk`). Correct every `_global: workflow_button_sources.*` reference in §7, D1, D2, and the files-changed table to the `_ref` form.
 
-Note this is distinct from D3's `global.simple_action_buttons` — *that* one genuinely must be a runtime global (per-action author opt-out, one static page serving all simple actions of a verb), and is correctly reasoned. The design conflates the two under "globals"; only the author-opt-out map is a global.
+Note this is distinct from D3's `global.simple_action_buttons` — _that_ one genuinely must be a runtime global (per-action author opt-out, one static page serving all simple actions of a verb), and is correctly reasoned. The design conflates the two under "globals"; only the author-opt-out map is a global.
 
 ### 2. A single `action_allowed` boolean cannot gate the mixed-verb shared surface / modal
 
@@ -43,7 +43,7 @@ The clean resolution is Finding 3 (adopt Part 34's per-verb `visible_verbs`). Ab
 - **D8:** the binary `action_allowed` becomes a per-verb `visible_verbs: { view, edit, review, error }` map returned by `get-entity-workflows` (34:20, 81).
 - **D9:** the engine-written `action[slug].link` becomes `action[slug].links` keyed by verb; "the UI picks the user-appropriate link at render time" (34:21).
 
-Part 40 uses `action_allowed` (D2/D4) and `action.link` (the entire "Surfaces, the engine link" section, lines 28–39; D5's `EventsTimeline.js:399–416` navigation) throughout, and **lists no dependency on Part 34** (line 24). This is broader than Part 40 — Parts 24 and 39 also still reference `action_allowed` — so the real ask is a sequencing decision: either Part 34 is deferred and these parts stay on the binary model, or Part 34 lands first and 24/39/40 adopt the per-verb model. Part 40 is where it bites hardest, because the mixed-verb surface (Finding 2) is *only* clean under `visible_verbs`. State the ordering explicitly; if after Part 34, the role gate becomes `visible_verbs.edit` / `.review` / `.error` per button and the link section becomes `action.links.{verb}`.
+Part 40 uses `action_allowed` (D2/D4) and `action.link` (the entire "Surfaces, the engine link" section, lines 28–39; D5's `EventsTimeline.js:399–416` navigation) throughout, and **lists no dependency on Part 34** (line 24). This is broader than Part 40 — Parts 24 and 39 also still reference `action_allowed` — so the real ask is a sequencing decision: either Part 34 is deferred and these parts stay on the binary model, or Part 34 lands first and 24/39/40 adopt the per-verb model. Part 40 is where it bites hardest, because the mixed-verb surface (Finding 2) is _only_ clean under `visible_verbs`. State the ordering explicitly; if after Part 34, the role gate becomes `visible_verbs.edit` / `.review` / `.error` per button and the link section becomes `action.links.{verb}`.
 
 ## Gaps — under-specified mechanics
 
@@ -57,7 +57,7 @@ D5 says "on open the modal fetches `get_action` … populates `_state.surface`, 
 
 > **Resolved.** Single shared instance, dropped exactly once. `actions-on-entity` bundles the one `simple_action_modal`; a co-present surface (timeline) targets that same fixed blockId by id and drops nothing. The modal is **opt-in**, so there's no failure mode: a timeline page without `actions-on-entity` either drops the standalone modal itself (and wires to it) or leaves `EventsTimeline.onActionClick` unwired, in which case the timeline falls back to navigating to the action page (the per-verb-link default). No double-drop, no missing target.
 
-D5 fixes the blockId to `simple_action_modal` "so any host wires it the same way" (lines 124, 130–136) **and** has `actions-on-entity` *bundle* the modal (line 142), while a timeline host "drops `simple-action-modal` itself" (line 144). The reference project's entity page has **both** `actions-on-entity` and the action-items timeline (this design cites that exact layout in the Part 41 gap, lines 150–157). Such a page would instantiate two blocks with the same fixed id → duplicate-blockId collision, and both `onActionClick` handlers would target the same id. Reconcile: a host with both surfaces should drop **one** shared modal that both `onActionClick`s target — which contradicts "`actions-on-entity` bundles it, no per-app wiring." Decide whether the modal is host-owned-once or component-bundled, not both.
+D5 fixes the blockId to `simple_action_modal` "so any host wires it the same way" (lines 124, 130–136) **and** has `actions-on-entity` _bundle_ the modal (line 142), while a timeline host "drops `simple-action-modal` itself" (line 144). The reference project's entity page has **both** `actions-on-entity` and the action-items timeline (this design cites that exact layout in the Part 41 gap, lines 150–157). Such a page would instantiate two blocks with the same fixed id → duplicate-blockId collision, and both `onActionClick` handlers would target the same id. Reconcile: a host with both surfaces should drop **one** shared modal that both `onActionClick`s target — which contradicts "`actions-on-entity` bundles it, no per-app wiring." Decide whether the modal is host-owned-once or component-bundled, not both.
 
 ### 6. `Validate` on `submit` inside the modal is unscoped
 
@@ -69,13 +69,13 @@ D1 says "`submit` keeps `Validate` on `fields.*`" (line 79). On a static page th
 
 > **Resolved.** Picked one container: `simple_action_modal` is a `Drawer` for all modes. A drawer holds the heavy `view` mode (fields + status-history + comments) and the lighter edit/review surfaces equally, and one block type preserves the single fixed-blockId open contract (a block can't switch type by runtime mode). Removed the "container choice is implementation detail" deferral.
 
-D5 says "a `Drawer` may suit `view`, a centered `Modal` `edit`/`review` — container choice is implementation detail" (line 138), but the open contract targets a **single** fixed blockId `simple_action_modal` with `CallMethod: open`. A single component/block cannot switch its block *type* (Modal vs Drawer) by runtime mode. Per CLAUDE.md "resolve the open question; don't defer," pick one container type for `simple_action_modal`. (Two container types means two blockIds, which breaks the single fixed-id open contract.)
+D5 says "a `Drawer` may suit `view`, a centered `Modal` `edit`/`review` — container choice is implementation detail" (line 138), but the open contract targets a **single** fixed blockId `simple_action_modal` with `CallMethod: open`. A single component/block cannot switch its block _type_ (Modal vs Drawer) by runtime mode. Per CLAUDE.md "resolve the open question; don't defer," pick one container type for `simple_action_modal`. (Two container types means two blockIds, which breaks the single fixed-id open contract.)
 
 ## Minor
 
 ### 8. "`progress` fires no author verb" contradicts Part 39 D2
 
-> **Resolved.** Verified against Part 39 D2 (`design.md:115`): `progress` *does* fire its own author hook `onProgress` before the engine call; only the `progress_saved` log event is engine-side. Rewrote the D1 parenthetical: `progress` has no `Validate` but fires `onProgress` like the form template, with `progress_saved` scoped to Part 38.
+> **Resolved.** Verified against Part 39 D2 (`design.md:115`): `progress` _does_ fire its own author hook `onProgress` before the engine call; only the `progress_saved` log event is engine-side. Rewrote the D1 parenthetical: `progress` has no `Validate` but fires `onProgress` like the form template, with `progress_saved` scoped to Part 38.
 
 Line 79: "`progress` has no `Validate` step and fires no author verb (mirrors [Part 39 D2])." Part 39 D2 says the opposite — `progress` "fires its own author event verb — `onProgress`" (Part 39 design.md:115). The surface-side facts the design needs are right (no `Validate`, fire `signal: progress`); the verb is engine-side and already scoped out (line 214). Fix the parenthetical to match Part 39: no `Validate`; the engine fires `onProgress`.
 

@@ -6,8 +6,8 @@ These tasks implement the `pages.{verb}.buttons.extra` authoring slot: author-su
 
 ## Tasks
 
-| #   | File                            | Summary                                                                                       | Depends On |
-| --- | ------------------------------- | --------------------------------------------------------------------------------------------- | ---------- |
+| #   | File                            | Summary                                                                                        | Depends On |
+| --- | ------------------------------- | ---------------------------------------------------------------------------------------------- | ---------- |
 | 1   | `01-validator-buttons-extra.md` | `RESERVED_BUTTON_IDS` + structural validation of `buttons.extra` in `makeWorkflowsConfig.js`   | —          |
 | 2   | `02-template-concat-wiring.md`  | Wrap the three verb templates' `actions:` arrays in `_build.array.concat`; round-trip test     | —          |
 | 3   | `03-demo-help-button.md`        | Demo exercise: "Help" extra button on the qualify action's edit page                           | 1, 2       |

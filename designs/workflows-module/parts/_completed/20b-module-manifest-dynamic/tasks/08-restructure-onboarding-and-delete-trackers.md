@@ -5,6 +5,7 @@
 After tasks 3–7, five new action files exist under `apps/demo/modules/workflows/workflow_config/onboarding/` (`qualify.yaml`, `send-quote.yaml`, `schedule-followup.yaml`, `proof-of-installation.yaml`, `track-installation.yaml`) but `onboarding.yaml`'s `actions[]` array still references the three old tracker-step files (`track-step-1.yaml`, `track-step-2.yaml`, `track-step-3.yaml`). The trackers are still live in the demo until this task runs.
 
 This is the wiring step that:
+
 - Swaps the action list in `onboarding.yaml`.
 - Restructures `action_groups`, `starting_actions`, and the `blocked_by` chain around the new five-action shape.
 - Adds the `g1.on_complete` callback that demonstrates the group-fan-out path (dormant until [part 11](modules-mongodb/designs/workflows-module/parts/11-group-on-complete-fanout/design.md) ships).

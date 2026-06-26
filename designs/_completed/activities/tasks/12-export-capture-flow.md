@@ -18,6 +18,7 @@ The convention shift this codifies: companies/contacts ship `button_new_company.
 Self-contained button + modal. Drop it anywhere on a page; it provides a capture flow that stays in context.
 
 Vars accepted (all optional):
+
 - **Prefill** — `prefill: { type, contact_ids, company_ids, title, description }`. Any subset; missing fields default to empty.
 - **Appearance** — `label` (button text), `icon`, `button_type` (`primary | default | link | text`), `size` (`small | middle | large`).
 - **Behavior** — `mode: modal | page` (default `modal`). In `page` mode, the button skips the modal and Links to `pageId: new` with prefill in `urlQuery`. In `modal` mode (default), opens a Modal that renders `form_activity`.
@@ -97,6 +98,7 @@ blocks:
 ```
 
 Internal state lives at `state.capture.*`:
+
 - `state.capture.open: boolean` — modal visibility.
 - `state.capture.values: object` — form field values (initialized from prefill).
 - `state.capture.label / icon / button_type / size / mode` — wired from vars on init.
@@ -117,7 +119,7 @@ Always-navigate action sequence. Exposed as a component (Lowdefy's cross-module 
     urlQuery:
       # Prefill carried in URL params
       type:
-        _state: prefill.type      # or however vars surface
+        _state: prefill.type # or however vars surface
       contact_id:
         _state: prefill.contact_id
       contact_ids:

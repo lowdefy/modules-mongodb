@@ -31,21 +31,21 @@
  * or null). The planner assigns each map to `action[slug].links`.
  */
 
-const VERBS = ['view', 'edit', 'review', 'error'];
+const VERBS = ["view", "edit", "review", "error"];
 
-const RESERVED_ACCESS_KEYS = new Set(['roles', 'notification_roles']);
+const RESERVED_ACCESS_KEYS = new Set(["roles", "notification_roles"]);
 
 // Which verbs have a meaningful page at each stage (shared by check + form).
 // `true` => the stage exposes a page for that verb; otherwise the cell is null.
 const STAGE_VERB_PAGE = {
-  'action-required': { view: true, edit: true, review: false, error: false },
-  'in-progress': { view: true, edit: true, review: false, error: false },
-  'changes-required': { view: true, edit: true, review: false, error: false },
-  'in-review': { view: true, edit: false, review: true, error: false },
+  "action-required": { view: true, edit: true, review: false, error: false },
+  "in-progress": { view: true, edit: true, review: false, error: false },
+  "changes-required": { view: true, edit: true, review: false, error: false },
+  "in-review": { view: true, edit: false, review: true, error: false },
   done: { view: true, edit: false, review: false, error: false },
   error: { view: true, edit: false, review: false, error: true },
   blocked: { view: false, edit: false, review: false, error: false },
-  'not-required': { view: false, edit: false, review: false, error: false },
+  "not-required": { view: false, edit: false, review: false, error: false },
 };
 
 function declaredSlugs(access = {}) {
@@ -59,7 +59,7 @@ function scoped(entryId, page) {
 function computeEngineLinks({ action, entry_id: entryId }) {
   const { kind } = action;
   // Custom kinds author their own links in the status_map cell.
-  if (kind === 'custom') return {};
+  if (kind === "custom") return {};
 
   const access = action.access ?? {};
   const slugs = declaredSlugs(access);
@@ -70,11 +70,11 @@ function computeEngineLinks({ action, entry_id: entryId }) {
     const verbsDeclared = access[slug] ?? {};
     const links = { view: null, edit: null, review: null, error: null };
 
-    if (kind === 'tracker') {
+    if (kind === "tracker") {
       // Arm 1: child exists → `view` to child workflow-overview.
-      if ('view' in verbsDeclared && action.child_workflow_id != null) {
+      if ("view" in verbsDeclared && action.child_workflow_id != null) {
         links.view = {
-          pageId: scoped(entryId, 'workflow-overview'),
+          pageId: scoped(entryId, "workflow-overview"),
           urlQuery: { workflow_id: action.child_workflow_id },
         };
       }
@@ -82,8 +82,8 @@ function computeEngineLinks({ action, entry_id: entryId }) {
       // Arm 2: pre-child at action-required + declared start_link → `edit`.
       const startLink = action.tracker?.start_link;
       if (
-        'edit' in verbsDeclared &&
-        stage === 'action-required' &&
+        "edit" in verbsDeclared &&
+        stage === "action-required" &&
         action.child_workflow_id == null &&
         startLink != null
       ) {
@@ -91,9 +91,9 @@ function computeEngineLinks({ action, entry_id: entryId }) {
         if (startLink.urlQuery != null) {
           const urlQuery = {};
           for (const [key, val] of Object.entries(startLink.urlQuery)) {
-            if (key === 'action_id' && val === true) {
+            if (key === "action_id" && val === true) {
               urlQuery[key] = action._id;
-            } else if (key === 'entity_id' && val === true) {
+            } else if (key === "entity_id" && val === true) {
               urlQuery[key] = action.entity_id;
             } else {
               urlQuery[key] = val;
@@ -114,9 +114,9 @@ function computeEngineLinks({ action, entry_id: entryId }) {
       if (!(verb in verbsDeclared)) continue; // slug doesn't declare this verb
       if (!stageVerbs[verb]) continue; // stage has no page for this verb
       const page =
-        kind === 'check'
-          ? verb === 'error'
-            ? 'workflow-action-view'
+        kind === "check"
+          ? verb === "error"
+            ? "workflow-action-view"
             : `workflow-action-${verb}`
           : `${action.workflow_type}-${action.type}-${verb}`;
       links[verb] = {

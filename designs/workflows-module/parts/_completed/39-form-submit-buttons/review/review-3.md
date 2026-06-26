@@ -47,7 +47,7 @@ checking design-against-code would flag task 2 as doing undocumented work.
 Two sub-points while fixing this:
 
 - `not_required` has **no `Validate` step** (`edit.yaml.njk:305–327` goes straight to `onSubmit`
-  → `CallAPI`), so only the *payload* drop applies — there is no `^fields\.` regex to narrow.
+  → `CallAPI`), so only the _payload_ drop applies — there is no `^fields\.` regex to narrow.
 - The same `design.md:24` clause "each button's `Validate` regex narrows to drop `^fields\.`"
   over-generalizes: it's also untrue for `request_changes`, whose `Validate` is a comment-presence
   check (`review.yaml.njk:327–329`, `params: comment`), not a `^fields\.` regex. The precise
@@ -75,7 +75,7 @@ nothing about the D3 gate the test is meant to cover.
 `tasks/07-e2e-supplements.md:16–17` silently fixed this — it adds "and `progress` (source list
 `[action-required, in-progress]`) is **not** shown once the action is `done`" and the explicit
 instruction "Pick assertions that exercise the FSM source-stage gate, not just the role gate."
-That's the right test: `progress` *is* on the edit bar, and `done ∉ [action-required,
+That's the right test: `progress` _is_ on the edit bar, and `done ∉ [action-required,
 in-progress]`, so its absence on a `done`-stage edit page genuinely tests the source-stage
 membership check (while `submit`, whose source list includes `done`, stays visible).
 
@@ -87,7 +87,7 @@ matches the gate it validates.
 
 ### 3. D4 says view's Edit-nav is gated on "edit access" — but the precedent and task 5 gate only on `page_ids.edit` presence
 
-> **Resolved (auto).** Dropped "and the user has edit access" from `design.md` D4; the Edit-nav `Link` is visible when `page_ids.edit` is configured and is explicitly *not* access-gated (the edit page gates its own writes), matching `review.yaml.njk`'s `button_edit` precedent and task 5. Updated the line citation to `review.yaml.njk:192, :197–205`.
+> **Resolved (auto).** Dropped "and the user has edit access" from `design.md` D4; the Edit-nav `Link` is visible when `page_ids.edit` is configured and is explicitly _not_ access-gated (the edit page gates its own writes), matching `review.yaml.njk`'s `button_edit` precedent and task 5. Updated the line citation to `review.yaml.njk:192, :197–205`.
 
 `design.md:185` describes the view Edit button as "a `Link` to `page_ids.edit` (when present and
 **the user has edit access**)." But the precedent it cites, `review.yaml.njk`'s `button_edit`,
@@ -114,7 +114,7 @@ renders `form` read-only and never makes it editable. Yet `form: { _state: form 
 `view`'s new `request_changes` (`tasks/05:118`). By the design's own "don't post dead state"
 argument, `form` on those payloads is the same primed-then-resent dead state as `fields`.
 
-(`form` is *not* dead on `edit` and `error` — both make it editable and validate `^form\.` — so
+(`form` is _not_ dead on `edit` and `error` — both make it editable and validate `^form\.` — so
 keeping it there is correct. The question is only the `review`/`view` display surfaces.)
 
 This may be deliberate — Part 38's `approve` / `request_changes` handlers might consume `form`

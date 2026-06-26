@@ -20,7 +20,7 @@ Checked the full Part 40 file tree (design.md, open-questions.md, three review f
 - **R2 #4** — in-modal timeline dropped (page-level only); container `Drawer` → `Modal`. Resolved.
 - **R2 #5** — Part 24 renderer gains `state_path` var. Resolved.
 - **R2 #6** — Rejected (mooted by #2).
-- **R3 #1–#7** — all about **band-1 task files**: #1/#2/#3/#7 *Deferred to task regeneration*; #4 *Rejected* (keep `surface.action_allowed`); #5/#6 *Resolved*. No design-prose action outstanding.
+- **R3 #1–#7** — all about **band-1 task files**: #1/#2/#3/#7 _Deferred to task regeneration_; #4 _Rejected_ (keep `surface.action_allowed`); #5/#6 _Resolved_. No design-prose action outstanding.
 
 ## Inconsistencies Found
 
@@ -50,7 +50,7 @@ These are real drifts, but they live in task files the user is regenerating sepa
 
 ## Open items (pending work, not consistency drift — left for the user)
 
-- **`open-questions.md` §4** — D5's `actions-on-entity` wiring fires the modal for *every* clicked action; it needs a `kind: simple` branch (navigate otherwise). Flagged as a discovered gap awaiting response-projection verification before amending D5 — a substantive design change, not a consistency fix.
+- **`open-questions.md` §4** — D5's `actions-on-entity` wiring fires the modal for _every_ clicked action; it needs a `kind: simple` branch (navigate otherwise). Flagged as a discovered gap awaiting response-projection verification before amending D5 — a substantive design change, not a consistency fix.
 - **`open-questions.md` §2/§3/§5/§6** — cross-design (Part 46) reconciliation, the parked `allow_not_required` form-page display-channel call, the recorded `EventsTimeline.onActionClick` payload mismatch, and housekeeping. All correctly tracked; no design-prose contradiction.
 
 ## No Issues

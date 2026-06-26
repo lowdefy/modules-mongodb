@@ -39,10 +39,10 @@ Emits a build-time `global.action_form_configs` object keyed by `{action_type}` 
 Each entry's shape:
 
 ```yaml
-{action_type}:
-  form:         <metadata tree>
-  form_review:  <metadata tree>   # only when declared
-  form_error:   <metadata tree>   # only when declared
+{ action_type }:
+  form: <metadata tree>
+  form_review: <metadata tree> # only when declared
+  form_error: <metadata tree> # only when declared
 ```
 
 `<metadata tree>` is an array of field nodes. Each node carries:

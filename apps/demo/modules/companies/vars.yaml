@@ -82,7 +82,8 @@ components:
                   entity_id:
                     _url_query: _id
                   entity_collection:
-                    _module.connectionId: { id: companies-collection, module: companies }
+                    _module.connectionId:
+                      { id: companies-collection, module: companies }
     - _ref:
         module: activities
         component: tile_activities
@@ -114,4 +115,5 @@ components:
                     entity_id:
                       _url_query: _id
                     entity_collection:
-                      _module.connectionId: { id: companies-collection, module: companies }
+                      _module.connectionId:
+                        { id: companies-collection, module: companies }

@@ -1,4 +1,4 @@
-import renderTree from './renderTree.js';
+import renderTree from "./renderTree.js";
 
 /**
  * Renders an event `display` block (per-app `{ title, detail?, icon? }`) from

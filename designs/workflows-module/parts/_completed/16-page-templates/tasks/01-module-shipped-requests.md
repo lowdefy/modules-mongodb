@@ -61,7 +61,7 @@ This one is a Nunjucks template (not plain YAML) because the `connectionId` is s
 ```yaml
 id: get_entity
 type: MongoDBFindOne
-connectionId: {{ entity_collection }}
+connectionId: { { entity_collection } }
 payload:
   entity_id:
     _request: get_action.entity_id

@@ -1,4 +1,4 @@
-import buildHookPayload from './buildHookPayload.js';
+import buildHookPayload from "./buildHookPayload.js";
 
 /**
  * Post-hook phase wrapper (design D6).
@@ -46,9 +46,9 @@ async function invokePostHook(
   // Find the planned target-action doc from the plan (D6 fresh-state mechanism).
   // The target action is matched by _id against plan.actions entries.
   const targetActionId = String(loadedState.targetAction._id);
-  const plannedTargetAction = plan.actions.find(
-    ({ doc }) => String(doc._id) === targetActionId,
-  )?.doc ?? loadedState.targetAction;
+  const plannedTargetAction =
+    plan.actions.find(({ doc }) => String(doc._id) === targetActionId)?.doc ??
+    loadedState.targetAction;
 
   const result = {
     action_ids: commitResult.action_ids,

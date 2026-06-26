@@ -35,33 +35,45 @@
  *   node scripts/gen-llms-txt.mjs --check      # diff + lint; exit 1 if stale/invalid
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'fs';
-import { join, dirname, resolve, relative } from 'path';
-import { fileURLToPath } from 'url';
-import yaml from 'js-yaml';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  mkdirSync,
+} from "fs";
+import { join, dirname, resolve, relative } from "path";
+import { fileURLToPath } from "url";
+import yaml from "js-yaml";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const ROOT = resolve(__dirname, '..');
-const DOCS_DIR = join(ROOT, 'docs');
-const LLMS_TXT_PATH = join(DOCS_DIR, 'llms.txt');
+const ROOT = resolve(__dirname, "..");
+const DOCS_DIR = join(ROOT, "docs");
+const LLMS_TXT_PATH = join(DOCS_DIR, "llms.txt");
 
 // ---------------------------------------------------------------------------
 // CLI flags
 // ---------------------------------------------------------------------------
 
 const args = process.argv.slice(2);
-const FLAG_CHECK = args.includes('--check');
+const FLAG_CHECK = args.includes("--check");
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const ALLOWED_TYPES = new Set(['index', 'concept', 'how-to', 'reference', 'shared']);
-const REQUIRED_FIELDS = ['title', 'module', 'type'];
+const ALLOWED_TYPES = new Set([
+  "index",
+  "concept",
+  "how-to",
+  "reference",
+  "shared",
+]);
+const REQUIRED_FIELDS = ["title", "module", "type"];
 
 // Group ordering: root/shared/plugins first, then module names alpha
-const FIXED_GROUP_ORDER = ['root', 'shared', 'plugins'];
+const FIXED_GROUP_ORDER = ["root", "shared", "plugins"];
 
 // ---------------------------------------------------------------------------
 // File walker
@@ -74,11 +86,11 @@ const FIXED_GROUP_ORDER = ['root', 'shared', 'plugins'];
 function collectMarkdownFiles(dir) {
   const results = [];
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name.startsWith('.')) continue;
+    if (entry.name.startsWith(".")) continue;
     const full = join(dir, entry.name);
     if (entry.isDirectory()) {
       results.push(...collectMarkdownFiles(full));
-    } else if (entry.isFile() && entry.name.endsWith('.md')) {
+    } else if (entry.isFile() && entry.name.endsWith(".md")) {
       results.push(full);
     }
   }
@@ -96,7 +108,7 @@ function collectMarkdownFiles(dir) {
  * the file after the closing '---'.
  */
 function parseFrontMatter(content) {
-  if (!content.startsWith('---')) {
+  if (!content.startsWith("---")) {
     return { frontMatter: null, body: content };
   }
   const match = content.match(/\n---[ \t]*(\n|$)/);
@@ -132,10 +144,10 @@ function parseFrontMatter(content) {
  */
 function extractSummary(body) {
   // Strip all HTML comments (including multi-line)
-  let text = body.replace(/<!--[\s\S]*?-->/g, '');
+  let text = body.replace(/<!--[\s\S]*?-->/g, "");
 
   // Split into lines and walk to find the first prose paragraph
-  const lines = text.split('\n');
+  const lines = text.split("\n");
   let i = 0;
   const paraLines = [];
 
@@ -144,21 +156,21 @@ function extractSummary(body) {
     const trimmed = line.trim();
 
     // Skip blank lines when we haven't started a paragraph yet
-    if (trimmed === '') {
+    if (trimmed === "") {
       if (paraLines.length > 0) break; // blank line ends the paragraph
       i++;
       continue;
     }
 
     // Skip headings
-    if (trimmed.startsWith('#')) {
+    if (trimmed.startsWith("#")) {
       i++;
       continue;
     }
 
     // Skip lines that look like YAML front-matter remnants (shouldn't happen
     // after parseFrontMatter, but be defensive)
-    if (trimmed === '---') {
+    if (trimmed === "---") {
       i++;
       continue;
     }
@@ -167,7 +179,7 @@ function extractSummary(body) {
     i++;
   }
 
-  return paraLines.join(' ');
+  return paraLines.join(" ");
 }
 
 // ---------------------------------------------------------------------------
@@ -189,13 +201,15 @@ function lintFrontMatter(frontMatter, filePath) {
 
   for (const field of REQUIRED_FIELDS) {
     if (!frontMatter[field]) {
-      violations.push(`${relPath}: missing required front-matter field '${field}'`);
+      violations.push(
+        `${relPath}: missing required front-matter field '${field}'`,
+      );
     }
   }
 
   if (frontMatter.type && !ALLOWED_TYPES.has(frontMatter.type)) {
     violations.push(
-      `${relPath}: invalid type '${frontMatter.type}' (allowed: ${[...ALLOWED_TYPES].join(', ')})`
+      `${relPath}: invalid type '${frontMatter.type}' (allowed: ${[...ALLOWED_TYPES].join(", ")})`,
     );
   }
 
@@ -211,18 +225,18 @@ function lintFrontMatter(frontMatter, filePath) {
  * Returns { relPath, module, title, summary, lintErrors }.
  */
 function processDoc(filePath) {
-  const content = readFileSync(filePath, 'utf-8');
+  const content = readFileSync(filePath, "utf-8");
   const { frontMatter, body } = parseFrontMatter(content);
   const lintErrors = lintFrontMatter(frontMatter, filePath);
   const relPath = relative(ROOT, filePath);
 
-  const title = frontMatter?.title ?? '';
-  const module = frontMatter?.module ?? '';
+  const title = frontMatter?.title ?? "";
+  const module = frontMatter?.module ?? "";
 
   let summary = extractSummary(body);
   // Truncate very long summaries (first paragraph can be very long in reference docs)
   if (summary.length > 300) {
-    summary = summary.slice(0, 297) + '...';
+    summary = summary.slice(0, 297) + "...";
   }
 
   return { relPath, module, title, summary, lintErrors };
@@ -248,24 +262,30 @@ function groupSortKey(groupName) {
 function buildLlmsTxt(entries) {
   const lines = [];
 
-  lines.push('# llms.txt — @lowdefy/modules-mongodb doc index');
-  lines.push('#');
-  lines.push('# Machine-readable index of the docs/ tree. One line per doc, grouped by');
-  lines.push('# module. Generated by scripts/gen-llms-txt.mjs — do not edit by hand.');
-  lines.push('# Re-run the script whenever docs are added, removed, or renamed.');
-  lines.push('');
+  lines.push("# llms.txt — @lowdefy/modules-mongodb doc index");
+  lines.push("#");
+  lines.push(
+    "# Machine-readable index of the docs/ tree. One line per doc, grouped by",
+  );
+  lines.push(
+    "# module. Generated by scripts/gen-llms-txt.mjs — do not edit by hand.",
+  );
+  lines.push(
+    "# Re-run the script whenever docs are added, removed, or renamed.",
+  );
+  lines.push("");
 
   // Group entries by module
   const groups = new Map();
   for (const entry of entries) {
-    const key = entry.module || 'root';
+    const key = entry.module || "root";
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(entry);
   }
 
   // Sort groups: fixed order first, then alpha
   const sortedGroupNames = [...groups.keys()].sort((a, b) =>
-    groupSortKey(a).localeCompare(groupSortKey(b))
+    groupSortKey(a).localeCompare(groupSortKey(b)),
   );
 
   for (const groupName of sortedGroupNames) {
@@ -273,7 +293,7 @@ function buildLlmsTxt(entries) {
 
     // Section header
     lines.push(`## ${groupName}`);
-    lines.push('');
+    lines.push("");
 
     // Entries are already path-sorted because collectMarkdownFiles sorts them
     for (const entry of groupEntries) {
@@ -283,10 +303,10 @@ function buildLlmsTxt(entries) {
       lines.push(`- ${entry.relPath}: ${description}`);
     }
 
-    lines.push('');
+    lines.push("");
   }
 
-  return lines.join('\n').trimEnd() + '\n';
+  return lines.join("\n").trimEnd() + "\n";
 }
 
 // ---------------------------------------------------------------------------
@@ -304,19 +324,19 @@ function writeMode(files) {
   }
 
   if (allViolations.length > 0) {
-    console.error('\nFront-matter lint violations:\n');
+    console.error("\nFront-matter lint violations:\n");
     for (const v of allViolations) {
       console.error(`  ERROR: ${v}`);
     }
     console.error(
-      `\n${allViolations.length} front-matter violation(s) found. Fix them and re-run.`
+      `\n${allViolations.length} front-matter violation(s) found. Fix them and re-run.`,
     );
     process.exit(1);
   }
 
   const content = buildLlmsTxt(entries);
   mkdirSync(dirname(LLMS_TXT_PATH), { recursive: true });
-  writeFileSync(LLMS_TXT_PATH, content, 'utf-8');
+  writeFileSync(LLMS_TXT_PATH, content, "utf-8");
   console.log(`  Wrote ${LLMS_TXT_PATH} (${entries.length} docs indexed)`);
   return entries.length;
 }
@@ -339,7 +359,7 @@ function checkMode(files) {
 
   // --- Front-matter lint ---
   if (allViolations.length > 0) {
-    console.error('\nFront-matter lint violations:\n');
+    console.error("\nFront-matter lint violations:\n");
     for (const v of allViolations) {
       console.error(`  ERROR: ${v}`);
     }
@@ -351,14 +371,14 @@ function checkMode(files) {
 
   if (!existsSync(LLMS_TXT_PATH)) {
     console.error(
-      `  DRIFT: docs/llms.txt does not exist (run node scripts/gen-llms-txt.mjs to create it)`
+      `  DRIFT: docs/llms.txt does not exist (run node scripts/gen-llms-txt.mjs to create it)`,
     );
     failed = true;
   } else {
-    const committed = readFileSync(LLMS_TXT_PATH, 'utf-8');
+    const committed = readFileSync(LLMS_TXT_PATH, "utf-8");
     if (committed !== generated) {
       console.error(
-        `  DRIFT: docs/llms.txt is out of date (run node scripts/gen-llms-txt.mjs to regenerate it)`
+        `  DRIFT: docs/llms.txt is out of date (run node scripts/gen-llms-txt.mjs to regenerate it)`,
       );
       failed = true;
     }
@@ -375,17 +395,19 @@ function main() {
   const files = collectMarkdownFiles(DOCS_DIR);
 
   if (FLAG_CHECK) {
-    console.log('llms.txt Generator — check mode\n');
+    console.log("llms.txt Generator — check mode\n");
     const { failed, count } = checkMode(files);
     if (!failed) {
-      console.log(`docs/llms.txt is up to date (${count} docs indexed). Front-matter valid.`);
+      console.log(
+        `docs/llms.txt is up to date (${count} docs indexed). Front-matter valid.`,
+      );
       process.exit(0);
     } else {
-      console.error('\nRun `node scripts/gen-llms-txt.mjs` to fix.');
+      console.error("\nRun `node scripts/gen-llms-txt.mjs` to fix.");
       process.exit(1);
     }
   } else {
-    console.log('llms.txt Generator\n');
+    console.log("llms.txt Generator\n");
     const count = writeMode(files);
     console.log(`\nDone: ${count} docs indexed.`);
   }

@@ -12,12 +12,12 @@ The module is paired with [`contacts`](../contacts/index.md): the company `view`
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
-| [layout](../layout/index.md) | Page wrapper |
-| [events](../events/index.md) | Audit logging and `change_stamp` |
+| Module                           | Why                                     |
+| -------------------------------- | --------------------------------------- |
+| [layout](../layout/index.md)     | Page wrapper                            |
+| [events](../events/index.md)     | Audit logging and `change_stamp`        |
 | [contacts](../contacts/index.md) | Contacts tile and bidirectional linking |
-| [files](../files/index.md) | Optional file-attachments sidebar tile |
+| [files](../files/index.md)       | Optional file-attachments sidebar tile  |
 
 Cross-module cycle: `companies ↔ contacts`. Both must be added as separate entries in `lowdefy.yaml`; the build resolves the cycle at runtime.
 

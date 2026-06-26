@@ -7,7 +7,8 @@ export default {
     steps: "The Antd Steps component.",
     badge: "Each action's status Badge.",
     link: "Each action's Link wrapper.",
-    groupLink: "Each action group's title Link (when actionGroupConfig[group].link is set).",
+    groupLink:
+      "Each action group's title Link (when actionGroupConfig[group].link is set).",
   },
   events: {
     onActionClick: {

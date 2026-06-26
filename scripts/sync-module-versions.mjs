@@ -33,43 +33,57 @@
  * Zero external dependencies.
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs';
-import { dirname, join, resolve } from 'path';
-import { fileURLToPath } from 'url';
+import {
+  readFileSync,
+  writeFileSync,
+  existsSync,
+  readdirSync,
+  statSync,
+} from "fs";
+import { dirname, join, resolve } from "path";
+import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const ROOT = resolve(__dirname, '..');
-const MODULES_DIR = join(ROOT, 'modules');
-const DOCS_DIR = join(ROOT, 'docs');
-const PLUGIN_PKG = join(ROOT, 'plugins', 'modules-mongodb-plugins', 'package.json');
-const PLUGIN_NAME = '@lowdefy/modules-mongodb-plugins';
+const ROOT = resolve(__dirname, "..");
+const MODULES_DIR = join(ROOT, "modules");
+const DOCS_DIR = join(ROOT, "docs");
+const PLUGIN_PKG = join(
+  ROOT,
+  "plugins",
+  "modules-mongodb-plugins",
+  "package.json",
+);
+const PLUGIN_NAME = "@lowdefy/modules-mongodb-plugins";
 
 function syncOne(moduleDir) {
-  const pkgPath = join(moduleDir, 'package.json');
-  const manifestPath = join(moduleDir, 'module.lowdefy.yaml');
+  const pkgPath = join(moduleDir, "package.json");
+  const manifestPath = join(moduleDir, "module.lowdefy.yaml");
   if (!existsSync(pkgPath) || !existsSync(manifestPath)) return null;
 
-  const pkgJson = JSON.parse(readFileSync(pkgPath, 'utf-8'));
+  const pkgJson = JSON.parse(readFileSync(pkgPath, "utf-8"));
   const version = pkgJson.version;
-  const manifest = readFileSync(manifestPath, 'utf-8');
+  const manifest = readFileSync(manifestPath, "utf-8");
 
   if (/^version:\s*.+$/m.test(manifest)) {
     const updated = manifest.replace(/^version:\s*.+$/m, `version: ${version}`);
-    if (updated === manifest) return { name: pkgJson.name, version, changed: false };
-    writeFileSync(manifestPath, updated, 'utf-8');
+    if (updated === manifest)
+      return { name: pkgJson.name, version, changed: false };
+    writeFileSync(manifestPath, updated, "utf-8");
     return { name: pkgJson.name, version, changed: true };
   }
 
   const updated = manifest.replace(
     /^(name:\s*.+)$/m,
-    (match) => `${match}\nversion: ${version}`
+    (match) => `${match}\nversion: ${version}`,
   );
   if (updated === manifest) {
-    console.warn(`  ${pkgJson.name}: no "name:" line found, leaving manifest untouched`);
+    console.warn(
+      `  ${pkgJson.name}: no "name:" line found, leaving manifest untouched`,
+    );
     return { name: pkgJson.name, version, changed: false };
   }
-  writeFileSync(manifestPath, updated, 'utf-8');
+  writeFileSync(manifestPath, updated, "utf-8");
   return { name: pkgJson.name, version, changed: true, inserted: true };
 }
 
@@ -78,7 +92,7 @@ function readPluginVersion() {
     console.error(`Plugin package.json not found at ${PLUGIN_PKG}`);
     process.exit(1);
   }
-  return JSON.parse(readFileSync(PLUGIN_PKG, 'utf-8')).version;
+  return JSON.parse(readFileSync(PLUGIN_PKG, "utf-8")).version;
 }
 
 function syncPluginRefs(pluginVersion) {
@@ -86,19 +100,20 @@ function syncPluginRefs(pluginVersion) {
   // Match a YAML list entry that names the plugin and the next "version: ..." line.
   // Captures: ($1) the entry up to and including "version: ", then the quoted version literal.
   const pattern = new RegExp(
-    `(- name:\\s*["']${PLUGIN_NAME.replace(/[/-]/g, '\\$&')}["']\\s*\\n\\s*version:\\s*)["'][^"']+["']`,
-    'g'
+    `(- name:\\s*["']${PLUGIN_NAME.replace(/[/-]/g, "\\$&")}["']\\s*\\n\\s*version:\\s*)["'][^"']+["']`,
+    "g",
   );
   const updates = [];
 
   for (const entry of readdirSync(MODULES_DIR)) {
-    if (entry.startsWith('.') || entry === 'node_modules' || entry === 'shared') continue;
+    if (entry.startsWith(".") || entry === "node_modules" || entry === "shared")
+      continue;
     const moduleDir = join(MODULES_DIR, entry);
     if (!statSync(moduleDir).isDirectory()) continue;
-    const manifestPath = join(moduleDir, 'module.lowdefy.yaml');
+    const manifestPath = join(moduleDir, "module.lowdefy.yaml");
     if (!existsSync(manifestPath)) continue;
 
-    const original = readFileSync(manifestPath, 'utf-8');
+    const original = readFileSync(manifestPath, "utf-8");
     let changes = 0;
     const updated = original.replace(pattern, (_match, prefix) => {
       changes += 1;
@@ -106,7 +121,7 @@ function syncPluginRefs(pluginVersion) {
     });
 
     if (changes > 0 && updated !== original) {
-      writeFileSync(manifestPath, updated, 'utf-8');
+      writeFileSync(manifestPath, updated, "utf-8");
       updates.push({ entry, changes });
     }
   }
@@ -116,19 +131,19 @@ function syncPluginRefs(pluginVersion) {
 
 function collectMarkdownFiles() {
   const files = [];
-  const rootReadme = join(ROOT, 'README.md');
+  const rootReadme = join(ROOT, "README.md");
   if (existsSync(rootReadme)) files.push(rootReadme);
 
   if (existsSync(DOCS_DIR) && statSync(DOCS_DIR).isDirectory()) {
     for (const entry of readdirSync(DOCS_DIR)) {
-      if (!entry.endsWith('.md')) continue;
+      if (!entry.endsWith(".md")) continue;
       files.push(join(DOCS_DIR, entry));
     }
   }
 
   for (const entry of readdirSync(MODULES_DIR)) {
-    if (entry.startsWith('.') || entry === 'node_modules') continue;
-    const readme = join(MODULES_DIR, entry, 'README.md');
+    if (entry.startsWith(".") || entry === "node_modules") continue;
+    const readme = join(MODULES_DIR, entry, "README.md");
     if (existsSync(readme)) files.push(readme);
   }
 
@@ -137,21 +152,25 @@ function collectMarkdownFiles() {
 
 function syncDocVersions(versions) {
   // Match: github:lowdefy/modules-mongodb/modules/{name}@v{semver-or-anything-non-quote}
-  const pattern = /(github:lowdefy\/modules-mongodb\/modules\/)([\w-]+)(@v)([^"'\s)]+)/g;
+  const pattern =
+    /(github:lowdefy\/modules-mongodb\/modules\/)([\w-]+)(@v)([^"'\s)]+)/g;
   const updates = [];
 
   for (const file of collectMarkdownFiles()) {
-    const original = readFileSync(file, 'utf-8');
+    const original = readFileSync(file, "utf-8");
     let changes = 0;
-    const updated = original.replace(pattern, (match, prefix, name, at, oldVersion) => {
-      const target = versions[name];
-      if (!target || target === oldVersion) return match;
-      changes += 1;
-      return `${prefix}${name}${at}${target}`;
-    });
+    const updated = original.replace(
+      pattern,
+      (match, prefix, name, at, oldVersion) => {
+        const target = versions[name];
+        if (!target || target === oldVersion) return match;
+        changes += 1;
+        return `${prefix}${name}${at}${target}`;
+      },
+    );
 
     if (changes > 0) {
-      writeFileSync(file, updated, 'utf-8');
+      writeFileSync(file, updated, "utf-8");
       updates.push({ file, changes });
     }
   }
@@ -165,12 +184,13 @@ function main() {
     process.exit(1);
   }
 
-  console.log('Syncing module.lowdefy.yaml versions from package.json...');
+  console.log("Syncing module.lowdefy.yaml versions from package.json...");
   let updatedCount = 0;
   const versions = {};
 
   for (const entry of readdirSync(MODULES_DIR)) {
-    if (entry.startsWith('.') || entry === 'node_modules' || entry === 'shared') continue;
+    if (entry.startsWith(".") || entry === "node_modules" || entry === "shared")
+      continue;
     const moduleDir = join(MODULES_DIR, entry);
     if (!statSync(moduleDir).isDirectory()) continue;
 
@@ -178,7 +198,11 @@ function main() {
     if (!result) continue;
 
     versions[entry] = result.version;
-    const tag = result.changed ? (result.inserted ? 'inserted' : 'updated') : 'unchanged';
+    const tag = result.changed
+      ? result.inserted
+        ? "inserted"
+        : "updated"
+      : "unchanged";
     console.log(`  ${entry}: ${result.version} (${tag})`);
     if (result.changed) updatedCount += 1;
   }
@@ -186,20 +210,22 @@ function main() {
   console.log(`\n${updatedCount} manifest(s) updated.`);
 
   const pluginVersion = readPluginVersion();
-  console.log(`\nSyncing ${PLUGIN_NAME} refs in module manifests to ^${pluginVersion}...`);
+  console.log(
+    `\nSyncing ${PLUGIN_NAME} refs in module manifests to ^${pluginVersion}...`,
+  );
   const pluginUpdates = syncPluginRefs(pluginVersion);
   if (pluginUpdates.length === 0) {
-    console.log('  no plugin refs needed updating');
+    console.log("  no plugin refs needed updating");
   } else {
     for (const { entry, changes } of pluginUpdates) {
       console.log(`  ${entry}: ${changes} ref(s) updated`);
     }
   }
 
-  console.log('\nSyncing module version refs in Markdown docs...');
+  console.log("\nSyncing module version refs in Markdown docs...");
   const docUpdates = syncDocVersions(versions);
   if (docUpdates.length === 0) {
-    console.log('  no doc version refs needed updating');
+    console.log("  no doc version refs needed updating");
   } else {
     for (const { file, changes } of docUpdates) {
       const rel = file.startsWith(ROOT) ? file.slice(ROOT.length + 1) : file;
@@ -207,7 +233,7 @@ function main() {
     }
   }
 
-  console.log('\nDone.');
+  console.log("\nDone.");
 }
 
 main();

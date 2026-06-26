@@ -50,7 +50,7 @@ The design lists what gets written but not in what order. Given finding #3 (no a
 
 **Option A — parent-first.** Write the parent tracker action's `child_workflow_id` + `child_entity_id` + `child_entity_collection` + `in-progress` push **first**, then the new workflow doc + action docs. If step 1 fails, no orphan workflow exists. If step 2 fails, the parent action says it has a child that doesn't exist — but the engine never reads "child" off the parent action (the tracker subscription is child→parent, not parent→child), so the inconsistency is cosmetic until a UI surfaces it. A retry succeeds because the parent-side validation ("`child_workflow_id` is null") would reject — needs special handling.
 
-**Option B — child-first.** Write workflow + child actions first; parent link last. If parent link fails, an orphan workflow exists with `parent_action_id` populated but the parent tracker doesn't know about it. A retry with the same payload writes a *second* workflow and tries to link the parent — which then succeeds because `child_workflow_id` is still null. Now there are two child workflows pointing at one parent and the parent points at the second. Worse than option A.
+**Option B — child-first.** Write workflow + child actions first; parent link last. If parent link fails, an orphan workflow exists with `parent_action_id` populated but the parent tracker doesn't know about it. A retry with the same payload writes a _second_ workflow and tries to link the parent — which then succeeds because `child_workflow_id` is still null. Now there are two child workflows pointing at one parent and the parent points at the second. Worse than option A.
 
 **Suggested fix:** commit option A as the write order, plus an explicit "skip parent-side write if `child_workflow_id === <new workflow _id>`" idempotency check (covers a retry that crashed between parent-side and child-side). Document in the design.
 
@@ -62,7 +62,7 @@ The design lists what gets written but not in what order. Given finding #3 (no a
 
 > "Idempotent retry: re-calling with same `(workflow_id, type, key)` doesn't double-write (unique index)."
 
-The unique index lives on `actions`, not `workflows`. And `workflow_id` is server-generated (engine spec line 103, "server-generated"; `populateIds.js` exists). The caller cannot supply `workflow_id` to a retry — every retry creates a *new* `_id`, so the action-doc unique index never sees the same `(workflow_id, type, key)` tuple twice across retries.
+The unique index lives on `actions`, not `workflows`. And `workflow_id` is server-generated (engine spec line 103, "server-generated"; `populateIds.js` exists). The caller cannot supply `workflow_id` to a retry — every retry creates a _new_ `_id`, so the action-doc unique index never sees the same `(workflow_id, type, key)` tuple twice across retries.
 
 The only realistic retry-safety story for `StartWorkflow` is: caller-supplied `_id` (not currently in the payload), or caller-side check ("does a workflow already exist for this `(entity_type, entity_id, workflow_type)`?") before issuing the call. Neither is in the design.
 
@@ -78,7 +78,7 @@ The only realistic retry-safety story for `StartWorkflow` is: caller-supplied `_
 
 Cross-checked: the YAML grammar for `starting_actions` (`action-authoring/spec.md:33,85`) is `{ type, status }` only — no `key:` field. Keyed-action spawning at workflow start happens via the `start-workflow` payload's `actions:` field (`action-authoring/spec.md:339`, `:857`), never via YAML alone.
 
-So a YAML-declared `starting_actions` entry pointing at an action with `key: $foo` is *always* an authoring error. The part-04 resolver (`modules/workflows/resolvers/makeWorkflowsConfig.js`) doesn't currently validate this — it has no `key` cross-check in its `starting_actions` loop (lines 123–135). The engine running into this at `StartWorkflow` is the worst place to catch it (already on the write path, partial doc state on failure).
+So a YAML-declared `starting_actions` entry pointing at an action with `key: $foo` is _always_ an authoring error. The part-04 resolver (`modules/workflows/resolvers/makeWorkflowsConfig.js`) doesn't currently validate this — it has no `key` cross-check in its `starting_actions` loop (lines 123–135). The engine running into this at `StartWorkflow` is the worst place to catch it (already on the write path, partial doc state on failure).
 
 **Suggested fix:** kick this back to part 04. Add a validator: "If `starting_actions[i].type` resolves to an action with `key:`, fail at build with a precise message." Then part 05's engine code can assume YAML starting actions never need keys.
 
@@ -86,7 +86,7 @@ So a YAML-declared `starting_actions` entry pointing at an action with `key: $fo
 
 > **Resolved.** Changed `design.md:19` to compute the initial `summary` from the just-built actions: `{ done: 0, not_required: <count of starting actions whose status is "not-required">, total: <N> }`. No more empty-summary edge case for UI consumers.
 
-`design.md:19` says the workflow doc is written with **"empty `summary` (computed once actions exist)"**. But the action docs *do* exist at the end of `StartWorkflow` — they're written in the same handler call. The current scaffold for `SubmitWorkflowAction` will recompute `summary` on first user submit, but until that happens the workflow doc carries an empty `summary` that disagrees with the underlying actions.
+`design.md:19` says the workflow doc is written with **"empty `summary` (computed once actions exist)"**. But the action docs _do_ exist at the end of `StartWorkflow` — they're written in the same handler call. The current scaffold for `SubmitWorkflowAction` will recompute `summary` on first user submit, but until that happens the workflow doc carries an empty `summary` that disagrees with the underlying actions.
 
 For consistency with the data model (`engine/spec.md:114`: `summary: { done, not_required, total }`) and to avoid downstream UI guards for the empty case, `StartWorkflow` should compute and write the initial `summary` from the actions it just wrote — typically `{ done: 0, not_required: <count of starting actions with status: not-required>, total: N }`. This is a one-liner over the just-built actions array.
 
@@ -122,7 +122,7 @@ A mismatch would link an unrelated child workflow to a parent expecting a differ
 
 The engine spec (`engine/spec.md:74`) reads `connection.changeStamp` to thread the change stamp through every write. The part-04 review at finding 5 explicitly deferred `changeStamp` from the connection schema: "No `changeStamp` on the connection schema. Per design conversation, deferred to part 05."
 
-Part 05 design at `design.md:19` says workflow + action docs are written with "change stamps". But the design doesn't call out *adding `changeStamp` to the connection schema* (`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js`). Without the schema addition, app-side wiring (`connections/workflow-api.yaml` style) can't pass `changeStamp` in, and the handler reads `undefined`.
+Part 05 design at `design.md:19` says workflow + action docs are written with "change stamps". But the design doesn't call out _adding `changeStamp` to the connection schema_ (`plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js`). Without the schema addition, app-side wiring (`connections/workflow-api.yaml` style) can't pass `changeStamp` in, and the handler reads `undefined`.
 
 This is the part where it lands per part-04 review-1 finding 5; the design should commit that work explicitly.
 
@@ -150,9 +150,9 @@ Tracker subscription (part 10) uses `force: true` per `engine/spec.md:282` ("`fo
 
 > **Resolved.** Extended the `references` payload bullet in `design.md:29` to commit the engine's reserved-key merge order — "references first, core fields including the cancelled status push last" — with a link to `engine/spec.md § References write contract`.
 
-`design.md:29` says CancelWorkflow optionally spreads `references` onto the workflow doc on cancel. The engine reserved-keys list (`engine/spec.md:238`) includes `status`, `summary`, `groups`, `form_data`, etc. — and the engine spec's "merge order" pattern (`engine/spec.md:222-238`) protects against collisions by writing reserved keys *after* the references spread.
+`design.md:29` says CancelWorkflow optionally spreads `references` onto the workflow doc on cancel. The engine reserved-keys list (`engine/spec.md:238`) includes `status`, `summary`, `groups`, `form_data`, etc. — and the engine spec's "merge order" pattern (`engine/spec.md:222-238`) protects against collisions by writing reserved keys _after_ the references spread.
 
-The design doesn't say which merge order CancelWorkflow uses. If references are spread *after* the status push, a malicious or buggy caller could pass `references: { status: [...] }` and rewrite the entire status array.
+The design doesn't say which merge order CancelWorkflow uses. If references are spread _after_ the status push, a malicious or buggy caller could pass `references: { status: [...] }` and rewrite the entire status array.
 
 **Suggested fix:** explicit one-liner: "References spread uses the engine's reserved-key merge order — references first, core fields including the new status push last (per `engine/spec.md` § References write contract)."
 
@@ -162,9 +162,9 @@ The design doesn't say which merge order CancelWorkflow uses. If references are 
 
 `design.md:33` commits to recomputing and writing `summary` on cancel, but defers `groups[]` recompute to part 7. After a cancel, the workflow's actions are mostly `not-required`. Per `action-groups/spec.md` (referenced from `engine/spec.md:115`), a group's three-value status (`blocked` / `in-progress` / `done`) is derived from its actions. A cancelled workflow's groups should presumably all be `done` (since every action is terminal: either was-done-already or now-`not-required`).
 
-Leaving `groups[]` un-recomputed on cancel means consumers reading the workflow doc post-cancel see groups that don't reflect reality until *something else* triggers a `SubmitWorkflowAction` — which never happens on a cancelled workflow.
+Leaving `groups[]` un-recomputed on cancel means consumers reading the workflow doc post-cancel see groups that don't reflect reality until _something else_ triggers a `SubmitWorkflowAction` — which never happens on a cancelled workflow.
 
-This is fine *iff* part 7 commits to recomputing `groups[]` on cancel too. But part 7's design (`parts/07-group-state-machine/design.md:21`) says "Eager writeback on every `SubmitWorkflowAction` call (lifecycle step 5)" — it doesn't mention CancelWorkflow at all.
+This is fine _iff_ part 7 commits to recomputing `groups[]` on cancel too. But part 7's design (`parts/07-group-state-machine/design.md:21`) says "Eager writeback on every `SubmitWorkflowAction` call (lifecycle step 5)" — it doesn't mention CancelWorkflow at all.
 
 **Suggested fix:** either (a) extend part 5's CancelWorkflow scope to recompute groups too (small lift if part 7's `recomputeGroups` helper is in place), or (b) explicitly note that `CancelWorkflow` groups recompute lands in part 7 — and update part 7's design to add it. The current "groups recompute deferred to part 7" line in part 5 doesn't have a corresponding scope entry in part 7.
 

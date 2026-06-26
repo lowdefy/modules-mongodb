@@ -24,6 +24,7 @@ docs/plugins/smart-descriptions.md   (← SmartDescriptions)
 Mine each from its `src/blocks/{Block}/README.md` (props, events, slots, examples), adding front-matter.
 
 **3. Stub the source-side READMEs:**
+
 - `plugins/modules-mongodb-plugins/README.md` → stub pointing to `../../docs/plugins/`.
 - Each `plugins/modules-mongodb-plugins/src/blocks/{Block}/README.md` → stub pointing to the matching `docs/plugins/{block}.md`.
 
@@ -45,4 +46,4 @@ Mine each from its `src/blocks/{Block}/README.md` (props, events, slots, example
 ## Notes
 
 - Filenames are kebab-case (`smart-descriptions.md`), matching the design's tree, even though the block directories are PascalCase.
-- `FetchRequest` is an *action*, not a block — it belongs in `index.md` (package-level), not a per-block file.
+- `FetchRequest` is an _action_, not a block — it belongs in `index.md` (package-level), not a per-block file.

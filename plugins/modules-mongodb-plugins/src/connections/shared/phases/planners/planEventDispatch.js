@@ -1,24 +1,22 @@
-import { WorkflowEngineError } from '../../errors.js';
-import mergeEventOverrides from '../../mergeEventOverrides.js';
-import renderEventDisplay from '../../render/renderEventDisplay.js';
-import foldCommentIntoEvent from './foldCommentIntoEvent.js';
+import { WorkflowEngineError } from "../../errors.js";
+import mergeEventOverrides from "../../mergeEventOverrides.js";
+import renderEventDisplay from "../../render/renderEventDisplay.js";
+import foldCommentIntoEvent from "./foldCommentIntoEvent.js";
 
 // Tracker-mirror signal → event-type suffix mapping.
 const MIRROR_TYPE_MAP = {
-  internal_mirror_child_active: 'action-internal-mirror-active',
-  internal_mirror_child_completed: 'action-internal-mirror-completed',
-  internal_mirror_child_cancelled: 'action-internal-mirror-cancelled',
+  internal_mirror_child_active: "action-internal-mirror-active",
+  internal_mirror_child_completed: "action-internal-mirror-completed",
+  internal_mirror_child_cancelled: "action-internal-mirror-cancelled",
 };
 
 // Engine-default lifecycle title templates (plain Nunjucks strings), composed
 // over the denormalised `workflow.title` (Part 53).
 const LIFECYCLE_TITLES = {
-  'workflow-started':
-    '{{ user.profile.name }} started {{ workflow.title }}',
-  'workflow-cancelled':
-    '{{ user.profile.name }} cancelled {{ workflow.title }}',
-  'workflow-closed':
-    '{{ user.profile.name }} closed {{ workflow.title }}',
+  "workflow-started": "{{ user.profile.name }} started {{ workflow.title }}",
+  "workflow-cancelled":
+    "{{ user.profile.name }} cancelled {{ workflow.title }}",
+  "workflow-closed": "{{ user.profile.name }} closed {{ workflow.title }}",
 };
 
 // Curated per-signal verb templates for action events (Part 53; supersedes the
@@ -28,17 +26,17 @@ const LIFECYCLE_TITLES = {
 // branches on status_after ("completed" vs "submitted … for review"); the
 // mirror signals are system-driven and never attribute to a user.
 const DEFAULT_SIGNAL_TITLES = {
-  approve: '{{ user.profile.name }} approved {{ action.title }}',
+  approve: "{{ user.profile.name }} approved {{ action.title }}",
   request_changes:
-    '{{ user.profile.name }} requested changes on {{ action.title }}',
-  progress: '{{ user.profile.name }} started {{ action.title }}',
+    "{{ user.profile.name }} requested changes on {{ action.title }}",
+  progress: "{{ user.profile.name }} started {{ action.title }}",
   not_required:
-    '{{ user.profile.name }} marked {{ action.title }} as not required',
+    "{{ user.profile.name }} marked {{ action.title }} as not required",
   resolve_error:
-    '{{ user.profile.name }} resolved an error on {{ action.title }}',
-  internal_mirror_child_active: '{{ action.title }} started',
-  internal_mirror_child_completed: '{{ action.title }} completed',
-  internal_mirror_child_cancelled: '{{ action.title }} cancelled',
+    "{{ user.profile.name }} resolved an error on {{ action.title }}",
+  internal_mirror_child_active: "{{ action.title }} started",
+  internal_mirror_child_completed: "{{ action.title }} completed",
+  internal_mirror_child_cancelled: "{{ action.title }} cancelled",
 };
 
 // Defensive fallback for any primary action signal not in the map above.
@@ -46,13 +44,13 @@ const DEFAULT_SIGNAL_TITLES = {
 // reach planEventDispatch, so this never fires in practice — but it guarantees
 // a clean message instead of a raw slug if the signal set ever grows.
 const ACTION_FALLBACK_TITLE =
-  '{{ user.profile.name }} updated {{ action.title }}';
+  "{{ user.profile.name }} updated {{ action.title }}";
 
 function resolveActionSignalTitle(signal, status_after) {
-  if (signal === 'submit') {
-    return status_after === 'in-review'
-      ? '{{ user.profile.name }} submitted {{ action.title }} for review'
-      : '{{ user.profile.name }} completed {{ action.title }}';
+  if (signal === "submit") {
+    return status_after === "in-review"
+      ? "{{ user.profile.name }} submitted {{ action.title }} for review"
+      : "{{ user.profile.name }} completed {{ action.title }}";
   }
   return DEFAULT_SIGNAL_TITLES[signal] ?? ACTION_FALLBACK_TITLE;
 }
@@ -149,30 +147,30 @@ function planEventDispatch({
   preHookEventOverrides,
 }) {
   const appName = connection?.app_name;
-  if (typeof appName !== 'string' || appName.length === 0) {
+  if (typeof appName !== "string" || appName.length === 0) {
     throw new WorkflowEngineError(
-      'planEventDispatch: connection.app_name is required — apps must wire app_name on the workflows module entry.',
-      { code: 'missing_app_name' },
+      "planEventDispatch: connection.app_name is required — apps must wire app_name on the workflows module entry.",
+      { code: "missing_app_name" },
     );
   }
 
   const workflow = plannedWorkflowDoc;
   const refKey = workflow.entity_ref_key;
-  if (typeof refKey !== 'string' || refKey.length === 0) {
+  if (typeof refKey !== "string" || refKey.length === 0) {
     throw new WorkflowEngineError(
       'planEventDispatch: workflow.entity_ref_key is required — the workflow config must declare entity_ref_key (e.g. "lead_ids").',
-      { code: 'missing_entity_ref_key' },
+      { code: "missing_entity_ref_key" },
     );
   }
 
   // ── Determine event type and render-context branch ──────────────────────
-  const isTrackerMirror = handlerType === 'tracker-mirror';
-  const isSubmit = handlerType === 'SubmitWorkflowAction';
-  const isFieldsUpdate = handlerType === 'UpdateActionFields';
+  const isTrackerMirror = handlerType === "tracker-mirror";
+  const isSubmit = handlerType === "SubmitWorkflowAction";
+  const isFieldsUpdate = handlerType === "UpdateActionFields";
   const isLifecycle =
-    handlerType === 'StartWorkflow' ||
-    handlerType === 'CancelWorkflow' ||
-    handlerType === 'CloseWorkflow';
+    handlerType === "StartWorkflow" ||
+    handlerType === "CancelWorkflow" ||
+    handlerType === "CloseWorkflow";
 
   let eventType;
   let isActionEvent;
@@ -181,7 +179,7 @@ function planEventDispatch({
   if (isFieldsUpdate) {
     // Part 24: signal-less metadata write. Stamp the type directly (no signal
     // to derive it from) and reuse the generic action fallback title.
-    eventType = 'action-fields-updated';
+    eventType = "action-fields-updated";
     isActionEvent = true;
     titleTemplate = ACTION_FALLBACK_TITLE;
   } else if (isTrackerMirror) {
@@ -189,7 +187,7 @@ function planEventDispatch({
     if (!eventType) {
       throw new WorkflowEngineError(
         `planEventDispatch: unknown tracker-mirror signal "${signal}".`,
-        { code: 'unknown_signal' },
+        { code: "unknown_signal" },
       );
     }
     isActionEvent = true;
@@ -198,22 +196,22 @@ function planEventDispatch({
     eventType = `action-${signal}`;
     isActionEvent = true;
     titleTemplate = resolveActionSignalTitle(signal, status_after);
-  } else if (handlerType === 'StartWorkflow') {
-    eventType = 'workflow-started';
+  } else if (handlerType === "StartWorkflow") {
+    eventType = "workflow-started";
     isActionEvent = false;
-    titleTemplate = LIFECYCLE_TITLES['workflow-started'];
-  } else if (handlerType === 'CancelWorkflow') {
-    eventType = 'workflow-cancelled';
+    titleTemplate = LIFECYCLE_TITLES["workflow-started"];
+  } else if (handlerType === "CancelWorkflow") {
+    eventType = "workflow-cancelled";
     isActionEvent = false;
-    titleTemplate = LIFECYCLE_TITLES['workflow-cancelled'];
-  } else if (handlerType === 'CloseWorkflow') {
-    eventType = 'workflow-closed';
+    titleTemplate = LIFECYCLE_TITLES["workflow-cancelled"];
+  } else if (handlerType === "CloseWorkflow") {
+    eventType = "workflow-closed";
     isActionEvent = false;
-    titleTemplate = LIFECYCLE_TITLES['workflow-closed'];
+    titleTemplate = LIFECYCLE_TITLES["workflow-closed"];
   } else {
     throw new WorkflowEngineError(
       `planEventDispatch: unknown handlerType "${handlerType}".`,
-      { code: 'unknown_handler_type' },
+      { code: "unknown_handler_type" },
     );
   }
 
@@ -260,7 +258,15 @@ function planEventDispatch({
       action_ids: (allTouchedActionDocs ?? []).map((a) => a._id),
       [refKey]: [workflow.entity_id],
     },
-    metadata: buildMetadata({ isActionEvent, isFieldsUpdate, plannedActionDoc, signal, status_before, status_after, workflow }),
+    metadata: buildMetadata({
+      isActionEvent,
+      isFieldsUpdate,
+      plannedActionDoc,
+      signal,
+      status_before,
+      status_after,
+      workflow,
+    }),
   };
 
   // ── Apply override layers (any path that supplies an override slice) ────────
@@ -306,7 +312,15 @@ function planEventDispatch({
  * Lifecycle events: { workflow_type, signal }
  * No metadata.comment — superseded by Part 33's foldCommentIntoEvent.
  */
-function buildMetadata({ isActionEvent, isFieldsUpdate, plannedActionDoc, signal, status_before, status_after, workflow }) {
+function buildMetadata({
+  isActionEvent,
+  isFieldsUpdate,
+  plannedActionDoc,
+  signal,
+  status_before,
+  status_after,
+  workflow,
+}) {
   if (isFieldsUpdate) {
     return {
       action_type: plannedActionDoc?.type ?? null,

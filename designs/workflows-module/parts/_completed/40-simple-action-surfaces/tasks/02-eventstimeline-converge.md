@@ -26,7 +26,7 @@ action click yet (workflows aren't live), so this is a clean change, not a
 migration:
 
 - `onActionClick` fires the **action object** (`{ _id, kind, status, link,
-  message, … }` — supplied per card by the `GetEventsTimeline` engine method,
+message, … }` — supplied per card by the `GetEventsTimeline` engine method,
   which projects `_id` and `kind` expressly for this);
 - when **unwired**, the block **navigates via `action.link`** by default
   (same as `ActionSteps`);

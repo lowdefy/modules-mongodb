@@ -6,7 +6,7 @@ Reviewer notes on infrastructure/plumbing concerns in the workflows-module-conce
 
 **Concern.** A single `SubmitWorkflowAction` invocation writes: action transitions, workflow `summary`, `groups[]`, `form_data`, log event, notification dispatch, group `on_complete` fan-out, tracker subscription (potentially recursive), post-hook. None of this is wrapped in a transaction.
 
-The design accepts "caller retry converges to the same end state via idempotency guards." This works for *pure* retry shapes (network failure mid-call, user clicks twice). It does **not** cover:
+The design accepts "caller retry converges to the same end state via idempotency guards." This works for _pure_ retry shapes (network failure mid-call, user clicks twice). It does **not** cover:
 
 - Hook fired but engine write failed → user resubmits, hook fires again (duplicate Slack message, duplicate billing event).
 - Engine write succeeded but log event write failed → no audit record exists for a state change that did happen.
@@ -15,14 +15,14 @@ The design accepts "caller retry converges to the same end state via idempotency
 **Recommendations.**
 
 - **MongoDB sessions/transactions for the core write batch.** Action transitions + `summary` + `groups[]` + `form_data` in one `withTransaction` block. The community-plugin dispatcher doesn't expose sessions; a parallel raw-driver helper for engine-internal writes is the right path. The cost is one helper + one shared `MongoClient`; the win is atomicity across the writes that are most coupled.
-- **Transactional outbox for side effects.** Log event, notifications, group `on_complete`, tracker subscription emit rows to an `outbox` collection *inside* the same transaction as the writes that produced them. A separate worker drains the outbox with retries. This is the standard transactional outbox pattern; it gives you exactly-once-delivery semantics without distributed transactions.
+- **Transactional outbox for side effects.** Log event, notifications, group `on_complete`, tracker subscription emit rows to an `outbox` collection _inside_ the same transaction as the writes that produced them. A separate worker drains the outbox with retries. This is the standard transactional outbox pattern; it gives you exactly-once-delivery semantics without distributed transactions.
 - **`submit_id` on every write.** Caller-supplied or engine-generated UUID. The outbox consumer keys on `submit_id` for deduplication; the engine's idempotency check on retry compares `submit_id` to detect "this submit already wrote, return the cached result."
 
 ## 2. Connection pooling
 
 **Concern.** The community-plugin `MongoDBCollection` opens a fresh `MongoClient` per request and closes it in a `finally` block. A single submit invokes many community-plugin handlers — action reads, action writes, workflow doc update, log event write, notification dispatch. Each is a separate client lifecycle.
 
-The design notes "driver-side pooling makes this cheap." The MongoDB Node driver pools connections *within* a `MongoClient` instance. Opening a fresh `MongoClient` per request **bypasses** the pool — each one establishes new connections, performs handshakes/auth, and tears down on close. Pooling is an in-process concept tied to the client object's lifetime.
+The design notes "driver-side pooling makes this cheap." The MongoDB Node driver pools connections _within_ a `MongoClient` instance. Opening a fresh `MongoClient` per request **bypasses** the pool — each one establishes new connections, performs handshakes/auth, and tears down on close. Pooling is an in-process concept tied to the client object's lifetime.
 
 **Recommendations.**
 
@@ -54,7 +54,7 @@ This is a recursive cross-layer call: plugin (JS) → API resolver (YAML routine
 
 **Recommendations.**
 
-- **Same outbox treatment for post-write effects.** Pre-hook stays synchronous (it can abort the submit). Post-hook, log event, notification, group `on_complete` all run *after* the engine writes commit — push them to the outbox and run asynchronously.
+- **Same outbox treatment for post-write effects.** Pre-hook stays synchronous (it can abort the submit). Post-hook, log event, notification, group `on_complete` all run _after_ the engine writes commit — push them to the outbox and run asynchronously.
 - **Correlation ID threaded through every callApi.** The engine generates a `correlation_id` on entry; every nested call inherits it; logs and events carry it. This is table stakes once you have callApi recursion.
 - **Document the depth limit's user-facing behaviour.** When the limit trips, what does the user see? "Workflow misconfigured" with a structured error citing the chain? Decide and ship.
 
@@ -131,7 +131,7 @@ For reference: how full version pinning would work in this codebase, and why it 
 
 **A pragmatic hybrid: per-instance definition snapshot.**
 
-If you ever wanted *some* of the version-pinning benefit without the full architecture shift:
+If you ever wanted _some_ of the version-pinning benefit without the full architecture shift:
 
 - At `start-workflow`, snapshot the resolved definition (just the behavioural bits — actions list, `blocked_by`, `action_groups`, `status_map`, interaction → status table, hook ids) onto the workflow doc under `definition_snapshot: {...}`.
 - Engine reads `definition_snapshot` instead of the live `workflowsConfig` for submit-time decisions on this instance.
@@ -139,7 +139,7 @@ If you ever wanted *some* of the version-pinning benefit without the full archit
 - Hooks: commit to additive-only Api changes (deployed hook Apis never have breaking changes; new behaviour goes in new Api IDs).
 - Migration becomes "rewrite `definition_snapshot` on selected instances" — same migration discipline as the latest-wins approach, just with a richer per-instance state to migrate.
 
-This sidesteps the page-generation and endpoint-generation problems while preserving the *behaviour* pinning that's the main value of versioning. The cost is a larger workflow doc and the discipline of keeping hook Apis backward-compatible.
+This sidesteps the page-generation and endpoint-generation problems while preserving the _behaviour_ pinning that's the main value of versioning. The cost is a larger workflow doc and the discipline of keeping hook Apis backward-compatible.
 
 **When to revisit the chosen approach.** Latest-wins + migrations is correct for the current project scale. Signals that would push toward pinning (or the hybrid above):
 

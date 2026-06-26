@@ -38,7 +38,7 @@ The `access.{app_name}` shape is a verb→gate map: `view`/`edit`/`review`/`erro
 - `makeActionPages` emits pages from the `access.{app}` map keys, ids unprefixed.
 - `makeWorkflowApis` emits unprefixed ids and rejects the reserved `workflow` type.
 - Tests (`makeWorkflowsConfig.test.js`, `makeActionPages.test.js`, `makeWorkflowApis.test.js`) cover accept/reject cases and the reserved-name rejection.
-- `validateActionAccess`'s role-gate validation is consistent with the shared `gates.fixtures.js` semantics (task 5) — the validator validates *shape*, but where it evaluates gate membership it must agree with the oracle.
+- `validateActionAccess`'s role-gate validation is consistent with the shared `gates.fixtures.js` semantics (task 5) — the validator validates _shape_, but where it evaluates gate membership it must agree with the oracle.
 
 ## Files
 

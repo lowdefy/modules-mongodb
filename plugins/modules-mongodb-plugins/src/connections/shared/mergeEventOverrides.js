@@ -31,7 +31,11 @@ import deepMerge from "./phases/planners/deepMerge.js";
  * @param {object} [args.preHookOverride]
  * @returns {{ type: string, display: object, references: object, metadata: object }}
  */
-function mergeEventOverrides({ defaultPayload, yamlOverride, preHookOverride }) {
+function mergeEventOverrides({
+  defaultPayload,
+  yamlOverride,
+  preHookOverride,
+}) {
   const overlayObject = (base, override) => {
     if (override === undefined) return base;
     return { ...base, ...override };
@@ -53,7 +57,10 @@ function mergeEventOverrides({ defaultPayload, yamlOverride, preHookOverride }) 
     };
   };
 
-  const merged = overlay(overlay(defaultPayload, yamlOverride), preHookOverride);
+  const merged = overlay(
+    overlay(defaultPayload, yamlOverride),
+    preHookOverride,
+  );
 
   // Description is comment-only (D4) — strip any that survived the merge so the
   // post-render comment fold is the sole writer of that slot.

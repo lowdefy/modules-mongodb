@@ -13,17 +13,25 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
 **Define phase contract types** (extend `shared/types.js` or add `shared/phases/types.js`):
 
 - `LoadedState` — `{ workflow, actions[], workflowConfig, actionConfig (Submit only), targetAction (Submit only) }`. `targetAction` is a convenience handle — `actions.find((a) => String(a._id) === payload.action_id)` — the doc the handler (task 15) passes as `planActionTransition`'s `action` input (task 10).
-- `PreHookResult` — `{ actions: [{ target, signal, upsert?, fields?, metadata? }], event_overrides, form_overrides }`. An `actions[]` entry may carry `upsert: true` to spawn a missing keyed target (D4 / D13 (2)); `target` then identifies a not-yet-existing `(type, key)`. Optional `fields?` / `metadata?` are the data-seeding channel (state-machine.md path 3). *(Deviation note: this task was implemented before review-10 #3 added `fields?` / `metadata?`; the typedef catch-up lands in task 14.)*
+- `PreHookResult` — `{ actions: [{ target, signal, upsert?, fields?, metadata? }], event_overrides, form_overrides }`. An `actions[]` entry may carry `upsert: true` to spawn a missing keyed target (D4 / D13 (2)); `target` then identifies a not-yet-existing `(type, key)`. Optional `fields?` / `metadata?` are the data-seeding channel (state-machine.md path 3). _(Deviation note: this task was implemented before review-10 #3 added `fields?` / `metadata?`; the typedef catch-up lands in task 14.)_
 - `Plan` — exactly the D3 shape:
   ```ts
   type Plan = {
-    workflow: { doc: WorkflowDoc; operation: "insert" | "update"; changeLog: ChangeLogDelta };  // per-doc changeLog = raw { before, after } delta (null before for insert); operation: update (default) for Submit/Cancel/Close/tracker, insert for Start (D3 — commit step 1 dispatches accordingly)
-    actions: Array<{ doc: ActionDoc; operation: "insert" | "update"; changeLog: ChangeLogDelta }>;
-    event: { doc: EventDoc };  // exactly one per invocation — the doc's _id IS the per-invocation event_id (a second entry would collide on _id); the type enforces the invariant (D3)
-    changeLog: ChangeLogEntry[];  // finished community-schema log-changes entries built by planChangeLog (task 12) from the per-doc deltas; commit step 5 inserts these. Empty when changeLog is unconfigured.
+    workflow: {
+      doc: WorkflowDoc;
+      operation: "insert" | "update";
+      changeLog: ChangeLogDelta;
+    }; // per-doc changeLog = raw { before, after } delta (null before for insert); operation: update (default) for Submit/Cancel/Close/tracker, insert for Start (D3 — commit step 1 dispatches accordingly)
+    actions: Array<{
+      doc: ActionDoc;
+      operation: "insert" | "update";
+      changeLog: ChangeLogDelta;
+    }>;
+    event: { doc: EventDoc }; // exactly one per invocation — the doc's _id IS the per-invocation event_id (a second entry would collide on _id); the type enforces the invariant (D3)
+    changeLog: ChangeLogEntry[]; // finished community-schema log-changes entries built by planChangeLog (task 12) from the per-doc deltas; commit step 5 inserts these. Empty when changeLog is unconfigured.
     // No `notifications` field: the engine builds no notification doc. After commit it
     // fires callApi("send-notification", { event_ids }) keyed on the committed events (D9 step 4).
-    completedGroups: Array<{ workflow_id; id; on_complete }>;  // groups newly `done` — loaded vs planned groups diff + on_complete join (D3); feeds the handler return + post-hook result bag. *(Deviation note: added by review-11 #2 after this task was implemented; the typedef catch-up lands in task 14, the producing step in task 15 planSubmit step 5.)*
+    completedGroups: Array<{ workflow_id; id; on_complete }>; // groups newly `done` — loaded vs planned groups diff + on_complete join (D3); feeds the handler return + post-hook result bag. *(Deviation note: added by review-11 #2 after this task was implemented; the typedef catch-up lands in task 14, the producing step in task 15 planSubmit step 5.)*
     trackerFires: Array<{ parentWorkflowId; parentActionId; signal }>;
   };
   ```
@@ -43,6 +51,7 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
   Reject unless `access.{current_app}.{verb}` is `true` or intersects the user's roles. In load-phase JS that means: `gate = actionConfig.access?.[current_app]?.[verb]`, `userRoles = context.user.apps?.[current_app]?.roles ?? []`, evaluated through the same `(gate, userRoles) → bool` helper semantics as tasks 7/8 — a gate-absent verb and empty user roles vs a non-`true` gate both fail closed (task 5 categories 4–5). Add a test running `gates.fixtures.js` (task 5) through this JS gate.
 
   This per-verb gate **replaces** the action-wide `access.roles` intersection in today's `handleSubmit.js:104` — Part 34 D4 removes that shape (the resolver hard-errors on it, design.md D16). Do not preserve both checks.
+
 - Output: `LoadedState`. After load returns, **no further reads happen** until the next load (the tracker next-level load).
 
 **Relocate the pure group-recompute helpers** `SubmitWorkflowAction/recomputeGroups.js` + `SubmitWorkflowAction/deriveGroupStatus.js` (and their `.test.js` files) to `shared/phases/planners/`, unchanged. Both `planAutoUnblock` (task 10, the fixpoint's between-pass recompute) and `planWorkflowRecompute` (task 11, the final workflow-doc composition) import this **same shared helper** — neither reimplements it nor exports its own (one correct way) — which is what keeps tasks 10 and 11 parallel-safe after this task.
@@ -68,5 +77,5 @@ The `Plan` type definition belongs here (it is the shared contract the planners 
 ## Notes
 
 - The access gate is the write-path-coupled half of Part 34's submit gating (per D16) — it lives with the rebuild, unlike `visible_verbs_filter.yaml` (task 7).
-- The verb-resolution table here must match `hasReview`'s inputs conceptually but is a separate concern (this resolves the *required verb for authorization*; `hasReview` resolves the *landing stage*).
+- The verb-resolution table here must match `hasReview`'s inputs conceptually but is a separate concern (this resolves the _required verb for authorization_; `hasReview` resolves the _landing stage_).
 - This depends on task 1 (`findDocs`), task 2 (`resolveSignal`/verb concepts), and task 5 (gate oracle).

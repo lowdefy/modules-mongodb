@@ -25,9 +25,9 @@ The entity-page widget — host apps drop it onto their entity pages to surface 
 
 **Vars contract:**
 
-| Var                 | Type   | Required | Description                                                                                                                                            |
-| ------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `entity_id`         | string | yes      | The entity's `_id`. Passed straight through to `get-entity-workflows`'s `payload.entity_id`.                                                            |
+| Var                 | Type   | Required | Description                                                                                                                                                                                  |
+| ------------------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entity_id`         | string | yes      | The entity's `_id`. Passed straight through to `get-entity-workflows`'s `payload.entity_id`.                                                                                                 |
 | `entity_collection` | string | yes      | The entity's MongoDB collection name (per [part 21](../_completed/21-entity-type-to-collection/design.md)). Passed straight through to `get-entity-workflows`'s `payload.entity_collection`. |
 
 The component's behaviour (iteration, client-side grouping + sort, `ActionSteps` data prep) is hardcoded; callers don't customize it beyond the two ids. Per-action rendering itself is delegated to the `ActionSteps` block — see "Client-side data prep for `ActionSteps`" below.
@@ -75,7 +75,11 @@ A `_ref`-able component rendered as a per-workflow strip plus a slot for collaps
         - id: action_steps
           type: ActionSteps
           properties:
-            actionGroupConfig: { <client-side map, see "Client-side data prep for `ActionSteps`" under actions-on-entity> }
+            actionGroupConfig:
+              {
+                <client-side map,
+                see "Client-side data prep for `ActionSteps`" under actions-on-entity>,
+              }
             items: { <client-side items array, see same> }
 
 # workflow-overview (part 17)
@@ -90,17 +94,17 @@ A `_ref`-able component rendered as a per-workflow strip plus a slot for collaps
 
 **Vars contract:**
 
-| Var                 | Type            | Required | Description                                                                                                                                                                                                                                                                                                                              |
-| ------------------- | --------------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `workflow`          | object          | yes      | The workflow doc. Must carry `_id`, `workflow_type`, `status[0].stage`, `summary.{done, not_required, total}`, and `groups[]` with `{ id, status, summary }` as persisted by [`recomputeGroups.js`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/recomputeGroups.js). Group titles are not on the doc — the component resolves them from `_global: workflows_config[workflow.workflow_type].action_groups[]` by `id` (see "Group title resolution" below). Source: an element of `get-entity-workflows`'s `workflows[]` for the entity-page caller; the top-level `workflow` field of `get-workflow-overview`'s response for the overview-page caller. |
-| `blocks`            | array of blocks | yes      | Collapsible content the toggle hides/shows. On the entity page (`actions-on-entity`) the caller passes a single `ActionSteps` block — no form-data rendering, no per-action card body, just the steps tree. On `workflow-overview` (part 17) the caller passes the action card list, which is where the per-action `form_data` rendering lives. The component renders the strip (title, lifecycle badge, summary counts, milestone label, toggle, workflow-overview link) then renders `blocks` underneath; the toggle controls a `Box`'s `visible` around `blocks`. |
-| `collapsed_default` | boolean         | no, default `false` | Initial collapse state. Lets `actions-on-entity` ship a completed-workflow row pre-collapsed (per the "Completed workflow: collapsed tile with a check mark" rule in concept ui/spec.md § `actions-on-entity` states) while `workflow-overview` keeps expanded by default. Ephemeral per render — collapse state persistence is the open question in [Open questions](#open-questions). |
-| `is_overview_page` | boolean         | no, default `false` | Suppresses the workflow-overview link button when the host page is itself `workflow-overview` (otherwise the button would link the page to itself). `actions-on-entity` always passes `false`; part 17's `workflow-overview` passes `true`. |
+| Var                 | Type            | Required            | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------- | --------------- | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `workflow`          | object          | yes                 | The workflow doc. Must carry `_id`, `workflow_type`, `status[0].stage`, `summary.{done, not_required, total}`, and `groups[]` with `{ id, status, summary }` as persisted by [`recomputeGroups.js`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/recomputeGroups.js). Group titles are not on the doc — the component resolves them from `_global: workflows_config[workflow.workflow_type].action_groups[]` by `id` (see "Group title resolution" below). Source: an element of `get-entity-workflows`'s `workflows[]` for the entity-page caller; the top-level `workflow` field of `get-workflow-overview`'s response for the overview-page caller. |
+| `blocks`            | array of blocks | yes                 | Collapsible content the toggle hides/shows. On the entity page (`actions-on-entity`) the caller passes a single `ActionSteps` block — no form-data rendering, no per-action card body, just the steps tree. On `workflow-overview` (part 17) the caller passes the action card list, which is where the per-action `form_data` rendering lives. The component renders the strip (title, lifecycle badge, summary counts, milestone label, toggle, workflow-overview link) then renders `blocks` underneath; the toggle controls a `Box`'s `visible` around `blocks`.                                                                                                                                   |
+| `collapsed_default` | boolean         | no, default `false` | Initial collapse state. Lets `actions-on-entity` ship a completed-workflow row pre-collapsed (per the "Completed workflow: collapsed tile with a check mark" rule in concept ui/spec.md § `actions-on-entity` states) while `workflow-overview` keeps expanded by default. Ephemeral per render — collapse state persistence is the open question in [Open questions](#open-questions).                                                                                                                                                                                                                                                                                                                |
+| `is_overview_page`  | boolean         | no, default `false` | Suppresses the workflow-overview link button when the host page is itself `workflow-overview` (otherwise the button would link the page to itself). `actions-on-entity` always passes `false`; part 17's `workflow-overview` passes `true`.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 **What the component renders (the strip):**
 
 - **Title** — `workflowsConfig.{workflow.workflow_type}.title` via `_global: workflows_config` lookup. The workflow doc carries `workflow_type` (per [`StartWorkflow.js:77`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js)), not a `title` field — human-readable titles live in build-time `workflowsConfig`.
-- **Workflow-overview link button** — Tooltip-wrapped icon button (Antd `LuWorkflow` icon, matching v0's `apps/prp-team/pages/tickets/ticket-view/components/action_groups.yaml`) that navigates to `workflow-overview?workflow_id=<workflow._id>` via Lowdefy `Link`. The button is suppressed when the host page *is* `workflow-overview` (per the `is_overview_page` var below) — otherwise the page would link to itself.
+- **Workflow-overview link button** — Tooltip-wrapped icon button (Antd `LuWorkflow` icon, matching v0's `apps/prp-team/pages/tickets/ticket-view/components/action_groups.yaml`) that navigates to `workflow-overview?workflow_id=<workflow._id>` via Lowdefy `Link`. The button is suppressed when the host page _is_ `workflow-overview` (per the `is_overview_page` var below) — otherwise the page would link to itself.
 - **Lifecycle stage badge** — `workflow.status[0].stage` rendered with `global.workflow_lifecycle_stages` display attributes.
 - **Summary counts** — `workflow.summary.{done, not_required, total}` (e.g. "3 of 7 done").
 - **Current-phase milestone** — title of the lowest-ordered group whose `status !== done` (concept's group-based milestone rule); falls back to the workflow's title when every group is `done` (per [ui/spec.md § `workflow-header`](../../../workflows-module-concept/ui/spec.md)). Title comes from the same `_global: workflows_config` join as group titles below.
@@ -126,13 +130,13 @@ A `_ref`-able YAML file containing an action sequence (not a block). Callers com
     path: ../components/action_role_check.yaml
     vars:
       action_config:
-        _var: action_config   # full action config — the sequence reads access.roles off it
+        _var: action_config # full action config — the sequence reads access.roles off it
 ```
 
 **Vars contract:**
 
-| Var            | Type   | Required | Description                                                                                                                |
-| -------------- | ------ | -------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Var             | Type   | Required | Description                                                                                                                                                       |
+| --------------- | ------ | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `action_config` | object | yes      | The action's config object (carries `access.{app_name}` verb list and `access.roles`). Resolved by the caller from `_var: action_config` (part 16) or equivalent. |
 
 **What the sequence does** — pure roles check, matching v0's `action_role_check.yaml` and the engine's submit-time gate at [`handleSubmit.js:115-124`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js):
@@ -141,7 +145,7 @@ A `_ref`-able YAML file containing an action sequence (not a block). Callers com
 2. Computes the role intersection: `access.roles` ∩ user roles. Empty / missing `access.roles` ⇒ allowed (matches the engine's "empty or missing = no gate" rule).
 3. `SetState`: writes the boolean to `_state.action_allowed`.
 
-**No verb-membership check** — per-app verb gating happens upstream (page emission in [part 12](../12-resolver-pages/design.md) per the action's `access.{app_name}` list at build time, and query-time visibility in `get-entity-workflows` via [`access_filter.yaml`](../../../../modules/workflows/api/stages/access_filter.yaml)). By the time a page renders to the user, the question this primitive answers is "given that this user has access to *some* verb on this action, do their roles let them write?" — which is exactly the engine's submit-time question. Mirroring it client-side is defense in depth and avoids surfacing buttons the server will reject.
+**No verb-membership check** — per-app verb gating happens upstream (page emission in [part 12](../12-resolver-pages/design.md) per the action's `access.{app_name}` list at build time, and query-time visibility in `get-entity-workflows` via [`access_filter.yaml`](../../../../modules/workflows/api/stages/access_filter.yaml)). By the time a page renders to the user, the question this primitive answers is "given that this user has access to _some_ verb on this action, do their roles let them write?" — which is exactly the engine's submit-time question. Mirroring it client-side is defense in depth and avoids surfacing buttons the server will reject.
 
 **Consumers (the externally-stable contract Part 18 commits to):**
 
@@ -159,7 +163,7 @@ These three components are exposed via `module.lowdefy.yaml`'s `exports.componen
 
 - **Restricted-action display** — concept marks as open question. Hide for v1.
 - **`workflow-history` timeline** mentioned in concept ui spec for status-map binding — out of v1 scope per the concept's component list (the exported set is the three above only).
-- **Entity-kind label on `workflow-header`** — [part 17 design.md:90](../17-shared-pages/design.md) notes that `workflow-header` *may* consume `vars.entities[entity_collection].title` for an entity-kind label (e.g. "Lead: Onboarding"). Deferred to v1.x per [review-1 #14](designs/workflows-module/parts/_completed/18-entity-components/review/review-1.md); adding it later is purely additive since `_module.var: entities` is already required at the manifest level.
+- **Entity-kind label on `workflow-header`** — [part 17 design.md:90](../17-shared-pages/design.md) notes that `workflow-header` _may_ consume `vars.entities[entity_collection].title` for an entity-kind label (e.g. "Lead: Onboarding"). Deferred to v1.x per [review-1 #14](designs/workflows-module/parts/_completed/18-entity-components/review/review-1.md); adding it later is purely additive since `_module.var: entities` is already required at the manifest level.
 
 ## Depends on
 

@@ -74,7 +74,7 @@ Checked design.md, both reviews, and all six task files after the review-2 actio
 ### 9. Task 5 §1 (action-authoring edits) instructed writing the wrong request-changes attribution into the concept doc
 
 **Type:** Design-vs-Task
-**Source of truth:** review-2 finding #2 — review explicitly warned "the concept-doc correction tasks must write *this* shape, or they replace one stale doc claim with another"
+**Source of truth:** review-2 finding #2 — review explicitly warned "the concept-doc correction tasks must write _this_ shape, or they replace one stale doc claim with another"
 **Files affected:** `tasks/05-concept-docs-roadmap.md`
 **Resolution:** The "remove the stale modals paragraph" bullet now writes the verified knob distribution instead of `buttons.request_changes.modal.*`.
 

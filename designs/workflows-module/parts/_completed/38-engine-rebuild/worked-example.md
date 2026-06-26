@@ -10,8 +10,18 @@ action_groups:
   - id: install
     actions:
       - { type: install-step, kind: simple, action_group: install }
-      - { type: install-verify, kind: form, action_group: install, blocked_by: [install-step] }
-      - { type: install-cleanup, kind: simple, action_group: install, blocked_by: [install-step] }
+      - {
+          type: install-verify,
+          kind: form,
+          action_group: install,
+          blocked_by: [install-step],
+        }
+      - {
+          type: install-cleanup,
+          kind: simple,
+          action_group: install,
+          blocked_by: [install-step],
+        }
 ```
 
 State before submit:

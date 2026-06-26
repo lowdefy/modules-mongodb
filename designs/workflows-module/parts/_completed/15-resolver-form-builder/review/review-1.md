@@ -13,7 +13,7 @@ Design `design.md:18-19` says the resolver walks each `form:` entry and recurses
 ```yaml
 - component: controlled_list
   key: form.devices
-  form:                                   # ← spec's var name
+  form: # ← spec's var name
     - { component: label_value, ... }
 ```
 
@@ -59,9 +59,9 @@ This also matters because the build-time validation list at `design.md:40-44` li
 
 Two questions the design needs to answer:
 
-a. **What does `type` mean in the emitted metadata?** Three plausible interpretations: (i) the `component:` name the author wrote (`text_input`, `controlled_list`); (ii) the rendered Lowdefy block type (`TextInput`, `ControlledList`); (iii) a normalized "field kind" (text/date/file/choice/structural). [Part 17 design.md:40](../../17-shared-pages/design.md) needs `(action_form_configs.{action_type}.form, .form_review)` to drive a read-only DataView — which means part 17 needs to switch on the *author's* component vocabulary to pick the right renderer for each field's value. That's interpretation (i). Spell it out.
+a. **What does `type` mean in the emitted metadata?** Three plausible interpretations: (i) the `component:` name the author wrote (`text_input`, `controlled_list`); (ii) the rendered Lowdefy block type (`TextInput`, `ControlledList`); (iii) a normalized "field kind" (text/date/file/choice/structural). [Part 17 design.md:40](../../17-shared-pages/design.md) needs `(action_form_configs.{action_type}.form, .form_review)` to drive a read-only DataView — which means part 17 needs to switch on the _author's_ component vocabulary to pick the right renderer for each field's value. That's interpretation (i). Spell it out.
 
-b. **What about structural components** (`box`, `section`, `controlled_list`, `label`) **that wrap other components?** A `controlled_list` field doesn't have a primitive value at `form_data.{action_type}.{key}` — it has an array of sub-rows. The "flat list of (id, type, required)" hides the tree shape that part 17's overview cards need to render. Either the metadata is *not* flat (it preserves nesting) or part 17 needs a different shape.
+b. **What about structural components** (`box`, `section`, `controlled_list`, `label`) **that wrap other components?** A `controlled_list` field doesn't have a primitive value at `form_data.{action_type}.{key}` — it has an array of sub-rows. The "flat list of (id, type, required)" hides the tree shape that part 17's overview cards need to render. Either the metadata is _not_ flat (it preserves nesting) or part 17 needs a different shape.
 
 Recommendation: drop "flat" from the metadata shape. Emit the tree: each node carries `{ component, key, required, title }` plus children (for structural components with sub-forms). Templates pick a renderer per `component` name. The "field types, validation, and defaults" claim in `design.md:7` is honest only if `validate` and `default` survive into the metadata too — which they don't appear to in the design's bullet list.
 
@@ -185,9 +185,10 @@ Add three fixtures.
 
 ## What's solid
 
-- **Per-action keying.** [design.md:24](../design.md) keys `action_form_configs` by `{action_type}` (or `{action_type}.{key}` for keyed actions) — but the second form is wrong: per-finding 12, keys are runtime concerns, and there is one config per **action type** in the workflow YAML regardless of how many instances spawn. Reword to: "keyed by `{action_type}` — the action_type is the schema identity; per-instance keys vary at runtime and don't affect schema."  (Marking solid only for the action_type key; the parenthetical is a minor correction.)
+- **Per-action keying.** [design.md:24](../design.md) keys `action_form_configs` by `{action_type}` (or `{action_type}.{key}` for keyed actions) — but the second form is wrong: per-finding 12, keys are runtime concerns, and there is one config per **action type** in the workflow YAML regardless of how many instances spawn. Reword to: "keyed by `{action_type}` — the action_type is the schema identity; per-instance keys vary at runtime and don't affect schema." (Marking solid only for the action_type key; the parenthetical is a minor correction.)
 
 > **Resolved (parenthetical correction).** The original "or `{action_type}.{key}` for keyed actions" wording was dropped during the finding #4 rewrite of `makeActionFormConfigs.js`. New wording: "keyed by `{action_type}` (the action_type is the schema identity; per-instance keys on keyed actions vary at runtime and don't affect schema, so they don't appear in this map)." Verified at the rewritten section in design.md.
+
 - **Scope discipline.** Cross-form id dedup deferred to authors, custom-component support out of scope. Clean cuts.
 - **Contract-to-neighbours section.** Names the three downstream consumers (parts 12, 16, 17) explicitly. Good handoff shape.
 - **No engine touchpoints.** Pure build-time resolver. Failure mode is build failure — easy to debug, easy to fix without redeploys.

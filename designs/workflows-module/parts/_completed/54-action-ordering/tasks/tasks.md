@@ -10,14 +10,14 @@ config plumbing, docs, and demo configs.
 
 ## Tasks
 
-| #   | File                                  | Summary                                                                                   | Depends On |
-| --- | ------------------------------------- | ----------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-create-comparator.md`             | New `compareActionOrder.js` (`makeWorkflowOrderComparator`) + unit tests                  | —          |
-| 2   | `02-wire-get-workflow-overview.md`    | Replace `GetWorkflowOverview` bespoke sort with the comparator; sink `not-required` (D4)  | 1          |
-| 3   | `03-wire-entity-and-group-overview.md`| Replace `GetEntityWorkflows` + `GetWorkflowActionGroupOverview` within-group sort         | 1          |
-| 4   | `04-wire-get-events-timeline.md`      | Remove `$sortArray` stage; sort raw actions via comparator in JS; overhaul fixture        | 1          |
-| 5   | `05-retire-sort-order-plumbing.md`    | Drop `sort_order` from `ACTION_FIELDS`, `makeActionPages`, README, `view.yaml.njk`        | —          |
-| 6   | `06-cleanup-docs-and-demo.md`         | Strip `sort_order` from demo configs + concept spec/design; correct D1 prose; F12 pointer | —          |
+| #   | File                                   | Summary                                                                                   | Depends On |
+| --- | -------------------------------------- | ----------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-create-comparator.md`              | New `compareActionOrder.js` (`makeWorkflowOrderComparator`) + unit tests                  | —          |
+| 2   | `02-wire-get-workflow-overview.md`     | Replace `GetWorkflowOverview` bespoke sort with the comparator; sink `not-required` (D4)  | 1          |
+| 3   | `03-wire-entity-and-group-overview.md` | Replace `GetEntityWorkflows` + `GetWorkflowActionGroupOverview` within-group sort         | 1          |
+| 4   | `04-wire-get-events-timeline.md`       | Remove `$sortArray` stage; sort raw actions via comparator in JS; overhaul fixture        | 1          |
+| 5   | `05-retire-sort-order-plumbing.md`     | Drop `sort_order` from `ACTION_FIELDS`, `makeActionPages`, README, `view.yaml.njk`        | —          |
+| 6   | `06-cleanup-docs-and-demo.md`          | Strip `sort_order` from demo configs + concept spec/design; correct D1 prose; F12 pointer | —          |
 
 ## Ordering Rationale
 

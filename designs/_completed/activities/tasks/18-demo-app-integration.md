@@ -30,7 +30,7 @@ Or if using inline vars (no separate vars file):
 ```yaml
 - id: activities
   source: "file:../../modules/activities"
-  vars: {}    # empty — relies on the module's defaults
+  vars: {} # empty — relies on the module's defaults
 ```
 
 If a `modules/activities/vars.yaml` file is the convention (companies/contacts use this — verify), create it with empty defaults that the demo doesn't need to override. Otherwise omit.

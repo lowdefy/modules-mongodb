@@ -4,7 +4,7 @@
 
 `qualify` is the first action in the new `onboarding` workflow's worked example — `kind: form`, in group `g1`, the starting action of the workflow. When the user clicks it on lead-view they get routed to the resolver-emitted `onboarding-qualify-edit` page; submitting fires `update-action-qualify` which transitions the action to `done`, fires side effects (log event + notifications via part 8), and runs the pre-hook (once part 9 ships).
 
-The `makeWorkflowApis` resolver ([modules/workflows/resolvers/makeWorkflowApis.js](makeWorkflowApis.js)) reads inline `hooks.{interaction}.{phase}.routine` off the action and emits the Lowdefy Api at build time with id `update-action-{type}-{interaction}-{phase}`. The author writes the routine inline; to keep the action file readable, the routine *content* lives in a sibling YAML and is pulled in via `_ref`.
+The `makeWorkflowApis` resolver ([modules/workflows/resolvers/makeWorkflowApis.js](makeWorkflowApis.js)) reads inline `hooks.{interaction}.{phase}.routine` off the action and emits the Lowdefy Api at build time with id `update-action-{type}-{interaction}-{phase}`. The author writes the routine inline; to keep the action file readable, the routine _content_ lives in a sibling YAML and is pulled in via `_ref`.
 
 This task creates the two files. `onboarding.yaml` doesn't yet reference this action — task 8 wires it into the workflow's `actions[]`.
 
@@ -33,7 +33,7 @@ This task creates the two files. `onboarding.yaml` doesn't yet reference this ac
 
    ```yaml
    - id: derive_display
-     type: Set    # or any operator-style step; minimal placeholder is fine
+     type: Set # or any operator-style step; minimal placeholder is fine
      params:
        display: Lead qualified by demo pre-hook.
    - :return:
@@ -42,7 +42,7 @@ This task creates the two files. `onboarding.yaml` doesn't yet reference this ac
            _step: derive_display.display
    ```
 
-   The exact step types aren't load-bearing — the file ships dormant until part 9 lights up hook dispatch. The point is to demonstrate the *shape* an author would write.
+   The exact step types aren't load-bearing — the file ships dormant until part 9 lights up hook dispatch. The point is to demonstrate the _shape_ an author would write.
 
 ## Acceptance Criteria
 

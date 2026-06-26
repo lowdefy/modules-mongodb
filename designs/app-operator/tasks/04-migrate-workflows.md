@@ -5,7 +5,7 @@
 Two changes to the workflows subsystem land together because they share the `workflow-api` connection interface — splitting them would break the per-task build check:
 
 - **Part A — `_app` migration.** Drop the `app_name` manifest var; swap reads to `_app: slug` (runtime) / `_build.app: slug` (build-time resolver).
-- **Part B — identifier rename.** Rename the `app_name`/`appName` *identifier* to `slug` everywhere it denotes the slug value, across `modules/workflows/resolvers/` and the `plugins/modules-mongodb-plugins/` engine — including the `WorkflowAPI` connection property. See [design.md §Rename the `app_name` identifier to `slug`](../design.md#rename-the-app_name-identifier-to-slug-in-code). The stored field `created.app_name` and the slug-valued stored keys (`action.{slug}`, `access.{slug}`, `user.apps.{slug}`) are **not** renamed — only code/config names.
+- **Part B — identifier rename.** Rename the `app_name`/`appName` _identifier_ to `slug` everywhere it denotes the slug value, across `modules/workflows/resolvers/` and the `plugins/modules-mongodb-plugins/` engine — including the `WorkflowAPI` connection property. See [design.md §Rename the `app_name` identifier to `slug`](../design.md#rename-the-app_name-identifier-to-slug-in-code). The stored field `created.app_name` and the slug-valued stored keys (`action.{slug}`, `access.{slug}`, `user.apps.{slug}`) are **not** renamed — only code/config names.
 
 The careful build-time site is the `makeActionPages.js` resolver: it consumes the slug at build to emit per-action pages. An unevaluated operator object slips past its `if (!appName)` guard and silently emits zero pages — so the resolver var must be `{ _build.app: slug }`.
 
@@ -29,11 +29,14 @@ The careful build-time site is the `makeActionPages.js` resolver: it consumes th
      ```js
      const { workflows, slug } = vars;
      if (typeof slug !== "string" || !slug) {
-       fail(`vars.slug is required and must be a non-empty string (got: ${JSON.stringify(slug)}).`);
+       fail(
+         `vars.slug is required and must be a non-empty string (got: ${JSON.stringify(slug)}).`,
+       );
      }
      ```
 
      This is cheap insurance over the unverified `_build.app: slug` resolver form: if it ever fails to deliver a string, the build breaks rather than shipping a workflows app with zero action pages.
+
    - `modules/workflows/resolvers/makeWorkflowsConfig.js`: rename the `appName` loop variable (over `Object.entries(access)`) → `slug`; update `{app_name}` placeholders in error strings → `{slug}`.
    - `modules/workflows/resolvers/makeActionPages.test.js`: `app_name:` fixtures → `slug:`.
    - `modules/workflows/resolvers/README.md`, `modules/workflows/README.md`: update prose/inputs.
@@ -74,5 +77,5 @@ The careful build-time site is the `makeActionPages.js` resolver: it consumes th
 ## Notes
 
 - This is the largest task by file count (~30 files across two packages) but mechanically uniform — a scoped find/replace of an identifier plus the two `_app`/`_build.app` value swaps. Keep it one task: the connection-property rename must be lockstep or the build breaks mid-sequence.
-- Watch the stored/code boundary: a blind `app_name → slug` replace across the plugin would corrupt any `created.app_name` fixture. The data keys indexed *by the slug value* (`action[slug]`) are safe — those use the variable, not the literal.
+- Watch the stored/code boundary: a blind `app_name → slug` replace across the plugin would corrupt any `created.app_name` fixture. The data keys indexed _by the slug value_ (`action[slug]`) are safe — those use the variable, not the literal.
 - This task also clears the forward note tracked by Task 8 only via the back-reference there; no action here.

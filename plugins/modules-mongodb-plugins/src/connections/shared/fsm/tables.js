@@ -23,78 +23,78 @@
  */
 export function hasReview(actionConfig) {
   return Object.values(actionConfig?.access ?? {}).some(
-    (appBlock) => appBlock != null && 'review' in appBlock,
+    (appBlock) => appBlock != null && "review" in appBlock,
   );
 }
 
 // The `submit` function cell: in-review iff the action declares a review verb,
 // else done. Same rule for form and check kinds.
 const submitTarget = ({ actionConfig }) =>
-  hasReview(actionConfig) ? 'in-review' : 'done';
+  hasReview(actionConfig) ? "in-review" : "done";
 
 // --- Form kind (inherited by `check` via the alias below). -----------------
 const form = {
   // Creation source state — only reachable via the upsert-spawn path (task 10).
   none: {
-    request_changes: 'changes-required',
-    error: 'error',
-    activate: 'action-required',
-    block: 'blocked',
+    request_changes: "changes-required",
+    error: "error",
+    activate: "action-required",
+    block: "blocked",
   },
   blocked: {
-    not_required: 'not-required',
-    error: 'error',
-    unblock: 'action-required',
-    activate: 'action-required',
-    internal_cancel_action: 'not-required',
+    not_required: "not-required",
+    error: "error",
+    unblock: "action-required",
+    activate: "action-required",
+    internal_cancel_action: "not-required",
   },
-  'action-required': {
+  "action-required": {
     submit: submitTarget,
-    progress: 'in-progress',
-    not_required: 'not-required',
-    error: 'error',
-    block: 'blocked',
-    internal_cancel_action: 'not-required',
+    progress: "in-progress",
+    not_required: "not-required",
+    error: "error",
+    block: "blocked",
+    internal_cancel_action: "not-required",
   },
-  'in-progress': {
+  "in-progress": {
     submit: submitTarget,
-    progress: 'in-progress',
-    not_required: 'not-required',
-    error: 'error',
-    activate: 'action-required',
-    block: 'blocked',
-    internal_cancel_action: 'not-required',
+    progress: "in-progress",
+    not_required: "not-required",
+    error: "error",
+    activate: "action-required",
+    block: "blocked",
+    internal_cancel_action: "not-required",
   },
-  'in-review': {
-    not_required: 'not-required',
-    approve: 'done',
-    request_changes: 'changes-required',
-    error: 'error',
-    activate: 'action-required',
-    block: 'blocked',
-    internal_cancel_action: 'not-required',
+  "in-review": {
+    not_required: "not-required",
+    approve: "done",
+    request_changes: "changes-required",
+    error: "error",
+    activate: "action-required",
+    block: "blocked",
+    internal_cancel_action: "not-required",
   },
-  'changes-required': {
+  "changes-required": {
     submit: submitTarget,
-    not_required: 'not-required',
-    error: 'error',
-    activate: 'action-required',
-    block: 'blocked',
-    internal_cancel_action: 'not-required',
+    not_required: "not-required",
+    error: "error",
+    activate: "action-required",
+    block: "blocked",
+    internal_cancel_action: "not-required",
   },
   error: {
-    not_required: 'not-required',
-    resolve_error: 'in-review',
-    activate: 'action-required',
-    block: 'blocked',
-    internal_cancel_action: 'not-required',
+    not_required: "not-required",
+    resolve_error: "in-review",
+    activate: "action-required",
+    block: "blocked",
+    internal_cancel_action: "not-required",
   },
   done: {
     submit: submitTarget,
-    request_changes: 'changes-required',
-    activate: 'action-required',
+    request_changes: "changes-required",
+    activate: "action-required",
   },
-  'not-required': {},
+  "not-required": {},
 };
 
 // --- Tracker kind. The `none` row carries only the birth signals `activate` /
@@ -102,34 +102,34 @@ const form = {
 // "Creation"); the mirror/cancel signals never resolve from `none`. ----------
 const tracker = {
   none: {
-    activate: 'action-required',
-    block: 'blocked',
+    activate: "action-required",
+    block: "blocked",
   },
   blocked: {
-    unblock: 'action-required',
-    internal_mirror_child_active: 'in-progress',
-    internal_mirror_child_completed: 'done',
-    internal_mirror_child_cancelled: 'not-required',
-    internal_cancel_action: 'not-required',
+    unblock: "action-required",
+    internal_mirror_child_active: "in-progress",
+    internal_mirror_child_completed: "done",
+    internal_mirror_child_cancelled: "not-required",
+    internal_cancel_action: "not-required",
   },
-  'action-required': {
-    internal_mirror_child_active: 'in-progress',
-    internal_mirror_child_completed: 'done',
-    internal_mirror_child_cancelled: 'not-required',
-    internal_cancel_action: 'not-required',
+  "action-required": {
+    internal_mirror_child_active: "in-progress",
+    internal_mirror_child_completed: "done",
+    internal_mirror_child_cancelled: "not-required",
+    internal_cancel_action: "not-required",
   },
-  'in-progress': {
-    internal_mirror_child_completed: 'done',
-    internal_mirror_child_cancelled: 'not-required',
-    internal_cancel_action: 'not-required',
+  "in-progress": {
+    internal_mirror_child_completed: "done",
+    internal_mirror_child_cancelled: "not-required",
+    internal_cancel_action: "not-required",
   },
   done: {
-    internal_mirror_child_active: 'in-progress',
-    internal_mirror_child_cancelled: 'not-required',
+    internal_mirror_child_active: "in-progress",
+    internal_mirror_child_cancelled: "not-required",
   },
-  'not-required': {
-    internal_mirror_child_active: 'in-progress',
-    internal_mirror_child_completed: 'done',
+  "not-required": {
+    internal_mirror_child_active: "in-progress",
+    internal_mirror_child_completed: "done",
   },
 };
 

@@ -9,6 +9,7 @@ Two consumers need to compute the workflow doc's `groups[]` array:
 - `CancelWorkflow` extension (task 9) — runs after the not-required loop against the re-read action list.
 
 All three callers have:
+
 - The list of action docs (status + `action_group` assignment).
 - The workflow's declared `action_groups[]` in YAML order.
 
@@ -21,7 +22,7 @@ Create `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
 Signature:
 
 ```js
-import deriveGroupStatus from './deriveGroupStatus.js';
+import deriveGroupStatus from "./deriveGroupStatus.js";
 
 /**
  * Compute the workflow doc's `groups[]` array from the workflow's actions
@@ -50,8 +51,10 @@ Behaviour:
    - Compute the summary:
      ```js
      const summary = {
-       done: groupActions.filter((a) => a.status?.[0]?.stage === 'done').length,
-       not_required: groupActions.filter((a) => a.status?.[0]?.stage === 'not-required').length,
+       done: groupActions.filter((a) => a.status?.[0]?.stage === "done").length,
+       not_required: groupActions.filter(
+         (a) => a.status?.[0]?.stage === "not-required",
+       ).length,
        total: groupActions.length,
      };
      ```
@@ -67,8 +70,10 @@ function recomputeGroups({ declaredGroups, actions }) {
     const groupActions = actions.filter((a) => a.action_group === group.id);
     const status = deriveGroupStatus(groupActions);
     const summary = {
-      done: groupActions.filter((a) => a.status?.[0]?.stage === 'done').length,
-      not_required: groupActions.filter((a) => a.status?.[0]?.stage === 'not-required').length,
+      done: groupActions.filter((a) => a.status?.[0]?.stage === "done").length,
+      not_required: groupActions.filter(
+        (a) => a.status?.[0]?.stage === "not-required",
+      ).length,
       total: groupActions.length,
     };
     return { id: group.id, status, summary };
@@ -102,6 +107,6 @@ function recomputeGroups({ declaredGroups, actions }) {
 
 ## Notes
 
-- The design's sub-step 4a says "Recompute every group's status + per-group summary." For v1 this helper recomputes *every* declared group on every call — see [design.md § groups[] persistence](../design.md#groups-persistence): "Incremental is safe because `StartWorkflow` already wrote a complete array at workflow creation." Reads cleaner than passing a "which groups to recompute" filter; the cost (≤ 20 actions × ≤ 10 groups per typical workflow) is negligible.
+- The design's sub-step 4a says "Recompute every group's status + per-group summary." For v1 this helper recomputes _every_ declared group on every call — see [design.md § groups[] persistence](../design.md#groups-persistence): "Incremental is safe because `StartWorkflow` already wrote a complete array at workflow creation." Reads cleaner than passing a "which groups to recompute" filter; the cost (≤ 20 actions × ≤ 10 groups per typical workflow) is negligible.
 - The function signature accepts a flat action list (not a pre-grouped map). Keeps the caller code simple — every caller already has actions in a flat list.
 - This helper doesn't know about `completed_groups` (the return-shape entries naming groups that transitioned to `done`). That belongs to the wiring task (task 8) which holds both the pre-write and post-write `groups[]` arrays and diffs them.

@@ -45,9 +45,9 @@ check for `starting_actions` (`makeWorkflowsConfig.js:363–368`) is where task
 
 > **Resolved (auto).** Reworded design.md's StartWorkflow bullet (line 674) to "plan (workflow doc + seeded action drafts), commit, tracker cascade (the parent-tracker mirror fire when started as a tracker child)" with the per-aggregate rationale — matching task 17:12 and D3.
 
-design.md § "Rewritten — engine entry points" (line 674): "*plan (workflow doc +
+design.md § "Rewritten — engine entry points" (line 674): "_plan (workflow doc +
 initial action docs + **optional parent-tracker transition**), commit, optional
-tracker cascade (the parent-tracker push)*". This is the pre-review-13 #4 shape.
+tracker cascade (the parent-tracker push)_". This is the pre-review-13 #4 shape.
 Task 17:12 pins the opposite — "The parent-tracker transition is **not** in
 Start's plan — the parent action belongs to a different workflow, and the Plan
 is per-aggregate (D3/D10); it runs as a cascade level via the
@@ -94,7 +94,7 @@ the cascade recorded `cascadeErrors[]`. Task 15 implemented this inline in
 surface precisely (`{ workflow_id, action_ids, event_id }` /
 `{ action_ids, event_id, tracker_fired }`) but never mentions
 `dispatchErrors`/`cascadeErrors`, and all three handlers run `commitPlan` +
-`runTrackerCascade`, both of which only *record* these failures. A literal
+`runTrackerCascade`, both of which only _record_ these failures. A literal
 implementation returns success while a failed event dispatch or an exhausted
 mirror-fire retry vanishes — exactly what D9's "no engine side-channel logging"
 stance forbids.
@@ -193,10 +193,9 @@ line-number precision dropped in favour of the grep).
   Files entry ("Pages table rows for `simple-edit`/`simple-view`/`simple-review`")
   names: the intro paragraph (line 3) lists all three pages **and**
   `group-overview`; the Pages-table URL column embeds them
-  (`/{entryId}/simple-edit`, lines 145–147); and the `group-overview` row (line
-  149) needs the rename too. The Notes grep
+  (`/{entryId}/simple-edit`, lines 145–147); and the `group-overview` row (line 149) needs the rename too. The Notes grep
   (`workflow-simple|simple-view|simple-edit|simple-review`) catches the
-  simple-* sites but **not** the README's `group-overview` row, and AC 2's
+  simple-\* sites but **not** the README's `group-overview` row, and AC 2's
   `group-overview` clause is scoped to `_module.pageId:` references — so that
   row can survive both checks. Widen the Files entry and add `group-overview`
   to the Notes grep pattern.
@@ -218,7 +217,7 @@ threading). On the submit side, the landed `planSubmit.js:60` passes
 current-action transition — only pre-hook auxiliary entries thread metadata
 (`planSubmit.js:88`). So a submit-payload `metadata` falls on the floor exactly
 like review-16 #4's start case, and nothing in task 19's AC catches it (the AC
-asserts the field is *passed*, not consumed).
+asserts the field is _passed_, not consumed).
 
 **Fix (recommended):** spec the one-line thread — `planSubmit.js:60` reads
 `params.metadata` — plus a `planSubmit.test.js` case, as task-19 scope (it's

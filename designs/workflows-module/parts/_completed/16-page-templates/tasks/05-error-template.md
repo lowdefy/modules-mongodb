@@ -31,7 +31,7 @@ requests:
       - _ref:
           path: ../requests/get_entity.yaml.njk
           vars:
-            entity_collection: {{ entity_collection }}
+            entity_collection: { { entity_collection } }
     - _var:
         key: page_config.requests
         default: []
@@ -374,7 +374,7 @@ Optional `resolve_error_modal` (ConfirmModal) iff `page_config.buttons.resolve_e
 
 - **`form_error` is the resolver-input var, not the state path.** The state path for the recovery form is still `_state.form` (not `_state.form_error`) — `makeActionsForm` emits input blocks under `form.*`. The button reads `_state: form` per the standard payload contract. The `form_error` var only tells the resolver which schema to substitute against.
 - **`form` payload field on resolve_error.** The button sends `form: { _state: form }` — this is the recovery form's data, which the engine writes back to the action's `form_data`. The handler's `resolve_error` interaction handles the same submit path as `submit_edit`; the engine resolves target status via `interactions.resolve_error.status` or the default per submit-pipeline.
-- **JSON-stringify `error_metadata`.** v0 didn't pretty-print metadata; v1 wraps in a `<pre>` block with JSON-stringified output. If the metadata is HTML-unsafe (user-supplied), the `| safe` filter is *not* applied — Nunjucks auto-escapes by default. The wrapper template above uses `{{ metadata | safe }}` after JSON-stringifying; check that the resulting string is safe (JSON-stringified JS values are HTML-safe unless they contain literal `<script>` strings, which would still render as text inside `<pre>`).
+- **JSON-stringify `error_metadata`.** v0 didn't pretty-print metadata; v1 wraps in a `<pre>` block with JSON-stringified output. If the metadata is HTML-unsafe (user-supplied), the `| safe` filter is _not_ applied — Nunjucks auto-escapes by default. The wrapper template above uses `{{ metadata | safe }}` after JSON-stringifying; check that the resulting string is safe (JSON-stringified JS values are HTML-safe unless they contain literal `<script>` strings, which would still render as text inside `<pre>`).
 - **Per-app `error` page emission.** Part 12 only emits the `-error` page when `error` is in the action's `access.{app_name}` verb list. Apps that don't grant `error` access have no recovery surface; the engine still writes the `error` transition to the action doc but there's no UI route.
 - **The `resolve_error` button is the only `title`-overridable button** in the entire vocabulary (per the chrome-override table in the design). v0 parity: error recovery wording varies per app ("Retry installation", "Mark resolved", "Acknowledge"), so the title slot is exposed. Other interaction buttons have fixed labels.
 - **`_json.stringify` operator.** If this repo's Lowdefy operator set doesn't include `_json.stringify`, fall back to `_js` with `JSON.stringify(metadata, null, 2)`. Check `apps/demo/lowdefy.yaml` or any existing operator usage for the canonical form.

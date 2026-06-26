@@ -1,7 +1,7 @@
-import { test, expect } from '@lowdefy/e2e-utils/fixtures';
+import { test, expect } from "@lowdefy/e2e-utils/fixtures";
 
-test('app is running', async ({ ldf }) => {
-  const response = await ldf.page.goto('/api/auth/session');
+test("app is running", async ({ ldf }) => {
+  const response = await ldf.page.goto("/api/auth/session");
   expect(response.status()).toBe(200);
 });
 

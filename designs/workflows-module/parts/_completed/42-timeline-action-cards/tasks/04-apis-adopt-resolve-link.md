@@ -10,6 +10,7 @@ projection with the shared, access-aware `resolve_action_link.yaml` stage (Task 
 so all three surfaces render the identical server-resolved link.
 
 By the time this task runs:
+
 - Task 2 has parameterized `visible_verbs.yaml` (`_var: app_name` with a
   `_module.var: app_name` default). Each API refs only the **bundle**
   `api/stages/visible_verbs_filter.yaml` (bare, inside `_build.array.concat`),
@@ -28,7 +29,7 @@ The three APIs differ in shape — read each before editing:
   compute + filter, then `$addFields required_sort/sort`, `$sort`, then a `$group`
   whose `actions: { $push: { ..., link: <_string.concat> } }`.
 - **`get-workflow-overview.yaml`** — projects `link` in an early `$addFields`
-  (alongside `message`, `status`, `groupIndex`) *before* `visible_verbs`, then
+  (alongside `message`, `status`, `groupIndex`) _before_ `visible_verbs`, then
   filter, `$sort`, `$project { groupIndex: 0 }`.
 - **`get-action-group-overview.yaml`** — `visible_verbs` compute + filter,
   `$addFields required_sort/sort`, `$sort`, then a whitelist `$project` that emits
@@ -85,5 +86,5 @@ Leave `message`, `status`, `type`, `visible_verbs`, and all sort logic unchanged
 - Order matters: `resolve_action_link` reads `$visible_verbs`, so it must follow
   the `visible_verbs` compute + `visible_verbs_filter` drop.
 - This is the read-side half of D5's "supersedes Part 38's UI-selection rule" —
-  the engine still *writes* the `links` map; the display layer now *resolves* it.
+  the engine still _writes_ the `links` map; the display layer now _resolves_ it.
   The corresponding Part 38 prose cleanup is Task 8.

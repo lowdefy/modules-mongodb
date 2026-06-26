@@ -94,7 +94,7 @@ Fix: pin the handler return shape in task 15 — keep today's six keys
 (`event_id` singular per invocation, resolving review-8 #9's plural/singular
 drift in the same stroke; `tracker_fired` populated from `runTrackerCascade`'s
 return) — and add the loaded-vs-planned groups diff (+ `on_complete` join) as
-an explicit `planSubmit` step. Review-10 #2 already asks for the *post-hook*
+an explicit `planSubmit` step. Review-10 #2 already asks for the _post-hook_
 result bag to be pinned; this is the handler/API half of the same contract —
 resolve them to one shape.
 
@@ -127,7 +127,7 @@ While here: state whether the rebuilt Submit context still carries
 path needs it (hooks/events/notifications go through `callApi`), so presumably
 it's dropped; say so, since `createMongoDBConnection` is imported today.
 
-### 4. `now` is *read* off `connection.changeStamp`, not generated — the task's "generated here" invites the wrong implementation
+### 4. `now` is _read_ off `connection.changeStamp`, not generated — the task's "generated here" invites the wrong implementation
 
 > **Resolved (auto).** Task 15's mint paragraph now states `event_id`/`newId` are generated (`randomUUID()`) while `now` is read from `connection.changeStamp` (per-request evaluated events-module stamp; one stamp per invocation), with an explicit warning against constructing `{ timestamp: new Date(), user }` in the handler.
 

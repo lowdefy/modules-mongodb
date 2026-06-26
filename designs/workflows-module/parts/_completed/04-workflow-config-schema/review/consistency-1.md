@@ -7,15 +7,18 @@ Reviewed part-04's full file tree (design.md + 3 task files + 1 review). Found 1
 ## Files Reviewed
 
 **Design:**
+
 - `design.md`
 
 **Tasks:**
+
 - `tasks/tasks.md`
 - `tasks/01-enum-yamls.md`
 - `tasks/02-make-workflows-config.md`
 - `tasks/03-workflow-api-schema-extend.md`
 
 **Reviews:**
+
 - `review/review-1.md`
 
 ## Inconsistencies Found

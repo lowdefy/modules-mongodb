@@ -29,7 +29,7 @@ resolved). No user decisions were required.
 **Source of truth:** review-4 #1 resolution → task 9's `PreHookResult` type
 (`actions: [{ target, signal, upsert? }]`) and D4 source 2 / D13 (2).
 **Files affected:** `tasks/14-hook-phase-wrappers.md`
-**Resolution:** Task 14 — the wrapper that *validates* the pre-hook response
+**Resolution:** Task 14 — the wrapper that _validates_ the pre-hook response
 shape — still declared the output as `{ actions: [{ target, signal }], ... }`,
 so an implementer's validator would strip or reject the upsert-spawn entries
 task 10 plans. Updated the output line to the task-9 type with `upsert?`, with

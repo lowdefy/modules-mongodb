@@ -3,6 +3,7 @@
 ## Context
 
 After Task 1, the module skeleton + validate config exist. This task builds the shared form (`form_activity`) and its two field-block files (`fields/core.yaml`, `fields/links.yaml`). The form is consumed by:
+
 - `pages/new.yaml` (Task 13)
 - `pages/edit.yaml` (Task 13)
 - `capture_activity` modal (Task 12)
@@ -91,7 +92,7 @@ blocks:
   _array.concat:
     - _ref: fields/core.yaml
     - _ref: fields/links.yaml
-    - _module.var: fields.attributes  # consumer-defined extension blocks
+    - _module.var: fields.attributes # consumer-defined extension blocks
 ```
 
 State binding: each field's id is the doc field name (`type`, `title`, `description`, `contact_ids`, `company_ids`, `attributes.<custom>`). The form parent (page or modal) handles initial state, submit, and the `create-activity` / `update-activity` API call.

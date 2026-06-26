@@ -288,7 +288,9 @@ export const fieldTypeRegistry = {
       const flag = value.region?.flag;
 
       if (!phoneNumber || phoneNumber === value.region?.dial_code) {
-        return <span className="dataview-value dataview-value-null">Not set</span>;
+        return (
+          <span className="dataview-value dataview-value-null">Not set</span>
+        );
       }
 
       return (
@@ -441,8 +443,7 @@ export const fieldTypeRegistry = {
     detect: (value) => {
       const d = type.isDate(value)
         ? value
-        : type.isString(value) &&
-            /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)
+        : type.isString(value) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)
           ? new Date(value)
           : null;
       if (!d || Number.isNaN(d.getTime())) return false;
@@ -455,9 +456,7 @@ export const fieldTypeRegistry = {
     },
     render: ({ value }) => {
       const d = type.isDate(value) ? value : new Date(value);
-      return (
-        <span className="dataview-value">{d.toLocaleDateString()}</span>
-      );
+      return <span className="dataview-value">{d.toLocaleDateString()}</span>;
     },
     fullWidth: false,
     componentHints: ["date_selector"],
@@ -489,10 +488,7 @@ export const fieldTypeRegistry = {
       if (!type.isArray(value) || value.length !== 2) return false;
       return value.every((v) => {
         if (type.isDate(v)) return true;
-        if (
-          type.isString(v) &&
-          /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)
-        ) {
+        if (type.isString(v) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) {
           return !Number.isNaN(new Date(v).getTime());
         }
         return false;
@@ -503,8 +499,7 @@ export const fieldTypeRegistry = {
       const d1 = type.isDate(value[1]) ? value[1] : new Date(value[1]);
       return (
         <div>
-          <span className="dataview-value">{d0.toLocaleDateString()}</span>{" "}
-          -{" "}
+          <span className="dataview-value">{d0.toLocaleDateString()}</span> -{" "}
           <span className="dataview-value">{d1.toLocaleDateString()}</span>
         </div>
       );

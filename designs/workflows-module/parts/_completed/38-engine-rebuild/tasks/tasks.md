@@ -8,32 +8,32 @@ These tasks implement Part 38, which rebuilds the workflow engine around two com
 
 ## Tasks
 
-| #   | File                                        | Summary                                                                              | Depends On      |
-| --- | ------------------------------------------- | ------------------------------------------------------------------------------------ | --------------- |
-| 1   | `01-mongo-driver-layer.md`                  | New `mongo/` native-driver helpers + owned/cached `MongoClient` + topology detection | —               |
-| 2   | `02-fsm-tables-resolve-signal.md`           | `fsm/` per-kind FSM tables (`simple` aliased to `form`) + `resolveSignal`            | —               |
-| 3   | `03-render-layer.md`                        | `render/` Nunjucks walker, status-map render, per-verb `computeEngineLinks`, event   | 4               |
-| 4   | `04-connection-schema-wiring.md`            | `schema.js` `entry_id` + `changeLog`/`priority` desc rewrites; `workflow-api.yaml`   | —               |
-| 5   | `05-role-gate-oracle-fixtures.md`           | Shared `(gate, roles)→bool` fixture table consumed by all three runtimes             | —               |
-| 6   | `06-resolver-validation-id-naming.md`       | `validateActionAccess` + `validateStatusMapCells` + unprefixed emitted-id naming     | 5               |
-| 7   | `07-visible-verbs-read-path.md`             | `visible_verbs_filter.yaml` replaces `access_filter.yaml` in 3 get-\* APIs           | 5               |
-| 8   | `08-action-role-check-client.md`            | `action_role_check` populates per-verb `_state.action_allowed` (Part 18 amendment)   | 5               |
-| 9   | `09-load-phase-and-types.md`                | Phase types (`LoadedState`/`PreHookResult`/`Plan`) + `loadWorkflowState` + access gate | 1, 2, 5       |
-| 10  | `10-action-planners.md`                     | `planActionTransition` (generic field passthrough) + `planAutoUnblock` fixpoint       | 2, 3, 9        |
-| 11  | `11-workflow-planners.md`                   | `planWorkflowRecompute` + `planFormDataMerge` (Q6 merge rule resolved — deep-merge)  | 9              |
-| 12  | `12-event-notification-changelog-planners.md` | `planEventDispatch` (two render contexts) + `planChangeLog` (no `planNotifications` — notifications dispatch post-commit) | 3, 9           |
-| 13  | `13-commit-phase.md`                        | `commitPlan`: workflow-first ordering, transaction/standalone paths, CAS gate         | 1, 9           |
-| 14  | `14-hook-phase-wrappers.md`                 | `invokePreHook` (signal return shape) + `invokePostHook` moved to `shared/phases/`    | 9              |
-| 15  | `15-submit-handler-rewrite.md`              | Rewrite `SubmitWorkflowAction`/`handleSubmit` around phases; delete obsolete files    | 10,11,12,13,14 |
-| 16  | `16-tracker-cascade.md`                     | `runTrackerCascade` loop + `planTrackerLevel` (per-fire chain-depth guard)            | 15             |
-| 17  | `17-start-cancel-close-rewrite.md`          | Rewrite Start/Cancel/Close around phases; each emits a lifecycle log event            | 10,11,12,13,18,19 |
-| 18  | `18-display-surface-renames.md`             | Rename fixed pages (`workflow-group-overview`, final `workflow-action-*`) + `_module.pageId` refs + link table | 4, 6           |
-| 19  | `19-emitted-payload-surfaces.md`            | `makeWorkflowApis` payload mapping (drop `force`, add `signal`) + `start-workflow`    | 6              |
-| 20  | `20-demo-migration.md`                      | **Superseded** → implement [Part 45 (demo rebuild)](../../45-demo-rebuild/design.md) instead, after Parts 43 + 44      | 1–19, Parts 43–45 |
-| 21  | `21-entity-ref-key-catchup.md`              | Catch-up on implemented tasks (reviews 8–9): required `entity_ref_key` (schema + resolver + demo) + stale docstring | 4, 6           |
-| 22  | `22-callapi-contract-fix.md`                | Catch-up: fix landed code to the shipped `callApi` contract (opaque pre-scoped endpoint ids, throws-on-failure, no `{ success }` envelope) | 4, 13          |
-| 23  | `23-planner-contract-catchup.md`            | Catch-up (review-13): `planActionTransition` `seedStage` mode, `planWorkflowRecompute` `lifecyclePush`, tracker `none` row, cascade `fire.payload` passthrough | 2, 10, 11, (16) |
-| 24  | `24-user-docs-pass.md`                      | **Stub** — consumer-facing docs pass (`modules/workflows/README.md`): deferrals collected from tasks 4/14/19; expand via `/r:design-docs` | 14, 17, 18, 19 |
+| #   | File                                          | Summary                                                                                                                                                        | Depends On        |
+| --- | --------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- |
+| 1   | `01-mongo-driver-layer.md`                    | New `mongo/` native-driver helpers + owned/cached `MongoClient` + topology detection                                                                           | —                 |
+| 2   | `02-fsm-tables-resolve-signal.md`             | `fsm/` per-kind FSM tables (`simple` aliased to `form`) + `resolveSignal`                                                                                      | —                 |
+| 3   | `03-render-layer.md`                          | `render/` Nunjucks walker, status-map render, per-verb `computeEngineLinks`, event                                                                             | 4                 |
+| 4   | `04-connection-schema-wiring.md`              | `schema.js` `entry_id` + `changeLog`/`priority` desc rewrites; `workflow-api.yaml`                                                                             | —                 |
+| 5   | `05-role-gate-oracle-fixtures.md`             | Shared `(gate, roles)→bool` fixture table consumed by all three runtimes                                                                                       | —                 |
+| 6   | `06-resolver-validation-id-naming.md`         | `validateActionAccess` + `validateStatusMapCells` + unprefixed emitted-id naming                                                                               | 5                 |
+| 7   | `07-visible-verbs-read-path.md`               | `visible_verbs_filter.yaml` replaces `access_filter.yaml` in 3 get-\* APIs                                                                                     | 5                 |
+| 8   | `08-action-role-check-client.md`              | `action_role_check` populates per-verb `_state.action_allowed` (Part 18 amendment)                                                                             | 5                 |
+| 9   | `09-load-phase-and-types.md`                  | Phase types (`LoadedState`/`PreHookResult`/`Plan`) + `loadWorkflowState` + access gate                                                                         | 1, 2, 5           |
+| 10  | `10-action-planners.md`                       | `planActionTransition` (generic field passthrough) + `planAutoUnblock` fixpoint                                                                                | 2, 3, 9           |
+| 11  | `11-workflow-planners.md`                     | `planWorkflowRecompute` + `planFormDataMerge` (Q6 merge rule resolved — deep-merge)                                                                            | 9                 |
+| 12  | `12-event-notification-changelog-planners.md` | `planEventDispatch` (two render contexts) + `planChangeLog` (no `planNotifications` — notifications dispatch post-commit)                                      | 3, 9              |
+| 13  | `13-commit-phase.md`                          | `commitPlan`: workflow-first ordering, transaction/standalone paths, CAS gate                                                                                  | 1, 9              |
+| 14  | `14-hook-phase-wrappers.md`                   | `invokePreHook` (signal return shape) + `invokePostHook` moved to `shared/phases/`                                                                             | 9                 |
+| 15  | `15-submit-handler-rewrite.md`                | Rewrite `SubmitWorkflowAction`/`handleSubmit` around phases; delete obsolete files                                                                             | 10,11,12,13,14    |
+| 16  | `16-tracker-cascade.md`                       | `runTrackerCascade` loop + `planTrackerLevel` (per-fire chain-depth guard)                                                                                     | 15                |
+| 17  | `17-start-cancel-close-rewrite.md`            | Rewrite Start/Cancel/Close around phases; each emits a lifecycle log event                                                                                     | 10,11,12,13,18,19 |
+| 18  | `18-display-surface-renames.md`               | Rename fixed pages (`workflow-group-overview`, final `workflow-action-*`) + `_module.pageId` refs + link table                                                 | 4, 6              |
+| 19  | `19-emitted-payload-surfaces.md`              | `makeWorkflowApis` payload mapping (drop `force`, add `signal`) + `start-workflow`                                                                             | 6                 |
+| 20  | `20-demo-migration.md`                        | **Superseded** → implement [Part 45 (demo rebuild)](../../45-demo-rebuild/design.md) instead, after Parts 43 + 44                                              | 1–19, Parts 43–45 |
+| 21  | `21-entity-ref-key-catchup.md`                | Catch-up on implemented tasks (reviews 8–9): required `entity_ref_key` (schema + resolver + demo) + stale docstring                                            | 4, 6              |
+| 22  | `22-callapi-contract-fix.md`                  | Catch-up: fix landed code to the shipped `callApi` contract (opaque pre-scoped endpoint ids, throws-on-failure, no `{ success }` envelope)                     | 4, 13             |
+| 23  | `23-planner-contract-catchup.md`              | Catch-up (review-13): `planActionTransition` `seedStage` mode, `planWorkflowRecompute` `lifecyclePush`, tracker `none` row, cascade `fire.payload` passthrough | 2, 10, 11, (16)   |
+| 24  | `24-user-docs-pass.md`                        | **Stub** — consumer-facing docs pass (`modules/workflows/README.md`): deferrals collected from tasks 4/14/19; expand via `/r:design-docs`                      | 14, 17, 18, 19    |
 
 ## Implementation Bands
 

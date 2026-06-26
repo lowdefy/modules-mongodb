@@ -5,7 +5,7 @@
 This task connects the pieces from tasks 1, 2, 5, and 6 into the edit-page flow:
 
 1. The edit form (`form_company.yaml`) appends a "Parents" section with the new `parent_selector.yaml` block, build-gated on `hierarchy.enabled`.
-2. The edit page (`pages/edit.yaml`) `onMount` becomes a **three-step sequence** so the parent-selector's options request fires *after* the descendants are resolved *and* the resulting id list is written to state. This avoids a first-render flash where self briefly appears as a valid parent.
+2. The edit page (`pages/edit.yaml`) `onMount` becomes a **three-step sequence** so the parent-selector's options request fires _after_ the descendants are resolved _and_ the resulting id list is written to state. This avoids a first-render flash where self briefly appears as a valid parent.
 3. The page's `onMount.set_state` action is extended to populate `state.cycle_check_self_id` (self — filtered out of the options) and `state.cycle_check_ids` (descendants — disabled with the "(child of this company)" suffix) from the descendants result, plus `state.parent_ids` from the loaded doc (so the form pre-populates).
 4. The `update_company` button's payload is extended to include `parent_ids: _state.parent_ids` (build-gated).
 5. The `new.yaml` page mirrors the same form additions but without the descendants fetch (no self, no descendants).
@@ -29,7 +29,7 @@ onMount:
     ...
 ```
 
-The selector's underlying request reads `_state: cycle_check_self_id` and `_state: cycle_check_ids` (per task 5), so `set_state` must write both paths *before* `fetch_selector_options` reads them. This means the order is:
+The selector's underlying request reads `_state: cycle_check_self_id` and `_state: cycle_check_ids` (per task 5), so `set_state` must write both paths _before_ `fetch_selector_options` reads them. This means the order is:
 
 1. Run `fetch_doc_data` (parallel: doc + contacts + descendants).
 2. Run `set_state` to copy `state._id → state.cycle_check_self_id` (so the request `$match`-excludes self), the descendants result → `state.cycle_check_ids` (so descendants are disabled with the suffix), and the doc fields → `state.parent_ids` etc.
@@ -106,7 +106,7 @@ Append a new `_build.if`-gated section to the existing `_build.array.concat` blo
            attributes:
              _request: get_company.0.attributes
            contacts:
-             _array.map: ...   # existing
+             _array.map: ... # existing
            updated:
              _request: get_company.0.updated
          - _build.if:
@@ -176,6 +176,7 @@ Append a new `_build.if`-gated section to the existing `_build.array.concat` blo
    - Or set them explicitly on `onInit` for clarity.
 
    The simpler path: **skip the fetch**. Verify that `get_companies_for_selector` runs correctly: `$match: { _id: { $ne: null } }` passes every doc, every `disabled` resolves to `false`, every label is plain.
+
 3. **Extend the create payload** to include `parent_ids: _state.parent_ids` build-gated, mirroring (B.5).
 
 ## Acceptance Criteria

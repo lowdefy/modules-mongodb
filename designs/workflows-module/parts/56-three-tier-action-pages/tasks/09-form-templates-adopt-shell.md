@@ -30,7 +30,7 @@ For **all four** form templates:
 
 2. **Header — layout-page vars (D8).** Add:
    - `breadcrumbs`: `_ref` `action-breadcrumbs.yaml` with `entity_link:
-     _state.action.entity_link`, `workflow_id: _state.action.workflow_id`,
+_state.action.entity_link`, `workflow_id: _state.action.workflow_id`,
      `workflow_title: <baked>`, `action_label: <baked action title>` (the value
      already in `page_config.title`).
    - `type`: the baked `workflow_title` (eyebrow).
@@ -41,7 +41,7 @@ For **all four** form templates:
 
 3. **Set the normalized `_state.entity_id` in onMount** (from the loaded
    response, beside the existing `set_action` `SetState` — e.g. `entity_id:
-   _state.action.entity_id` or `_request: get_workflow_action.entity_id`). This
+_state.action.entity_id` or `_request: get_workflow_action.entity_id`). This
    is the single scalar the shell's columns read.
 
 4. **Body = the shell.** Replace the bare two-column content row + Activity card

@@ -12,9 +12,9 @@ The module ships three rendering components (`file-manager`, `file-card`, `file-
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
-| [layout](../layout/index.md) | `file-card` wraps the layout `card` component |
+| Module                       | Why                                                            |
+| ---------------------------- | -------------------------------------------------------------- |
+| [layout](../layout/index.md) | `file-card` wraps the layout `card` component                  |
 | [events](../events/index.md) | `change_stamp` on writes; optional upload/delete event logging |
 
 ## When to use

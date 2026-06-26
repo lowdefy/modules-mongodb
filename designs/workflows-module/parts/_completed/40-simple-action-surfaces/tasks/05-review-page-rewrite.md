@@ -34,7 +34,7 @@ Rewrite `modules/workflows/pages/workflow-action-review.yaml`:
    - Replace `prime_form_state` (`:53–56`) with the same two SetState steps
      as task 4 (`set_current_action` spreading the response;
      `seed_working_state` seeding `current_action.fields.{assignees, due_date,
-     description}` from the response, `current_action.comment: null`, and the
+description}` from the response, `current_action.comment: null`, and the
      mode literal **`current_action.mode: review`** — tasks.md "Decisions
      applied" #4). Seeding `fields` on the review page is deliberate:
      universal-fields
@@ -54,6 +54,7 @@ Rewrite `modules/workflows/pages/workflow-action-review.yaml`:
    (task 3 block 7) —
    "keep `request_changes_modal`" from the design's Files table is satisfied
    there, not on the page.
+
 3. **Deletions to verify gone**: `interaction:`, the page-level
    `request_changes_modal`, the inline banner/header/universal-fields/comment
    blocks, the `allowed.review` button visibility reads (now

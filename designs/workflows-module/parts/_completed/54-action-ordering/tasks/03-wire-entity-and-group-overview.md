@@ -9,10 +9,11 @@ Task 1 created `makeWorkflowOrderComparator(workflowsConfig)`. Two engines share
 - `GetWorkflowActionGroupOverview.js` (lines ~66–76)
 
 Both currently sort with:
+
 ```js
 visibleActions.sort((a, b) => {
-  const aNotRequired = a.status === 'not-required' ? 1 : 0;
-  const bNotRequired = b.status === 'not-required' ? 1 : 0;
+  const aNotRequired = a.status === "not-required" ? 1 : 0;
+  const bNotRequired = b.status === "not-required" ? 1 : 0;
   if (aNotRequired !== bNotRequired) return aNotRequired - bNotRequired;
   const aSort = aNotRequired ? 1 : (a.action.sort_order ?? 0);
   const bSort = bNotRequired ? 1 : (b.action.sort_order ?? 0);
@@ -22,6 +23,7 @@ visibleActions.sort((a, b) => {
   return aTs < bTs ? -1 : aTs > bTs ? 1 : 0;
 });
 ```
+
 The `not-required` sink they apply by hand is now **folded into the comparator** (D4),
 so the whole block — sink, dead `sort_order`, timestamp tiebreak — is replaced by one
 comparator call. Both engines already destructure `workflowsConfig` from context.
@@ -33,12 +35,14 @@ declaration order (the `groupOrderMap` / `groupEntries` logic, ~lines 105–172)
 ## Task
 
 In **both** files, import the comparator and replace the sort block with:
+
 ```js
-import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
+import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 // ...
 const compare = makeWorkflowOrderComparator(workflowsConfig);
 visibleActions.sort((a, b) => compare(a.action, b.action));
 ```
+
 The comparator reads `action.status` (array shape) and `action.action_group` /
 `action.type` / `action.workflow_type` directly off the doc — all present on the
 `a.action` wrapper. No change to access filtering, card building, grouping, or

@@ -7,14 +7,17 @@ Scanned all design + task + review files for drift after the review-3 action pas
 ## Files Reviewed
 
 **Design:**
+
 - `designs/companies-grouping/design.md`
 
 **Reviews:**
+
 - `designs/companies-grouping/review/review-1.md` (9 findings, all resolved)
 - `designs/companies-grouping/review/consistency-2.md` (5 findings, all resolved)
 - `designs/companies-grouping/review/review-3.md` (14 findings, all resolved)
 
 **Tasks:**
+
 - `designs/companies-grouping/tasks/tasks.md`
 - `designs/companies-grouping/tasks/01-module-manifest.md` … `11-demo-and-readme.md` (11 task files)
 

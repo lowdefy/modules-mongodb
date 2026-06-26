@@ -161,34 +161,34 @@ The full list of files this design produces. Counts assume the current set of 10
 
 ### Top-level (2 files)
 
-| File | Purpose |
-|---|---|
-| `README.md` | Central doc — module set, dependency graph, when-to-use, idioms link, bare-basics consumer snippet linking to <https://docs.lowdefy.com/modules>, plugin link, demo link. Replaces the current 1-line README. |
-| `docs/idioms.md` | All cross-cutting idioms on one page (anchored sections). |
+| File             | Purpose                                                                                                                                                                                                       |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `README.md`      | Central doc — module set, dependency graph, when-to-use, idioms link, bare-basics consumer snippet linking to <https://docs.lowdefy.com/modules>, plugin link, demo link. Replaces the current 1-line README. |
+| `docs/idioms.md` | All cross-cutting idioms on one page (anchored sections).                                                                                                                                                     |
 
 ### Cross-cutting idioms (1 file: `docs/idioms.md`)
 
 A single page with one section per idiom. Per-module READMEs link to specific anchors.
 
-| Section | Covers | Used by |
-|---|---|---|
-| Change stamps | The `change_stamp` audit metadata template, where it lives (events module), how to opt out, default schema. | events, files, companies, contacts, user-account, user-admin |
-| Event display | `event_display` per-app templates, default file shape, how event types map to titles. | every module that logs events |
-| Fields / components / request_stages slots | The slot pattern for extending list / detail / edit pages. | companies, contacts, user-admin, user-account |
-| App name scoping | `app_name` scoping pattern — why it exists, where it appears in MongoDB field paths, multi-app deployments. | contacts, user-account, user-admin, notifications |
-| Avatar colors | Shared `avatar_colors` defaults at `modules/shared/profile/avatar_colors.yaml`, how to override. | contacts, user-admin, user-account |
-| Secrets | Master list of secret names by category (Mongo, S3 file storage, S3 sync bucket, email) and which modules need each. | all modules |
+| Section                                    | Covers                                                                                                               | Used by                                                      |
+| ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Change stamps                              | The `change_stamp` audit metadata template, where it lives (events module), how to opt out, default schema.          | events, files, companies, contacts, user-account, user-admin |
+| Event display                              | `event_display` per-app templates, default file shape, how event types map to titles.                                | every module that logs events                                |
+| Fields / components / request_stages slots | The slot pattern for extending list / detail / edit pages.                                                           | companies, contacts, user-admin, user-account                |
+| App name scoping                           | `app_name` scoping pattern — why it exists, where it appears in MongoDB field paths, multi-app deployments.          | contacts, user-account, user-admin, notifications            |
+| Avatar colors                              | Shared `avatar_colors` defaults at `modules/shared/profile/avatar_colors.yaml`, how to override.                     | contacts, user-admin, user-account                           |
+| Secrets                                    | Master list of secret names by category (Mongo, S3 file storage, S3 sync bucket, email) and which modules need each. | all modules                                                  |
 
 ### Plugin docs (5 files, plus 1 already exists)
 
-| File | Purpose |
-|---|---|
+| File                                        | Purpose                                                                                         |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | `plugins/modules-mongodb-plugins/README.md` | Package overview — what's in the plugin, peer deps, install, list of blocks/actions with links. |
-| `src/blocks/ContactSelector/README.md` | Already exists — verify it matches the new template, update if needed. |
-| `src/blocks/DataDescriptions/README.md` | New — per-block doc. |
-| `src/blocks/EventsTimeline/README.md` | New — per-block doc. |
-| `src/blocks/FileManager/README.md` | New — per-block doc. |
-| `src/blocks/SmartDescriptions/README.md` | New — per-block doc. |
+| `src/blocks/ContactSelector/README.md`      | Already exists — verify it matches the new template, update if needed.                          |
+| `src/blocks/DataDescriptions/README.md`     | New — per-block doc.                                                                            |
+| `src/blocks/EventsTimeline/README.md`       | New — per-block doc.                                                                            |
+| `src/blocks/FileManager/README.md`          | New — per-block doc.                                                                            |
+| `src/blocks/SmartDescriptions/README.md`    | New — per-block doc.                                                                            |
 
 The single `FetchRequest` action is documented in the package README. No per-action README until there are more actions.
 
@@ -220,16 +220,16 @@ The `data-upload`'s `tool.columns` is currently described as "[{field, headerNam
 
 Used unchanged for every module. Sections marked **(omit if empty)** are left out when the module doesn't have that export type.
 
-````markdown
+```markdown
 # {Module Name}
 
 One-paragraph description: what this module does, what problem it solves.
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
-| layout | Page wrapper |
+| Module | Why                              |
+| ------ | -------------------------------- |
+| layout | Page wrapper                     |
 | events | Audit logging and `change_stamp` |
 
 (Pulled from manifest `dependencies:`.)
@@ -242,8 +242,8 @@ Minimal `lowdefy.yaml` snippet showing the module entry, required vars, and any 
 
 ### Pages **(omit if empty)**
 
-| ID | Description | Path |
-|---|---|---|
+| ID        | Description  | Path                   |
+| --------- | ------------ | ---------------------- |
 | companies | Company list | `/{entryId}/companies` |
 
 ### Components **(omit if empty)**
@@ -268,8 +268,8 @@ Narrative reference for every var. Top-level vars are H3, nested properties are 
 
 ## Secrets
 
-| Name | Used for |
-|---|---|
+| Name        | Used for           |
+| ----------- | ------------------ |
 | MONGODB_URI | MongoDB connection |
 
 ## Plugins
@@ -279,7 +279,7 @@ Lowdefy plugins required by this module (from manifest `plugins:`).
 ## Notes **(omit if empty)**
 
 Caveats, gotchas, version-specific behavior, deprecated features.
-````
+```
 
 ## Source-of-Truth Strategy
 
@@ -345,50 +345,50 @@ Single file, six sections. Anchors used by per-module READMEs are listed in pare
 
 10 module READMEs + 1 idioms doc + 1 plugin package README + 4 per-block READMEs = 16 new Markdown files. Root `README.md` and `plugins/modules-mongodb-plugins/.../ContactSelector/README.md` are rewritten in place.
 
-| Path | Purpose |
-|---|---|
-| `docs/idioms.md` | All cross-cutting idioms on one page |
-| `modules/companies/README.md` | Per-module |
-| `modules/contacts/README.md` | Per-module |
-| `modules/data-upload/README.md` | Per-module |
-| `modules/events/README.md` | Per-module (replaces VARS.md) |
-| `modules/files/README.md` | Per-module (replaces VARS.md) |
-| `modules/notifications/README.md` | Per-module (replaces VARS.md) |
-| `modules/release-notes/README.md` | Per-module |
-| `modules/user-account/README.md` | Per-module |
-| `modules/user-admin/README.md` | Per-module |
-| `plugins/modules-mongodb-plugins/README.md` | Plugin package overview |
-| `plugins/modules-mongodb-plugins/src/blocks/DataDescriptions/README.md` | Per-block |
-| `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/README.md` | Per-block |
-| `plugins/modules-mongodb-plugins/src/blocks/FileManager/README.md` | Per-block |
-| `plugins/modules-mongodb-plugins/src/blocks/SmartDescriptions/README.md` | Per-block |
+| Path                                                                     | Purpose                              |
+| ------------------------------------------------------------------------ | ------------------------------------ |
+| `docs/idioms.md`                                                         | All cross-cutting idioms on one page |
+| `modules/companies/README.md`                                            | Per-module                           |
+| `modules/contacts/README.md`                                             | Per-module                           |
+| `modules/data-upload/README.md`                                          | Per-module                           |
+| `modules/events/README.md`                                               | Per-module (replaces VARS.md)        |
+| `modules/files/README.md`                                                | Per-module (replaces VARS.md)        |
+| `modules/notifications/README.md`                                        | Per-module (replaces VARS.md)        |
+| `modules/release-notes/README.md`                                        | Per-module                           |
+| `modules/user-account/README.md`                                         | Per-module                           |
+| `modules/user-admin/README.md`                                           | Per-module                           |
+| `plugins/modules-mongodb-plugins/README.md`                              | Plugin package overview              |
+| `plugins/modules-mongodb-plugins/src/blocks/DataDescriptions/README.md`  | Per-block                            |
+| `plugins/modules-mongodb-plugins/src/blocks/EventsTimeline/README.md`    | Per-block                            |
+| `plugins/modules-mongodb-plugins/src/blocks/FileManager/README.md`       | Per-block                            |
+| `plugins/modules-mongodb-plugins/src/blocks/SmartDescriptions/README.md` | Per-block                            |
 
 ### Modified files
 
-| Path | Change |
-|---|---|
-| `README.md` | Rewrite as central doc (module set, dep graph, when-to-use, idioms link, basics) |
-| `modules/layout/README.md` | Restructure to match the new template |
-| `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/README.md` | Verify it matches the new per-block template, update if needed |
-| `modules/companies/module.lowdefy.yaml` | Add nested var descriptions, remove TODO comment |
-| `modules/contacts/module.lowdefy.yaml` | Add nested var descriptions, remove TODO comment |
-| `modules/data-upload/module.lowdefy.yaml` | Verify and fill any gaps |
-| `modules/events/module.lowdefy.yaml` | Verify (likely no change) |
-| `modules/files/module.lowdefy.yaml` | Describe `components.file_list`, mark deprecated |
-| `modules/layout/module.lowdefy.yaml` | Reconcile `logo.*` keys with README, fill nested descriptions |
-| `modules/notifications/module.lowdefy.yaml` | Verify (likely no change) |
-| `modules/release-notes/module.lowdefy.yaml` | Verify |
-| `modules/user-account/module.lowdefy.yaml` | Add nested var descriptions |
-| `modules/user-admin/module.lowdefy.yaml` | Add nested var descriptions |
+| Path                                                                   | Change                                                                           |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `README.md`                                                            | Rewrite as central doc (module set, dep graph, when-to-use, idioms link, basics) |
+| `modules/layout/README.md`                                             | Restructure to match the new template                                            |
+| `plugins/modules-mongodb-plugins/src/blocks/ContactSelector/README.md` | Verify it matches the new per-block template, update if needed                   |
+| `modules/companies/module.lowdefy.yaml`                                | Add nested var descriptions, remove TODO comment                                 |
+| `modules/contacts/module.lowdefy.yaml`                                 | Add nested var descriptions, remove TODO comment                                 |
+| `modules/data-upload/module.lowdefy.yaml`                              | Verify and fill any gaps                                                         |
+| `modules/events/module.lowdefy.yaml`                                   | Verify (likely no change)                                                        |
+| `modules/files/module.lowdefy.yaml`                                    | Describe `components.file_list`, mark deprecated                                 |
+| `modules/layout/module.lowdefy.yaml`                                   | Reconcile `logo.*` keys with README, fill nested descriptions                    |
+| `modules/notifications/module.lowdefy.yaml`                            | Verify (likely no change)                                                        |
+| `modules/release-notes/module.lowdefy.yaml`                            | Verify                                                                           |
+| `modules/user-account/module.lowdefy.yaml`                             | Add nested var descriptions                                                      |
+| `modules/user-admin/module.lowdefy.yaml`                               | Add nested var descriptions                                                      |
 
 ### Deleted files
 
-| Path | Why |
-|---|---|
-| `modules/events/VARS.md` | Folded into `modules/events/README.md` |
-| `modules/files/VARS.md` | Folded into `modules/files/README.md` |
+| Path                            | Why                                           |
+| ------------------------------- | --------------------------------------------- |
+| `modules/events/VARS.md`        | Folded into `modules/events/README.md`        |
+| `modules/files/VARS.md`         | Folded into `modules/files/README.md`         |
 | `modules/notifications/VARS.md` | Folded into `modules/notifications/README.md` |
-| `temp.md` | Already a TODO scratchpad — kill before final |
+| `temp.md`                       | Already a TODO scratchpad — kill before final |
 
 ## Phasing
 
@@ -415,5 +415,5 @@ Suggested implementation order, since the full set is sizeable:
 
 - Building a static site or Lowdefy doc app. Markdown only for now.
 - Auto-generation of READMEs from manifests. Possible later, not now.
-- Documenting internal implementation details. The audience is module *consumers*, not module authors. (A separate `CONTRIBUTING.md` could cover module-author concerns later.)
+- Documenting internal implementation details. The audience is module _consumers_, not module authors. (A separate `CONTRIBUTING.md` could cover module-author concerns later.)
 - Versioned docs across multiple module releases. The repo's git history is the version history; docs at `v1.2.0` are whatever's in the tag.

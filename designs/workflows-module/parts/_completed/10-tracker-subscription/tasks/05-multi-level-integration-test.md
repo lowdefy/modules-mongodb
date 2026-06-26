@@ -17,7 +17,7 @@ Add two new `describe` blocks at the bottom of the file: one for the 3-level cha
 ### 2. 3-level chain — cache invariant under recursion.
 
 ```js
-describe('3-level chain integration', () => {
+describe("3-level chain integration", () => {
   // Setup:
   //   Workflow A (grandparent) on entity X. 2 actions:
   //     - qualify (form, in-review)
@@ -33,7 +33,7 @@ describe('3-level chain integration', () => {
   //   done → A still has the in-review `qualify` action → A does NOT auto-
   //   complete; chain stops there.
 
-  it('propagates two levels and assembles tracker_fired as a chain', async () => {
+  it("propagates two levels and assembles tracker_fired as a chain", async () => {
     // Assert handleSubmit returns:
     //   action_ids includes install._id
     //   tracker_fired is an array of length 2:
@@ -42,7 +42,7 @@ describe('3-level chain integration', () => {
     //   (newest at index 0 per the helper contract)
   });
 
-  it('writes consistent per-workflow summary and groups[] at each level', async () => {
+  it("writes consistent per-workflow summary and groups[] at each level", async () => {
     // After the call:
     //   - install is `done` on workflow C; C.status[0] = completed; C.summary = { done: 1, not_required: 0, total: 1 }
     //   - track-C is `done` on workflow B; B.status[0] = completed; B.summary = { done: 1, not_required: 0, total: 1 }
@@ -56,7 +56,7 @@ describe('3-level chain integration', () => {
     // would write the child's counts onto the parent — this assertion catches that.
   });
 
-  it('threads the originating eventId through every level', async () => {
+  it("threads the originating eventId through every level", async () => {
     // The handleSubmit call generates eventId E1 on entry. Assert:
     //   - install's just-pushed status entry has event_id: E1
     //   - C's just-pushed `completed` workflow status entry has event_id: E1
@@ -72,8 +72,8 @@ describe('3-level chain integration', () => {
 ### 3. Depth-limit overflow.
 
 ```js
-describe('depth-limit overflow', () => {
-  it('throws a structured error past 10 levels', async () => {
+describe("depth-limit overflow", () => {
+  it("throws a structured error past 10 levels", async () => {
     // Construct a synthetic 11-level chain: 11 workflows W_0 ... W_10, each
     // with a single tracker action linked to the next, except W_10's tracker
     // links back to some sink (or use a non-recursive fixture that exhausts
@@ -90,7 +90,7 @@ describe('depth-limit overflow', () => {
     //     should still be the pre-call value, not the recursion's target stage)
   });
 
-  it('does not corrupt state on overflow — earlier writes persist', async () => {
+  it("does not corrupt state on overflow — earlier writes persist", async () => {
     // Same fixture as above. After the throw, the workflows and actions written
     // in levels 0..10 should be in their post-write state (the throw happened
     // at level 11's depth check, after level 10's write committed).
@@ -106,7 +106,7 @@ describe('depth-limit overflow', () => {
 The cancel path also recurses. Add one case under a `describe('cancel-path recurse', () => { ... })` block:
 
 ```js
-it('fans up not-required through a 2-level chain on cancel', async () => {
+it("fans up not-required through a 2-level chain on cancel", async () => {
   // Setup:
   //   Workflow A (parent), 1 tracker action track-B (only action on A)
   //   Workflow B (child), parent_action_id: track-B._id, no other actions, in-review

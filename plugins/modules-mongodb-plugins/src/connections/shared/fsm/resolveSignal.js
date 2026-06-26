@@ -1,4 +1,4 @@
-import { FSM_TABLES, hasReview } from './tables.js';
+import { FSM_TABLES, hasReview } from "./tables.js";
 
 /**
  * Resolves a signal against an action's current stage via the per-kind FSM
@@ -28,7 +28,7 @@ function resolveSignal({ action, signal, actionConfig }) {
   const currentStage = action.status?.[0]?.stage;
   const entry = table[currentStage]?.[signal];
   if (entry === undefined) return null; // no-op signal — non-listening state
-  if (typeof entry === 'string') return entry; // direct target
+  if (typeof entry === "string") return entry; // direct target
   return entry({ action, actionConfig }); // function cell (submit split)
 }
 

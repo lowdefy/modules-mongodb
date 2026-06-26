@@ -1,5 +1,5 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import handleSubmit from './handleSubmit.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import handleSubmit from "./handleSubmit.js";
 
 /**
  * SubmitWorkflowAction connection resolver (design D2/D3; task 15).

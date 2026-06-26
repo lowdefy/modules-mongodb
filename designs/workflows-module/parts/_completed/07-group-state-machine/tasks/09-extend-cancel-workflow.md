@@ -27,7 +27,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkfl
 1. **Import `recomputeGroups`.**
 
    ```js
-   import recomputeGroups from '../SubmitWorkflowAction/recomputeGroups.js';
+   import recomputeGroups from "../SubmitWorkflowAction/recomputeGroups.js";
    ```
 
    Cross-folder import (same pattern as task 5's `StartWorkflow` extension). `recomputeGroups` lives in `SubmitWorkflowAction/` because that's where the group state machine code lives.
@@ -51,10 +51,12 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkfl
 3. **Load the workflow's declared groups.** The handler already has `context.workflowsConfig` in scope (set up at the top of the function). To compute `groups[]` we need the declared `action_groups` for this workflow type:
 
    ```js
-   const workflowDoc = await context.mongoDBConnection('workflows').MongoDBFindOne({
-     query: { _id: payload.workflow_id },
-     options: { projection: { workflow_type: 1 } },
-   });
+   const workflowDoc = await context
+     .mongoDBConnection("workflows")
+     .MongoDBFindOne({
+       query: { _id: payload.workflow_id },
+       options: { projection: { workflow_type: 1 } },
+     });
    const workflowConfig = (context.workflowsConfig ?? []).find(
      (w) => w.type === workflowDoc?.workflow_type,
    );
@@ -77,7 +79,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkfl
 5. **Add `groups` to the final `$set`.** At lines 100–108:
 
    ```js
-   await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+   await context.mongoDBConnection("workflows").MongoDBUpdateOne({
      filter: { _id: payload.workflow_id },
      update: {
        $set: {

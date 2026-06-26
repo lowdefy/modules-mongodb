@@ -17,7 +17,9 @@ V0 reference: `dist/workflows-module/old/WorkflowAPI/UpdateWorkflowActions/utils
 
 ```js
 function shouldCreate({ actionUpdate, fetchedActions }) {
-  return (!fetchedActions || fetchedActions.length === 0) && actionUpdate.upsert;
+  return (
+    (!fetchedActions || fetchedActions.length === 0) && actionUpdate.upsert
+  );
 }
 export default shouldCreate;
 ```
@@ -48,7 +50,10 @@ Signature:
  * @returns {boolean}
  */
 function shouldCreate({ actionEntry, fetchedActions }) {
-  return (!fetchedActions || fetchedActions.length === 0) && actionEntry.upsert === true;
+  return (
+    (!fetchedActions || fetchedActions.length === 0) &&
+    actionEntry.upsert === true
+  );
 }
 
 export default shouldCreate;

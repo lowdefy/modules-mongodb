@@ -111,7 +111,7 @@ beat an enum-supplied title), say how the enum would reach the resolver — othe
 
 §"humanizeSlug" rule 4 ships RFQ in the base set (`… KYC PO RFQ`), but §"App-extensible acronyms" uses
 `title_acronyms: [RFQ, BOM, SKU]` as the canonical extension example. If RFQ ships in base, the example should
-extend with acronyms that *aren't* shipped (e.g. `[BOM, SKU]`) so it actually demonstrates the merge. Also `PO`
+extend with acronyms that _aren't_ shipped (e.g. `[BOM, SKU]`) so it actually demonstrates the merge. Also `PO`
 appears twice in the base-set string. Trivial, but the list is "finalized in the build list" per the open question —
 clean it there.
 

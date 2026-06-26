@@ -30,7 +30,7 @@ requests:
       - _ref:
           path: ../requests/get_entity.yaml.njk
           vars:
-            entity_collection: {{ entity_collection }}
+            entity_collection: { { entity_collection } }
     - _var:
         key: page_config.requests
         default: []
@@ -424,7 +424,7 @@ Also append an optional `approve_modal` (ConfirmModal) iff `page_config.buttons.
 
 - **Three buttons, two payloads.** `Edit` is a navigation Link (no payload). `Request Changes` and `Approve` are interaction buttons that post to `update-action-{action_type}`.
 - **Validate regex on approve.** Reviewers may not have edited `form` (it's read-only), but the validate step still scans `^form_review\.` and `^fields\.` to surface any errors before submission. v0 used regex `'^form\.'`; v1 broadens to include form_review.
-- **`Request Changes` modal vs. `submit_edit` modal.** The submit-edit modal is a confirm-style "Are you sure?" prompt (optional). The request-changes modal is a *required* input modal carrying the comment field. Different blocks: one is `ConfirmModal`, one is `Modal` with form inputs.
+- **`Request Changes` modal vs. `submit_edit` modal.** The submit-edit modal is a confirm-style "Are you sure?" prompt (optional). The request-changes modal is a _required_ input modal carrying the comment field. Different blocks: one is `ConfirmModal`, one is `Modal` with form inputs.
 - **`approve_modal` is the only optional modal on review.** v0 didn't have one; v1 adds it for parity with edit's `submit_edit_modal` since both buttons land terminal-style transitions. Skip it if scope-tight; the design's chrome-overrides table lists `modal` for `submit_edit`, `not_required`, `resolve_error` only — approve and request_changes have their own dedicated modals (per the chrome table footer).
 - **Reviewer-as-form-editor concern.** With the writable `form_review` section visible only when status is `in-review`, after approve, the page redirects (typical pattern) — but the design doesn't specify what happens post-submit. Suggested behavior: after a successful CallApi, fire a `Link` to the workflow's parent entity page or to view. v0 redirected to the entity view page. Add this as the last step in the approve `onClick` chain if test fixtures show the page stays on review post-submit.
 - **The `form_review` section's `visible:` test** — current proposal: visible iff `status === in-review` AND `action_allowed`. v0 also wrapped it in a Collapse panel for visual hierarchy ("Approve Review" collapsible header). v1 simplifies to a Divider with title; restore Collapse if v0 parity verification requires it.

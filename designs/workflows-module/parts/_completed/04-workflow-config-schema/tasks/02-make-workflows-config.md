@@ -9,7 +9,7 @@ It's invoked from app YAML like this:
 ```yaml
 workflowsConfig:
   _ref:
-    resolver: ../shared/workflow_utils/resolvers/makeWorkflowsConfig.js  # app-side path
+    resolver: ../shared/workflow_utils/resolvers/makeWorkflowsConfig.js # app-side path
     vars:
       workflows:
         _ref: ../shared/workflow_config/workflows.yaml
@@ -92,24 +92,48 @@ Approximate shape (final file lives at `modules/workflows/resolvers/makeWorkflow
 
 ```js
 const ACTION_FIELDS = [
-  'type', 'kind', 'key', 'tracker', 'blocked_by',
-  'action_group', 'sort_order', 'required_after_close',
-  'access', 'status_map',
+  "type",
+  "kind",
+  "key",
+  "tracker",
+  "blocked_by",
+  "action_group",
+  "sort_order",
+  "required_after_close",
+  "access",
+  "status_map",
 ];
 const WORKFLOW_FIELDS = [
-  'type', 'entity_type', 'display_order',
-  'starting_actions', 'action_groups',
+  "type",
+  "entity_type",
+  "display_order",
+  "starting_actions",
+  "action_groups",
 ];
-const ACTION_KINDS = ['form', 'task', 'tracker'];
+const ACTION_KINDS = ["form", "task", "tracker"];
 const ACTION_STATUSES = [
-  'not-required', 'error', 'changes-required', 'done',
-  'in-review', 'in-progress', 'action-required', 'blocked',
+  "not-required",
+  "error",
+  "changes-required",
+  "done",
+  "in-review",
+  "in-progress",
+  "action-required",
+  "blocked",
 ];
 
-function pick(source, fields) { /* ... */ }
-function fail(workflowType, message) { /* throws with prefix */ }
-function validateAction(workflow, action) { /* kind, block matchup, status_map */ }
-function validateWorkflow(workflow) { /* uniqueness, group collision, starting_actions, etc. */ }
+function pick(source, fields) {
+  /* ... */
+}
+function fail(workflowType, message) {
+  /* throws with prefix */
+}
+function validateAction(workflow, action) {
+  /* kind, block matchup, status_map */
+}
+function validateWorkflow(workflow) {
+  /* uniqueness, group collision, starting_actions, etc. */
+}
 
 function makeWorkflowsConfig(_, vars) {
   return vars.workflows.map((workflow) => {

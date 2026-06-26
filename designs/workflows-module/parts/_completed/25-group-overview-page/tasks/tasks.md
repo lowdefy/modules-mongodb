@@ -6,12 +6,12 @@ Ships the `group-overview` shared page, the `get-action-group-overview` operatio
 
 ## Tasks
 
-| #   | File                                | Summary                                                                             | Depends On |
-| --- | ----------------------------------- | ----------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-api-get-action-group-overview.md` | Ship `api/get-action-group-overview.yaml` + manifest export + handler-level smoke.  | —          |
-| 2   | `02-page-group-overview.md`         | Ship `pages/group-overview.yaml` + manifest export.                                 | 1          |
-| 3   | `03-actions-on-entity-group-link.md` | Edit `actions-on-entity.yaml` `_js` builder to populate `actionGroupConfig[*].link`. | 2          |
-| 4   | `04-sibling-design-cross-refs.md`   | Add "see also part 25" lines to parts 17 / 18 / 19 / 20 design docs.                | —          |
+| #   | File                                  | Summary                                                                              | Depends On |
+| --- | ------------------------------------- | ------------------------------------------------------------------------------------ | ---------- |
+| 1   | `01-api-get-action-group-overview.md` | Ship `api/get-action-group-overview.yaml` + manifest export + handler-level smoke.   | —          |
+| 2   | `02-page-group-overview.md`           | Ship `pages/group-overview.yaml` + manifest export.                                  | 1          |
+| 3   | `03-actions-on-entity-group-link.md`  | Edit `actions-on-entity.yaml` `_js` builder to populate `actionGroupConfig[*].link`. | 2          |
+| 4   | `04-sibling-design-cross-refs.md`     | Add "see also part 25" lines to parts 17 / 18 / 19 / 20 design docs.                 | —          |
 
 ## Ordering Rationale
 

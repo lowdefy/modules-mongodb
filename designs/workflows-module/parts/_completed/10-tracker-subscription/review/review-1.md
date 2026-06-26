@@ -14,7 +14,7 @@ Focus: contract drift against shipped code (part 6's `handleSubmit`, part 5's `C
 
 Two problems:
 
-- **Step 10 is the tracker step in the submit-pipeline numbering** that part 6 commits to ([06-submit-action-writes/design.md:65](../../06-submit-action-writes/design.md): "10. **Tracker subscription** — no-op, → part 10."). "Fire after step 10" reads like "fire after the tracker step" — which is a tautology if step 10 *is* the tracker subscription. The intended meaning is "step 10 currently no-ops; this part puts a body in it."
+- **Step 10 is the tracker step in the submit-pipeline numbering** that part 6 commits to ([06-submit-action-writes/design.md:65](../../06-submit-action-writes/design.md): "10. **Tracker subscription** — no-op, → part 10."). "Fire after step 10" reads like "fire after the tracker step" — which is a tautology if step 10 _is_ the tracker subscription. The intended meaning is "step 10 currently no-ops; this part puts a body in it."
 - The actual seam in shipped code is between step 5 (the bundled summary + groups + auto-complete `$set` at [handleSubmit.js:288–309](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) and step 11 (post-hook). Steps 7–11 are currently all no-ops; saying "after step 10" doesn't tell the implementer where in the file to wire the call.
 
 **Fix.** Rewrite the bullet:
@@ -49,7 +49,7 @@ async function updateAction(context, {
 }) { ... }
 ```
 
-There is no `actions: [...]` array shape. The pseudo-code is for the *handler-level internal payload* used inside `handleSubmit`'s step-4 loop, not `shared/updateAction.js`. Every existing caller (`StartWorkflow`'s parent-link push at [StartWorkflow.js:117–129](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js), `handleSubmit`'s per-entry loop at [handleSubmit.js:195–202](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) passes the per-action shape.
+There is no `actions: [...]` array shape. The pseudo-code is for the _handler-level internal payload_ used inside `handleSubmit`'s step-4 loop, not `shared/updateAction.js`. Every existing caller (`StartWorkflow`'s parent-link push at [StartWorkflow.js:117–129](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflow/StartWorkflow.js), `handleSubmit`'s per-entry loop at [handleSubmit.js:195–202](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) passes the per-action shape.
 
 Part 10's design doesn't repeat the pseudo-code, but it does say at [design.md:34](../design.md): "Reuses `updateAction.js` from [part 6](../06-submit-action-writes/design.md) for the parent write." Without explicitly pinning the per-action call shape, an implementer reading the concept-spec pseudo-code will write a call that fails at runtime.
 
@@ -103,7 +103,7 @@ And the concept spec at [engine/spec.md:254](../../../workflows-module-concept/e
 
 `force: true` **bypasses** the priority rule (see [updateAction.js:47](../../../../plugins/modules-mongodb-plugins/src/connections/shared/updateAction.js): `if (force !== true) { ... priority check ... }`). So the priority-rule guard never runs on tracker writes — same-stage re-fires would write duplicate audit entries.
 
-This is a real correctness gap. The concept spec's worked example ([engine/spec.md:344](../../../workflows-module-concept/engine/spec.md#worked-example-2-level-nested-auto-complete)) shows the **upstream** guard: the same-stage check on the *workflow's* status push (`B.status[0]='active' ≠ 'completed' → proceed`). That guard sits in `pushWorkflowStatus`, which gates whether the tracker subscription is even invoked. If the originating handler short-circuits the workflow push (no change ⇒ no fire), the subscription never runs.
+This is a real correctness gap. The concept spec's worked example ([engine/spec.md:344](../../../workflows-module-concept/engine/spec.md#worked-example-2-level-nested-auto-complete)) shows the **upstream** guard: the same-stage check on the _workflow's_ status push (`B.status[0]='active' ≠ 'completed' → proceed`). That guard sits in `pushWorkflowStatus`, which gates whether the tracker subscription is even invoked. If the originating handler short-circuits the workflow push (no change ⇒ no fire), the subscription never runs.
 
 But part 6's shipped `handleSubmit` doesn't call `pushWorkflowStatus` — it inlines the `completed` push into step 5's bundled `$set` (lines 288–309), with the guard reduced to "did `shouldPushCompleted` evaluate true." So the upstream guard is in place for `handleSubmit`'s auto-complete path; the issue is that part 10's verification bullet attributes idempotency to the wrong guard.
 
@@ -152,7 +152,7 @@ This commits to **one level** in v1, which makes the singular shape internally c
 
 > Skipped entirely when the workflow is already in a terminal stage (`completed` / `cancelled`) — the terminal-workflow gate in part 6 step 1 would have rejected the submit before reaching this point, but the guard is restated here for the auto-recursion case (tracker subscription's parent push from [part 10](../10-tracker-subscription/design.md) may re-enter this handler).
 
-That recursion *is* multi-level. The tracker push lands on parent action → triggers a recompute of the parent workflow → parent auto-completes → parent's tracker subscription fires → grandparent. Part 7 explicitly assumes this works; part 10's "v1 fires one level" reverses that decision without flagging the cross-part contradiction.
+That recursion _is_ multi-level. The tracker push lands on parent action → triggers a recompute of the parent workflow → parent auto-completes → parent's tracker subscription fires → grandparent. Part 7 explicitly assumes this works; part 10's "v1 fires one level" reverses that decision without flagging the cross-part contradiction.
 
 **Fix.** Pick one and pin it. Two coherent options:
 
@@ -196,7 +196,7 @@ So the parent action's status entry carries the **child's** originating `eventId
 
 Two consumers of `event_id` on a status entry:
 
-- **Audit trail / timeline UIs.** The event id links the action transition to the log event row that explains *why* the transition happened. If the parent action carries the child's `eventId`, clicking through the audit trail jumps to the child's log event — which is actually correct ("this tracker flipped because the child workflow completed; the child's event has the details").
+- **Audit trail / timeline UIs.** The event id links the action transition to the log event row that explains _why_ the transition happened. If the parent action carries the child's `eventId`, clicking through the audit trail jumps to the child's log event — which is actually correct ("this tracker flipped because the child workflow completed; the child's event has the details").
 - **Part 8's `dispatchLogEvent`.** When the child workflow's submit runs, it generates one log event. Currently the parent's action transition rides on that same event id. No separate "tracker-fired-the-parent" event is emitted in v1.
 
 That's a reasonable default but should be called out. A reader might assume the tracker write either generates a fresh event id or skips event-id stamping entirely.
@@ -258,7 +258,7 @@ The pipeline numbering (part 6's commitment) is canonical: step 9 = group fan-ou
 
 `handleSubmit` maintains `context.workflowActions` as an in-memory cache that step 5's summary recompute reads ([handleSubmit.js:208–221](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)). The tracker write lands on a **different workflow's action** (the parent's `track-installation`), not on `context.workflowActions`. So the subscription doesn't need to update the cache — it writes a doc that isn't in the current handler's view.
 
-But if Option A from finding 6 is picked (multi-level recurse), the parent submit's view of its own actions needs to be fresh when the parent's auto-complete check runs. Part 7's invariant ([handleSubmit.js:252–260](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) is that `context.workflowActions` is refetched after `reevaluateBlockedActions` modifies actions. The tracker recursion would re-enter `handleSubmit` with a fresh `context` (new `getCurrentAction`, new `getActions`, new `workflow` find) — so the cache invariant holds *across* the recursion, but only because each level fetches fresh.
+But if Option A from finding 6 is picked (multi-level recurse), the parent submit's view of its own actions needs to be fresh when the parent's auto-complete check runs. Part 7's invariant ([handleSubmit.js:252–260](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js)) is that `context.workflowActions` is refetched after `reevaluateBlockedActions` modifies actions. The tracker recursion would re-enter `handleSubmit` with a fresh `context` (new `getCurrentAction`, new `getActions`, new `workflow` find) — so the cache invariant holds _across_ the recursion, but only because each level fetches fresh.
 
 This is implicit in the design but should be pinned for the test matrix:
 

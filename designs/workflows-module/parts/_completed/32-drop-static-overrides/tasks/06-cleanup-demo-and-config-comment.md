@@ -5,6 +5,7 @@
 Two pieces of cleanup remain after the engine-side changes:
 
 1. **`makeWorkflowsConfig.js` head-of-file comment** lists `interactions, event` as build-time-only fields excluded from the runtime config:
+
    ```js
    // modules/workflows/resolvers/makeWorkflowsConfig.js:1
    // Engine-runtime needs + per-action UI lookups. Build-time-only fields
@@ -12,6 +13,7 @@ Two pieces of cleanup remain after the engine-side changes:
    // excluded — they're consumed by build-time resolvers (parts 12, 13, 15)
    // against the raw workflow YAML, not via workflowsConfig at runtime.
    ```
+
    After Part 32, `interactions` is no longer consumed by any resolver and should be dropped from this comment. `event` **stays** in the list — `makeWorkflowApis` still bakes it into the per-action endpoint payload as `event_overrides:`. Note: the validator has no unknown-keys rejection (see `validateAction` in the same file — it only inspects known fields), so stale `interactions:` YAML fields are silently accepted; this comment is the only place they're listed.
 
 2. **Demo workflow YAMLs** still carry `interactions:` blocks (no `event:` blocks per the design's grep verification):

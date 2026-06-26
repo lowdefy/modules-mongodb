@@ -35,7 +35,7 @@ Update three files:
 Suggested shape after the change:
 
 ```js
-const VALID_MODES = ['edit', 'view', 'review', 'error'];
+const VALID_MODES = ["edit", "view", "review", "error"];
 
 function applyViewOnlyFilter(formArray, mode) {
   const hasViewOnly = formArray.some((entry) => entry?.viewOnly === true);
@@ -46,7 +46,7 @@ function applyViewOnlyFilter(formArray, mode) {
     fail(`invalid mode '${mode}' (expected one of: edit, view, review, error)`);
   }
   return formArray
-    .filter((entry) => !(mode === 'edit' && entry?.viewOnly === true))
+    .filter((entry) => !(mode === "edit" && entry?.viewOnly === true))
     .map(({ viewOnly: _v, ...rest }) => rest);
 }
 

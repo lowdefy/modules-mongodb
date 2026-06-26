@@ -11,6 +11,7 @@ The CLAUDE.md principle amendment is load-bearing, not cosmetic: the top-level "
 **1. Update `CLAUDE.md` — describe the new doc layout.** Replace the old "Documentation" section (which describes per-module READMEs + `idioms.md`) with the central `docs/` tree: the per-module folder shape (`index.md` + proportional `concepts/`/`how-to/`/`reference/`), `docs/shared/` idioms, `docs/plugins/`, front-matter schema, generated `vars.md`/`llms.txt`, and the `docs:check` gate. Confirm the "Manifest is the source of truth for var schema" rule still holds and now points at the generator.
 
 **2. Amend the "Designs are the source of truth" principle** to encode decision 3's boundary explicitly:
+
 - Designs stay source-of-truth for **code decisions and rationale** (why it was built this way, rejected alternatives).
 - Docs become source-of-truth for **consumer-observable authoring behavior** (how it behaves, how to author it).
 - Conflict resolution: when docs and a design disagree about **behavior**, docs win — and the design gets a note. When they disagree about **rationale**, the design wins.
@@ -18,10 +19,12 @@ The CLAUDE.md principle amendment is load-bearing, not cosmetic: the top-level "
 Word this so an agent reading the principle in isolation will not "fix" docs to match a stale design.
 
 **3. Regenerate `llms.txt` and all var tables over the complete tree:**
+
 - `node scripts/gen-var-docs.mjs` — every module's `vars.md` current.
 - `node scripts/gen-llms-txt.mjs` — `docs/llms.txt` covers every doc (modules, shared, plugins, index), source-side stubs excluded.
 
 **4. Repo-wide audit:**
+
 - Every `modules/{name}/README.md`, the plugin package README, and all six block READMEs are stubs pointing at the right `docs/` page.
 - No surviving links to `docs/idioms.md` anywhere.
 - `docs/idioms.md` and `modules/activities/VARS.md` are gone.

@@ -2,11 +2,12 @@
 
 ## Context
 
-With tasks 1–4 in place, the workflows module derives good default titles from slugs (`send-quote` → "Send Quote", `upload-po` → "Upload PO"). The demo app's workflow configs likely carry hand-written `title:` fields that are now redundant (equal to the derived default) and may carry slugs that humanize *wrong* (acronyms, custom phrasing) that should stay as explicit overrides.
+With tasks 1–4 in place, the workflows module derives good default titles from slugs (`send-quote` → "Send Quote", `upload-po` → "Upload PO"). The demo app's workflow configs likely carry hand-written `title:` fields that are now redundant (equal to the derived default) and may carry slugs that humanize _wrong_ (acronyms, custom phrasing) that should stay as explicit overrides.
 
 This task updates the demo to (a) drop now-redundant titles so the demo demonstrates the derive path, and (b) keep or add explicit `title:` only where the slug humanizes wrong, exercising the override path. Per the repo's "demo is not a census" rule, this is about demonstrating both code paths cleanly — not proving anything about production.
 
 Demo configs live under `apps/demo/modules/workflows/workflow_config/`:
+
 - `workflows.yaml` (the top-level array, `_ref`'d as the module entry's `workflows_config`)
 - `company-setup/` and `onboarding/` subfolders with per-action and per-workflow files (e.g. `send-quote.yaml`, `upload-po.yaml`, `kickoff-call.yaml`, `assign-account-manager.yaml`, `company-setup.yaml`, `onboarding.yaml`).
 

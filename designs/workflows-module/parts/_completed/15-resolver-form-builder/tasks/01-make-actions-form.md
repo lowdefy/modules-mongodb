@@ -93,31 +93,43 @@ ES-module JS following the pattern from [makeActionPages.js](../../../../modules
 Suggested top-level shape:
 
 ```js
-import fs from 'node:fs';
-import path from 'node:path';
-import yaml from 'js-yaml';
+import fs from "node:fs";
+import path from "node:path";
+import yaml from "js-yaml";
 
-const STRUCTURAL_COMPONENTS = ['controlled_list', 'section', 'box', 'label', 'file_upload'];
-const FIELDS_DIR = path.resolve(import.meta.dirname, '../components/fields');
+const STRUCTURAL_COMPONENTS = [
+  "controlled_list",
+  "section",
+  "box",
+  "label",
+  "file_upload",
+];
+const FIELDS_DIR = path.resolve(import.meta.dirname, "../components/fields");
 const componentCache = new Map();
 
 function fail(message) {
   throw new Error(`makeActionsForm: ${message}`);
 }
 
-function loadComponent(name) { /* fs.readFileSync + js-yaml.load, cached */ }
-
-function isNamespaced(component) {
-  return typeof component === 'string' && component.includes(':');
+function loadComponent(name) {
+  /* fs.readFileSync + js-yaml.load, cached */
 }
 
-function substituteEntry(entry) { /* the per-entry switch from "Substitution algorithm" */ }
+function isNamespaced(component) {
+  return typeof component === "string" && component.includes(":");
+}
+
+function substituteEntry(entry) {
+  /* the per-entry switch from "Substitution algorithm" */
+}
 
 function walk(formArray) {
   return (formArray ?? []).map(substituteEntry);
 }
 
-function checkIdCollisions(substitutedTree) { /* recursive id-collection + duplicate detection */ }
+function checkIdCollisions(substitutedTree) {
+  /* recursive id-collection + duplicate detection */
+}
 
 function makeActionsForm(_, vars) {
   const substituted = walk(vars.form);

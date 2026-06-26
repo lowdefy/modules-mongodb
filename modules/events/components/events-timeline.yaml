@@ -25,37 +25,37 @@ requests:
               - - _var: reference_field
                 - _payload: reference_value
               - - _var:
-                      key: display_key
-                      default:
-                        _module.var: display_key
+                    key: display_key
+                    default:
+                      _module.var: display_key
                 - $ne: null
         - $sort:
             date: -1
         - $addFields:
             title:
               _string.concat:
-                - '$'
+                - "$"
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - '.title'
+                - ".title"
             description:
               _string.concat:
-                - '$'
+                - "$"
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - '.description'
+                - ".description"
             info:
               _string.concat:
-                - '$'
+                - "$"
                 - _var:
                     key: display_key
                     default:
                       _module.var: display_key
-                - '.info'
+                - ".info"
 
 blocks:
   - id: events_timeline_empty

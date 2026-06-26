@@ -22,10 +22,10 @@ The function does **not** generate `_id`, `date`, `created`, or `files` — thos
 Create [plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/dispatchLogEvent.js):
 
 ```js
-import deriveEntityRefKey from './utils/deriveEntityRefKey.js';
+import deriveEntityRefKey from "./utils/deriveEntityRefKey.js";
 
 const DEFAULT_TITLE_TEMPLATE =
-  '{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}';
+  "{{ user.profile.name }} marked {{ action_type }} as {{ status_after }}";
 
 /**
  * Assemble the default log-event payload.
@@ -58,10 +58,10 @@ export function buildDefaultLogEventPayload({
   status_after,
   appName,
 }) {
-  if (typeof appName !== 'string' || appName.length === 0) {
+  if (typeof appName !== "string" || appName.length === 0) {
     throw new Error(
-      'buildDefaultLogEventPayload: appName is required (read from connection.app_name). ' +
-        'Apps must wire app_name on the workflows module entry — see designs/workflows-module/parts/08-side-effect-dispatch/design.md § app_name plumbing.',
+      "buildDefaultLogEventPayload: appName is required (read from connection.app_name). " +
+        "Apps must wire app_name on the workflows module entry — see designs/workflows-module/parts/08-side-effect-dispatch/design.md § app_name plumbing.",
     );
   }
   const refKey = deriveEntityRefKey(workflow.entity_collection);

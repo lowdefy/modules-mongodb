@@ -12,13 +12,13 @@ Forward-looking work items and ad-hoc text notes are out of scope — use a task
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
-| [layout](../layout/index.md) | Page wrapper |
-| [events](../events/index.md) | Audit logging and `change_stamp` |
-| [contacts](../contacts/index.md) | Contact selector and linking |
-| [companies](../companies/index.md) | Company selector and linking |
-| [files](../files/index.md) | Optional file attachments |
+| Module                             | Why                              |
+| ---------------------------------- | -------------------------------- |
+| [layout](../layout/index.md)       | Page wrapper                     |
+| [events](../events/index.md)       | Audit logging and `change_stamp` |
+| [contacts](../contacts/index.md)   | Contact selector and linking     |
+| [companies](../companies/index.md) | Company selector and linking     |
+| [files](../files/index.md)         | Optional file attachments        |
 
 Companies and contacts do **not** depend on activities. Apps that want activity tiles on companies/contacts wire `tile_activities` into the parent module's sidebar slots from app config.
 

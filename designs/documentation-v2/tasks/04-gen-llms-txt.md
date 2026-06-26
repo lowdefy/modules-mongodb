@@ -27,6 +27,7 @@ Include a short header describing what the file is. Keep it flat (open question 
 **Front-matter linting:** while walking, validate every doc has the required front-matter fields with allowed `type` values (`index | concept | how-to | reference | shared`). Collect violations.
 
 **Modes:**
+
 - Default (write): regenerate `docs/llms.txt`; if any front-matter violations exist, print them and exit non-zero (a doc missing front-matter is a hard error, not a silent skip).
 - `--check`: regenerate `llms.txt` to temp, diff against committed `docs/llms.txt`, AND run the front-matter lint; exit non-zero on any diff or any lint violation, naming the offending file(s). Do not modify committed files in `--check`.
 

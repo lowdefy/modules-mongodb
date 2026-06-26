@@ -44,9 +44,9 @@ For every `_global:` site listed below, apply the matching rewrite.
 
 ### Pattern 1 sites (clean swap)
 
-| File                                          | Line | Current                          | New                                                                       |
-| --------------------------------------------- | ---- | -------------------------------- | ------------------------------------------------------------------------- |
-| `modules/workflows/pages/task-edit.yaml`      | 146  | `- _global: action_statuses`     | `- _ref: { module: workflows, component: action_statuses }`               |
+| File                                     | Line | Current                      | New                                                         |
+| ---------------------------------------- | ---- | ---------------------------- | ----------------------------------------------------------- |
+| `modules/workflows/pages/task-edit.yaml` | 146  | `- _global: action_statuses` | `- _ref: { module: workflows, component: action_statuses }` |
 
 ### Pattern 2 sites (rewrite to `_js`-with-params)
 
@@ -56,7 +56,7 @@ For each site, replace the `_global: { _string.concat: [<enum-name>., <runtime-k
 _js:
   params:
     - _ref: { module: workflows, component: <enum-name> }
-    - <runtime-key-operator>   # e.g. _request: get_action.status.0.stage
+    - <runtime-key-operator> # e.g. _request: get_action.status.0.stage
   body: |
     const [enumObj, key] = params;
     return enumObj?.[key]?.<field>;
@@ -66,26 +66,26 @@ The exact `<runtime-key-operator>` varies by site (see existing `_string.concat`
 
 Sites to rewrite:
 
-| File                                                   | Lines  | Enum name                       | Field(s) read                                            |
-| ------------------------------------------------------ | ------ | ------------------------------- | -------------------------------------------------------- |
-| `modules/workflows/pages/task-view.yaml`               | 74     | `action_statuses`               | `.color`                                                 |
-| `modules/workflows/pages/task-view.yaml`               | 81     | `action_statuses`               | `.titleColor`                                            |
-| `modules/workflows/pages/task-view.yaml`               | 87     | `action_statuses`               | `.borderColor`                                           |
-| `modules/workflows/pages/task-view.yaml`               | 93     | `action_statuses`               | (read context — re-check during implementation)          |
-| `modules/workflows/pages/task-view.yaml`               | 137    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/task-view.yaml`               | 143    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/task-review.yaml`             | 109    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/task-review.yaml`             | 115    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/workflow-overview.yaml`       | 131    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/workflow-overview.yaml`       | 137    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/workflow-overview.yaml`       | 244    | `action_form_configs`           | (re-check — likely `.form` or `.form_review`)            |
-| `modules/workflows/pages/workflow-overview.yaml`       | 249    | `action_form_configs`           | (re-check)                                               |
-| `modules/workflows/pages/group-overview.yaml`          | 243    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/group-overview.yaml`          | 249    | `action_statuses`               | (re-check)                                               |
-| `modules/workflows/pages/group-overview.yaml`          | 356    | `action_form_configs`           | (re-check)                                               |
-| `modules/workflows/pages/group-overview.yaml`          | 361    | `action_form_configs`           | (re-check)                                               |
-| `modules/workflows/components/workflow-header.yaml`    | 80     | `workflow_lifecycle_stages`     | (re-check)                                               |
-| `modules/workflows/components/workflow-header.yaml`    | 86     | `workflow_lifecycle_stages`     | (re-check)                                               |
+| File                                                | Lines | Enum name                   | Field(s) read                                   |
+| --------------------------------------------------- | ----- | --------------------------- | ----------------------------------------------- |
+| `modules/workflows/pages/task-view.yaml`            | 74    | `action_statuses`           | `.color`                                        |
+| `modules/workflows/pages/task-view.yaml`            | 81    | `action_statuses`           | `.titleColor`                                   |
+| `modules/workflows/pages/task-view.yaml`            | 87    | `action_statuses`           | `.borderColor`                                  |
+| `modules/workflows/pages/task-view.yaml`            | 93    | `action_statuses`           | (read context — re-check during implementation) |
+| `modules/workflows/pages/task-view.yaml`            | 137   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/task-view.yaml`            | 143   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/task-review.yaml`          | 109   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/task-review.yaml`          | 115   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/workflow-overview.yaml`    | 131   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/workflow-overview.yaml`    | 137   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/workflow-overview.yaml`    | 244   | `action_form_configs`       | (re-check — likely `.form` or `.form_review`)   |
+| `modules/workflows/pages/workflow-overview.yaml`    | 249   | `action_form_configs`       | (re-check)                                      |
+| `modules/workflows/pages/group-overview.yaml`       | 243   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/group-overview.yaml`       | 249   | `action_statuses`           | (re-check)                                      |
+| `modules/workflows/pages/group-overview.yaml`       | 356   | `action_form_configs`       | (re-check)                                      |
+| `modules/workflows/pages/group-overview.yaml`       | 361   | `action_form_configs`       | (re-check)                                      |
+| `modules/workflows/components/workflow-header.yaml` | 80    | `workflow_lifecycle_stages` | (re-check)                                      |
+| `modules/workflows/components/workflow-header.yaml` | 86    | `workflow_lifecycle_stages` | (re-check)                                      |
 
 Verify each site's exact `_string.concat` shape during implementation — the line numbers are anchors, not contracts (file edits during task 9 may shift them).
 

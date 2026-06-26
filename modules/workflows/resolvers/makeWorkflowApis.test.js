@@ -202,7 +202,7 @@ test("makeWorkflowApis: hooks property absent when no action declares hooks", ()
   };
   const apis = makeWorkflowApis(null, { workflows: [workflow] });
   expect(propsOf(findApi(apis, "onboarding-submit"))).not.toHaveProperty(
-    "hooks"
+    "hooks",
   );
 });
 
@@ -246,10 +246,7 @@ test("makeWorkflowApis: legacy-keyed hooks.submit_edit block is not emitted (sig
 
 test("makeWorkflowApis: group on_complete Api emission", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
-  const onComplete = findApi(
-    apis,
-    "onboarding-group-phase-1-on-complete"
-  );
+  const onComplete = findApi(apis, "onboarding-group-phase-1-on-complete");
   expect(onComplete).toBeDefined();
   // Engine-only, same rationale as hook Apis.
   expect(onComplete.type).toBe("InternalApi");
@@ -288,7 +285,7 @@ test("makeWorkflowApis: render_config omits empty slices", () => {
   // send-quote / schedule-followup declare neither status_map nor event — no key.
   expect(props.render_config.onboarding).not.toHaveProperty("send-quote");
   expect(props.render_config.onboarding).not.toHaveProperty(
-    "schedule-followup"
+    "schedule-followup",
   );
 });
 
@@ -302,7 +299,7 @@ test("makeWorkflowApis: render_config property absent when no workflow contribut
   };
   const apis = makeWorkflowApis(null, { workflows: [workflow] });
   expect(propsOf(findApi(apis, "onboarding-submit"))).not.toHaveProperty(
-    "render_config"
+    "render_config",
   );
 });
 
@@ -329,9 +326,7 @@ test("makeWorkflowApis: render_config bundles ancestor slices traced via child_w
     "onboarding",
     "onboarding-tracker",
   ]);
-  expect(
-    props.render_config["onboarding-tracker"]["install-tracker"]
-  ).toEqual({
+  expect(props.render_config["onboarding-tracker"]["install-tracker"]).toEqual({
     event_overrides: {
       internal_mirror_child_completed: {
         display: {
@@ -403,7 +398,7 @@ test("makeWorkflowApis: ancestor walk is transitive across deeper tracker chains
     active: { "my-team-app": { message: "Tracking" } },
   });
   expect(
-    props.render_config.program["track-rollout"].event_overrides
+    props.render_config.program["track-rollout"].event_overrides,
   ).toHaveProperty("internal_mirror_child_active");
 });
 
@@ -529,7 +524,9 @@ test("makeWorkflowApis: lifecycle endpoints carry the same render_config bundle 
   const apis = makeWorkflowApis(null, {
     workflows: [workedExample, onboardingTrackerWorkflow],
   });
-  const submitConfig = propsOf(findApi(apis, "onboarding-submit")).render_config;
+  const submitConfig = propsOf(
+    findApi(apis, "onboarding-submit"),
+  ).render_config;
   expect(submitConfig).toBeDefined();
   for (const verb of ["start", "cancel", "close"]) {
     expect(propsOf(findApi(apis, `onboarding-${verb}`)).render_config).toEqual(
@@ -551,10 +548,14 @@ test("makeWorkflowApis: lifecycle_event_override — started on start, closed on
     },
   };
   const apis = makeWorkflowApis(null, { workflows: [workflow] });
-  expect(propsOf(findApi(apis, "onboarding-start")).lifecycle_event_override).toEqual({
+  expect(
+    propsOf(findApi(apis, "onboarding-start")).lifecycle_event_override,
+  ).toEqual({
     display: { "my-team-app": { title: "Onboarding started" } },
   });
-  expect(propsOf(findApi(apis, "onboarding-close")).lifecycle_event_override).toEqual({
+  expect(
+    propsOf(findApi(apis, "onboarding-close")).lifecycle_event_override,
+  ).toEqual({
     display: { "my-team-app": { title: "Onboarding closed" } },
   });
   // No event.cancelled entry — the property is omitted, not emitted empty.
@@ -622,7 +623,11 @@ test("makeWorkflowApis: a workflow with only check actions still emits update-fi
     entity_collection: "leads-collection",
     starting_actions: [],
     actions: [
-      { type: "audit", kind: "check", access: { "my-team-app": { view: true, edit: true } } },
+      {
+        type: "audit",
+        kind: "check",
+        access: { "my-team-app": { view: true, edit: true } },
+      },
     ],
   };
   const apis = makeWorkflowApis(null, { workflows: [checkOnly] });
@@ -645,10 +650,22 @@ test("makeWorkflowApis: two workflows emit two distinct update-fields ids", () =
     entity_collection: "leads-collection",
     starting_actions: [],
     actions: [
-      { type: "review", kind: "form", form: [{ id: "x", type: "TextInput" }], access: { "my-team-app": { view: true, edit: true } } },
+      {
+        type: "review",
+        kind: "form",
+        form: [{ id: "x", type: "TextInput" }],
+        access: { "my-team-app": { view: true, edit: true } },
+      },
     ],
   };
   const apis = makeWorkflowApis(null, { workflows: [workedExample, wfB] });
-  const ids = apis.map((a) => a.id).filter((id) => id.endsWith("-update-fields"));
-  expect(ids).toEqual(expect.arrayContaining(["onboarding-update-fields", "renewal-update-fields"]));
+  const ids = apis
+    .map((a) => a.id)
+    .filter((id) => id.endsWith("-update-fields"));
+  expect(ids).toEqual(
+    expect.arrayContaining([
+      "onboarding-update-fields",
+      "renewal-update-fields",
+    ]),
+  );
 });

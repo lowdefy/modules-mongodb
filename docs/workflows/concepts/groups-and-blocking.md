@@ -2,7 +2,15 @@
 title: Groups and Blocking
 module: workflows
 type: concept
-concepts: [action-groups, blocked-by, group-status, conditional-actions, blocking, phases]
+concepts:
+  [
+    action-groups,
+    blocked-by,
+    group-status,
+    conditional-actions,
+    blocking,
+    phases,
+  ]
 ---
 
 # Workflows — Groups and blocking
@@ -26,19 +34,19 @@ action_groups:
     title: Setup
 
 actions:
-  - _ref: ./qualify.yaml         # action_group: discovery
-  - _ref: ./send-quote.yaml      # action_group: discovery, blocked_by: [qualify]
-  - _ref: ./schedule-followup.yaml  # action_group: follow-up, blocked_by: [discovery]
+  - _ref: ./qualify.yaml # action_group: discovery
+  - _ref: ./send-quote.yaml # action_group: discovery, blocked_by: [qualify]
+  - _ref: ./schedule-followup.yaml # action_group: follow-up, blocked_by: [discovery]
   - _ref: ./track-installation.yaml # action_group: setup, blocked_by: [follow-up]
 ```
 
 **Group status** is a derived three-value enum written back to the workflow doc:
 
-| Group status | Rule |
-|---|---|
-| `done` | Every action in the group is terminal (`done` or `not-required`) |
+| Group status  | Rule                                                                                                                                           |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `done`        | Every action in the group is terminal (`done` or `not-required`)                                                                               |
 | `in-progress` | At least one action is non-terminal AND at least one is active (`action-required`, `in-progress`, `in-review`, `changes-required`, or `error`) |
-| `blocked` | Every non-terminal action in the group is `blocked` |
+| `blocked`     | Every non-terminal action in the group is `blocked`                                                                                            |
 
 The engine recomputes and persists group status on the workflow doc as part of every `SubmitWorkflowAction` call — you don't maintain it yourself.
 
@@ -60,6 +68,7 @@ blocked_by: [discovery, contact-customer]
 ```
 
 **Resolution:**
+
 - A **group ID** entry: satisfied when the group's status is `done`.
 - An **action-type** entry: satisfied when at least one action of that type is terminal (`done` or `not-required`).
 - The engine resolves by group-ID-first lookup precedence. A collision between a group ID and an action type within the same workflow fails the build.
@@ -75,29 +84,31 @@ The engine re-evaluates every blocked action's `blocked_by` list after each tran
 A conditional action is one that may never exist — it's spawned mid-workflow by a pre-hook's `upsert: true` return only when runtime conditions warrant it. If it's never spawned, the engine's `blocked_by` re-evaluation finds no doc for that type, evaluates it as unsatisfied, and the dependent action **remains blocked forever** with no recovery path.
 
 **Wrong:**
+
 ```yaml
 # schedule-installation is a conditional action — may never be spawned
 blocked_by:
-  - schedule-installation   # WRONG: permanently blocked if never spawned
+  - schedule-installation # WRONG: permanently blocked if never spawned
 ```
 
 **Right — use the group ID instead:**
+
 ```yaml
 # schedule-installation belongs to the discovery group when spawned
 blocked_by:
-  - discovery   # RIGHT: group status resolves as "done" once all existing members are terminal
-                #        a never-spawned conditional simply has no presence in the member set
+  - discovery # RIGHT: group status resolves as "done" once all existing members are terminal
+    #        a never-spawned conditional simply has no presence in the member set
 ```
 
 Group status derives from whatever member docs exist. A never-spawned conditional is absent from the member set and doesn't hold up group completion. A conditional action can itself carry `blocked_by` (it can depend on standard predecessors), but it must not be named as a blocking target.
 
 **Summary:**
 
-| Element | May carry `blocked_by`? | May be named in `blocked_by`? |
-|---|---|---|
-| Standard action (always present) | Yes | Yes |
-| Conditional action (hook-spawned with `upsert: true`) | Yes | **No** |
-| Group ID | No (ignored) | Yes |
+| Element                                               | May carry `blocked_by`? | May be named in `blocked_by`? |
+| ----------------------------------------------------- | ----------------------- | ----------------------------- |
+| Standard action (always present)                      | Yes                     | Yes                           |
+| Conditional action (hook-spawned with `upsert: true`) | Yes                     | **No**                        |
+| Group ID                                              | No (ignored)            | Yes                           |
 
 For the how-to on working with conditional actions, see [Conditional actions](../how-to/conditional-actions.md).
 
@@ -107,10 +118,10 @@ For the how-to on working with conditional actions, see [Conditional actions](..
 
 ```yaml
 starting_actions:
-  - { type: qualify, status: action-required }       # entry action — ready immediately
-  - { type: send-quote, status: blocked }            # downstream standard action
-  - { type: schedule-followup, status: blocked }     # downstream standard action
-  - { type: track-installation, status: blocked }    # downstream standard action
+  - { type: qualify, status: action-required } # entry action — ready immediately
+  - { type: send-quote, status: blocked } # downstream standard action
+  - { type: schedule-followup, status: blocked } # downstream standard action
+  - { type: track-installation, status: blocked } # downstream standard action
   # site-visit is absent — conditional; spawned by qualify's pre-submit hook when needed
 ```
 

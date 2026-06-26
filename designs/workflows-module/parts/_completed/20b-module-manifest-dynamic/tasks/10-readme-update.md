@@ -2,7 +2,7 @@
 
 ## Context
 
-`modules/workflows/README.md` was authored by part 20a with a placeholder pointer in the Exports section: *"Per-action pages and per-action submit endpoints ship in part 20b"*. With the resolver wiring already on `main` (commit `574960a`) and the demo extension landing via tasks 3–8, the README should describe the full surface as one coherent thing.
+`modules/workflows/README.md` was authored by part 20a with a placeholder pointer in the Exports section: _"Per-action pages and per-action submit endpoints ship in part 20b"_. With the resolver wiring already on `main` (commit `574960a`) and the demo extension landing via tasks 3–8, the README should describe the full surface as one coherent thing.
 
 The README also needs to document the new `entity-workflows-refetch` component (task 2) under Components.
 

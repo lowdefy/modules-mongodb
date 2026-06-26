@@ -1,32 +1,32 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import loadWorkflowState from '../../shared/phases/loadWorkflowState.js';
-import planActionTransition from '../../shared/phases/planners/planActionTransition.js';
-import planWorkflowRecompute from '../../shared/phases/planners/planWorkflowRecompute.js';
-import planEventDispatch from '../../shared/phases/planners/planEventDispatch.js';
-import planChangeLog from '../../shared/phases/planners/planChangeLog.js';
-import commitPlan from '../../shared/phases/commitPlan.js';
-import runTrackerCascade from '../../shared/phases/runTrackerCascade.js';
-import throwIfDispatchFailed from '../../shared/phases/throwIfDispatchFailed.js';
-import { WorkflowEngineError } from '../../shared/errors.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import loadWorkflowState from "../../shared/phases/loadWorkflowState.js";
+import planActionTransition from "../../shared/phases/planners/planActionTransition.js";
+import planWorkflowRecompute from "../../shared/phases/planners/planWorkflowRecompute.js";
+import planEventDispatch from "../../shared/phases/planners/planEventDispatch.js";
+import planChangeLog from "../../shared/phases/planners/planChangeLog.js";
+import commitPlan from "../../shared/phases/commitPlan.js";
+import runTrackerCascade from "../../shared/phases/runTrackerCascade.js";
+import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
+import { WorkflowEngineError } from "../../shared/errors.js";
 
 // Fields that may NOT be overwritten by payload.references — engine-owned on
 // the workflow doc (carried over from the prior handler).
 const RESERVED_WORKFLOW_KEYS = [
-  '_id',
-  'workflow_id',
-  'type',
-  'workflow_type',
-  'entity_id',
-  'entity_collection',
-  'status',
-  'summary',
-  'groups',
-  'form_data',
-  'created',
-  'updated',
+  "_id",
+  "workflow_id",
+  "type",
+  "workflow_type",
+  "entity_id",
+  "entity_collection",
+  "status",
+  "summary",
+  "groups",
+  "form_data",
+  "created",
+  "updated",
 ];
 
-const TERMINAL_STAGES = ['done', 'not-required'];
+const TERMINAL_STAGES = ["done", "not-required"];
 
 /**
  * CloseWorkflow handler (design D2/D3/D12; task 17).
@@ -50,8 +50,8 @@ async function CloseWorkflow(lowdefyContext) {
   const entry_id = connection.entry_id;
 
   if (!params.workflow_id) {
-    throw new WorkflowEngineError('CloseWorkflow: workflow_id is required', {
-      code: 'invalid_params',
+    throw new WorkflowEngineError("CloseWorkflow: workflow_id is required", {
+      code: "invalid_params",
     });
   }
 
@@ -64,14 +64,14 @@ async function CloseWorkflow(lowdefyContext) {
 
   // ── Lifecycle preconditions ──────────────────────────────────────────────
   const currentStage = workflow.status?.[0]?.stage;
-  if (currentStage === 'completed') {
+  if (currentStage === "completed") {
     // Idempotent no-op — returns before commit, so no event and no fires.
     return { action_ids: [], event_id: null, tracker_fired: [] };
   }
-  if (currentStage === 'cancelled') {
+  if (currentStage === "cancelled") {
     throw new WorkflowEngineError(
       `CloseWorkflow: workflow ${params.workflow_id} is cancelled; cannot close`,
-      { code: 'stage_rejects_close' },
+      { code: "stage_rejects_close" },
     );
   }
 
@@ -86,15 +86,15 @@ async function CloseWorkflow(lowdefyContext) {
   for (const action of actions) {
     const stage = action.status?.[0]?.stage;
     if (TERMINAL_STAGES.includes(stage)) continue; // preserve done / not-required
-    const isBlocked = stage === 'blocked';
+    const isBlocked = stage === "blocked";
     const requiredAfterClose = requiredAfterCloseByType[action.type] === true;
     // Sweep when not protected, OR when blocked (blocked-action exception).
     if (requiredAfterClose && !isBlocked) continue; // survivor stays at its stage
     const actionConfig = actionsConfig.find((c) => c.type === action.type);
     const planned = planActionTransition({
       action,
-      signal: 'internal_cancel_action',
-      source: 'cascade',
+      signal: "internal_cancel_action",
+      source: "cascade",
       actionConfig,
       loadedWorkflow: workflow,
       entry_id,
@@ -109,16 +109,14 @@ async function CloseWorkflow(lowdefyContext) {
   const sweptById = new Map(
     sweepEntries.map((e) => [String(e.doc._id), e.doc]),
   );
-  const plannedActions = actions.map(
-    (a) => sweptById.get(String(a._id)) ?? a,
-  );
+  const plannedActions = actions.map((a) => sweptById.get(String(a._id)) ?? a);
 
   // ── Plan: workflow recompute with the completed lifecycle entry ──────────
   // Close pushes `completed` regardless of survivors (skip-entirely semantics).
   const recomputed = planWorkflowRecompute({
     loadedState,
     plannedActions,
-    lifecyclePush: { stage: 'completed', reason: params.reason },
+    lifecyclePush: { stage: "completed", reason: params.reason },
     event_id,
     now,
   });
@@ -135,8 +133,8 @@ async function CloseWorkflow(lowdefyContext) {
   const event = planEventDispatch({
     event_id,
     user,
-    handlerType: 'CloseWorkflow',
-    signal: 'closed',
+    handlerType: "CloseWorkflow",
+    signal: "closed",
     plannedWorkflowDoc,
     allTouchedActionDocs: sweepEntries.map((e) => e.doc),
     connection,
@@ -146,7 +144,7 @@ async function CloseWorkflow(lowdefyContext) {
   // ── Plan: change-log ─────────────────────────────────────────────────────
   const planWorkflow = {
     doc: plannedWorkflowDoc,
-    operation: 'update',
+    operation: "update",
     changeLog: { before: workflow, after: plannedWorkflowDoc },
   };
   const changeLog = planChangeLog({
@@ -164,7 +162,7 @@ async function CloseWorkflow(lowdefyContext) {
           {
             parentWorkflowId: workflow.parent_workflow_id,
             parentActionId: workflow.parent_action_id,
-            signal: 'internal_mirror_child_completed',
+            signal: "internal_mirror_child_completed",
           },
         ]
       : [];
@@ -185,7 +183,11 @@ async function CloseWorkflow(lowdefyContext) {
   const cascade = await runTrackerCascade(plan.trackerFires, context);
 
   // ── Surface post-commit dispatch failures, last (D9/D13) ─────────────────
-  throwIfDispatchFailed({ handlerName: 'CloseWorkflow', commitResult, cascade });
+  throwIfDispatchFailed({
+    handlerName: "CloseWorkflow",
+    commitResult,
+    cascade,
+  });
 
   return {
     action_ids: commitResult.action_ids,

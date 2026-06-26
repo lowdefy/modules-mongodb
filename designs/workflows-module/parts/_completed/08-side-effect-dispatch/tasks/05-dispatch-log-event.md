@@ -55,17 +55,17 @@ async function dispatchLogEvent(context, inputBag) {
   });
 
   const result = await context.callApi(
-    { id: 'new-event', module: 'events' },
+    { id: "new-event", module: "events" },
     { _id: context.eventId, ...payload },
     { user: context.user },
   );
 
   if (!result.success) {
     const err = new Error(
-      `dispatchLogEvent: new-event failed: ${result.error?.message ?? 'unknown'}`,
+      `dispatchLogEvent: new-event failed: ${result.error?.message ?? "unknown"}`,
     );
     err.cause = result.error;
-    err.step = 'dispatch-log-event';
+    err.step = "dispatch-log-event";
     throw err;
   }
 

@@ -7,13 +7,16 @@ Re-walked the part-05 tree after tasks shipped and the entity_type drop landed. 
 ## Files Reviewed
 
 **Design:**
+
 - `parts/05-start-cancel-handlers/design.md`
 
 **Reviews:**
+
 - `parts/05-start-cancel-handlers/review/review-1.md` (decision register; nothing new since consistency-2)
 - `parts/05-start-cancel-handlers/review/consistency-2.md`
 
 **Tasks:**
+
 - `parts/05-start-cancel-handlers/tasks/tasks.md`
 - `parts/05-start-cancel-handlers/tasks/01-add-change-stamp-to-connection-schema.md`
 - `parts/05-start-cancel-handlers/tasks/02-create-action-helper.md`

@@ -1,14 +1,14 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import applyRenderConfig from '../../shared/phases/applyRenderConfig.js';
-import findDocs from '../../mongo/findDocs.js';
-import planActionTransition from '../../shared/phases/planners/planActionTransition.js';
-import planWorkflowRecompute from '../../shared/phases/planners/planWorkflowRecompute.js';
-import planEventDispatch from '../../shared/phases/planners/planEventDispatch.js';
-import planChangeLog from '../../shared/phases/planners/planChangeLog.js';
-import commitPlan from '../../shared/phases/commitPlan.js';
-import runTrackerCascade from '../../shared/phases/runTrackerCascade.js';
-import throwIfDispatchFailed from '../../shared/phases/throwIfDispatchFailed.js';
-import { WorkflowEngineError } from '../../shared/errors.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import applyRenderConfig from "../../shared/phases/applyRenderConfig.js";
+import findDocs from "../../mongo/findDocs.js";
+import planActionTransition from "../../shared/phases/planners/planActionTransition.js";
+import planWorkflowRecompute from "../../shared/phases/planners/planWorkflowRecompute.js";
+import planEventDispatch from "../../shared/phases/planners/planEventDispatch.js";
+import planChangeLog from "../../shared/phases/planners/planChangeLog.js";
+import commitPlan from "../../shared/phases/commitPlan.js";
+import runTrackerCascade from "../../shared/phases/runTrackerCascade.js";
+import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
+import { WorkflowEngineError } from "../../shared/errors.js";
 
 // The two legal direct-seed statuses (Part 45 review 2 #2). Creation at workflow
 // start is not an FSM transition, so the seed grammar is restricted to the two
@@ -16,7 +16,7 @@ import { WorkflowEngineError } from '../../shared/errors.js';
 // `starting_actions` (makeWorkflowsConfig); StartWorkflow enforces it at runtime
 // for the `actions:` payload override (build can't see payloads) plus
 // defense-in-depth for `starting_actions`.
-const LEGAL_SEED_STATUSES = ['action-required', 'blocked'];
+const LEGAL_SEED_STATUSES = ["action-required", "blocked"];
 
 /**
  * StartWorkflow handler (design D2/D3/D12; task 17).
@@ -51,19 +51,19 @@ async function StartWorkflow(lowdefyContext) {
 
   // ── Config-shaped preconditions (carry over from the prior handler) ──────
   if (!params.workflow_type) {
-    throw new WorkflowEngineError('StartWorkflow: workflow_type is required', {
-      code: 'invalid_params',
+    throw new WorkflowEngineError("StartWorkflow: workflow_type is required", {
+      code: "invalid_params",
     });
   }
   if (!params.entity_id) {
-    throw new WorkflowEngineError('StartWorkflow: entity_id is required', {
-      code: 'invalid_params',
+    throw new WorkflowEngineError("StartWorkflow: entity_id is required", {
+      code: "invalid_params",
     });
   }
   if (!params.entity_collection) {
     throw new WorkflowEngineError(
-      'StartWorkflow: entity_collection is required',
-      { code: 'invalid_params' },
+      "StartWorkflow: entity_collection is required",
+      { code: "invalid_params" },
     );
   }
 
@@ -73,7 +73,7 @@ async function StartWorkflow(lowdefyContext) {
   if (!workflowConfig) {
     throw new WorkflowEngineError(
       `StartWorkflow: workflow_type "${params.workflow_type}" not found in workflowsConfig`,
-      { code: 'unknown_workflow_type' },
+      { code: "unknown_workflow_type" },
     );
   }
 
@@ -92,8 +92,7 @@ async function StartWorkflow(lowdefyContext) {
 
   // The seed list: the payload override (`actions:`) takes precedence over the
   // config default (`starting_actions`). Each entry is `{ type, key?, status }`.
-  const seedEntries =
-    params.actions ?? workflowConfig.starting_actions ?? [];
+  const seedEntries = params.actions ?? workflowConfig.starting_actions ?? [];
 
   // Keyed-action guard: `starting_actions` may not reference keyed actions
   // (keyed seeds must come via the `actions:` payload, which carries `key`).
@@ -103,7 +102,7 @@ async function StartWorkflow(lowdefyContext) {
       if (cfg && cfg.key !== undefined) {
         throw new WorkflowEngineError(
           `StartWorkflow: starting_actions cannot reference keyed actions (type "${entry.type}"); pass them via the actions: payload instead`,
-          { code: 'invalid_seed' },
+          { code: "invalid_seed" },
         );
       }
     }
@@ -116,14 +115,14 @@ async function StartWorkflow(lowdefyContext) {
   for (const entry of seedEntries) {
     if (!LEGAL_SEED_STATUSES.includes(entry.status)) {
       throw new WorkflowEngineError(
-        `StartWorkflow: seed status "${entry.status}" for action type "${entry.type}" is not a legal seed (expected one of: ${LEGAL_SEED_STATUSES.join(', ')}).`,
-        { code: 'invalid_seed' },
+        `StartWorkflow: seed status "${entry.status}" for action type "${entry.type}" is not a legal seed (expected one of: ${LEGAL_SEED_STATUSES.join(", ")}).`,
+        { code: "invalid_seed" },
       );
     }
     if (!findActionConfig(entry.type)) {
       throw new WorkflowEngineError(
         `StartWorkflow: seed action type "${entry.type}" is not in workflow "${params.workflow_type}" config.`,
-        { code: 'unknown_action_type' },
+        { code: "unknown_action_type" },
       );
     }
   }
@@ -131,33 +130,33 @@ async function StartWorkflow(lowdefyContext) {
   // ── Load: optional parent action (tracker-child start) ───────────────────
   let parent = null;
   if (params.parent_action_id) {
-    const actionsCollection = connection?.actionsCollection ?? 'actions';
+    const actionsCollection = connection?.actionsCollection ?? "actions";
     [parent] = await findDocs({
       mongoDb: context.mongoDb,
       collection: actionsCollection,
       query: { _id: params.parent_action_id },
     });
     if (!parent) {
-      throw new WorkflowEngineError('StartWorkflow: parent action not found', {
-        code: 'action_not_found',
+      throw new WorkflowEngineError("StartWorkflow: parent action not found", {
+        code: "action_not_found",
       });
     }
-    if (parent.kind !== 'tracker') {
+    if (parent.kind !== "tracker") {
       throw new WorkflowEngineError(
-        'StartWorkflow: parent action is not kind: tracker',
-        { code: 'invalid_seed' },
+        "StartWorkflow: parent action is not kind: tracker",
+        { code: "invalid_seed" },
       );
     }
     if (parent.child_workflow_id != null) {
       throw new WorkflowEngineError(
-        'StartWorkflow: parent action is already linked to a child workflow',
-        { code: 'invalid_seed' },
+        "StartWorkflow: parent action is already linked to a child workflow",
+        { code: "invalid_seed" },
       );
     }
     if (parent.tracker?.child_workflow_type !== params.workflow_type) {
       throw new WorkflowEngineError(
-        'StartWorkflow: workflow_type does not match parent tracker.child_workflow_type',
-        { code: 'invalid_seed' },
+        "StartWorkflow: workflow_type does not match parent tracker.child_workflow_type",
+        { code: "invalid_seed" },
       );
     }
   }
@@ -179,7 +178,7 @@ async function StartWorkflow(lowdefyContext) {
     entity_id: params.entity_id,
     entity_collection: params.entity_collection,
     entity_ref_key: workflowConfig.entity_ref_key,
-    status: [{ stage: 'active', event_id, created: now }],
+    status: [{ stage: "active", event_id, created: now }],
     summary: { done: 0, not_required: 0, total: 0 },
     groups: [],
     form_data: {},
@@ -225,8 +224,8 @@ async function StartWorkflow(lowdefyContext) {
   const event = planEventDispatch({
     event_id,
     user,
-    handlerType: 'StartWorkflow',
-    signal: 'started',
+    handlerType: "StartWorkflow",
+    signal: "started",
     plannedWorkflowDoc,
     allTouchedActionDocs: seededDrafts,
     connection,
@@ -236,7 +235,7 @@ async function StartWorkflow(lowdefyContext) {
   // ── Plan: change-log (workflow insert + each seeded action insert) ───────
   const planWorkflow = {
     doc: plannedWorkflowDoc,
-    operation: 'insert',
+    operation: "insert",
     changeLog: { before: null, after: plannedWorkflowDoc },
   };
   const changeLog = planChangeLog({
@@ -257,7 +256,7 @@ async function StartWorkflow(lowdefyContext) {
           {
             parentWorkflowId: parent.workflow_id,
             parentActionId: params.parent_action_id,
-            signal: 'internal_mirror_child_active',
+            signal: "internal_mirror_child_active",
             payload: {
               fields: {
                 child_workflow_id: plannedWorkflowDoc._id,
@@ -285,7 +284,11 @@ async function StartWorkflow(lowdefyContext) {
   const cascade = await runTrackerCascade(plan.trackerFires, context);
 
   // ── Surface post-commit dispatch failures, last (D9/D13) ─────────────────
-  throwIfDispatchFailed({ handlerName: 'StartWorkflow', commitResult, cascade });
+  throwIfDispatchFailed({
+    handlerName: "StartWorkflow",
+    commitResult,
+    cascade,
+  });
 
   return {
     workflow_id: plannedWorkflowDoc._id,

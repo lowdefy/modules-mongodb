@@ -6,13 +6,13 @@ These tasks implement `designs/workflows-module/parts/55-check-modal-page-owners
 
 ## Tasks
 
-| #   | File                                   | Summary                                                                                  | Depends On |
-| --- | -------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-click-handler-try-catch.md`        | Wrap `check-action-click` in `try`/`catch`; `messages.error:false` on open; navigate fallback | —          |
-| 2   | `02-remove-surface-modal-drops.md`     | Stop `actions-on-entity` and `workflows-events-timeline` from dropping the modal           | 1          |
-| 3   | `03-wire-demo-page-modal-drops.md`     | Drop the modal once per page on `lead-view` and `companies/view`, page-owned `on_complete` | 2          |
-| 4   | `04-update-docs.md`                    | Update manifest `exports.components` docs and `README.md` for the page-drop contract       | 2, 3       |
-| 5   | `05-reconcile-e2e-spec.md`             | Reconcile the four `check`-row steps in the onboarding e2e to drive the modal in place     | 3          |
+| #   | File                               | Summary                                                                                       | Depends On |
+| --- | ---------------------------------- | --------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-click-handler-try-catch.md`    | Wrap `check-action-click` in `try`/`catch`; `messages.error:false` on open; navigate fallback | —          |
+| 2   | `02-remove-surface-modal-drops.md` | Stop `actions-on-entity` and `workflows-events-timeline` from dropping the modal              | 1          |
+| 3   | `03-wire-demo-page-modal-drops.md` | Drop the modal once per page on `lead-view` and `companies/view`, page-owned `on_complete`    | 2          |
+| 4   | `04-update-docs.md`                | Update manifest `exports.components` docs and `README.md` for the page-drop contract          | 2, 3       |
+| 5   | `05-reconcile-e2e-spec.md`         | Reconcile the four `check`-row steps in the onboarding e2e to drive the modal in place        | 3          |
 
 ## Ordering Rationale
 

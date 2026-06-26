@@ -35,10 +35,11 @@ so app-level role globs slice cleanly:
 > api:
 >   roles:
 >     sales-rep:
->       - workflow-qualification-*           # any endpoint for this workflow
+>       - workflow-qualification-* # any endpoint for this workflow
 >     sales-manager:
->       - workflow-qualification-approve-*   # just the approve action
+>       - workflow-qualification-approve-* # just the approve action
 > ```
+>
 > … per-workflow slicing is just `workflow-{type}-*`.
 
 and (D10 close) "a single role rule against `workflow-*` cleanly scopes to workflow
@@ -48,21 +49,21 @@ The Lowdefy build prepends the **module entry id** to every emitted page and
 endpoint id:
 
 > `buildModules.js:87` — `page.id = \`${entry.id}/${page.id}\`;`
-> `buildModules.js:102` — `endpoint.id = \`${entry.id}/${endpoint.id}\`;`
+`buildModules.js:102`—`endpoint.id = \`${entry.id}/${endpoint.id}\`;`
 
 So the real id is `{entryId}/workflow-{type}-{action}-{verb}`, not
 `workflow-{type}-{action}-{verb}`. The central-auth globs in D10/D11 therefore won't
 match as written — an app author must write `{entryId}/workflow-qualification-*` (or
-`*/workflow-…`). And because the entry id *already* namespaces every workflow page,
+`*/workflow-…`). And because the entry id _already_ namespaces every workflow page,
 the prefix's stated cross-app benefit ("per-workflow globs don't accidentally match
 unrelated app pages that happen to share the workflow type name") is largely already
 provided by entry scoping; the `workflow-` literal's remaining real value is
-disambiguating action pages from the module's *other* pages within the same entry
+disambiguating action pages from the module's _other_ pages within the same entry
 (`workflow-overview`, entity pages).
 
 Note the **engine side is fine**: `computeEngineLinks` learns its entry id from the
 `entry_id` connection field (Part 30 / Part 38 D14, D16) and builds correctly-scoped
-`pageId`s. This finding is only about the *auth-config glob examples* being
+`pageId`s. This finding is only about the _auth-config glob examples_ being
 inaccurate, and about the prefix's rationale being overstated.
 
 **Fix.** In Part 34 D10 and D11, correct every glob example to include the mandatory
@@ -75,7 +76,7 @@ factual error in the source design; designs are the source of truth.
 
 ### 2. Which app's `review` verb decides `submit` → `in-review` vs `done`?
 
-> **Resolved.** Pinned the split as an **action-global** property: `submit` lands `in-review` iff *any* app's `access` declares the `review` verb, computed live from the static `actionConfig` via `hasReview` (presence-only, role values and submitting app ignored) — equivalently "a review page is emitted" since Part 34 D5 emits it from the same verb key. Corrected the per-app `access.{app_name}` phrasing in Part 34 D6 (source of truth, new paragraph), Part 38 D4 (`resolveSignal` comment + `hasReview` definition), and the worked example (lines on `install-step`). Added a multi-app integration test (review declared in one app, absent in another; both submits land `in-review`). Live-vs-frozen read settled as **live** — the only motivation to freeze (protect in-flight actions from config edits) is out of scope per the module's V1 migration stance (see #3).
+> **Resolved.** Pinned the split as an **action-global** property: `submit` lands `in-review` iff _any_ app's `access` declares the `review` verb, computed live from the static `actionConfig` via `hasReview` (presence-only, role values and submitting app ignored) — equivalently "a review page is emitted" since Part 34 D5 emits it from the same verb key. Corrected the per-app `access.{app_name}` phrasing in Part 34 D6 (source of truth, new paragraph), Part 38 D4 (`resolveSignal` comment + `hasReview` definition), and the worked example (lines on `install-step`). Added a multi-app integration test (review declared in one app, absent in another; both submits land `in-review`). Live-vs-frozen read settled as **live** — the only motivation to freeze (protect in-flight actions from config edits) is out of scope per the module's V1 migration stance (see #3).
 
 The `submit` resolution is the one FSM cell that reads `access`:
 
@@ -86,8 +87,8 @@ The `submit` resolution is the one FSM cell that reads `access`:
 The action's landing stage is **shared** state (one action doc, all apps see the
 same `status[0].stage`), but the phrasing is **per-app** (`access.{app_name}`). For
 a multi-app action where `team-app` declares `review` and `support-app` does not,
-"the submitting app's review verb" yields *different terminal behaviour for the same
-action depending on who submits it* — a `team-app` submit lands `in-review`, a
+"the submitting app's review verb" yields _different terminal behaviour for the same
+action depending on who submits it_ — a `team-app` submit lands `in-review`, a
 `support-app` submit lands `done`. That is almost certainly wrong: the existence of
 a review step is a property of the action, not of the submitter.
 
@@ -95,7 +96,7 @@ Part 38's own `resolveSignal` signature is evidence the intended rule is
 app-agnostic — it takes no `currentApp`:
 
 > Files changed: "`resolveSignal.js` — the `(action, signal, payload, actionConfig)
-> → targetStage | null` function."
+→ targetStage | null` function."
 
 To inspect "does this action have a review step," the function must read
 `actionConfig.access` across **all** apps (i.e. "any app declares `review`"), since
@@ -112,9 +113,9 @@ the same stage.
 
 ### 3. `access` config now drives FSM transitions, not just visibility — a live-edit hazard
 
-> **Resolved.** Documented as a known V1 limitation in Part 34 D6 (source of truth) and referenced from Part 38 D16: verb *presence* drives both the FSM split (D4) and page/link emission, so editing `access` on a deployed workflow can reshape reachable states and strand in-flight actions, with no engine remediation. Rather than add a config-change migration guard or denormalize the FSM flag onto the action doc, this is folded into the module's existing V1 migration stance — no version actions; an author who edits access on a live workflow owns any required data migration. This also settled #2's live-vs-frozen read in favour of **live** (freezing would be robustness for a hazard the module has deliberately scoped out).
+> **Resolved.** Documented as a known V1 limitation in Part 34 D6 (source of truth) and referenced from Part 38 D16: verb _presence_ drives both the FSM split (D4) and page/link emission, so editing `access` on a deployed workflow can reshape reachable states and strand in-flight actions, with no engine remediation. Rather than add a config-change migration guard or denormalize the FSM flag onto the action doc, this is folded into the module's existing V1 migration stance — no version actions; an author who edits access on a live workflow owns any required data migration. This also settled #2's live-vs-frozen read in favour of **live** (freezing would be robustness for a hazard the module has deliberately scoped out).
 
-Finding 2 means the *presence* of a `review` verb determines which stages are
+Finding 2 means the _presence_ of a `review` verb determines which stages are
 reachable (`in-review` exists iff a review step exists). So `access` is no longer
 purely a gate over a fixed state graph — editing it reshapes the state machine. The
 concrete hazard: remove the `review` verb from a deployed workflow and any action
@@ -176,7 +177,7 @@ These are orthogonal to the engine rebuild and span three different skill areas
 (plugin JS, MongoDB aggregation, Lowdefy page YAML) inside one already-XL part. That
 inflates the review surface and couples unrelated risk. The `action_role_check`
 change also amends a `_completed` part (Part 18), which Part 34's Touches table
-lists as amend-via-note — but Part 38 now *implements* it.
+lists as amend-via-note — but Part 38 now _implements_ it.
 
 **Fix.** Decide whether the Part 34 absorption should be its own part (or a cleanly
 separable task cluster) sequenced alongside the engine rebuild, rather than folded
@@ -212,7 +213,7 @@ The rebuilt engine reads `<slug>.links` (plural map); pre-migration action docs
 carry `<slug>.link` (singular), and page ids change under the `workflow-` prefix. An
 action that never transitions again keeps its old shape — display surfaces read
 `.links`, find nothing, and render no link. Part 38's demo migration strips authored
-`link:` from *config cells* but specifies no backfill of existing *action docs*.
+`link:` from _config cells_ but specifies no backfill of existing _action docs_.
 
 This is acceptable **only** because there are no shipped workflows (Part 34 leans on
 this too), but Part 38 leaves the assumption implicit. If any environment (even a
@@ -234,7 +235,7 @@ migration task.
 D4) and the lint-warn-not-error on `edit`/`review`/`error` without `view`, an author
 who writes `edit: [manager]` and forgets `view` makes the action **invisible** to
 every non-manager (no read-only fallback). The only guard is a build-time
-*warning*.
+_warning_.
 
 **Fix.** No schema change needed (the independence is deliberate, D4), but ensure
 the lint warning is prominent / hard to miss, and call out this failure mode in the
@@ -246,7 +247,7 @@ everyone else," not just "you probably forgot view."
 > **Resolved.** Added a one-sentence intentional-property note to D2's load-phase access-check description: the check sits ahead of the pre-hook on purpose, so an unauthorized submit is rejected before any pre-hook fires and unauthorized users never trigger pre-hook external side effects — with an explicit "do not move the check after the pre-hook" so a future refactor can't quietly regress it.
 
 Putting the per-verb access check in the **load** phase (Part 38 D2) means an
-unauthorized submit is rejected *before* the pre-hook fires — so unauthorized users
+unauthorized submit is rejected _before_ the pre-hook fires — so unauthorized users
 never trigger pre-hook external side effects (callApi, third-party writes). This is a
 genuinely good consequence of the phase ordering, currently implicit.
 
@@ -257,10 +258,10 @@ refactor doesn't move the check after the pre-hook and quietly regress it.
 
 - The absorption is textually clean: no surviving single-`link`, `access.roles`,
   verb-array-shorthand, or "get-entity-workflows needs no edits" references (grep).
-- `makeActionPages.js:43` confirms the *current* code reads `access.{app}` as a verb
+- `makeActionPages.js:43` confirms the _current_ code reads `access.{app}` as a verb
   **array** (`accessVerbs.includes(v)`) and emits un-prefixed ids — i.e. Part 38's
   "read map keys + `workflow-` prefix" change is real work, correctly scoped.
-- `access_filter.yaml` confirms the *current* filter reads the removed action-wide
+- `access_filter.yaml` confirms the _current_ filter reads the removed action-wide
   `access.roles` and the `[view, edit, review]` shorthand — so the
   `visible_verbs_filter.yaml` replacement is genuinely required, not cosmetic.
 - The demo `install-step.yaml` carries the old `access.demo: { roles, verbs }` shape,
@@ -268,6 +269,6 @@ refactor doesn't move the check after the pre-hook and quietly regress it.
 - The per-verb `links` map and UI priority `edit > review > error > view` are
   internally consistent with the engine nulling the irrelevant cell per stage
   (Part 34 D7) — no stale "compound cell" table remains in Part 38.
-- D16 correctly keeps role gates *out* of `computeEngineLinks` (links are computed
+- D16 correctly keeps role gates _out_ of `computeEngineLinks` (links are computed
   for all declared verbs; the UI filters via `visible_verbs`) — consistent with
   Part 34 D7.

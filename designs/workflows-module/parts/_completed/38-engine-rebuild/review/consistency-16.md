@@ -23,7 +23,7 @@ hard-erroring signal-keyed configs at build, payload-mapping completeness
 (`action_id`/`current_key`/`fields`), the "drops `force`" wording, the start
 `metadata` consumer gap, the unverifiable "`signal` is documented" AC)
 carries **no resolution annotations** — it is not actioned, and its
-recommendations are deliberately *not* treated as decisions by this pass.
+recommendations are deliberately _not_ treated as decisions by this pass.
 `tasks/tasks.md` now warns: action review-16 before implementing task 19 /
 Band 5.
 
@@ -85,7 +85,7 @@ strings (the catch-up task 18's Notes already own).
 **Type:** Stale Reference (residual of review-14 #3)
 **Source of truth:** review-14 #3 resolution — task 18's group-overview
 scope shrank to rename + reference updates; the page-side reads are
-unchanged and the `.links` map is the one thing the page must *not* read
+unchanged and the `.links` map is the one thing the page must _not_ read
 (Part 42 D5 owns the server-side link resolution).
 **Files affected:** `tasks/tasks.md` (task table row 18)
 **Resolution:** Summary rewritten to "Rename fixed pages
@@ -165,7 +165,7 @@ Verified propagated with no drift:
   Close `_completed` with the forced-completion rationale) in D3 + task 17;
   exactly-one-entry Cancel test in AC.
 - **#4 (Start push via cascade):** in-plan remnant gone (task 17 explicitly
-  states the parent transition is *not* in Start's plan, per-aggregate
+  states the parent transition is _not_ in Start's plan, per-aggregate
   rationale); `payload: { fields }` on the fire in D3 typedef + task 16 +
   task 17; the two behaviour deltas (mirror event, parent recompute) owned
   in task 17's AC.

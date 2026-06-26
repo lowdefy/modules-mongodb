@@ -11,7 +11,7 @@ Two demo pages are multi-surface consumers and must be wired:
 - **`apps/demo/pages/leads/lead-view.yaml`** — workflows card (`actions-on-entity`) + Activity card (`workflows-events-timeline`). After a check submit, both the action steps and the activity timeline must refresh. The timeline only fetches on mount, so its page-scoped `get_events_timeline` request must be re-run by id.
 - **`apps/demo/modules/companies/vars.yaml`** — `components.sidebar_slots` composes the workflows card (`actions-on-entity`) + an activities tile (`activities` → `tile_activities`). A check submit changes workflow state, **not** activities, so the activities tile is intentionally left out of `on_complete` (it keeps its own `on_created` refetch for activity creation). The companies page therefore drops the modal with `on_complete = [entity-workflows-refetch]` only.
 
-The page composes `on_complete` from each surface's *own* refetch primitive — `entity-workflows-refetch` (the `CallAPI` + `SetState entity_workflows` sequence) for the action steps, and a `Request get_events_timeline` for the timeline — so no surface internals leak to the page.
+The page composes `on_complete` from each surface's _own_ refetch primitive — `entity-workflows-refetch` (the `CallAPI` + `SetState entity_workflows` sequence) for the action steps, and a `Request get_events_timeline` for the timeline — so no surface internals leak to the page.
 
 ## Task
 
@@ -61,7 +61,8 @@ In `components.sidebar_slots`, add a page-level modal drop (a new slot entry, al
                 entity_id:
                   _url_query: _id
                 entity_collection:
-                  _module.connectionId: { id: companies-collection, module: companies }
+                  _module.connectionId:
+                    { id: companies-collection, module: companies }
 ```
 
 Leave the `tile_activities` slot's `on_created: [Request get-events]` untouched — the activities tile keeps its own refetch and is deliberately not in the modal's `on_complete`.

@@ -17,12 +17,12 @@ Promote `action_group` from a UI label to a first-class engine concept. After th
 
 Three new sub-steps slot between part 6's step 4 (write action transitions) and step 5 (recompute workflow summary). Numbering follows [submit-pipeline/spec.md § Flow](../../../workflows-module-concept/submit-pipeline/spec.md#flow), matching [part 6's commitment](../06-submit-action-writes/design.md#lifecycle-scaffold):
 
-| Sub-step | Work | After | Before |
-| --- | --- | --- | --- |
-| 4a | Recompute every group's status + per-group summary; stage `groups[]` for the workflow-doc write | Step 4 | 4b |
-| 4b | `blocked_by` re-evaluation walk — push `action-required` on every blocked action whose dependencies are now satisfied | 4a | 4c |
-| 4c | Auto-complete check — if every action is terminal, stage a `pushWorkflowStatus(workflowId, 'completed', eventId)` | 4b | Step 5 |
-| 5  | Recompute workflow `summary`; write `summary`, `groups[]`, and the (optional) `status` push from 4c to the workflow doc in one `$set` | 4c | Step 6 |
+| Sub-step | Work                                                                                                                                  | After  | Before |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------- | ------ | ------ |
+| 4a       | Recompute every group's status + per-group summary; stage `groups[]` for the workflow-doc write                                       | Step 4 | 4b     |
+| 4b       | `blocked_by` re-evaluation walk — push `action-required` on every blocked action whose dependencies are now satisfied                 | 4a     | 4c     |
+| 4c       | Auto-complete check — if every action is terminal, stage a `pushWorkflowStatus(workflowId, 'completed', eventId)`                     | 4b     | Step 5 |
+| 5        | Recompute workflow `summary`; write `summary`, `groups[]`, and the (optional) `status` push from 4c to the workflow doc in one `$set` | 4c     | Step 6 |
 
 Part 6's step 5 was "summary only — counts only. `groups[]` defer to part 7" — this part promotes its signature to "summary + groups + auto-complete status push (if any), one Mongo update." This is the only contract change to part 6's step 5; every other lifecycle step is untouched.
 

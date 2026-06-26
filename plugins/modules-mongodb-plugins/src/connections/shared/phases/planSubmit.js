@@ -1,10 +1,10 @@
-import planActionTransition from './planners/planActionTransition.js';
-import planAutoUnblock from './planners/planAutoUnblock.js';
-import planFormDataMerge from './planners/planFormDataMerge.js';
-import planWorkflowRecompute from './planners/planWorkflowRecompute.js';
-import planEventDispatch from './planners/planEventDispatch.js';
-import planChangeLog from './planners/planChangeLog.js';
-import { WorkflowEngineError } from '../errors.js';
+import planActionTransition from "./planners/planActionTransition.js";
+import planAutoUnblock from "./planners/planAutoUnblock.js";
+import planFormDataMerge from "./planners/planFormDataMerge.js";
+import planWorkflowRecompute from "./planners/planWorkflowRecompute.js";
+import planEventDispatch from "./planners/planEventDispatch.js";
+import planChangeLog from "./planners/planChangeLog.js";
+import { WorkflowEngineError } from "../errors.js";
 
 /**
  * Plan-phase orchestrator for SubmitWorkflowAction (design D3; task 15).
@@ -51,7 +51,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
   // its optional fields/metadata data-seeding bag as payload.fields/metadata.
   const entries = [
     {
-      source: 'user',
+      source: "user",
       action: targetAction,
       actionConfig,
       signal: params.signal,
@@ -75,11 +75,11 @@ function planSubmit({ loadedState, preHookResult, context }) {
     if (!auxConfig) {
       throw new WorkflowEngineError(
         `planSubmit: pre-hook auxiliary action targets type "${auxType}" which is not in workflow "${workflow.workflow_type}" config.`,
-        { code: 'action_not_found' },
+        { code: "action_not_found" },
       );
     }
     entries.push({
-      source: 'auxiliary',
+      source: "auxiliary",
       action: auxAction,
       actionConfig: auxConfig,
       signal: aux.signal,
@@ -111,7 +111,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
     });
     if (planned == null) continue; // auxiliary/cascade FSM no-op
     transitionEntries.push(planned);
-    if (entry.source === 'user') {
+    if (entry.source === "user") {
       targetActionEntry = planned;
     }
   }
@@ -122,11 +122,9 @@ function planSubmit({ loadedState, preHookResult, context }) {
   const plannedById = new Map(
     transitionEntries.map((e) => [String(e.doc._id), e.doc]),
   );
-  let plannedView = actions.map(
-    (a) => plannedById.get(String(a._id)) ?? a,
-  );
+  let plannedView = actions.map((a) => plannedById.get(String(a._id)) ?? a);
   for (const e of transitionEntries) {
-    if (e.operation === 'insert') plannedView.push(e.doc);
+    if (e.operation === "insert") plannedView.push(e.doc);
   }
 
   const unblockEntries = planAutoUnblock({
@@ -148,7 +146,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
     (a) => allPlannedById.get(String(a._id)) ?? a,
   );
   for (const e of allActionEntries) {
-    if (e.operation === 'insert') plannedActions.push(e.doc);
+    if (e.operation === "insert") plannedActions.push(e.doc);
   }
 
   // ── Step 4 — form-data merge → workflow recompute ────────────────────────
@@ -173,7 +171,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
   const completedGroups = [];
   for (const planned of plannedWorkflowDoc.groups ?? []) {
     const before = loadedGroupById.get(planned.id);
-    if (planned.status === 'done' && before?.status !== 'done') {
+    if (planned.status === "done" && before?.status !== "done") {
       const cfg = declaredGroups.find((g) => g.id === planned.id);
       completedGroups.push({
         workflow_id: workflow._id,
@@ -188,7 +186,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
   const event = planEventDispatch({
     event_id,
     user,
-    handlerType: 'SubmitWorkflowAction',
+    handlerType: "SubmitWorkflowAction",
     signal: params.signal,
     plannedWorkflowDoc,
     plannedActionDoc: plannedTargetDoc,
@@ -205,7 +203,7 @@ function planSubmit({ loadedState, preHookResult, context }) {
   // ── Step 8 — change-log ──────────────────────────────────────────────────
   const planWorkflow = {
     doc: plannedWorkflowDoc,
-    operation: 'update',
+    operation: "update",
     changeLog: { before: workflow, after: plannedWorkflowDoc },
   };
   const changeLog = planChangeLog({
@@ -222,14 +220,14 @@ function planSubmit({ loadedState, preHookResult, context }) {
   const loadedStage = workflow.status?.[0]?.stage;
   const plannedStage = plannedWorkflowDoc.status?.[0]?.stage;
   const pushedCompleted =
-    plannedStage === 'completed' && loadedStage !== 'completed';
+    plannedStage === "completed" && loadedStage !== "completed";
   const trackerFires =
     pushedCompleted && workflow.parent_action_id != null
       ? [
           {
             parentWorkflowId: workflow.parent_workflow_id,
             parentActionId: workflow.parent_action_id,
-            signal: 'internal_mirror_child_completed',
+            signal: "internal_mirror_child_completed",
           },
         ]
       : [];

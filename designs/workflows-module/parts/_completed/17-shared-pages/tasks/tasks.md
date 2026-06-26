@@ -10,14 +10,14 @@ Part 17 also introduces a new `vars.entities` module var (see [design § "`entit
 
 ## Tasks
 
-| #   | File                              | Summary                                                            | Depends On |
-| --- | --------------------------------- | ------------------------------------------------------------------ | ---------- |
-| 2   | `02-task-view-page.md`            | Ship `pages/task-view.yaml` — read-only task page (action header, universal-fields display, status timeline, comment timeline). No gates, no writes. | —          |
-| 3   | `03-task-edit-page.md`            | Ship `pages/task-edit.yaml` — status selector with priority filter, universal-fields edit, comment field, Save button with role gate + `required_after_close` gate + workflow-closed banner. | 2          |
-| 4   | `04-task-review-page.md`          | Ship `pages/task-review.yaml` — read-only fields + `approve` / `request_changes` buttons with role gate + `required_after_close` gate. | 3          |
-| 5   | `05-workflow-overview-page.md`    | Ship `pages/workflow-overview.yaml` — single `CallApi` to `get-workflow-overview`, header via `_ref` to part 18's `workflow-header`, action cards with v0-pattern DataView + keyed `form_data` indexing, entity back-link via `_module.var: entities`. | —          |
-| 6   | `06-manifest-page-exports.md`     | Register the four new pages in `module.lowdefy.yaml` (`pages:` block + `exports.pages` entries). | 2, 3, 4, 5 |
-| ~~7~~ | ~~`07-demo-app-wiring.md`~~     | **Spun out to [part 27 — demo-workflows-wiring](../../27-demo-workflows-wiring/design.md).** Scope grew large enough to warrant its own design — demo wiring needs the full workflows module surface (workflows entry, `workflows_config`, leads collection, lead pages, navigation) plus parts 18 and 24 to be shipped for live verification. | 6          |
+| #     | File                           | Summary                                                                                                                                                                                                                                                                                                                                        | Depends On |
+| ----- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 2     | `02-task-view-page.md`         | Ship `pages/task-view.yaml` — read-only task page (action header, universal-fields display, status timeline, comment timeline). No gates, no writes.                                                                                                                                                                                           | —          |
+| 3     | `03-task-edit-page.md`         | Ship `pages/task-edit.yaml` — status selector with priority filter, universal-fields edit, comment field, Save button with role gate + `required_after_close` gate + workflow-closed banner.                                                                                                                                                   | 2          |
+| 4     | `04-task-review-page.md`       | Ship `pages/task-review.yaml` — read-only fields + `approve` / `request_changes` buttons with role gate + `required_after_close` gate.                                                                                                                                                                                                         | 3          |
+| 5     | `05-workflow-overview-page.md` | Ship `pages/workflow-overview.yaml` — single `CallApi` to `get-workflow-overview`, header via `_ref` to part 18's `workflow-header`, action cards with v0-pattern DataView + keyed `form_data` indexing, entity back-link via `_module.var: entities`.                                                                                         | —          |
+| 6     | `06-manifest-page-exports.md`  | Register the four new pages in `module.lowdefy.yaml` (`pages:` block + `exports.pages` entries).                                                                                                                                                                                                                                               | 2, 3, 4, 5 |
+| ~~7~~ | ~~`07-demo-app-wiring.md`~~    | **Spun out to [part 27 — demo-workflows-wiring](../../27-demo-workflows-wiring/design.md).** Scope grew large enough to warrant its own design — demo wiring needs the full workflows module surface (workflows entry, `workflows_config`, leads collection, lead pages, navigation) plus parts 18 and 24 to be shipped for live verification. | 6          |
 
 **Note on numbering.** Task 1 (parameterizing `requests/get_entity.yaml.njk` so the overview page could source `entity_id` from the workflow doc) was dropped during consistency review when the design moved to the `entities` module var approach — the overview page builds its back-link from `_module.var: entities` and doesn't fetch the entity doc at all. The numbering gap is intentional; downstream tasks weren't renumbered to avoid churn.
 
@@ -46,17 +46,20 @@ Part 17 also introduces a new `vars.entities` module var (see [design § "`entit
 **Review files skipped:** `review/review-1.md`, `review/consistency-1.md`, `review/consistency-2.md` — all treated as resolved feedback.
 
 **Out-of-scope (per design):**
+
 - Comment-timeline shape refinement beyond v1 (events filtered by `action_ids` + `metadata.comment`).
 - Restricted-action and completed-workflow tile UX detail on `workflow-overview`.
 - Extracting `_action_page_onmount.yaml.njk` partial — deferred to follow-up if drift surfaces.
 - Fetching the entity doc on workflow-overview — replaced by the `entities` module var for back-link URL + title. The richer-label path (optional `get_entity_endpoint` on the enum, CallApi fetch, `display_label`-based label) is owned by [part 26](../../26-entity-data-contract/design.md) — separate design, separate review cycle.
 
 **External dependencies (path-stubbed; back-filled by other parts):**
+
 - `modules/workflows/components/action_role_check.yaml` — part 18.
 - `modules/workflows/components/universal-fields/universal-fields.yaml` — part 24.
 - `modules/workflows/components/workflow-header.yaml` — part 18.
 - `modules/layout/components/card.yaml`, `floating-actions.yaml` — layout module.
 
 **Cross-part obligations introduced by this part:**
+
 - **Part 4** — validate that every `entity_collection` in `workflows_config` has a matching `vars.entities` entry; fail build with precise message otherwise.
 - **Part 20** — declare `vars.entities` in the manifest with `type: object`, `required: true`.

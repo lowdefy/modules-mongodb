@@ -6,15 +6,15 @@ Implementation plan for `designs/company-fields/design.md`: extends the `module-
 
 ## Tasks
 
-| #   | File                              | Summary                                                                                                                                                                                                   | Depends On |
-| --- | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-field-presets.md`             | Create the four `field-presets/*.yaml` files (new content; no deletions yet).                                                                                                                             | —          |
-| 2   | `02-module-manifest.md`           | Add `fields.contact`/`address`/`registration` slots to the module manifest; flip `name_field` default from `trading_name` to `name`.                                                                      | —          |
+| #   | File                                 | Summary                                                                                                                                                                                                   | Depends On |
+| --- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-field-presets.md`                | Create the four `field-presets/*.yaml` files (new content; no deletions yet).                                                                                                                             | —          |
+| 2   | `02-module-manifest.md`              | Add `fields.contact`/`address`/`registration` slots to the module manifest; flip `name_field` default from `trading_name` to `name`.                                                                      | —          |
 | 3   | `03-schema-flip-form-view-fields.md` | Rename `trading_name` block, rewrite `form_company.yaml` with conditional sections, rewrite `view_company.yaml` per-section, delete the old `fields/contact.yaml` / `address.yaml` / `registration.yaml`. | 2          |
-| 4   | `04-api-and-pages-payload.md`     | Atomic payload-shape change: rewrite `create-company.yaml`, `update-company.yaml`, `pages/edit.yaml`, `pages/new.yaml`, `pages/view.yaml`.                                                                | 2, 3       |
-| 5   | `05-excel-download.md`            | Strip section-specific fixed columns from `excel_download.yaml` (universal-core only).                                                                                                                    | 4, 6       |
-| 6   | `06-demo-wiring-and-seed.md`      | Wire the SA presets in `apps/demo/modules/companies/vars.yaml`, delete the stale `apps/demo/modules/companies/index.yaml`, drop and reseed the demo `companies` collection.                               | 1, 4       |
-| 7   | `07-readme.md`                    | Rewrite the README's fields/sections content; update the broken `apps/demo/modules/companies/index.yaml` pointer.                                                                                         | 1, 6       |
+| 4   | `04-api-and-pages-payload.md`        | Atomic payload-shape change: rewrite `create-company.yaml`, `update-company.yaml`, `pages/edit.yaml`, `pages/new.yaml`, `pages/view.yaml`.                                                                | 2, 3       |
+| 5   | `05-excel-download.md`               | Strip section-specific fixed columns from `excel_download.yaml` (universal-core only).                                                                                                                    | 4, 6       |
+| 6   | `06-demo-wiring-and-seed.md`         | Wire the SA presets in `apps/demo/modules/companies/vars.yaml`, delete the stale `apps/demo/modules/companies/index.yaml`, drop and reseed the demo `companies` collection.                               | 1, 4       |
+| 7   | `07-readme.md`                       | Rewrite the README's fields/sections content; update the broken `apps/demo/modules/companies/index.yaml` pointer.                                                                                         | 1, 6       |
 
 ## Ordering Rationale
 

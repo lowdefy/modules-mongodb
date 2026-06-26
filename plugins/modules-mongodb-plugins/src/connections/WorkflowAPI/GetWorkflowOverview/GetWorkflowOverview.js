@@ -1,7 +1,10 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import findDocs from '../../mongo/findDocs.js';
-import { computeAllowed, collapseLink } from '../../shared/render/resolveActionAccess.js';
-import { makeWorkflowOrderComparator } from '../../shared/render/compareActionOrder.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import findDocs from "../../mongo/findDocs.js";
+import {
+  computeAllowed,
+  collapseLink,
+} from "../../shared/render/resolveActionAccess.js";
+import { makeWorkflowOrderComparator } from "../../shared/render/compareActionOrder.js";
 
 /**
  * GetWorkflowOverview — server-side replacement for the get-workflow-overview.yaml
@@ -26,8 +29,8 @@ async function GetWorkflowOverview(lowdefyContext) {
   const app_name = connection.app_name;
   const entry_id = connection.entry_id;
   const userRoles = context.user?.roles;
-  const workflowsCollection = connection.workflowsCollection ?? 'workflows';
-  const actionsCollection = connection.actionsCollection ?? 'actions';
+  const workflowsCollection = connection.workflowsCollection ?? "workflows";
+  const actionsCollection = connection.actionsCollection ?? "actions";
   const entities = connection.entities ?? {};
 
   // ── Load: the workflow doc ──
@@ -41,7 +44,9 @@ async function GetWorkflowOverview(lowdefyContext) {
     return { workflow: null, groups: [] };
   }
 
-  const wfConfig = (workflowsConfig ?? []).find((wc) => wc.type === wfDoc.workflow_type);
+  const wfConfig = (workflowsConfig ?? []).find(
+    (wc) => wc.type === wfDoc.workflow_type,
+  );
 
   // ── Load: all actions for this workflow ──
   const rawActions = await findDocs({
@@ -53,7 +58,11 @@ async function GetWorkflowOverview(lowdefyContext) {
   // ── Access filter + link collapse ──
   const visibleActions = [];
   for (const action of rawActions) {
-    const allowed = computeAllowed({ access: action.access, app_name, userRoles });
+    const allowed = computeAllowed({
+      access: action.access,
+      app_name,
+      userRoles,
+    });
     if (!allowed.view && !allowed.edit && !allowed.review && !allowed.error) {
       continue; // drop: no verb accessible
     }
@@ -144,10 +153,13 @@ async function GetWorkflowOverview(lowdefyContext) {
     const key = action.key ?? null;
     if (key == null) {
       // Unkeyed: keep the whole type slice.
-      visibleKeysByType.set(type, 'unkeyed');
+      visibleKeysByType.set(type, "unkeyed");
     } else {
       // Keyed: only if no unkeyed instance already claimed the whole slice.
-      if (!visibleKeysByType.has(type) || visibleKeysByType.get(type) !== 'unkeyed') {
+      if (
+        !visibleKeysByType.has(type) ||
+        visibleKeysByType.get(type) !== "unkeyed"
+      ) {
         if (!visibleKeysByType.has(type)) {
           visibleKeysByType.set(type, new Set());
         }
@@ -159,13 +171,17 @@ async function GetWorkflowOverview(lowdefyContext) {
   const prunedFormData = {};
   for (const [type, sentinel] of visibleKeysByType) {
     if (!(type in rawFormData)) continue;
-    if (sentinel === 'unkeyed') {
+    if (sentinel === "unkeyed") {
       // Unkeyed action: keep the whole form_data[type] value.
       prunedFormData[type] = rawFormData[type];
     } else {
       // Keyed action: rebuild form_data[type] with only visible key slices.
       const typeSlice = rawFormData[type];
-      if (typeSlice != null && typeof typeSlice === 'object' && !Array.isArray(typeSlice)) {
+      if (
+        typeSlice != null &&
+        typeof typeSlice === "object" &&
+        !Array.isArray(typeSlice)
+      ) {
         const filtered = {};
         for (const k of sentinel) {
           if (k in typeSlice) {

@@ -20,7 +20,7 @@ The author already declares intent twice, in ordered arrays the build controls a
 
 **Rejected alternative — keep `sort_order` as an optional config override** (`(groupIndex, config.sort_order, declIndex, _id)`, read from config, not the doc). This preserves an explicit reorder knob without moving YAML blocks, and is still migration-free. Rejected because it reintroduces the maintain-a-number burden and a second ordering axis for no concrete need — declaration order already lets authors reorder by moving a block. If a real need for a non-declaration override surfaces, this is the place to add it back.
 
-**Rejected alternative — `blocked_by` topological order.** An early concept design (`action-authoring/design.md:277`) described display order falling back to a topological sort over `blocked_by`, tie-broken by declaration order. This was **never implemented** — no engine has ever read `blocked_by` for ordering (it exists only as a config-validation check in `makeWorkflowsConfig.js:544–552`, where an entry may resolve to either a group id *or* an action type). It is rejected outright and not a base case: real topological ordering means resolving group-or-type references and handling cycles for zero concrete benefit, since an author declaring actions in dependency order already gets the identical result from plain declaration order. Declaration order is *the* ordering model, not a fallback. The contradicting concept-doc prose is corrected as part of this design so the model is not relitigated.
+**Rejected alternative — `blocked_by` topological order.** An early concept design (`action-authoring/design.md:277`) described display order falling back to a topological sort over `blocked_by`, tie-broken by declaration order. This was **never implemented** — no engine has ever read `blocked_by` for ordering (it exists only as a config-validation check in `makeWorkflowsConfig.js:544–552`, where an entry may resolve to either a group id _or_ an action type). It is rejected outright and not a base case: real topological ordering means resolving group-or-type references and handling cycles for zero concrete benefit, since an author declaring actions in dependency order already gets the identical result from plain declaration order. Declaration order is _the_ ordering model, not a fallback. The contradicting concept-doc prose is corrected as part of this design so the model is not relitigated.
 
 ### D2 — Order is computed server-side, from already-persisted fields {#d2}
 
@@ -38,9 +38,9 @@ The comparator resolves config **per action** via `action.workflow_type`, so it 
 
 `GetEntityWorkflows` and `GetWorkflowActionGroupOverview` already push `not-required` actions to the bottom of their group before ordering; `GetWorkflowOverview` and `GetEventsTimeline` do not. Rather than preserve that split, the sink is **folded into the comparator** as a second key (after `groupIndex`, before `declIndex`) and applied **everywhere**, so all four surfaces order identically — the agreement D3 promises now covers status too.
 
-Folding it in is correct *because* the behavior is universal. A per-surface "compose an extra key" rule is something each caller must remember to apply — and `GetWorkflowOverview` already forgot. One key inside one comparator can't drift. The key sits **after `groupIndex`**, never first, so a not-required action sinks to the bottom of *its own group* without escaping it — preserving D1's contiguous, declaration-ordered groups.
+Folding it in is correct _because_ the behavior is universal. A per-surface "compose an extra key" rule is something each caller must remember to apply — and `GetWorkflowOverview` already forgot. One key inside one comparator can't drift. The key sits **after `groupIndex`**, never first, so a not-required action sinks to the bottom of _its own group_ without escaping it — preserving D1's contiguous, declaration-ordered groups.
 
-The timeline is the one judgement call. Its `$lookup` only cards actions that have *done real work* (`GetEventsTimeline.js:79–108` — current stage ≠ `blocked`, and at least one history stage was neither `blocked` nor `not-required`), so a card whose *current* stage is `not-required` means "completed, then later deprecated." Sinking those to the bottom of their event group is intended and rare; keeping the rule uniform beats carving out an exception.
+The timeline is the one judgement call. Its `$lookup` only cards actions that have _done real work_ (`GetEventsTimeline.js:79–108` — current stage ≠ `blocked`, and at least one history stage was neither `blocked` nor `not-required`), so a card whose _current_ stage is `not-required` means "completed, then later deprecated." Sinking those to the bottom of their event group is intended and rare; keeping the rule uniform beats carving out an exception.
 
 **Rejected alternative — keep it separate, composed ahead per-caller** (the original D4). That made sense only while sinking was a 2-of-4 per-surface policy. Once we sink everywhere it just spreads one definition across four call sites and re-invites exactly the `GetWorkflowOverview`-style omission this design fixes.
 
@@ -52,14 +52,14 @@ The canonical action-creation path, `planActionTransition.js` (the `insert` bran
 
 Every read engine nonetheless sorts by it:
 
-| Engine | Sort key today | Effective behavior |
-|---|---|---|
-| `GetEventsTimeline.js:185` | `$sortArray { sort_order: 1, 'updated.timestamp': 1 }` | `sort_order` absent → orders by `updated.timestamp` |
-| `GetWorkflowOverview.js:82` | `(groupIndex, sort_order, _id)` | `sort_order ?? 0` ties → orders by `_id` within group |
-| `GetEntityWorkflows.js:97` | `(not-required, sort_order, created.timestamp)` | `sort_order ?? 0` ties → orders by `created.timestamp` |
-| `GetWorkflowActionGroupOverview.js:70` | `(not-required, sort_order, created.timestamp)` | same |
+| Engine                                 | Sort key today                                         | Effective behavior                                     |
+| -------------------------------------- | ------------------------------------------------------ | ------------------------------------------------------ |
+| `GetEventsTimeline.js:185`             | `$sortArray { sort_order: 1, 'updated.timestamp': 1 }` | `sort_order` absent → orders by `updated.timestamp`    |
+| `GetWorkflowOverview.js:82`            | `(groupIndex, sort_order, _id)`                        | `sort_order ?? 0` ties → orders by `_id` within group  |
+| `GetEntityWorkflows.js:97`             | `(not-required, sort_order, created.timestamp)`        | `sort_order ?? 0` ties → orders by `created.timestamp` |
+| `GetWorkflowActionGroupOverview.js:70` | `(not-required, sort_order, created.timestamp)`        | same                                                   |
 
-`GetWorkflowOverview` additionally computes a runtime `groupIndex` from `action_groups` (lines 52–55, 78) — the right idea, but coupled to the dead `sort_order`. `GetEntityWorkflows` already orders group *sections* structurally by iterating `action_groups` in declaration order (line 107) and only uses `sort_order` for within-group ordering; that within-group key is the dead part.
+`GetWorkflowOverview` additionally computes a runtime `groupIndex` from `action_groups` (lines 52–55, 78) — the right idea, but coupled to the dead `sort_order`. `GetEntityWorkflows` already orders group _sections_ structurally by iterating `action_groups` in declaration order (line 107) and only uses `sort_order` for within-group ordering; that within-group key is the dead part.
 
 ### The `_group_index` that never was
 
@@ -88,7 +88,7 @@ key(action):
 compare(a, b): lexicographic over key(a) vs key(b)
 ```
 
-- **`not-required` sinks within its group** (D4) — the second key, after `groupIndex` and before `declIndex`, so a not-required action drops to the bottom of *its own group* without leaving it (groups stay contiguous, D1). Reading `stage` tolerates both doc shapes the engines feed in: the raw `status` array (`GetWorkflowOverview`, `GetEntityWorkflows`, `GetWorkflowActionGroupOverview` pass the action doc, where `status` is `[{ stage }]`) and the scalar the timeline's `$lookup` has already rewritten (`GetEventsTimeline.js:116`). Applied on **all four** surfaces.
+- **`not-required` sinks within its group** (D4) — the second key, after `groupIndex` and before `declIndex`, so a not-required action drops to the bottom of _its own group_ without leaving it (groups stay contiguous, D1). Reading `stage` tolerates both doc shapes the engines feed in: the raw `status` array (`GetWorkflowOverview`, `GetEntityWorkflows`, `GetWorkflowActionGroupOverview` pass the action doc, where `status` is `[{ stage }]`) and the scalar the timeline's `$lookup` has already rewritten (`GetEventsTimeline.js:116`). Applied on **all four** surfaces.
 - **Ungrouped actions** (`action_group: null`) → `groupIndex` not found → sort after all declared groups, matching `GetEntityWorkflows`' existing null-group bucket-last behavior.
 - **Keyed actions** (multiple instances sharing a `type` → identical `(groupIndex, declIndex)`) → separated by their persisted `key` (`planActionTransition.js:145`), the field that distinguishes the instances. `key` is deterministic and stable across status changes, unlike the `created`/`updated.timestamp` tiebreak the engines apply today and unlike the random `_id`.
 - **`_id` final fallback** — retained only as the last key so order is fully deterministic when two docs somehow share `(groupIndex, declIndex, key)` (e.g. both `key: null`); it never decides order for genuinely keyed actions.
@@ -98,14 +98,14 @@ compare(a, b): lexicographic over key(a) vs key(b)
 
 `onboarding.yaml` declares groups `[qualification, quoting, order, conversion]` and actions in the order `qualify, site-visit, send-quote, schedule-followup, upload-po, track-company-setup`.
 
-| action | group (index) | decl index | key | result order |
-|---|---|---|---|---|
-| qualify | qualification (0) | 0 | (0,0) | 1 |
-| site-visit | quoting (1) | 1 | (1,1) | 2 |
-| send-quote | quoting (1) | 2 | (1,2) | 3 |
-| schedule-followup | quoting (1) | 3 | (1,3) | 4 |
-| upload-po | order (2) | 4 | (2,4) | 5 |
-| track-company-setup | conversion (3) | 5 | (3,5) | 6 |
+| action              | group (index)     | decl index | key   | result order |
+| ------------------- | ----------------- | ---------- | ----- | ------------ |
+| qualify             | qualification (0) | 0          | (0,0) | 1            |
+| site-visit          | quoting (1)       | 1          | (1,1) | 2            |
+| send-quote          | quoting (1)       | 2          | (1,2) | 3            |
+| schedule-followup   | quoting (1)       | 3          | (1,3) | 4            |
+| upload-po           | order (2)         | 4          | (2,4) | 5            |
+| track-company-setup | conversion (3)    | 5          | (3,5) | 6            |
 
 Correct workflow order, with no `sort_order` anywhere. The per-group resets that make `sort_order`-alone fail today are irrelevant — `groupIndex` is the primary key.
 
@@ -113,7 +113,7 @@ Correct workflow order, with no `sort_order` anywhere. The per-group resets that
 
 - **`GetEventsTimeline.js`** — remove the `$sortArray` stage (lines 180–189) and add `workflowsConfig` to the engine's context destructure (line 29 currently pulls only `{ params, mongoDb, connection }`; the value is on the context but unused here today). Sort each event's **`rawActions`** with the comparator **before** the enrichment loop (lines 239–276) — the trimmed cards built in that loop carry only `{ _id, kind, status, link, message, updated }` and drop `type`/`action_group`/`workflow_type`, so the comparator must run on the raw docs that still hold those fields. Drop `sort_order` from the emitted card shape (lines 258, 270) — it is vestigial. The comparator now also sinks `not-required` within each event group (D4); on the timeline that affects only rare "completed-then-deprecated" cards. (F12.)
 - **`GetWorkflowOverview.js`** — replace the `(groupIndex, sort_order, _id)` sort (lines 77–89) with the comparator. Removes the bespoke `groupIndex` helper in favor of the shared one. **Behavior change:** this surface does not sink `not-required` today; the comparator now does (D4), bringing it in line with the others.
-- **`GetEntityWorkflows.js`** — replace the whole `(not-required, sort_order, created.timestamp)` sort (lines 92–103) with the comparator; the `not-required` sink it applies today is now folded *into* the comparator (D4), not composed ahead. Group-section iteration (line 107) is unchanged.
+- **`GetEntityWorkflows.js`** — replace the whole `(not-required, sort_order, created.timestamp)` sort (lines 92–103) with the comparator; the `not-required` sink it applies today is now folded _into_ the comparator (D4), not composed ahead. Group-section iteration (line 107) is unchanged.
 - **`GetWorkflowActionGroupOverview.js`** — same: replace the `(not-required, sort_order, created.timestamp)` sort with the comparator (D4).
 
 ### Retiring `sort_order`
@@ -128,21 +128,21 @@ Correct workflow order, with no `sort_order` anywhere. The per-group resets that
 
 ## Files changed
 
-| File | Change |
-|---|---|
-| `plugins/.../connections/shared/render/compareActionOrder.js` | **New** — `makeWorkflowOrderComparator(workflowsConfig)`. |
-| `plugins/.../WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js` | Drop `$sortArray` sort_order stage; sort cards via comparator in JS; drop `sort_order` from card output. |
-| `plugins/.../WorkflowAPI/GetWorkflowOverview/GetWorkflowOverview.js` | Replace bespoke `(groupIndex, sort_order, _id)` sort with comparator; this surface now also sinks `not-required` (D4). |
-| `plugins/.../WorkflowAPI/GetEntityWorkflows/GetEntityWorkflows.js` | Comparator for within-group order; `not-required` sink now folded into the comparator (D4). |
-| `plugins/.../WorkflowAPI/GetWorkflowActionGroupOverview/GetWorkflowActionGroupOverview.js` | Same. |
-| `modules/workflows/resolvers/makeWorkflowsConfig.js` | Remove `'sort_order'` from `ACTION_FIELDS`. |
-| `modules/workflows/resolvers/makeActionPages.js` | Remove `'sort_order'` from picked fields. |
-| `modules/workflows/README.md` | Remove `sort_order` from the line-85 list of action-level fields "the engine reads at runtime" — no longer true. |
-| `designs/workflows-module-concept/action-authoring/spec.md` | Remove the `sort_order` field row (190); the field no longer qualifies as the prose's "opaque display metadata the engine treats..."; strip `sort_order:` from the example snippets (343, 378, 417, 446). |
-| `designs/workflows-module-concept/action-authoring/design.md` | Remove the `sort_order` field-table row (275), rework the rationale paragraph (277) per the declaration-order divergence (see #6 / D1), and strip `sort_order:` from example snippets (310, 872). |
-| `modules/workflows/templates/view.yaml.njk` | Drop `sort_order` from the line-5 `action_config` field-list comment (cosmetic; no template actually reads it). |
-| `apps/demo/modules/workflows/workflow_config/**/*.yaml` | Strip `sort_order:` lines (cosmetic). |
-| Engine `*.test.js` (4 engines) | Re-assert declaration order; add cross-group / ungrouped / keyed coverage. |
+| File                                                                                       | Change                                                                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `plugins/.../connections/shared/render/compareActionOrder.js`                              | **New** — `makeWorkflowOrderComparator(workflowsConfig)`.                                                                                                                                                 |
+| `plugins/.../WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js`                           | Drop `$sortArray` sort_order stage; sort cards via comparator in JS; drop `sort_order` from card output.                                                                                                  |
+| `plugins/.../WorkflowAPI/GetWorkflowOverview/GetWorkflowOverview.js`                       | Replace bespoke `(groupIndex, sort_order, _id)` sort with comparator; this surface now also sinks `not-required` (D4).                                                                                    |
+| `plugins/.../WorkflowAPI/GetEntityWorkflows/GetEntityWorkflows.js`                         | Comparator for within-group order; `not-required` sink now folded into the comparator (D4).                                                                                                               |
+| `plugins/.../WorkflowAPI/GetWorkflowActionGroupOverview/GetWorkflowActionGroupOverview.js` | Same.                                                                                                                                                                                                     |
+| `modules/workflows/resolvers/makeWorkflowsConfig.js`                                       | Remove `'sort_order'` from `ACTION_FIELDS`.                                                                                                                                                               |
+| `modules/workflows/resolvers/makeActionPages.js`                                           | Remove `'sort_order'` from picked fields.                                                                                                                                                                 |
+| `modules/workflows/README.md`                                                              | Remove `sort_order` from the line-85 list of action-level fields "the engine reads at runtime" — no longer true.                                                                                          |
+| `designs/workflows-module-concept/action-authoring/spec.md`                                | Remove the `sort_order` field row (190); the field no longer qualifies as the prose's "opaque display metadata the engine treats..."; strip `sort_order:` from the example snippets (343, 378, 417, 446). |
+| `designs/workflows-module-concept/action-authoring/design.md`                              | Remove the `sort_order` field-table row (275), rework the rationale paragraph (277) per the declaration-order divergence (see #6 / D1), and strip `sort_order:` from example snippets (310, 872).         |
+| `modules/workflows/templates/view.yaml.njk`                                                | Drop `sort_order` from the line-5 `action_config` field-list comment (cosmetic; no template actually reads it).                                                                                           |
+| `apps/demo/modules/workflows/workflow_config/**/*.yaml`                                    | Strip `sort_order:` lines (cosmetic).                                                                                                                                                                     |
+| Engine `*.test.js` (4 engines)                                                             | Re-assert declaration order; add cross-group / ungrouped / keyed coverage.                                                                                                                                |
 
 ## Non-goals
 

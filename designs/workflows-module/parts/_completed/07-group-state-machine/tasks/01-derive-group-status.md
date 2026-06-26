@@ -52,12 +52,13 @@ A clean two-pass implementation is fine:
 
 ```js
 function deriveGroupStatus(groupActions) {
-  if (groupActions.length === 0) return 'done';
-  const TERMINAL = ['done', 'not-required'];
+  if (groupActions.length === 0) return "done";
+  const TERMINAL = ["done", "not-required"];
   const stages = groupActions.map((a) => a.status?.[0]?.stage);
-  if (stages.every((s) => TERMINAL.includes(s))) return 'done';
-  if (stages.every((s) => TERMINAL.includes(s) || s === 'blocked')) return 'blocked';
-  return 'in-progress';
+  if (stages.every((s) => TERMINAL.includes(s))) return "done";
+  if (stages.every((s) => TERMINAL.includes(s) || s === "blocked"))
+    return "blocked";
+  return "in-progress";
 }
 ```
 

@@ -14,7 +14,7 @@ This mechanism is incorrect. `fireTrackerSubscription.js` (in `plugins/modules-m
 
 So the join is `workflow.parent_action_id → action._id`, never a query on `actions.child_workflow_id`. The `child_workflow_id` field is written on tracker actions for display/UI but is not used as a query key.
 
-The **semantic claim** the bullet is making — that tasks are transparent to the tracker subscription — still holds and must be preserved. Only the *mechanism* described is wrong.
+The **semantic claim** the bullet is making — that tasks are transparent to the tracker subscription — still holds and must be preserved. Only the _mechanism_ described is wrong.
 
 ## Task
 

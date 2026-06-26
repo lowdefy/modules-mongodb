@@ -26,6 +26,7 @@ User-initiated principle clarification: module exports go through `exports.compo
 **Source of truth:** The principle (components are read via `_ref: { module, component }`) + the on-disk manifest (declares enums under `components:`).
 **Files affected:** `modules/workflows/pages/task-edit.yaml`, `pages/task-view.yaml`, `pages/task-review.yaml`, `pages/workflow-overview.yaml`, `pages/group-overview.yaml`, `components/workflow-header.yaml` — 19 total `_global:` read sites across six files.
 **Resolution:** Task 10 enumerates every site and specifies the rewrite. Two patterns identified:
+
 - **Pattern 1 (clean swap):** `_global: <enum-name>` used as a `_js` param — drops in as `_ref: { module: workflows, component: <enum-name> }`. One site (`task-edit.yaml:146`).
 - **Pattern 2 (runtime indexed access):** `_global: { _string.concat: [<enum>., <runtime-key>, .<field>] }` — rewrite to a `_js` block with two params (the resolved component object + the runtime key) that does the indexing inside the body. 18 sites across the other five files.
 

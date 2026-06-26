@@ -43,7 +43,8 @@ _mql.aggregate:
         label: { $concat: ["<span>", "$items.v.title", "</span>"] }
         value: $items.k
         style: { color: $items.v.color }
-        tag: { color: $items.v.color, icon: $items.v.icon, title: $items.v.title }
+        tag:
+          { color: $items.v.color, icon: $items.v.icon, title: $items.v.title }
 ```
 
 Usage: `_ref: { path: ../shared/enums/options_enum.yaml, vars: { enum: { _global: enums.ticket_statuses } } }`
@@ -86,7 +87,7 @@ create-contact:
 
 ```yaml
 await-client:
-  color: '#EE6666'
+  color: "#EE6666"
   title: Awaiting Client
   clientTitle: Feedback Required
   final: false
@@ -100,7 +101,7 @@ await-client:
 
 ```yaml
 b_series:
-  color: '#000000'
+  color: "#000000"
   title: B Series
   description: Black Touch Screen Device
 ```
@@ -109,7 +110,7 @@ b_series:
 
 ```yaml
 urgent:
-  color: '#ff7875'
+  color: "#ff7875"
   title: Urgent
   icon: AiFillFire
   order: 1
@@ -153,15 +154,15 @@ $project:
 
 ```yaml
 # shared/enums/{entity}_{type_plural}.yaml
-{slug}:
-  color: '{hex_color}'
-  title: {Display Title}
-  icon: {AiOutlineIcon}
+{ slug }:
+  color: "{hex_color}"
+  title: { Display Title }
+  icon: { AiOutlineIcon }
 
-{another-slug}:
-  color: '{hex_color}'
-  title: {Display Title}
-  icon: {AiOutlineIcon}
+{ another-slug }:
+  color: "{hex_color}"
+  title: { Display Title }
+  icon: { AiOutlineIcon }
 ```
 
 ## Checklist

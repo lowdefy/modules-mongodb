@@ -1,13 +1,13 @@
-import renderStatusMap from '../../render/renderStatusMap.js';
-import deepMerge from './deepMerge.js';
-import planEventDispatch from './planEventDispatch.js';
-import planChangeLog from './planChangeLog.js';
+import renderStatusMap from "../../render/renderStatusMap.js";
+import deepMerge from "./deepMerge.js";
+import planEventDispatch from "./planEventDispatch.js";
+import planChangeLog from "./planChangeLog.js";
 
 // The three action-level metadata fields this operation owns. A key present in
 // the payload `fields` bag is written ($set semantics — `null` clears); a key
 // absent leaves the stored value unchanged. Any other key in the bag is ignored
 // — universal-field writes flow exclusively through this operation.
-const UNIVERSAL_FIELDS = ['assignees', 'due_date', 'description'];
+const UNIVERSAL_FIELDS = ["assignees", "due_date", "description"];
 
 /**
  * Plan-phase planner for the `UpdateActionFields` operation (Part 24). Writes
@@ -85,7 +85,7 @@ function planFieldsUpdate({ loadedState, fields, comment, metadata, context }) {
   const event = planEventDispatch({
     event_id,
     user,
-    handlerType: 'UpdateActionFields',
+    handlerType: "UpdateActionFields",
     comment,
     plannedWorkflowDoc: workflow,
     plannedActionDoc: doc,
@@ -98,7 +98,7 @@ function planFieldsUpdate({ loadedState, fields, comment, metadata, context }) {
     planActions: [
       {
         doc,
-        operation: 'update',
+        operation: "update",
         changeLog: { before: targetAction, after: doc },
       },
     ],
@@ -113,7 +113,7 @@ function planFieldsUpdate({ loadedState, fields, comment, metadata, context }) {
     actions: [
       {
         doc,
-        operation: 'update',
+        operation: "update",
         changeLog: { before: targetAction, after: doc },
       },
     ],

@@ -1,189 +1,189 @@
 const schema = {
-  type: 'object',
-  required: ['databaseUri', 'entry_id', 'endpoints'],
+  type: "object",
+  required: ["databaseUri", "entry_id", "endpoints"],
   additionalProperties: false,
   properties: {
     databaseUri: {
-      type: 'string',
+      type: "string",
       description:
-        'MongoDB connection URI; typically resolved via _secret in app YAML.',
+        "MongoDB connection URI; typically resolved via _secret in app YAML.",
     },
     entry_id: {
-      type: 'string',
+      type: "string",
       description:
-        'The workflows module entry id, wired from `_module.id: true` in ' +
-        'connections/workflow-api.yaml. The engine uses it to build ' +
-        'entry-scoped page ids (`${entry_id}/${pageId}`) when computing the ' +
-        'per-verb engine links written onto action docs, matching Lowdefy\'s ' +
-        'build-time _module.pageId scoping.',
+        "The workflows module entry id, wired from `_module.id: true` in " +
+        "connections/workflow-api.yaml. The engine uses it to build " +
+        "entry-scoped page ids (`${entry_id}/${pageId}`) when computing the " +
+        "per-verb engine links written onto action docs, matching Lowdefy's " +
+        "build-time _module.pageId scoping.",
     },
     endpoints: {
-      type: 'object',
-      required: ['new_event', 'send_notification'],
+      type: "object",
+      required: ["new_event", "send_notification"],
       description:
-        'Build-resolved dispatch targets, wired from `_module.endpointId` in ' +
-        'connections/workflow-api.yaml. Each value is an opaque pre-scoped ' +
-        'endpoint id string (`<moduleEntryId>/<endpointId>`) consumed verbatim ' +
-        'by the engine\'s dispatch helpers via `callApi({ endpointId, payload })` ' +
-        '— the engine never constructs prefixes at runtime.',
+        "Build-resolved dispatch targets, wired from `_module.endpointId` in " +
+        "connections/workflow-api.yaml. Each value is an opaque pre-scoped " +
+        "endpoint id string (`<moduleEntryId>/<endpointId>`) consumed verbatim " +
+        "by the engine's dispatch helpers via `callApi({ endpointId, payload })` " +
+        "— the engine never constructs prefixes at runtime.",
       properties: {
         new_event: {
-          type: 'string',
+          type: "string",
           description:
-            'Pre-scoped id of the events module\'s new-event Api (e.g. ' +
+            "Pre-scoped id of the events module's new-event Api (e.g. " +
             '"events/new-event"); the engine dispatches the per-invocation ' +
-            'log event here.',
+            "log event here.",
         },
         send_notification: {
-          type: 'string',
+          type: "string",
           description:
-            'Pre-scoped id of the notifications module\'s send-notification ' +
+            "Pre-scoped id of the notifications module's send-notification " +
             'InternalApi (e.g. "notifications/send-notification"); the engine ' +
-            'dispatches `{ event_ids }` here after each committed event.',
+            "dispatches `{ event_ids }` here after each committed event.",
         },
       },
     },
     read: {
-      type: 'boolean',
+      type: "boolean",
       default: true,
-      description: 'Allow read requests on this connection.',
+      description: "Allow read requests on this connection.",
     },
     write: {
-      type: 'boolean',
+      type: "boolean",
       default: false,
       description:
-        'Allow write requests on this connection. Required for StartWorkflow, SubmitWorkflowAction, CancelWorkflow, and CloseWorkflow handlers, which all set meta.checkWrite = true.',
+        "Allow write requests on this connection. Required for StartWorkflow, SubmitWorkflowAction, CancelWorkflow, and CloseWorkflow handlers, which all set meta.checkWrite = true.",
     },
     databaseName: {
-      type: 'string',
-      description: 'Optional database name; defaults to the URI default.',
+      type: "string",
+      description: "Optional database name; defaults to the URI default.",
     },
     workflowsCollection: {
-      type: 'string',
+      type: "string",
       description: 'Workflows collection name. Defaults to "workflows".',
-      default: 'workflows',
+      default: "workflows",
     },
     actionsCollection: {
-      type: 'string',
+      type: "string",
       description: 'Actions collection name. Defaults to "actions".',
-      default: 'actions',
+      default: "actions",
     },
     changeLog: {
-      type: 'object',
+      type: "object",
       description:
-        'Optional changeLog config consumed natively by the engine. Same `{ collection, meta }` shape and same opt-in as the community-plugin / events-module pattern: when set, the engine writes one log-changes entry per workflow + action mutation into the consumer app\'s log-changes collection. Engine writes bypass the community plugin (they go through the native Mongo driver), so the engine populates each entry\'s before/after from the Plan rather than via the plugin\'s per-op double-reads. When unset, no audit entries are written.',
+        "Optional changeLog config consumed natively by the engine. Same `{ collection, meta }` shape and same opt-in as the community-plugin / events-module pattern: when set, the engine writes one log-changes entry per workflow + action mutation into the consumer app's log-changes collection. Engine writes bypass the community plugin (they go through the native Mongo driver), so the engine populates each entry's before/after from the Plan rather than via the plugin's per-op double-reads. When unset, no audit entries are written.",
     },
     workflowsConfig: {
-      type: 'array',
+      type: "array",
       description:
-        'Normalized workflows config — output of the makeWorkflowsConfig resolver. ' +
-        'Each entry is one workflow with its actions and action_groups. ' +
-        'Consumed by the engine at runtime. ' +
-        'Workflow shape: { type, entity_collection, entity_ref_key, display_order?, starting_actions, actions, action_groups? }. ' +
+        "Normalized workflows config — output of the makeWorkflowsConfig resolver. " +
+        "Each entry is one workflow with its actions and action_groups. " +
+        "Consumed by the engine at runtime. " +
+        "Workflow shape: { type, entity_collection, entity_ref_key, display_order?, starting_actions, actions, action_groups? }. " +
         'entity_ref_key is the event-references key for the workflow\'s entity (e.g. "lead_ids") — written into event docs so events surface on the entity. ' +
-        'starting_actions entries: { type: string, status: string } where type matches an actions[].type and status is a key in actionsEnum.',
+        "starting_actions entries: { type: string, status: string } where type matches an actions[].type and status is a key in actionsEnum.",
       items: {
-        type: 'object',
+        type: "object",
         additionalProperties: true,
         required: [
-          'type',
-          'entity_collection',
-          'entity_ref_key',
-          'starting_actions',
-          'actions',
+          "type",
+          "entity_collection",
+          "entity_ref_key",
+          "starting_actions",
+          "actions",
         ],
         properties: {
           actions: {
-            type: 'array',
+            type: "array",
             items: {
-              type: 'object',
+              type: "object",
               additionalProperties: true,
-              required: ['type', 'kind'],
+              required: ["type", "kind"],
             },
           },
         },
       },
     },
     changeStamp: {
-      type: 'object',
+      type: "object",
       description:
-        'Resolves to the events module change_stamp at app build time (typically via _ref: { module: events, component: change_stamp }). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`. One stamp per handler invocation; all writes in the same call share the timestamp.',
+        "Resolves to the events module change_stamp at app build time (typically via _ref: { module: events, component: change_stamp }). The engine reads it at handler entry and stamps every workflow + action doc write with it via `created` and `updated`. One stamp per handler invocation; all writes in the same call share the timestamp.",
     },
     app_name: {
-      type: 'string',
+      type: "string",
       description:
-        'Host app deployment name. Consumed by the engine at submit time to ' +
-        'key the default log event\'s display block (matching the events ' +
-        'module\'s display_key projection). Apps wire this from _module.var: app_name ' +
-        'on connections/workflow-api.yaml.',
+        "Host app deployment name. Consumed by the engine at submit time to " +
+        "key the default log event's display block (matching the events " +
+        "module's display_key projection). Apps wire this from _module.var: app_name " +
+        "on connections/workflow-api.yaml.",
     },
     actionsEnum: {
-      type: 'object',
+      type: "object",
       description:
         'Action status enum keyed by status name (e.g. "done", "blocked"). ' +
-        'Typically loaded from modules/shared/enums/action_statuses.yaml. ' +
-        'Each entry MUST carry priority — display-only (ordering in pickers / ' +
-        'visualizations); the engine no longer consults it for transition ' +
-        'legality (transitions are resolved by the per-kind FSM tables). ' +
-        'Display fields (title, color, borderColor, titleColor) are optional in the schema ' +
-        'but present on every shipped status; apps providing their own actionsEnum ' +
-        'should populate them too for consistent UI rendering.',
+        "Typically loaded from modules/shared/enums/action_statuses.yaml. " +
+        "Each entry MUST carry priority — display-only (ordering in pickers / " +
+        "visualizations); the engine no longer consults it for transition " +
+        "legality (transitions are resolved by the per-kind FSM tables). " +
+        "Display fields (title, color, borderColor, titleColor) are optional in the schema " +
+        "but present on every shipped status; apps providing their own actionsEnum " +
+        "should populate them too for consistent UI rendering.",
       additionalProperties: {
-        type: 'object',
+        type: "object",
         additionalProperties: true,
-        required: ['priority'],
+        required: ["priority"],
         properties: {
-          priority: { type: 'number' },
-          title: { type: 'string' },
-          color: { type: 'string' },
-          borderColor: { type: 'string' },
-          titleColor: { type: 'string' },
+          priority: { type: "number" },
+          title: { type: "string" },
+          color: { type: "string" },
+          borderColor: { type: "string" },
+          titleColor: { type: "string" },
         },
       },
     },
     user: {
-      type: 'object',
+      type: "object",
       description:
-        'Session user resolved per-request. Wire from `_user: true` on ' +
-        'connections/workflow-api.yaml. Lowdefy evaluates connection properties ' +
-        'per request, so this resolves to the current session user ' +
-        '(`{ roles: [...], ... }`) at handler entry. ' +
-        'The engine reads `user.roles` for verb gate checks.',
+        "Session user resolved per-request. Wire from `_user: true` on " +
+        "connections/workflow-api.yaml. Lowdefy evaluates connection properties " +
+        "per request, so this resolves to the current session user " +
+        "(`{ roles: [...], ... }`) at handler entry. " +
+        "The engine reads `user.roles` for verb gate checks.",
     },
     entities: {
-      type: 'object',
+      type: "object",
       description:
-        'Per-`entity_collection` host-app routing map. Wire from ' +
-        '`_module.var: entities` on connections/workflow-api.yaml. ' +
-        'The engine resolves `workflow.entity_link` from it when building ' +
-        'entity back-links in the overview read methods.',
+        "Per-`entity_collection` host-app routing map. Wire from " +
+        "`_module.var: entities` on connections/workflow-api.yaml. " +
+        "The engine resolves `workflow.entity_link` from it when building " +
+        "entity back-links in the overview read methods.",
       additionalProperties: {
-        type: 'object',
+        type: "object",
         additionalProperties: false,
         properties: {
-          page_id: { type: 'string' },
-          id_query_key: { type: 'string' },
-          title: { type: 'string' },
+          page_id: { type: "string" },
+          id_query_key: { type: "string" },
+          title: { type: "string" },
         },
       },
     },
     eventsCollection: {
-      type: 'string',
-      default: 'log-events',
+      type: "string",
+      default: "log-events",
       description:
-        'Events collection name queried by GetEventsTimeline (task 6). ' +
+        "Events collection name queried by GetEventsTimeline (task 6). " +
         'Defaults to "log-events" (matching the events module\'s collection). ' +
-        'Host apps need only set this when overriding the collection name.',
+        "Host apps need only set this when overriding the collection name.",
     },
     contactsCollection: {
-      type: 'string',
-      default: 'user-contacts',
+      type: "string",
+      default: "user-contacts",
       description:
-        'Contacts collection name joined by GetEventsTimeline to resolve each ' +
-        'event author\'s avatar (created.user.id → _id, projecting ' +
+        "Contacts collection name joined by GetEventsTimeline to resolve each " +
+        "event author's avatar (created.user.id → _id, projecting " +
         'profile.picture onto created.user.picture). Defaults to "user-contacts" ' +
-        '(the shared collection where a user IS a contact — same _id space). ' +
-        'Host apps need only set this when overriding the collection name.',
+        "(the shared collection where a user IS a contact — same _id space). " +
+        "Host apps need only set this when overriding the collection name.",
     },
   },
 };

@@ -18,18 +18,18 @@ At the top of `CloseWorkflow.js`, after the imports:
 
 ```js
 const RESERVED_WORKFLOW_KEYS = [
-  '_id',
-  'workflow_id',
-  'type',
-  'workflow_type',
-  'entity_id',
-  'entity_collection',
-  'status',
-  'summary',
-  'groups',
-  'form_data',
-  'created',
-  'updated',
+  "_id",
+  "workflow_id",
+  "type",
+  "workflow_type",
+  "entity_id",
+  "entity_collection",
+  "status",
+  "summary",
+  "groups",
+  "form_data",
+  "created",
+  "updated",
 ];
 ```
 
@@ -48,7 +48,7 @@ for (const key of RESERVED_WORKFLOW_KEYS) {
 
 ```js
 const completedEntry = {
-  stage: 'completed',
+  stage: "completed",
   created: context.changeStamp,
   ...(payload.reason ? { reason: payload.reason } : {}),
 };
@@ -59,7 +59,7 @@ const completedEntry = {
 One `MongoDBUpdateOne` doing both the defended `$set` of `references` and the `$push` of `completed`:
 
 ```js
-await context.mongoDBConnection('workflows').MongoDBUpdateOne({
+await context.mongoDBConnection("workflows").MongoDBUpdateOne({
   filter: { _id: payload.workflow_id },
   update: {
     $set: {

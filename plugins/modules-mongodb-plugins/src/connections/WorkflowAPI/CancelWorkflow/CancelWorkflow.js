@@ -1,32 +1,32 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import loadWorkflowState from '../../shared/phases/loadWorkflowState.js';
-import planActionTransition from '../../shared/phases/planners/planActionTransition.js';
-import planWorkflowRecompute from '../../shared/phases/planners/planWorkflowRecompute.js';
-import planEventDispatch from '../../shared/phases/planners/planEventDispatch.js';
-import planChangeLog from '../../shared/phases/planners/planChangeLog.js';
-import commitPlan from '../../shared/phases/commitPlan.js';
-import runTrackerCascade from '../../shared/phases/runTrackerCascade.js';
-import throwIfDispatchFailed from '../../shared/phases/throwIfDispatchFailed.js';
-import { WorkflowEngineError } from '../../shared/errors.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import loadWorkflowState from "../../shared/phases/loadWorkflowState.js";
+import planActionTransition from "../../shared/phases/planners/planActionTransition.js";
+import planWorkflowRecompute from "../../shared/phases/planners/planWorkflowRecompute.js";
+import planEventDispatch from "../../shared/phases/planners/planEventDispatch.js";
+import planChangeLog from "../../shared/phases/planners/planChangeLog.js";
+import commitPlan from "../../shared/phases/commitPlan.js";
+import runTrackerCascade from "../../shared/phases/runTrackerCascade.js";
+import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
+import { WorkflowEngineError } from "../../shared/errors.js";
 
 // Fields that may NOT be overwritten by payload.references — they are engine-
 // owned on the workflow doc (carried over from the prior handler).
 const RESERVED_WORKFLOW_KEYS = [
-  '_id',
-  'workflow_id',
-  'type',
-  'workflow_type',
-  'entity_id',
-  'entity_collection',
-  'status',
-  'summary',
-  'groups',
-  'form_data',
-  'created',
-  'updated',
+  "_id",
+  "workflow_id",
+  "type",
+  "workflow_type",
+  "entity_id",
+  "entity_collection",
+  "status",
+  "summary",
+  "groups",
+  "form_data",
+  "created",
+  "updated",
 ];
 
-const TERMINAL_STAGES = ['done', 'not-required'];
+const TERMINAL_STAGES = ["done", "not-required"];
 
 /**
  * CancelWorkflow handler (design D2/D3/D12; task 17).
@@ -54,8 +54,8 @@ async function CancelWorkflow(lowdefyContext) {
   const entry_id = connection.entry_id;
 
   if (!params.workflow_id) {
-    throw new WorkflowEngineError('CancelWorkflow: workflow_id is required', {
-      code: 'invalid_params',
+    throw new WorkflowEngineError("CancelWorkflow: workflow_id is required", {
+      code: "invalid_params",
     });
   }
 
@@ -75,8 +75,8 @@ async function CancelWorkflow(lowdefyContext) {
     const actionConfig = actionsConfig.find((c) => c.type === action.type);
     const planned = planActionTransition({
       action,
-      signal: 'internal_cancel_action',
-      source: 'cascade',
+      signal: "internal_cancel_action",
+      source: "cascade",
       actionConfig,
       loadedWorkflow: workflow,
       entry_id,
@@ -92,15 +92,13 @@ async function CancelWorkflow(lowdefyContext) {
   const sweptById = new Map(
     sweepEntries.map((e) => [String(e.doc._id), e.doc]),
   );
-  const plannedActions = actions.map(
-    (a) => sweptById.get(String(a._id)) ?? a,
-  );
+  const plannedActions = actions.map((a) => sweptById.get(String(a._id)) ?? a);
 
   // ── Plan: workflow recompute with the cancelled lifecycle entry ──────────
   const recomputed = planWorkflowRecompute({
     loadedState,
     plannedActions,
-    lifecyclePush: { stage: 'cancelled', reason: params.reason },
+    lifecyclePush: { stage: "cancelled", reason: params.reason },
     event_id,
     now,
   });
@@ -119,8 +117,8 @@ async function CancelWorkflow(lowdefyContext) {
   const event = planEventDispatch({
     event_id,
     user,
-    handlerType: 'CancelWorkflow',
-    signal: 'cancelled',
+    handlerType: "CancelWorkflow",
+    signal: "cancelled",
     plannedWorkflowDoc,
     allTouchedActionDocs: sweepEntries.map((e) => e.doc),
     connection,
@@ -130,7 +128,7 @@ async function CancelWorkflow(lowdefyContext) {
   // ── Plan: change-log ─────────────────────────────────────────────────────
   const planWorkflow = {
     doc: plannedWorkflowDoc,
-    operation: 'update',
+    operation: "update",
     changeLog: { before: workflow, after: plannedWorkflowDoc },
   };
   const changeLog = planChangeLog({
@@ -148,7 +146,7 @@ async function CancelWorkflow(lowdefyContext) {
           {
             parentWorkflowId: workflow.parent_workflow_id,
             parentActionId: workflow.parent_action_id,
-            signal: 'internal_mirror_child_cancelled',
+            signal: "internal_mirror_child_cancelled",
           },
         ]
       : [];
@@ -169,7 +167,11 @@ async function CancelWorkflow(lowdefyContext) {
   const cascade = await runTrackerCascade(plan.trackerFires, context);
 
   // ── Surface post-commit dispatch failures, last (D9/D13) ─────────────────
-  throwIfDispatchFailed({ handlerName: 'CancelWorkflow', commitResult, cascade });
+  throwIfDispatchFailed({
+    handlerName: "CancelWorkflow",
+    commitResult,
+    cascade,
+  });
 
   return {
     action_ids: commitResult.action_ids,

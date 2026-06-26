@@ -5,6 +5,7 @@
 The workflow-action kind currently spelled `task` is being renamed to `simple` across the workflows module. This task handles the JS-side changes: the resolvers that validate / route on `kind`, the plugin's JSDoc typedef, and every `*.test.js` file that seeds fixtures with `kind: "task"` or asserts validator error messages mentioning `task`.
 
 The shipped code uses `kind: "task"` in three sites today:
+
 - `ACTION_KINDS = ['form', 'task', 'tracker']` in `makeWorkflowsConfig.js`, plus a `validateAction` branch that keys on `'task'` and two error messages that mention `task` literally.
 - `const isTask = action.kind === 'task'` in `makeWorkflowApis.js`.
 - `actionConfig.kind === "task"` in `resolveTargetStatus.js` (one site).

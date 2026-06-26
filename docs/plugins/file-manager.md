@@ -98,23 +98,23 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
 
 ## Properties
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `files` | array | `[]` | The file documents to display. See [File document shape](#file-document-shape). |
-| `s3PostPolicyRequestId` | string | — | Request id that returns an S3 post-policy for uploads. Required to upload. |
-| `s3GetPolicyRequestId` | string | — | Request id that returns an S3 get-policy URL for downloads. Required for the download link. |
-| `accept` | string | `*` | File-type filter passed to the dragger (e.g. `.pdf,.jpg`, `image/*`). |
-| `hint` | string (HTML) | `Click or drag file to upload` | Hint text inside the dragger. Rendered through `renderHtml`. |
-| `disabled` | boolean | `false` | Disable the dragger. |
-| `viewOnly` | boolean | `false` | Hide the dragger and the per-row delete button. Useful for read-only views. |
-| `showDelete` | boolean | `true` | Show the delete button per row. Forced to `false` when `viewOnly` is `true`. |
-| `singleFile` | boolean | `false` | Hide the dragger once a file is uploaded (one-file mode). |
-| `maxCount` | number | — | Hide the dragger once `files.length >= maxCount`. |
-| `modalTitle` | string | `Upload File` | Title of the form-fields modal. Only used when the `form` slot is present. |
-| `okText` | string | `Save` | Submit button label on the form-fields modal. |
-| `label` | object | — | When set, wraps the block in an Antd `Label` (with `title`, `extra`, `tooltip`, …). |
-| `required` | boolean | `false` | Forwarded to the `Label` wrapper for required-state styling. |
-| `size` | `"small"` \| `"middle"` \| `"large"` | — | Forwarded to the `Label` wrapper. |
+| Property                | Type                                 | Default                        | Description                                                                                 |
+| ----------------------- | ------------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------------- |
+| `files`                 | array                                | `[]`                           | The file documents to display. See [File document shape](#file-document-shape).             |
+| `s3PostPolicyRequestId` | string                               | —                              | Request id that returns an S3 post-policy for uploads. Required to upload.                  |
+| `s3GetPolicyRequestId`  | string                               | —                              | Request id that returns an S3 get-policy URL for downloads. Required for the download link. |
+| `accept`                | string                               | `*`                            | File-type filter passed to the dragger (e.g. `.pdf,.jpg`, `image/*`).                       |
+| `hint`                  | string (HTML)                        | `Click or drag file to upload` | Hint text inside the dragger. Rendered through `renderHtml`.                                |
+| `disabled`              | boolean                              | `false`                        | Disable the dragger.                                                                        |
+| `viewOnly`              | boolean                              | `false`                        | Hide the dragger and the per-row delete button. Useful for read-only views.                 |
+| `showDelete`            | boolean                              | `true`                         | Show the delete button per row. Forced to `false` when `viewOnly` is `true`.                |
+| `singleFile`            | boolean                              | `false`                        | Hide the dragger once a file is uploaded (one-file mode).                                   |
+| `maxCount`              | number                               | —                              | Hide the dragger once `files.length >= maxCount`.                                           |
+| `modalTitle`            | string                               | `Upload File`                  | Title of the form-fields modal. Only used when the `form` slot is present.                  |
+| `okText`                | string                               | `Save`                         | Submit button label on the form-fields modal.                                               |
+| `label`                 | object                               | —                              | When set, wraps the block in an Antd `Label` (with `title`, `extra`, `tooltip`, …).         |
+| `required`              | boolean                              | `false`                        | Forwarded to the `Label` wrapper for required-state styling.                                |
+| `size`                  | `"small"` \| `"middle"` \| `"large"` | —                              | Forwarded to the `Label` wrapper.                                                           |
 
 ### File document shape
 
@@ -138,29 +138,29 @@ Form state is validated (regex-anchored to `^{blockId}\.form\.`) before `onSave`
 
 ## Events
 
-| Event | When | Payload |
-|---|---|---|
-| `onChange` | Dragger upload state changes (start, progress, error). | — |
-| `onSave` | Upload completes (and the form is valid, when present). | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
-| `onDelete` | Per-row delete is confirmed. | `{ fileDoc }` — the full file document being deleted. |
+| Event      | When                                                    | Payload                                                                                                                |
+| ---------- | ------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `onChange` | Dragger upload state changes (start, progress, error).  | —                                                                                                                      |
+| `onSave`   | Upload completes (and the form is valid, when present). | `{ file: { name, key, bucket, size, type, thumbnail } }`. The consumer is expected to persist this and any form state. |
+| `onDelete` | Per-row delete is confirmed.                            | `{ fileDoc }` — the full file document being deleted.                                                                  |
 
 For the form-fields modal, the consumer can return `{ success: false }` from the `onSave` action chain to keep the modal open (e.g. on validation or API failure).
 
 ## Methods
 
-| Method | Args | Effect |
-|---|---|---|
+| Method            | Args | Effect                                                                                                                            |
+| ----------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `uploadFromPaste` | none | Reads the system clipboard (PNG/JPEG only) and starts an upload. Useful as a button action when the user can't focus the dragger. |
 
 ## CSS Keys
 
-| Key | Element |
-|---|---|
-| `element` | The outer container. |
-| `dragger` | The Antd `Upload.Dragger`. |
-| `hint` | The hint text inside the dragger. |
-| `fileList` | The list of uploaded files. |
-| `fileItem` | An individual file row. |
+| Key        | Element                           |
+| ---------- | --------------------------------- |
+| `element`  | The outer container.              |
+| `dragger`  | The Antd `Upload.Dragger`.        |
+| `hint`     | The hint text inside the dragger. |
+| `fileList` | The list of uploaded files.       |
+| `fileItem` | An individual file row.           |
 
 ## Notes
 

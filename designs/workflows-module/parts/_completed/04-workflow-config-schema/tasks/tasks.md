@@ -15,11 +15,11 @@ These tasks derive from `designs/workflows-module/parts/04-workflow-config-schem
 
 ## Tasks
 
-| #   | File                                | Summary                                                                                          | Depends On |
-| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-enum-yamls.md`                  | Ship `action_statuses.yaml` and `workflow_lifecycle_stages.yaml` under `modules/workflows/enums/` | —          |
-| 2   | `02-make-workflows-config.md`       | Write the `makeWorkflowsConfig` resolver — narrowed shape transform with 7 inline validators     | —          |
-| 3   | `03-workflow-api-schema-extend.md`  | Extend `WorkflowAPI` connection schema to accept `workflowsConfig` and `actionsEnum`              | —          |
+| #   | File                               | Summary                                                                                           | Depends On |
+| --- | ---------------------------------- | ------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-enum-yamls.md`                 | Ship `action_statuses.yaml` and `workflow_lifecycle_stages.yaml` under `modules/workflows/enums/` | —          |
+| 2   | `02-make-workflows-config.md`      | Write the `makeWorkflowsConfig` resolver — narrowed shape transform with 7 inline validators      | —          |
+| 3   | `03-workflow-api-schema-extend.md` | Extend `WorkflowAPI` connection schema to accept `workflowsConfig` and `actionsEnum`              | —          |
 
 A partial `modules/workflows/module.lowdefy.yaml` ships alongside task 1 to expose the two merged-enum component exports. The full module manifest (connection wiring, secrets, pages, etc.) is part 20's scope.
 
@@ -40,5 +40,5 @@ Three tasks, fully independent. Any order works; they can land in parallel.
 ## Scope
 
 **Source:** `designs/workflows-module/parts/04-workflow-config-schema/design.md`
-**Context files considered:** the design.md only (part 04 folder contains no supporting context files). Concept docs at `designs/workflows-module-concept/action-authoring/design.md` + `spec.md`, `designs/workflows-module-concept/engine/spec.md`, and `designs/workflows-module-concept/action-groups/spec.md` were consulted to pin the enum shapes and field set, but those are the *concept* layer, not part-04-specific context.
+**Context files considered:** the design.md only (part 04 folder contains no supporting context files). Concept docs at `designs/workflows-module-concept/action-authoring/design.md` + `spec.md`, `designs/workflows-module-concept/engine/spec.md`, and `designs/workflows-module-concept/action-groups/spec.md` were consulted to pin the enum shapes and field set, but those are the _concept_ layer, not part-04-specific context.
 **Review files:** `review/review-1.md` (8 findings — 7 resolved, 1 accepted).

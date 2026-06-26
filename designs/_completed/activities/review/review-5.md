@@ -49,10 +49,10 @@ shapes: Atlas `mustNot exists` on the list page, `$match` on the tile.
 **Fix:** rewrite the parenthetical to:
 
 > "List requests filter via Atlas Search `compound.filter.mustNot:
-> exists: path: removed.timestamp` (matching `get_all_companies.yaml`).
+exists: path: removed.timestamp` (matching `get_all_companies.yaml`).
 > Detail and tile requests use plain `$match: { 'removed.timestamp': {
-> $exists: false } }`. Don't copy `get_company.yaml`'s `removed: { $ne:
-> true }` form — it's a known bug that matches deleted docs (the
+$exists: false } }`. Don't copy `get_company.yaml`'s `removed: { $ne:
+true }` form — it's a known bug that matches deleted docs (the
 > `change_stamp` object is also `≠ true`)."
 
 ### 2. `target.type_label` in `event_display` template — derivation unspecified
@@ -63,7 +63,7 @@ shapes: Atlas `mustNot exists` on the list page, `$match` on the tile.
 
 > "The `event_display` default provides Nunjucks titles like
 > `{{ user.profile.name }} logged a {{ target.type_label }} with
-> {{ target.title }}`."
+{{ target.title }}`."
 
 `modules/companies/api/update-company.yaml:128-138` shows the `target`
 object is built explicitly at the API call site:
@@ -106,7 +106,7 @@ isn't in scope. Roughly:
 ```yaml
 target:
   title: { _payload: title }
-  type:  { _payload: type }
+  type: { _payload: type }
   type_label:
     _build.object.get:
       on:
@@ -192,7 +192,7 @@ _ref:
   module: layout
   component: card
   vars:
-    title: Activity              # consumer-set
+    title: Activity # consumer-set
     blocks:
       - _ref:
           module: events
@@ -210,10 +210,11 @@ component), and slots into `components.sidebar_slots` as the
 **wrapper**, not the timeline.
 
 The design's `tile_activities` collapses both layers: it's the card
-+ the content. Consumers can't change the title without forking the
-component (which means losing the ability to update centrally), and
-header buttons baked into `tile_activities` (the embedded
-`capture_activity` button) are non-overridable.
+
+- the content. Consumers can't change the title without forking the
+  component (which means losing the ability to update centrally), and
+  header buttons baked into `tile_activities` (the embedded
+  `capture_activity` button) are non-overridable.
 
 Two paths:
 
@@ -261,7 +262,7 @@ Companies' manifest exports exactly **one** component
 (`company-selector` — `module.lowdefy.yaml:119-121`). Contacts
 exports two (`contact-selector`, `basic-contact-selector` —
 `module.lowdefy.yaml:141-145`). The other ~10 components in each
-module (form_*, tile_*, table_*, view_*, fields/*, …) are
+module (form*\*, tile*_, table\__, view\__, fields/_, …) are
 internal — referenced by the module's own pages, not exported.
 
 The activities design wants to export at least **four**

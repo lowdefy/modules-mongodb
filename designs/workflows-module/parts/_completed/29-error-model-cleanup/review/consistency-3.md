@@ -15,7 +15,7 @@ Audited design.md, both reviews, and all eight task files for drift between the 
 ### 1. Task 01's `runRoutine.js` patch shape predates the review-2 #1 resolution
 
 **Type:** Design-vs-Task / Review-vs-Task drift
-**Source of truth:** `design.md` lines 143–158 + `review-2.md` finding #1 (resolved with option 1 — branch on `isReject` *before* `context.handleError`)
+**Source of truth:** `design.md` lines 143–158 + `review-2.md` finding #1 (resolved with option 1 — branch on `isReject` _before_ `context.handleError`)
 **Files affected:** `tasks/01-upstream-lowdefy-reject-flag.md`
 
 The design's Upstream-dependency section pins the catch rewrite as:

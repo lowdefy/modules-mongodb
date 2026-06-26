@@ -12,18 +12,18 @@ plus a generic `onActionClick(action)` block event on `ActionSteps`, converge
 
 ## Tasks
 
-| #   | File                              | Summary                                                                                                        | Depends On    |
-| --- | --------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------- |
-| 1   | `01-actionsteps-onactionclick.md` | `ActionSteps`: generic `onActionClick(action)` event, navigate-by-default, linkless suppression                 | —             |
-| 2   | `02-eventstimeline-converge.md`   | `EventsTimeline`: converge `onActionClick` onto the `ActionSteps` contract (action object + navigate default)   | —             |
-| 3   | `03-check-action-surface.md`      | New shared `check-action-surface` component — one body, signal button bar, `current_action` state contract      | —             |
-| 4   | `04-edit-page-rewrite.md`         | `workflow-action-edit`: delete the selector, `_ref` the surface (`mode: edit`)                                  | 3             |
-| 5   | `05-review-page-rewrite.md`       | `workflow-action-review`: `_ref` the surface (`mode: review`), guard → `[in-review]`                            | 3             |
-| 6   | `06-view-page-rewrite.md`         | `workflow-action-view`: `_ref` the surface (`mode: view`), `resolve_error` lands via the surface                | 3             |
-| 7   | `07-check-action-modal.md`        | New standalone `check-action-modal` component + manifest export                                                  | 3             |
-| 8   | `08-actions-on-entity-wiring.md`  | `actions-on-entity`: bundle the modal + kind-branch; `workflows-events-timeline`: `on_action_click` passthrough | 1, 2, 7       |
-| 9   | `09-docs-and-parent-design.md`    | Module README, parent-design row, implementation-plan status, full build + test verification                    | 4, 5, 6, 7, 8 |
-| 10  | `10-e2e-supplements.md`           | Part 22 e2e supplements: signal buttons, error recovery, modal open/submit, `allow_not_required`                | 9             |
+| #   | File                                           | Summary                                                                                                                                           | Depends On     |
+| --- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
+| 1   | `01-actionsteps-onactionclick.md`              | `ActionSteps`: generic `onActionClick(action)` event, navigate-by-default, linkless suppression                                                   | —              |
+| 2   | `02-eventstimeline-converge.md`                | `EventsTimeline`: converge `onActionClick` onto the `ActionSteps` contract (action object + navigate default)                                     | —              |
+| 3   | `03-check-action-surface.md`                   | New shared `check-action-surface` component — one body, signal button bar, `current_action` state contract                                        | —              |
+| 4   | `04-edit-page-rewrite.md`                      | `workflow-action-edit`: delete the selector, `_ref` the surface (`mode: edit`)                                                                    | 3              |
+| 5   | `05-review-page-rewrite.md`                    | `workflow-action-review`: `_ref` the surface (`mode: review`), guard → `[in-review]`                                                              | 3              |
+| 6   | `06-view-page-rewrite.md`                      | `workflow-action-view`: `_ref` the surface (`mode: view`), `resolve_error` lands via the surface                                                  | 3              |
+| 7   | `07-check-action-modal.md`                     | New standalone `check-action-modal` component + manifest export                                                                                   | 3              |
+| 8   | `08-actions-on-entity-wiring.md`               | `actions-on-entity`: bundle the modal + kind-branch; `workflows-events-timeline`: `on_action_click` passthrough                                   | 1, 2, 7        |
+| 9   | `09-docs-and-parent-design.md`                 | Module README, parent-design row, implementation-plan status, full build + test verification                                                      | 4, 5, 6, 7, 8  |
+| 10  | `10-e2e-supplements.md`                        | Part 22 e2e supplements: signal buttons, error recovery, modal open/submit, `allow_not_required`                                                  | 9              |
 | 11  | `11-repoint-surface-to-per-workflow-submit.md` | Re-point the surface's 6 signal buttons to `{workflow_type}-submit`; ship `workflow_type` from `GetWorkflowAction` (resolves Blocker 1's UI half) | Part 48 merged |
 
 ## Ordering Rationale

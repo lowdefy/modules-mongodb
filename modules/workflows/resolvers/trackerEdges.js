@@ -17,7 +17,7 @@ function collectTrackerEdges(workflows) {
   const edges = [];
   for (const workflow of workflows) {
     for (const action of workflow.actions ?? []) {
-      if (action.kind === 'tracker' && action.tracker?.child_workflow_type) {
+      if (action.kind === "tracker" && action.tracker?.child_workflow_type) {
         edges.push({
           parentType: workflow.type,
           childType: action.tracker.child_workflow_type,

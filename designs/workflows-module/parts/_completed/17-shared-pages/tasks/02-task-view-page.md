@@ -49,7 +49,7 @@ Create `modules/workflows/pages/task-view.yaml` matching the design § "Task pag
 - Page id is `task-view` (kebab-case per CLAUDE.md `pages/` convention for module-shared pages).
 - `layout.page` wrap with `id: task-view`, `content_width` and `hide_title` settings appropriate to a view page (match part 16's `view.yaml.njk` choices).
 - `onMount` array contains the eight steps in order, with step 3 (stale guard) and step 5 (get_entity) explicitly absent and step 7 a SetState no-op — leave comments in the YAML matching part 16's template comments (`# Step 3 (stale-URL guard) — intentionally omitted on view.`).
-- `_request: get_action` resolves correctly when the page loads with a valid `?action_id`. The page does NOT emit `get_workflow` in onMount (the design says task-view *skips* step 4 — `get_workflow` is task-edit-only) and does NOT emit `get_entity` (the design says task pages don't fetch the entity doc).
+- `_request: get_action` resolves correctly when the page loads with a valid `?action_id`. The page does NOT emit `get_workflow` in onMount (the design says task-view _skips_ step 4 — `get_workflow` is task-edit-only) and does NOT emit `get_entity` (the design says task pages don't fetch the entity doc).
 - Universal-fields component `_ref` matches the path used by part 16's `view.yaml.njk` (`../components/universal-fields/universal-fields.yaml`) — even though part 24 hasn't shipped the file. Lowdefy build will fail until 24 ships; that's expected.
 - `action_role_check` `_ref` matches the path used by part 16 (`../components/action_role_check.yaml`).
 - Page builds cleanly **once parts 18 and 24 ship** the missing components. Until then, build failure is expected and acceptable per the part 17 design's posture.

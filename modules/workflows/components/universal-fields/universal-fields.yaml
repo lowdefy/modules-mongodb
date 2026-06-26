@@ -164,7 +164,7 @@ blocks:
                       params:
                         regex:
                           - _string.concat:
-                              - '^'
+                              - "^"
                               - _var: state_path
                               - '\.'
                     - id: update_fields

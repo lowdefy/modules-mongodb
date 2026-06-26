@@ -14,16 +14,16 @@ Note: the demo app is currently in a known-broken window — Part 38 task 6's `v
 
 ## Tasks
 
-| #   | File                                    | Summary                                                                                              | Depends On |
-| --- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
+| #   | File                                    | Summary                                                                                                                        | Depends On |
+| --- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ | ---------- |
 | 1   | `01-companies-on-create-routine-var.md` | Companies module `on_create_routine` var: manifest schema, `create-company` concat split, new-page `url_query` forward, README | —          |
-| 2   | `02-company-setup-workflow-config.md`   | Author the `company-setup` workflow config (workflow + 3 actions)                                     | —          |
-| 3   | `03-onboarding-workflow-config.md`      | Rewrite the `onboarding` config, delete `installation`, point `workflows.yaml` at the two new configs | 2          |
-| 4   | `04-lead-side-demo-wiring.md`           | `leads-create` starts onboarding; `lead-view` cleanup; delete the raw-insert API                      | 3          |
-| 5   | `05-company-side-demo-wiring.md`        | Demo `on_create_routine` steps + workflows panel slot on companies view + workflows `entities` entry  | 1, 2       |
-| 6   | `06-notifications-send-routine.md`      | Wire the demo `send_routine`: `action-approve` × `send-quote` → inbox notification                    | 3          |
-| 7   | `07-docs-authoring-conventions.md`      | Workflows README + action-authoring concept doc: D1 `starting_actions` convention + D2 `blocked_by` rule | 3          |
-| 8   | `08-e2e-happy-path.md`                  | Delete the stale tracker spec; author `onboarding-happy-path.spec.js` per the worked example          | 4, 5, 6    |
+| 2   | `02-company-setup-workflow-config.md`   | Author the `company-setup` workflow config (workflow + 3 actions)                                                              | —          |
+| 3   | `03-onboarding-workflow-config.md`      | Rewrite the `onboarding` config, delete `installation`, point `workflows.yaml` at the two new configs                          | 2          |
+| 4   | `04-lead-side-demo-wiring.md`           | `leads-create` starts onboarding; `lead-view` cleanup; delete the raw-insert API                                               | 3          |
+| 5   | `05-company-side-demo-wiring.md`        | Demo `on_create_routine` steps + workflows panel slot on companies view + workflows `entities` entry                           | 1, 2       |
+| 6   | `06-notifications-send-routine.md`      | Wire the demo `send_routine`: `action-approve` × `send-quote` → inbox notification                                             | 3          |
+| 7   | `07-docs-authoring-conventions.md`      | Workflows README + action-authoring concept doc: D1 `starting_actions` convention + D2 `blocked_by` rule                       | 3          |
+| 8   | `08-e2e-happy-path.md`                  | Delete the stale tracker spec; author `onboarding-happy-path.spec.js` per the worked example                                   | 4, 5, 6    |
 
 ## Ordering Rationale
 

@@ -6,12 +6,12 @@ These tasks implement the three entity-page components from [Part 18 design.md](
 
 ## Tasks
 
-| #   | File                                | Summary                                                                                          | Depends On |
-| --- | ----------------------------------- | ------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-ship-action-role-check.md`      | Ship `components/action_role_check.yaml` — roles-only action sequence writing `_state.action_allowed`. | —          |
-| 2   | `02-ship-workflow-header.md`        | Ship `components/workflow-header.yaml` — strip + slot, with workflow-overview link and `is_overview_page` toggle. | —          |
-| 3   | `03-ship-actions-on-entity.md`      | Ship `components/actions-on-entity.yaml` — multi-workflow widget; per workflow `_ref`s workflow-header with one `ActionSteps` block in the slot. | 2          |
-| 4   | `04-wire-module-manifest.md`        | Add the three components to `module.lowdefy.yaml`'s `exports.components` and top-level `components:` block. | 1, 2, 3    |
+| #   | File                           | Summary                                                                                                                                          | Depends On |
+| --- | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
+| 1   | `01-ship-action-role-check.md` | Ship `components/action_role_check.yaml` — roles-only action sequence writing `_state.action_allowed`.                                           | —          |
+| 2   | `02-ship-workflow-header.md`   | Ship `components/workflow-header.yaml` — strip + slot, with workflow-overview link and `is_overview_page` toggle.                                | —          |
+| 3   | `03-ship-actions-on-entity.md` | Ship `components/actions-on-entity.yaml` — multi-workflow widget; per workflow `_ref`s workflow-header with one `ActionSteps` block in the slot. | 2          |
+| 4   | `04-wire-module-manifest.md`   | Add the three components to `module.lowdefy.yaml`'s `exports.components` and top-level `components:` block.                                      | 1, 2, 3    |
 
 ## Ordering Rationale
 

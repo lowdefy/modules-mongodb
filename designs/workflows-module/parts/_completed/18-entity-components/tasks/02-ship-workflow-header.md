@@ -15,12 +15,12 @@ Create `modules/workflows/components/workflow-header.yaml` as a `_ref`-able comp
 
 **Vars contract** (these are the externally-stable inputs):
 
-| Var | Type | Required | Default | Description |
-| --- | --- | --- | --- | --- |
-| `workflow` | object | yes | — | The workflow doc carrying `_id`, `workflow_type`, `status[0].stage`, `summary.{done, not_required, total}`, and `groups[]` with `{ id, status, summary }`. Source: an element of `get-entity-workflows.workflows[]` (entity-page) or the top-level `workflow` from `get-workflow-overview` (overview-page). |
-| `blocks` | array | yes | — | Collapsible content. Single `ActionSteps` block from `actions-on-entity`; action card list from `workflow-overview`. |
-| `collapsed_default` | boolean | no | `false` | Initial collapse state. `actions-on-entity` passes `true` for completed workflows. |
-| `is_overview_page` | boolean | no | `false` | Suppresses the workflow-overview link button when the host page is itself `workflow-overview`. |
+| Var                 | Type    | Required | Default | Description                                                                                                                                                                                                                                                                                                 |
+| ------------------- | ------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow`          | object  | yes      | —       | The workflow doc carrying `_id`, `workflow_type`, `status[0].stage`, `summary.{done, not_required, total}`, and `groups[]` with `{ id, status, summary }`. Source: an element of `get-entity-workflows.workflows[]` (entity-page) or the top-level `workflow` from `get-workflow-overview` (overview-page). |
+| `blocks`            | array   | yes      | —       | Collapsible content. Single `ActionSteps` block from `actions-on-entity`; action card list from `workflow-overview`.                                                                                                                                                                                        |
+| `collapsed_default` | boolean | no       | `false` | Initial collapse state. `actions-on-entity` passes `true` for completed workflows.                                                                                                                                                                                                                          |
+| `is_overview_page`  | boolean | no       | `false` | Suppresses the workflow-overview link button when the host page is itself `workflow-overview`.                                                                                                                                                                                                              |
 
 **What the component renders (the strip)**:
 

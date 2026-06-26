@@ -10,6 +10,7 @@ After Tasks 8 + 12, `form_activity` and the capture-flow exports exist. This tas
 Both wrap `form_activity` in a standard page layout. The difference: `new` initializes from `_url_query` (prefill contract), submits to `create-activity`. `edit` initializes from `get_activity` (loaded by `_url_query: _id`), submits to `update-activity`.
 
 Reference shapes:
+
 - `modules/companies/pages/new.yaml` — template for `new.yaml`.
 - `modules/companies/pages/edit.yaml` — template for `edit.yaml`.
 
@@ -20,6 +21,7 @@ Reference shapes:
 Create page with URL-prefill contract.
 
 URL params accepted (all optional):
+
 - `type` — pre-selects the type Selector.
 - `title` — pre-fills the title field.
 - `contact_id` (singular) — adds one contact to `contact_ids`.
@@ -36,7 +38,7 @@ id: new
 type:
   _ref:
     module: layout
-    path: page  # or whatever the layout module's page-template path is — verify
+    path: page # or whatever the layout module's page-template path is — verify
 properties:
   title:
     _string.concat:
@@ -198,7 +200,7 @@ blocks:
                     timestamp:
                       _state: values.updated_timestamp
                   type:
-                    _state: values.type      # included for completeness; API ignores
+                    _state: values.type # included for completeness; API ignores
                   title:
                     _state: values.title
                   description:

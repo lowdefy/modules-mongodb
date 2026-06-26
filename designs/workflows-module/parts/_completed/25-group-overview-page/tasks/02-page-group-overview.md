@@ -36,12 +36,12 @@ Structure modeled on [`pages/workflow-overview.yaml`](../../../../modules/workfl
 
 - Append to `exports.pages`:
   ```yaml
-      - id: group-overview
-        description: Group detail page — header + progress bar + group-status badge + action cards with form_data DataView. Addressed by ?workflow_id=<id>&group_id=<id>.
+  - id: group-overview
+    description: Group detail page — header + progress bar + group-status badge + action cards with form_data DataView. Addressed by ?workflow_id=<id>&group_id=<id>.
   ```
 - Append to the top-level `pages:` block:
   ```yaml
-    - _ref: pages/group-overview.yaml
+  - _ref: pages/group-overview.yaml
   ```
 - Update the leading comment block to mention Part 25.
 

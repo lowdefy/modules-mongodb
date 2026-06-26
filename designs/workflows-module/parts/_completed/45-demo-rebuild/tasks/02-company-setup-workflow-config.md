@@ -2,7 +2,7 @@
 
 ## Context
 
-The demo gains a second workflow: **`company-setup`** on `companies-collection` — one group, three actions — started by the `create-company` API routine for *every* new company (design D3), and linked to the onboarding tracker when creation was reached via the tracker's start link. From the demo story:
+The demo gains a second workflow: **`company-setup`** on `companies-collection` — one group, three actions — started by the `create-company` API routine for _every_ new company (design D3), and linked to the onboarding tracker when creation was reached via the tracker's start link. From the demo story:
 
 ```
 company-setup (on company — started by the create-company routine)

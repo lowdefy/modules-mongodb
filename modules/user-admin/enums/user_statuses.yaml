@@ -8,17 +8,17 @@
 # fed the antd preset names green/blue/red by get_all_users). Keep the two in
 # sync: the enum slugs here mirror the get_all_users `active` $switch branches.
 active:
-  color: '#f6ffed'
-  borderColor: '#b7eb8f'
-  titleColor: '#389e0d'
+  color: "#f6ffed"
+  borderColor: "#b7eb8f"
+  titleColor: "#389e0d"
   title: Active
 invited:
-  color: '#e6f7ff'
-  borderColor: '#91d5ff'
-  titleColor: '#096dd9'
+  color: "#e6f7ff"
+  borderColor: "#91d5ff"
+  titleColor: "#096dd9"
   title: Open Invite
 disabled:
-  color: '#fff1f0'
-  borderColor: '#ffa39e'
-  titleColor: '#cf1322'
+  color: "#fff1f0"
+  borderColor: "#ffa39e"
+  titleColor: "#cf1322"
   title: Disabled

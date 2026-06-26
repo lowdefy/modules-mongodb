@@ -1,4 +1,4 @@
-import { MongoDBCollection } from '@lowdefy/community-plugin-mongodb/connections';
+import { MongoDBCollection } from "@lowdefy/community-plugin-mongodb/connections";
 
 /**
  * Build a per-collection dispatcher over `@lowdefy/community-plugin-mongodb`'s

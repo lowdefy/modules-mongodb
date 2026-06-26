@@ -7,14 +7,17 @@ Second consistency pass, run after `/r:design-task` produced the `tasks/` folder
 ## Files Reviewed
 
 **Design:**
+
 - `design.md` — latest committed state after review-1, review-2, and consistency-1.
 
 **Reviews (chronological):**
+
 - `review/review-1.md` — 14 findings, 13 resolved + 1 deferred.
 - `review/review-2.md` — 3 findings, all resolved (`ActionSteps`-based widget shape).
 - `review/consistency-1.md` — six auto-resolved drift items tightening design.md against reviews 1 and 2.
 
 **Tasks (new since consistency-1):**
+
 - `tasks/tasks.md`
 - `tasks/01-ship-action-role-check.md`
 - `tasks/02-ship-workflow-header.md`

@@ -35,7 +35,7 @@
           key:
             $concat:
               - $_id
-              - ':'
+              - ":"
               - $created.user.id
           popup:
             $literal: false
@@ -44,8 +44,8 @@
           description:
             $concat:
               - $created.user.name
-              - ' pushed a workflow into error recovery.'
-          body: '<p>An action needs error recovery.</p>'
+              - " pushed a workflow into error recovery."
+          body: "<p>An action needs error recovery.</p>"
           type: workflow-error
           event_type: $type
           event_id: $_id

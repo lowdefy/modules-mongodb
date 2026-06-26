@@ -18,12 +18,14 @@ Scanned part 19's full file tree (design, two reviews, seven task files, tasks.m
 **Type:** Stale status note (Phase 3f)
 **Source of truth:** The shipped [`CancelWorkflow.js:143`](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/CancelWorkflow/CancelWorkflow.js) returns `tracker_fired: <array>` (the result of `fireTrackerSubscription`), not `null`. Part 10 archived under `_completed/10-tracker-subscription/` on May 20 2026.
 **Files affected:**
+
 - [`design.md:27`](../design.md) — said "`event_id` and `tracker_fired` are `null` until parts 8 and 10 light them up."
 - [`design.md:37`](../design.md) — said "Same v1 ship contract — `event_id` and `tracker_fired` are `null` until parts 8 and 10 land."
 - [`tasks/01-cancel-workflow-api.md:11, 76, 78`](../tasks/01-cancel-workflow-api.md) — three notes mirroring the design's stale wording.
 - [`tasks/03-close-workflow-api.md:13`](../tasks/03-close-workflow-api.md) — same wording.
 
 **Resolution:** Updated all four locations to reflect the current state:
+
 - `tracker_fired` is the array from `fireTrackerSubscription` (`[]` when the workflow has no `parent_action_id`).
 - `event_id` is **still** `null` on the cancel and close paths — part 8 lit it up for `SubmitWorkflowAction` only, not for cancel/close. The follow-up posture is now "an event-log backfill is a separate follow-up against part 5's shipped behavior" rather than "blocked on part 8."
 

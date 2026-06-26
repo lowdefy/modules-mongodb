@@ -34,7 +34,10 @@ Signature:
  * @param {boolean} [options.force] — required `true` in v1; future task in part 6 makes this optional.
  * @returns {Promise<void>}
  */
-async function updateAction(context, { actionId, newStage, fields = {}, eventId, force }) {
+async function updateAction(
+  context,
+  { actionId, newStage, fields = {}, eventId, force },
+) {
   // ...
 }
 

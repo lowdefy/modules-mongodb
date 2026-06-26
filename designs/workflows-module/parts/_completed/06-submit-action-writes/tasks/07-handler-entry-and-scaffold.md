@@ -6,9 +6,9 @@
 
 ```js
 async function SubmitWorkflowAction() {
-  const err = new Error('not implemented: SubmitWorkflowAction');
-  err.code = 'WorkflowAPINotImplemented';
-  err.handler = 'SubmitWorkflowAction';
+  const err = new Error("not implemented: SubmitWorkflowAction");
+  err.code = "WorkflowAPINotImplemented";
+  err.handler = "SubmitWorkflowAction";
   throw err;
 }
 SubmitWorkflowAction.schema = {};
@@ -33,10 +33,10 @@ Compare with the shipped `StartWorkflow.js` ([`plugins/modules-mongodb-plugins/s
 File: `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/SubmitWorkflowAction.js`.
 
 ```js
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from "node:crypto";
 
-import createMongoDBConnection from '../../shared/createMongoDBConnection.js';
-import handleSubmit from './handleSubmit.js';
+import createMongoDBConnection from "../../shared/createMongoDBConnection.js";
+import handleSubmit from "./handleSubmit.js";
 
 async function SubmitWorkflowAction(lowdefyContext) {
   const { request: payload = {}, connection } = lowdefyContext;
@@ -151,16 +151,16 @@ A minimal unit test exercising the scaffold:
 
 ```js
 // plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.test.js
-import handleSubmit from './handleSubmit.js';
+import handleSubmit from "./handleSubmit.js";
 
-test('handleSubmit: returns the v1 return shape with empty action_ids', async () => {
+test("handleSubmit: returns the v1 return shape with empty action_ids", async () => {
   const result = await handleSubmit({
     mongoDBConnection: () => ({}),
     actionsEnum: {},
     workflowsConfig: [],
-    changeStamp: { timestamp: new Date(), user: { id: 'u1', name: 'User' } },
+    changeStamp: { timestamp: new Date(), user: { id: "u1", name: "User" } },
     params: {},
-    eventId: 'event-1',
+    eventId: "event-1",
   });
   expect(result).toEqual({
     action_ids: [],

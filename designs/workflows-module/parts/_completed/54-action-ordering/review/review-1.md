@@ -38,7 +38,7 @@ never exercises this — the regression is invisible in the example but real for
 any workflow with keyed actions (e.g. multiple `upload-po` instances).
 
 **Fix:** make `created.timestamp` (or `updated.timestamp` on the timeline) the
-tiebreaker *before* `_id`, keeping `_id` only as the final deterministic
+tiebreaker _before_ `_id`, keeping `_id` only as the final deterministic
 fallback. The comparator key becomes `[groupIndex, declIndex, created.timestamp,
 _id]`. This preserves today's chronological ordering of repeated actions instead
 of quietly randomizing it.
@@ -55,7 +55,7 @@ the card objects built in that loop (`GetEventsTimeline.js:252–260` and
 exactly what the comparator reads. Sorting `enrichedActions` would have nothing
 to sort on.
 
-The raw action docs *do* carry those fields (the `$lookup` sub-pipeline at lines
+The raw action docs _do_ carry those fields (the `$lookup` sub-pipeline at lines
 74–123 strips nothing — its own comment says "Keep all raw action fields"). So
 the fix is to sort `rawActions` with the comparator **before** the enrichment
 loop (lines 239–276), not the trimmed cards afterward.
@@ -83,7 +83,7 @@ Two problems:
   straight to the `_id` tiebreak. The existing assertion `['a-first', 'a-second']`
   then passes only because `'a-first' < 'a-second'` lexically — it would pass even
   if declaration-order were completely broken. To genuinely assert declaration
-  order the timeline test needs a *populated* `workflowsConfig` **and**
+  order the timeline test needs a _populated_ `workflowsConfig` **and**
   `type`/`action_group`/`workflow_type` written onto seeded docs — a fixture
   overhaul, not a one-line edit.
 - Other tests beyond the named one also depend on `sort_order`:
@@ -116,7 +116,7 @@ The Files-changed table (lines 112–125) lists only `action-authoring/spec.md:1
 - `modules/workflows/templates/view.yaml.njk:5` — a comment listing engine
   fields (cosmetic, but for completeness).
 
-Confirmed safe and *not* needing changes beyond the picked-field removal:
+Confirmed safe and _not_ needing changes beyond the picked-field removal:
 no `.njk` template actually reads `action_config.sort_order` (only the line-5
 comment matches), so dropping it from `makeActionPages.js:16` is inert.
 
@@ -138,9 +138,9 @@ corrected so it isn't carried forward as fact.
 
 ### 6. Pure declaration order silently drops the originally-specified `blocked_by` topological order
 
-> **Resolved.** Valid — confirmed `blocked_by` topological ordering was never implemented (no engine reads it for ordering; it exists only as a config-validation check in `makeWorkflowsConfig.js:544–552`). Rather than treat it as a dropped base case, it's explicitly rejected as dead/unwanted: added a "Rejected alternative — `blocked_by` topological order" block to D1 stating declaration order is *the* model (not a fallback), and prepended a "Superseded" note to `action-authoring/design.md:277` so the contradicting prose can't be relitigated.
+> **Resolved.** Valid — confirmed `blocked_by` topological ordering was never implemented (no engine reads it for ordering; it exists only as a config-validation check in `makeWorkflowsConfig.js:544–552`). Rather than treat it as a dropped base case, it's explicitly rejected as dead/unwanted: added a "Rejected alternative — `blocked_by` topological order" block to D1 stating declaration order is _the_ model (not a fallback), and prepended a "Superseded" note to `action-authoring/design.md:277` so the contradicting prose can't be relitigated.
 
-`action-authoring/design.md:277` documents the *intended* fallback when
+`action-authoring/design.md:277` documents the _intended_ fallback when
 `sort_order` is absent: "the UI falls back to `blocked_by` topological order with
 ties broken by `actions[]` declaration order." Design 54 replaces `sort_order`
 with **pure declaration order** (group index, then `actions[]` index) and does
@@ -153,7 +153,7 @@ order get identical results, and topological sorting adds real complexity
 (`blocked_by` can reference groups or types — `makeWorkflowsConfig.js:544–552`)
 for no concrete need yet. That aligns with CLAUDE.md's "build for concrete needs."
 But the divergence is currently unstated. The design should explicitly note it is
-choosing declaration order *over* the documented `blocked_by` topological model
+choosing declaration order _over_ the documented `blocked_by` topological model
 and why (and ideally update `action-authoring/design.md:277` so the two designs
 don't contradict), rather than leaving a reader to discover the conflict — per
 CLAUDE.md, "when they disagree, update the design first or flag the mismatch."

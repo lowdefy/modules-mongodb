@@ -16,10 +16,12 @@ The workflows design corpus was written when the module's var was `app_name`. Wi
 ## Task
 
 1. **Find affected files** (non-review, non-task, outside `_completed/`):
+
    ```bash
    grep -rln "app_name" designs/workflows-module/ designs/workflows-module-concept/ \
      | grep -v "/_completed/" | grep -v "/review/" | grep -v "/reviews/" | grep -v "/tasks/"
    ```
+
    Re-run to get the current set — the corpus has changed since this was drafted; do not trust a frozen file list.
 
 2. **Rename in each file**, three categories:

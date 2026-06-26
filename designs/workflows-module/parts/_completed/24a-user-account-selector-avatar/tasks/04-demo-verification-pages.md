@@ -40,8 +40,8 @@ a state path (e.g. `assignees`). Add a small read-back display (a `Title`/`Html`
 the demo app to have a reachable user-contacts collection / `app_name` so the options request resolves;
 mirror whatever the existing user-account demo wiring uses.
 
-   You may instead combine both demos onto a **single** page if cleaner — the design says "a new
-   sample page" and only requires both behaviours be demonstrated.
+You may instead combine both demos onto a **single** page if cleaner — the design says "a new
+sample page" and only requires both behaviours be demonstrated.
 
 **3. Register the new page(s)** in `apps/demo/lowdefy.yaml` under the `pages:` list with `_ref` entries
 (e.g. `- _ref: pages/user-avatar-demo.yaml`). Per repo rule, a page file not referenced in

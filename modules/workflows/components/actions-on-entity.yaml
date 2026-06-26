@@ -59,7 +59,7 @@ blocks:
             properties:
               html:
                 _nunjucks:
-                  template: '<h2>{{ title }}</h2>'
+                  template: "<h2>{{ title }}</h2>"
                   on:
                     title:
                       _state: entity_workflows.$.title

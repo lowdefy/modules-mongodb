@@ -6,14 +6,14 @@ Replace the two stub handlers (`StartWorkflow`, `CancelWorkflow`) shipped by par
 
 ## Tasks
 
-| #   | File                                                         | Summary                                                                                                    | Depends On |
-| --- | ------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-add-change-stamp-to-connection-schema.md`                | Add `changeStamp` property to the `WorkflowAPI` connection schema.                                          | —          |
-| 2   | `02-create-action-helper.md`                                 | Build `src/connections/shared/createAction.js` — pure builder that returns an action doc draft.             | —          |
-| 3   | `03-update-action-helper-scaffold.md`                        | Build `src/connections/shared/updateAction.js` minimal scaffold — `force: true` status push only.           | —          |
-| 4   | `04-start-workflow-happy-path.md`                            | Implement `StartWorkflow` for the no-parent case: validation, workflow + action docs writes, initial summary. | 1, 2       |
-| 5   | `05-start-workflow-parent-linking.md`                        | Add `parent_action_id` validation block + parent-side writes to `StartWorkflow`.                            | 3, 4       |
-| 6   | `06-cancel-workflow.md`                                      | Implement `CancelWorkflow`: cancelled status push, non-terminal action flips, summary recompute.            | 1, 3       |
+| #   | File                                          | Summary                                                                                                       | Depends On |
+| --- | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-add-change-stamp-to-connection-schema.md` | Add `changeStamp` property to the `WorkflowAPI` connection schema.                                            | —          |
+| 2   | `02-create-action-helper.md`                  | Build `src/connections/shared/createAction.js` — pure builder that returns an action doc draft.               | —          |
+| 3   | `03-update-action-helper-scaffold.md`         | Build `src/connections/shared/updateAction.js` minimal scaffold — `force: true` status push only.             | —          |
+| 4   | `04-start-workflow-happy-path.md`             | Implement `StartWorkflow` for the no-parent case: validation, workflow + action docs writes, initial summary. | 1, 2       |
+| 5   | `05-start-workflow-parent-linking.md`         | Add `parent_action_id` validation block + parent-side writes to `StartWorkflow`.                              | 3, 4       |
+| 6   | `06-cancel-workflow.md`                       | Implement `CancelWorkflow`: cancelled status push, non-terminal action flips, summary recompute.              | 1, 3       |
 
 ## Ordering Rationale
 
@@ -49,6 +49,7 @@ A dedicated unit-test task was considered and dropped: most assertions overlappe
 **Source:** `designs/workflows-module/parts/05-start-cancel-handlers/design.md`
 
 **Context files considered:**
+
 - `designs/workflows-module-concept/engine/spec.md` — load-bearing contract (Capabilities, Client and transaction model, Idempotency, References write contract, Tracker subscription pseudo-code).
 - `designs/workflows-module-concept/engine/design.md` — Decision 3 (parent ↔ child link shape).
 - `designs/workflows-module-concept/action-authoring/spec.md` — `starting_actions` grammar, instanced-actions semantics.

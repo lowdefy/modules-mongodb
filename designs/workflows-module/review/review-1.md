@@ -1,6 +1,6 @@
 # Review 1 — Testing conventions missing from top-level design
 
-Focus: the design tree references unit tests across ~10 parts but never names the framework, harness, or file layout. New contributors landing on part 6 or part 13 have no way to know whether to write Jest-style with `mongodb-memory-server`, mock the dispatcher, or hand-roll something. The decision is implicit in part 22's "unit-test verification in each engine / resolver / UI part continues to live there" but no part says *how*.
+Focus: the design tree references unit tests across ~10 parts but never names the framework, harness, or file layout. New contributors landing on part 6 or part 13 have no way to know whether to write Jest-style with `mongodb-memory-server`, mock the dispatcher, or hand-roll something. The decision is implicit in part 22's "unit-test verification in each engine / resolver / UI part continues to live there" but no part says _how_.
 
 ## Substantive issues
 
@@ -13,7 +13,7 @@ Focus: the design tree references unit tests across ~10 parts but never names th
 - [Part 6 design.md:120–126](../parts/06-submit-action-writes/design.md) — "Unit tests on `handleSubmit`: priority rule honored; per-entry `force: true` bypasses…"
 - [Part 7 design.md:63](../parts/07-group-state-machine/design.md) — "Unit tests on `deriveGroupStatus`: table-driven over every status combination."
 - [Part 13 design.md:50–55](modules-mongodb/designs/workflows-module/parts/_completed/13-resolver-apis/design.md) — "Unit tests: Worked-example onboarding workflow produces `update-action-qualify`…"
-- [Part 22 design.md:9](../parts/_next/22-workflows-e2e-suite/design.md) — "The unit-test verification in each engine / resolver / UI part continues to live there. This part is the *integration* layer."
+- [Part 22 design.md:9](../parts/_next/22-workflows-e2e-suite/design.md) — "The unit-test verification in each engine / resolver / UI part continues to live there. This part is the _integration_ layer."
 
 But nowhere in the design tree is it recorded that:
 
@@ -23,7 +23,7 @@ But nowhere in the design tree is it recorded that:
 - The Lowdefy app at `apps/demo/` does not get unit tests — it's YAML consumed by the runtime; coverage is Playwright e2e only (part 22).
 - The existing `modules/workflows/resolvers/makeWorkflowsConfig.test.js` is currently written for `node:test`. Adopting the Jest convention means rewriting that one file to Jest as part of the harness landing.
 
-**Why this matters.** Part 6 starts soon. Its Verification list says "Unit tests on `handleSubmit`" — but `handleSubmit` reads/writes Mongo, so the contributor either invents an ad-hoc mock layer or stops to design a harness. Either path drifts away from part 7's pure-function `deriveGroupStatus` tests and part 13's resolver-output tests, which need *no* Mongo at all. Without a top-level convention, each part will pick its own posture and the suite fragments.
+**Why this matters.** Part 6 starts soon. Its Verification list says "Unit tests on `handleSubmit`" — but `handleSubmit` reads/writes Mongo, so the contributor either invents an ad-hoc mock layer or stops to design a harness. Either path drifts away from part 7's pure-function `deriveGroupStatus` tests and part 13's resolver-output tests, which need _no_ Mongo at all. Without a top-level convention, each part will pick its own posture and the suite fragments.
 
 **Fix.** Add a "Testing conventions" subsection to [design.md § Conventions across parts](../design.md#conventions-across-parts) (around line 116). Suggested wording:
 

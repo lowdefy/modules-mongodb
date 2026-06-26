@@ -11,21 +11,21 @@ The current `filterMenuList` at `packages/api/src/routes/rootConfig/menus/filter
 Current implementation (`packages/api/src/routes/rootConfig/menus/filterMenuList.js`):
 
 ```js
-import { get } from '@lowdefy/helpers';
+import { get } from "@lowdefy/helpers";
 
 function filterMenuList(context, { menuList }) {
   const { authorize } = context;
   return menuList
     .map((item) => {
-      if (item.type === 'MenuLink') {
+      if (item.type === "MenuLink") {
         if (authorize(item)) {
           return item;
         }
         return null;
       }
-      if (item.type === 'MenuGroup') {
+      if (item.type === "MenuGroup") {
         const filteredSubItems = filterMenuList(context, {
-          menuList: get(item, 'links', { default: [] }),
+          menuList: get(item, "links", { default: [] }),
         });
         if (filteredSubItems.length > 0) {
           return {
@@ -53,25 +53,25 @@ Update `filterMenuList` to preserve `MenuDivider` items and then clean up the th
 Add a third branch to the `.map` that returns `MenuDivider` items as-is, then pass the filtered list through a new `cleanDividers` helper before returning.
 
 ```js
-import { get } from '@lowdefy/helpers';
+import { get } from "@lowdefy/helpers";
 
 function filterMenuList(context, { menuList }) {
   const { authorize } = context;
   const filtered = menuList
     .map((item) => {
-      if (item.type === 'MenuLink') {
+      if (item.type === "MenuLink") {
         return authorize(item) ? item : null;
       }
-      if (item.type === 'MenuGroup') {
+      if (item.type === "MenuGroup") {
         const filteredSubItems = filterMenuList(context, {
-          menuList: get(item, 'links', { default: [] }),
+          menuList: get(item, "links", { default: [] }),
         });
         if (filteredSubItems.length > 0) {
           return { ...item, links: filteredSubItems };
         }
         return null;
       }
-      if (item.type === 'MenuDivider') {
+      if (item.type === "MenuDivider") {
         return item;
       }
       return null;
@@ -82,15 +82,15 @@ function filterMenuList(context, { menuList }) {
 
 function cleanDividers(items) {
   let start = 0;
-  while (start < items.length && items[start].type === 'MenuDivider') start++;
+  while (start < items.length && items[start].type === "MenuDivider") start++;
   let end = items.length;
-  while (end > start && items[end - 1].type === 'MenuDivider') end--;
+  while (end > start && items[end - 1].type === "MenuDivider") end--;
   const result = [];
   for (let i = start; i < end; i++) {
     const item = items[i];
     if (
-      item.type === 'MenuDivider' &&
-      result[result.length - 1]?.type === 'MenuDivider'
+      item.type === "MenuDivider" &&
+      result[result.length - 1]?.type === "MenuDivider"
     ) {
       continue;
     }

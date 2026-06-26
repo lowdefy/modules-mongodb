@@ -60,9 +60,10 @@ Top-level sweep following the [part 6 review-1](../parts/06-submit-action-writes
 **Type:** Internal contradiction (within part 6's own design; within part 23's design)
 **Source of truth:** [part 7 design § Auto-complete check](../parts/07-group-state-machine/design.md) — part 7 explicitly owns the auto-complete check + workflow `completed` push. Part 6's lifecycle scaffold has no step that pushes workflow status.
 **Files affected:**
+
 - `parts/06-submit-action-writes/design.md:112` (Out-of-scope bullet for part 23) — said "Part 6's auto-complete (lifecycle step 6 — workflow status push to `completed`...)". But part 6's lifecycle step 6 is "Write `form_data`", and part 6 has no auto-complete at all.
 - `parts/23-close-workflow-handler/design.md:38, 41, 72, 91` (Shared helper + Depends on + Contract to neighbours) — all said part 6 owns auto-complete and consumes the shared helper.
-**Resolution:** Rewrote both to attribute auto-complete to part 7, with the shared `closeWorkflow.js` helper consumed by part 7's auto-complete and part 23's `CloseWorkflow` (not part 6 and part 23). Updated part 23's Depends-on from "light dependency on part 6" to "light dependency on part 7."
+  **Resolution:** Rewrote both to attribute auto-complete to part 7, with the shared `closeWorkflow.js` helper consumed by part 7's auto-complete and part 23's `CloseWorkflow` (not part 6 and part 23). Updated part 23's Depends-on from "light dependency on part 6" to "light dependency on part 7."
 
 ### 4. Top-level design.md said "four operational Apis"
 
@@ -77,6 +78,7 @@ Top-level sweep following the [part 6 review-1](../parts/06-submit-action-writes
 **Source of truth:** [part 23 design § In scope](../parts/23-close-workflow-handler/design.md) — "Add a fifth operational API to part 19 … Part 19's design and exports list need updating to include this fifth API."
 **Files affected:** `parts/19-operational-apis/design.md` (Goal, In scope, Depends on, Verification, Contract to neighbours).
 **Resolution:**
+
 - Updated Goal sentence to mention `close-workflow` and link to part 23.
 - Added an `api/close-workflow.yaml` sub-section (between cancel-workflow and get-entity-workflows) with payload/routine/return per part 23's contract.
 - Added part 23 to the Depends-on list.

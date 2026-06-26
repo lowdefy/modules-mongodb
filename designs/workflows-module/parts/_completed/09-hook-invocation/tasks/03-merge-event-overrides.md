@@ -6,7 +6,7 @@ Part 8's [`buildDefaultLogEventPayload`](../../../../plugins/modules-mongodb-plu
 
 The four-layer composition Part 9 owns:
 
-1. Engine default (already includes runtime comment).  ← `buildDefaultLogEventPayload(..., comment)`
+1. Engine default (already includes runtime comment). ← `buildDefaultLogEventPayload(..., comment)`
 2. Action YAML `event_overrides[interaction]` — from `params.event_overrides?.[interaction]` (resolver-baked, see [makeWorkflowApis.js:42–55](../../../../modules/workflows/resolvers/makeWorkflowApis.js)).
 3. (Already folded into layer 1.)
 4. Pre-hook return `event_overrides` — unkeyed runtime bag from the pre-hook response.

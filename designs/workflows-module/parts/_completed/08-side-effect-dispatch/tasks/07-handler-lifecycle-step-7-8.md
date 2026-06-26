@@ -33,7 +33,7 @@ async function SubmitWorkflowAction(lowdefyContext) {
     connection, // for app_name access from dispatchLogEvent
     params: payload,
     user,
-    callApi,    // forwarded to dispatchers
+    callApi, // forwarded to dispatchers
     eventId: randomUUID(),
   };
   return handleSubmit(context);
@@ -85,7 +85,7 @@ let eventId;
 try {
   eventId = await dispatchLogEvent(context, logEventInputBag);
 } catch (err) {
-  err.step = err.step ?? 'dispatch-log-event';
+  err.step = err.step ?? "dispatch-log-event";
   throw err;
 }
 ```
@@ -107,7 +107,7 @@ with:
 try {
   await dispatchNotifications(context, eventId);
 } catch (err) {
-  err.step = err.step ?? 'dispatch-notifications';
+  err.step = err.step ?? "dispatch-notifications";
   throw err;
 }
 ```
@@ -132,8 +132,8 @@ Leave the error-path return ([handleSubmit.js:380-388](../../../../../plugins/mo
 ### 6. Add the imports at the top of `handleSubmit.js`
 
 ```js
-import dispatchLogEvent from './dispatchLogEvent.js';
-import dispatchNotifications from './dispatchNotifications.js';
+import dispatchLogEvent from "./dispatchLogEvent.js";
+import dispatchNotifications from "./dispatchNotifications.js";
 ```
 
 ### 7. Update existing tests

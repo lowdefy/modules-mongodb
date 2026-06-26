@@ -40,7 +40,7 @@ Same shape as task 3 for the action authoring; this one is larger because it has
      params:
        message:
          _string.concat:
-           - 'Quote approved; event id: '
+           - "Quote approved; event id: "
            - _payload: result.event_id
    - :return:
        message:

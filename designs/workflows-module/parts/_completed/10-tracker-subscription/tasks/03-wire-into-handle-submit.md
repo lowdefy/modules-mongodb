@@ -47,6 +47,7 @@ if (recomputeResult.shouldPushCompleted) {
 ```
 
 Notes:
+
 - The guard `if (recomputeResult.shouldPushCompleted)` mirrors the design's "If no workflow-status push happened in this call, no-op" — only fire when step 5's bundled `$set` actually wrote the `completed` `$push`.
 - `recomputeResult` is in scope here from task 1's refactor (the `await recomputeWorkflowAfterActionWrite(...)` call earlier in `handleSubmit`).
 - The default `trackerFired = []` reads consistently with the helper's "no fire" return.
@@ -61,7 +62,7 @@ return {
   action_ids: actionIds,
   completed_groups: completedGroups,
   event_id: eventId,
-  tracker_fired: null,     // <-- replace this
+  tracker_fired: null, // <-- replace this
   pre_hook_response: null,
   post_hook_response: null,
 };

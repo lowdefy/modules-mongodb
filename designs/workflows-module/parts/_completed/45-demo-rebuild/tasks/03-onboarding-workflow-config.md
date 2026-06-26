@@ -24,7 +24,7 @@ onboarding (on lead — started by leads-create)
 Two conventions this config canonically demonstrates (design D1/D2):
 
 - **`starting_actions` lists every standard action** — entry at `action-required`, downstream at `blocked`. Conditional actions (`site-visit`) are excluded; the qualify pre-submit hook spawns them with `upsert: true`.
-- **Conditional actions are never `blocked_by` targets** — a `blocked_by` entry naming a type with zero docs resolves *unsatisfied* forever (`planAutoUnblock.js`). Downstream gating on conditional work goes through a **group target**: `upload-po` is `blocked_by: [quoting]` (group id), so a spawned site visit holds the Purchase-order phase until checked off, while a lead with no visit sails through.
+- **Conditional actions are never `blocked_by` targets** — a `blocked_by` entry naming a type with zero docs resolves _unsatisfied_ forever (`planAutoUnblock.js`). Downstream gating on conditional work goes through a **group target**: `upload-po` is `blocked_by: [quoting]` (group id), so a spawned site visit holds the Purchase-order phase until checked off, while a lead with no visit sails through.
 
 Task 2 has already created the `company-setup` config this workflow's tracker points at.
 
@@ -160,7 +160,7 @@ Form fields: `form.quote_total` (`number`, title "Quote total", required), `form
 
 **`schedule-followup.yaml`** (rewrite) — `kind: check`, group `quoting`, `sort_order: 30`, `blocked_by: [qualify]`, access `demo: { view: true, edit: true }`. Served by the shared `action-*` pages; no `link:` cells (the old file's link cells die with Part 34/38's engine-computed links). Status-map messages for `blocked` / `action-required` / `done`.
 
-**`upload-po.yaml`** (create) — `kind: form`, group `order`, `sort_order: 10`, **`blocked_by: [quoting]`** — a *group target*: resolves as "the `quoting` group's status is done", counting whatever member docs exist (this is the conditional-safe gate over `site-visit`). Access `demo: { view: true, edit: true }`. Form fields: `form.po_number` (`text_input`, title "PO number", required), `form.po_document` (`file_upload`, title "PO document"). Status-map messages for `blocked` ("Awaiting quote approval."), `action-required`, `in-progress`, `done`.
+**`upload-po.yaml`** (create) — `kind: form`, group `order`, `sort_order: 10`, **`blocked_by: [quoting]`** — a _group target_: resolves as "the `quoting` group's status is done", counting whatever member docs exist (this is the conditional-safe gate over `site-visit`). Access `demo: { view: true, edit: true }`. Form fields: `form.po_number` (`text_input`, title "PO number", required), `form.po_document` (`file_upload`, title "PO document"). Status-map messages for `blocked` ("Awaiting quote approval."), `action-required`, `in-progress`, `done`.
 
 **`track-company-setup.yaml`** (create) — Part 44 `start_link` with both sentinels:
 

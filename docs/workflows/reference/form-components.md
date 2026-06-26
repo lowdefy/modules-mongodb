@@ -19,16 +19,16 @@ Apps never `_ref` these files directly. A domain-specific field not in this libr
 
 Single-line text input. Renders a `TextInput`.
 
-| Var | Type | Required / Default | Notes |
-|---|---|---|---|
-| `key` | string | required | State path and block id |
-| `title` | string | — | Label title |
-| `placeholder` | string | — | |
-| `visible` | boolean | `true` | |
-| `required` | boolean | `false` | |
-| `validate` | array | `[]` | Caller-supplied validate rules |
-| `label_inline` | boolean | `false` | |
-| `label_span` | number | — | When set, adds `span` + `align: right` to label |
+| Var            | Type    | Required / Default | Notes                                           |
+| -------------- | ------- | ------------------ | ----------------------------------------------- |
+| `key`          | string  | required           | State path and block id                         |
+| `title`        | string  | —                  | Label title                                     |
+| `placeholder`  | string  | —                  |                                                 |
+| `visible`      | boolean | `true`             |                                                 |
+| `required`     | boolean | `false`            |                                                 |
+| `validate`     | array   | `[]`               | Caller-supplied validate rules                  |
+| `label_inline` | boolean | `false`            |                                                 |
+| `label_span`   | number  | —                  | When set, adds `span` + `align: right` to label |
 
 ```yaml
 - component: text_input
@@ -51,16 +51,16 @@ Multi-line text. Renders a `TextArea`. Same vars as `text_input` minus `validate
 
 Rich-text editor. Renders a `TiptapInput`. Required-validation fires when `_string.length: _state: {key}.text` is `0`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `placeholder` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `s3PostPolicyRequestId` | string | `upload_files` |
+| Var                     | Type    | Required / Default |
+| ----------------------- | ------- | ------------------ |
+| `key`                   | string  | required           |
+| `title`                 | string  | —                  |
+| `placeholder`           | string  | —                  |
+| `visible`               | boolean | `true`             |
+| `required`              | boolean | `false`            |
+| `label_inline`          | boolean | `false`            |
+| `label_span`            | number  | —                  |
+| `s3PostPolicyRequestId` | string  | `upload_files`     |
 
 ```yaml
 - component: tiptap_input
@@ -75,19 +75,19 @@ Rich-text editor. Renders a `TiptapInput`. Required-validation fires when `_stri
 
 Numeric input. Renders a `NumberInput`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `placeholder` | number | `0` |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `validate` | array | `[]` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `extra` | string | — |
-| `precision` | number | `0` |
-| `min` | number | `0` |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `placeholder`  | number  | `0`                |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `extra`        | string  | —                  |
+| `precision`    | number  | `0`                |
+| `min`          | number  | `0`                |
 
 ```yaml
 - component: number
@@ -103,15 +103,15 @@ Numeric input. Renders a `NumberInput`.
 
 Single date picker. Renders a `DateSelector` with `format: DD MMMM YYYY`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `extra` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `extra`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
 
 ```yaml
 - component: date_selector
@@ -136,17 +136,17 @@ Start + end date picker. Renders a `DateRangeSelector` with `format: DD MMMM YYY
 
 Single-select dropdown. Renders a `Selector`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `options` | array | `[]` |
-| `extra` | string | `null` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `on_change` | array | `[]` |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `options`      | array   | `[]`               |
+| `extra`        | string  | `null`             |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: selector
@@ -161,19 +161,19 @@ Single-select dropdown. Renders a `Selector`.
 
 Multi-select dropdown. Renders a `MultipleSelector`. When `required: true`, required-validation fires on empty array; caller-supplied `validate` is concatenated with that rule.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `validate` | array | `[]` |
-| `options` | array | `[]` |
-| `extra` | string | — |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `renderTags` | boolean | `false` |
-| `on_change` | array | `[]` |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
+| `options`      | array   | `[]`               |
+| `extra`        | string  | —                  |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `renderTags`   | boolean | `false`            |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: multiple_selector
@@ -188,15 +188,15 @@ Multi-select dropdown. Renders a `MultipleSelector`. When `required: true`, requ
 
 Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon: false`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `options` | array | `[]` |
-| `extra` | string | — |
-| `label_disabled` | boolean | `false` |
+| Var              | Type    | Required / Default |
+| ---------------- | ------- | ------------------ |
+| `key`            | string  | required           |
+| `title`          | string  | —                  |
+| `visible`        | boolean | `true`             |
+| `required`       | boolean | `false`            |
+| `options`        | array   | `[]`               |
+| `extra`          | string  | —                  |
+| `label_disabled` | boolean | `false`            |
 
 ```yaml
 - component: radio_selector
@@ -211,14 +211,14 @@ Radio group. Renders a `RadioSelector`. Label is hardcoded `align: right / colon
 
 Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `span: 12 / align: right / colon: false`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `options` | array | `[]` |
-| `extra` | string | — |
+| Var        | Type    | Required / Default |
+| ---------- | ------- | ------------------ |
+| `key`      | string  | required           |
+| `title`    | string  | —                  |
+| `visible`  | boolean | `true`             |
+| `required` | boolean | `false`            |
+| `options`  | array   | `[]`               |
+| `extra`    | string  | —                  |
 
 ```yaml
 - component: checkbox_selector
@@ -233,17 +233,17 @@ Multi-select checkbox group. Renders a `CheckboxSelector`. Label is hardcoded `s
 
 Button-group selector. Renders a `ButtonSelector`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `options` | array | `[]` |
-| `extra` | string | — |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `colon` | boolean | `true` |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `options`      | array   | `[]`               |
+| `extra`        | string  | —                  |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `colon`        | boolean | `true`             |
 
 ```yaml
 - component: button_selector
@@ -258,18 +258,18 @@ Button-group selector. Renders a `ButtonSelector`.
 
 Toggle switch. Renders a `CheckboxSwitch`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `validate` | array | `[]` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `extra` | string | — |
-| `label_disabled` | boolean | `false` |
-| `description` | string | — |
+| Var              | Type    | Required / Default |
+| ---------------- | ------- | ------------------ |
+| `key`            | string  | required           |
+| `title`          | string  | —                  |
+| `visible`        | boolean | `true`             |
+| `required`       | boolean | `false`            |
+| `validate`       | array   | `[]`               |
+| `label_inline`   | boolean | `false`            |
+| `label_span`     | number  | —                  |
+| `extra`          | string  | —                  |
+| `label_disabled` | boolean | `false`            |
+| `description`    | string  | —                  |
 
 ```yaml
 - component: checkbox_switch
@@ -281,18 +281,18 @@ Toggle switch. Renders a `CheckboxSwitch`.
 
 Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean options.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `validate` | array | `[]` |
-| `disabled` | boolean | `false` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `extra` | string | — |
-| `on_change` | array | `[]` |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
+| `disabled`     | boolean | `false`            |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
+| `extra`        | string  | —                  |
+| `on_change`    | array   | `[]`               |
 
 ```yaml
 - component: yes_no_selector
@@ -305,13 +305,13 @@ Yes/no toggle. Renders a `ButtonSelector` with hardcoded `[Yes / No]` boolean op
 
 Selector sourced from an enum map. Renders a `Selector`. The enum object (`slug → { title, color, icon, ... }`) is converted to `{ label, value, style, tag }` options at build time. Label is hardcoded `align: right / span: 12`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `enum` | object | `{}` |
+| Var        | Type    | Required / Default |
+| ---------- | ------- | ------------------ |
+| `key`      | string  | required           |
+| `title`    | string  | —                  |
+| `visible`  | boolean | `true`             |
+| `required` | boolean | `false`            |
+| `enum`     | object  | `{}`               |
 
 ```yaml
 - component: enum_selector
@@ -329,15 +329,15 @@ Both contact components wrap the contacts module's `contact-selector` export. Th
 
 Single contact. `contact-selector` capped at `max: 1` — read the selection as `_state: {key}.0`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `validate` | array | `[]` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `validate`     | array   | `[]`               |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
 
 ```yaml
 - component: contact
@@ -350,16 +350,16 @@ Single contact. `contact-selector` capped at `max: 1` — read the selection as 
 
 Multiple contacts. Same as `contact` but uncapped; set `max` to limit selections.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `max` | number | — (unlimited) |
-| `validate` | array | `[]` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
+| Var            | Type    | Required / Default |
+| -------------- | ------- | ------------------ |
+| `key`          | string  | required           |
+| `title`        | string  | —                  |
+| `visible`      | boolean | `true`             |
+| `required`     | boolean | `false`            |
+| `max`          | number  | — (unlimited)      |
+| `validate`     | array   | `[]`               |
+| `label_inline` | boolean | `false`            |
+| `label_span`   | number  | —                  |
 
 ```yaml
 - component: multiple_contact
@@ -374,17 +374,17 @@ Multiple contacts. Same as `contact` but uncapped; set `max` to limit selections
 
 S3 put via policy. Renders a `Label` wrapping an `S3UploadDragger`. When `required: true` and `singleFile: true`, validates that the single file has `status: done`. When `required: true` and `singleFile: false`, validates that at least one file is in the file list.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `singleFile` | boolean | `false` |
-| `accept` | string | `null` |
-| `label` | string | `Click or drag to add files.` |
-| `label_disabled` | boolean | `true` |
-| `s3PostPolicyRequestId` | string | `upload_files` |
+| Var                     | Type    | Required / Default            |
+| ----------------------- | ------- | ----------------------------- |
+| `key`                   | string  | required                      |
+| `title`                 | string  | —                             |
+| `visible`               | boolean | `true`                        |
+| `required`              | boolean | `false`                       |
+| `singleFile`            | boolean | `false`                       |
+| `accept`                | string  | `null`                        |
+| `label`                 | string  | `Click or drag to add files.` |
+| `label_disabled`        | boolean | `true`                        |
+| `s3PostPolicyRequestId` | string  | `upload_files`                |
 
 ```yaml
 - component: file_upload
@@ -397,14 +397,14 @@ S3 put via policy. Renders a `Label` wrapping an `S3UploadDragger`. When `requir
 
 File-list S3 get via policy. Renders a `Label` wrapping an `S3Download`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `fileList` | array | required |
-| `label_disabled` | boolean | `true` |
-| `s3GetPolicyRequestId` | string | `file_download_policy` |
+| Var                    | Type    | Required / Default     |
+| ---------------------- | ------- | ---------------------- |
+| `key`                  | string  | required               |
+| `title`                | string  | —                      |
+| `visible`              | boolean | `true`                 |
+| `fileList`             | array   | required               |
+| `label_disabled`       | boolean | `true`                 |
+| `s3GetPolicyRequestId` | string  | `file_download_policy` |
 
 ```yaml
 - component: file_download
@@ -420,19 +420,19 @@ File-list S3 get via policy. Renders a `Label` wrapping an `S3Download`.
 
 Address + coordinates. Renders a `GoogleAPIProvider` (or `Box` when `disableScript: true`) wrapping a `PlacesAutocomplete` and optionally coordinates `Label` with `Lat` / `Lng` `NumberInput` blocks. Reads `_build.env: GOOGLE_MAPS_API_KEY` at build time.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | required |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `disabled` | boolean | `false` |
-| `disableScript` | boolean | `false` |
-| `events` | object | `{}` |
-| `label_inline` | boolean | `false` |
-| `label_span` | number | — |
-| `extra` | string | — |
-| `coordinates_title` | string | `null` |
+| Var                 | Type    | Required / Default |
+| ------------------- | ------- | ------------------ |
+| `key`               | string  | required           |
+| `title`             | string  | required           |
+| `visible`           | boolean | `true`             |
+| `required`          | boolean | `false`            |
+| `disabled`          | boolean | `false`            |
+| `disableScript`     | boolean | `false`            |
+| `events`            | object  | `{}`               |
+| `label_inline`      | boolean | `false`            |
+| `label_span`        | number  | —                  |
+| `extra`             | string  | —                  |
+| `coordinates_title` | string  | `null`             |
 
 ```yaml
 - component: location
@@ -448,14 +448,14 @@ Address + coordinates. Renders a `GoogleAPIProvider` (or `Box` when `disableScri
 
 Read-only label with optional nested blocks. Renders a `Label`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `disabled` | boolean | — |
-| `visible` | boolean | `true` |
-| `validate` | array | `[]` |
-| `blocks` | array | `[]` |
+| Var        | Type    | Required / Default |
+| ---------- | ------- | ------------------ |
+| `key`      | string  | required           |
+| `title`    | string  | —                  |
+| `disabled` | boolean | —                  |
+| `visible`  | boolean | `true`             |
+| `validate` | array   | `[]`               |
+| `blocks`   | array   | `[]`               |
 
 ```yaml
 - component: label
@@ -469,11 +469,11 @@ Read-only label with optional nested blocks. Renders a `Label`.
 
 Key-value pair rendered as `Html` with `<div>title: <span class="secondary">value</span></div>`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | required |
-| `visible` | boolean | `true` |
+| Var       | Type    | Required / Default |
+| --------- | ------- | ------------------ |
+| `key`     | string  | required           |
+| `title`   | string  | required           |
+| `visible` | boolean | `true`             |
 
 ```yaml
 - component: label_value
@@ -485,10 +485,10 @@ Key-value pair rendered as `Html` with `<div>title: <span class="secondary">valu
 
 Section header. Renders a Lowdefy `Title` block at level 5.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | required |
+| Var     | Type   | Required / Default |
+| ------- | ------ | ------------------ |
+| `key`   | string | required           |
+| `title` | string | required           |
 
 ```yaml
 - component: title
@@ -500,11 +500,11 @@ Section header. Renders a Lowdefy `Title` block at level 5.
 
 Sub-section header. Renders a `Divider` with the title on it.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | required |
-| `visible` | boolean | `true` |
+| Var       | Type    | Required / Default |
+| --------- | ------- | ------------------ |
+| `key`     | string  | required           |
+| `title`   | string  | required           |
+| `visible` | boolean | `true`             |
 
 ```yaml
 - component: section_title
@@ -516,15 +516,15 @@ Sub-section header. Renders a `Divider` with the title on it.
 
 Alert banner. Renders a `Box` wrapping an `Alert`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `visible` | boolean | `true` |
-| `message` | string | — |
-| `description` | string | — |
-| `type` | string | `warning` |
-| `show_icon` | boolean | `true` |
-| `label_span` | number | — |
+| Var           | Type    | Required / Default |
+| ------------- | ------- | ------------------ |
+| `key`         | string  | required           |
+| `visible`     | boolean | `true`             |
+| `message`     | string  | —                  |
+| `description` | string  | —                  |
+| `type`        | string  | `warning`          |
+| `show_icon`   | boolean | `true`             |
+| `label_span`  | number  | —                  |
 
 ```yaml
 - component: alert
@@ -537,11 +537,11 @@ Alert banner. Renders a `Box` wrapping an `Alert`.
 
 Raw HTML. Renders an `Html` block.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `html` | string | required |
-| `visible` | boolean | `true` |
+| Var       | Type    | Required / Default |
+| --------- | ------- | ------------------ |
+| `key`     | string  | required           |
+| `html`    | string  | required           |
+| `visible` | boolean | `true`             |
 
 ```yaml
 - component: html
@@ -555,11 +555,11 @@ Raw HTML. Renders an `Html` block.
 
 Plain grouping container. Renders a `Box`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `visible` | boolean | `true` |
-| `blocks` | array | `[]` |
+| Var       | Type    | Required / Default |
+| --------- | ------- | ------------------ |
+| `key`     | string  | required           |
+| `visible` | boolean | `true`             |
+| `blocks`  | array   | `[]`               |
 
 ```yaml
 - component: box
@@ -572,12 +572,12 @@ Plain grouping container. Renders a `Box`.
 
 Grouped section with optional title divider and Card wrapper.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | `null` |
-| `visible` | boolean | `true` |
-| `blocks` | array | `[]` |
+| Var       | Type    | Required / Default |
+| --------- | ------- | ------------------ |
+| `key`     | string  | required           |
+| `title`   | string  | `null`             |
+| `visible` | boolean | `true`             |
+| `blocks`  | array   | `[]`               |
 
 ```yaml
 - component: section
@@ -591,16 +591,16 @@ Grouped section with optional title divider and Card wrapper.
 
 Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose rows carry their own sub-form blocks. Required-validation fires on empty array.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | — |
-| `visible` | boolean | `true` |
-| `required` | boolean | `false` |
-| `hideAddButton` | boolean | `false` |
-| `hideRemoveButton` | boolean | `false` |
-| `minItems` | number | `0` |
-| `blocks` | array | `[]` |
+| Var                | Type    | Required / Default |
+| ------------------ | ------- | ------------------ |
+| `key`              | string  | required           |
+| `title`            | string  | —                  |
+| `visible`          | boolean | `true`             |
+| `required`         | boolean | `false`            |
+| `hideAddButton`    | boolean | `false`            |
+| `hideRemoveButton` | boolean | `false`            |
+| `minItems`         | number  | `0`                |
+| `blocks`           | array   | `[]`               |
 
 ```yaml
 - component: controlled_list
@@ -624,17 +624,17 @@ Dynamic list of sub-forms. Renders a `Label` wrapping a `ControlledList` whose r
 
 Inline button. Renders a `Button`.
 
-| Var | Type | Required / Default |
-|---|---|---|
-| `key` | string | required |
-| `title` | string | required |
-| `visible` | boolean | `true` |
-| `align` | string | `left` |
-| `type` | string | `default` |
-| `icon` | string | `null` |
-| `disabled` | boolean | `false` |
-| `label_span` | number | `0` |
-| `on_click` | array | `[]` |
+| Var          | Type    | Required / Default |
+| ------------ | ------- | ------------------ |
+| `key`        | string  | required           |
+| `title`      | string  | required           |
+| `visible`    | boolean | `true`             |
+| `align`      | string  | `left`             |
+| `type`       | string  | `default`          |
+| `icon`       | string  | `null`             |
+| `disabled`   | boolean | `false`            |
+| `label_span` | number  | `0`                |
+| `on_click`   | array   | `[]`               |
 
 ```yaml
 - component: button
@@ -658,8 +658,8 @@ form:
     key: device_section
     title: Device
     form:
-      - id: form.device                  # state path, same convention as library `key`
-        type: my-plugin:device_selector  # plugin block type — resolved by the plugin registry
+      - id: form.device # state path, same convention as library `key`
+        type: my-plugin:device_selector # plugin block type — resolved by the plugin registry
         properties:
           collection: devices
 ```

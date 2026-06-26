@@ -50,22 +50,22 @@ routine:
       _module.connectionId: workflow-api
     properties:
       action_id: { _payload: action_id }
-      action_type: <action_type>               # build-time literal
-      workflow_type: <workflow_type>           # build-time literal
+      action_type: <action_type> # build-time literal
+      workflow_type: <workflow_type> # build-time literal
       interaction: { _payload: interaction }
       current_key: { _payload: current_key }
       form: { _payload: form }
       form_review: { _payload: form_review }
       fields: { _payload: fields }
-      comment: { _payload: comment }                 # user-supplied comment; handler maps to event.metadata.comment (see part 13 design.md § Comment mapping)
-      current_status: { _payload: current_status }   # only when emitting for kind: task; omit for form
-      hooks:                                    # sparse — only declared interactions/phases
+      comment: { _payload: comment } # user-supplied comment; handler maps to event.metadata.comment (see part 13 design.md § Comment mapping)
+      current_status: { _payload: current_status } # only when emitting for kind: task; omit for form
+      hooks: # sparse — only declared interactions/phases
         submit_edit:
           pre: update-action-{action_type}-submit_edit-pre
           # post slot omitted if not declared
-      event_overrides:                          # sparse — lifted from action.event[interaction]
+      event_overrides: # sparse — lifted from action.event[interaction]
         submit_edit: { type, display, references, metadata }
-      interactions:                             # sparse — lifted from action.interactions[interaction]
+      interactions: # sparse — lifted from action.interactions[interaction]
         submit_edit: { status: <override> }
   - :return:
       action_ids: { _step: submit.action_ids }
@@ -88,8 +88,8 @@ For each declared `hooks.{interaction}.{pre|post}`:
 id: update-action-{action_type}-{interaction}-{pre|post}
 type: Api
 auth:
-  roles: <action.access.roles>      # synthesized; never auth.public: true
-routine: <action.hooks[interaction][phase].routine>     # passed through verbatim
+  roles: <action.access.roles> # synthesized; never auth.public: true
+routine: <action.hooks[interaction][phase].routine> # passed through verbatim
 ```
 
 The hook Api id is referenced from the parent `update-action-{action_type}` endpoint's `hooks:` map; part 9's `invokePreHook.js` reads it from the endpoint payload and invokes it via `context.callApi`.
@@ -103,7 +103,7 @@ id: workflow-{workflow_type}-group-{group_id}-on-complete
 type: Api
 auth:
   roles: <union of access.roles across actions whose action_group === group.id>
-routine: <action_group.on_complete.routine>             # passed through verbatim
+routine: <action_group.on_complete.routine> # passed through verbatim
 ```
 
 If the union of roles across the group's actions is empty (no action in the group has `access.roles`), emit `auth: { roles: [] }` — Lowdefy reads an empty roles list as "no role required" (gate effectively open). The resolver does **not** add a fallback gate; the author's choice of empty `access.roles` is honored. (Part 11 fires this Api via `context.callApi`, which still attaches the submitting user's auth context for routine-level checks.)
@@ -113,17 +113,21 @@ If the union of roles across the group's actions is empty (no action in the grou
 For a hook Api:
 
 ```js
-auth: { roles: [...(action.access?.roles ?? [])] }
+auth: {
+  roles: [...(action.access?.roles ?? [])];
+}
 ```
 
 For a group `on_complete` Api:
 
 ```js
-const groupActions = workflow.actions.filter((a) => a.action_group === group.id);
-const roles = [
-  ...new Set(groupActions.flatMap((a) => a.access?.roles ?? [])),
-];
-auth: { roles };
+const groupActions = workflow.actions.filter(
+  (a) => a.action_group === group.id,
+);
+const roles = [...new Set(groupActions.flatMap((a) => a.access?.roles ?? []))];
+auth: {
+  roles;
+}
 ```
 
 Both: the `auth` block has only `roles` (no `public: true`). The resolver never emits an unguarded hook Api.
@@ -168,7 +172,13 @@ function fail(message) {
   throw new Error(`makeWorkflowApis: ${message}`);
 }
 
-function emitHookApi({ workflowType, action, interaction, phase, routineBody }) {
+function emitHookApi({
+  workflowType,
+  action,
+  interaction,
+  phase,
+  routineBody,
+}) {
   return {
     id: `update-action-${action.type}-${interaction}-${phase}`,
     definition: {
@@ -181,7 +191,7 @@ function emitHookApi({ workflowType, action, interaction, phase, routineBody }) 
 
 function emitHooks(workflowType, action) {
   const apis = [];
-  const map = {};                          // interaction → { pre?, post? }
+  const map = {}; // interaction → { pre?, post? }
   if (!action.hooks) return { apis, map };
   for (const interaction of HOOK_INTERACTIONS) {
     const phases = action.hooks[interaction];
@@ -231,7 +241,13 @@ function emitInteractions(action) {
   return Object.keys(map).length > 0 ? map : undefined;
 }
 
-function emitActionEndpoint(workflow, action, hooksMap, eventMap, interactionsMap) {
+function emitActionEndpoint(
+  workflow,
+  action,
+  hooksMap,
+  eventMap,
+  interactionsMap,
+) {
   const isTask = action.kind === "task";
   const properties = {
     action_id: { _payload: "action_id" },

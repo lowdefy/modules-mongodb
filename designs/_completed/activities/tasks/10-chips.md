@@ -10,6 +10,7 @@ After Task 1, the module skeleton exists. This task builds two small internal ch
 No `tile_files.yaml` is created here (or anywhere in this module). Per `decisions.md` §4 and Sam's PR-32 review, the activity detail page refs `files.file-card` directly; no local wrapper is needed because `file-card` is already card-styled and takes `entity_type` + `entity_id` as vars. That ref lives in Task 14 (`view.yaml`).
 
 References:
+
 - `modules/companies/components/contact_list_items.yaml` — template.
 - `modules/contacts/components/company_list_items.yaml` — template (note the entity reversal — contacts module renders companies, companies module renders contacts).
 
@@ -27,10 +28,8 @@ Mirror `companies/components/contact_list_items.yaml` directly. Likely shape:
   blocks:
     _build.array.map:
       on:
-        _state: contacts   # or _request — depends on how the parent passes the contact list
-      callback:
-        ...
-
+        _state: contacts # or _request — depends on how the parent passes the contact list
+      callback: ...
 # Or, more idiomatically, a List/repeat block whose item template is a Card or Link
 ```
 

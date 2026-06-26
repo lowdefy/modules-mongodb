@@ -21,12 +21,15 @@ Pre-hook precedence merging defers to [part 9](../../09-hook-invocation/design.m
 Replace the `// Step 3 — Compute auto-unblocks` TODO in `handleSubmit.js` with:
 
 ```js
-import computeAutoUnblocks from './computeAutoUnblocks.js';
-import getActions from '../../shared/getActions.js';
+import computeAutoUnblocks from "./computeAutoUnblocks.js";
+import getActions from "../../shared/getActions.js";
 // ...
 
 // Step 3 — Compute auto-unblocks (action-type entries only; group ids → part 7).
-const workflowActions = await getActions(context.mongoDBConnection, context.workflow._id);
+const workflowActions = await getActions(
+  context.mongoDBConnection,
+  context.workflow._id,
+);
 const autoUnblockEntries = computeAutoUnblocks({
   workflowActions,
   actionsConfig: context.actionsConfig,

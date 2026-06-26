@@ -1,4 +1,4 @@
-import { test, expect } from '../fixtures.js';
+import { test, expect } from "../fixtures.js";
 
 // Cluster: cascade-keyed (Part 22 task 5). Mode: Spine + Tail.
 //
@@ -24,85 +24,85 @@ import { test, expect } from '../fixtures.js';
 //
 // The `mdb` fixture wipes all collections between tests.
 
-const WORKFLOW_TYPE = 'cascade-keyed';
+const WORKFLOW_TYPE = "cascade-keyed";
 
 // Engine `_id`s and id refs are UUID strings (createEngineContext:
 // newId: randomUUID), so query by the raw `workflow_id` — no ObjectId coercion.
 function actionByType(mdb, workflowId, type) {
   return mdb
-    .collection('actions')
+    .collection("actions")
     .findOne({ workflow_id: String(workflowId), type });
 }
 
 async function seedThingAndStart(ldf, mdb, workflow, thingId, title) {
   await ldf.user({
-    name: 'Test User',
-    email: 'test-user@example.com',
-    roles: ['admin'],
+    name: "Test User",
+    email: "test-user@example.com",
+    roles: ["admin"],
   });
-  await mdb.seed('things', [{ _id: thingId, title }]);
+  await mdb.seed("things", [{ _id: thingId, title }]);
   const { workflow_id } = await workflow.start({
     workflow_type: WORKFLOW_TYPE,
     entity_id: thingId,
-    entity_collection: 'things-collection',
+    entity_collection: "things-collection",
   });
   return workflow_id;
 }
 
-test('a single real submit cascades block / error / activate at siblings and upsert-spawns a keyed action — committed in the DB and reflected on the entity surface', async ({
+test("a single real submit cascades block / error / activate at siblings and upsert-spawns a keyed action — committed in the DB and reflected on the entity surface", async ({
   ldf,
   mdb,
   page,
   workflow,
 }) => {
-  const thingId = 'thing-cascade-spine';
+  const thingId = "thing-cascade-spine";
   const workflowId = await seedThingAndStart(
     ldf,
     mdb,
     workflow,
     thingId,
-    'Cascade Thing'
+    "Cascade Thing",
   );
 
   // ── initial stages: driver + two siblings action-required, one blocked ─────
-  const driver = await actionByType(mdb, workflowId, 'driver');
-  expect(driver.status[0].stage).toBe('action-required');
+  const driver = await actionByType(mdb, workflowId, "driver");
+  expect(driver.status[0].stage).toBe("action-required");
   expect(
-    (await actionByType(mdb, workflowId, 'gets-blocked')).status[0].stage
-  ).toBe('action-required');
+    (await actionByType(mdb, workflowId, "gets-blocked")).status[0].stage,
+  ).toBe("action-required");
   expect(
-    (await actionByType(mdb, workflowId, 'gets-errored')).status[0].stage
-  ).toBe('action-required');
+    (await actionByType(mdb, workflowId, "gets-errored")).status[0].stage,
+  ).toBe("action-required");
   expect(
-    (await actionByType(mdb, workflowId, 'gets-activated')).status[0].stage
-  ).toBe('blocked');
+    (await actionByType(mdb, workflowId, "gets-activated")).status[0].stage,
+  ).toBe("blocked");
   // keyed-spawn does not exist yet — it is spawned by the cascade.
-  expect(await actionByType(mdb, workflowId, 'keyed-spawn')).toBeNull();
+  expect(await actionByType(mdb, workflowId, "keyed-spawn")).toBeNull();
 
   const driverId = driver._id.toString();
-  const spawnKey = 'widget-1';
+  const spawnKey = "widget-1";
 
   // ── SPINE: fill the driver form and submit through its emitted edit page ────
   await ldf.goto(
-    `/workflows/${WORKFLOW_TYPE}-driver-edit?action_id=${driverId}`
+    `/workflows/${WORKFLOW_TYPE}-driver-edit?action_id=${driverId}`,
   );
-  await ldf.block('form.spawn_key').do.fill(spawnKey);
-  await ldf.block('button_submit').do.click();
+  await ldf.block("form.spawn_key").do.fill(spawnKey);
+  await ldf.block("button_submit").do.click();
 
   // driver completes (no review verb → submit → done)…
-  await workflow.assertStatus(driverId, 'done');
+  await workflow.assertStatus(driverId, "done");
   // …and its pre-hook's cascade landed all three sibling effects:
   await workflow.assertStatus(
-    (await actionByType(mdb, workflowId, 'gets-blocked'))._id.toString(),
-    'blocked'
+    (await actionByType(mdb, workflowId, "gets-blocked"))._id.toString(),
+    "blocked",
   );
   await workflow.assertStatus(
-    (await actionByType(mdb, workflowId, 'gets-errored'))._id.toString(),
-    'error'
+    (await actionByType(mdb, workflowId, "gets-errored"))._id.toString(),
+    "error",
   );
   await workflow.assertStatus(
-    (await actionByType(mdb, workflowId, 'gets-activated'))._id.toString(),
-    'action-required'
+    (await actionByType(mdb, workflowId, "gets-activated"))._id.toString(),
+    "action-required",
   );
 
   // …and the keyed action was upsert-spawned at its none-row birth stage, with
@@ -111,78 +111,76 @@ test('a single real submit cascades block / error / activate at siblings and ups
     .poll(
       () =>
         mdb
-          .collection('actions')
-          .findOne({ workflow_id: String(workflowId), type: 'keyed-spawn' }),
-      { timeout: 10_000 }
+          .collection("actions")
+          .findOne({ workflow_id: String(workflowId), type: "keyed-spawn" }),
+      { timeout: 10_000 },
     )
     .toEqual(
       expect.objectContaining({
         key: spawnKey,
         status: expect.arrayContaining([
-          expect.objectContaining({ stage: 'action-required' }),
+          expect.objectContaining({ stage: "action-required" }),
         ]),
-      })
+      }),
     );
 
   // ── SPINE CLOSURE: the entity surface reflects every cascade effect ────────
   await ldf.goto(`/thing-view?_id=${thingId}`);
-  await expect(page.getByText('Blocked by the cascade.')).toBeVisible();
-  await expect(page.getByText('Errored by the cascade.')).toBeVisible();
-  await expect(page.getByText('Activated by the cascade.')).toBeVisible();
-  await expect(page.getByText('Spawned and action-required.')).toBeVisible();
+  await expect(page.getByText("Blocked by the cascade.")).toBeVisible();
+  await expect(page.getByText("Errored by the cascade.")).toBeVisible();
+  await expect(page.getByText("Activated by the cascade.")).toBeVisible();
+  await expect(page.getByText("Spawned and action-required.")).toBeVisible();
 });
 
-test('upsert is idempotent against an existing key and a cascade landing on an already-blocked sibling is a no-op — through the real endpoint only', async ({
+test("upsert is idempotent against an existing key and a cascade landing on an already-blocked sibling is a no-op — through the real endpoint only", async ({
   ldf,
   mdb,
   workflow,
 }) => {
-  const thingId = 'thing-cascade-tail';
+  const thingId = "thing-cascade-tail";
   const workflowId = await seedThingAndStart(
     ldf,
     mdb,
     workflow,
     thingId,
-    'Cascade Tail Thing'
+    "Cascade Tail Thing",
   );
 
   const driverId = (
-    await actionByType(mdb, workflowId, 'driver')
+    await actionByType(mdb, workflowId, "driver")
   )._id.toString();
   const getsBlockedId = (
-    await actionByType(mdb, workflowId, 'gets-blocked')
+    await actionByType(mdb, workflowId, "gets-blocked")
   )._id.toString();
-  const spawnKey = 'shared-key';
+  const spawnKey = "shared-key";
 
   // Pre-position gets-blocked AT the cascade's target stage via the seed-state
   // technique (a fixture pre-condition, not an engine backdoor — it mutates the
   // same status[0].stage shape the engine writes). The first submit's `block`
   // cascade now lands on an already-blocked sibling.
-  await workflow.setStage(getsBlockedId, 'blocked');
+  await workflow.setStage(getsBlockedId, "blocked");
 
   // First submit through the real endpoint, no browser.
   await workflow.submit(driverId, {
-    signal: 'submit',
+    signal: "submit",
     form: { spawn_key: spawnKey },
   });
 
   // FSM no-op skip: `block` from the `blocked` row has no entry, so the cascade
   // is a structural no-op — the endpoint succeeds (no throw) and gets-blocked
   // stays blocked.
-  await workflow.assertStatus(getsBlockedId, 'blocked');
+  await workflow.assertStatus(getsBlockedId, "blocked");
 
   // The keyed action spawned exactly once.
   await expect
     .poll(
       () =>
-        mdb
-          .collection('actions')
-          .countDocuments({
-            workflow_id: String(workflowId),
-            type: 'keyed-spawn',
-            key: spawnKey,
-          }),
-      { timeout: 10_000 }
+        mdb.collection("actions").countDocuments({
+          workflow_id: String(workflowId),
+          type: "keyed-spawn",
+          key: spawnKey,
+        }),
+      { timeout: 10_000 },
     )
     .toBe(1);
 
@@ -191,7 +189,7 @@ test('upsert is idempotent against an existing key and a cascade landing on an a
   // `done` row permits `submit` (→ done), so the re-submit fires the pre-hook
   // again through the real endpoint.
   await workflow.submit(driverId, {
-    signal: 'submit',
+    signal: "submit",
     form: { spawn_key: spawnKey },
   });
 
@@ -199,14 +197,12 @@ test('upsert is idempotent against an existing key and a cascade landing on an a
   await expect
     .poll(
       () =>
-        mdb
-          .collection('actions')
-          .countDocuments({
-            workflow_id: String(workflowId),
-            type: 'keyed-spawn',
-            key: spawnKey,
-          }),
-      { timeout: 10_000 }
+        mdb.collection("actions").countDocuments({
+          workflow_id: String(workflowId),
+          type: "keyed-spawn",
+          key: spawnKey,
+        }),
+      { timeout: 10_000 },
     )
     .toBe(1);
 });

@@ -12,11 +12,11 @@ The end-user counterpart is [`user-account`](../user-account/index.md).
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
-| [layout](../layout/index.md) | Page wrapper |
-| [events](../events/index.md) | Audit logging and `change_stamp` |
-| [notifications](../notifications/index.md) | Invite + resend dispatch |
+| Module                                     | Why                              |
+| ------------------------------------------ | -------------------------------- |
+| [layout](../layout/index.md)               | Page wrapper                     |
+| [events](../events/index.md)               | Audit logging and `change_stamp` |
+| [notifications](../notifications/index.md) | Invite + resend dispatch         |
 
 ## When to use
 

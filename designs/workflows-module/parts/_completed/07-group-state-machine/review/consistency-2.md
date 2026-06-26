@@ -28,6 +28,7 @@ Design line 39's name-only reference and verification line 89 worked with either
 **Source of truth:** `design.md` § Auto-complete check.
 **Files affected:** `tasks/08-wire-substeps-into-handle-submit.md`, `tasks/tasks.md`.
 **Resolution:**
+
 - Removed the "Alternative" paragraph from task 8 § Sub-step 4c; locked it to inline same-stage check + bundled `$set`.
 - Tightened the acceptance criterion from "imports `recomputeGroups`, `reevaluateBlockedActions`, `pushWorkflowStatus` (or uses an inline same-stage check)" to a definite "imports `recomputeGroups` and `reevaluateBlockedActions`. The auto-complete decision uses an inline same-stage check (no call to `pushWorkflowStatus`); the push lands inside step 5's bundled `$set`."
 - Removed the stale `import pushWorkflowStatus` line from task 8 § Imports.

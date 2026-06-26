@@ -27,7 +27,7 @@ working inputs:
   `.status` (array, `status.0.stage` = current stage), `.message`, `.allowed`,
   `.buttons`, `.workflow_closed`, `.required_after_close`, …
 - working inputs on sub-keys: `current_action.fields.{assignees, due_date,
-  description}` (seeded from the response) and `current_action.comment`
+description}` (seeded from the response) and `current_action.comment`
   (seeded `null`).
 - **`current_action.mode`** — `edit` | `view` | `review`, set by the container
   (tasks.md "Decisions applied" #4 / design D1): pages set a literal in
@@ -64,7 +64,7 @@ Create `modules/workflows/components/check-action-surface.yaml`.
 1. **Workflow-closed banner** — `Alert` (warning, showIcon), visible when
    `current_action.workflow_closed` and `current_action.required_after_close`
    is not `true`. Rendered in **all modes** (copy the message/description from
-   `workflow-action-edit.yaml:81–93`). *Minor normalisation:* the shipped view
+   `workflow-action-edit.yaml:81–93`). _Minor normalisation:_ the shipped view
    page has no banner; rendering it read-only is informative and keeps one
    body — note it in the component header comment.
 2. **Header** — `Box` with `Title` (`_state: current_action.message`) +
@@ -105,6 +105,7 @@ Create `modules/workflows/components/check-action-surface.yaml`.
    viewer gets read-only display. The component is currently the Part 24 stub
    — it ignores these vars until Part 24 ships; pass them anyway (the
    contract is recorded on both designs).
+
 4. **Status history** — `view` mode only. A `List` with
    `id: current_action.status` (Lists bind state at their block id; the
    spread response already holds the status array there — **no request, no
@@ -154,19 +155,20 @@ Create `modules/workflows/components/check-action-surface.yaml`.
      NOT carry `fields` (they'd silently revert a concurrent editor's change;
      design D1 "fields rides submit and progress only").
 
-   | Button (id)              | Mode   | Title             | Type            | onClick                                                                                                          |
-   | ------------------------ | ------ | ----------------- | --------------- | ----------------------------------------------------------------------------------------------------------------- |
-   | `button_submit`          | edit   | Submit            | primary         | `Validate` (`params: { regex: ^current_action\.fields\. }`) → `CallAPI` `signal: submit` (+ `fields`) → on_complete |
-   | `button_progress`        | edit   | Mark Started      | default         | `CallAPI` `signal: progress` (+ `fields`) → on_complete — **no Validate** (draft is intentionally partial)         |
-   | `button_not_required`    | edit   | Mark Not Required | default         | `CallAPI` `signal: not_required` → on_complete                                                                     |
-   | `button_request_changes` | review | Request Changes   | default, danger ghost | `CallMethod` `{ blockId: request_changes_modal, method: setOpen, args: [{ open: true }] }`                   |
-   | `button_approve`         | review | Approve           | primary         | `CallAPI` `signal: approve` → on_complete                                                                          |
-   | `button_resolve_error`   | view   | Resolve Error     | primary         | `CallAPI` `signal: resolve_error` → on_complete                                                                    |
+   | Button (id)              | Mode   | Title             | Type                  | onClick                                                                                                             |
+   | ------------------------ | ------ | ----------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------- |
+   | `button_submit`          | edit   | Submit            | primary               | `Validate` (`params: { regex: ^current_action\.fields\. }`) → `CallAPI` `signal: submit` (+ `fields`) → on_complete |
+   | `button_progress`        | edit   | Mark Started      | default               | `CallAPI` `signal: progress` (+ `fields`) → on_complete — **no Validate** (draft is intentionally partial)          |
+   | `button_not_required`    | edit   | Mark Not Required | default               | `CallAPI` `signal: not_required` → on_complete                                                                      |
+   | `button_request_changes` | review | Request Changes   | default, danger ghost | `CallMethod` `{ blockId: request_changes_modal, method: setOpen, args: [{ open: true }] }`                          |
+   | `button_approve`         | review | Approve           | primary               | `CallAPI` `signal: approve` → on_complete                                                                           |
+   | `button_resolve_error`   | view   | Resolve Error     | primary               | `CallAPI` `signal: resolve_error` → on_complete                                                                     |
 
    The `Validate` scope `^current_action\.fields\.` matters: the surface also
    renders inside the modal on entity pages, where an unscoped `Validate`
    would validate the entire host page (design D1). No `Validate` on any
    other signal except the modal's comment check below.
+
 7. **`request_changes_modal`** — a `Modal` block inside the surface (review
    mode), migrated from `workflow-action-review.yaml:188–234` with the state
    namespaced: the required comment `TiptapInput` binds

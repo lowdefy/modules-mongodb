@@ -1,7 +1,7 @@
-import { HOOK_SIGNALS, HOOK_PHASES, MIRROR_SIGNALS } from './hookSignals.js';
-import { collectTrackerEdges } from './trackerEdges.js';
+import { HOOK_SIGNALS, HOOK_PHASES, MIRROR_SIGNALS } from "./hookSignals.js";
+import { collectTrackerEdges } from "./trackerEdges.js";
 
-const EVENT_OVERRIDE_FIELDS = ['type', 'display', 'references', 'metadata'];
+const EVENT_OVERRIDE_FIELDS = ["type", "display", "references", "metadata"];
 
 // Signals whose `event:` overrides ride render_config: submit-time hook
 // signals plus tracker mirror signals (Part 48 task 7 made the latter
@@ -16,7 +16,7 @@ const EVENT_OVERRIDE_SIGNALS = [...HOOK_SIGNALS, ...MIRROR_SIGNALS];
 function emitHookApi(workflow, action, signal, phase, body) {
   return {
     id: `${workflow.type}-${action.type}-${signal}-${phase}`,
-    type: 'InternalApi',
+    type: "InternalApi",
     routine: body.routine,
   };
 }
@@ -37,7 +37,7 @@ function emitHooks(workflow, action) {
       // resolves resolver output, so the engine receives the hook id as a
       // pre-scoped opaque string (`<workflowsEntryId>/<hookApiId>`) on
       // params.hooks and passes it to callApi verbatim.
-      slot[phase] = { '_module.endpointId': api.id };
+      slot[phase] = { "_module.endpointId": api.id };
       apis.push(api);
     }
     if (Object.keys(slot).length > 0) map[signal] = slot;
@@ -104,7 +104,10 @@ function collectAncestorTypes(type, edges) {
 // accepted: build artifacts are cheap, per-request evaluation is what hurts.
 function emitRenderConfig(workflow, workflowsByType, edges) {
   const config = {};
-  for (const type of [workflow.type, ...collectAncestorTypes(workflow.type, edges)]) {
+  for (const type of [
+    workflow.type,
+    ...collectAncestorTypes(workflow.type, edges),
+  ]) {
     const target = workflowsByType.get(type);
     if (!target) continue;
     const slices = emitWorkflowRenderSlices(target);
@@ -115,14 +118,14 @@ function emitRenderConfig(workflow, workflowsByType, edges) {
 
 function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
   const properties = {
-    action_id: { _payload: 'action_id' },
-    signal: { _payload: 'signal' },
-    current_key: { _payload: 'current_key' },
-    fields: { _payload: 'fields' },
-    form: { _payload: 'form' },
-    form_review: { _payload: 'form_review' },
-    comment: { _payload: 'comment' },
-    metadata: { _payload: 'metadata' },
+    action_id: { _payload: "action_id" },
+    signal: { _payload: "signal" },
+    current_key: { _payload: "current_key" },
+    fields: { _payload: "fields" },
+    form: { _payload: "form" },
+    form_review: { _payload: "form_review" },
+    comment: { _payload: "comment" },
+    metadata: { _payload: "metadata" },
     // hooks is a sibling of render_config, not nested under it: hook values
     // are build-resolved endpoint refs consumed off params, not Nunjucks
     // display config. Keyed by action type (Part 48 D7) — handleSubmit
@@ -133,22 +136,22 @@ function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
 
   return {
     id: `${workflow.type}-submit`,
-    type: 'Api',
+    type: "Api",
     routine: [
       {
-        id: 'submit',
-        type: 'SubmitWorkflowAction',
-        connectionId: { '_module.connectionId': 'workflow-api' },
+        id: "submit",
+        type: "SubmitWorkflowAction",
+        connectionId: { "_module.connectionId": "workflow-api" },
         properties,
       },
       {
-        ':return': {
-          action_ids: { _step: 'submit.action_ids' },
-          completed_groups: { _step: 'submit.completed_groups' },
-          event_id: { _step: 'submit.event_id' },
-          tracker_fired: { _step: 'submit.tracker_fired' },
-          pre_hook_response: { _step: 'submit.pre_hook_response' },
-          post_hook_response: { _step: 'submit.post_hook_response' },
+        ":return": {
+          action_ids: { _step: "submit.action_ids" },
+          completed_groups: { _step: "submit.completed_groups" },
+          event_id: { _step: "submit.event_id" },
+          tracker_fired: { _step: "submit.tracker_fired" },
+          pre_hook_response: { _step: "submit.pre_hook_response" },
+          post_hook_response: { _step: "submit.post_hook_response" },
         },
       },
     ],
@@ -165,25 +168,25 @@ function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
 function emitFieldsEndpoint(workflow) {
   return {
     id: `${workflow.type}-update-fields`,
-    type: 'Api',
+    type: "Api",
     routine: [
       {
-        id: 'update_fields',
-        type: 'UpdateActionFields',
-        connectionId: { '_module.connectionId': 'workflow-api' },
+        id: "update_fields",
+        type: "UpdateActionFields",
+        connectionId: { "_module.connectionId": "workflow-api" },
         properties: {
-          action_id: { _payload: 'action_id' },
+          action_id: { _payload: "action_id" },
           // Build-time literal — the only per-workflow constant the endpoint
           // needs (the component builds the id from it at runtime).
           workflow_type: workflow.type,
-          fields: { _payload: 'fields' },
-          comment: { _payload: 'comment' },
+          fields: { _payload: "fields" },
+          comment: { _payload: "comment" },
         },
       },
       {
-        ':return': {
-          action_id: { _step: 'update_fields.action_id' },
-          event_id: { _step: 'update_fields.event_id' },
+        ":return": {
+          action_id: { _step: "update_fields.action_id" },
+          event_id: { _step: "update_fields.event_id" },
         },
       },
     ],
@@ -207,19 +210,19 @@ function emitFieldsEndpoint(workflow) {
 function emitStartEndpoint(workflow, renderConfig) {
   return {
     id: `${workflow.type}-start`,
-    type: 'Api',
+    type: "Api",
     routine: [
       {
-        id: 'start',
-        type: 'StartWorkflow',
-        connectionId: { '_module.connectionId': 'workflow-api' },
+        id: "start",
+        type: "StartWorkflow",
+        connectionId: { "_module.connectionId": "workflow-api" },
         properties: {
           // Static literal — the endpoint is type-scoped, so callers no
           // longer pass workflow_type in the payload.
           workflow_type: workflow.type,
-          entity_id: { _payload: 'entity_id' },
-          entity_collection: { _payload: 'entity_collection' },
-          parent_action_id: { _payload: 'parent_action_id' },
+          entity_id: { _payload: "entity_id" },
+          entity_collection: { _payload: "entity_collection" },
+          parent_action_id: { _payload: "parent_action_id" },
           // actions: override seeds actions directly at a declared status.
           // Grammar: { type, key?, status } where status is one of
           // action-required | blocked (enforced at runtime); key for keyed
@@ -228,9 +231,9 @@ function emitStartEndpoint(workflow, renderConfig) {
           // draft, and payload-level references lands on the workflow doc.
           // Signals are the submit-time grammar only and do not apply at
           // workflow start.
-          actions: { _payload: 'actions' },
-          references: { _payload: 'references' },
-          metadata: { _payload: 'metadata' },
+          actions: { _payload: "actions" },
+          references: { _payload: "references" },
+          metadata: { _payload: "metadata" },
           ...(renderConfig ? { render_config: renderConfig } : {}),
           ...(workflow.event?.started
             ? { lifecycle_event_override: workflow.event.started }
@@ -238,10 +241,10 @@ function emitStartEndpoint(workflow, renderConfig) {
         },
       },
       {
-        ':return': {
-          workflow_id: { _step: 'start.workflow_id' },
-          action_ids: { _step: 'start.action_ids' },
-          event_id: { _step: 'start.event_id' },
+        ":return": {
+          workflow_id: { _step: "start.workflow_id" },
+          action_ids: { _step: "start.action_ids" },
+          event_id: { _step: "start.event_id" },
         },
       },
     ],
@@ -251,19 +254,23 @@ function emitStartEndpoint(workflow, renderConfig) {
 // Cancel and close share a shape; only the step type and lifecycle signal
 // differ. See emitStartEndpoint for the D5 rationale and the
 // lifecycle_event_override contract.
-function emitTerminalEndpoint(workflow, renderConfig, { verb, stepType, signal }) {
+function emitTerminalEndpoint(
+  workflow,
+  renderConfig,
+  { verb, stepType, signal },
+) {
   return {
     id: `${workflow.type}-${verb}`,
-    type: 'Api',
+    type: "Api",
     routine: [
       {
         id: verb,
         type: stepType,
-        connectionId: { '_module.connectionId': 'workflow-api' },
+        connectionId: { "_module.connectionId": "workflow-api" },
         properties: {
-          workflow_id: { _payload: 'workflow_id' },
-          reason: { _payload: 'reason' },
-          references: { _payload: 'references' },
+          workflow_id: { _payload: "workflow_id" },
+          reason: { _payload: "reason" },
+          references: { _payload: "references" },
           ...(renderConfig ? { render_config: renderConfig } : {}),
           ...(workflow.event?.[signal]
             ? { lifecycle_event_override: workflow.event[signal] }
@@ -271,7 +278,7 @@ function emitTerminalEndpoint(workflow, renderConfig, { verb, stepType, signal }
         },
       },
       {
-        ':return': {
+        ":return": {
           action_ids: { _step: `${verb}.action_ids` },
           event_id: { _step: `${verb}.event_id` },
           tracker_fired: { _step: `${verb}.tracker_fired` },
@@ -286,7 +293,7 @@ function emitGroupOnCompleteApi(workflow, group) {
   if (!group.on_complete) return null;
   return {
     id: `${workflow.type}-group-${group.id}-on-complete`,
-    type: 'InternalApi',
+    type: "InternalApi",
     routine: group.on_complete.routine,
   };
 }
@@ -296,9 +303,9 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
   // derived ids (`workflow-{action}-…`, and since Part 48 also
   // `workflow-start/cancel/close`) that collide with the module's fixed
   // `workflow-*` page/endpoint space.
-  if (workflow.type === 'workflow') {
+  if (workflow.type === "workflow") {
     throw new Error(
-      'makeWorkflowApis: "workflow" is a reserved workflow type name — its derived ids would collide with the module\'s fixed workflow-* page space (Part 34 D10). Rename the workflow type.'
+      'makeWorkflowApis: "workflow" is a reserved workflow type name — its derived ids would collide with the module\'s fixed workflow-* page space (Part 34 D10). Rename the workflow type.',
     );
   }
 
@@ -311,7 +318,7 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
   const hooksByAction = {};
   let hasSubmittableAction = false;
   for (const action of workflow.actions ?? []) {
-    if (action.kind === 'tracker') continue;
+    if (action.kind === "tracker") continue;
     hasSubmittableAction = true;
     const { apis: hookApis, map: hooksMap } = emitHooks(workflow, action);
     apis.push(...hookApis);
@@ -338,14 +345,14 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
   apis.push(
     emitStartEndpoint(workflow, renderConfig),
     emitTerminalEndpoint(workflow, renderConfig, {
-      verb: 'cancel',
-      stepType: 'CancelWorkflow',
-      signal: 'cancelled',
+      verb: "cancel",
+      stepType: "CancelWorkflow",
+      signal: "cancelled",
     }),
     emitTerminalEndpoint(workflow, renderConfig, {
-      verb: 'close',
-      stepType: 'CloseWorkflow',
-      signal: 'closed',
+      verb: "close",
+      stepType: "CloseWorkflow",
+      signal: "closed",
     }),
   );
 

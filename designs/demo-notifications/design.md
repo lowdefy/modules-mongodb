@@ -8,7 +8,7 @@ This supersedes [Part 45 task 06](../workflows-module/parts/_completed/45-demo-r
 
 1. **Rewrite `apps/demo/modules/notifications/send-routine.yaml`** as the demo's dispatch routine and uncomment the `send_routine` ref in `apps/demo/modules/notifications/vars.yaml`. The dead `AxiosHttp` → `consume-notifications` config is deleted.
 2. **Branch 1 — `action-approve` × `send-quote`:** approving the demo onboarding workflow's quote inserts one unread inbox notification for the quote submitter, deep-linking to the lead.
-3. **Branch 2 — `invite-user` / `resend-user-invite`:** the user-admin invite APIs' dispatches insert an inbox notification for the invited contact — the demo's mock of the production invite *email*. No email is sent anywhere.
+3. **Branch 2 — `invite-user` / `resend-user-invite`:** the user-admin invite APIs' dispatches insert an inbox notification for the invited contact — the demo's mock of the production invite _email_. No email is sent anywhere.
 4. **Inserted docs follow the production `consumeNotifications` schema minus email fields** (see schema table): `_id` (uuid string), `key`, `popup`, `contact_id`, `title`, `description`, `body`, `links`, `type`, `event_type`, `event_id`, `created` (events-module change stamp), `read`, `priority`.
 5. **Every other event type falls through silently** — no generic event-type→handler map, no notification, no error (same default-ignored policy as Part 45 item 9).
 6. **Wire `global.enums.event_types` in the demo app** (currently absent) via the events module's exported `event_types` component, and add an enum entry for `action-approve` (the invite event types already arrive via the composed component — see decision below) — this makes the inbox type chips render and fixes the inbox type-filter dropdown, which builds its options from this global and is empty today.
@@ -36,23 +36,23 @@ This supersedes [Part 45 task 06](../workflows-module/parts/_completed/45-demo-r
 
 The production pipeline inserts:
 
-| Field | Production value | Demo routine | Notes |
-| --- | --- | --- | --- |
-| `_id` | `uuid()` string | `$function` UUID per doc | See decision below. |
-| `key` | `recordId:contactId:timestamp` dedup key | same, via `$concat` | Field written; no dedup lookup (see decision). |
-| `popup` | template `popup` ?? `false` | `false` | Demo has no popup surface. |
-| `contact_id` | `contact._id` from template pipeline | derived per branch | |
-| `title`, `description` | nunjucks-rendered template strings | built in-pipeline (`$concat`/`$cond`) | |
-| `body` | rendered email HTML | small static HTML string | Rendered by the inbox view panel. |
-| `content` | rendered in-app JSX content | **dropped** | No consumer in the module. |
-| `links` | object; non-string entries rewritten to link-page URLs | `{ button: { pageId, urlQuery } }` | The module's link page consumes the structured form directly. |
-| `type` | template name | `quote-approved` / `user-invite` | |
-| `event_type` | template event_type | the event doc's `type` | |
-| `event_id` | source event `_id` | same | |
-| `created` | `{ timestamp, app_name, service_name }` | events-module `change_stamp` | Deviation: carries `user` + `version` instead of `service_name` — strictly more audit info, and satisfies the repo's change-stamp-on-writes rule. `timestamp` + `app_name` (what the surfaces `$match` on) present in both shapes. |
-| `read` | `false` | `false` | |
-| `priority` | `?? 50` | `50` | |
-| email fields | `lowercase_email`, `original_email`, `is_valid_email`, `error_email`, `text`, `send_email`, `email_result`, `cc_emails`, `files`, `send_email_timestamp`, `test_skip_email_send` | **dropped** | No email in the demo. |
+| Field                  | Production value                                                                                                                                                                 | Demo routine                          | Notes                                                                                                                                                                                                                              |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `_id`                  | `uuid()` string                                                                                                                                                                  | `$function` UUID per doc              | See decision below.                                                                                                                                                                                                                |
+| `key`                  | `recordId:contactId:timestamp` dedup key                                                                                                                                         | same, via `$concat`                   | Field written; no dedup lookup (see decision).                                                                                                                                                                                     |
+| `popup`                | template `popup` ?? `false`                                                                                                                                                      | `false`                               | Demo has no popup surface.                                                                                                                                                                                                         |
+| `contact_id`           | `contact._id` from template pipeline                                                                                                                                             | derived per branch                    |                                                                                                                                                                                                                                    |
+| `title`, `description` | nunjucks-rendered template strings                                                                                                                                               | built in-pipeline (`$concat`/`$cond`) |                                                                                                                                                                                                                                    |
+| `body`                 | rendered email HTML                                                                                                                                                              | small static HTML string              | Rendered by the inbox view panel.                                                                                                                                                                                                  |
+| `content`              | rendered in-app JSX content                                                                                                                                                      | **dropped**                           | No consumer in the module.                                                                                                                                                                                                         |
+| `links`                | object; non-string entries rewritten to link-page URLs                                                                                                                           | `{ button: { pageId, urlQuery } }`    | The module's link page consumes the structured form directly.                                                                                                                                                                      |
+| `type`                 | template name                                                                                                                                                                    | `quote-approved` / `user-invite`      |                                                                                                                                                                                                                                    |
+| `event_type`           | template event_type                                                                                                                                                              | the event doc's `type`                |                                                                                                                                                                                                                                    |
+| `event_id`             | source event `_id`                                                                                                                                                               | same                                  |                                                                                                                                                                                                                                    |
+| `created`              | `{ timestamp, app_name, service_name }`                                                                                                                                          | events-module `change_stamp`          | Deviation: carries `user` + `version` instead of `service_name` — strictly more audit info, and satisfies the repo's change-stamp-on-writes rule. `timestamp` + `app_name` (what the surfaces `$match` on) present in both shapes. |
+| `read`                 | `false`                                                                                                                                                                          | `false`                               |                                                                                                                                                                                                                                    |
+| `priority`             | `?? 50`                                                                                                                                                                          | `50`                                  |                                                                                                                                                                                                                                    |
+| email fields           | `lowercase_email`, `original_email`, `is_valid_email`, `error_email`, `text`, `send_email`, `email_result`, `cc_emails`, `files`, `send_email_timestamp`, `test_skip_email_send` | **dropped**                           | No email in the demo.                                                                                                                                                                                                              |
 
 ## Routine shape
 
@@ -62,7 +62,7 @@ Two `MongoDBAggregation` steps on the events module's collection (`_module.conne
 $merge:
   into: notifications
   on: _id
-  whenMatched: keepExisting   # uuids never collide; defensive
+  whenMatched: keepExisting # uuids never collide; defensive
   whenNotMatched: insert
 ```
 
@@ -146,14 +146,14 @@ global:
 
 ## Files changed
 
-| File | Change |
-| --- | --- |
-| `apps/demo/modules/notifications/send-routine.yaml` | Rewrite: two `$merge`-terminated aggregation branches; delete the `AxiosHttp` remnant. |
-| `apps/demo/modules/notifications/vars.yaml` | Uncomment the `send_routine` ref. |
-| `apps/demo/lowdefy.yaml` | Add the `global.enums.event_types` block. |
-| `apps/demo/modules/events/event_types.yaml` | Add the `action-approve` entry (invite entries already composed in). |
-| `designs/workflows-module/parts/45-demo-rebuild/tasks/06-notifications-send-routine.md` | Reduce to a stub pointing here. |
-| `designs/workflows-module/parts/45-demo-rebuild/design.md` | Annotate item 9: superseded by this design. |
+| File                                                                                    | Change                                                                                 |
+| --------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| `apps/demo/modules/notifications/send-routine.yaml`                                     | Rewrite: two `$merge`-terminated aggregation branches; delete the `AxiosHttp` remnant. |
+| `apps/demo/modules/notifications/vars.yaml`                                             | Uncomment the `send_routine` ref.                                                      |
+| `apps/demo/lowdefy.yaml`                                                                | Add the `global.enums.event_types` block.                                              |
+| `apps/demo/modules/events/event_types.yaml`                                             | Add the `action-approve` entry (invite entries already composed in).                   |
+| `designs/workflows-module/parts/45-demo-rebuild/tasks/06-notifications-send-routine.md` | Reduce to a stub pointing here.                                                        |
+| `designs/workflows-module/parts/45-demo-rebuild/design.md`                              | Annotate item 9: superseded by this design.                                            |
 
 ## Acceptance criteria
 

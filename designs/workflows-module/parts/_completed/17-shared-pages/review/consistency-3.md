@@ -21,11 +21,13 @@ Third consistency pass after the breadcrumb-label update (`"<title> <entity_id>"
 **Files affected:** `design.md` § Reused module-shipped requests (the workflow-overview bullet); `tasks/tasks.md` § Out-of-scope (the entity-fetch bullet); `design.md` § Out of scope / deferred (no entry for the entity-fetch deferral at all).
 
 **Before:**
+
 - Design line 61: "revisit if real apps need richer breadcrumb labels than the static `title` from the enum."
 - tasks.md line 50: "Revisit in v1.x if richer breadcrumb labels are needed."
 - Design § Out of scope: had no entry for entity-fetch deferral at all (entry existed only in `entities module var § Forward compatibility` and in tasks.md's Out-of-scope).
 
 **Resolution:**
+
 - Design § Out of scope: added a bullet "Entity-doc fetch + richer back-link labels → part 26" with the v1 label contract and a one-sentence summary of what part 26 owns. Mirrors the pattern other deferred items use ("→ [part N]").
 - Design line 61: replaced "revisit if real apps need richer breadcrumb labels" with "the richer-label path lives in [part 26]". Direct cross-link.
 - tasks.md line 50: replaced "Revisit in v1.x..." with "The richer-label path ... is owned by [part 26] — separate design, separate review cycle." Mirrors the design wording.

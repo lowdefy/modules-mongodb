@@ -1,4 +1,4 @@
-import { WorkflowEngineError } from '../errors.js';
+import { WorkflowEngineError } from "../errors.js";
 
 /**
  * Surface post-commit dispatch failures, last (design D9/D13).
@@ -39,12 +39,12 @@ function throwIfDispatchFailed({ handlerName, commitResult, cascade }) {
   }
 
   const failedSteps = dispatchErrors.map((e) => `step ${e.step}`);
-  const failedCascades = cascadeErrors.length > 0 ? ['tracker cascade'] : [];
-  const named = [...failedSteps, ...failedCascades].join(', ');
+  const failedCascades = cascadeErrors.length > 0 ? ["tracker cascade"] : [];
+  const named = [...failedSteps, ...failedCascades].join(", ");
   const cause = dispatchErrors[0]?.error ?? cascadeErrors[0]?.error;
   throw new WorkflowEngineError(
     `${handlerName}: the workflow + action writes committed successfully, but post-commit dispatch failed (${named}). The committed state is durable; the failed dispatch(es) must be reconciled.`,
-    { code: 'post_commit_dispatch_failed', cause },
+    { code: "post_commit_dispatch_failed", cause },
   );
 }
 

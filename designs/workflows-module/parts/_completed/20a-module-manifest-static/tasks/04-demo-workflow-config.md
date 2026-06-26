@@ -10,6 +10,7 @@ The demo has two workflows:
 - **Child — `installation`.** One `kind: task` action ("installation step") on the same entity. This is the spec's documented "minimal workflow shim" (action-authoring/spec.md:489). The child workflow's lifecycle is driven by direct `close-workflow` / `cancel-workflow` calls from the demo's lead-view buttons (task 7) — the child's `task-*` pages are intentionally NOT rendered in the demo UI in this part (see design § "Child workflow rendering — skipped in 20a").
 
 The workflow YAML schema is owned by [part 4](../../04-workflow-config-schema/design.md)'s `makeWorkflowsConfig`. Action authoring contract: `designs/workflows-module-concept/action-authoring/spec.md`. The action_groups state machine lives in [part 7](../../07-group-state-machine/design.md). Notes from the action-authoring spec:
+
 - Every workflow needs `starting_actions`.
 - `kind: tracker` requires `tracker:` block with `workflow_type` (line 99).
 - `key:` and `tracker:` are mutually exclusive (line 354).
@@ -89,7 +90,7 @@ For step 2 and step 3, add at the top:
 
 ```yaml
 blocked_by:
-  - type: track-step-1   # for step 2; track-step-2 for step 3
+  - type: track-step-1 # for step 2; track-step-2 for step 3
 ```
 
 ### `apps/demo/workflow_config/installation/installation.yaml`

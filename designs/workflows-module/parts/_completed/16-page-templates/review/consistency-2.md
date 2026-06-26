@@ -51,7 +51,7 @@ Part 16 has **no parallel gate** on form-action edit / review / error templates.
 - **Task pages lack a stale-URL guard.** The design's "Stale-URL redirect guards" table is explicit: task pages don't have one. Task pages render for any action status. So part 17 needs the explicit `required_after_close` gate to surface the closed-workflow state; part 16 doesn't need it because the status-based redirect handles it.
 - **Action with `required_after_close: true` on a closed workflow** — the action's own status stays in a writable stage (`action-required` / `in-progress` / `changes-required`), so part 16's edit template renders normally. That's the intended behavior of `required_after_close`. No banner needed.
 
-If form-action pages later need a banner UX (e.g. to *inform* the user the workflow is closed even when the action remains writable), that's an additive expansion to part 16's design — not a fix for a drift.
+If form-action pages later need a banner UX (e.g. to _inform_ the user the workflow is closed even when the action remains writable), that's an additive expansion to part 16's design — not a fix for a drift.
 
 ### Comment-payload contract is intact across all tasks
 

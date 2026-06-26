@@ -16,11 +16,11 @@ foot-guns where the easy thing an agent reaches for is wrong:
    (`[ConfigError] NEXTAUTH_SECRET environment variable is not set`) that says
    nothing about the agent's change. The agent then reaches for an inline dummy
    secret, which trips a permission prompt → stuck.
-   *(Fixed in this repo: `apps/demo` `ldf:b` now supplies a build-only
+   _(Fixed in this repo: `apps/demo` `ldf:b` now supplies a build-only
    `NEXTAUTH_SECRET` placeholder. The skills must still handle the case for
-   other repos / when the gate reappears.)*
+   other repos / when the gate reappears.)_
 2. **Long-running servers run in the foreground.** `lowdefy dev` / `lowdefy
-   start` / `pnpm e2e` never exit; a plain foreground Bash call blocks until
+start` / `pnpm e2e` never exit; a plain foreground Bash call blocks until
    timeout and looks like a hang.
 3. **Infisical (`:i`) variants can't run in the sandbox.** They fetch secrets
    from `app.infisical.com`, which the sandbox network blocks (TLS rejected).
@@ -50,11 +50,11 @@ in Step 4. These three failure classes are **not YAML-fixable** — the skill mu
 detect them and **stop with a clear message** instead of consuming its 3-fix
 budget or letting the caller re-loop:
 
-| Detect in build output | Action |
-|---|---|
-| `NEXTAUTH_SECRET` (or any `… environment variable is not set` / missing-secret) | STOP. Report: build blocked by an **env gate**, not a config error. Tell the user the build needs `NEXTAUTH_SECRET` (and any other named var) in the environment. Do **not** invent or inline a value. Suggest the repo expose a build-only placeholder in its `ldf:b` script. |
-| `infisical`, `app.infisical.com`, `tls: failed to verify certificate`, `x509`, connection refused/timeout to a non-npm host | STOP. Report: build blocked by **sandbox network / Infisical**, not a config error. Do not retry. Suggest plain `ldf:b` (no `:i`) or allowlisting the host. |
-| `<<<<<<<`, `=======`, `>>>>>>>` in a config file / "Implicit keys need to be on a single line" near a conflict marker | STOP. Report: **unresolved merge conflict** in `{file}`. The build cannot parse until conflicts are resolved. Do not attempt YAML fixes. |
+| Detect in build output                                                                                                      | Action                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `NEXTAUTH_SECRET` (or any `… environment variable is not set` / missing-secret)                                             | STOP. Report: build blocked by an **env gate**, not a config error. Tell the user the build needs `NEXTAUTH_SECRET` (and any other named var) in the environment. Do **not** invent or inline a value. Suggest the repo expose a build-only placeholder in its `ldf:b` script. |
+| `infisical`, `app.infisical.com`, `tls: failed to verify certificate`, `x509`, connection refused/timeout to a non-npm host | STOP. Report: build blocked by **sandbox network / Infisical**, not a config error. Do not retry. Suggest plain `ldf:b` (no `:i`) or allowlisting the host.                                                                                                                    |
+| `<<<<<<<`, `=======`, `>>>>>>>` in a config file / "Implicit keys need to be on a single line" near a conflict marker       | STOP. Report: **unresolved merge conflict** in `{file}`. The build cannot parse until conflicts are resolved. Do not attempt YAML fixes.                                                                                                                                       |
 
 Each stop must clearly state "this is not something this skill can fix" so the
 controller (design-implement) does not re-dispatch.
@@ -62,12 +62,14 @@ controller (design-implement) does not re-dispatch.
 ### Change 1b — State the loop bound explicitly
 
 The skill already caps at 3 fix-types/run, but add to **Error Handling**:
+
 > Never re-run the build more than once per fix batch. If the same error
 > survives a fix attempt unchanged, stop and surface it — do not keep looping.
 
 ### Change 1c — Never run servers
 
 Add to **Best Practices** / **Notes**:
+
 > Only ever run `pnpm ldf:b` (or the project's build script). **Never** run
 > `lowdefy dev`, `lowdefy start`, `pnpm ldf`, `pnpm ldf:d`, or `pnpm e2e` — these
 > are long-running servers that never exit and will hang the agent.
@@ -89,7 +91,7 @@ Lowdefy app.
   to `` `pnpm ldf:b` (app build) via `fix-lowdefy-build` ``.
 - **Line 138** (Build gate step 6): make explicit the build command is the
   app's `ldf:b` (e.g. `pnpm --filter <app> ldf:b` or `cd apps/<app> && pnpm
-  ldf:b`), discovered from the app `package.json` — **not** root `pnpm build`.
+ldf:b`), discovered from the app `package.json` — **not** root `pnpm build`.
 - **Line 153** (Phase 4 final build): same — final build is `pnpm ldf:b`, not
   `pnpm build`.
 - **Line 261** (example narration): change "`pnpm build` green" to
@@ -99,6 +101,7 @@ Lowdefy app.
 
 In step 6 (Build gate), after "run the `r:fix-lowdefy-build` loop … until
 green", add:
+
 > If `fix-lowdefy-build` reports a **non-fixable** failure (env gate such as
 > `NEXTAUTH_SECRET`, Infisical/sandbox network, or unresolved merge conflict),
 > **stop the loop and surface to the user** — do not re-dispatch fix subagents.
@@ -119,7 +122,7 @@ build (`ldf:b`)** so it's unambiguous that the controller owns `ldf:b`, not the
 File: `skills/design-task/SKILL.md`
 
 The task template (Acceptance Criteria / Files sections, ~line 151) does not
-prescribe build/run commands — but task *authors* write verification steps like
+prescribe build/run commands — but task _authors_ write verification steps like
 "Start the demo (`pnpm ldf:dev`) and exercise …" (see this repo's
 `designs/app-operator/tasks/14-verify-build-and-tests.md`). Two problems: that
 script name doesn't exist, and it's a foreground server that hangs an agent.
@@ -142,10 +145,10 @@ testability" guideline near line 182):
 After applying, the definitive check (on a **clean** tree — no merge conflicts):
 
 1. `cd apps/demo && pnpm ldf:b` succeeds with no env gate (placeholder clears
-   `NEXTAUTH_SECRET`). If a *second* env gate surfaces, add it to the same
+   `NEXTAUTH_SECRET`). If a _second_ env gate surfaces, add it to the same
    inline default in `apps/demo/package.json` and note it here.
 2. Feed `fix-lowdefy-build` a build output containing `NEXTAUTH_SECRET … not
-   set` / an Infisical TLS error / a `<<<<<<<` marker → it should **stop and
+set` / an Infisical TLS error / a `<<<<<<<` marker → it should **stop and
    report**, not loop or attempt YAML edits.
 3. `design-implement`'s build gate runs `pnpm ldf:b` (app build), and stops the
    loop on a non-fixable failure rather than re-dispatching.

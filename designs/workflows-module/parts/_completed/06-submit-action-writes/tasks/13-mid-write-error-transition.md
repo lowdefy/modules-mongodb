@@ -22,7 +22,7 @@ Modify `handleSubmit.js` to wrap steps 4–6 in a try/catch.
 ### Shape
 
 ```js
-import updateAction from '../../shared/updateAction.js';
+import updateAction from "../../shared/updateAction.js";
 // ...
 
 // (Steps 1, 2, 3 stay outside the try — pre-lookup failures throw per task 8's spec.)
@@ -32,10 +32,8 @@ let errorTransition = null;
 try {
   // Step 4 — Write action transitions.
   // (existing body from task 10)
-
   // Step 5 — Recompute workflow summary.
   // (existing body from task 11)
-
   // Step 6 — Write form_data.
   // (existing body from task 12)
 } catch (err) {
@@ -43,14 +41,14 @@ try {
   // Per engine/spec.md § Action `error` transition: bypasses priority rule;
   // skips remaining lifecycle work; returns partial.
   errorTransition = {
-    reason: err.step ?? 'mid-write',
+    reason: err.step ?? "mid-write",
     error_message: err.message,
     error_metadata: err.metadata ?? null,
   };
 
   await updateAction(context, {
     actionId: internal.currentActionId,
-    newStage: 'error',
+    newStage: "error",
     fields: {}, // form_data is not touched on error transitions.
     eventId: context.eventId,
     currentActionId: null,

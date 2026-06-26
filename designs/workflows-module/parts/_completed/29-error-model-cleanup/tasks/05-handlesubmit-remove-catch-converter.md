@@ -23,14 +23,15 @@ The four per-step annotate-and-rethrow blocks (`try { ... } catch (err) { err.st
 - **Update the success return shape** at the end of the function (lines 366-373). Drop `pre_hook_response: null` and `post_hook_response: null` from the placeholder return — keep `pre_hook_response` and `post_hook_response` as field names, but they should land here populated from the pre-hook and post-hook invocations once Part 9 wires them. For now, while Part 9 is unshipped on this branch, the literal `null` placeholders may stay (no behavioural change); just ensure there is no `error_transition` field on any return path.
 
   After the edit, the only return statement in `handleSubmit` should be the success-path return:
+
   ```js
   return {
     action_ids: actionIds,
     completed_groups: completedGroups,
     event_id: eventId,
     tracker_fired: trackerFired,
-    pre_hook_response: null,   // populated by Part 9
-    post_hook_response: null,  // populated by Part 9
+    pre_hook_response: null, // populated by Part 9
+    post_hook_response: null, // populated by Part 9
   };
   ```
 
@@ -46,9 +47,11 @@ Rewrite the two existing failing-step tests in place. Do **not** add new tests i
   - Delete the `result.error_transition` assertions (lines 808-810) and the `result.action_ids` assertion (line 811).
   - Replace lines 815-818 with assertions on the action doc:
     ```js
-    const doc = await mongo.db.collection("actions").findOne({ _id: "a-quote" });
-    expect(doc.status[0].stage).toBe("in-review");      // step 4's transition
-    expect(doc.status).toHaveLength(2);                  // in-review + original action-required; no error layered
+    const doc = await mongo.db
+      .collection("actions")
+      .findOne({ _id: "a-quote" });
+    expect(doc.status[0].stage).toBe("in-review"); // step 4's transition
+    expect(doc.status).toHaveLength(2); // in-review + original action-required; no error layered
     ```
 
 - **Lines 821-869** (`handleSubmit task 13: step 6 throws → action_ids still set; summary write durable; error layered on action`):
@@ -58,7 +61,9 @@ Rewrite the two existing failing-step tests in place. Do **not** add new tests i
   - Keep the `wf.summary` assertion on line 864 — that's the proof the partial-write story holds.
   - Replace lines 867-869 with:
     ```js
-    const doc = await mongo.db.collection("actions").findOne({ _id: "a-quote" });
+    const doc = await mongo.db
+      .collection("actions")
+      .findOne({ _id: "a-quote" });
     expect(doc.status[0].stage).toBe("in-review");
     expect(doc.status).toHaveLength(2);
     ```
@@ -78,6 +83,6 @@ Rewrite the two existing failing-step tests in place. Do **not** add new tests i
 ## Notes
 
 - This task depends on Task 4 (types cleanup) — Task 4 removes the JSDoc surface that promises `error_transition`; Task 5 removes the runtime code that produces it. Land them in order.
-- Do **not** touch `shared/updateAction.js` — Part 29 keeps the `force: true` per-doc surface (still used by tracker subscription and `StartWorkflow`). Only one *caller* of `updateAction(..., force: true)` goes away (the catch-converter in `handleSubmit.js`).
+- Do **not** touch `shared/updateAction.js` — Part 29 keeps the `force: true` per-doc surface (still used by tracker subscription and `StartWorkflow`). Only one _caller_ of `updateAction(..., force: true)` goes away (the catch-converter in `handleSubmit.js`).
 - Do **not** touch `enums/action_statuses.yaml` — the priority table is unchanged.
 - The four per-step annotate-and-rethrow blocks are **deleted**, not preserved (see Task above). Bare propagation preserves the original error object identically — including `isLowdefyError` for resolver pass-through — and the lifecycle step is recoverable from the stack frame. The `err.step` annotation has no consumer once the catch-converter is gone, and aligning with D6's "engine catches nothing" rule keeps the handler's failure posture uniform.

@@ -26,18 +26,18 @@ docs/
 ```yaml
 ---
 title: Signals vs Status
-module: workflows        # module name, or `plugins` / `shared` / `root`
-type: concept            # index | concept | how-to | reference | shared
-concepts: [signals, fsm, status]   # optional string[]
+module: workflows # module name, or `plugins` / `shared` / `root`
+type: concept # index | concept | how-to | reference | shared
+concepts: [signals, fsm, status] # optional string[]
 ---
 ```
 
-| Field      | Required | Values                                               |
-| ---------- | -------- | ---------------------------------------------------- |
-| `title`    | yes      | string                                               |
-| `module`   | yes      | module name, or `plugins` / `shared` / `root`        |
+| Field      | Required | Values                                                      |
+| ---------- | -------- | ----------------------------------------------------------- |
+| `title`    | yes      | string                                                      |
+| `module`   | yes      | module name, or `plugins` / `shared` / `root`               |
 | `type`     | yes      | `index` \| `concept` \| `how-to` \| `reference` \| `shared` |
-| `concepts` | no       | string[]                                             |
+| `concepts` | no       | string[]                                                    |
 
 Document this schema in a short `docs/CONTRIBUTING.md` (or a clearly-marked section near the top of `docs/index.md`) so authors and the linter share one definition. The full CLAUDE.md write-up of the doc layout happens in Task 12 — here, just record the front-matter contract where the generators and authors can find it.
 

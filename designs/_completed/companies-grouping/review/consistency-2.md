@@ -7,9 +7,11 @@ Scanned `design.md` for internal contradictions and verified each resolution ann
 ## Files Reviewed
 
 **Design:**
+
 - `designs/companies-grouping/design.md`
 
 **Reviews:**
+
 - `designs/companies-grouping/review/review-1.md` (all 9 findings annotated as Resolved)
 
 **Tasks / plans:** none yet.

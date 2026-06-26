@@ -68,7 +68,13 @@ function planChangeLog({
   }
 
   const meta = connection.changeLog.meta;
-  const { blockId, connectionId, pageId, requestId, request: payload } = lowdefyContext ?? {};
+  const {
+    blockId,
+    connectionId,
+    pageId,
+    requestId,
+    request: payload,
+  } = lowdefyContext ?? {};
 
   const sharedFields = {
     payload,
@@ -88,9 +94,9 @@ function planChangeLog({
   for (const planEntry of allPlanEntries) {
     const { doc, operation, changeLog } = planEntry;
 
-    if (operation === 'insert') {
+    if (operation === "insert") {
       entries.push({
-        type: 'MongoDBInsertOne',
+        type: "MongoDBInsertOne",
         args: { doc },
         response: { acknowledged: true, insertedId: doc._id },
         ...sharedFields,
@@ -98,7 +104,7 @@ function planChangeLog({
     } else {
       // operation === 'update'
       entries.push({
-        type: 'MongoDBUpdateOne',
+        type: "MongoDBUpdateOne",
         args: {
           filter: { _id: doc._id },
           update: { $set: doc },

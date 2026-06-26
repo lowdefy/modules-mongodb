@@ -16,6 +16,7 @@ The helper uses the same `renderTree` walker (Task 1) and `parseNunjucks` helper
 | `status_after`  | new stage                                                                        |
 
 Important specifics from D14:
+
 - The binding is named `action`, not the idiom's generic `target` — workflows-module nomenclature wins inside this module.
 - `action` is the **post-write** doc (events describe what just happened). Different from action-display's pre-write context (D10).
 - Action metadata is reachable via `action.metadata.*` — there's intentionally no top-level `metadata` binding (would collide with the event-payload `metadata` field that `dispatchLogEvent` writes onto each event doc).
@@ -31,10 +32,12 @@ renderEventDisplay({ eventPayload, user, action, workflow, interaction, statusBe
 ```
 
 Implementation:
+
 1. Build `ctx = { user, action, workflow, interaction, status_before: statusBefore, status_after: statusAfter }`.
 2. Return a new event payload identical to the input but with `display: renderTree(eventPayload.display, ctx)`. Fields outside `display` (e.g. `metadata`, `type`, `key`) are passed through unchanged — they are not templates.
 
 Add `renderEventDisplay.test.js` covering:
+
 - Plain Nunjucks string in `display.app-a.title` renders against `{{ user.profile.name }}`.
 - Nested per-app keys (`display.app-a.title`, `display.app-b.title`) render independently.
 - `action` exposes action-doc fields — assert `{{ action.key }}`, `{{ action.assignees[0].name }}`, `{{ action.metadata.physical_id }}` resolve to the post-write values.

@@ -93,8 +93,12 @@ But [`StartWorkflow.js:117-128`](../../../../plugins/modules-mongodb-plugins/src
 ```js
 await updateAction(context, {
   actionId: payload.parent_action_id,
-  newStage: 'in-progress',
-  fields: { child_workflow_id: workflowDoc._id, child_entity_id, child_entity_collection },
+  newStage: "in-progress",
+  fields: {
+    child_workflow_id: workflowDoc._id,
+    child_entity_id,
+    child_entity_collection,
+  },
   eventId: null,
   force: true,
 });
@@ -118,7 +122,7 @@ Per D11, `updateAction` now invokes `renderStatusMap` + `computeEngineLinks` + `
 
 That's true for the parent tracker's `updateAction` push. But `fireTrackerSubscription` doesn't dispatch a log event for the parent push, so the workflow-staleness from finding 1 doesn't bite here. Confirmed by reading [`fireTrackerSubscription.js:64-71`](../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/fireTrackerSubscription.js) (no `dispatchLogEvent` call).
 
-What *does* exercise the staleness: the recursive submit's own `dispatchLogEvent` on the original action runs **after** `fireTrackerSubscription` returns (handleSubmit.js step 10, lines 342-349, runs after step 7's dispatch — so chronologically the child event dispatches first). But if a future part adds a "tracker advanced" event dispatched from inside `fireTrackerSubscription`, the same `recomputeResult.workflow` staleness applies. Mentioning this as a forward-looking note, not a blocker for Part 30.
+What _does_ exercise the staleness: the recursive submit's own `dispatchLogEvent` on the original action runs **after** `fireTrackerSubscription` returns (handleSubmit.js step 10, lines 342-349, runs after step 7's dispatch — so chronologically the child event dispatches first). But if a future part adds a "tracker advanced" event dispatched from inside `fireTrackerSubscription`, the same `recomputeResult.workflow` staleness applies. Mentioning this as a forward-looking note, not a blocker for Part 30.
 
 **No fix needed for Part 30**, but file an explicit note next to finding 1's resolution: "any future engine path that dispatches a log event after `recomputeWorkflowAfterActionWrite` must apply the same workflow-refresh."
 

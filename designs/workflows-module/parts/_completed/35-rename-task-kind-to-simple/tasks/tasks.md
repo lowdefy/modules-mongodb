@@ -6,12 +6,12 @@ These tasks implement Part 35: a pure vocabulary swap renaming the workflow-acti
 
 ## Tasks
 
-| #   | File                                    | Summary                                                                                  | Depends On |
-| --- | --------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-rename-kind-in-shipped-code.md`     | Flip `kind: "task"` → `"simple"` in resolvers, plugin types, and their unit tests        | —          |
-| 2   | `02-rename-shared-pages-and-manifest.md` | Rename the three shared page files, flip inner page IDs, update manifest + README + universal-fields header | —          |
-| 3   | `03-update-demo-workflow-config.md`     | Flip `kind: task` → `simple` and `task-edit` → `simple-edit` references in the two demo workflow_config files | 1, 2       |
-| 4   | `04-update-active-follow-on-parts.md`   | Flip `kind: task` and `task-*` page IDs across active follow-on parts 22, 24, 28, 33, 34 design.md (Part 30 excluded — superseded by Part 38) | —          |
+| #   | File                                     | Summary                                                                                                                                       | Depends On |
+| --- | ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-rename-kind-in-shipped-code.md`      | Flip `kind: "task"` → `"simple"` in resolvers, plugin types, and their unit tests                                                             | —          |
+| 2   | `02-rename-shared-pages-and-manifest.md` | Rename the three shared page files, flip inner page IDs, update manifest + README + universal-fields header                                   | —          |
+| 3   | `03-update-demo-workflow-config.md`      | Flip `kind: task` → `simple` and `task-edit` → `simple-edit` references in the two demo workflow_config files                                 | 1, 2       |
+| 4   | `04-update-active-follow-on-parts.md`    | Flip `kind: task` and `task-*` page IDs across active follow-on parts 22, 24, 28, 33, 34 design.md (Part 30 excluded — superseded by Part 38) | —          |
 
 ## Ordering Rationale
 

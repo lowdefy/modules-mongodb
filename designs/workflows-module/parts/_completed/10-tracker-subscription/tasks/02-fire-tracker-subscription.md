@@ -60,7 +60,10 @@ const MAX_DEPTH = 10;
  *   The fire chain — newest at index 0, empty array when no parent was written.
  *   One entry per level in the chain.
  */
-async function fireTrackerSubscription(context, { workflowId, newStage, depth = 0 }) {
+async function fireTrackerSubscription(
+  context,
+  { workflowId, newStage, depth = 0 },
+) {
   // ...
 }
 
@@ -70,6 +73,7 @@ export default fireTrackerSubscription;
 ### 2. Function body — implement the 7-step "Logic" sequence from the design.
 
 1. **Depth-limit guard.** If `depth >= MAX_DEPTH`, throw:
+
    ```js
    const err = new Error(
      `fireTrackerSubscription: depth limit (${MAX_DEPTH}) exceeded — possible cycle in workflow parent linking`,
@@ -79,6 +83,7 @@ export default fireTrackerSubscription;
    ```
 
 2. **Load the child workflow doc.** One-shot find with projection limited to `parent_action_id`:
+
    ```js
    const child = await context.mongoDBConnection("workflows").MongoDBFindOne({
      query: { _id: workflowId },
@@ -89,10 +94,15 @@ export default fireTrackerSubscription;
    ```
 
 3. **Load the parent tracker action.** Use the shipped helper [shared/getActionFields.js](../../../../plugins/modules-mongodb-plugins/src/connections/shared/getActionFields.js) (projects `_id`, `workflow_id`, `type`, `key`, `kind`, `status`, `entity_id`, `entity_collection`, `tracker`, `child_workflow_id`):
+
    ```js
-   const tracker = await getActionFields(context.mongoDBConnection, child.parent_action_id);
+   const tracker = await getActionFields(
+     context.mongoDBConnection,
+     child.parent_action_id,
+   );
    if (!tracker) return [];
    ```
+
    Add the import: `import getActionFields from "../../shared/getActionFields.js";`.
 
 4. **Apply the child-stage map.** Map `newStage` → `targetStage`. If `CHILD_STAGE_MAP[newStage]` is undefined, return `[]` (defensive — keeps the helper inert on stage values outside the table rather than throwing).
@@ -100,6 +110,7 @@ export default fireTrackerSubscription;
 5. **Same-stage guard.** Compare `tracker.status?.[0]?.stage` against `targetStage`. If equal, return `[]` — no write, no entry in the fire chain. Restates the same-stage guard the action priority rule would otherwise have provided (`force: true` bypasses the priority rule, so the helper must check directly). Mirrors `pushWorkflowStatus`'s posture for workflow-status writes.
 
 6. **Write the parent action.** Call `updateAction` with `force: true`. The shipped helper signature at [shared/updateAction.js:36–46](../../../../plugins/modules-mongodb-plugins/src/connections/shared/updateAction.js) takes the per-action shape:
+
    ```js
    await updateAction(context, {
      actionId: tracker._id,
@@ -110,9 +121,11 @@ export default fireTrackerSubscription;
      force: true,
    });
    ```
+
    `context.eventId` propagation: on the submit path this is the originating `SubmitWorkflowAction`'s eventId (threaded through every write in the invocation). On the cancel path it's `null` (task 4 calls this helper with `context.eventId = null` because `CancelWorkflow` doesn't generate an event in v1; see [part 8](../../08-side-effect-dispatch/design.md)). Don't synthesize a fresh id on the cancel path — `null` is the contract.
 
 7. **Run the parent workflow's recompute** via the helper from task 1:
+
    ```js
    const parentResult = await recomputeWorkflowAfterActionWrite(context, {
      workflowId: tracker.workflow_id,
@@ -120,6 +133,7 @@ export default fireTrackerSubscription;
    ```
 
 8. **Build this level's fire entry.** Per [engine spec § Schema](../../../workflows-module-concept/engine/spec.md#schema), the tracker action's own `workflow_id` is the parent workflow's id — exactly the `parent_workflow_id` callers expect:
+
    ```js
    const thisFire = {
      parent_action_id: tracker._id,

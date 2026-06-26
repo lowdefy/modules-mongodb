@@ -13,10 +13,10 @@ function substituteActionIdSentinel(node, actionId) {
   if (Array.isArray(node)) {
     return node.map((n) => substituteActionIdSentinel(n, actionId));
   }
-  if (node && typeof node === 'object') {
+  if (node && typeof node === "object") {
     const out = {};
     for (const [k, v] of Object.entries(node)) {
-      if (k === 'action_id' && v === true) {
+      if (k === "action_id" && v === true) {
         out[k] = actionId;
       } else {
         out[k] = substituteActionIdSentinel(v, actionId);

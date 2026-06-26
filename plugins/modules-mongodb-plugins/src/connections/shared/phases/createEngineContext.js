@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
+import { randomUUID } from "node:crypto";
 
-import getMongoDb from '../../mongo/getMongoDb.js';
+import getMongoDb from "../../mongo/getMongoDb.js";
 
 /**
  * Shared invocation-setup step (design D7/D8/D11; task 15).
@@ -53,7 +53,8 @@ async function createEngineContext(lowdefyContext) {
 
   const user = connection?.user;
 
-  const { mongoDb, mongoClient, useTransactions } = await getMongoDb(connection);
+  const { mongoDb, mongoClient, useTransactions } =
+    await getMongoDb(connection);
 
   return {
     mongoDb,

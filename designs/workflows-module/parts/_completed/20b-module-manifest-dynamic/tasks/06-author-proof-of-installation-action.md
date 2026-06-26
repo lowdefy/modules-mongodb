@@ -15,7 +15,7 @@ Create `apps/demo/modules/workflows/workflow_config/onboarding/proof-of-installa
 - `key: $device_serial` (symbolic placeholder).
 - `action_group: g3`
 - `sort_order: 10`
-- `blocked_by: [send-quote]` (won't unblock until the quote stage is `done`; spec § Instanced actions allows non-instanced → instanced refs, which unblock when *all* instances reach terminal status).
+- `blocked_by: [send-quote]` (won't unblock until the quote stage is `done`; spec § Instanced actions allows non-instanced → instanced refs, which unblock when _all_ instances reach terminal status).
 - `description: Capture proof of installation for each device.`
 - `access.demo: [edit, view]`, `access.roles: [admin]`.
 - `form:` block with at least one field — e.g. `text_input` `device_serial` (read-only display of the key) plus `file_upload` `installation_photo`. The `device_serial` field exists in `form` so the user can see which device they're working on; the value is also the key.

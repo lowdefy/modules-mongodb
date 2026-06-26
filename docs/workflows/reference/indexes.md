@@ -15,12 +15,12 @@ The module does not create indexes — index creation is a host-app concern. Hos
 
 Serves every workflow-stream read:
 
-| Query site | Operation |
-|---|---|
-| `get-workflow-overview` | `$lookup foreignField: workflow_id` on every workflow overview load |
-| `get-action-group-overview` | `$lookup foreignField: workflow_id` with sub-pipeline filter on `action_group` on every group overview load |
-| `get-entity-workflows` | `$lookup foreignField: workflow_id` once per workflow on every entity page render |
-| Engine load phase | `find({ workflow_id })` in every handler's load phase (submit, start, cancel, close, and each tracker-cascade level) |
+| Query site                  | Operation                                                                                                            |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `get-workflow-overview`     | `$lookup foreignField: workflow_id` on every workflow overview load                                                  |
+| `get-action-group-overview` | `$lookup foreignField: workflow_id` with sub-pipeline filter on `action_group` on every group overview load          |
+| `get-entity-workflows`      | `$lookup foreignField: workflow_id` once per workflow on every entity page render                                    |
+| Engine load phase           | `find({ workflow_id })` in every handler's load phase (submit, start, cancel, close, and each tracker-cascade level) |
 
 **Keep it non-partial.** The future tasks module writes `kind: task` adhoc docs with `workflow_id: null`. A non-partial index includes those null entries, costs nothing for workflow-stream queries (which all filter by a concrete workflow `_id`), and stays usable for future tasks-module queries that join on `workflow_id`. Do not "optimise" it into a partial index filtered on `workflow_id` existing — that would silently break tasks-module queries that share this index path.
 
@@ -30,8 +30,8 @@ Serves every workflow-stream read:
 
 Serves the entity workflow list:
 
-| Query site | Operation |
-|---|---|
+| Query site             | Operation                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `get-entity-workflows` | `$match: { entity_collection, entity_id }` then `$sort: { display_order: 1, created.timestamp: -1 }` on every entity page render |
 
 The compound index matches the equality prefix exactly. Per-entity workflow counts are small (single-digit rows in typical apps), so the post-match in-memory sort on `display_order` + `created.timestamp` is inexpensive.

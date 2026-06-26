@@ -31,18 +31,21 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflo
    - `parent.tracker.workflow_type === payload.workflow_type`. Throw `workflow_type does not match parent tracker.workflow_type` otherwise.
 
 4. **Populate the child workflow's parent back-references.** When building the workflow doc (task 4's step 5), if `parent_action_id` is set, set:
+
    ```js
    parent_action_id: payload.parent_action_id,
    parent_entity_id: parent.entity_id,
    parent_entity_collection: parent.entity_collection,
    ```
+
    These overwrite the `null` defaults task 4 set. Reference-key merge order is preserved: `payload.references` still spreads first, core fields including these three are assigned after.
 
 5. **Parent-side writes.** After inserting the workflow doc and action docs (task 4's steps 8–9), if `parent_action_id` is set, call:
+
    ```js
    await updateAction(context, {
      actionId: payload.parent_action_id,
-     newStage: 'in-progress',
+     newStage: "in-progress",
      fields: {
        child_workflow_id: workflowDoc._id,
        child_entity_id: workflowDoc.entity_id,
@@ -52,6 +55,7 @@ Modify `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/StartWorkflo
      force: true,
    });
    ```
+
    `force: true` is mandatory per design § Parent linking — engine-driven write, must land regardless of the parent's current status (e.g. an `in-review` parent at priority 4 would reject a default `in-progress` push at priority 5 without `force: true`).
 
 6. **No retry-safety logic.** Do not check whether the parent's `child_workflow_id` already matches the new workflow's `_id`. The half-linked failure mode is accepted per design.

@@ -19,7 +19,7 @@ In `planTrackerLevel.js`, pass the mirror override slice into the event dispatch
 const event = planEventDispatch({
   event_id,
   user: now?.user,
-  handlerType: 'tracker-mirror',
+  handlerType: "tracker-mirror",
   signal,
   plannedWorkflowDoc,
   plannedActionDoc: targetEntry.doc,

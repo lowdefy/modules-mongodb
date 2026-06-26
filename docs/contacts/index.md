@@ -12,12 +12,12 @@ User records (`apps.{app_name}.is_user === true`, managed by `user-admin` and `u
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
-| [layout](../layout/index.md) | Page wrapper |
-| [events](../events/index.md) | Audit logging and `change_stamp` |
+| Module                             | Why                                        |
+| ---------------------------------- | ------------------------------------------ |
+| [layout](../layout/index.md)       | Page wrapper                               |
+| [events](../events/index.md)       | Audit logging and `change_stamp`           |
 | [companies](../companies/index.md) | Company selector and bidirectional linking |
-| [files](../files/index.md) | Optional file-attachments sidebar tile |
+| [files](../files/index.md)         | Optional file-attachments sidebar tile     |
 
 Cross-module cycle: `companies ↔ contacts`. Both must be added as separate entries in `lowdefy.yaml`.
 

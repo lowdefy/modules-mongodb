@@ -6,13 +6,13 @@ Implements the optional `tracker.start_link` field: an author-declared navigatio
 
 ## Tasks
 
-| #   | File                                    | Summary                                                                                               | Depends On |
-| --- | --------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-start-link-config-validation.md`    | Validate `tracker.start_link` shape in `makeWorkflowsConfig` (proposed change 5) + tests              | —          |
-| 2   | `02-compute-engine-links-start-arm.md`  | Second tracker arm in `computeEngineLinks`: emit `links.edit = start_link` with sentinels substituted | —          |
-| 3   | `03-planner-tracker-refresh.md`         | `planActionTransition` refreshes `doc.tracker` (incl. `start_link`) on every plan; widen typedef      | 2          |
-| 4   | `04-resolve-action-link-tracker-test.md`| Tracker-row case in `resolve_action_link` read-side tests (creates the test file — none exists yet)   | 2          |
-| 5   | `05-docs-start-link.md`                 | Document `start_link` in `modules/workflows/README.md` + action-authoring concept docs (Decision 5)   | 1, 2, 3    |
+| #   | File                                     | Summary                                                                                               | Depends On |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-start-link-config-validation.md`     | Validate `tracker.start_link` shape in `makeWorkflowsConfig` (proposed change 5) + tests              | —          |
+| 2   | `02-compute-engine-links-start-arm.md`   | Second tracker arm in `computeEngineLinks`: emit `links.edit = start_link` with sentinels substituted | —          |
+| 3   | `03-planner-tracker-refresh.md`          | `planActionTransition` refreshes `doc.tracker` (incl. `start_link`) on every plan; widen typedef      | 2          |
+| 4   | `04-resolve-action-link-tracker-test.md` | Tracker-row case in `resolve_action_link` read-side tests (creates the test file — none exists yet)   | 2          |
+| 5   | `05-docs-start-link.md`                  | Document `start_link` in `modules/workflows/README.md` + action-authoring concept docs (Decision 5)   | 1, 2, 3    |
 
 ## Ordering Rationale
 

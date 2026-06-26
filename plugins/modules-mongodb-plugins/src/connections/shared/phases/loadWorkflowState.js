@@ -1,6 +1,6 @@
-import findDocs from '../../mongo/findDocs.js';
-import { WorkflowEngineError } from '../errors.js';
-import applyRenderConfig from './applyRenderConfig.js';
+import findDocs from "../../mongo/findDocs.js";
+import { WorkflowEngineError } from "../errors.js";
+import applyRenderConfig from "./applyRenderConfig.js";
 
 /**
  * The accepted verbs for each user signal (Part 34 D6 / design D16; arrays
@@ -15,12 +15,12 @@ import applyRenderConfig from './applyRenderConfig.js';
  * never rejected.
  */
 export const SIGNAL_VERBS = {
-  submit: ['edit'],
-  progress: ['edit'],
-  not_required: ['edit'],
-  resolve_error: ['error'],
-  approve: ['review'],
-  request_changes: ['view', 'edit', 'review'],
+  submit: ["edit"],
+  progress: ["edit"],
+  not_required: ["edit"],
+  resolve_error: ["error"],
+  approve: ["review"],
+  request_changes: ["view", "edit", "review"],
 };
 
 /**
@@ -110,10 +110,13 @@ export function gateAllows(gate, userRoles) {
  *   `workflow.updated.timestamp` is the CAS anchor the commit phase pins
  *   (design D15).
  */
-async function loadWorkflowState(context, { workflowId, actionId, signal, verb }) {
+async function loadWorkflowState(
+  context,
+  { workflowId, actionId, signal, verb },
+) {
   const { mongoDb, connection } = context;
-  const workflowsCollection = connection?.workflowsCollection ?? 'workflows';
-  const actionsCollection = connection?.actionsCollection ?? 'actions';
+  const workflowsCollection = connection?.workflowsCollection ?? "workflows";
+  const actionsCollection = connection?.actionsCollection ?? "actions";
   // Action-targeted modes: Submit (`signal`) and Fields (`verb`). They share
   // the read path; only the gating differs. `signal`/`verb` are mutually
   // exclusive — a transition and a signal-less operation can't both apply.
@@ -121,7 +124,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   if (signal != null && verb != null) {
     throw new WorkflowEngineError(
       `loadWorkflowState: signal "${signal}" and verb "${verb}" are mutually exclusive — Submit passes a signal, the signal-less fields operation passes a verb.`,
-      { code: 'invalid_load_args' },
+      { code: "invalid_load_args" },
     );
   }
   const isVerbMode = isActionMode && verb != null;
@@ -136,7 +139,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
     if (!targetActionDoc) {
       throw new WorkflowEngineError(
         `loadWorkflowState: action ${actionId} not found`,
-        { code: 'action_not_found' },
+        { code: "action_not_found" },
       );
     }
     workflowId = targetActionDoc.workflow_id;
@@ -150,7 +153,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   if (!workflow) {
     throw new WorkflowEngineError(
       `loadWorkflowState: workflow ${workflowId} not found`,
-      { code: 'workflow_not_found' },
+      { code: "workflow_not_found" },
     );
   }
 
@@ -166,7 +169,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   if (!workflowConfig) {
     throw new WorkflowEngineError(
       `loadWorkflowState: workflow_type "${workflow.workflow_type}" not in workflowsConfig`,
-      { code: 'workflow_not_found' },
+      { code: "workflow_not_found" },
     );
   }
 
@@ -189,7 +192,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   if (!targetAction) {
     throw new WorkflowEngineError(
       `loadWorkflowState: action ${actionId} not found on workflow ${workflowId}`,
-      { code: 'action_not_found' },
+      { code: "action_not_found" },
     );
   }
 
@@ -199,7 +202,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   if (!actionConfig) {
     throw new WorkflowEngineError(
       `loadWorkflowState: action type "${targetAction.type}" not in workflow "${workflow.workflow_type}" config`,
-      { code: 'action_not_found' },
+      { code: "action_not_found" },
     );
   }
 
@@ -215,7 +218,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
     if (!gateAllows(actionConfig.access?.[currentApp]?.[verb], userRoles)) {
       throw new WorkflowEngineError(
         `loadWorkflowState: access denied — verb "${verb}" is not granted on access.${currentApp} for action type "${targetAction.type}"`,
-        { code: 'access_denied' },
+        { code: "access_denied" },
       );
     }
     return { workflow, actions, workflowConfig, actionConfig, targetAction };
@@ -228,12 +231,12 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   // the task-17 handlers, not here.
   const workflowStage = workflow.status?.[0]?.stage;
   if (
-    (workflowStage === 'completed' || workflowStage === 'cancelled') &&
+    (workflowStage === "completed" || workflowStage === "cancelled") &&
     actionConfig.required_after_close !== true
   ) {
     throw new WorkflowEngineError(
       `loadWorkflowState: workflow ${workflow._id} is ${workflowStage}; action type "${targetAction.type}" does not have required_after_close: true`,
-      { code: 'stage_rejects_submit' },
+      { code: "stage_rejects_submit" },
     );
   }
 
@@ -244,7 +247,7 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   if (verbs === undefined) {
     throw new WorkflowEngineError(
       `loadWorkflowState: unknown signal "${signal}"`,
-      { code: 'unknown_signal' },
+      { code: "unknown_signal" },
     );
   }
   const allowed = verbs.some((signalVerb) =>
@@ -252,8 +255,8 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   );
   if (!allowed) {
     throw new WorkflowEngineError(
-      `loadWorkflowState: access denied — signal "${signal}" requires one of the ${verbs.map((signalVerb) => `"${signalVerb}"`).join('/')} verbs on access.${currentApp} for action type "${targetAction.type}"`,
-      { code: 'access_denied' },
+      `loadWorkflowState: access denied — signal "${signal}" requires one of the ${verbs.map((signalVerb) => `"${signalVerb}"`).join("/")} verbs on access.${currentApp} for action type "${targetAction.type}"`,
+      { code: "access_denied" },
     );
   }
 
@@ -262,10 +265,10 @@ async function loadWorkflowState(context, { workflowId, actionId, signal, verb }
   // permits `not_required` from many stages, so without this gate a
   // hand-crafted submission could mark any action not required even though
   // the button is hidden (`resolveButtons` ANDs the same flag).
-  if (signal === 'not_required' && actionConfig.allow_not_required !== true) {
+  if (signal === "not_required" && actionConfig.allow_not_required !== true) {
     throw new WorkflowEngineError(
       `loadWorkflowState: access denied — signal "not_required" requires allow_not_required: true on action type "${targetAction.type}"`,
-      { code: 'access_denied' },
+      { code: "access_denied" },
     );
   }
 

@@ -1,7 +1,7 @@
-import { test as ldfTest, expect } from '@lowdefy/e2e-utils/fixtures';
-import { mdbFixtures } from '@lowdefy/community-plugin-e2e-mdb/fixtures';
-import { mergeTests } from '@playwright/test';
-import { workflowTest } from './workflowFixture.js';
+import { test as ldfTest, expect } from "@lowdefy/e2e-utils/fixtures";
+import { mdbFixtures } from "@lowdefy/community-plugin-e2e-mdb/fixtures";
+import { mergeTests } from "@playwright/test";
+import { workflowTest } from "./workflowFixture.js";
 
 // ldf (navigation, block interaction, user sessions, request/api tracking)
 // + mdb (Mongo seed/snap/read) + the workflows-test-only `workflow` fixture

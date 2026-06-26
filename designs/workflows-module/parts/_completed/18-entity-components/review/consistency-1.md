@@ -7,15 +7,18 @@ Scanned design.md against review-1.md (14 findings, 13 resolved + 1 deferred) an
 ## Files Reviewed
 
 **Design:**
+
 - `design.md`
 
 **Reviews (chronological):**
+
 - `review/review-1.md` (14 findings)
 - `review/review-2.md` (3 findings — `ActionSteps`-based widget shape)
 
 **Supporting / tasks / plans:** none exist for this part. The design hasn't been broken into tasks yet.
 
 **Cross-design references verified to resolve:**
+
 - Part 4 → `parts/_completed/04-workflow-config-schema/design.md`
 - Part 12 → `parts/12-resolver-pages/design.md` (top-level, correct)
 - Part 16 → `parts/_completed/16-page-templates/design.md`

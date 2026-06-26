@@ -1,8 +1,8 @@
-import createEngineContext from '../../shared/phases/createEngineContext.js';
-import loadWorkflowState from '../../shared/phases/loadWorkflowState.js';
-import planFieldsUpdate from '../../shared/phases/planners/planFieldsUpdate.js';
-import commitPlan from '../../shared/phases/commitPlan.js';
-import throwIfDispatchFailed from '../../shared/phases/throwIfDispatchFailed.js';
+import createEngineContext from "../../shared/phases/createEngineContext.js";
+import loadWorkflowState from "../../shared/phases/loadWorkflowState.js";
+import planFieldsUpdate from "../../shared/phases/planners/planFieldsUpdate.js";
+import commitPlan from "../../shared/phases/commitPlan.js";
+import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js";
 
 /**
  * UpdateActionFields connection resolver (Part 24).
@@ -44,7 +44,7 @@ async function UpdateActionFields(lowdefyContext) {
   // ── Load (verb-gated, signal-less; no stage check — task 2) ──────────────
   const loadedState = await loadWorkflowState(context, {
     actionId: params.action_id,
-    verb: 'edit',
+    verb: "edit",
   });
   // commitPlan reads loadedState.workflow._id for the workflow-less plan's
   // CommitResult.workflow_id (task 3).
@@ -64,7 +64,7 @@ async function UpdateActionFields(lowdefyContext) {
 
   // ── Surface post-commit dispatch failures (no cascade for this op) ───────
   throwIfDispatchFailed({
-    handlerName: 'UpdateActionFields',
+    handlerName: "UpdateActionFields",
     commitResult,
     cascade: { dispatchErrors: [], cascadeErrors: [] },
   });

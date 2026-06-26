@@ -90,7 +90,7 @@ $addFields:
             - 0
       in: "$$done.created.timestamp"
   cancelled_at: # same shape as completed_at, cond: { $eq: ["$$this.stage", "cancelled"] }
-  opened_at:    # same shape, cond: { $eq: ["$$this.stage", "open"] } — most recent open, handles reopens
+  opened_at: # same shape, cond: { $eq: ["$$this.stage", "open"] } — most recent open, handles reopens
 ```
 
 Lives in `modules/activities/requests/stages/add_derived_fields.yaml` so list, selector, and detail all share one source of truth.
@@ -314,14 +314,14 @@ Consumers extend via the `activity_types` var.
 
 `modules/activities/enums/event_types.yaml`:
 
-| Event type          | When                                                                              |
-| ------------------- | --------------------------------------------------------------------------------- |
-| `create-activity`   | New activity inserted                                                             |
+| Event type          | When                                                                                         |
+| ------------------- | -------------------------------------------------------------------------------------------- |
+| `create-activity`   | New activity inserted                                                                        |
 | `update-activity`   | Activity's editable fields edited (title, description, contact_ids, company_ids, attributes) |
-| `complete-activity` | Status transitions to `done`                                                      |
-| `cancel-activity`   | Status transitions to `cancelled`                                                 |
-| `reopen-activity`   | Status transitions to `open` after being `done` or `cancelled`                    |
-| `delete-activity`   | Activity soft-deleted                                                             |
+| `complete-activity` | Status transitions to `done`                                                                 |
+| `cancel-activity`   | Status transitions to `cancelled`                                                            |
+| `reopen-activity`   | Status transitions to `open` after being `done` or `cancelled`                               |
+| `delete-activity`   | Activity soft-deleted                                                                        |
 
 Every emitted event carries `references: { contact_ids, company_ids, activity_ids: [self] }` so:
 
@@ -335,7 +335,7 @@ The `target` object is built at each emit site (mirroring `update-company.yaml:1
 ```yaml
 target:
   title: { _payload: title }
-  type:  { _payload: type }
+  type: { _payload: type }
   type_label:
     _get:
       from:
@@ -359,7 +359,7 @@ Same `target` shape used by every emitted event (`create-activity`, `update-acti
 
 **Activities is an optional dependency for companies and contacts.** Neither module declares `activities` in its manifest's `dependencies:`, neither ships a local `tile_activities.yaml`, neither embeds activities tiles in `view.yaml`. Apps that want activity tiles surfacing on companies/contacts wire them at app level via `components.sidebar_slots` overrides — same shape as how files-on-companies works today (companies declares `files` as a dep but doesn't bake `tile_files` into its view; apps that want files-on-companies slot the embed themselves; per `decisions.md` §4 we deleted the unused `tile_files.yaml` wrappers as part of this PR's `tile_files` consolidation).
 
-This is a deliberate departure from how events couples to companies/contacts (where `events` is a required dep and `tile_events.yaml` lives in each entity module). Sam's PR-32 review flagged the question: *"Do these modules get a dependancy on activities now? Do we want this to be optional? I'm not sure"* — and we agreed that not every consumer of companies/contacts is doing CRM. A company-directory app shouldn't have to ship activities just to use companies.
+This is a deliberate departure from how events couples to companies/contacts (where `events` is a required dep and `tile_events.yaml` lives in each entity module). Sam's PR-32 review flagged the question: _"Do these modules get a dependancy on activities now? Do we want this to be optional? I'm not sure"_ — and we agreed that not every consumer of companies/contacts is doing CRM. A company-directory app shouldn't have to ship activities just to use companies.
 
 **The activities module exports `tile_activities`** — a self-contained, parameterised tile (`layout.card` wrapping `activities-timeline` content + `capture_activity` in header buttons). Apps drop it into companies' / contacts' sidebar slots from their own config:
 
@@ -385,13 +385,13 @@ Same shape on the contacts side, swapping `company_ids` → `contact_ids`.
 
 `tile_activities` accepts:
 
-| Var | Default | Purpose |
-| --- | --- | --- |
-| `reference_field` | required | Which activity-link array to filter by — `contact_ids` / `company_ids` (and later `deal_ids`). |
-| `reference_value` | required | The entity ID to filter on. Typically `{ _url_query: _id }` for detail-page hosts. |
-| `title` | `Activity` | Card title. |
-| `prefill` | `{}` | Forwarded to the embedded `capture_activity`'s `prefill` var so logged activities pre-link to the host entity. |
-| `show_capture` | `true` | Set `false` to hide the header capture button (read-only sidebar tile). |
+| Var               | Default    | Purpose                                                                                                        |
+| ----------------- | ---------- | -------------------------------------------------------------------------------------------------------------- |
+| `reference_field` | required   | Which activity-link array to filter by — `contact_ids` / `company_ids` (and later `deal_ids`).                 |
+| `reference_value` | required   | The entity ID to filter on. Typically `{ _url_query: _id }` for detail-page hosts.                             |
+| `title`           | `Activity` | Card title.                                                                                                    |
+| `prefill`         | `{}`       | Forwarded to the embedded `capture_activity`'s `prefill` var so logged activities pre-link to the host entity. |
+| `show_capture`    | `true`     | Set `false` to hide the header capture button (read-only sidebar tile).                                        |
 
 `tile_activities` also auto-wires its own list-refetch as the embedded `capture_activity`'s `on_created`, so a freshly captured activity appears in the tile immediately without a page refresh.
 
@@ -673,7 +673,7 @@ Routine:
    filtered on `_id` and `updated.timestamp` (optimistic concurrency, same
    as the other writes).
 2. Emit `delete-activity` event with `references: { contact_ids,
-   company_ids, activity_ids: [_id] }` and `metadata: { activity_id }`.
+company_ids, activity_ids: [_id] }` and `metadata: { activity_id }`.
 3. Return `{ success: true }`.
 
 Dedicated single-purpose endpoint, mirroring the

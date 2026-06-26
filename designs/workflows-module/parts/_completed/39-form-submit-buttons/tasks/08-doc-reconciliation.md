@@ -38,7 +38,7 @@ This task is markdown-only. The relevant files:
 
 In `modules/workflows/README.md`, under the "Transition model (signals)" section (the template-button table at ~line 120 and the throw-on-incoherent-signal paragraph at ~line 130 are the anchors), document the **client-side visibility rules** for the template-shipped buttons. Each button renders iff **all three** hold:
 
-1. **Author opt-out** — `pages.{verb}.buttons.{name}.visible`, default `true`, except the opt-in buttons `not_required` (`edit`) and `request_changes` (`view`) which default `false`. Accepts a boolean **or any operator expression**; it AND-combines with the other two gates, so an author can only further *restrict* visibility — never show a button the FSM or role gate rejects.
+1. **Author opt-out** — `pages.{verb}.buttons.{name}.visible`, default `true`, except the opt-in buttons `not_required` (`edit`) and `request_changes` (`view`) which default `false`. Accepts a boolean **or any operator expression**; it AND-combines with the other two gates, so an author can only further _restrict_ visibility — never show a button the FSM or role gate rejects.
 2. **FSM source-stage** — the action's current stage is in the signal's source list (`enums/button_signal_sources.yaml`, derived from the engine FSM and guarded by a unit test). This is why a button disappears rather than throwing: the engine rejects user-driven signals with no FSM entry, and the page hides the button before that can happen.
 3. **Per-verb role gate** — `action_allowed.{verb}` for the page's own verb (`edit` page → `edit`, `review` → `review`, `error` → `error`, `view` → `view`), the bag `action_role_check` writes on mount.
 

@@ -6,21 +6,21 @@ Replace the `SubmitWorkflowAction` stub (shipped by part 3, still throws `Workfl
 
 ## Tasks
 
-| #   | File                                                        | Summary                                                                                                                                       | Depends On |
-| --- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-jest-harness-setup.md`                                  | Land Jest at repo root (devDeps + config + `inMemoryMongo.js` helper + `test` scripts). Rewrite the one `node:test` file to Jest.            | —          |
-| 2   | `02-utils-get-current-action.md`                            | `utils/getCurrentAction.js` — pure reader; fetches one action doc by id.                                                                       | 1          |
-| 3   | `03-utils-should-update.md`                                 | `utils/shouldUpdate.js` — priority rule + `currentActionId` self-exception + per-entry `force` bypass; pure function (no Mongo).               | 1          |
-| 4   | `04-utils-should-create.md`                                 | `utils/shouldCreate.js` — gate for pre-hook `upsert: true` entries; pure function (no Mongo).                                                  | 1          |
-| 5   | `05-extend-update-action.md`                                | Extend `shared/updateAction.js` in place: drop the `force !== true` guard; add priority-rule branch via `actionsEnum` + `shouldUpdate`.        | 2, 3       |
-| 6   | `06-compute-auto-unblocks.md`                               | `SubmitWorkflowAction/computeAutoUnblocks.js` — walk `blocked_by`, emit `{ type, status: 'action-required' }` entries for now-unblocked types. | 1          |
-| 7   | `07-handler-entry-and-scaffold.md`                          | Replace the `SubmitWorkflowAction.js` stub; build the engine context; wire `handleSubmit.js` with the 11-step scaffold and the return shape.    | 1          |
-| 8   | `08-step-1-validate-and-translate.md`                       | Step 1: payload schema, action lookup, role gate, terminal-workflow gate, interaction → status mapping, build internal `actions[]` shape.       | 5, 7       |
-| 9   | `09-step-3-auto-unblocks-wiring.md`                         | Step 3: call `computeAutoUnblocks`, merge entries into the internal `actions[]` before the write loop.                                          | 6, 8       |
-| 10  | `10-step-4-write-action-transitions.md`                     | Step 4: per-entry loop over `actions[]`, call extended `updateAction` per entry. Self-exception writes a fresh audit entry.                     | 5, 8, 9    |
-| 11  | `11-step-5-recompute-summary.md`                            | Step 5: load workflow actions, recompute `{ done, not_required, total }` counts, `$set` on the workflow doc.                                    | 10         |
-| 12  | `12-step-6-write-form-data.md`                              | Step 6: merge `form` + `form_review` into one flat bag, `$set` per-field at `form_data.{action_type}[.{key}].{field}` on the workflow doc.      | 10         |
-| 13  | `13-mid-write-error-transition.md`                          | Wrap steps 4–6 in a try/catch; on throw, force-push an `error` status entry onto the action and return partial.                                 | 10, 11, 12 |
+| #   | File                                    | Summary                                                                                                                                        | Depends On |
+| --- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-jest-harness-setup.md`              | Land Jest at repo root (devDeps + config + `inMemoryMongo.js` helper + `test` scripts). Rewrite the one `node:test` file to Jest.              | —          |
+| 2   | `02-utils-get-current-action.md`        | `utils/getCurrentAction.js` — pure reader; fetches one action doc by id.                                                                       | 1          |
+| 3   | `03-utils-should-update.md`             | `utils/shouldUpdate.js` — priority rule + `currentActionId` self-exception + per-entry `force` bypass; pure function (no Mongo).               | 1          |
+| 4   | `04-utils-should-create.md`             | `utils/shouldCreate.js` — gate for pre-hook `upsert: true` entries; pure function (no Mongo).                                                  | 1          |
+| 5   | `05-extend-update-action.md`            | Extend `shared/updateAction.js` in place: drop the `force !== true` guard; add priority-rule branch via `actionsEnum` + `shouldUpdate`.        | 2, 3       |
+| 6   | `06-compute-auto-unblocks.md`           | `SubmitWorkflowAction/computeAutoUnblocks.js` — walk `blocked_by`, emit `{ type, status: 'action-required' }` entries for now-unblocked types. | 1          |
+| 7   | `07-handler-entry-and-scaffold.md`      | Replace the `SubmitWorkflowAction.js` stub; build the engine context; wire `handleSubmit.js` with the 11-step scaffold and the return shape.   | 1          |
+| 8   | `08-step-1-validate-and-translate.md`   | Step 1: payload schema, action lookup, role gate, terminal-workflow gate, interaction → status mapping, build internal `actions[]` shape.      | 5, 7       |
+| 9   | `09-step-3-auto-unblocks-wiring.md`     | Step 3: call `computeAutoUnblocks`, merge entries into the internal `actions[]` before the write loop.                                         | 6, 8       |
+| 10  | `10-step-4-write-action-transitions.md` | Step 4: per-entry loop over `actions[]`, call extended `updateAction` per entry. Self-exception writes a fresh audit entry.                    | 5, 8, 9    |
+| 11  | `11-step-5-recompute-summary.md`        | Step 5: load workflow actions, recompute `{ done, not_required, total }` counts, `$set` on the workflow doc.                                   | 10         |
+| 12  | `12-step-6-write-form-data.md`          | Step 6: merge `form` + `form_review` into one flat bag, `$set` per-field at `form_data.{action_type}[.{key}].{field}` on the workflow doc.     | 10         |
+| 13  | `13-mid-write-error-transition.md`      | Wrap steps 4–6 in a try/catch; on throw, force-push an `error` status entry onto the action and return partial.                                | 10, 11, 12 |
 
 ## Ordering Rationale
 

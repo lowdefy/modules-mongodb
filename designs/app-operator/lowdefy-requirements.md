@@ -26,38 +26,38 @@ Three classes of consumer in this repo require the slug as a string at build tim
 
 1. **Build-time map key construction.** `modules/{companies,contacts,user-account}/api/{create,update}-*.yaml` build per-app event-display maps with `_build.object.fromEntries`, using the slug as the entry key:
 
-    ```yaml
-    display:
-      _build.object.fromEntries:
-        - - { _app: slug }              # ← entry key, must be a string at build time
-          - _ref: defaults/event_display.yaml
-    ```
+   ```yaml
+   display:
+     _build.object.fromEntries:
+       - - { _app: slug } # ← entry key, must be a string at build time
+         - _ref: defaults/event_display.yaml
+   ```
 
-    `_build.object.fromEntries` requires string keys. Passing an unevaluated operator object produces an unusable key.
+   `_build.object.fromEntries` requires string keys. Passing an unevaluated operator object produces an unusable key.
 
 2. **Build-time string composition in page chrome.** `modules/user-admin/pages/{all,new,view,edit,check}.yaml` and `components/excel_download.yaml` compose page titles, breadcrumbs and filenames at build time:
 
-    ```yaml
-    label:
-      _build.string.trim:
-        _build.string.concat:
-          - { _app: name }              # ← must be a string at build time
-          - " User Admin"
-    ```
+   ```yaml
+   label:
+     _build.string.trim:
+       _build.string.concat:
+         - { _app: name } # ← must be a string at build time
+         - " User Admin"
+   ```
 
-    These cannot move to runtime: page IDs, breadcrumb labels and similar chrome are resolved when the page tree is built.
+   These cannot move to runtime: page IDs, breadcrumb labels and similar chrome are resolved when the page tree is built.
 
 3. **Resolver vars.** `modules/workflows/module.lowdefy.yaml` passes the slug to a `_ref` resolver (`makeActionPages.js`) that enumerates `action.access?.[slug]` and emits per-action pages:
 
-    ```yaml
-    pages:
-      - _ref:
-          resolver: resolvers/makeActionPages.js
-          vars:
-            slug: { _app: slug }        # ← must be a string at build time
-    ```
+   ```yaml
+   pages:
+     - _ref:
+         resolver: resolvers/makeActionPages.js
+         vars:
+           slug: { _app: slug } # ← must be a string at build time
+   ```
 
-    Page generation is fundamentally build-time. If the resolver receives an unevaluated operator object, every per-action page is silently dropped.
+   Page generation is fundamentally build-time. If the resolver receives an unevaluated operator object, every per-action page is silently dropped.
 
 ### Naming
 

@@ -6,16 +6,16 @@ These tasks implement Part 39 of the workflows module: rewriting the four form-a
 
 ## Tasks
 
-| #   | File                                          | Summary                                                                                  | Depends On |
-| --- | --------------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-button-signal-sources-enum.md`            | Create `enums/button_signal_sources.yaml` (the signal→source-stages map)                 | —          |
-| 2   | `02-edit-template-signals-progress.md`        | Rewrite `edit.yaml.njk`: signal payloads, `progress` button, FSM visibility, drop `fields` | 1          |
-| 3   | `03-review-template-signals-visibility.md`    | Rewrite `review.yaml.njk`: signal payloads, FSM visibility, drop dead `fields`           | 1          |
-| 4   | `04-error-template-signals-visibility.md`     | Rewrite `error.yaml.njk`: signal payload, FSM visibility, drop dead `fields`/`form_review` | 1          |
-| 5   | `05-view-template-button-bar.md`              | Add a floating-actions bar to `view.yaml.njk` (Edit-nav + `request_changes` modal)       | 1          |
-| 6   | `06-fsm-guard-test-and-plugin-export.md`      | Add plugin `./fsm` export + module guard test asserting enum matches the FSM `form` table | 1          |
-| 7   | `07-e2e-supplements.md`                        | E2E specs: Save Draft, button-absent-from-stage, submit-from-done re-open                | 2, 5       |
-| 8   | `08-doc-reconciliation.md`                     | Reconcile `ui` D2/D3/D4 + `state-machine` button-bar table; README button-visibility rules; parent-design Part 39 row | —          |
+| #   | File                                       | Summary                                                                                                               | Depends On |
+| --- | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-button-signal-sources-enum.md`         | Create `enums/button_signal_sources.yaml` (the signal→source-stages map)                                              | —          |
+| 2   | `02-edit-template-signals-progress.md`     | Rewrite `edit.yaml.njk`: signal payloads, `progress` button, FSM visibility, drop `fields`                            | 1          |
+| 3   | `03-review-template-signals-visibility.md` | Rewrite `review.yaml.njk`: signal payloads, FSM visibility, drop dead `fields`                                        | 1          |
+| 4   | `04-error-template-signals-visibility.md`  | Rewrite `error.yaml.njk`: signal payload, FSM visibility, drop dead `fields`/`form_review`                            | 1          |
+| 5   | `05-view-template-button-bar.md`           | Add a floating-actions bar to `view.yaml.njk` (Edit-nav + `request_changes` modal)                                    | 1          |
+| 6   | `06-fsm-guard-test-and-plugin-export.md`   | Add plugin `./fsm` export + module guard test asserting enum matches the FSM `form` table                             | 1          |
+| 7   | `07-e2e-supplements.md`                    | E2E specs: Save Draft, button-absent-from-stage, submit-from-done re-open                                             | 2, 5       |
+| 8   | `08-doc-reconciliation.md`                 | Reconcile `ui` D2/D3/D4 + `state-machine` button-bar table; README button-visibility rules; parent-design Part 39 row | —          |
 
 ## Ordering Rationale
 

@@ -16,11 +16,11 @@ In `modules/workflows/resolvers/makeWorkflowsConfig.js`, in the `WORKFLOW_FIELDS
 
 ```js
 const WORKFLOW_FIELDS = [
-  'type',
-  'entity_collection',
-  'display_order',
-  'starting_actions',
-  'action_groups',
+  "type",
+  "entity_collection",
+  "display_order",
+  "starting_actions",
+  "action_groups",
 ];
 ```
 

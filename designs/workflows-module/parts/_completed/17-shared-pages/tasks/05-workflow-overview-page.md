@@ -24,6 +24,7 @@ Create `modules/workflows/pages/workflow-overview.yaml`:
 - **Blocks (inside `layout.page.blocks`):**
 
   1. **Workflow header** — `_ref` to part 18's `workflow-header` component:
+
      ```yaml
      - _ref:
          path: ../components/workflow-header.yaml
@@ -31,6 +32,7 @@ Create `modules/workflows/pages/workflow-overview.yaml`:
            workflow:
              _state: overview.workflow
      ```
+
      The component carries title, lifecycle stage badge, summary counts, milestone label, and collapse toggle. Part 18 hasn't shipped — this is a path-stub until part 18 lands. If part 18 ends up consuming `_module.var: entities[workflow.entity_collection].title` for an entity-kind label in the header, that's a part 18 concern; this task just passes the workflow doc and lets part 18 reach for the var itself.
 
   2. **Entity back-link** — a `Button` (or breadcrumb element, depending on the chrome convention established by tasks 2/3/4 and part 16) that navigates to the host-app entity page:
@@ -117,6 +119,7 @@ Create `modules/workflows/pages/workflow-overview.yaml`:
 - Tracker actions: per design § "Workflow overview page" → "Tracker actions link to the child workflow's `workflow-overview` page when configured." Render them with a link target that uses the tracker action's `status_map.{stage}.{app_name}.link.pageId` (which app authors typically point at the child workflow's `workflow-overview?workflow_id=<id>` URL). No special branching by `kind` in the page — the link comes from `status_map` like any other action.
 
 - The card body's `_get` chain for keyed indexing:
+
   ```yaml
   data:
     form:
@@ -135,6 +138,7 @@ Create `modules/workflows/pages/workflow-overview.yaml`:
             - _state: actions_list.$.type
         default: null
   ```
+
   Adjust to the operator chaining conventions in the codebase (`_if_else` may not be the exact operator name — check the operators guide).
 
 - The dynamic-key `_object.from_entries` for the back-link's `urlQuery`: if the operator chain proves unreadable, the alternative is to commit to `id_query_key: _id` for v1 and use a static `urlQuery: { _id: ... }` slot, with the design's `id_query_key` field reserved for future use. This loses generality but ships cleaner YAML. Decide during implementation; the design accepts either as long as the operator path is correct.

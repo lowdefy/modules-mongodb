@@ -5,16 +5,17 @@
 Sub-step 4b is part 7's net-new pipeline step. From [design.md § blocked_by re-evaluation pass](../design.md#blocked_by-re-evaluation-pass):
 
 > After step 4 writes a transition and 4a recomputes `groups[]`, walk every action in `blocked` status:
+>
 > - If its `blocked_by` is now fully satisfied (every entry resolves to terminal action or `done` group), push `action-required` via `shared/updateAction.js` — the priority rule allows `action-required` (6) < `blocked` (7); same-stage on already-`action-required` actions no-ops.
 
 How this differs from task 6's `computeAutoUnblocks`:
 
-| Aspect | `computeAutoUnblocks` (step 3) | `reevaluateBlockedActions` (sub-step 4b) |
-| --- | --- | --- |
-| When | Before step 4 writes | After step 4 writes + 4a recomputes |
-| State read | Pre-submit `groups[]` and action statuses | Post-submit `groups[]` (from 4a) and post-write action statuses |
-| Output | Returns entries to *append* to the internal `actions[]` for step 4 | **Writes directly** via `shared/updateAction.js` |
-| Scope | Catches unblocks visible *before* the user's submit | Catches unblocks the user's submit enabled (e.g. closing the last action in a group → group → done → unblocks downstream actions) |
+| Aspect     | `computeAutoUnblocks` (step 3)                                     | `reevaluateBlockedActions` (sub-step 4b)                                                                                          |
+| ---------- | ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| When       | Before step 4 writes                                               | After step 4 writes + 4a recomputes                                                                                               |
+| State read | Pre-submit `groups[]` and action statuses                          | Post-submit `groups[]` (from 4a) and post-write action statuses                                                                   |
+| Output     | Returns entries to _append_ to the internal `actions[]` for step 4 | **Writes directly** via `shared/updateAction.js`                                                                                  |
+| Scope      | Catches unblocks visible _before_ the user's submit                | Catches unblocks the user's submit enabled (e.g. closing the last action in a group → group → done → unblocks downstream actions) |
 
 Both are needed; they catch different cases. The single-pass invariant from the design ("the walk only pushes `action-required` (non-terminal), so a newly-unblocked action can never cause another group to transition to `done` in the same call") means 4b never needs to re-run 4a — group transitions happen exclusively in 4a.
 
@@ -25,7 +26,7 @@ Create `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkfl
 Signature:
 
 ```js
-import updateAction from '../../shared/updateAction.js';
+import updateAction from "../../shared/updateAction.js";
 
 /**
  * Sub-step 4b: walk every action in `blocked` status post-write and push
@@ -75,7 +76,7 @@ Behaviour:
    // Build terminalByType from current workflowActions (post-step-4 state).
    const terminalByType = new Map();
    for (const a of workflowActions) {
-     const isTerminal = ['done', 'not-required'].includes(a.status?.[0]?.stage);
+     const isTerminal = ["done", "not-required"].includes(a.status?.[0]?.stage);
      if (!terminalByType.has(a.type)) {
        terminalByType.set(a.type, isTerminal);
      } else if (!isTerminal) {
@@ -101,7 +102,7 @@ Behaviour:
    for (const action of unblockedActions) {
      await updateAction(context, {
        actionId: action._id,
-       newStage: 'action-required',
+       newStage: "action-required",
        eventId,
        // No force, no currentActionId — the priority rule handles it.
      });

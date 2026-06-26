@@ -185,7 +185,7 @@ requests:
 ## Notes
 
 - **Atlas Search index requirement.** `in: { path: "_id", value: <ids> }` requires the Atlas Search index to map `_id` as a `string` field. Atlas auto-indexes `_id`, but if the deployed search index uses a custom mapping, confirm `_id` is included and indexed as `string`. Worth checking on the deployed index when wiring this up.
-- **Reset button must re-fire `get_descendant_company_ids` after `Reset`.** The existing "Clear" button at `filter_companies.yaml:29-41` runs `Reset` then `actions/search.yaml`. `Reset` clears `state.filter.parent_scope` to undefined, but the *cached request result* of `get_descendant_company_ids` may still hold the previously-resolved descendant ids. The next `get_all_companies` fire would then read stale `_request: get_descendant_company_ids.0.ids` and apply a stale filter. Fix: when `hierarchy.enabled`, insert a re-fire between `Reset` and the existing search action:
+- **Reset button must re-fire `get_descendant_company_ids` after `Reset`.** The existing "Clear" button at `filter_companies.yaml:29-41` runs `Reset` then `actions/search.yaml`. `Reset` clears `state.filter.parent_scope` to undefined, but the _cached request result_ of `get_descendant_company_ids` may still hold the previously-resolved descendant ids. The next `get_all_companies` fire would then read stale `_request: get_descendant_company_ids.0.ids` and apply a stale filter. Fix: when `hierarchy.enabled`, insert a re-fire between `Reset` and the existing search action:
 
   ```yaml
   onClick:
@@ -203,6 +203,7 @@ requests:
   ```
 
   After `Reset`, `state.filter.parent_scope` is undefined → `state._id` is also undefined on the list page → the descendants request's `_if_none` chain falls through to undefined `root_id` → `$match` returns no rows → `_request: get_descendant_company_ids.0.ids` resolves to `[]` → the conditional `must` clause skips → list returns to unscoped.
+
 - **Performance.** A small `in` clause (typically < 100 ids for a hierarchy filter) is fast in Atlas Search. The pre-resolution request runs once per filter change, not per row; cost is negligible.
 - **No `$graphLookup` in `get_all_companies`.** Repeating for clarity: the list aggregation does **not** add a `$graphLookup` stage. All graph traversal is in the separate `get_descendant_company_ids` request.
 - **Why this is lowest priority.** Hierarchy editing (task 7) and display (task 9) are the core value of the feature. The list filter is nice-to-have; an app can ship hierarchy without it. If timeline pressure hits, this is the task to defer.

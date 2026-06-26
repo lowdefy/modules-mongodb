@@ -14,10 +14,10 @@ Create `modules/workflows/components/actions-on-entity.yaml`.
 
 **Vars contract:**
 
-| Var | Type | Required | Description |
-| --- | --- | --- | --- |
-| `entity_id` | string | yes | The entity's `_id`. Passed to `get-entity-workflows.payload.entity_id`. |
-| `entity_collection` | string | yes | The entity's MongoDB collection name. Passed to `get-entity-workflows.payload.entity_collection`. |
+| Var                 | Type   | Required | Description                                                                                       |
+| ------------------- | ------ | -------- | ------------------------------------------------------------------------------------------------- |
+| `entity_id`         | string | yes      | The entity's `_id`. Passed to `get-entity-workflows.payload.entity_id`.                           |
+| `entity_collection` | string | yes      | The entity's MongoDB collection name. Passed to `get-entity-workflows.payload.entity_collection`. |
 
 **Caller call shape** (the externally-stable contract):
 
@@ -46,14 +46,14 @@ Create `modules/workflows/components/actions-on-entity.yaml`.
    - _ref:
        path: workflow-header.yaml
        vars:
-         workflow: { _var: workflow }                # current iteration item
+         workflow: { _var: workflow } # current iteration item
          collapsed_default:
            _eq:
              - _var: workflow.status.0.stage
              - completed
          is_overview_page: false
          blocks:
-           - id: action_steps_<workflow._id>          # id-scope by workflow
+           - id: action_steps_<workflow._id> # id-scope by workflow
              type: ActionSteps
              properties:
                actionGroupConfig: <built per below>
@@ -65,6 +65,7 @@ Create `modules/workflows/components/actions-on-entity.yaml`.
 - **`actionGroupConfig`** — a map keyed by `action_group` id with `{ order, title, icon? }`. Build from `_global.workflows_config[workflow.workflow_type].action_groups[]` by iterating with index for `order` and reading `title` + `icon?` off each entry. Same `_global` join as task 2's group-title resolution.
 
   Example output:
+
   ```js
   {
     "phase-1-qualify": { order: 0, title: "Phase 1 — Qualify", icon: "AiOutlineFlag" },
@@ -81,6 +82,7 @@ Create `modules/workflows/components/actions-on-entity.yaml`.
   The status-map cell consulted is `action.status_map[action.status.0.stage][_module.var: app_name]`. Empty / missing cells → no `message`, no `link` (the action row still renders with the badge).
 
   Example output:
+
   ```js
   [
     {
@@ -124,5 +126,5 @@ Create `modules/workflows/components/actions-on-entity.yaml`.
 - **`_module.var: app_name`** — the status_map cell selection needs the host app's name. Read via `_module.var: app_name` per CLAUDE.md's `app_name` idiom and the shipped `access_filter.yaml` precedent.
 - **`get-entity-workflows` return shape** — verify the top-level key the routine returns. The current routine's `:return:` step writes `{ workflows: _step: query }`, so the captured state shape is `_state.entity_workflows.workflows[]` if the `CallApi` result is captured to `entity_workflows`. Adjust the state key per the actual capture target.
 - **Empty entity (no workflows)** — render nothing (empty list). No "no workflows" placeholder in v1; if a host app wants one, they can wrap the component.
-- **Per CLAUDE.md** snake_case block IDs (`action_steps_<id>`, etc.), kebab-case component filename (already `actions-on-entity.yaml`).
+- **Per CLAUDE.md** snake*case block IDs (`action_steps*<id>`, etc.), kebab-case component filename (already `actions-on-entity.yaml`).
 - **No unit tests** for the YAML; e2e in Part 22.

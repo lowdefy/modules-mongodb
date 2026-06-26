@@ -16,7 +16,7 @@ The "Touches" table (line 322) reformulates Part 13's rule as:
 
 > for each interaction the hook handles, `hook.auth.roles ⊇ union(access.{any-app}.{interaction-required-verb})`
 
-But Part 13 (`13-resolver-apis/design.md:62`) doesn't *validate* a `⊇` rule — it **synthesizes** the hook's `auth.roles` directly from `action.access.roles` so "the gate holds by construction, no separate validation pass." Restating the rule as `⊇` is a regression to a check-and-fail model that Part 13 deliberately replaced.
+But Part 13 (`13-resolver-apis/design.md:62`) doesn't _validate_ a `⊇` rule — it **synthesizes** the hook's `auth.roles` directly from `action.access.roles` so "the gate holds by construction, no separate validation pass." Restating the rule as `⊇` is a regression to a check-and-fail model that Part 13 deliberately replaced.
 
 The design also doesn't address two cases that fall out of the new shape:
 
@@ -97,7 +97,7 @@ But consider the same user at `changes-required`: `links.edit = task-edit`, so t
 
 This isn't a fatal flaw — the user can click out and back. But the design claims fall-through "composes correctly with the engine's per-verb nulls at every stage" (line 204), which overstates it. The composition works when the engine has nulled the cell; at stages where multiple verbs have non-null cells, the static priority picks `edit` unconditionally.
 
-**Fix.** Tighten the claim to "the engine nulls the irrelevant cell at every stage that has a single user-facing affordance; stages with multiple non-null cells (currently none in the table) would need a stage-keyed priority override." Then leave the static priority — it's correct *for the table you have*.
+**Fix.** Tighten the claim to "the engine nulls the irrelevant cell at every stage that has a single user-facing affordance; stages with multiple non-null cells (currently none in the table) would need a stage-keyed priority override." Then leave the static priority — it's correct _for the table you have_.
 
 ### 7. Migration "semantics preserved exactly" claim is too strong for the cross-app-role-clash case
 
@@ -139,7 +139,7 @@ D5 (line 121): "return `visible_verbs: { view: bool, edit: bool, review: bool, e
 
 > **Resolved.** D8 now spells out that the client-side mirror evaluates each verb's gate the same way the server does — `true` shortcut or `setIntersection` against `_user.apps.{app_name}.roles`. Four lookups, not one, with the `true`-branch as new logic.
 
-Part 18's `action_role_check` (line 138) "computes the role intersection: `access.roles` ∩ user roles." Under per-verb gating, the check the engine runs at query/submit time is **per-verb** — there's no single intersection any more. D8 says the component "becomes a verb check" populating `_state.action_allowed: { view, edit, review, error }`, which is right — but the *logic* the client-side check has to mirror is now "for each verb, look up the verb's gate, evaluate `true` or `setIntersection`." That's four checks, not one, and the `true` branch is new logic the existing component doesn't have.
+Part 18's `action_role_check` (line 138) "computes the role intersection: `access.roles` ∩ user roles." Under per-verb gating, the check the engine runs at query/submit time is **per-verb** — there's no single intersection any more. D8 says the component "becomes a verb check" populating `_state.action_allowed: { view, edit, review, error }`, which is right — but the _logic_ the client-side check has to mirror is now "for each verb, look up the verb's gate, evaluate `true` or `setIntersection`." That's four checks, not one, and the `true` branch is new logic the existing component doesn't have.
 
 **Fix.** Note in D8 that the client-side mirror needs to evaluate per-verb gates including the `true` shortcut. The current sentence ("The check is still defence in depth") undersells the implementation delta.
 

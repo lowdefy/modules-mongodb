@@ -43,12 +43,11 @@ Missing config → empty lookup, every action gets swept (defensive default — 
 ### 2. Fetch candidate non-terminal actions
 
 ```js
-const candidateActions = await context
-  .mongoDBConnection('actions')
-  .MongoDBFind({
+const candidateActions =
+  (await context.mongoDBConnection("actions").MongoDBFind({
     query: {
       workflow_id: payload.workflow_id,
-      'status.0.stage': { $nin: ['done', 'not-required'] },
+      "status.0.stage": { $nin: ["done", "not-required"] },
     },
     options: {
       projection: {
@@ -58,7 +57,7 @@ const candidateActions = await context
         status: { $slice: 1 },
       },
     },
-  }) ?? [];
+  })) ?? [];
 ```
 
 The `status: { $slice: 1 }` projection gives the latest entry only — enough to evaluate the blocked-exception.
@@ -67,7 +66,7 @@ The `status: { $slice: 1 }` projection gives the latest entry only — enough to
 
 ```js
 const actionsToSweep = candidateActions.filter((a) => {
-  const isBlocked = a.status?.[0]?.stage === 'blocked';
+  const isBlocked = a.status?.[0]?.stage === "blocked";
   const requiredAfterClose = requiredAfterCloseByType[a.type] === true;
   // Sweep when not protected, OR when blocked (blocked-action exception).
   return !requiredAfterClose || isBlocked;
@@ -79,16 +78,14 @@ const actionIds = actionsToSweep.map((a) => a._id);
 
 ```js
 if (actionIds.length > 0) {
-  await context.mongoDBConnection('actions').MongoDBUpdateMany({
+  await context.mongoDBConnection("actions").MongoDBUpdateMany({
     filter: { _id: { $in: actionIds } },
     update: {
       $set: { updated: context.changeStamp },
       $push: {
         status: {
           $position: 0,
-          $each: [
-            { stage: 'not-required', created: context.changeStamp },
-          ],
+          $each: [{ stage: "not-required", created: context.changeStamp }],
         },
       },
     },

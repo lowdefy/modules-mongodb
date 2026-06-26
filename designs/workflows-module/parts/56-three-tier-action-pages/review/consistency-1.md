@@ -15,10 +15,10 @@ Checked the full file tree of Part 56 (design.md + review-1 + review-2) against 
 From review-2 (highest-numbered review):
 
 - **R2#1 (Resolved, reshaped via Part 57):** `name_field` lives on the per-workflow `entity:` block (`entity.name_field`), not the connection `entities` map; reaches the connection via `additionalProperties: true` `workflowsConfig` → **no `schema.js` change**.
-- **R2#2 (Resolved, reshaped):** title bar = **baked action title** (`page_config.title`); the action's **`message`** is the **subtitle**, via a new optional `description` var on `title-block`. Title is *not* `message`.
+- **R2#2 (Resolved, reshaped):** title bar = **baked action title** (`page_config.title`); the action's **`message`** is the **subtitle**, via a new optional `description` var on `title-block`. Title is _not_ `message`.
 - **R2#3 (Resolved auto):** workflow-grammar `title` already ships — no Part 4 schema change.
 - **R2#4 (Resolved):** `makeWorkflowsConfig` does **not** strip `entity_view` (the `pick()` allowlist already excludes it); the real change is **validation**.
-- **R2#5 (Accepted):** when History is the only RHS tab, the `Tabs` wrapper **stays** (single tab = section heading; stable layout) — *not* rendered bare.
+- **R2#5 (Accepted):** when History is the only RHS tab, the `Tabs` wrapper **stays** (single tab = section heading; stable layout) — _not_ rendered bare.
 
 From review-1 (folded into the rewrite):
 
@@ -42,7 +42,7 @@ From review-1 (folded into the rewrite):
 **Type:** Stale Reference
 **Source of truth:** The cited content (`message` as subtitle) lives in the "Title content" paragraph later in the same D8 section.
 **Files affected:** `design.md` (D8, line 65).
-**Resolution:** Changed `used for the action's \`message\`, D8 below` → `used for the action's \`message\`, see the "Title content" note below`. The old text pointed D8 at itself.
+**Resolution:** Changed `used for the action's \`message\`, D8 below`→`used for the action's \`message\`, see the "Title content" note below`. The old text pointed D8 at itself.
 
 ## No Issues
 

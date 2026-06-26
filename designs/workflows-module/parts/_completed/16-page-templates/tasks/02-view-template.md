@@ -36,7 +36,7 @@ requests:
       - _ref:
           path: ../requests/get_entity.yaml.njk
           vars:
-            entity_collection: {{ entity_collection }}
+            entity_collection: { { entity_collection } }
     - _var:
         key: page_config.requests
         default: []

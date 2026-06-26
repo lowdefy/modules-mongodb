@@ -14,7 +14,7 @@ const initialTargetStatus = resolveTargetStatus({
   interaction: params.interaction,
   actionConfig,
   params,
-  yamlInteractions: params.interactions,   // ← DROP
+  yamlInteractions: params.interactions, // ← DROP
 });
 
 // Line ~162 — re-resolve after pre-hook
@@ -22,7 +22,7 @@ const resolvedTargetStatus = resolveTargetStatus({
   interaction: params.interaction,
   actionConfig,
   params,
-  yamlInteractions: params.interactions,   // ← DROP
+  yamlInteractions: params.interactions, // ← DROP
   preHookStatus: preHookResponse?.status,
 });
 

@@ -27,20 +27,20 @@ Three forces line up:
 
 Six modules require `app_name` as a manifest var:
 
-| Module | Description on the var |
-|---|---|
-| `contacts` | "App identifier for is_user guard and per-app access flags" |
-| `companies` | "App identifier used to key event_display titles when no override is supplied" |
-| `notifications` | "App identifier used to scope notifications. Matches `created.app_name`" |
-| `user-account` | "App name for event metadata" |
-| `user-admin` | "App name for MongoDB field paths (e.g., example-app)" |
-| `workflows` | "The host app's deployment name. Filters action access via `access.{app_name}` per action" |
+| Module          | Description on the var                                                                     |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| `contacts`      | "App identifier for is_user guard and per-app access flags"                                |
+| `companies`     | "App identifier used to key event_display titles when no override is supplied"             |
+| `notifications` | "App identifier used to scope notifications. Matches `created.app_name`"                   |
+| `user-account`  | "App name for event metadata"                                                              |
+| `user-admin`    | "App name for MongoDB field paths (e.g., example-app)"                                     |
+| `workflows`     | "The host app's deployment name. Filters action access via `access.{app_name}` per action" |
 
 ### Where the value is read
 
 ~72 occurrences of `_module.var: app_name` across ~30 files (counts drift as the codebase moves — re-grep at implementation time). The shapes are:
 
-- **MongoDB filter scoping** — `created.app_name: { _module.var: app_name }` on event/notification reads (notifications/* requests, contacts/companies APIs, user-admin requests).
+- **MongoDB filter scoping** — `created.app_name: { _module.var: app_name }` on event/notification reads (notifications/\* requests, contacts/companies APIs, user-admin requests).
 - **MongoDB field-path construction** — `_string.concat: ["apps.", { _module.var: app_name }, ".roles"]` in user-admin to build dot paths for per-app role writes.
 - **Stamp/payload fields** — `created.app_name` on writes (contacts/companies APIs, user-account, user-admin), and an `app_name` payload key on the workflows connection.
 - **Page/component vars** — passed into Nunjucks templates as the `app_name` template variable.
@@ -59,7 +59,7 @@ Six modules require `app_name` as a manifest var:
 
 Lowdefy ships **two forms** of the operator, and which one to write depends on the position:
 
-- **`_app: slug`** — use in every ordinary position: runtime sites (MongoDB filters, change-stamp templates, payload fields, Nunjucks vars) *and* plain build positions. `_app` evaluates at runtime and is also baked into the build artifact, so it is correct "at any level".
+- **`_app: slug`** — use in every ordinary position: runtime sites (MongoDB filters, change-stamp templates, payload fields, Nunjucks vars) _and_ plain build positions. `_app` evaluates at runtime and is also baked into the build artifact, so it is correct "at any level".
 - **`_build.app: slug`** — use **only when the operator sits directly inside a `_build.*` operator's arguments**. There, `_app` would still be an unevaluated object when the surrounding `_build.*` operator runs; `_build.app` resolves to a literal string in time to be consumed.
 
 **The rule:** runtime and ordinary build positions → `_app: slug`. An argument to a `_build.*` operator → `_build.app: slug`.
@@ -68,9 +68,9 @@ Three classes of `_module.var: app_name` site exist; only the third and part of 
 
 1. **Runtime consumers (`_app: slug`)** — MongoDB filters, change-stamp templates, payload fields, Nunjucks template vars, server-evaluated connection props. The large majority of sites (~60 of ~72).
 2. **`_build.object.fromEntries` map keys (`_build.app: slug`)** — event-display key construction in `companies`/`contacts`/`user-account` `create`/`update` APIs and `user-admin` `update-user`/`invite-user`/`resend-invite`. The `- - { _build.app: slug }` pair is fed straight into `_build.object.fromEntries`, which needs a literal string key at build time. (Note: the user-admin per-app field paths — `_string.concat: ["apps.", …, ".roles"]` — are **runtime** `_string.concat`, so they take `_app: slug`, not `_build.app`.)
-3. **Resolver vars (`_build.app: slug`)** — `modules/workflows/module.lowdefy.yaml` passes `app_name` into the `makeActionPages.js` resolver, which consumes it at build time to enumerate `action.access?.[slug]` and emit per-action pages. An unevaluated `{ _app: slug }` object passes the resolver's `if (!appName)` guard (a truthy object) and then `access?.[ {…} ]` is `undefined` → every per-action page silently drops. `_build.app: slug` is required here. (Verify with `ldf:b` — the resolver is a `_ref` build construct, not a literal `_build.*` operator; confirm the form that resolves to a string.) As cheap insurance over that unverified form, Task 04 also hardens the resolver guard to reject *non-strings* (`typeof slug !== "string" || !slug`), not just falsy — so if `_build.app: slug` ever delivers an unevaluated object instead of `"demo"`, the build fails loudly rather than silently emitting zero action pages.
+3. **Resolver vars (`_build.app: slug`)** — `modules/workflows/module.lowdefy.yaml` passes `app_name` into the `makeActionPages.js` resolver, which consumes it at build time to enumerate `action.access?.[slug]` and emit per-action pages. An unevaluated `{ _app: slug }` object passes the resolver's `if (!appName)` guard (a truthy object) and then `access?.[ {…} ]` is `undefined` → every per-action page silently drops. `_build.app: slug` is required here. (Verify with `ldf:b` — the resolver is a `_ref` build construct, not a literal `_build.*` operator; confirm the form that resolves to a string.) As cheap insurance over that unverified form, Task 04 also hardens the resolver guard to reject _non-strings_ (`typeof slug !== "string" || !slug`), not just falsy — so if `_build.app: slug` ever delivers an unevaluated object instead of `"demo"`, the build fails loudly rather than silently emitting zero action pages.
 
-**Manifest var defaults: prefer `_build.app` when the var is consumed at build-time sites.** A var default is a *single* value substituted into every consumption site, so it cannot be `_app` at some sites and `_build.app` at others. If any consumer is inside a `_build.*` operator, the default must be `{ _build.app: … }` — it bakes a literal at build, which is then safe at runtime sites too (it is already a plain string by then). A default of `{ _app: … }` left as a runtime object breaks any `_build.*` consumer. This is why `events.display_key` (runtime-only consumers) can default to `{ _app: slug }`, but `user-admin.app_title` (consumed inside `_build.string.concat`) must default to `{ _build.app: name }` — see [Key decisions](#default-user-adminapp_title-to-_buildapp-name). It also confirms why we *remove* `app_name` rather than redirect it to a default: per-occurrence replacement lets each site pick `_app` vs `_build.app`, which one default cannot.
+**Manifest var defaults: prefer `_build.app` when the var is consumed at build-time sites.** A var default is a _single_ value substituted into every consumption site, so it cannot be `_app` at some sites and `_build.app` at others. If any consumer is inside a `_build.*` operator, the default must be `{ _build.app: … }` — it bakes a literal at build, which is then safe at runtime sites too (it is already a plain string by then). A default of `{ _app: … }` left as a runtime object breaks any `_build.*` consumer. This is why `events.display_key` (runtime-only consumers) can default to `{ _app: slug }`, but `user-admin.app_title` (consumed inside `_build.string.concat`) must default to `{ _build.app: name }` — see [Key decisions](#default-user-adminapp_title-to-_buildapp-name). It also confirms why we _remove_ `app_name` rather than redirect it to a default: per-occurrence replacement lets each site pick `_app` vs `_build.app`, which one default cannot.
 
 ## Migration of `change_stamp` override
 
@@ -84,8 +84,8 @@ Current idiom (docs/idioms.md §Change stamps, line 49):
       timestamp: { _date: now }
       user:
         name: { _user: profile.name }
-        id:   { _user: id }
-      app_name: my-app   # ← literal
+        id: { _user: id }
+      app_name: my-app # ← literal
 ```
 
 New idiom:
@@ -98,8 +98,8 @@ New idiom:
       timestamp: { _date: now }
       user:
         name: { _user: profile.name }
-        id:   { _user: id }
-      app_name: { _app: slug }   # ← reads the app slug at request time
+        id: { _user: id }
+      app_name: { _app: slug } # ← reads the app slug at request time
 ```
 
 `_app: slug` is valid inside the stamp because the stamp is a runtime template — every operator inside it resolves per request.
@@ -184,7 +184,7 @@ The goal is one canonical term in the prose so future readers don't waste cycles
 
 - Rename code-snippet sites: `_module.var: app_name` → `_app: slug`; manifest var declarations: drop `app_name:`.
 - Rename data-model placeholders that name the slug position: `access.{app_name}` → `access.{slug}`, `status_map.{stage}.{app_name}` → `status_map.{stage}.{slug}`, `display.{app_name}` → `display.{slug}`, `apps.{app_name}.roles` → `apps.{slug}.roles`, `created.app_name` stays (that's a stored field name on event/notification docs, not a placeholder).
-- Rename narrative references that are about *the value*: "the host app's `app_name`" → "the host app's slug"; "match `vars.app_name`" → "match the app slug".
+- Rename narrative references that are about _the value_: "the host app's `app_name`" → "the host app's slug"; "match `vars.app_name`" → "match the app slug".
 - Remove the forward-looking note in `designs/workflows-module/parts/30-status-map-rendering/design.md:144`; replace with a back-reference to this design's eventual `_completed/` entry.
 - `_completed/` is **not touched** (project rule: read-only history). Those designs continue to reference `app_name` and `_module.var: app_name`; that's accurate to the state at the time they shipped.
 
@@ -221,7 +221,7 @@ The stored field name `created.app_name` on event/notification documents does **
 
 ### Rename the `app_name` identifier to `slug` in code
 
-The same "one canonical term" argument that applies to prose (above) applies to code identifiers. Leaving the workflows subsystem calling the slug `app_name` while the rest of the repo says `slug` is exactly the two-names-for-one-thing tax, and it's worse in code because the reader can't tell from the name whether `app_name` means *the slug value* or *the stored `created.app_name` field*. So we rename the identifier wherever it denotes the slug value:
+The same "one canonical term" argument that applies to prose (above) applies to code identifiers. Leaving the workflows subsystem calling the slug `app_name` while the rest of the repo says `slug` is exactly the two-names-for-one-thing tax, and it's worse in code because the reader can't tell from the name whether `app_name` means _the slug value_ or _the stored `created.app_name` field_. So we rename the identifier wherever it denotes the slug value:
 
 - **The `WorkflowAPI` connection property.** `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/schema.js` declares an `app_name` property; the engine reads `connection.app_name` to index `action[slug]`, `access[slug]`, `user.apps[slug].roles`, and the per-app event-display block. Rename the property to `slug` and update every consumer. This is the one interface change — it must land **lockstep** with the `workflow-api.yaml` rename (key `app_name:` → `slug:`), so both live in the same task.
 - **The workflows resolver vars and internals.** `makeActionPages.js` (`vars.app_name`, the `appName` local), `makeWorkflowsConfig.js` (the `appName` loop variable over the access map, and error-message `{app_name}` placeholders), and their tests + READMEs.
@@ -240,7 +240,7 @@ Touching ~30 files with a mostly-mechanical find-replace (only the dozen `_build
 ## Non-goals
 
 - **No data migration.** Existing event/notification documents already store `created.app_name: "demo"` as a literal string. Nothing about those documents changes — the slug value the operator produces is the same string the old `_module.var: app_name` produced.
-- **No rename of MongoDB field paths or stored keys.** `created.app_name` keeps its name; `apps.{slug}.roles`, `display.{slug}.title`, `action.{slug}.message`, `access.{slug}` keep their existing *stored* keys (the slug value, not the literal `app_name`). The [`app_name` → `slug` identifier rename](#rename-the-app_name-identifier-to-slug-in-code) is strictly a code/config-naming change — it renames variables, properties, and YAML keys that *hold* or *name the position of* the slug, never the bytes on disk. Concretely: `const app_name = connection.app_name` → `const slug = connection.slug` is in scope; the document field `created.app_name` is not.
+- **No rename of MongoDB field paths or stored keys.** `created.app_name` keeps its name; `apps.{slug}.roles`, `display.{slug}.title`, `action.{slug}.message`, `access.{slug}` keep their existing _stored_ keys (the slug value, not the literal `app_name`). The [`app_name` → `slug` identifier rename](#rename-the-app_name-identifier-to-slug-in-code) is strictly a code/config-naming change — it renames variables, properties, and YAML keys that _hold_ or _name the position of_ the slug, never the bytes on disk. Concretely: `const app_name = connection.app_name` → `const slug = connection.slug` is in scope; the document field `created.app_name` is not.
 - **No new operator features.** This is a consumer of `_app`, not a contribution to it. If we need additional metadata on the app (e.g., a multi-tenant org id), that's a separate design and possibly a separate operator.
 
 ## Upstream status — resolved

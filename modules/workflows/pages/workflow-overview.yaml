@@ -101,7 +101,7 @@ _ref:
               type: secondary
               content:
                 _string.concat:
-                  - ''
+                  - ""
                   - _sum:
                       - _get:
                           from:
@@ -113,13 +113,13 @@ _ref:
                             _state: workflow
                           key: summary.not_required
                           default: 0
-                  - ' of '
+                  - " of "
                   - _get:
                       from:
                         _state: workflow
                       key: summary.total
                       default: 0
-                  - ' done'
+                  - " done"
       # Action cards grouped by action group (engine emits groups in declaration
       # order; cards within keep declaration order). Each group renders an
       # icon + title header (suppressed for ungrouped/null-title groups) above

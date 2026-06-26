@@ -6,7 +6,7 @@ This design makes titles consistent and low-effort across the whole module: **ev
 
 ## Proposed change
 
-1. **One `humanizeSlug` helper** — turns a slug (`send-quote`, `upload_po`) into a good Title Case string ("Send Quote", "Upload PO") using smart minor-word casing and a curated, app-extensible acronym dictionary. This is the single thing that makes derived defaults *good* rather than merely mechanical.
+1. **One `humanizeSlug` helper** — turns a slug (`send-quote`, `upload_po`) into a good Title Case string ("Send Quote", "Upload PO") using smart minor-word casing and a curated, app-extensible acronym dictionary. This is the single thing that makes derived defaults _good_ rather than merely mechanical.
 2. **A new optional action `title` field**, and a build-time default for every open-slug title: workflow `title` ← `humanizeSlug(type)`, action `title` ← `humanizeSlug(type)`, action group `title` ← `humanizeSlug(id)`. An explicit `title:` always wins.
 3. **Per-signal verb templates for event messages** — replace the single catch-all `action-event` template with a curated map keyed by FSM signal, composed over the action/workflow title ("Sam **completed** Send Quote", "Sam **approved** Send Quote"). Subsumes part 51's F24 / D6.
 4. **Materialize defaults once at build** in `makeWorkflowsConfig`, and **denormalize the action title onto the action doc** so every consumer — request resolvers, blocks, action pages, the event planner — reads a guaranteed-present `title` with no scattered runtime fallbacks.
@@ -17,8 +17,8 @@ This design makes titles consistent and low-effort across the whole module: **ev
 
 Every title-bearing concept in the module falls into one of two populations, and the right default differs:
 
-- **Fixed, engine-known slug sets** — action statuses (`action_statuses.yaml`), workflow lifecycle stages (`workflow_lifecycle_stages.yaml`), and **FSM signals** (`fsm/tables.js`). These slugs are closed and engine-locked; their human strings are *curated once* in the module ("Action Required", "In Review", "approved"). Authors never see or set them.
-- **Open, author-defined slug sets** — workflow `type`, action `type`, action group `id`. These slugs are invented per app; their human strings are *derived* from the slug via `humanizeSlug`, and overridable with an explicit `title:`.
+- **Fixed, engine-known slug sets** — action statuses (`action_statuses.yaml`), workflow lifecycle stages (`workflow_lifecycle_stages.yaml`), and **FSM signals** (`fsm/tables.js`). These slugs are closed and engine-locked; their human strings are _curated once_ in the module ("Action Required", "In Review", "approved"). Authors never see or set them.
+- **Open, author-defined slug sets** — workflow `type`, action `type`, action group `id`. These slugs are invented per app; their human strings are _derived_ from the slug via `humanizeSlug`, and overridable with an explicit `title:`.
 
 Composite strings (timeline event messages) are built by combining the two: a **curated signal verb** × a **derived-or-overridden noun title**.
 
@@ -53,7 +53,7 @@ Domain acronyms (BOM, SKU, …) are app-specific, and without them an app's defa
 modules:
   - id: workflows
     vars:
-      title_acronyms: [BOM, SKU]   # merged into the base set
+      title_acronyms: [BOM, SKU] # merged into the base set
 ```
 
 `makeWorkflowsConfig` reads `title_acronyms` (default `[]`), merges it into the base set, and passes the combined set to `humanizeSlug` for all build-time defaulting. Documented in the manifest as a top-level var.
@@ -62,17 +62,17 @@ modules:
 
 Every title resolves by the same rule — **explicit `title` wins; else derive/curate; materialized at build** — but the source and the display surfaces differ. `makeWorkflowsConfig` writes the resolved `title` onto the runtime config so consumers never default at read time.
 
-| Concept | Slug source | Default | Override | Materialized in | Read by |
-|---|---|---|---|---|---|
-| Workflow title | `workflow.type` | `humanizeSlug(type)` | `workflow.title` | `makeWorkflowsConfig` (already in `WORKFLOW_FIELDS`) | overview page, entity-workflows, Get*Overview / GetEntityWorkflows resolvers |
-| Action title (**new**) | `action.type` | `humanizeSlug(type)` | `action.title` | `makeWorkflowsConfig` (add `title` to picked action fields) **+ denormalized onto the action doc** | **From config:** ActionSteps / overview cards / actions-on-entity (via `GetEntityWorkflows`, which reads `wfConfig.actions` like it already reads group title), action pages (`makeActionPages`). **From the doc:** the event planner (`plannedActionDoc`) only. |
-| Action group title | group `id` | `group.title` if present (enum- or author-supplied) → else `humanizeSlug(id)` | `action_groups[].title` in workflow config | `makeWorkflowsConfig` (group normalization) | ActionSteps, GetEntityWorkflows |
-| Action page title | — | the resolved action title | `action.pages[verb].title` | `makeActionPages` defaults `page_config.title` to the action title | the `view/edit/review/error` templates (`page_config.title`) |
-| Status badge title | stage slug | curated enum, **unchanged** | — | `action_statuses.yaml` | overview badge, ActionSteps |
-| Lifecycle stage title | stage slug | curated enum, **unchanged** | — | `workflow_lifecycle_stages.yaml` | overview badge |
-| Event message | FSM signal | curated signal verb map × noun title (below) | 3-source event override chain (engine → YAML `event_overrides[signal]` → pre-hook) | `planEventDispatch` `DEFAULT_SIGNAL_TITLES` | EventsTimeline |
+| Concept                | Slug source     | Default                                                                       | Override                                                                           | Materialized in                                                                                    | Read by                                                                                                                                                                                                                                                          |
+| ---------------------- | --------------- | ----------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Workflow title         | `workflow.type` | `humanizeSlug(type)`                                                          | `workflow.title`                                                                   | `makeWorkflowsConfig` (already in `WORKFLOW_FIELDS`)                                               | overview page, entity-workflows, Get\*Overview / GetEntityWorkflows resolvers                                                                                                                                                                                    |
+| Action title (**new**) | `action.type`   | `humanizeSlug(type)`                                                          | `action.title`                                                                     | `makeWorkflowsConfig` (add `title` to picked action fields) **+ denormalized onto the action doc** | **From config:** ActionSteps / overview cards / actions-on-entity (via `GetEntityWorkflows`, which reads `wfConfig.actions` like it already reads group title), action pages (`makeActionPages`). **From the doc:** the event planner (`plannedActionDoc`) only. |
+| Action group title     | group `id`      | `group.title` if present (enum- or author-supplied) → else `humanizeSlug(id)` | `action_groups[].title` in workflow config                                         | `makeWorkflowsConfig` (group normalization)                                                        | ActionSteps, GetEntityWorkflows                                                                                                                                                                                                                                  |
+| Action page title      | —               | the resolved action title                                                     | `action.pages[verb].title`                                                         | `makeActionPages` defaults `page_config.title` to the action title                                 | the `view/edit/review/error` templates (`page_config.title`)                                                                                                                                                                                                     |
+| Status badge title     | stage slug      | curated enum, **unchanged**                                                   | —                                                                                  | `action_statuses.yaml`                                                                             | overview badge, ActionSteps                                                                                                                                                                                                                                      |
+| Lifecycle stage title  | stage slug      | curated enum, **unchanged**                                                   | —                                                                                  | `workflow_lifecycle_stages.yaml`                                                                   | overview badge                                                                                                                                                                                                                                                   |
+| Event message          | FSM signal      | curated signal verb map × noun title (below)                                  | 3-source event override chain (engine → YAML `event_overrides[signal]` → pre-hook) | `planEventDispatch` `DEFAULT_SIGNAL_TITLES`                                                        | EventsTimeline                                                                                                                                                                                                                                                   |
 
-Group title precedence is **2-tier at the resolver: `group.title ?? humanizeSlug(group.id)`**. The shared `enums/action_groups.yaml` still owns `title`/`icon`/`order`, but those are `_ref`'d into the workflow YAML *upstream* of the resolver, so by the time `makeWorkflowsConfig` runs they're already inline in `group.title` — the resolver can't (and needn't) distinguish an enum-supplied title from an author override; both just present as `group.title`. A group with neither an enum entry nor an explicit title now gets a sane derived label instead of a raw id.
+Group title precedence is **2-tier at the resolver: `group.title ?? humanizeSlug(group.id)`**. The shared `enums/action_groups.yaml` still owns `title`/`icon`/`order`, but those are `_ref`'d into the workflow YAML _upstream_ of the resolver, so by the time `makeWorkflowsConfig` runs they're already inline in `group.title` — the resolver can't (and needn't) distinguish an enum-supplied title from an author override; both just present as `group.title`. A group with neither an enum entry nor an explicit title now gets a sane derived label instead of a raw id.
 
 ## Event messages — per-signal verb templates
 
@@ -80,33 +80,33 @@ The event type is already `action-${signal}` (`planEventDispatch.js:137`), so th
 
 **Actor-driven action signals** (submit path — a real user acts): `{{ user.profile.name }} <verb> {{ action.title }}`
 
-| Signal | Resolves to | Default message |
-|---|---|---|
-| `submit` | `done` (no review) | `{{user}} completed {{action.title}}` |
-| `submit` | `in-review` (has review) | `{{user}} submitted {{action.title}} for review` |
-| `approve` | `done` | `{{user}} approved {{action.title}}` |
-| `request_changes` | `changes-required` | `{{user}} requested changes on {{action.title}}` |
-| `progress` | `in-progress` | `{{user}} started {{action.title}}` |
-| `not_required` | `not-required` | `{{user}} marked {{action.title}} as not required` |
-| `resolve_error` | `in-review` | `{{user}} resolved an error on {{action.title}}` |
+| Signal            | Resolves to              | Default message                                    |
+| ----------------- | ------------------------ | -------------------------------------------------- |
+| `submit`          | `done` (no review)       | `{{user}} completed {{action.title}}`              |
+| `submit`          | `in-review` (has review) | `{{user}} submitted {{action.title}} for review`   |
+| `approve`         | `done`                   | `{{user}} approved {{action.title}}`               |
+| `request_changes` | `changes-required`       | `{{user}} requested changes on {{action.title}}`   |
+| `progress`        | `in-progress`            | `{{user}} started {{action.title}}`                |
+| `not_required`    | `not-required`           | `{{user}} marked {{action.title}} as not required` |
+| `resolve_error`   | `in-review`              | `{{user}} resolved an error on {{action.title}}`   |
 
 The `submit` verb depends on `status_after` (the only branch — "completed" vs "submitted for review"), exactly the function-cell split the FSM already encodes (`submitTarget`, `tables.js:32`).
 
 **System-driven signals** (no human actor — never attribute to a user):
 
-| Signal | Default message |
-|---|---|
-| `internal_mirror_child_active` | `{{action.title}} started` |
+| Signal                            | Default message              |
+| --------------------------------- | ---------------------------- |
+| `internal_mirror_child_active`    | `{{action.title}} started`   |
 | `internal_mirror_child_completed` | `{{action.title}} completed` |
 | `internal_mirror_child_cancelled` | `{{action.title}} cancelled` |
 
 **Lifecycle signals** (workflow-level handlers): `{{ user.profile.name }} <verb> {{ workflow.title }}`
 
-| Handler | Default message |
-|---|---|
-| StartWorkflow | `{{user}} started {{workflow.title}}` |
+| Handler        | Default message                         |
+| -------------- | --------------------------------------- |
+| StartWorkflow  | `{{user}} started {{workflow.title}}`   |
 | CancelWorkflow | `{{user}} cancelled {{workflow.title}}` |
-| CloseWorkflow | `{{user}} closed {{workflow.title}}` |
+| CloseWorkflow  | `{{user}} closed {{workflow.title}}`    |
 
 **Fallback.** Any signal not in the map (defensive — e.g. an auxiliary `block`/`activate`/`unblock` that ever became primary) falls to `{{user}} updated {{action.title}}`, never the raw-slug string. In practice the internal/auxiliary signals (`internal_cancel_action`, and `block`/`activate`/`unblock` when they aren't the primary signal) never reach `planEventDispatch` at all: each invocation dispatches exactly one event for its primary signal, and cascade cancels surface as the `workflow-cancelled` lifecycle event rather than a per-action signal. So the map only needs to cover the primary signals above to be exhaustive — the fallback is purely defensive. The stage's curated `action_statuses` enum `.title` is available in the render context if an app override wants "as {{ status_title }}" phrasing.
 
@@ -118,7 +118,7 @@ The defaulting happens in exactly two build/runtime places, and every consumer s
 
 1. **`makeWorkflowsConfig` (build).** During normalization it resolves and writes `title` for the workflow, each action, and each group into the runtime `workflowsConfig`. After build, the config carries real titles — config-reading surfaces (overview/entity-workflows resolvers, action-page generation) just read `title`. This is the "one correct way": the default is materialized once, not re-derived at each read site.
 2. **Runtime denormalization onto the persisted docs.** Both the action and the workflow are doc-rendered for events, so each carries its resolved title on the stored doc — the same stance the module already takes for `type`/`kind`/`workflow_type`:
-   - **Action title → action doc (`planActionTransition`).** Add `doc.title = actionConfig.title;` to the **unconditional denormalization block** (`planActionTransition.js:175+`, alongside `doc.workflow_type`), *not* the insert branch. The insert branch (`:141-164`) only runs on first creation; a submit on an existing action takes the update branch (`:165-173`, which spreads `...action`), and that updated doc is what `planSubmit` hands to `planEventDispatch`. Stamping in the unconditional block covers every transition — insert and update, new and pre-existing actions — so `{{ action.title }}` is always present on the planned doc. Doc-reading surfaces — the event planner (`plannedActionDoc`) and the timeline (which joins action docs) — then get the title without a config lookup.
+   - **Action title → action doc (`planActionTransition`).** Add `doc.title = actionConfig.title;` to the **unconditional denormalization block** (`planActionTransition.js:175+`, alongside `doc.workflow_type`), _not_ the insert branch. The insert branch (`:141-164`) only runs on first creation; a submit on an existing action takes the update branch (`:165-173`, which spreads `...action`), and that updated doc is what `planSubmit` hands to `planEventDispatch`. Stamping in the unconditional block covers every transition — insert and update, new and pre-existing actions — so `{{ action.title }}` is always present on the planned doc. Doc-reading surfaces — the event planner (`plannedActionDoc`) and the timeline (which joins action docs) — then get the title without a config lookup.
    - **Workflow title → workflow doc (`StartWorkflow`).** `baseWorkflowDoc` (`StartWorkflow.js:169-177`) carries `workflow_type` but no `title`, while `workflowConfig` (with `.title`) is already in scope at `:70`. Add `title: workflowConfig.title` to `baseWorkflowDoc` so the title persists in the DB. The lifecycle render context binds `workflow = plannedWorkflowDoc` (`planEventDispatch.js:105`), so StartWorkflow gets it directly, and Cancel/Close — which load the existing workflow doc — get it for free without re-reading config.
 
 The `humanizeSlug` helper therefore lives in the **module resolvers** (build side) only; the plugin never humanizes at runtime because the config it receives is already resolved.
@@ -134,7 +134,7 @@ makeWorkflowsConfig ── humanizeSlug + title_acronyms ──► runtime workf
         │ makeActionPages: page_config.title ← action.title      │ request-time resolvers read title
         ▼                                                        ▼
    action pages                                          overview / entity-workflows / ActionSteps
-        
+
 runtime: StartWorkflow ── title: workflowConfig.title ──► workflow doc (denormalized title, persisted)
         │                                                        │
         ▼ Submit                                                 │ Cancel/Close load the doc → title for free
@@ -146,6 +146,7 @@ planEventDispatch ── DEFAULT_SIGNAL_TITLES[signal] over {{action.title}} / {
 ## Files changed
 
 **Module (`modules/workflows`)**
+
 - `resolvers/humanizeSlug.js` — **new** pure helper + base acronym set.
 - `resolvers/makeWorkflowsConfig.js` — resolve+default `title` for workflow / action / group; add `title` to picked action fields; read+merge `title_acronyms`; validate `title` is a string when present.
 - `resolvers/makeActionPages.js` — default `page_config.title` to the resolved action title when `action.pages[verb].title` is absent.
@@ -153,11 +154,13 @@ planEventDispatch ── DEFAULT_SIGNAL_TITLES[signal] over {{action.title}} / {
 - `README.md` / `docs/idioms.md` — document the derive-or-override rule, the acronym dictionary, and the signal verb map.
 
 **Plugin (`plugins/modules-mongodb-plugins`)**
+
 - `connections/shared/phases/planners/planEventDispatch.js` — replace `DEFAULT_TITLES['action-event']` with `DEFAULT_SIGNAL_TITLES` (signal-keyed verb map + submit/status_after branch + fallback); lifecycle templates use `workflow.title`.
 - `connections/shared/phases/planners/planActionTransition.js` — add `doc.title = actionConfig.title;` to the unconditional denormalization block (alongside `doc.workflow_type`), so title is stamped on insert and update alike.
 - `connections/WorkflowAPI/StartWorkflow/StartWorkflow.js` — add `title: workflowConfig.title` to `baseWorkflowDoc` so the workflow title persists on the doc (Cancel/Close read it from the loaded doc).
 
 **Demo (`apps/demo/modules/workflows`)**
+
 - Workflow/action/group configs: drop titles now equal to the derived default; keep/add an explicit `title` only where the slug humanizes wrong (e.g. acronyms, custom phrasing) to exercise the override path.
 
 ## Migration
@@ -169,7 +172,7 @@ No data migration required, and no read-time fallback. The denormalized doc `tit
 
 ## Decisions
 
-- **Optional-with-good-default over required `title`.** With a genuinely good humanizer, defaults win on authoring efficiency and consistency, and eliminate the inconsistent hand-rolled titles that a required field invites. Required would force redundant `title: Send Quote` beside `type: send-quote`. The escape hatch (`title:`) covers the cases the humanizer gets wrong. *(This reverses the earlier part-51 lean toward required, which was made before a good humanizer was on the table.)*
+- **Optional-with-good-default over required `title`.** With a genuinely good humanizer, defaults win on authoring efficiency and consistency, and eliminate the inconsistent hand-rolled titles that a required field invites. Required would force redundant `title: Send Quote` beside `type: send-quote`. The escape hatch (`title:`) covers the cases the humanizer gets wrong. _(This reverses the earlier part-51 lean toward required, which was made before a good humanizer was on the table.)_
 - **Build-time materialization over runtime fallback.** One defaulter, dumb consumers — no per-surface `?? humanize(type)` scattered across resolvers and blocks. Matches "one correct way."
 - **Signals get a curated verb map, not a derived one.** The FSM signal set is closed and engine-locked, so verbs are hand-written once (like the status enum), not humanized. This is what delivers "completed" / "approved" / "requested changes" instead of "marked … as …".
 - **Form-field titles stay author-only.** Defaulting a field label from its key is the one risky case (blank labels are sometimes intentional — checkboxes, layout blocks), and the value is lower. Out of scope; fields keep today's optional `title`.

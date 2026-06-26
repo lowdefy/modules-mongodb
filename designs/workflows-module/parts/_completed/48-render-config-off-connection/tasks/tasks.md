@@ -6,19 +6,19 @@ These tasks move `status_map` off the connection blob onto per-workflow write en
 
 ## Tasks
 
-| #   | File                                            | Summary                                                                                              | Depends On |
-| --- | ----------------------------------------------- | ---------------------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-rename-child-workflow-type.md`              | Rename `tracker.workflow_type` → `child_workflow_type` repo-wide + build validation + acyclicity     | —          |
-| 2   | `02-generalize-event-override-gate.md`          | `planEventDispatch`: replace the `if (isSubmit)` merge gate with override-presence gating            | —          |
-| 3   | `03-merge-render-config-at-load.md`             | `loadWorkflowState`: splice `params.render_config` onto every action config (the merge-at-load seam) | —          |
-| 4   | `04-plansubmit-overrides-via-seam.md`           | `planSubmit`: read `event_overrides` off `actionConfig` instead of `params`                          | 3          |
-| 5   | `05-tracker-mirror-override-channel.md`         | `planTrackerLevel`: thread the parent tracker's mirror override into `planEventDispatch`             | 2, 3       |
-| 6   | `06-lifecycle-override-passthrough.md`          | Start/Cancel/Close handlers pass `params.lifecycle_event_override` into `planEventDispatch`          | 2          |
-| 7   | `07-builder-event-map-validation.md`            | `makeWorkflowsConfig`: validate workflow-level `event` map + mirror signals on tracker `event:`      | —          |
-| 8   | `08-per-workflow-submit-endpoint.md`            | `makeWorkflowApis`: collapse submit to `{type}-submit` with `render_config` + re-keyed `hooks`; `handleSubmit` re-slice | 1, 3, 4, 7 |
-| 9   | `09-per-workflow-lifecycle-endpoints.md`        | `makeWorkflowApis`: emit `{type}-start/cancel/close`, retire the generic Part 19 endpoints           | 1, 6, 7, 8 |
-| 10  | `10-drop-status-map-from-blob.md`               | `makeWorkflowsConfig`: drop `status_map` from `ACTION_FIELDS` (the de-bloat payoff)                  | 3, 8, 9    |
-| 11  | `11-repoint-client-call-sites.md`               | Re-point templates, legacy pages, and demo start callers to the new endpoint ids                     | 8, 9       |
+| #   | File                                     | Summary                                                                                                                 | Depends On |
+| --- | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-rename-child-workflow-type.md`       | Rename `tracker.workflow_type` → `child_workflow_type` repo-wide + build validation + acyclicity                        | —          |
+| 2   | `02-generalize-event-override-gate.md`   | `planEventDispatch`: replace the `if (isSubmit)` merge gate with override-presence gating                               | —          |
+| 3   | `03-merge-render-config-at-load.md`      | `loadWorkflowState`: splice `params.render_config` onto every action config (the merge-at-load seam)                    | —          |
+| 4   | `04-plansubmit-overrides-via-seam.md`    | `planSubmit`: read `event_overrides` off `actionConfig` instead of `params`                                             | 3          |
+| 5   | `05-tracker-mirror-override-channel.md`  | `planTrackerLevel`: thread the parent tracker's mirror override into `planEventDispatch`                                | 2, 3       |
+| 6   | `06-lifecycle-override-passthrough.md`   | Start/Cancel/Close handlers pass `params.lifecycle_event_override` into `planEventDispatch`                             | 2          |
+| 7   | `07-builder-event-map-validation.md`     | `makeWorkflowsConfig`: validate workflow-level `event` map + mirror signals on tracker `event:`                         | —          |
+| 8   | `08-per-workflow-submit-endpoint.md`     | `makeWorkflowApis`: collapse submit to `{type}-submit` with `render_config` + re-keyed `hooks`; `handleSubmit` re-slice | 1, 3, 4, 7 |
+| 9   | `09-per-workflow-lifecycle-endpoints.md` | `makeWorkflowApis`: emit `{type}-start/cancel/close`, retire the generic Part 19 endpoints                              | 1, 6, 7, 8 |
+| 10  | `10-drop-status-map-from-blob.md`        | `makeWorkflowsConfig`: drop `status_map` from `ACTION_FIELDS` (the de-bloat payoff)                                     | 3, 8, 9    |
+| 11  | `11-repoint-client-call-sites.md`        | Re-point templates, legacy pages, and demo start callers to the new endpoint ids                                        | 8, 9       |
 
 ## Ordering Rationale
 

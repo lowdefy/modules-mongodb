@@ -88,7 +88,7 @@ This part adds the link in `actions-on-entity`'s existing `actionGroupConfig` `_
 
 ```js
 config[g.id].link = {
-  pageId: '<scoped group-overview pageId>',  // _module.pageId: { id: group-overview, module: workflows } — passed in as a third _js param
+  pageId: "<scoped group-overview pageId>", // _module.pageId: { id: group-overview, module: workflows } — passed in as a third _js param
   urlQuery: { workflow_id: workflow._id, group_id: g.id },
 };
 ```
@@ -103,12 +103,12 @@ The link is built unconditionally — every group on the entity widget links to 
 
 **Known edges with the "always link" rule.** Two cosmetic / UX edges are accepted in v1:
 
-1. **Bounce-back on access-restricted `done` groups.** If a user clicks the title of a `done` group whose actions are all access-filtered out for *that user*, `group-overview` returns `{ workflow: null, group: null, actions: [] }` and redirects back to the entity page (per the redirect-on-empty contract above). The user clicked a visually active link and got nothing. Rare in practice — a user with workflow visibility on the entity page almost always has visibility into some action per group — but possible under per-action role gating. Accepted because the alternative (disable link on `done` groups) requires the builder to mirror engine state per group and the bounce-back is recoverable (one click back). If this becomes a real complaint we'd flip to `link.disabled: true` on `groups[i].status === 'done'` — a small, additive change in the `_js` builder.
+1. **Bounce-back on access-restricted `done` groups.** If a user clicks the title of a `done` group whose actions are all access-filtered out for _that user_, `group-overview` returns `{ workflow: null, group: null, actions: [] }` and redirects back to the entity page (per the redirect-on-empty contract above). The user clicked a visually active link and got nothing. Rare in practice — a user with workflow visibility on the entity page almost always has visibility into some action per group — but possible under per-action role gating. Accepted because the alternative (disable link on `done` groups) requires the builder to mirror engine state per group and the bounce-back is recoverable (one click back). If this becomes a real complaint we'd flip to `link.disabled: true` on `groups[i].status === 'done'` — a small, additive change in the `_js` builder.
 2. **Struck-through clickable title on all-`not-required` groups.** `ActionSteps` wraps the group title in `<strike>` when the block-internal rollup is `not-required` ([`ActionSteps.js:115-117`](../../../../plugins/modules-mongodb-plugins/src/blocks/ActionSteps/ActionSteps.js)). With the link populated, that markup sits inside a clickable `Link`, giving a struck-through hyperlink. Visually dissonant but rare — only fires when every action in the group rolls up to `not-required`. Accepted in v1; same fallback as above (`link.disabled: true` on the rollup) is available if it surfaces.
 
 **No change to the `ActionSteps` block.** The block already renders `actionGroupConfig[group].link` as a clickable group title; this part just populates it. README is already correct.
 
-**Tracker actions: child-workflow info stays off the parent widget.** A tracker action's row inside `actions-on-entity` is treated like any other row — badge + `status_map`-driven message + `status_map`-driven link cell (per [part 18 design.md:42](../_completed/18-entity-components/design.md)). The row's `link` is the only surface that points at the child workflow; nothing else in `actions-on-entity` (group title, header, summary counts) reflects child-workflow state. This part preserves that: the per-group title link added here points at the *parent* workflow's `group-overview`, never a child's. The two surfaces — group title (parent) and tracker row link (child) — address different workflows and are not in competition.
+**Tracker actions: child-workflow info stays off the parent widget.** A tracker action's row inside `actions-on-entity` is treated like any other row — badge + `status_map`-driven message + `status_map`-driven link cell (per [part 18 design.md:42](../_completed/18-entity-components/design.md)). The row's `link` is the only surface that points at the child workflow; nothing else in `actions-on-entity` (group title, header, summary counts) reflects child-workflow state. This part preserves that: the per-group title link added here points at the _parent_ workflow's `group-overview`, never a child's. The two surfaces — group title (parent) and tracker row link (child) — address different workflows and are not in competition.
 
 ### Cross-references in sibling designs
 

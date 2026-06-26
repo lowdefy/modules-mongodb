@@ -4,8 +4,8 @@
 
 `docs/idioms.md` (437 lines) mixes two audiences:
 
-- **Consumer cross-cutting idioms** — `change_stamp`, `event_display`, `fields`/`components`/`request_stages` slots, `app_name`, `avatar_colors`, `secrets`. These describe how a *consumer* uses shared behavior across modules.
-- **Repo authoring/code conventions** — naming, file structure, "payload not state", operator preferences. These are for people *working in this repo*, and most already live in `CLAUDE.md`.
+- **Consumer cross-cutting idioms** — `change_stamp`, `event_display`, `fields`/`components`/`request_stages` slots, `app_name`, `avatar_colors`, `secrets`. These describe how a _consumer_ uses shared behavior across modules.
+- **Repo authoring/code conventions** — naming, file structure, "payload not state", operator preferences. These are for people _working in this repo_, and most already live in `CLAUDE.md`.
 
 This task splits the file: consumer idioms become per-idiom files under `docs/shared/` (one concept per file — serves the renderer, LLM agents, and Obsidian's graph); repo conventions fold back into `CLAUDE.md` so each fact lives in exactly one place. Then `idioms.md` is deleted.
 

@@ -24,7 +24,7 @@ Pick one of those (e.g. `onboarding/qualify.yaml`) for the Open Help exercise an
 
 Line 106 says:
 
-> The existing `pages.{verb}.modals.{name}.{field}:` config knobs on built-in modals stay as-is; the new shape is `pages.{verb}.modals:` accepting a *list* of full block declarations. The two coexist because the existing shape is keyed by built-in modal name; the new shape is a plain array of author blocks.
+> The existing `pages.{verb}.modals.{name}.{field}:` config knobs on built-in modals stay as-is; the new shape is `pages.{verb}.modals:` accepting a _list_ of full block declarations. The two coexist because the existing shape is keyed by built-in modal name; the new shape is a plain array of author blocks.
 
 `modules/workflows/templates/review.yaml.njk` does not read any `pages.review.modals.*` path. The actual review-page knob shape for the built-in request_changes modal is `page_config.buttons.request_changes.modal.{title,content,visible}` (`review.yaml.njk:230,246,250,317`), not `page_config.modals.request_changes.*`. The `modals` row in `workflows-module-concept/ui/design.md:331` documents a slot that was never wired.
 
@@ -54,7 +54,7 @@ Pick one and update the design's task list. Also flag that no shipped concept wo
 
 ### 4. "Single source of truth" for reserved ids is misleading
 
-> **Resolved.** Softened the language (option 1). The Proposed Change item now states the validator reads ids from `RESERVED_BUTTON_IDS` *and* the templates also hardcode them, with explicit file:line refs; calls the duplication acceptable for a 5-id set; and notes the heavier alternative without proposing it. The out-of-scope entry for future locked-verb parts is updated to match: each new verb part touches both the template button block and the constant.
+> **Resolved.** Softened the language (option 1). The Proposed Change item now states the validator reads ids from `RESERVED_BUTTON_IDS` _and_ the templates also hardcode them, with explicit file:line refs; calls the duplication acceptable for a 5-id set; and notes the heavier alternative without proposing it. The out-of-scope entry for future locked-verb parts is updated to match: each new verb part touches both the template button block and the constant.
 
 Line 11:
 

@@ -15,12 +15,13 @@ Create `modules/workflows/enums/button_signal_sources.yaml` with the source-stag
 ```yaml
 # enums/button_signal_sources.yaml — source-stages for each button-surfaced signal
 # (form and simple kinds share this table; derived from the FSM in shared/fsm/tables.js)
-submit:          [action-required, in-progress, changes-required, done]
-progress:        [action-required, in-progress]
-not_required:    [action-required, in-progress, changes-required, blocked, in-review, error]
-approve:         [in-review]
+submit: [action-required, in-progress, changes-required, done]
+progress: [action-required, in-progress]
+not_required:
+  [action-required, in-progress, changes-required, blocked, in-review, error]
+approve: [in-review]
 request_changes: [in-review, done]
-resolve_error:   [error]
+resolve_error: [error]
 ```
 
 The `error` signal is **omitted** — it is a pre-hooks-only signal and is never surfaced as a button (Part 38 owns it engine-side).

@@ -62,7 +62,8 @@ The workflow-overview page reads `_module.var: entities[workflow.entity_collecti
 **Files affected:** `tasks/02-task-view-page.md` (acceptance criterion).
 
 **Before (line 52):**
-> `_request: get_action` and `_request: get_workflow` resolve correctly when the page loads with a valid `?action_id` (skip workflow fetch isn't possible structurally since both pages share the requests — the design says task-view *skips* step 4, so don't emit `get_workflow` at all in onMount for task-view).
+
+> `_request: get_action` and `_request: get_workflow` resolve correctly when the page loads with a valid `?action_id` (skip workflow fetch isn't possible structurally since both pages share the requests — the design says task-view _skips_ step 4, so don't emit `get_workflow` at all in onMount for task-view).
 
 This both references `_request: get_workflow` succeeding AND says don't emit `get_workflow`. The "(skip workflow fetch isn't possible structurally...)" parenthetical was a writing-error leftover.
 
@@ -75,6 +76,7 @@ This both references `_request: get_workflow` succeeding AND says don't emit `ge
 **Files affected:** `tasks/02-task-view-page.md` (context section).
 
 **Before (line 13):**
+
 > Reuse of part 16's request files (`requests/get_action.yaml`, `requests/get_workflow.yaml`, `requests/get_entity.yaml.njk`) — though task pages don't actually fetch the entity per design § "Reused module-shipped requests."
 
 Listed three files then noted task pages don't fetch the entity. The list also incorrectly implied task-view uses `get_workflow.yaml` (it doesn't — only task-edit does).

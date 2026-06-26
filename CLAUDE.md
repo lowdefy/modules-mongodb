@@ -45,7 +45,7 @@ Agents almost always want to **verify config compiles**, not run a live server. 
 - **Never run servers in the foreground.** `lowdefy dev` (`pnpm ldf` / `pnpm ldf:d`), `lowdefy start`, and `pnpm e2e` are long-running processes that **never exit** — a plain foreground call blocks until timeout and looks like a hang. If you genuinely need one, start it in the background and poll its health URL (`/api/auth/session`); otherwise don't run it for a build check.
 - **The `:i` (Infisical) variants don't work in the sandbox.** `ldf:b:i` / `ldf:d:i` / `ldf:i` fetch secrets from `app.infisical.com`, which the sandbox network blocks (TLS rejected). Use plain `ldf:b` for build checks.
 - **A build check is not a smoke test.** Running the app (dev server, e2e) needs real secrets (`MONGODB_URI`, etc.) and a reachable MongoDB — that's a human or `/r:dev-test` step, not part of an autonomous build gate.
-- **`pnpm build` at the repo root does *not* build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
+- **`pnpm build` at the repo root does _not_ build the demo.** It's `pnpm -r --filter '!@lowdefy/modules-demo' run build` — module/plugin bundles only. To build the app, use `ldf:b`.
 
 ## Documentation
 
@@ -67,10 +67,10 @@ Most small modules are just `docs/{module}/index.md` + generated `docs/{module}/
 
 ```yaml
 ---
-title: Page Title       # required
-module: workflows       # required — module name, "root", "shared", or "plugins"
-type: index             # required — index | concept | how-to | reference | shared
-concepts: [foo, bar]    # optional — key concepts; used by llms.txt
+title: Page Title # required
+module: workflows # required — module name, "root", "shared", or "plugins"
+type: index # required — index | concept | how-to | reference | shared
+concepts: [foo, bar] # optional — key concepts; used by llms.txt
 ---
 ```
 

@@ -98,9 +98,7 @@ test("groups reflect an unblock-style planned state (blocked → action-required
     now,
   });
 
-  expect(doc.groups.find((g) => g.id === "phase-1").status).toBe(
-    "in-progress",
-  );
+  expect(doc.groups.find((g) => g.id === "phase-1").status).toBe("in-progress");
 });
 
 test("all actions terminal → pushes completed at status[0] with event_id + created stamp", () => {
@@ -299,7 +297,11 @@ describe("lifecyclePush", () => {
 
     expect(doc.status).toHaveLength(2);
     expect(doc.status.filter((s) => s.stage === "completed")).toHaveLength(1);
-    expect(doc.status[0]).toEqual({ stage: "completed", event_id, created: now });
+    expect(doc.status[0]).toEqual({
+      stage: "completed",
+      event_id,
+      created: now,
+    });
   });
 
   test("omitted reason → no reason key on the entry", () => {
@@ -311,7 +313,11 @@ describe("lifecyclePush", () => {
       now,
     });
 
-    expect(doc.status[0]).toEqual({ stage: "cancelled", event_id, created: now });
+    expect(doc.status[0]).toEqual({
+      stage: "cancelled",
+      event_id,
+      created: now,
+    });
     expect("reason" in doc.status[0]).toBe(false);
   });
 });

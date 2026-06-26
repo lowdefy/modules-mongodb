@@ -1,6 +1,6 @@
 id:
   _build.string.concat:
-    - 'download_policy_'
+    - "download_policy_"
     - _var:
         key: block_id
         default: file_download

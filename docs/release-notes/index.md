@@ -10,8 +10,8 @@ Single-page Markdown renderer for `CHANGELOG.md`. Drops a release-notes link int
 
 ## Dependencies
 
-| Module | Why |
-|---|---|
+| Module                       | Why          |
+| ---------------------------- | ------------ |
 | [layout](../layout/index.md) | Page wrapper |
 
 ## When to use

@@ -14,7 +14,7 @@ Existing shipped pieces it composes (do not modify them):
 - `modules/workflows/components/workflows-events-timeline.yaml` — History. Vars:
   `reference_field` (required, events field to match), `reference_value`
   (required, runtime operator). Already wrapped with `maxHeight: 600; overflowY:
-  auto`.
+auto`.
 - `modules/workflows/components/universal-fields/universal-fields.yaml` (Part 24)
   — composed **by the caller**, not the shell; passed in as a block array.
 

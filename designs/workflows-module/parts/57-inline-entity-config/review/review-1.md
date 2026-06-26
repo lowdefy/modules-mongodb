@@ -18,7 +18,7 @@ In `validateWorkflow` (`makeWorkflowsConfig.js:573`) the only required-field che
 - `title` type check (`:591`).
 
 `entity_collection` appears in the file only twice: as a `WORKFLOW_FIELDS` pick
-(`:34`) and inside the `entity_type` error *message* (`:577`). It is carried through
+(`:34`) and inside the `entity_type` error _message_ (`:577`). It is carried through
 the normalized config but never required-checked — a workflow omitting it builds
 clean and silently produces documents with an undefined collection.
 
@@ -33,7 +33,7 @@ way" framing actually true. Update lines 10, 17, 39, and 133 accordingly.
 
 ### 2. The "per-workflow variation is plausibly wanted" justification is speculative
 
-> **Resolved.** Reframed line 19 from a hedged "Why" driver ("plausibly wanted", "may legitimately want") to a supported side-effect: per-workflow link variation is a real capability the new shape supports and that the user intends to keep, but it is explicitly *not* the driver — single-file config and build-time validation carry the change on their own. Adjusted the Rejected-section framing (line 47) so the trade bought is single-file config + validation, with per-workflow variation noted as an additional benefit rather than the justification.
+> **Resolved.** Reframed line 19 from a hedged "Why" driver ("plausibly wanted", "may legitimately want") to a supported side-effect: per-workflow link variation is a real capability the new shape supports and that the user intends to keep, but it is explicitly _not_ the driver — single-file config and build-time validation carry the change on their own. Adjusted the Rejected-section framing (line 47) so the trade bought is single-file config + validation, with per-workflow variation noted as an additional benefit rather than the justification.
 
 Design line 19 offers per-workflow link variation ("two workflows on the same
 `entity_collection` may legitimately want to link to different entity pages") as a
@@ -46,7 +46,7 @@ no cited caller is exactly the speculative surface to avoid leaning on.
 The design does not need this argument: the **single-file config** reason (primary,
 concrete — the developer edits one file instead of two) and the **build-time
 validation** reason (concrete — turns silent `null` back-links into build errors)
-fully carry the change on their own. Per-workflow variation is a *free side-effect*
+fully carry the change on their own. Per-workflow variation is a _free side-effect_
 of co-locating the fields, not a driver. Recommend demoting it from a "Why" bullet
 to a one-line "(and as a side effect, the link can now vary per workflow)" note, so
 the rationale rests only on the concrete needs.

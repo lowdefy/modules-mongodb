@@ -3,6 +3,7 @@
 Implementation checklist for `designs/documentation/design.md`. Tick each item as it's completed.
 
 Conventions:
+
 - "Audit" = read existing content, find gaps, fix.
 - "New" = file does not exist yet.
 - "Rewrite" = file exists but needs to be replaced or restructured.

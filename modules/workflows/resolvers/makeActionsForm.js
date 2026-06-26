@@ -41,9 +41,7 @@ function validateMode(mode, form) {
     fail(`'mode' var is required when any form entry has viewOnly: true`);
   }
   if (mode !== undefined && !VALID_MODES.includes(mode)) {
-    fail(
-      `invalid mode '${mode}' (expected one of: edit, view, review, error)`
-    );
+    fail(`invalid mode '${mode}' (expected one of: edit, view, review, error)`);
   }
 }
 
@@ -87,7 +85,7 @@ function recordId(id, source, ids) {
   if (ids.has(id)) {
     const prev = ids.get(id);
     fail(
-      `duplicate block id '${id}' produced by components ${prev.component} and ${source.component} (keys: ${prev.key}, ${source.key}).`
+      `duplicate block id '${id}' produced by components ${prev.component} and ${source.component} (keys: ${prev.key}, ${source.key}).`,
     );
   }
   ids.set(id, source);

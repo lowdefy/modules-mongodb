@@ -29,11 +29,11 @@ Required fields on `context.params`: `action_id`, `interaction`. Optional: `curr
 
 ```js
 const { params } = context;
-if (typeof params.action_id !== 'string' || params.action_id.length === 0) {
-  throw new Error('SubmitWorkflowAction: action_id is required');
+if (typeof params.action_id !== "string" || params.action_id.length === 0) {
+  throw new Error("SubmitWorkflowAction: action_id is required");
 }
-if (typeof params.interaction !== 'string' || params.interaction.length === 0) {
-  throw new Error('SubmitWorkflowAction: interaction is required');
+if (typeof params.interaction !== "string" || params.interaction.length === 0) {
+  throw new Error("SubmitWorkflowAction: interaction is required");
 }
 ```
 
@@ -42,7 +42,7 @@ if (typeof params.interaction !== 'string' || params.interaction.length === 0) {
 Use `getCurrentAction` from task 2:
 
 ```js
-import getCurrentAction from './utils/getCurrentAction.js';
+import getCurrentAction from "./utils/getCurrentAction.js";
 // ...
 const action = await getCurrentAction(context, { actionId: params.action_id });
 if (!action) {
@@ -56,26 +56,30 @@ Fetch the workflow by `action.workflow_id` for the terminal-workflow gate, and l
 
 ```js
 const workflow = await context
-  .mongoDBConnection('workflows')
+  .mongoDBConnection("workflows")
   .MongoDBFindOne({ query: { _id: action.workflow_id } });
 if (!workflow) {
-  throw new Error(`SubmitWorkflowAction: workflow ${action.workflow_id} not found`);
+  throw new Error(
+    `SubmitWorkflowAction: workflow ${action.workflow_id} not found`,
+  );
 }
 
 const workflowConfig = (context.workflowsConfig ?? []).find(
-  (w) => w.type === workflow.workflow_type
+  (w) => w.type === workflow.workflow_type,
 );
 if (!workflowConfig) {
   throw new Error(
-    `SubmitWorkflowAction: workflow_type "${workflow.workflow_type}" not in workflowsConfig`
+    `SubmitWorkflowAction: workflow_type "${workflow.workflow_type}" not in workflowsConfig`,
   );
 }
 context.actionsConfig = workflowConfig.actions ?? [];
 
-const actionConfig = context.actionsConfig.find((cfg) => cfg.type === action.type);
+const actionConfig = context.actionsConfig.find(
+  (cfg) => cfg.type === action.type,
+);
 if (!actionConfig) {
   throw new Error(
-    `SubmitWorkflowAction: action type "${action.type}" not in workflow "${workflow.workflow_type}" config`
+    `SubmitWorkflowAction: action type "${action.type}" not in workflow "${workflow.workflow_type}" config`,
   );
 }
 ```
@@ -102,7 +106,7 @@ if (accessRoles.length > 0) {
   const intersects = accessRoles.some((role) => userRoles.includes(role));
   if (!intersects) {
     throw new Error(
-      `SubmitWorkflowAction: caller roles do not intersect with action.access.roles for action ${params.action_id}`
+      `SubmitWorkflowAction: caller roles do not intersect with action.access.roles for action ${params.action_id}`,
     );
   }
 }
@@ -117,11 +121,11 @@ Per [design.md step 1](../design.md#lifecycle-scaffold) + [action-authoring/spec
 ```js
 const workflowStage = workflow.status?.[0]?.stage;
 if (
-  (workflowStage === 'completed' || workflowStage === 'cancelled') &&
+  (workflowStage === "completed" || workflowStage === "cancelled") &&
   actionConfig.required_after_close !== true
 ) {
   throw new Error(
-    `SubmitWorkflowAction: workflow ${workflow._id} is ${workflowStage}; action type "${action.type}" does not have required_after_close: true`
+    `SubmitWorkflowAction: workflow ${workflow._id} is ${workflowStage}; action type "${action.type}" does not have required_after_close: true`,
   );
 }
 ```
@@ -134,29 +138,31 @@ Per [design.md § Interaction → target-status mapping](../design.md#interactio
 function resolveTargetStatus({ interaction, actionConfig, params }) {
   const hasReviewVerb = Object.values(actionConfig.access ?? {})
     .filter((v) => Array.isArray(v))
-    .some((verbs) => verbs.includes('review'));
+    .some((verbs) => verbs.includes("review"));
 
   switch (interaction) {
-    case 'submit_edit':
-      if (actionConfig.kind === 'task') {
-        if (typeof params.current_status !== 'string') {
+    case "submit_edit":
+      if (actionConfig.kind === "task") {
+        if (typeof params.current_status !== "string") {
           throw new Error(
-            'SubmitWorkflowAction: task submit_edit requires caller-supplied current_status'
+            "SubmitWorkflowAction: task submit_edit requires caller-supplied current_status",
           );
         }
         return params.current_status;
       }
-      return hasReviewVerb ? 'in-review' : 'done';
-    case 'not_required':
-      return 'not-required';
-    case 'resolve_error':
-      return hasReviewVerb ? 'in-review' : 'done';
-    case 'approve':
-      return 'done';
-    case 'request_changes':
-      return 'changes-required';
+      return hasReviewVerb ? "in-review" : "done";
+    case "not_required":
+      return "not-required";
+    case "resolve_error":
+      return hasReviewVerb ? "in-review" : "done";
+    case "approve":
+      return "done";
+    case "request_changes":
+      return "changes-required";
     default:
-      throw new Error(`SubmitWorkflowAction: unknown interaction "${interaction}"`);
+      throw new Error(
+        `SubmitWorkflowAction: unknown interaction "${interaction}"`,
+      );
   }
 }
 ```
@@ -221,7 +227,7 @@ Pass `internal` to downstream steps. Append `actionIds.push(action._id)` to trac
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js` — modify — fill in step 1 body.
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/SubmitWorkflowAction.js` — modify (small) — ensure `context.user = lowdefyContext.user` is set if task 7 didn't already include it.
 - `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.test.js` — modify — extend with the 10+ cases above.
-- *(Optional)* `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/utils/resolveTargetStatus.js` — create (if extracted) — pure function for the interaction-to-status mapping. If extracted, add a colocated `resolveTargetStatus.test.js` covering each interaction × verb combination.
+- _(Optional)_ `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/utils/resolveTargetStatus.js` — create (if extracted) — pure function for the interaction-to-status mapping. If extracted, add a colocated `resolveTargetStatus.test.js` covering each interaction × verb combination.
 
 ## Notes
 

@@ -41,7 +41,7 @@ Areas checked where everything was consistent:
 - **Verb-gating rules** (design.md:23–27) match the concept UI spec and review #1 / #5 resolutions.
 - **`page_ids` per-verb gating** (design.md:33) consistent with finding #5 resolution.
 - **`vars.app_name` validation** (design.md:50) consistent with finding #6 resolution.
-- **Cross-workflow id-collision assertion** retained (design.md:52); finding #8 rejected only the *static-page* extension, not the original assertion.
+- **Cross-workflow id-collision assertion** retained (design.md:52); finding #8 rejected only the _static-page_ extension, not the original assertion.
 - **Verification fixtures** (design.md:67–73) cleaned up per finding #9; no redundant tracker line.
 - **Open questions** (design.md:77) — only the `pages.{verb}` template-override question remains; form-stub question correctly removed per finding #10.
 - **`entity_id` clarification paragraph** (design.md:38) consistent with finding #2 resolution and the post-part-21 entity-identity shape.

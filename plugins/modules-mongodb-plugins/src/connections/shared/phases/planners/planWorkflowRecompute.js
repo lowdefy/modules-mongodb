@@ -74,9 +74,8 @@ function planWorkflowRecompute({
 
   const summary = {
     done: actions.filter((a) => a.status?.[0]?.stage === "done").length,
-    not_required: actions.filter(
-      (a) => a.status?.[0]?.stage === "not-required",
-    ).length,
+    not_required: actions.filter((a) => a.status?.[0]?.stage === "not-required")
+      .length,
     total: actions.length,
   };
 

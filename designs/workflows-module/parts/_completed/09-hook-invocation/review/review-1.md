@@ -64,8 +64,8 @@ hooks to inline-routine authoring and synthesizes `auth.roles` directly from
 
 > **Auth by construction.** The resolver synthesizes each emitted hook Api's
 > `auth:` block from `action.access.roles` directly (`hook.auth.roles ≡
-> action.access.roles`, never `auth.public: true`). The "`hook.auth.roles ⊇
-> action.access.roles`" gate holds by construction — no separate validation
+action.access.roles`, never `auth.public: true`). The "`hook.auth.roles ⊇
+action.access.roles`" gate holds by construction — no separate validation
 > pass, no cross-resource lookup, no `vars.apis` input needed.
 
 There is no build-time validation pass and nothing for Part 9 to "assume."
@@ -92,11 +92,9 @@ workflows module entry id. Per [Part 11 review-1 finding #2](../../../_next/11-g
 the canonical call shape for a module-scoped Api is:
 
 ```js
-await context.callApi(
-  { id: derivedApiId, module: 'workflows' },
-  payload,
-  { user: context.user },
-);
+await context.callApi({ id: derivedApiId, module: "workflows" }, payload, {
+  user: context.user,
+});
 ```
 
 **Fix.** Pin the literal `module: 'workflows'` (or whatever the workflows
@@ -155,7 +153,7 @@ commits a different partial return for the same kind of abort (it explicitly
 calls out that `hook_error` returns "take the same path with `reason: 'pre-hook'`"):
 
 > force-push `{ stage: error, created, reason: <step-name>, error_message,
-> error_metadata }` onto the action's `status[]` via `updateAction(...force: true)`;
+error_metadata }` onto the action's `status[]` via `updateAction(...force: true)`;
 > skip the remaining lifecycle steps; return partial `{ action_ids, event_id, ... }`.
 
 So Part 6 says `action_ids` and `event_id` are populated on the error return;

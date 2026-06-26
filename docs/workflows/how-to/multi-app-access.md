@@ -32,15 +32,15 @@ action_group: quoting
 blocked_by:
   - qualify
 access:
-  demo:                         # existing team app
+  demo: # existing team app
     view: true
     edit: true
     review:
       - admin
-  customer-portal:              # ← add this
-    view: true                  # customers can view the quote status
+  customer-portal: # ← add this
+    view: true # customers can view the quote status
     edit:
-      - customer-admin          # only customer admins can submit (e.g. accept quote)
+      - customer-admin # only customer admins can submit (e.g. accept quote)
     # no review verb → customer-admin's submit lands at done directly
 ```
 
@@ -131,12 +131,12 @@ access:
 
 ## Summary
 
-| Scenario | Config |
-|---|---|
-| Second app view-only | Add app entry with `view: true`; omit `edit` and `review` |
-| Second app submits to `done` | Add `edit:`; omit `review:` on all apps |
-| Second app submits to `in-review` | The action already has `review:` declared — it applies globally |
-| Second app needs different reviewer | Not supported on one action — use two actions |
+| Scenario                            | Config                                                          |
+| ----------------------------------- | --------------------------------------------------------------- |
+| Second app view-only                | Add app entry with `view: true`; omit `edit` and `review`       |
+| Second app submits to `done`        | Add `edit:`; omit `review:` on all apps                         |
+| Second app submits to `in-review`   | The action already has `review:` declared — it applies globally |
+| Second app needs different reviewer | Not supported on one action — use two actions                   |
 
 ## See also
 

@@ -11,7 +11,7 @@ These tests rely on Part 38's engine behaviour at runtime (the `update-action-{a
 Add Playwright e2e specs (in the Part 22 suite, following its `ldf`/`mdb` fixture conventions) covering:
 
 **(a) Save Draft (`progress`) persists partial form data without validation.**
-On an `action-required` form action, open the edit page, fill in *partial* form data (leave a required field empty), click **Save Draft**, and assert: no validation error blocks the save, the action lands `in-progress`, and the partial form data is persisted (re-open the page and the saved fields are present).
+On an `action-required` form action, open the edit page, fill in _partial_ form data (leave a required field empty), click **Save Draft**, and assert: no validation error blocks the save, the action lands `in-progress`, and the partial form data is persisted (re-open the page and the saved fields are present).
 
 **(b) A button absent from a stage's source list is not rendered.**
 Assert that a button whose signal is not coherent from the current stage does not render: on the `edit` page of a `done` action, `progress` (source list `[action-required, in-progress]`) is **not** shown while `submit` (source list includes `done`) **stays visible**. The visible/hidden pair on the same page and stage is what proves the FSM source-stage gate is doing the work — not template construction or the role gate. (Do **not** use "`approve` is not shown on `edit`" — `approve` is a `review.yaml.njk` button absent from `edit` by construction, so that assertion passes regardless of the visibility mechanism.)

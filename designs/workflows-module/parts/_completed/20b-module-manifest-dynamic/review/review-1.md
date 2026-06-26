@@ -4,11 +4,11 @@
 
 ### 1. Hook routines live inline on the action YAML, not as separate API files
 
-> **Resolved.** Hook routine *content* still lives in sibling YAML files (under `onboarding/hooks/`, not `onboarding/api/`), but each is pulled into the action's `hooks:` block via `_ref` so the resolver sees one inline routine array at build time. Rewrote proposed-change item 2, the "Hook routines" section (renamed from "Hook API files"), and the file-list entry to show the `_ref` pattern. Added a note that `on_complete` follows the same shape on `action_groups[]`.
+> **Resolved.** Hook routine _content_ still lives in sibling YAML files (under `onboarding/hooks/`, not `onboarding/api/`), but each is pulled into the action's `hooks:` block via `_ref` so the resolver sees one inline routine array at build time. Rewrote proposed-change item 2, the "Hook routines" section (renamed from "Hook API files"), and the file-list entry to show the `_ref` pattern. Added a note that `on_complete` follows the same shape on `action_groups[]`.
 
 [Proposed change item 2](modules-mongodb/designs/workflows-module/parts/_completed/20b-module-manifest-dynamic/design.md#proposed-change) ("Author three pre/post hook YAML files under `apps/demo/modules/workflows/workflow_config/onboarding/api/`: `qualify-pre-submit.yaml`, …, wire each into its action's `hooks:` block") contradicts the canonical spec and the implemented resolver.
 
-[`action-authoring/spec.md` line 16](modules-mongodb/designs/workflows-module-concept/action-authoring/spec.md): *"Hook routines live **inline** on the action YAML's `hooks:` block (and group `on_complete:` routines live inline on the workflow YAML's `action_groups[]`). The resolver emits the corresponding Lowdefy Apis at build time — authors do not write separate hook Api files."*
+[`action-authoring/spec.md` line 16](modules-mongodb/designs/workflows-module-concept/action-authoring/spec.md): _"Hook routines live **inline** on the action YAML's `hooks:` block (and group `on_complete:` routines live inline on the workflow YAML's `action_groups[]`). The resolver emits the corresponding Lowdefy Apis at build time — authors do not write separate hook Api files."_
 
 The shipped resolver enforces this contract — [makeWorkflowApis.js:11–18](makeWorkflowApis.js) reads `hooks.{interaction}.{phase}.routine` off the action and emits `update-action-{type}-{interaction}-{phase}` as a generated Api with auto-derived id and auth. Test fixtures in [makeWorkflowApis.test.js:9–13](makeWorkflowApis.test.js) carry the inline-routine shape literally.
 
@@ -65,9 +65,10 @@ link:
 
 This concatenates four operands. `$apps` is treated as a literal string (Lowdefy `_string.concat` doesn't interpret `$apps` as a Mongo projection); even if it did, there is no `apps` field on the action doc — the relevant field path is `status_map.{status}.{app_name}.{message|link}`, and the `{status}` segment is dynamic. The current YAML produces a constant string like `"apps.demo.link"` on every action, regardless of status.
 
-The WIP commit message ([`5352646`](../../../../../../tree/5352646)) describes the intent ("Push action shaping … into the $lookup pipelines: the host page no longer needs status_map / nunjucks gymnastics, just `_state: actions_list.$.message / .link`") but the implementation doesn't match it. The same broken shape exists in `get-workflow-overview.yaml` and `get-action-group-overview.yaml` per the commit body.
+The WIP commit message ([`5352646`](../../../../../../tree/5352646)) describes the intent ("Push action shaping … into the $lookup pipelines: the host page no longer needs status_map / nunjucks gymnastics, just `_state: actions_list.$.message / .link`") but the implementation doesn't match it. The same broken shape exists in `get-workflow-overview.yaml`and`get-action-group-overview.yaml` per the commit body.
 
 **Fix.** This is bigger than 20b's scope. Either:
+
 - **(a)** Add an explicit "Fix the denormalization in `get-entity-workflows` / `get-workflow-overview` / `get-action-group-overview`" item to 20b's proposed changes, scoped to one new sub-stage that does `$arrayElemAt: [{ $objectToArray: { $getField: { field: { $concat: ['status_map.', '$status'] }, … } } }, 0]` or whatever the actual MongoDB shape is. Worth a spike to confirm the right operator path.
 - **(b)** Spin out the API fix into its own small follow-up part (likely sub-part of 18 or 25 — they own these APIs) that 20b lists as a runtime dep. 20b's verification then explicitly waits for that part to land before walk-through step 1 passes.
 
@@ -79,7 +80,7 @@ Either way, the design must stop claiming the new actions "surface automatically
 
 > **Resolved (auto).** Table row for `proof-of-installation` rewritten: `key: $device_serial` as a symbolic placeholder, concrete values supplied at spawn time via the `start-workflow` `actions:` payload. Cross-link points to the action-authoring spec's "Instanced actions" section.
 
-[Onboarding actions table row 4](modules-mongodb/designs/workflows-module/parts/_completed/20b-module-manifest-dynamic/design.md#onboarding-actions-replaces-the-three-trackers) says `proof-of-installation` has "`key:` set to `device`". The spec ([action-authoring/spec.md:327](modules-mongodb/designs/workflows-module-concept/action-authoring/spec.md)) uses `key: $device_id` as a *symbolic placeholder* — the concrete value is supplied at spawn time via the `start-workflow` `actions:` payload.
+[Onboarding actions table row 4](modules-mongodb/designs/workflows-module/parts/_completed/20b-module-manifest-dynamic/design.md#onboarding-actions-replaces-the-three-trackers) says `proof-of-installation` has "`key:` set to `device`". The spec ([action-authoring/spec.md:327](modules-mongodb/designs/workflows-module-concept/action-authoring/spec.md)) uses `key: $device_id` as a _symbolic placeholder_ — the concrete value is supplied at spawn time via the `start-workflow` `actions:` payload.
 
 The design's later modal description ("one `{ type: proof-of-installation, key: <serial>, ... }` per row") is correct. The table entry should match — either drop the literal `device` (since `key:` is a placeholder marker, not a fixed value) or say `key: $device_serial`.
 
@@ -100,7 +101,7 @@ Worth a one-line callout in the lead-view bullet so the implementer doesn't drop
 
 [Implemented — manifest dynamic surface](modules-mongodb/designs/workflows-module/parts/_completed/20b-module-manifest-dynamic/design.md#implemented--manifest-dynamic-surface) closes with "Part 02 itself is now effectively redundant for this module; implementation-plan.md wave 0 should retire it during the 20b closeout."
 
-The framework fix in [`574960a`](../../../../../../tree/574960a) made `_ref: { resolver }` paths resolve against the module root. That solves the *path resolution* problem, but [part 02's design](modules-mongodb/designs/workflows-module/parts/02-dynamic-module-pages/design.md) covers a broader scope — including whether `exports.pages` should ride a dedicated channel and how the build represents dynamic module pages in `exports`. Retiring part 02 wholesale should be confirmed against its actual scope, not assumed because the manifest now compiles.
+The framework fix in [`574960a`](../../../../../../tree/574960a) made `_ref: { resolver }` paths resolve against the module root. That solves the _path resolution_ problem, but [part 02's design](modules-mongodb/designs/workflows-module/parts/02-dynamic-module-pages/design.md) covers a broader scope — including whether `exports.pages` should ride a dedicated channel and how the build represents dynamic module pages in `exports`. Retiring part 02 wholesale should be confirmed against its actual scope, not assumed because the manifest now compiles.
 
 **Fix.** Soften the retirement claim to "part 02's primary problem is solved by 574960a; remaining scope (if any) should be audited during 20b closeout" and let the closeout decide rather than the design.
 

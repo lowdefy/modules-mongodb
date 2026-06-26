@@ -4,21 +4,21 @@
 
 The best explanation of workflows — signals vs. status, the FSM, the three action kinds, hooks, groups, the worked onboarding example — already exists, well-written, in `designs/workflows-module-concept/` (sub-designs: `action-authoring/`, `action-groups/`, `engine/`, `state-machine/`, `submit-pipeline/`, `ui/`, `module-surface/`, `call-api/`). But it's build-time source-of-truth, mixed with implementation-part tracking and review critiques, and consumers never see it.
 
-This task migrates the **explanation** content into `docs/workflows/concepts/`, rewritten for a consumer audience. The boundary (design decision 3): docs explain *how it behaves and how to author it*; designs keep *why it was built this way*. So **drop**: implementation-part numbering, review findings, and "why we chose X over Y" rationale. The design folders stay as the historical record of *why*.
+This task migrates the **explanation** content into `docs/workflows/concepts/`, rewritten for a consumer audience. The boundary (design decision 3): docs explain _how it behaves and how to author it_; designs keep _why it was built this way_. So **drop**: implementation-part numbering, review findings, and "why we chose X over Y" rationale. The design folders stay as the historical record of _why_.
 
 ## Task
 
 Author seven `concepts/*.md` files, each `type: concept`, `module: workflows`, with `concepts:` tags, mapped to sources:
 
-| Target | Source | Notes |
-| --- | --- | --- |
-| `concepts/mental-model.md` | `designs/workflows-module-concept/design.md` (worked onboarding example) | The "start here" orientation page. |
-| `concepts/signals-vs-status.md` | `.../state-machine/` (FSM, signals, button bars) | The **#1 confusion point** — give it dedicated, clear treatment. Cross-link `reference/fsm-and-signals.md`. |
-| `concepts/action-kinds.md` | `.../action-authoring/` | The three kinds: form / check / tracker. |
-| `concepts/groups-and-blocking.md` | `.../action-groups/` | Rollup status, `blocked_by`, and the **conditional-action anti-pattern** — call it out explicitly so it's findable. |
-| `concepts/access.md` | `.../action-authoring/` access model | Per-app / per-verb access, and the **review-verb signal flip**. |
-| `concepts/hooks.md` | `.../submit-pipeline/` | pre/post hooks, out-of-band writes, failure modes. |
-| `concepts/events.md` | `.../engine/` event logging | Link to `docs/shared/event-display.md` rather than re-explaining event display. |
+| Target                            | Source                                                                   | Notes                                                                                                               |
+| --------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `concepts/mental-model.md`        | `designs/workflows-module-concept/design.md` (worked onboarding example) | The "start here" orientation page.                                                                                  |
+| `concepts/signals-vs-status.md`   | `.../state-machine/` (FSM, signals, button bars)                         | The **#1 confusion point** — give it dedicated, clear treatment. Cross-link `reference/fsm-and-signals.md`.         |
+| `concepts/action-kinds.md`        | `.../action-authoring/`                                                  | The three kinds: form / check / tracker.                                                                            |
+| `concepts/groups-and-blocking.md` | `.../action-groups/`                                                     | Rollup status, `blocked_by`, and the **conditional-action anti-pattern** — call it out explicitly so it's findable. |
+| `concepts/access.md`              | `.../action-authoring/` access model                                     | Per-app / per-verb access, and the **review-verb signal flip**.                                                     |
+| `concepts/hooks.md`               | `.../submit-pipeline/`                                                   | pre/post hooks, out-of-band writes, failure modes.                                                                  |
+| `concepts/events.md`              | `.../engine/` event logging                                              | Link to `docs/shared/event-display.md` rather than re-explaining event display.                                     |
 
 Rewrite each for a consumer: explanatory voice, "how it behaves and how you author against it", concrete examples. One concept per file.
 

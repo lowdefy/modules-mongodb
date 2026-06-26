@@ -47,16 +47,16 @@ State value is an **array** of user ids; callers bind it to an array path (Part 
 - Under the top-level `components:` block:
 
   ```yaml
-    - id: user-multi-selector
-      component:
-        _ref: components/user-multi-selector.yaml
+  - id: user-multi-selector
+    component:
+      _ref: components/user-multi-selector.yaml
   ```
 
 - Under `exports.components:`:
 
   ```yaml
-      - id: user-multi-selector
-        description: Multi-select picker for an array of app users
+  - id: user-multi-selector
+    description: Multi-select picker for an array of app users
   ```
 
 **3. Document in `modules/user-account/README.md`:** add a `user-multi-selector` bullet to the

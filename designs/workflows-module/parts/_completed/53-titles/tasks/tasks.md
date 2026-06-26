@@ -6,16 +6,16 @@ These tasks implement the workflows module's titles strategy: a `humanizeSlug` h
 
 ## Tasks
 
-| #   | File                                  | Summary                                                                                  | Depends On |
-| --- | ------------------------------------- | ---------------------------------------------------------------------------------------- | ---------- |
-| 1   | `01-humanize-slug-helper.md`          | New pure `humanizeSlug` helper + base acronym set + unit tests                           | —          |
-| 2   | `02-materialize-titles-config.md`     | Resolve+default `title` for workflow/action/group in `makeWorkflowsConfig`               | 1          |
-| 3   | `03-action-page-title-default.md`     | Default `page_config.title` to the resolved action title in `makeActionPages`            | 1          |
-| 4   | `04-title-acronyms-var-wiring.md`     | Declare `title_acronyms` var, wire it into both resolver `_ref`s, note action `title`    | 2, 3       |
-| 5   | `05-denormalize-titles-onto-docs.md`  | Stamp `title` onto the action doc (`planActionTransition`) and workflow doc (`StartWorkflow`) | 2          |
-| 6   | `06-signal-verb-event-map.md`         | Replace `action-event` catch-all with `DEFAULT_SIGNAL_TITLES` in `planEventDispatch`     | 5          |
-| 7   | `07-demo-config-titles.md`            | Drop redundant titles in demo configs; keep overrides only where the slug humanizes wrong | 2, 4       |
-| 8   | `08-document-titles-convention.md`    | Document the derive-or-override rule, acronym dictionary, and signal verb map            | 1, 2, 6    |
+| #   | File                                 | Summary                                                                                       | Depends On |
+| --- | ------------------------------------ | --------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-humanize-slug-helper.md`         | New pure `humanizeSlug` helper + base acronym set + unit tests                                | —          |
+| 2   | `02-materialize-titles-config.md`    | Resolve+default `title` for workflow/action/group in `makeWorkflowsConfig`                    | 1          |
+| 3   | `03-action-page-title-default.md`    | Default `page_config.title` to the resolved action title in `makeActionPages`                 | 1          |
+| 4   | `04-title-acronyms-var-wiring.md`    | Declare `title_acronyms` var, wire it into both resolver `_ref`s, note action `title`         | 2, 3       |
+| 5   | `05-denormalize-titles-onto-docs.md` | Stamp `title` onto the action doc (`planActionTransition`) and workflow doc (`StartWorkflow`) | 2          |
+| 6   | `06-signal-verb-event-map.md`        | Replace `action-event` catch-all with `DEFAULT_SIGNAL_TITLES` in `planEventDispatch`          | 5          |
+| 7   | `07-demo-config-titles.md`           | Drop redundant titles in demo configs; keep overrides only where the slug humanizes wrong     | 2, 4       |
+| 8   | `08-document-titles-convention.md`   | Document the derive-or-override rule, acronym dictionary, and signal verb map                 | 1, 2, 6    |
 
 ## Ordering Rationale
 

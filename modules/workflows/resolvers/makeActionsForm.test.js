@@ -80,7 +80,7 @@ test("makeActionsForm: duplicate keys across two text_inputs throw with /duplica
         { component: "text_input", key: "contact_name", required: true },
         { component: "text_input", key: "contact_name", required: true },
       ],
-    })
+    }),
   ).toThrow(/duplicate block id 'contact_name'/);
 });
 
@@ -137,7 +137,7 @@ test("makeActionsForm: viewOnly entry without mode throws /'mode' var is require
           viewOnly: true,
         },
       ],
-    })
+    }),
   ).toThrow(/'mode' var is required when any form entry has viewOnly: true/);
 });
 
@@ -146,6 +146,6 @@ test("makeActionsForm: invalid mode value throws /invalid mode/", () => {
     makeActionsForm(null, {
       mode: "bogus",
       form: [{ component: "text_input", key: "foo" }],
-    })
+    }),
   ).toThrow(/invalid mode 'bogus'/);
 });

@@ -1,15 +1,15 @@
-import { test, expect } from './fixtures.js';
+import { test, expect } from "./fixtures.js";
 
-test('database seeding example', async ({ ldf, mdb }) => {
+test("database seeding example", async ({ ldf, mdb }) => {
   // Seed test data
-  await mdb.seed('users', [
-    { _id: 'user-1', name: 'Test User', email: 'test@example.com' },
+  await mdb.seed("users", [
+    { _id: "user-1", name: "Test User", email: "test@example.com" },
   ]);
 
-  await ldf.goto('/users');
+  await ldf.goto("/users");
 
   // Assert data is displayed
-  await ldf.block('user_name').expect.text('Test User');
+  await ldf.block("user_name").expect.text("Test User");
 });
 
 // Example: Testing with database assertions

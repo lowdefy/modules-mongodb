@@ -9,6 +9,7 @@ It also owns the unrelated `app_title` var — a human-readable label prefix (de
 **Why `_build.app: name` for the default, not `_app: name`:** `app_title` is consumed at **both** build-time sites (`_build.string.concat` / `_build.string.trim` / `_build.ne` in `pages/{new,edit,view,all}.yaml` breadcrumbs, `menu.yaml`, `components/excel_download.yaml`) and a runtime site (the `_nunjucks` page title in `pages/new.yaml`, which receives `app_title` as a template var). A single default of `{ _app: name }` arrives as an unevaluated object inside the `_build.string.concat` sites and breaks the build. `{ _build.app: name }` resolves to a literal at build, which is then safe at the runtime Nunjucks site too. See [design.md §Build-time and runtime usage](../design.md#build-time-and-runtime-usage).
 
 **Build-time vs runtime for `app_name` sites here:**
+
 - **`_build.app: slug`** — the `_build.object.fromEntries` event-display keys in `api/update-user.yaml`, `api/invite-user.yaml`, `api/resend-invite.yaml` (one each).
 - **`_app: slug`** — everything else, including the field-path construction `_string.concat: ["apps.", { _app: slug }, ".roles"]` (this is **runtime** `_string.concat`, not `_build.string.concat`), the request `$match` filters, and the stamp/payload `app_name` fields.
 
@@ -21,7 +22,7 @@ It also owns the unrelated `app_title` var — a human-readable label prefix (de
 2. **Module YAML** — replace `_module.var: app_name`:
    - at the `_build.object.fromEntries` keys (3 sites in the APIs above) → `_build.app: slug`;
    - everywhere else → `_app: slug`.
-   Files: `requests/{check_invite_email,get_all_users,get_user,get_user_excel_data}.yaml`, `api/{update-user,invite-user,resend-invite}.yaml`, `pages/all.yaml`. Re-grep: `grep -rn "_module.var: app_name" modules/user-admin/`.
+     Files: `requests/{check_invite_email,get_all_users,get_user,get_user_excel_data}.yaml`, `api/{update-user,invite-user,resend-invite}.yaml`, `pages/all.yaml`. Re-grep: `grep -rn "_module.var: app_name" modules/user-admin/`.
 
 3. **Demo vars** — edit `apps/demo/modules/user-admin/vars.yaml`: delete the top-level `app_name:` block. Leave `app_title` unset so the demo exercises the new default ("Modules Demo …" labels).
 

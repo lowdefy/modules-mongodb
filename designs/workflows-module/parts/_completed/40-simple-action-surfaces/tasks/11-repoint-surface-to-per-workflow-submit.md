@@ -32,12 +32,12 @@ because they fall outside its task surface:
    that `_ref` the shared surface; all six endpoint refs live in
    `check-action-surface.yaml`, which Part 48 task 11 never lists. So after
    Part 48 lands, the surface is still on the stale `update-action-{type}` id.
-   *(Caveat: Part 48 task 11 step 3 runs a `grep` sweep for `update-action`
+   _(Caveat: Part 48 task 11 step 3 runs a `grep` sweep for `update-action`
    across `modules/`; the implementer may re-point the surface opportunistically.
    This task therefore audits the actual end state first — step 0 — and only
-   changes what Part 48 left wrong or untouched.)*
+   changes what Part 48 left wrong or untouched.)_
 2. **`GetWorkflowAction` does not ship `workflow_type`.** The surface only has
-   `current_action.type`, so it *cannot* build `{workflow_type}-submit`
+   `current_action.type`, so it _cannot_ build `{workflow_type}-submit`
    (`GetWorkflowAction.js:31` — "Raw engine internals are NOT shipped:
    ... workflow_type ..."). No Part 48 task adds it; Part 48 task 11 silently
    assumes it is available at runtime. Exposing it belongs with the surface that
@@ -115,14 +115,14 @@ endpointId:
 
 The six refs (button → CallAPI id → line of the `_string.concat`):
 
-| Button | CallAPI id | `endpointId` at |
-| --- | --- | --- |
-| `button_submit` | `submit` | `:277` |
-| `button_progress` | `progress` | `:318` |
-| `button_not_required` | `not_required` | `:359` |
-| `button_approve` | `approve` | `:426` |
-| `button_resolve_error` | `resolve_error` | `:465` |
-| `button_request_changes` | `submit_request_changes` | `:506` |
+| Button                   | CallAPI id               | `endpointId` at |
+| ------------------------ | ------------------------ | --------------- |
+| `button_submit`          | `submit`                 | `:277`          |
+| `button_progress`        | `progress`               | `:318`          |
+| `button_not_required`    | `not_required`           | `:359`          |
+| `button_approve`         | `approve`                | `:426`          |
+| `button_resolve_error`   | `resolve_error`          | `:465`          |
+| `button_request_changes` | `submit_request_changes` | `:506`          |
 
 **Payloads are unchanged.** Each already sends `action_id`
 (`_state: current_action._id`) and the per-button `signal` — exactly what the

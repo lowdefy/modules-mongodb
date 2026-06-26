@@ -4,7 +4,7 @@
 
 With the validator (Task 1) and engine (Task 2) renamed, the consumer-facing terminology must follow. The design lists "README + remaining concept-doc terminology (`form / simple / tracker` → `form / check / tracker`)" as a changed surface. This task aligns the prose so the documented vocabulary matches the shipped code, and verifies the demo `workflow_config` (which already declares `kind: check` on this branch) has no stragglers.
 
-This task carries judgment: only terminology describing the **current/live** kind taxonomy is renamed. Historical and forward-looking references that intentionally name `simple` as the *old* value must be preserved.
+This task carries judgment: only terminology describing the **current/live** kind taxonomy is renamed. Historical and forward-looking references that intentionally name `simple` as the _old_ value must be preserved.
 
 ### Do NOT touch
 
@@ -27,7 +27,7 @@ Update `modules/workflows/README.md` so the action-kind taxonomy reads `form / c
 - Line ~290: "simple actions use the shared `workflow-action-*` pages" → "check actions".
 - Line ~333: submit-endpoint emission "one per `kind: form` or `kind: simple` action" → `kind: check`.
 
-Do **not** rename the page ids `workflow-action-edit` / `-view` / `-review` or any route — only the *kind* word in the surrounding description.
+Do **not** rename the page ids `workflow-action-edit` / `-view` / `-review` or any route — only the _kind_ word in the surrounding description.
 
 ### 2. Living concept spec terminology
 

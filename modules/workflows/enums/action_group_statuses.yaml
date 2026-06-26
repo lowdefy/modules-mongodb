@@ -5,17 +5,17 @@
 # wrapper). Colours preserve the previous group-overview badge: done=green,
 # in-progress=blue, blocked=grey.
 done:
-  color: '#f6ffed'
-  borderColor: '#b7eb8f'
-  titleColor: '#389e0d'
+  color: "#f6ffed"
+  borderColor: "#b7eb8f"
+  titleColor: "#389e0d"
   title: Done
 in-progress:
-  color: '#e6f7ff'
-  borderColor: '#91d5ff'
-  titleColor: '#096dd9'
+  color: "#e6f7ff"
+  borderColor: "#91d5ff"
+  titleColor: "#096dd9"
   title: In progress
 blocked:
-  color: '#efefef'
-  borderColor: '#aeaeae'
-  titleColor: '#595959'
+  color: "#efefef"
+  borderColor: "#aeaeae"
+  titleColor: "#595959"
   title: Blocked

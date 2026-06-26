@@ -113,7 +113,7 @@ _ref:
                             reference_field: lead_ids
                             reference_value:
                               _url_query: _id
-                            contact_page_url: '/contacts/view?_id={id}'
+                            contact_page_url: "/contacts/view?_id={id}"
       # Page owns the single check-action modal drop and its on_complete (Part
       # 55 D1): refresh every co-present surface after a successful signal — the
       # action steps (actions-on-entity) and the Activity timeline

@@ -10,7 +10,7 @@ design meets the actual wiring.
 
 ## Blocking — structural
 
-### 1. The per-verb link *selection* in the blocks is unowned — and Part 38 breaks navigation before this part fixes it
+### 1. The per-verb link _selection_ in the blocks is unowned — and Part 38 breaks navigation before this part fixes it
 
 > **Resolved.** Overtaken by Part 42 (timeline-action-cards, shipped): link selection moved
 > **server-side** — the shared `visible_verbs.yaml` + `resolve_action_link.yaml` stages collapse
@@ -24,20 +24,20 @@ design meets the actual wiring.
 > object D5's modal contract needs).
 
 The design's navigation default (the "Surfaces, the engine link" section; D5; Files-changed
-`ActionSteps.js` row) reads *"navigate via the user-selected per-verb link `action.links.{verb}`
-… default unchanged by this part — per-verb link selection itself is [Part 34 D7]."* Task 02
-repeats this: *"Per-verb link selection … is Part 34's scope, not this task's … keep using
-whatever link field the block reads today."*
+`ActionSteps.js` row) reads _"navigate via the user-selected per-verb link `action.links.{verb}`
+… default unchanged by this part — per-verb link selection itself is [Part 34 D7]."_ Task 02
+repeats this: _"Per-verb link selection … is Part 34's scope, not this task's … keep using
+whatever link field the block reads today."_
 
 That hand-off has no landing pad:
 
-- **Part 34 ships no code.** `34-action-access-model/design.md:7`: *"completed as a design/
+- **Part 34 ships no code.** `34-action-access-model/design.md:7`: _"completed as a design/
   contract without a standalone implementation … implemented as part of Part 38 … Part 38 is
-  the implementation vehicle."*
+  the implementation vehicle."_
 - **Part 38 is engine-only.** It writes `action[slug].links` (per-verb map) and **deletes** the
-  singular `action[slug].link` write (`34:417`: *"Part 30's `buildActionStageUpdate` is deleted
-  by Part 38"*). The UI selection rule — *"Update `actions-on-entity` rendering to read
-  `visible_verbs` and select per-verb links"* (`34:419`) — is a **block/UI** change, not engine
+  singular `action[slug].link` write (`34:417`: _"Part 30's `buildActionStageUpdate` is deleted
+  by Part 38"_). The UI selection rule — _"Update `actions-on-entity` rendering to read
+  `visible_verbs` and select per-verb links"_ (`34:419`) — is a **block/UI** change, not engine
   work, so Part 38 does not do it.
 - **The blocks still read singular `link`.** `ActionSteps.js:171–174` reads
   `action?.link?.pageId/urlQuery`; `:146` disables on `!action?.link`. `EventsTimeline.js:364`:
@@ -50,7 +50,7 @@ this part leans on as "backward-compatible." No part owns the fix: Part 34 is co
 Part 38 is engine-only, and Part 40 explicitly disclaims it.
 
 **Fix.** Part 40 is the natural owner — it is already editing `ActionSteps.js`'s navigation path
-(adding `onActionClick` *alongside* the navigate branch) and `EventsTimeline` is its sibling
+(adding `onActionClick` _alongside_ the navigate branch) and `EventsTimeline` is its sibling
 (Part 41). Implement the `visible_verbs`-driven selection (`edit > review > error > view` over
 `action.links`, the rule at `34:202–211`) in the navigate branch as part of this part, **or**
 name the explicit part that does and sequence it before Part 38 reaches the demo. Either way,
@@ -72,8 +72,8 @@ drop "default unchanged" — Part 38 changes the doc shape out from under the cu
 > becomes a plain opt-out, default `true`). Part 46 OQ4 records the outcome; the broader
 > raw-config-embed problem this finding surfaced is now [Part 46 — debundle-workflow-config](../../46-debundle-workflow-config/design.md).
 
-D3 and Files-changed say *"the `makeWorkflowsConfig` resolver emits a per-simple-action button
-map into `global.simple_action_buttons.{action_type}`"*, read via `_global`. Two problems:
+D3 and Files-changed say _"the `makeWorkflowsConfig` resolver emits a per-simple-action button
+map into `global.simple_action_buttons.{action_type}`"_, read via `_global`. Two problems:
 
 1. **`makeWorkflowsConfig` cannot emit a global.** Its output has a single fixed consumer: it
    flows through `components/validated_workflows_config.yaml` (`_ref: { resolver: … }`) into the
@@ -84,14 +84,14 @@ map into `global.simple_action_buttons.{action_type}`"*, read via `_global`. Two
    **dedicated** resolver-backed `_ref` component instead — `makeActionFormConfigs.js` →
    `components/action_form_configs.yaml`, `_ref`'d into the overview pages.
 2. **There is no resolver→runtime-global mechanism in this module at all.** Task 01 step 2 admits
-   it: *"There is no existing enum→global wiring in this module, so this is the first global-config
-   emission"* and then offers two hand-waves ("through a module-provided component referenced from
-   the host's global block, or extend the resolver"). Per CLAUDE.md *"resolve the open question;
-   don't defer,"* a first-of-its-kind global mechanism shouldn't be left to "convention."
+   it: _"There is no existing enum→global wiring in this module, so this is the first global-config
+   emission"_ and then offers two hand-waves ("through a module-provided component referenced from
+   the host's global block, or extend the resolver"). Per CLAUDE.md _"resolve the open question;
+   don't defer,"_ a first-of-its-kind global mechanism shouldn't be left to "convention."
 
 And it is **unnecessary**: `actions-on-entity.yaml:75–76` already reads the authored config
 client-side as `workflowsConfig: { _module.var: workflows_config }` (the raw module var). The
-author button opt-outs are authored *in* `workflows_config`, so the surface can read them the
+author button opt-outs are authored _in_ `workflows_config`, so the surface can read them the
 exact way `actions-on-entity` already does — `_module.var: workflows_config`, find the action by
 type, read `…buttons.{signal}.visible` with a `default:`. No new resolver output, no new global.
 
@@ -99,7 +99,7 @@ type, read `…buttons.{signal}.visible` with a `default:`. No new resolver outp
 `_module.var: workflows_config` at runtime in the surface, mirroring `actions-on-entity`
 (simplest, "build for what exists"); or (b) if a curated/defaulted shape is wanted, add a
 **dedicated** resolver + `_ref` component in parity with `action_form_configs.yaml` (build-time,
-`_ref`'d into the surface) — *not* a runtime global and *not* an extra output on
+`_ref`'d into the surface) — _not_ a runtime global and _not_ an extra output on
 `makeWorkflowsConfig`. Update D3, Files-changed, Task 01, and the concept-doc reconciliation
 (Task 07 line 19/29 still says `global.simple_action_buttons`).
 
@@ -114,7 +114,7 @@ type, read `…buttons.{signal}.visible` with a `default:`. No new resolver outp
 > output into the namespace: `surface.action_allowed: { _state: action_allowed }`. Chose the trailing
 > `SetState` over parameterising the component's key: the component is plain `.yaml`, so a configurable
 > key would force a `.yaml.njk` conversion + `_ref`-path edits in the four out-of-scope form templates
-> while *still* requiring every caller to pass the var — same per-caller cost, more blast radius, no
+> while _still_ requiring every caller to pass the var — same per-caller cost, more blast radius, no
 > enforcement gain (so the "one correct way" framing didn't apply; finding #5's `state_path` precedent
 > doesn't carry because Part 24's renderer was already `.yaml.njk`). Recorded in D1 + D6 and Task 03/04
 > Notes/priming step. Also cut the stale "emits a **single boolean** / migration must land before"
@@ -126,7 +126,7 @@ D1's state contract puts everything under one namespace — `_state.surface.{act
 comment, action_allowed}` — and D2 gates on `_state: surface.action_allowed.edit`. But the
 shipped `components/action_role_check.yaml:13–15` is a `SetState` with a **hardcoded** target
 key `action_allowed` (root, not `surface.action_allowed`), and `simple-edit.yaml:171` reads
-`_state: action_allowed.edit` to match. The component is *shared* across pages, so its write
+`_state: action_allowed.edit` to match. The component is _shared_ across pages, so its write
 target is fixed.
 
 D6 lists `action_role_check` under "what carries over unchanged" and says it "now sets the
@@ -138,8 +138,8 @@ correct way" — a trailing remap `SetState` is opt-in glue every caller must re
 and record it; right now D1/D2 and the shipped component disagree on where `action_allowed` lives.
 
 (Note: the design's dependency framing and Tasks 03/04/tasks.md still describe
-`action_role_check` as *"emits a single boolean … the per-verb migration must land before this
-part."* That migration **already shipped** — `action_role_check.yaml` + `evaluateVerbGate.js`
+`action_role_check` as _"emits a single boolean … the per-verb migration must land before this
+part."_ That migration **already shipped** — `action_role_check.yaml` + `evaluateVerbGate.js`
 write the per-verb `{ view, edit, review, error }` map today (commit 68b9b09, "Part 38 task 8").
 The design's D6 is correct; the cross-wave "must land before" caveat is stale and should be cut.)
 
@@ -158,7 +158,7 @@ The design's D6 is correct; the cross-wave "must land before" caveat is stale an
 > With every mode now light, the container switched `Drawer` → `Modal`, and the open contract was
 > corrected to the real block method (`setOpen({open: true})` — neither block has an `open` method).
 
-D5 says `mode: view` in the modal renders *"status history, comments"* and lists the open
+D5 says `mode: view` in the modal renders _"status history, comments"_ and lists the open
 sequence as `get_action → get_workflow → action_role_check → render`. But `simple-view`'s comments
 are **not** on the action doc — they come from a separate aggregation `get_comment_events` over
 the `events` collection (`simple-view.yaml:207–233`), fetched by a nested `onMount` inside the

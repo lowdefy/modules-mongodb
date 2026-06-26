@@ -17,7 +17,8 @@ function deriveGroupStatus(groupActions) {
   const TERMINAL = ["done", "not-required"];
   const stages = groupActions.map((a) => a.status?.[0]?.stage);
   if (stages.every((s) => TERMINAL.includes(s))) return "done";
-  if (stages.every((s) => TERMINAL.includes(s) || s === "blocked")) return "blocked";
+  if (stages.every((s) => TERMINAL.includes(s) || s === "blocked"))
+    return "blocked";
   return "in-progress";
 }
 

@@ -491,10 +491,10 @@ items:
 
 ### Consumer app (apps/demo)
 
-| File                                        | Change                                                                                                                                                  |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `modules/user-account/vars.yaml`            | Add `show_title`, `components.profile_fields/set_fields/view_fields` referencing shared files.                                                          |
-| `modules/user-admin/vars.yaml`              | Add `show_title`, `components.profile_fields/set_fields` referencing shared files.                                                                      |
+| File                                        | Change                                                                                                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `modules/user-account/vars.yaml`            | Add `show_title`, `components.profile_fields/set_fields/view_fields` referencing shared files.                                                         |
+| `modules/user-admin/vars.yaml`              | Add `show_title`, `components.profile_fields/set_fields` referencing shared files.                                                                     |
 | Add contacts module entry in `modules.yaml` | Future/planned — the demo consumer app does not currently include the contacts module. When contacts is added, include same shared profile field refs. |
 
 ### Additional cleanup

@@ -6,18 +6,18 @@ Decomposition of `designs/workflows-module/parts/20b-module-manifest-dynamic/des
 
 ## Tasks
 
-| #   | File                                          | Summary                                                                  | Depends On |
-| --- | --------------------------------------------- | ------------------------------------------------------------------------ | ---------- |
-| 1   | `01-fix-per-status-projection.md`             | Replace broken `_string.concat` projection in three operational APIs     | —          |
-| 2   | `02-entity-workflows-refetch-component.md`    | Author refetch component + register under module manifest                | —          |
-| 3   | `03-author-qualify-action.md`                 | New `qualify.yaml` + `hooks/qualify-pre-submit.yaml`                     | —          |
-| 4   | `04-author-send-quote-action.md`              | New `send-quote.yaml` + two hook routines + `form_review`                | —          |
-| 5   | `05-author-schedule-followup-action.md`       | New `schedule-followup.yaml` (kind: task)                                | —          |
-| 6   | `06-author-proof-of-installation-action.md`   | New `proof-of-installation.yaml` (instanced via `key: $device_serial`)   | —          |
-| 7   | `07-author-track-installation-action.md`      | New `track-installation.yaml` (tracker on `installation` child workflow) | —          |
+| #   | File                                               | Summary                                                                       | Depends On    |
+| --- | -------------------------------------------------- | ----------------------------------------------------------------------------- | ------------- |
+| 1   | `01-fix-per-status-projection.md`                  | Replace broken `_string.concat` projection in three operational APIs          | —             |
+| 2   | `02-entity-workflows-refetch-component.md`         | Author refetch component + register under module manifest                     | —             |
+| 3   | `03-author-qualify-action.md`                      | New `qualify.yaml` + `hooks/qualify-pre-submit.yaml`                          | —             |
+| 4   | `04-author-send-quote-action.md`                   | New `send-quote.yaml` + two hook routines + `form_review`                     | —             |
+| 5   | `05-author-schedule-followup-action.md`            | New `schedule-followup.yaml` (kind: task)                                     | —             |
+| 6   | `06-author-proof-of-installation-action.md`        | New `proof-of-installation.yaml` (instanced via `key: $device_serial`)        | —             |
+| 7   | `07-author-track-installation-action.md`           | New `track-installation.yaml` (tracker on `installation` child workflow)      | —             |
 | 8   | `08-restructure-onboarding-and-delete-trackers.md` | Restructure `onboarding.yaml`; delete `track-step-*`; author `g1-on-complete` | 3, 4, 5, 6, 7 |
-| 9   | `09-lead-view-start-onboarding-modal.md`      | Replace lead-view button with modal that constructs `actions:` payload   | 2, 6, 8    |
-| 10  | `10-readme-update.md`                         | Drop part-20b pointer; document refetch component + worked example       | 2, 8       |
+| 9   | `09-lead-view-start-onboarding-modal.md`           | Replace lead-view button with modal that constructs `actions:` payload        | 2, 6, 8       |
+| 10  | `10-readme-update.md`                              | Drop part-20b pointer; document refetch component + worked example            | 2, 8          |
 
 ## Ordering Rationale
 

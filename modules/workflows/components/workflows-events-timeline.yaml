@@ -89,7 +89,7 @@ blocks:
       contactPageUrl:
         _var:
           key: contact_page_url
-          default: ''
+          default: ""
       disableContactLink:
         _var:
           key: disable_contact_link

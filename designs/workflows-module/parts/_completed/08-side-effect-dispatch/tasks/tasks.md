@@ -6,17 +6,17 @@ Wire the two always-on side effects into `SubmitWorkflowAction`: an audit log ev
 
 ## Tasks
 
-| #   | File                                              | Summary                                                                                                                                                | Depends On |
-| --- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------- |
-| 1   | `01-new-event-id-passthrough.md`                  | Extend `modules/events/api/new-event.yaml` to honor a caller-supplied `_id` on the payload (fall back to `_uuid: true`). Backwards-compatible.          | —          |
-| 2   | `02-workflow-api-schema-app-name.md`              | Add `app_name` to the `WorkflowAPI` connection schema (`schema.js`); engine reads `context.connection.app_name`.                                        | —          |
-| 3   | `03-derive-entity-ref-key.md`                     | `utils/deriveEntityRefKey.js` — pure helper that turns `entity_collection` → `<entity>_ids` (strip `-collection`, kebab→snake, append `_ids`). Tested. | —          |
-| 4   | `04-build-default-log-event-payload.md`           | `dispatchLogEvent.js` — pure `buildDefaultLogEventPayload({...})` returning `{ type, display, references, metadata }`. Tested without I/O.              | 3          |
-| 5   | `05-dispatch-log-event.md`                        | Add `dispatchLogEvent(context, inputBag)` wrapper in the same file; calls `context.callApi('new-event', module: 'events')` with `_id: context.eventId`. | 1, 2, 4    |
-| 6   | `06-dispatch-notifications.md`                    | `dispatchNotifications.js` — `context.callApi('send-notification', module: 'notifications')` with `{ event_ids: [eventId] }`. Tested.                   | —          |
-| 7   | `07-handler-lifecycle-step-7-8.md`                | Wire step 7 + step 8 into `handleSubmit.js`: capture `status_before` + input bag at step 1; invoke `dispatchLogEvent` then `dispatchNotifications`; populate `event_id` on return. | 5, 6       |
-| 8   | `08-event-id-round-trip-regression.md`            | Round-trip integration test: submit an action, read the inserted event doc back from Mongo, confirm `_id` matches every `action.status[0].event_id`.    | 7          |
-| 9   | `09-worked-example-fixture-smoke.md`              | Integration smoke against a fixture app that wires `workflows`/`events`/`notifications` inline; submit `qualify`, assert event + notification dispatch. | 7          |
+| #   | File                                    | Summary                                                                                                                                                                            | Depends On |
+| --- | --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| 1   | `01-new-event-id-passthrough.md`        | Extend `modules/events/api/new-event.yaml` to honor a caller-supplied `_id` on the payload (fall back to `_uuid: true`). Backwards-compatible.                                     | —          |
+| 2   | `02-workflow-api-schema-app-name.md`    | Add `app_name` to the `WorkflowAPI` connection schema (`schema.js`); engine reads `context.connection.app_name`.                                                                   | —          |
+| 3   | `03-derive-entity-ref-key.md`           | `utils/deriveEntityRefKey.js` — pure helper that turns `entity_collection` → `<entity>_ids` (strip `-collection`, kebab→snake, append `_ids`). Tested.                             | —          |
+| 4   | `04-build-default-log-event-payload.md` | `dispatchLogEvent.js` — pure `buildDefaultLogEventPayload({...})` returning `{ type, display, references, metadata }`. Tested without I/O.                                         | 3          |
+| 5   | `05-dispatch-log-event.md`              | Add `dispatchLogEvent(context, inputBag)` wrapper in the same file; calls `context.callApi('new-event', module: 'events')` with `_id: context.eventId`.                            | 1, 2, 4    |
+| 6   | `06-dispatch-notifications.md`          | `dispatchNotifications.js` — `context.callApi('send-notification', module: 'notifications')` with `{ event_ids: [eventId] }`. Tested.                                              | —          |
+| 7   | `07-handler-lifecycle-step-7-8.md`      | Wire step 7 + step 8 into `handleSubmit.js`: capture `status_before` + input bag at step 1; invoke `dispatchLogEvent` then `dispatchNotifications`; populate `event_id` on return. | 5, 6       |
+| 8   | `08-event-id-round-trip-regression.md`  | Round-trip integration test: submit an action, read the inserted event doc back from Mongo, confirm `_id` matches every `action.status[0].event_id`.                               | 7          |
+| 9   | `09-worked-example-fixture-smoke.md`    | Integration smoke against a fixture app that wires `workflows`/`events`/`notifications` inline; submit `qualify`, assert event + notification dispatch.                            | 7          |
 
 ## Ordering Rationale
 

@@ -89,7 +89,7 @@ only the comparator call and its sole-purpose local change.
   1)", ~line 573) must still hold — with the indices now coming from the doc, set
   them on the seeded docs to match: `qualify` → `{group_index:0, decl_index:0}`,
   `kickoff` → `{group_index:1, decl_index:1}`, `site-visit` → `{group_index:0,
-  decl_index:2}`. Have the `seedAction` helper accept/stamp these.
+decl_index:2}`. Have the `seedAction` helper accept/stamp these.
 - `GetEntityWorkflows.test.js`, `GetWorkflowOverview.test.js`,
   `GetWorkflowActionGroupOverview.test.js` — wherever these stamp action docs and
   assert order, ensure seeded docs carry `group_index` / `decl_index` (they may
@@ -122,10 +122,10 @@ only the comparator call and its sole-purpose local change.
 ## Notes
 
 - This is the change that makes `GetEventsTimeline` a pure function of stored data
-  + session roles — the precondition for relocating it onto a config-free
-  connection (task 3). Confirm `GetEventsTimeline` reads nothing else off
-  `workflowsConfig` after this task (it does not — `workflowsConfig` was used only
-  for the comparator).
+  - session roles — the precondition for relocating it onto a config-free
+    connection (task 3). Confirm `GetEventsTimeline` reads nothing else off
+    `workflowsConfig` after this task (it does not — `workflowsConfig` was used only
+    for the comparator).
 - The three overview engines still receive `workflowsConfig` on their `WorkflowAPI`
-  connection for their *other* uses; this task only stops passing it to the
+  connection for their _other_ uses; this task only stops passing it to the
   comparator. Do not remove `workflowsConfig` from the `WorkflowAPI` schema.

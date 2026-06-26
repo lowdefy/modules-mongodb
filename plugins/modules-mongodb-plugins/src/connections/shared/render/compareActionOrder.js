@@ -38,15 +38,21 @@ export function makeWorkflowOrderComparator(workflowsConfig) {
     const groups = cfg?.action_groups ?? [];
     const actions = cfg?.actions ?? [];
     // findIndex → -1 (unknown group / removed action type / no config) sorts last.
-    const groupIndex = cfg ? groups.findIndex((g) => g.id === action.action_group) : -1;
-    const declIndex = cfg ? actions.findIndex((a) => a.type === action.type) : -1;
-    const stage = Array.isArray(action.status) ? action.status[0]?.stage : action.status;
-    const notRequired = stage === 'not-required' ? 1 : 0;
+    const groupIndex = cfg
+      ? groups.findIndex((g) => g.id === action.action_group)
+      : -1;
+    const declIndex = cfg
+      ? actions.findIndex((a) => a.type === action.type)
+      : -1;
+    const stage = Array.isArray(action.status)
+      ? action.status[0]?.stage
+      : action.status;
+    const notRequired = stage === "not-required" ? 1 : 0;
     return [
       groupIndex === -1 ? INF : groupIndex,
       notRequired,
       declIndex === -1 ? INF : declIndex,
-      action.key ?? '',
+      action.key ?? "",
       String(action._id),
     ];
   }
