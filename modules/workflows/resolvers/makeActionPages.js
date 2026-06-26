@@ -85,7 +85,7 @@ function emitForAction(workflow, action, appName, titleAcronyms) {
       vars: {
         action_config: actionConfig,
         workflow_type: workflow.type,
-        entity_collection: workflow.entity_collection,
+        entity_collection: workflow.entity.connection_id,
         page_ids: pageIds,
         // Per-verb page customization (title, requests, events, formHeader,
         // formFooter, modals, maxWidth, buttons.submit on error) passes

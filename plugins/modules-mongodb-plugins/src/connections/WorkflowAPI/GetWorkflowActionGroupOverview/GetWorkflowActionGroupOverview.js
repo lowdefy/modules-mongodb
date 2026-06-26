@@ -30,7 +30,6 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   const userRoles = context.user?.roles;
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
   const actionsCollection = connection.actionsCollection ?? "actions";
-  const entities = connection.entities ?? {};
 
   // ── Load: the workflow doc ──
   const [wfDoc] = await findDocs({
@@ -157,7 +156,7 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
 
   // ── Workflow title + entity_link ──
   const title = wfConfig?.title ?? null;
-  const entityConfig = entities[wfDoc.entity_collection];
+  const entityConfig = wfConfig?.entity;
   const entity_link = entityConfig
     ? {
         pageId: entityConfig.page_id,

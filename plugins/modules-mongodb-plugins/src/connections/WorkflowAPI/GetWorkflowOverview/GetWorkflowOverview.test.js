@@ -23,8 +23,13 @@ function makeWorkflowsConfig() {
     {
       type: "onboarding",
       title: "Onboarding",
-      entity_collection: "leads-collection",
-      entity_ref_key: "lead_ids",
+      entity: {
+        connection_id: "leads-collection",
+        ref_key: "lead_ids",
+        page_id: "leads/lead-view",
+        id_query_key: "lead_id",
+        title: "Lead",
+      },
       display_order: 1,
       starting_actions: [{ type: "qualify", status: "action-required" }],
       action_groups: [
@@ -86,13 +91,6 @@ function buildContext({
     roles: ["account-manager"],
   },
   workflowsConfig = makeWorkflowsConfig(),
-  entities = {
-    "leads-collection": {
-      page_id: "leads/lead-view",
-      id_query_key: "lead_id",
-      title: "Lead",
-    },
-  },
 } = {}) {
   return {
     request,
@@ -114,7 +112,6 @@ function buildContext({
       workflowsConfig,
       changeStamp,
       user,
-      entities,
     },
     callApi: async () => null,
   };
@@ -230,7 +227,7 @@ describe("GetWorkflowOverview return shape", () => {
     expect(result.workflow.title).toBe("Onboarding");
   });
 
-  test("entity_link resolves from connection.entities", async () => {
+  test("entity_link resolves from wfConfig.entity", async () => {
     await seedWorkflow();
     const result = await GetWorkflowOverview(
       buildContext({ request: { workflow_id: "wf-1" } }),
@@ -240,6 +237,28 @@ describe("GetWorkflowOverview return shape", () => {
       urlQuery: { lead_id: "lead-1" },
       title: "Lead",
     });
+  });
+
+  test("entity_link is null when the workflow config has no entity block", async () => {
+    await seedWorkflow();
+    const config = makeWorkflowsConfig();
+    delete config[0].entity;
+    const result = await GetWorkflowOverview(
+      buildContext({
+        request: { workflow_id: "wf-1" },
+        workflowsConfig: config,
+      }),
+    );
+    expect(result.workflow.entity_link).toBeNull();
+  });
+
+  test("entity_link is null when the workflow_type is not in workflowsConfig", async () => {
+    await seedWorkflow();
+    // workflowsConfig has no entry whose type matches the doc's workflow_type.
+    const result = await GetWorkflowOverview(
+      buildContext({ request: { workflow_id: "wf-1" }, workflowsConfig: [] }),
+    );
+    expect(result.workflow.entity_link).toBeNull();
   });
 });
 

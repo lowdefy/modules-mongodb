@@ -2,26 +2,60 @@ import makeWorkflowsConfig from "./makeWorkflowsConfig.js";
 
 const validWorkflow = {
   type: "onboarding",
-  entity_collection: "leads-collection",
-  entity_ref_key: "lead_ids",
+  entity: {
+    connection_id: "leads-collection",
+    ref_key: "lead_ids",
+    page_id: "lead-view",
+    title: "Lead",
+  },
   display_order: 1,
   starting_actions: [{ type: "do-it", status: "action-required" }],
   actions: [{ type: "do-it", kind: "check" }],
 };
 
-test("makeWorkflowsConfig: entity_collection flows through and no entity_type appears on the normalized output", () => {
+test("makeWorkflowsConfig: entity block is carried wholesale (as authored, nothing lifted to flat aliases) and no entity_type appears", () => {
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
-  expect(out.entity_collection).toBe("leads-collection");
+  expect(out.entity).toEqual({
+    connection_id: "leads-collection",
+    ref_key: "lead_ids",
+    page_id: "lead-view",
+    title: "Lead",
+    id_query_key: "_id",
+  });
+  // Nothing is lifted to flat aliases.
+  expect("entity_collection" in out).toBe(false);
+  expect("entity_ref_key" in out).toBe(false);
   expect("entity_type" in out).toBe(false);
+});
+
+test("makeWorkflowsConfig: id_query_key defaults to _id when omitted", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect(out.entity.id_query_key).toBe("_id");
+});
+
+test("makeWorkflowsConfig: an explicit id_query_key flows through verbatim", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, id_query_key: "lead_id" },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.entity.id_query_key).toBe("lead_id");
+});
+
+test("makeWorkflowsConfig: an unknown entity field survives the wholesale carry", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, name_field: "company_name" },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.entity.name_field).toBe("company_name");
 });
 
 test("makeWorkflowsConfig: rejects legacy entity_type with migration message", () => {
   const workflow = {
     ...validWorkflow,
-    entity_collection: undefined,
     entity_type: "lead",
   };
-  delete workflow.entity_collection;
 
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
     /legacy "entity_type" field is no longer supported/,
@@ -31,47 +65,111 @@ test("makeWorkflowsConfig: rejects legacy entity_type with migration message", (
   );
 });
 
-test("makeWorkflowsConfig: rejects when both entity_type and entity_collection are declared (migration check fires first)", () => {
+test("makeWorkflowsConfig: rejects a workflow missing the entity block", () => {
+  const workflow = { ...validWorkflow };
+  delete workflow.entity;
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /missing required "entity" block/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /onboarding/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a workflow whose entity is not an object", () => {
+  const workflow = { ...validWorkflow, entity: "leads-collection" };
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /missing required "entity" block/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a workflow missing entity.connection_id", () => {
   const workflow = {
     ...validWorkflow,
-    entity_type: "lead",
+    entity: { ...validWorkflow.entity },
   };
+  delete workflow.entity.connection_id;
 
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /legacy "entity_type" field is no longer supported/,
-  );
-});
-
-test("makeWorkflowsConfig: entity_ref_key flows through to the normalized output", () => {
-  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
-  expect(out.entity_ref_key).toBe("lead_ids");
-});
-
-test("makeWorkflowsConfig: rejects a workflow missing entity_ref_key", () => {
-  const workflow = { ...validWorkflow };
-  delete workflow.entity_ref_key;
-
-  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /missing required "entity_ref_key" — the event-references key/,
+    /missing required "entity\.connection_id"/,
   );
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
     /onboarding/,
   );
 });
 
-test("makeWorkflowsConfig: rejects an empty-string entity_ref_key", () => {
-  const workflow = { ...validWorkflow, entity_ref_key: "" };
+test("makeWorkflowsConfig: rejects an empty-string entity.connection_id", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, connection_id: "" },
+  };
 
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /missing required "entity_ref_key"/,
+    /missing required "entity\.connection_id"/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a workflow missing entity.ref_key", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity },
+  };
+  delete workflow.entity.ref_key;
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /missing required "entity\.ref_key" — the event-references key/,
+  );
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /onboarding/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a workflow missing entity.page_id", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity },
+  };
+  delete workflow.entity.page_id;
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /missing required "entity\.page_id"/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a workflow missing entity.title", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity },
+  };
+  delete workflow.entity.title;
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /missing required "entity\.title"/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects a non-string entity.id_query_key when present", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, id_query_key: 42 },
+  };
+
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /entity\.id_query_key must be a non-empty string when present/,
   );
 });
 
 test("makeWorkflowsConfig: blocked_by referencing a declared action type passes", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -87,8 +185,12 @@ test("makeWorkflowsConfig: blocked_by referencing a declared action type passes"
 test("makeWorkflowsConfig: blocked_by referencing a declared group id passes", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     action_groups: [{ id: "phase-1" }, { id: "phase-2" }],
     starting_actions: [{ type: "qualify", status: "action-required" }],
@@ -105,8 +207,12 @@ test("makeWorkflowsConfig: blocked_by referencing a declared group id passes", (
 test("makeWorkflowsConfig: blocked_by with mixed group id + action type passes", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     action_groups: [{ id: "phase-1" }],
     starting_actions: [{ type: "qualify", status: "action-required" }],
@@ -127,8 +233,12 @@ test("makeWorkflowsConfig: blocked_by with mixed group id + action type passes",
 test("makeWorkflowsConfig: no blocked_by field on any action passes", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -144,8 +254,12 @@ test("makeWorkflowsConfig: no blocked_by field on any action passes", () => {
 test("makeWorkflowsConfig: blocked_by entry that resolves to nothing throws with action type, entry, and workflow type", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -167,8 +281,12 @@ test("makeWorkflowsConfig: blocked_by entry that resolves to nothing throws with
 test("makeWorkflowsConfig: blocked_by walk doesn't short-circuit on the first valid entry", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -188,8 +306,12 @@ test("makeWorkflowsConfig: blocked_by walk doesn't short-circuit on the first va
 test("makeWorkflowsConfig: inline hook routine validates cleanly (signal-keyed)", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -212,8 +334,12 @@ test("makeWorkflowsConfig: inline hook routine validates cleanly (signal-keyed)"
 test("makeWorkflowsConfig: legacy string hook fails with migration message", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -235,8 +361,12 @@ test("makeWorkflowsConfig: legacy string hook fails with migration message", () 
 test("makeWorkflowsConfig: hook value missing routine: array fails", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -255,8 +385,12 @@ test("makeWorkflowsConfig: hook value missing routine: array fails", () => {
 test("makeWorkflowsConfig: unknown hook signal fails (legacy submit_edit rejected)", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -275,8 +409,12 @@ test("makeWorkflowsConfig: unknown hook signal fails (legacy submit_edit rejecte
 test("makeWorkflowsConfig: completely unknown hook key fails", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -297,8 +435,12 @@ test("makeWorkflowsConfig: completely unknown hook key fails", () => {
 test("makeWorkflowsConfig: signal-keyed event block validates cleanly", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -320,8 +462,12 @@ test("makeWorkflowsConfig: signal-keyed event block validates cleanly", () => {
 test("makeWorkflowsConfig: legacy event key submit_edit hard-errors", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -345,8 +491,12 @@ test("makeWorkflowsConfig: legacy event key submit_edit hard-errors", () => {
 test("makeWorkflowsConfig: unknown event key hard-errors", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -368,8 +518,12 @@ test("makeWorkflowsConfig: unknown event key hard-errors", () => {
 test("makeWorkflowsConfig: authored event display.{app}.description hard-errors (comment-only, D4)", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -392,8 +546,12 @@ test("makeWorkflowsConfig: authored event display.{app}.description hard-errors 
 test("makeWorkflowsConfig: authored event display.{app}.title-only passes (D7)", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -414,8 +572,12 @@ test("makeWorkflowsConfig: authored event display.{app}.title-only passes (D7)",
 test("makeWorkflowsConfig: inline on_complete routine validates cleanly", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     action_groups: [
       {
@@ -436,8 +598,12 @@ test("makeWorkflowsConfig: inline on_complete routine validates cleanly", () => 
 test("makeWorkflowsConfig: legacy string on_complete fails with migration message", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     action_groups: [
       {
@@ -460,8 +626,12 @@ test("makeWorkflowsConfig: legacy string on_complete fails with migration messag
 // "device-installation" resolves to a declared type in the workflows array.
 const deviceInstallationStub = {
   type: "device-installation",
-  entity_collection: "installations-collection",
-  entity_ref_key: "installation_ids",
+  entity: {
+    connection_id: "installations-collection",
+    ref_key: "installation_ids",
+    page_id: "installation-view",
+    title: "Installation",
+  },
 };
 
 // --- validateActionAccess (Part 34 D4) -------------------------------------
@@ -469,8 +639,12 @@ const deviceInstallationStub = {
 function workflowWithAccess(access) {
   return {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [{ type: "qualify", kind: "form", form: [], access }],
@@ -539,8 +713,12 @@ test("validateActionAccess: rejects a gate that is neither true nor a role array
 test("validateActionAccess: notification_roles at the action root is valid", () => {
   const wf = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -575,8 +753,12 @@ test("validateActionAccess: lint-warns (does not throw) on edit/review/error wit
 function workflowWithStatusMap(status_map) {
   return {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
@@ -650,8 +832,12 @@ test("validateStatusMapCells: rejects a non-string/null status_title", () => {
 function workflowWithTracker(tracker) {
   return {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "install-device", status: "action-required" }],
     actions: [{ type: "install-device", kind: "tracker", tracker }],
@@ -871,8 +1057,12 @@ test("makeWorkflowsConfig: explicit action title wins over the derived default",
 test("makeWorkflowsConfig: group title — explicit wins, else derived from id (2-tier)", () => {
   const workflow = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     action_groups: [
       { id: "kickoff-call", title: "Kickoff" },
@@ -889,8 +1079,12 @@ test("makeWorkflowsConfig: group title — explicit wins, else derived from id (
 test("makeWorkflowsConfig: title_acronyms extends the humanizer for all defaults", () => {
   const workflow = {
     type: "manage-bom",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     action_groups: [{ id: "bom-review" }],
     starting_actions: [{ type: "upload-bom", status: "action-required" }],
@@ -986,8 +1180,12 @@ const proofOfInstallAction = {
 function workflowWithFormActions(...actions) {
   return {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: actions[0].type, status: "action-required" }],
     actions,
@@ -1120,8 +1318,12 @@ test("makeWorkflowsConfig: allow_not_required: false flows through explicitly", 
 test("makeWorkflowsConfig: allow_not_required: true flows through on a tracker-kind action", () => {
   const wf = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "install-device", status: "action-required" }],
     actions: [
@@ -1168,8 +1370,12 @@ test("makeWorkflowsConfig: non-boolean allow_not_required (number) hard-errors",
 test("makeWorkflowsConfig: allow_not_required works on check-kind action too", () => {
   const wf = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     display_order: 1,
     starting_actions: [{ type: "do-it", status: "action-required" }],
     actions: [{ type: "do-it", kind: "check", allow_not_required: true }],
@@ -1185,8 +1391,12 @@ test("makeWorkflowsConfig: allow_not_required works on check-kind action too", (
 function trackerWorkflow(overrides = {}) {
   return {
     type: "parent",
-    entity_collection: "parents-collection",
-    entity_ref_key: "parent_ids",
+    entity: {
+      connection_id: "parents-collection",
+      ref_key: "parent_ids",
+      page_id: "parent-view",
+      title: "Parent",
+    },
     starting_actions: [{ type: "track-it", status: "action-required" }],
     actions: [
       {
@@ -1201,8 +1411,12 @@ function trackerWorkflow(overrides = {}) {
 
 const childStub = {
   type: "child",
-  entity_collection: "children-collection",
-  entity_ref_key: "child_ids",
+  entity: {
+    connection_id: "children-collection",
+    ref_key: "child_ids",
+    page_id: "children-view",
+    title: "Children",
+  },
 };
 
 test("validateTrackerChildWorkflowType: valid child_workflow_type resolving to a declared type passes", () => {
@@ -1214,8 +1428,12 @@ test("validateTrackerChildWorkflowType: valid child_workflow_type resolving to a
 test("validateTrackerChildWorkflowType: missing child_workflow_type hard-errors", () => {
   const wf = {
     type: "parent",
-    entity_collection: "parents-collection",
-    entity_ref_key: "parent_ids",
+    entity: {
+      connection_id: "parents-collection",
+      ref_key: "parent_ids",
+      page_id: "parent-view",
+      title: "Parent",
+    },
     starting_actions: [{ type: "track-it", status: "action-required" }],
     actions: [{ type: "track-it", kind: "tracker", tracker: {} }],
   };
@@ -1230,8 +1448,12 @@ test("validateTrackerChildWorkflowType: missing child_workflow_type hard-errors"
 test("validateTrackerChildWorkflowType: empty-string child_workflow_type hard-errors", () => {
   const wf = {
     type: "parent",
-    entity_collection: "parents-collection",
-    entity_ref_key: "parent_ids",
+    entity: {
+      connection_id: "parents-collection",
+      ref_key: "parent_ids",
+      page_id: "parent-view",
+      title: "Parent",
+    },
     starting_actions: [{ type: "track-it", status: "action-required" }],
     actions: [
       {
@@ -1249,8 +1471,12 @@ test("validateTrackerChildWorkflowType: empty-string child_workflow_type hard-er
 test("validateTrackerChildWorkflowType: non-string child_workflow_type hard-errors", () => {
   const wf = {
     type: "parent",
-    entity_collection: "parents-collection",
-    entity_ref_key: "parent_ids",
+    entity: {
+      connection_id: "parents-collection",
+      ref_key: "parent_ids",
+      page_id: "parent-view",
+      title: "Parent",
+    },
     starting_actions: [{ type: "track-it", status: "action-required" }],
     actions: [
       {
@@ -1268,8 +1494,12 @@ test("validateTrackerChildWorkflowType: non-string child_workflow_type hard-erro
 test("validateTrackerChildWorkflowType: legacy tracker.workflow_type key hard-errors with rename hint", () => {
   const wf = {
     type: "parent",
-    entity_collection: "parents-collection",
-    entity_ref_key: "parent_ids",
+    entity: {
+      connection_id: "parents-collection",
+      ref_key: "parent_ids",
+      page_id: "parent-view",
+      title: "Parent",
+    },
     starting_actions: [{ type: "track-it", status: "action-required" }],
     actions: [
       {
@@ -1309,8 +1539,12 @@ test("validateTrackerEdges: no cycle — linear parent → child passes", () => 
 test("validateTrackerEdges: direct cycle (a → b → a) hard-errors naming the path", () => {
   const a = {
     type: "a",
-    entity_collection: "a-collection",
-    entity_ref_key: "a_ids",
+    entity: {
+      connection_id: "a-collection",
+      ref_key: "a_ids",
+      page_id: "a-view",
+      title: "A",
+    },
     starting_actions: [{ type: "track-b", status: "action-required" }],
     actions: [
       {
@@ -1322,8 +1556,12 @@ test("validateTrackerEdges: direct cycle (a → b → a) hard-errors naming the 
   };
   const b = {
     type: "b",
-    entity_collection: "b-collection",
-    entity_ref_key: "b_ids",
+    entity: {
+      connection_id: "b-collection",
+      ref_key: "b_ids",
+      page_id: "b-view",
+      title: "B",
+    },
     starting_actions: [{ type: "track-a", status: "action-required" }],
     actions: [
       {
@@ -1344,8 +1582,12 @@ test("validateTrackerEdges: direct cycle (a → b → a) hard-errors naming the 
 test("validateTrackerEdges: longer cycle (a → b → c → a) hard-errors naming the path", () => {
   const a = {
     type: "a",
-    entity_collection: "a-collection",
-    entity_ref_key: "a_ids",
+    entity: {
+      connection_id: "a-collection",
+      ref_key: "a_ids",
+      page_id: "a-view",
+      title: "A",
+    },
     starting_actions: [{ type: "track-b", status: "action-required" }],
     actions: [
       {
@@ -1357,8 +1599,12 @@ test("validateTrackerEdges: longer cycle (a → b → c → a) hard-errors namin
   };
   const b = {
     type: "b",
-    entity_collection: "b-collection",
-    entity_ref_key: "b_ids",
+    entity: {
+      connection_id: "b-collection",
+      ref_key: "b_ids",
+      page_id: "b-view",
+      title: "B",
+    },
     starting_actions: [{ type: "track-c", status: "action-required" }],
     actions: [
       {
@@ -1370,8 +1616,12 @@ test("validateTrackerEdges: longer cycle (a → b → c → a) hard-errors namin
   };
   const c = {
     type: "c",
-    entity_collection: "c-collection",
-    entity_ref_key: "c_ids",
+    entity: {
+      connection_id: "c-collection",
+      ref_key: "c_ids",
+      page_id: "c-view",
+      title: "C",
+    },
     starting_actions: [{ type: "track-a", status: "action-required" }],
     actions: [
       {
@@ -1391,8 +1641,12 @@ test("validateTrackerEdges: longer cycle (a → b → c → a) hard-errors namin
 test("makeWorkflowsConfig: tracker action with mirror-signal event key passes", () => {
   const wf = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     starting_actions: [{ type: "install-device", status: "action-required" }],
     actions: [
       {
@@ -1415,8 +1669,12 @@ test("makeWorkflowsConfig: tracker action with mirror-signal event key passes", 
 test("makeWorkflowsConfig: form action with mirror-signal event key hard-errors with kind-restriction message", () => {
   const wf = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
       {
@@ -1442,8 +1700,12 @@ test("makeWorkflowsConfig: form action with mirror-signal event key hard-errors 
 test("makeWorkflowsConfig: check action with mirror-signal event key hard-errors with kind-restriction message", () => {
   const wf = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     starting_actions: [{ type: "qualify", status: "action-required" }],
     actions: [
       {
@@ -1466,8 +1728,12 @@ test("makeWorkflowsConfig: check action with mirror-signal event key hard-errors
 test("makeWorkflowsConfig: tracker action with unknown event key still hard-errors", () => {
   const wf = {
     type: "onboarding",
-    entity_collection: "leads-collection",
-    entity_ref_key: "lead_ids",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     starting_actions: [{ type: "install-device", status: "action-required" }],
     actions: [
       {

@@ -8,8 +8,12 @@
 # on this workflow doc and fires internal_mirror_child_active against the parent.
 type: tracker-child-flow
 title: Tracker child flow
-entity_collection: things-collection
-entity_ref_key: thing_ids
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
 
 starting_actions:
   - type: child-step

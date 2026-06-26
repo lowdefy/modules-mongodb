@@ -14,8 +14,12 @@
 # proves the mirror fires through the wired app, across two workflow docs.
 type: tracker-parent
 title: Tracker parent
-entity_collection: things-collection
-entity_ref_key: thing_ids
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
 
 starting_actions:
   - type: track-child

@@ -61,7 +61,12 @@ const trackInstallationAction = {
 function workflow(actions) {
   return {
     type: "onboarding",
-    entity_collection: "leads-collection",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
     actions,
   };
 }

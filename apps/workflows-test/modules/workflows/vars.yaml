@@ -4,8 +4,3 @@ app_name:
   _ref:
     path: app_config.yaml
     key: app_name
-entities:
-  things-collection:
-    page_id: thing-view
-    id_query_key: _id
-    title: Thing
