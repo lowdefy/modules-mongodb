@@ -7,19 +7,24 @@ which today runs an inline `MongoDBAggregation` (`get-events`) on the generic
 `events-collection` (`MongoDBCollection`) and renders an events-only timeline. With
 the config-free `GetEventsTimeline` engine now hosted on the new `EventsTimeline`
 plugin connection type (task 3), this task makes the **single** events timeline
-enrich itself with action cards when an `actions_collection` var is set — gated by
-one var on the events module entry, with no per-entity wiring and no second
-component.
+**self-enrich** with action cards wherever an app's events reference actions —
+data-driven, with no per-entity wiring and no second component. The
+`actions_collection` / `contacts_collection` vars are collection-name overrides
+(the engine defaults to `actions` / `user-contacts`), not on/off gates.
 
 Key design points (Part 50 changes 2–4, 6; D3, D4):
 
 - The engine reads display blocks as `$<app_name>.title` and access as
   `access[app_name]`. The events module's existing **required** `display_key` var
   is exactly this key (D3) — wire `app_name: {_module.var: display_key}`.
-- `actions_collection` and `contacts_collection` both default to **null**. Null
-  `actions_collection` ⇒ the engine skips the actions join and the timeline renders
-  identically to today's events-only timeline (D4). Null `contacts_collection` ⇒
-  skip the author-avatar join.
+- `actions_collection` and `contacts_collection` both default to **null** on the
+  module entry; the **engine** supplies the effective default (`?? 'actions'` /
+  `?? 'user-contacts'`). They are **collection-name overrides, not on/off gates** —
+  both `$lookup`s stay unconditional (task 3, D4). A pure-CRM app whose events carry
+  no `action_ids` renders identically to today's events-only timeline because the
+  actions join matches nothing and returns `actions: []`; the contacts join degrades
+  to initials when unmatched. The component just wires the vars onto the connection
+  and never branches on them.
 - The check-action click handler (`onActionClick`) moves onto this component. The
   handler is **config-free** — it only reads runtime event data
   (`action.kind`, `action._id`, `action.link.{pageId,urlQuery}`) and a fixed
@@ -47,15 +52,17 @@ Reference shapes:
 ### 1. Manifest (`modules/events/module.lowdefy.yaml`)
 
 - **Add** two vars (both `type: string`, `default: null`):
-  - `actions_collection` — "Actions collection joined by the events timeline to
-    enrich events with action cards. Null/omitted ⇒ events-only timeline (no
-    actions join). Set it to turn on action-card enrichment for every entity
-    timeline in the app."
+  - `actions_collection` — "Actions collection the events timeline joins to enrich
+    events with action cards. The engine falls back to `actions` when unset, so
+    override only when your actions collection is named differently. Enrichment is
+    data-driven: the join is inert when events carry no `action_ids`, so entities
+    with no workflow actions render as an events-only timeline."
   - `contacts_collection` — "Contacts collection joined to resolve each event
-    author's avatar (`created.user.id` → `_id`, projecting `profile.picture`).
-    Null/omitted ⇒ avatars fall back to initials." (Mirror the wording on the
-    workflows module's `contacts_collection` var.)
-  Provide `description:` for both (manifest is the source of truth for var docs).
+    author's avatar (`created.user.id` → `_id`, projecting `profile.picture`). The
+    engine falls back to `user-contacts` when unset; avatars fall back to initials
+    when an author has no matching contact." (Mirror the wording on the workflows
+    module's `contacts_collection` var.)
+    Provide `description:` for both (manifest is the source of truth for var docs).
 - **Delete** the `action_statuses_display` var (lines ~58–66) — dead config.
 - **Add** a `exports.connections` entry for the new `events-timeline` connection
   (id + description), alongside the existing `events-collection` export.
@@ -129,7 +136,7 @@ event writes and change-log.
   body from `modules/workflows/components/check-action-click.yaml` inline (do not
   `_ref` workflows). This handler: on a `check`-kind card, sets
   `check_action_modal.action_id` and tries `CallMethod(check_action_modal,
-  setOpen, [{open:true}])` with `messages.error: false`; on every other kind,
+setOpen, [{open:true}])` with `messages.error: false`; on every other kind,
   `Link`s to `action.link.{pageId,urlQuery}`; the `catch` `Link`s to the action page
   when no modal is present.
 
@@ -180,6 +187,7 @@ task 7. Leave the README stub as-is.
   still uses). That is the unavoidable cost of the events ↛ workflows boundary —
   events cannot `_ref` a workflows component. Task 6 keeps `check-action-click.yaml`
   for `actions-on-entity`; it does not delete it.
-- The actions/contacts join gating lives in the **engine** (task 3), driven by the
-  null collection vars — the component passes the connection and does not branch on
-  the vars itself.
+- There is **no join gating**: both `$lookup`s run unconditionally in the engine
+  (task 3, D4). The actions join is inert without `action_ids`; the contacts join
+  degrades to initials when unmatched. The component just passes the connection and
+  does not branch on the vars itself.

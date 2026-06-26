@@ -28,17 +28,22 @@ the events module page and any other doc describing the two-timeline model.
 ### 1. Events module page (`docs/events/index.md`)
 
 - Rewrite the `events-timeline` bullet (~line 61) to describe the **one** timeline:
-  events-only by default; set `actions_collection` on the events module entry to
-  enrich every entity timeline in the app with action cards (verb-filtered,
-  link-collapsed server-side); set `contacts_collection` to resolve author avatars.
-  Remove the pointer to `workflows-events-timeline`.
+  a single events-module timeline that **self-enriches** with action cards wherever
+  an app's events reference actions (verb-filtered, link-collapsed server-side).
+  Enrichment is **data-driven**, not a gate — an entity whose events reference no
+  actions renders as an events-only timeline. `actions_collection` /
+  `contacts_collection` are **collection-name overrides** (the engine defaults to
+  `actions` / `user-contacts`). Remove the pointer to `workflows-events-timeline`.
 - Add a short subsection (or extend the relevant one) documenting the enrichment
   model and the two new vars:
-  - `actions_collection` (default null) — turns on action-card enrichment app-wide;
-    null ⇒ events-only, renders identically to a pure-CRM app.
-  - `contacts_collection` (default null) — author-avatar join; null ⇒ initials.
-  - Note it is an **app-wide** switch on the events entry (not per-entity), and that
-    entities with no workflow actions render exactly as before (empty join).
+  - `actions_collection` (default null on the entry; engine falls back to `actions`)
+    — points the timeline at your actions collection; override only when it is named
+    differently. Enrichment shows up wherever events carry `action_ids`.
+  - `contacts_collection` (default null; engine falls back to `user-contacts`) —
+    author-avatar join; falls back to initials when an author has no matching contact.
+  - Note enrichment is **app-wide and data-driven** (not a per-entity choice, not an
+    on/off switch): entities with no workflow actions render exactly as before
+    because the join matches nothing.
 - Include the worked example (events entry with `actions_collection: actions` +
   `contacts_collection`) from the design.
 - Front-matter: ensure `module: events`, `type: index`; add `concepts:` keys if

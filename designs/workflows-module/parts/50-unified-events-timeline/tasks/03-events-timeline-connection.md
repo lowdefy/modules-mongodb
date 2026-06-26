@@ -34,8 +34,8 @@ Create `plugins/modules-mongodb-plugins/src/connections/EventsTimeline/`:
   on `WorkflowAPI/WorkflowAPI.js`:
 
   ```js
-  import schema from './schema.js';
-  import GetEventsTimeline from '../WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js';
+  import schema from "./schema.js";
+  import GetEventsTimeline from "../WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js";
 
   const EventsTimeline = {
     schema,
@@ -54,11 +54,14 @@ Create `plugins/modules-mongodb-plugins/src/connections/EventsTimeline/`:
     reads display blocks as `$<app_name>.title` and access as `access[app_name]`.
     (The events module wires its existing `display_key` var here — see task 4 / D3.)
   - `eventsCollection` (string, default `'log-events'`) — events collection.
-  - `actionsCollection` (string, **no default** — see Notes) — actions collection;
-    null/absent ⇒ the engine skips the actions `$lookup` and its dependent dedup
-    stages (D4).
-  - `contactsCollection` (string, **no default**) — contacts collection for the
-    author-avatar join; null/absent ⇒ skip that join.
+  - `actionsCollection` (string, optional) — actions collection joined to enrich
+    events with action cards. When absent/null the **engine** falls back to
+    `actions` (the `?? 'actions'` default stays — D4); the join is inert when events
+    carry no `action_ids`, so it is left **unconditional** (no skip branch).
+  - `contactsCollection` (string, optional) — contacts collection for the
+    author-avatar join. When absent/null the engine falls back to `user-contacts`
+    (the `?? 'user-contacts'` default stays); the join is **unconditional** and
+    degrades to initials (`$ifNull`) when unmatched.
   - `databaseName` (string, optional) — passthrough for `getMongoDb`.
   - `user` (object, optional) — session user, wired via `_user: true`; the engine
     reads `user.roles` for role-gating.
@@ -76,46 +79,43 @@ In `plugins/modules-mongodb-plugins/src/connections.js`, export `EventsTimeline`
 alongside `WorkflowAPI`:
 
 ```js
-export { default as WorkflowAPI } from './connections/WorkflowAPI/WorkflowAPI.js';
-export { default as EventsTimeline } from './connections/EventsTimeline/EventsTimeline.js';
+export { default as WorkflowAPI } from "./connections/WorkflowAPI/WorkflowAPI.js";
+export { default as EventsTimeline } from "./connections/EventsTimeline/EventsTimeline.js";
 ```
 
-### 3. Engine gating for null collections (verify / implement)
+### 3. No engine pipeline change — both `$lookup`s stay unconditional
 
-The engine must render identically to today's events-only timeline when
-`actionsCollection` is null/absent (D4): skip the actions `$lookup` **and its
-dependent dedup stages** (`$unwind` / `$setWindowFields` / `$group` / `$replaceRoot`
-/ the `last_event_id` `$project` / the reference-value `$filter`), and skip the
-`contactsCollection` `$lookup` + `created.user.picture` `$addFields` when
-`contactsCollection` is null/absent.
+**Do not** add skip branches and **do not** change the engine's collection defaults
+(this reverses review-1's instinct; see D4 and review-2 finding #1). The engine
+keeps both `$lookup` stages **unconditional** and keeps its `?? 'actions'` /
+`?? 'user-contacts'` / `?? 'log-events'` fallbacks (`GetEventsTimeline.js:35–37`)
+exactly as they are:
 
-`GetEventsTimeline.js` today defaults both collections to non-null literals
-(`?? 'actions'`, `?? 'user-contacts'`, lines 36–37). Change those to honour an
-explicit null:
+- The actions `$lookup` keys on `localField: action_ids`. A pure-CRM app's events
+  carry no `action_ids`, so it matches nothing and returns `actions: []`; the
+  dependent dedup stages no-op on the empty array, and the block guards card
+  rendering on `Array.isArray(event.actions) && event.actions.length > 0`. The stage
+  is **inert without action data**, so there is nothing to skip — and the
+  `?? 'actions'` fallback is _needed_, since it gives the no-op lookup a valid `from`
+  (`$lookup` against a non-existent collection is valid in MongoDB and returns empty).
+- The contacts `$lookup` keys on `created.user.id` (always present), so it runs
+  unconditionally against `user-contacts` and only ever _adds_ a `created.user.picture`
+  field — degrading to initials via `$ifNull` when unmatched.
 
-- `const actionsCollection = connection.actionsCollection ?? null;`
-- `const contactsCollection = connection.contactsCollection ?? null;`
-
-and build the pipeline conditionally: include the actions stages only when
-`actionsCollection != null`, and the contacts stages only when
-`contactsCollection != null`. When the actions join is skipped, still tack an
-`actions: []` key onto each event so the JS post-processing and the
-`EventsTimeline` block's `Array.isArray(event.actions) && length > 0` guard behave
-(D4 "renders identically, not byte-for-byte"). Keep the eventsCollection default
-(`?? 'log-events'`).
+Consequence: after task 2 dropped `workflowsConfig`, **the engine handler needs no
+further change in this task** — it is hosted as-is by the new `EventsTimeline`
+connection. The `actions_collection` / `contacts_collection` vars (task 4) are
+**collection-name overrides**, not on/off gates: a null var lands on the connection
+field and the engine's `??` supplies the effective default.
 
 ### 4. Tests
 
-Add/extend `GetEventsTimeline.test.js` cases for the gated paths:
-
-- `actionsCollection: null` ⇒ no actions join; every event has `actions: []`;
-  event-display fields (`title`/`description`/`info`) still present; output matches
-  the events-only shape.
-- `contactsCollection: null` ⇒ no `created.user.picture` field added.
-- Both set ⇒ existing enrichment behaviour (already covered) unchanged.
-
-(The test fixture builds a connection object directly, so it can exercise these
-without the new schema; the schema is validated by the framework at app build.)
+No new gated-path tests are needed (there is no gating). Confirm the existing
+`GetEventsTimeline.test.js` enrichment coverage still passes unchanged after task 2.
+If not already covered, an _optional_ assertion that events with no `action_ids`
+yield `actions: []` (the inert-lookup path) documents the data-driven default — but
+do **not** add `actionsCollection: null ⇒ no join` cases, since the engine does not
+gate on the collection name.
 
 ## Acceptance Criteria
 
@@ -123,20 +123,20 @@ without the new schema; the schema is validated by the framework at app build.)
   `{ schema, requests: { GetEventsTimeline } }`.
 - `EventsTimeline/schema.js` requires `databaseUri` and `app_name`, defaults
   `eventsCollection` to `log-events`, and omits all workflows-only fields.
-- With `actionsCollection: null`, `GetEventsTimeline` runs no actions `$lookup`
-  and emits `actions: []` per event; with `contactsCollection: null`, no avatar
-  join runs.
-- With both collections set, enrichment behaviour is unchanged from before this task.
-- `pnpm --filter @lowdefy/modules-mongodb-plugins test` passes, including the new
-  gated-path cases.
+- The `GetEventsTimeline` engine handler is **unchanged** by this task: both
+  `$lookup`s stay unconditional and the `?? 'actions'` / `?? 'user-contacts'`
+  fallbacks remain. Enrichment behaviour is identical to before this task.
+- An event with no `action_ids` yields `actions: []` via the inert actions lookup
+  (no skip branch involved).
+- `pnpm --filter @lowdefy/modules-mongodb-plugins test` passes.
 
 ## Files
 
 - `plugins/modules-mongodb-plugins/src/connections/EventsTimeline/EventsTimeline.js` — create — `{ schema, requests: { GetEventsTimeline } }`, importing the engine from the `WorkflowAPI/GetEventsTimeline` path.
 - `plugins/modules-mongodb-plugins/src/connections/EventsTimeline/schema.js` — create — read-only schema (databaseUri, app_name, eventsCollection, actionsCollection, contactsCollection, databaseName, user).
 - `plugins/modules-mongodb-plugins/src/connections.js` — modify — export `EventsTimeline`.
-- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js` — modify — default `actionsCollection`/`contactsCollection` to null; gate the actions and contacts pipeline stages on non-null.
-- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.test.js` — modify — add null-collection gated-path cases.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.js` — **no change in this task** — both `$lookup`s stay unconditional; the `?? 'actions'` / `?? 'user-contacts'` defaults stay. (The only engine edit is task 2's `workflowsConfig` removal.)
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/GetEventsTimeline/GetEventsTimeline.test.js` — no new gated-path cases; confirm existing enrichment coverage stays green.
 
 ## Notes
 
