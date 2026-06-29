@@ -126,20 +126,20 @@ _ref:
                 type: Box
                 layout:
                   gap: 8
-                  align: middle
+                  selfAlign: middle
                   justify: space-between
                 blocks:
                   - id: actions_list.$.title_row
                     type: Box
                     layout:
                       gap: 8
-                      align: middle
+                      selfAlign: middle
                     blocks:
                       - id: actions_list.$.title_row
                         type: Box
                         layout:
                           gap: 8
-                          align: middle
+                          selfAlign: middle
                         blocks:
                           - id: actions_list.$.status_badge
                             type: Tag

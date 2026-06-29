@@ -74,7 +74,7 @@ blocks:
     type: Box
     layout:
       gap: 8
-      align: middle
+      selfAlign: middle
     blocks:
       - id: action_title
         type: Title
@@ -196,7 +196,7 @@ blocks:
             type: Box
             layout:
               gap: 8
-              align: middle
+              selfAlign: middle
             blocks:
               - id: current_action.status.$.badge
                 type: Tag

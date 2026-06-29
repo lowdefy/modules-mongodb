@@ -73,7 +73,7 @@ _ref:
         type: Box
         layout:
           gap: 8
-          align: middle
+          selfAlign: middle
         blocks:
           - id: workflow_progress
             type: Progress
@@ -152,7 +152,7 @@ _ref:
                 - null
             layout:
               gap: 8
-              align: middle
+              selfAlign: middle
             blocks:
               - id: groups_list.$.group_icon
                 type: Icon
@@ -191,14 +191,14 @@ _ref:
                     type: Box
                     layout:
                       gap: 8
-                      align: middle
+                      selfAlign: middle
                       justify: space-between
                     blocks:
                       - id: groups_list.$.actions.$.title_row
                         type: Box
                         layout:
                           gap: 8
-                          align: middle
+                          selfAlign: middle
                         blocks:
                           - id: groups_list.$.actions.$.status_badge
                             type: Tag
