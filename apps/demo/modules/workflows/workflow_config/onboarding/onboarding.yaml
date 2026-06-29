@@ -8,8 +8,8 @@ entity:
   # id_query_key omitted — defaults to _id
   name_field: name # D10 — entity instance name → breadcrumb "Lead · {name}"
 
-# entity_view.slot (Part 56) — read-only detail rendered as the RHS Details tab
-# on the onboarding form pages and as the middle review subject on the
+# entity_view.slot (Part 56) — read-only detail rendered as the RHS Details
+# section on the onboarding form pages and as the middle review subject on the
 # onboarding-check page. Baked into the emitted pages by makeActionPages.
 entity_view:
   slot:
