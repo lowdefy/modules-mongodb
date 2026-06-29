@@ -78,7 +78,7 @@ function describeForm(formArray) {
   return (formArray ?? []).map(toMetadataNode);
 }
 
-const ACTION_KINDS = ["form", "check", "tracker"];
+const ACTION_KINDS = ["form", "check", "custom", "tracker"];
 
 const ACTION_STATUSES = [
   "not-required",
@@ -367,47 +367,45 @@ function validateTrackerChildWorkflowType(workflow, action) {
   }
 }
 
-// Part 44: tracker.start_link validation. An optional engine-link shape
+// Part 44 / Part 28: the engine-link shape, shared by tracker.start_link and
+// the custom-kind status_map link:/view_link: cells. An object
 // { pageId: string, urlQuery?: object }. Reserved urlQuery keys action_id /
 // entity_id are sentinel-only (value must be exactly true); all other keys
 // must carry string values (static params, passed through verbatim). Any
 // other key at the top level (e.g. title:) hard-errors because the engine-link
-// shape only supports pageId / urlQuery — title is familiar from custom-kind
-// cell links but is not valid here.
-const TRACKER_START_LINK_ALLOWED_KEYS = new Set(["pageId", "urlQuery"]);
-const TRACKER_URL_QUERY_SENTINEL_KEYS = new Set(["action_id", "entity_id"]);
+// shape only supports pageId / urlQuery.
+const ENGINE_LINK_ALLOWED_KEYS = new Set(["pageId", "urlQuery"]);
+const ENGINE_LINK_URL_QUERY_SENTINEL_KEYS = new Set(["action_id", "entity_id"]);
 
-function validateTrackerStartLink(workflow, action) {
-  if (!action.tracker?.start_link) return;
+// Validate one engine-link object. `label` names the source for error messages
+// (e.g. `tracker.start_link`, `status_map.action-required.demo.link`). One
+// source of truth for both tracker links and custom cell links (CLAUDE.md "one
+// correct way").
+function validateEngineLinkShape(workflow, action, link, label) {
   const where = `action "${action.type}"`;
-  const startLink = action.tracker.start_link;
 
-  if (
-    startLink === null ||
-    typeof startLink !== "object" ||
-    Array.isArray(startLink)
-  ) {
+  if (link === null || typeof link !== "object" || Array.isArray(link)) {
     fail(
       workflow.type,
-      `${where} tracker.start_link must be a plain object (got: ${JSON.stringify(startLink)}).`,
+      `${where} ${label} must be a plain object (got: ${JSON.stringify(link)}).`,
     );
   }
 
-  for (const key of Object.keys(startLink)) {
-    if (!TRACKER_START_LINK_ALLOWED_KEYS.has(key)) {
+  for (const key of Object.keys(link)) {
+    if (!ENGINE_LINK_ALLOWED_KEYS.has(key)) {
       fail(
         workflow.type,
-        `${where} tracker.start_link has unknown key "${key}" — only pageId and urlQuery are allowed (note: "title" is not part of the engine-link shape).`,
+        `${where} ${label} has unknown key "${key}" — only pageId and urlQuery are allowed (note: "title" is not part of the engine-link shape).`,
       );
     }
   }
 
-  const { pageId, urlQuery } = startLink;
+  const { pageId, urlQuery } = link;
 
   if (typeof pageId !== "string" || pageId === "") {
     fail(
       workflow.type,
-      `${where} tracker.start_link.pageId must be a non-empty string (got: ${JSON.stringify(pageId)}).`,
+      `${where} ${label}.pageId must be a non-empty string (got: ${JSON.stringify(pageId)}).`,
     );
   }
 
@@ -419,23 +417,23 @@ function validateTrackerStartLink(workflow, action) {
     ) {
       fail(
         workflow.type,
-        `${where} tracker.start_link.urlQuery must be a plain object (got: ${JSON.stringify(urlQuery)}).`,
+        `${where} ${label}.urlQuery must be a plain object (got: ${JSON.stringify(urlQuery)}).`,
       );
     }
 
     for (const [key, value] of Object.entries(urlQuery)) {
-      if (TRACKER_URL_QUERY_SENTINEL_KEYS.has(key)) {
+      if (ENGINE_LINK_URL_QUERY_SENTINEL_KEYS.has(key)) {
         if (value !== true) {
           fail(
             workflow.type,
-            `${where} tracker.start_link.urlQuery.${key} is a reserved sentinel key — its value must be exactly true (got: ${JSON.stringify(value)}).`,
+            `${where} ${label}.urlQuery.${key} is a reserved sentinel key — its value must be exactly true (got: ${JSON.stringify(value)}).`,
           );
         }
       } else {
         if (typeof value !== "string") {
           fail(
             workflow.type,
-            `${where} tracker.start_link.urlQuery.${key} must be a string (static param passed through verbatim) (got: ${JSON.stringify(value)}).`,
+            `${where} ${label}.urlQuery.${key} must be a string (static param passed through verbatim) (got: ${JSON.stringify(value)}).`,
           );
         }
       }
@@ -443,10 +441,21 @@ function validateTrackerStartLink(workflow, action) {
   }
 }
 
-// Part 30 D9: status_map cell shape. Each `status_map[stage]` is a cell of
-// per-slug `{ message? }` objects plus a reserved `status_title` (string|null).
-// Built-in kinds reject `link:` (engine-managed); `kind: custom` (Part 28, not
-// yet a valid kind) would accept `{ message?, link? }`. No coverage requirement.
+function validateTrackerStartLink(workflow, action) {
+  if (!action.tracker?.start_link) return;
+  validateEngineLinkShape(
+    workflow,
+    action,
+    action.tracker.start_link,
+    "tracker.start_link",
+  );
+}
+
+// Part 30 D9 / Part 28: status_map cell shape. Each `status_map[stage]` is a
+// cell of per-slug `{ message? }` objects plus a reserved `status_title`
+// (string|null). Built-in kinds reject `link:`/`view_link:` (engine-managed);
+// `kind: custom` accepts `{ message?, link?, view_link? }`, where link/view_link
+// are engine-link objects validated against the shared shape.
 function validateStatusMapCells(workflow, action) {
   if (!action.status_map) return;
   const where = `action "${action.type}"`;
@@ -482,10 +491,19 @@ function validateStatusMapCells(workflow, action) {
           `${where} status_map.${stage}.${key} must be a cell object (got: ${JSON.stringify(value)}).`,
         );
       }
-      if ("link" in value && !isCustom) {
-        fail(
-          workflow.type,
-          `${where} status_map.${stage}.${key}: link is engine-managed for kind: ${action.kind}; remove it from status_map.${stage}.${key}. To restrict navigation per slug, edit access.${key} verbs instead.`,
+      for (const linkKey of ["link", "view_link"]) {
+        if (!(linkKey in value)) continue;
+        if (!isCustom) {
+          fail(
+            workflow.type,
+            `${where} status_map.${stage}.${key}: ${linkKey} is engine-managed for kind: ${action.kind}; remove it from status_map.${stage}.${key}. To restrict navigation per slug, edit access.${key} verbs instead.`,
+          );
+        }
+        validateEngineLinkShape(
+          workflow,
+          action,
+          value[linkKey],
+          `status_map.${stage}.${key}.${linkKey}`,
         );
       }
       if ("message" in value && typeof value.message !== "string") {
@@ -541,7 +559,7 @@ function validateAction(workflow, action) {
   if (!ACTION_KINDS.includes(action.kind)) {
     fail(
       workflow.type,
-      `${where} has unknown kind "${action.kind}" (expected form, check, or tracker).`,
+      `${where} has unknown kind "${action.kind}" (expected form, check, custom, or tracker).`,
     );
   }
 
@@ -551,10 +569,13 @@ function validateAction(workflow, action) {
   if (action.kind === "tracker" && !action.tracker) {
     fail(workflow.type, `${where} has kind "tracker" but no tracker: block.`);
   }
-  if (action.kind === "check" && (action.form || action.tracker)) {
+  if (
+    (action.kind === "check" || action.kind === "custom") &&
+    (action.form || action.tracker)
+  ) {
     fail(
       workflow.type,
-      `${where} has kind "check" but defines form: or tracker:.`,
+      `${where} has kind "${action.kind}" but defines form: or tracker:.`,
     );
   }
   if (action.form && action.tracker) {

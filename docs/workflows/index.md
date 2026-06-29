@@ -7,7 +7,7 @@ concepts: [workflows, actions, fsm, signals, hooks, trackers]
 
 # Workflows
 
-Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine — authors do not hand-write status transitions. The engine ships two static overview pages, six operational APIs, and a resolver-emitted dynamic surface: a per-verb page set per form action, one `{workflow_type}-check` page per workflow with check actions, and one submit endpoint per form/check action, all derived from the app's `workflows_config`. Every action page renders in the same [three-tier workspace](concepts/action-pages.md).
+Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine — authors do not hand-write status transitions. The engine ships two static overview pages, six operational APIs, and a resolver-emitted dynamic surface: a per-verb page set per form action, one `{workflow_type}-action` page per workflow with check actions, and one submit endpoint per form/check action, all derived from the app's `workflows_config`. Every action page renders in the same [three-tier workspace](concepts/action-pages.md).
 
 ## Dependencies
 

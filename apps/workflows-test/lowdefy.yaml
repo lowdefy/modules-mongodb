@@ -32,3 +32,5 @@ pages:
   - _ref: pages/router.yaml
   - _ref: pages/things.yaml
   - _ref: pages/thing-view.yaml
+  # App-owned working page for the custom-action workflow (Part 28).
+  - _ref: pages/custom-thing-review.yaml

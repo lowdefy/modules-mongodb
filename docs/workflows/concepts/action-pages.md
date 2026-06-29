@@ -26,7 +26,7 @@ The action's **universal fields** (`assignees`, `due_date`, `description`) live 
 
 ## The per-workflow check page
 
-Each workflow that has any `kind: check` action emits exactly one page, `{workflow_type}-check`, addressed by `?action_id=<id>`. That single page serves **all** of the workflow's check actions — there is no page per check action type.
+Each workflow that has any `kind: check` action emits exactly one page, `{workflow_type}-action`, addressed by `?action_id=<id>`. That single page serves **all** of the workflow's check actions — there is no page per check action type.
 
 On load the page fetches the action and derives a **mode** from the action's stage and the caller's resolved access:
 

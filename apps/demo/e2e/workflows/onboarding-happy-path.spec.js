@@ -18,8 +18,8 @@ import { test, expect } from "../fixtures.js";
 // assign-account-manager, kickoff-call on companies/view) open the modal IN
 // PLACE — they do not navigate to the per-workflow check page (Part 56 retired
 // the shared workflow-action-* pages; checks now navigate to
-// {workflow_type}-check only when no modal is present — onboarding-check on
-// lead-view, company-setup-check on companies/view). Each step opens the modal,
+// {workflow_type}-action only when no modal is present — onboarding-action on
+// lead-view, company-setup-action on companies/view). Each step opens the modal,
 // selects `done`, submits, and asserts the modal closes; lead-view also asserts
 // the co-present Activity timeline refreshes (the Part 55 bug fix). These four
 // steps must be confirmed against a live app + MongoDB via /r:dev-test — a build
@@ -266,7 +266,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
 
     // ── site-visit (kind: check) — opens the in-context modal IN PLACE ───────
     // Part 55: lead-view drops the check-action modal, so a check-row click
-    // opens it over the entity page (no navigation to the onboarding-check page).
+    // opens it over the entity page (no navigation to the onboarding-action page).
     const siteVisitLink = page
       .locator("a", { hasText: "Complete the site visit." })
       .first();
@@ -274,12 +274,12 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await siteVisitLink.click();
 
     // Modal opens in place — the surface's status selector becomes visible and
-    // the URL stays on lead-view (no navigation to the onboarding-check page).
+    // the URL stays on lead-view (no navigation to the onboarding-action page).
     await expect(ldf.block("status").locator()).toBeVisible({
       timeout: 15_000,
     });
     expect(page.url()).toContain("lead-view");
-    expect(page.url()).not.toContain("onboarding-check");
+    expect(page.url()).not.toContain("onboarding-action");
 
     // For a check action the status selector drives completion. Select "done".
     await ldf.block("status").do.select("done");
@@ -339,7 +339,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       timeout: 15_000,
     });
     expect(page.url()).toContain("lead-view");
-    expect(page.url()).not.toContain("onboarding-check");
+    expect(page.url()).not.toContain("onboarding-action");
 
     await ldf.block("status").do.select("done");
 
@@ -359,7 +359,8 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       )
       .toBe("done");
 
-    // ── send-quote (kind: form) — fill form, submit → in-review ────────────
+    // ── send-quote (kind: custom) — build the quote on the app-owned
+    //    quote-builder page, submit → in-review ───────────────────────────────
     await ldf.goto(`/lead-view?_id=${leadId}`);
     await page.waitForLoadState("networkidle");
 
@@ -368,20 +369,27 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       .first();
     await sendQuoteLink.waitFor({ state: "visible", timeout: 10_000 });
     await sendQuoteLink.click();
-    await page.waitForURL((url) => url.href.includes("workflow-action-edit"), {
+    // The custom action's link routes to the app-owned quote-builder page,
+    // carrying the concrete action _id (not the `true` sentinel).
+    await page.waitForURL((url) => url.href.includes("quote-builder"), {
       timeout: 15_000,
     });
 
-    await ldf.block("form.quote_total").do.fill("15000");
+    // Build the quote on the bespoke line-items builder (the seeded first line
+    // item is editable in place).
     await ldf
-      .block("form.notes")
+      .block("quote.line_items.0.description")
+      .do.fill("Onboarding package");
+    await ldf.block("quote.line_items.0.amount").do.fill("15000");
+    await ldf
+      .block("quote.notes")
       .do.fill("Standard onboarding package — e2e test.");
 
     await Promise.all([
-      page.waitForURL((url) => !url.href.includes("workflow-action-edit"), {
+      page.waitForURL((url) => url.href.includes("lead-view"), {
         timeout: 30_000,
       }),
-      ldf.block("button_submit_edit").do.click(),
+      ldf.block("submit_quote_btn").do.click(),
     ]);
 
     // send-quote is now in-review pending approval.
@@ -397,10 +405,10 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       )
       .toBe("in-review");
 
-    // ── Approve on workflow-action-review ───────────────────────────────────
-    // Navigate back to lead-view and click the in-review row link — the
-    // engine resolves to the review page (not the edit page) for in-review
-    // stage actions with a review verb.
+    // ── Approve on the quote-builder page (review mode) ─────────────────────
+    // Navigate back to lead-view and click the in-review row link — for an
+    // admin (review verb) at in-review the custom link routes to quote-builder
+    // in review mode (an observer would fall back to the shared action page).
     const sendQuoteAction = await mdb
       .collection("actions")
       .findOne({ workflow_id: onboardingWf._id, type: "send-quote" });
@@ -409,22 +417,17 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await ldf.goto(`/lead-view?_id=${leadId}`);
     await page.waitForLoadState("networkidle");
 
-    // The send-quote row now shows the in-review message. Click through to the
-    // review page.
     const inReviewLink = page
       .locator("a", { hasText: "Quote awaiting approval." })
       .first();
     await inReviewLink.waitFor({ state: "visible", timeout: 10_000 });
     await inReviewLink.click();
 
-    await page.waitForURL(
-      (url) => url.href.includes("workflow-action-review"),
-      {
-        timeout: 15_000,
-      },
-    );
+    await page.waitForURL((url) => url.href.includes("quote-builder"), {
+      timeout: 15_000,
+    });
 
-    await ldf.block("button_approve").do.click();
+    await ldf.block("approve_quote_btn").do.click();
 
     // send-quote → done after approval.
     await expect
@@ -703,7 +706,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     });
     expect(page.url()).toContain("companies");
     expect(page.url()).toContain("view");
-    expect(page.url()).not.toContain("company-setup-check");
+    expect(page.url()).not.toContain("company-setup-action");
 
     await ldf.block("status").do.select("done");
 
@@ -752,7 +755,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     });
     expect(page.url()).toContain("companies");
     expect(page.url()).toContain("view");
-    expect(page.url()).not.toContain("company-setup-check");
+    expect(page.url()).not.toContain("company-setup-action");
 
     await ldf.block("status").do.select("done");
 

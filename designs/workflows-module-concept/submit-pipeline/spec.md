@@ -75,7 +75,7 @@ routine:
       post_hook_response: { _step: submit.post_hook_response }
 ```
 
-**Scope:** Emitted for `kind: form` and `kind: check` actions. Tracker actions get no endpoint (engine writes their status via the tracker subscription).
+**Scope:** Emitted for `kind: form`, `kind: check`, and `kind: custom` actions. `custom` rides the per-workflow `{workflow_type}-submit` endpoint with the same nullary signals as check — the only difference is that its navigation `link:` cells are author-authored (routed into the per-verb link map by `computeEngineLinks`) rather than engine-derived from module page ids ([Part 28](../../workflows-module/parts/28-custom-action-kind/design.md)). Tracker actions get no endpoint (engine writes their status via the tracker subscription).
 
 **Per-app emission:** The submit endpoint is emitted regardless of the action's `access.{app_name}` map — the handler enforces access at submit time via the interaction's required verb (`access.{current_app}.{required-verb}` against the caller's per-app roles; table below). Lowdefy's central `api.roles` glob over the endpoint id is the coarse outer fence (Part 34 D10–D11). (Per-page emission is still verb-filtered per ui spec.)
 
@@ -117,7 +117,7 @@ Apps that customize a template pick the button bar they want; the FSM is unchang
 
 The engine carries no resolution table. The target is the FSM cell `transitions[kind][currentStatus][signal]`:
 
-- **`submit`** lands `in-review` if the action declares the `review` verb in its `access.{app_name}` map, else `done` — baked into the FSM's `submit` rule, **identical for form and check kinds**. `submit` is nullary: the target is resolved from the action's static `review` verb, not from any runtime payload. Check kind has **no status selector and no `target_status` payload** (the v0 selector is removed — state-machine review #6).
+- **`submit`** lands `in-review` if the action declares the `review` verb in its `access.{app_name}` map, else `done` — baked into the FSM's `submit` rule, **identical for form, check, and custom kinds** (custom aliases the form FSM table). `submit` is nullary: the target is resolved from the action's static `review` verb, not from any runtime payload. Check kind has **no status selector and no `target_status` payload** (the v0 selector is removed — state-machine review #6).
 - **`progress` / `approve` / `request_changes` / `not_required` / `resolve_error`** are nullary — the signal name fully determines the transition via the FSM.
 - **`error`** is a pre-hook/cascade signal (no button) that lands an action in `error` from any non-terminal state. Recovery is `resolve_error`.
 - **No current-action redirect.** The current action lands per the signal the user fired; a pre-hook cannot re-signal it (it influences the current action only via `event_overrides` / `form_overrides`). All pre-hook signal emission is cross-action via `actions[]`.

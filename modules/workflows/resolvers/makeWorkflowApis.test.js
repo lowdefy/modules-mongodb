@@ -206,6 +206,52 @@ test("makeWorkflowApis: hooks property absent when no action declares hooks", ()
   );
 });
 
+// ── Part 28: custom is submittable like check ────────────────────────────────
+
+const customReviewWorkflow = {
+  type: "account-review",
+  entity_collection: "leads-collection",
+  display_order: 1,
+  starting_actions: [{ type: "review-document", status: "action-required" }],
+  actions: [
+    {
+      type: "review-document",
+      kind: "custom",
+      access: { "my-team-app": { view: true, edit: ["account-manager"] } },
+      status_map: {
+        "action-required": {
+          "my-team-app": {
+            message: "Review the document.",
+            link: { pageId: "contract-review", urlQuery: { action_id: true } },
+          },
+        },
+      },
+    },
+  ],
+};
+
+test("makeWorkflowApis: a custom-only workflow is submittable (emits {type}-submit + {type}-update-fields)", () => {
+  const apis = makeWorkflowApis(null, { workflows: [customReviewWorkflow] });
+  const ids = apis.map((a) => a.id);
+  expect(ids).toContain("account-review-submit");
+  expect(ids).toContain("account-review-update-fields");
+});
+
+test("makeWorkflowApis: a custom action's status_map (incl. link cells) rides render_config", () => {
+  const apis = makeWorkflowApis(null, { workflows: [customReviewWorkflow] });
+  const props = propsOf(findApi(apis, "account-review-submit"));
+  expect(
+    props.render_config["account-review"]["review-document"].status_map,
+  ).toEqual({
+    "action-required": {
+      "my-team-app": {
+        message: "Review the document.",
+        link: { pageId: "contract-review", urlQuery: { action_id: true } },
+      },
+    },
+  });
+});
+
 test("makeWorkflowApis: hook InternalApi ids stay {workflow}-{action}-{signal}-{phase}", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   // Signal-keyed: `…-submit-pre` not `…-submit_edit-pre`

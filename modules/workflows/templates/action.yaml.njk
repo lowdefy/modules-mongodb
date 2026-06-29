@@ -1,10 +1,18 @@
-# Per-workflow check-action page (Part 56 — D3/D6, revised by the Part 56 addendum).
+# Per-workflow shared action page (Part 56 — D3/D6, revised by the Part 56
+# addendum; generalized from check-only to all FSM kinds in Part 28).
+#
+# The generic per-workflow status surface for FSM-lifecycle kinds. It is the
+# working page for `check` actions and the read-only observer fallback for
+# `custom` actions (whose working surface is an app-owned page). The page is
+# kind-agnostic: it loads any action by `?action_id`, derives view/edit/review
+# mode from the loaded action's stage and the user's allowed verbs, with every
+# working button backed by the submit handler's server-side per-verb gate.
 #
 # Replaces the three retired shared check pages (workflow-action-view / -edit /
-# -review) with ONE per-workflow page, `{workflow_type}-check`, emitted by
-# makeActionPages (Task 10). Addressed by `?action_id=<id>`: it guards the URL,
+# -review) with ONE per-workflow page, `{workflow_type}-action`, emitted by
+# makeActionPages. Addressed by `?action_id=<id>`: it guards the URL,
 # fetches the action, derives its mode, normalises `_state.entity_id`, then
-# `_ref`s the three-tier shell (components/action-workspace.yaml) with the check
+# `_ref`s the three-tier shell (components/action-workspace.yaml) with the
 # surface authored STANDALONE in the shell's `middle` slot.
 #
 # Separate component from the in-context modal (D6). The modal
@@ -60,7 +68,7 @@ _ref:
   module: layout
   component: page
   vars:
-    id: {{ workflow_type }}-check
+    id: {{ workflow_type }}-action
     title:
       _state: current_action.message
     type:

@@ -137,3 +137,5 @@ pages:
   - _ref: pages/leads/lead-list.yaml
   - _ref: pages/leads/lead-new.yaml
   - _ref: pages/leads/lead-view.yaml
+  # App-owned working surface for the send-quote custom action (Part 28).
+  - _ref: pages/leads/quote-builder.yaml

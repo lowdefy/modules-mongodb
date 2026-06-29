@@ -2,7 +2,7 @@
 #
 # This file is the body of the standalone in-context check-action modal
 # (components/check-action-modal.yaml) and nothing else. The per-workflow
-# {workflow_type}-check action page is its OWN composition (templates/check.yaml.njk),
+# {workflow_type}-action page is its OWN composition (templates/action.yaml.njk),
 # authored standalone in the three-tier workspace shell — it shares no leaf with
 # this surface (Part 56 — D6: the modal's compact one-card body and the page's
 # three-column spread diverged too far for a shared leaf to pay off; the small

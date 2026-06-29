@@ -95,7 +95,7 @@ Emits per-verb pages (`-edit`, `-view`, `-review`, `-error`) and a submit endpoi
 
 ### `kind: check`
 
-Served by the per-workflow `{workflow_type}-check` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`, `description`).
+Served by the per-workflow `{workflow_type}-action` page (no per-action-type pages emitted). No `form:` block. Carries a comment field and the universal fields (`assignees`, `due_date`, `description`).
 
 ```yaml
 - type: send-quote

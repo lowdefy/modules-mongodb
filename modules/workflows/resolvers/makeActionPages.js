@@ -57,7 +57,7 @@ function resolveWorkflowTitle(workflow, titleAcronyms) {
   return workflow.title ?? humanizeSlug(workflow.type, titleAcronyms);
 }
 
-// Per-workflow vars shared by the form templates and the check page (Part 56):
+// Per-workflow vars shared by the form templates and the shared action page (Part 56):
 // the entity connection id + ref_key (nested entity: block — Part 57), the baked
 // workflow title, the read-only entity_view.slot block array (empty when the
 // workflow declares none), the optional entity.name_field dot-path (empty
@@ -130,19 +130,25 @@ function emitForAction(workflow, action, appName, titleAcronyms, workflowTitle) 
   }));
 }
 
-// Part 56 D3: a workflow with ≥1 check action gets a SINGLE per-workflow
-// `{workflow_type}-check` page (the per-verb check links all target it; it
-// derives mode from the loaded action at runtime). It is its own composition —
-// `templates/check.yaml.njk` — not a reuse of the form templates or the modal.
-function emitCheckPage(workflow, workflowTitle) {
-  const hasCheck = (workflow.actions ?? []).some((a) => a.kind === "check");
-  if (!hasCheck) return [];
+// Part 56 D3 / Part 28: a workflow with ≥1 check OR custom action gets a SINGLE
+// per-workflow `{workflow_type}-action` page. For check actions it is the
+// working surface (the per-verb links all target it); for custom actions it is
+// the read-only observer fallback (the working surface is an app-owned page).
+// The page derives mode from the loaded action at runtime, so it is kind-
+// agnostic. It is its own composition — `templates/action.yaml.njk` — not a
+// reuse of the form templates or the modal. (A future `external` kind adds to
+// the guard below.)
+function emitActionPage(workflow, workflowTitle) {
+  const hasActionPage = (workflow.actions ?? []).some(
+    (a) => a.kind === "check" || a.kind === "custom",
+  );
+  if (!hasActionPage) return [];
 
   return [
     {
-      id: `${workflow.type}-check`,
+      id: `${workflow.type}-action`,
       _ref: {
-        path: "templates/check.yaml.njk",
+        path: "templates/action.yaml.njk",
         vars: {
           workflow_type: workflow.type,
           ...workspaceVars(workflow, workflowTitle),
@@ -175,7 +181,7 @@ function makeActionPages(_, vars) {
         ),
       );
     }
-    pages.push(...emitCheckPage(workflow, workflowTitle));
+    pages.push(...emitActionPage(workflow, workflowTitle));
   }
   return pages;
 }
