@@ -143,7 +143,7 @@ workflows:
   - type: nc-internal
     title: Non-Conformance # breadcrumb Workflow label + title eyebrow (else humanized from type)
     entity: # per-workflow entity block (Part 57; replaces the `entities` map + flat entity_collection/entity_ref_key)
-      collection: nc-collection # required — lifted to flat entity_collection by Part 57's resolver
+      connection_id: nc-collection # required — the entity's MongoDB collection connection id (see as-built note: the authored field is `connection_id`, NOT `collection`)
       ref_key: nc_ids # required — lifted to flat entity_ref_key; History matches events on it
       page_id: nc-view # deep-link target
       id_query_key: _id # URL query key (optional, default _id)
@@ -233,6 +233,37 @@ History always renders — it sources its match field from the workflow's `entit
 - Status `Tag` reflects `status[0].stage` via the `action_statuses` enum; the title reads the baked action title (`page_config.title`); the subtitle reads the action's `message` (via the new `description` var); the eyebrow reads the baked workflow title.
 - Narrow viewport: the three columns stack to full width.
 - E2E: covered by Part 22 once a workflow fixture declares `entity_view`.
+
+## Implementation notes (as-built)
+
+Two points where the shipped code diverges from the design text above; the code is
+authoritative, this section records the reconciliation.
+
+- **The authored entity field is `connection_id`, not `collection`.** This design
+  was written before Part 57 finalised the per-workflow `entity:` block. Part 57
+  shipped the entity's MongoDB collection-connection field as **`entity.connection_id`**
+  (a connection id like `leads-collection`), not `entity.collection`, and there is
+  no flat `entity_collection` lift — the resolvers read `workflow.entity.connection_id`
+  directly. So every mention of `entity.collection` / `entity_collection` above
+  (config shape, shell vars, Files-changed, D2/D10, the Part 57 dependency) reads
+  `entity.connection_id` in the code. The corresponding template/shell var names
+  follow suit: `makeActionPages` passes `connection_id`, and the shell var is
+  `entity_connection_id` (not the design's `entity_collection`). The `entity.ref_key`
+  → History `reference_field` wiring is unchanged.
+
+- **The three-tier render e2e spec was intentionally not authored.** Task 12's
+  retargets (check-link navigation → `{workflow_type}-check`) and fixture updates
+  shipped, and the `entity_view` slot was wired into the demo `onboarding` workflow
+  (`apps/demo/.../onboarding/lead-detail-slot.yaml`, with `entity.name_field: name`
+  exercising D10) so the slot bakes into the form pages (Details tab) and the
+  `onboarding-check` page (middle). But the **new** Part 22 spec asserting three-tier
+  render + cross-action navigation + no-jarring-shift was **not** written: the only
+  Part 22 spec (`onboarding-happy-path.spec.js`) is quarantined (`test.skip`) against
+  the current nav model, e2e cannot run in the build sandbox, and an unrunnable
+  selector-level spec risks false confidence. Live three-tier coverage is therefore
+  a `/r:dev-test` (human-run) deliverable, not an automated gate. Unit coverage
+  (shell-emitting resolvers, `computeEngineLinks`, `GetWorkflowAction` envelope) and
+  the demo build check stand in for it at CI time.
 
 ## Open questions
 

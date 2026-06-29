@@ -2,7 +2,7 @@
 # `submit` lands `done` directly (no in-review hop). Completing it is the child
 # workflow's last action → the child auto-completes → planSubmit emits
 # internal_mirror_child_completed against the parent tracker. Renders on the
-# static shared check pages (workflow-action-{edit,view}) addressed by ?action_id=.
+# per-workflow tracker-child-flow-check page, addressed by ?action_id=.
 type: child-step
 kind: check
 action_group: steps
