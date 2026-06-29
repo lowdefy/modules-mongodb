@@ -1,0 +1,114 @@
+# App-owned working page for the `custom-action` workflow's `review-thing`
+# custom action (Part 28). The action's `link:` cell points here with
+# `?action_id=<id>`; this page loads the action, confirms it loaded the right
+# one (the e2e asserts the concrete _id reached the URL), and calls the module's
+# `custom-action-submit` endpoint to advance the workflow.
+#
+# This is an APP-owned page (the defining property of kind:custom), so it
+# references the module's scoped connection / endpoint ids directly
+# (`workflows/...` — the app's module entry id is `workflows`).
+_ref:
+  module: layout
+  component: page
+  vars:
+    id: custom-thing-review
+    title: Review thing
+    requests:
+      - id: get_workflow_action
+        type: GetWorkflowAction
+        connectionId: workflows/workflow-api
+        payload:
+          action_id:
+            _url_query: action_id
+        properties:
+          action_id:
+            _payload: action_id
+    events:
+      onMount:
+        # Guard: no action_id → bounce back.
+        - id: redirect_no_action
+          type: Link
+          skip:
+            _ne:
+              - _url_query: action_id
+              - null
+          params:
+            back: true
+        - id: load_action
+          type: Request
+          params: get_workflow_action
+        - id: set_current_action
+          type: SetState
+          params:
+            current_action:
+              _request: get_workflow_action
+    blocks:
+      # Stable target the e2e reads: proves the page loaded the action whose
+      # _id rode in on the `action_id` query (the substituted sentinel).
+      - id: loaded_action
+        type: Html
+        properties:
+          html:
+            _nunjucks:
+              template: >
+                <div id="loaded-action" data-action-id="{{ action_id }}">
+                  <span id="loaded-action-id">{{ action_id }}</span>
+                  <p id="loaded-action-message">{{ message }}</p>
+                </div>
+              on:
+                action_id:
+                  _state: current_action._id
+                message:
+                  _state: current_action.message
+      - id: submit_review
+        type: Button
+        visible:
+          _state: current_action.buttons.submit
+        properties:
+          title: Submit for review
+          type: primary
+        events:
+          onClick:
+            - id: call_submit
+              type: CallAPI
+              params:
+                endpointId: workflows/custom-action-submit
+                payload:
+                  action_id:
+                    _url_query: action_id
+                  signal: submit
+                  current_key:
+                    _state: current_action.key
+            - id: back_to_thing
+              type: Link
+              params:
+                pageId: thing-view
+                urlQuery:
+                  _id:
+                    _state: current_action.entity.id
+      - id: approve_review
+        type: Button
+        visible:
+          _state: current_action.buttons.approve
+        properties:
+          title: Approve
+          type: primary
+        events:
+          onClick:
+            - id: call_approve
+              type: CallAPI
+              params:
+                endpointId: workflows/custom-action-submit
+                payload:
+                  action_id:
+                    _url_query: action_id
+                  signal: approve
+                  current_key:
+                    _state: current_action.key
+            - id: back_to_thing_approve
+              type: Link
+              params:
+                pageId: thing-view
+                urlQuery:
+                  _id:
+                    _state: current_action.entity.id

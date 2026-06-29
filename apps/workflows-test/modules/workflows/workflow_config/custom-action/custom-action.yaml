@@ -1,0 +1,25 @@
+# custom-action (Part 28) — kind:custom: a check-clone whose working surface is
+# an app-owned page.
+#
+# The single action (`review-thing`) authors a `link:` cell pointing at the
+# app-owned `custom-thing-review` page (with the `action_id` sentinel). The
+# engine routes that link into the per-verb links map: a user with `edit` gets
+# the app page; a view-only observer falls back to the shared per-workflow
+# `custom-action-action` page. The e2e spec proves both: the click-through
+# carries the concrete action `_id` (not the literal `true` sentinel), and the
+# observer lands on `custom-action-action`.
+type: custom-action
+title: Custom action
+entity:
+  connection_id: things-collection
+  ref_key: thing_ids
+  page_id: thing-view
+  id_query_key: _id
+  title: Thing
+
+starting_actions:
+  - type: review-thing
+    status: action-required
+
+actions:
+  - _ref: modules/workflows/workflow_config/custom-action/review-thing.yaml
