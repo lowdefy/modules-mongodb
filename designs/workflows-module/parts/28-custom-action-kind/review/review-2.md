@@ -21,6 +21,8 @@ finding below.
 
 ### 1. `workflow-action-view` was retired by Part 56; the design's observer fallback points at a deleted page
 
+> **Resolved.** Confirmed against source: the three shared `workflow-action-*` pages are gone, replaced by Part 56's per-workflow `{workflow_type}-check` page, which `emitCheckPage` emits only when the workflow has a `check` action. Resolution per user direction goes to the root cause rather than fix (a)/(b): **Part 56 wrongly scoped that page to check — it is kind-agnostic** (loads any action by `?action_id`, derives `view`/`edit`/`review` mode at runtime, all working buttons backed by `handleSubmit`'s server-side per-verb access gate). This part **generalizes it**: rename `emitCheckPage` → `emitActionPage` and `templates/check.yaml.njk` → `action.yaml.njk`, emit `{workflow_type}-action`, broaden the guard to `check` **or** `custom` (and future `external`). `computeEngineLinks`' check arm and custom's `view`-slot fallback both target it; a custom-only workflow now gets the page, so the "always has a read-only surface" guarantee holds with no 404. No template block changes (verified the `kind: check` var only selects non-form chrome). The rename cascades — mechanically and in-scope — across `computeEngineLinks` + the two resolver test files, the three Part 56 e2e specs (`tracker-child`, `error-recovery`, `check-blocked-by`), and two header comments. Design updated: §Summary, kinds table (check + custom rows), §What `custom` means, §Why a fourth kind, §Proposed change 3–4, §Links, new §Page emission, §What's still wired up, §What's deliberately not provided, and four Files-changed rows (makeActionPages now a code change; new template-rename + e2e-retarget rows; computeEngineLinks check-arm retarget). Tasks 04/07/08 will be re-pointed off the dead page id in the task pass.
+
 The design routes the `view` slot to "the author's `view_link` if present, **else by
 the entry-scoped shared `workflow-action-view` page** (`{ pageId, urlQuery: {
 action_id } }`)." This fallback is load-bearing — it is what guarantees "a custom
@@ -94,6 +96,8 @@ encode the dead page id).
 
 ### 2. The `done` stage routes the working `link` into the `view` slot — but the `view`-slot fallback also targets `view`; precedence is unspecified
 
+> **Resolved.** Confirmed the collision (`STAGE_VERB_PAGE.done` exposes only `view`, so both §Links rules fire on it). Precedence now stated explicitly, aligned with the existing "`done: { link }` reads naturally" framing: at `done` the working `link` wins the `view` slot (it is the canonical closed-action destination); `view_link` and the fallback fill `view` only at the in-flight/error stages where `link` occupies a working verb. A `done` cell with no `link` falls through to `view_link` → fallback, so it still resolves. Authoring both at `done` is redundant (no working verb there); `link` wins deterministically. Added a "**`done`-stage precedence**" paragraph to §Links.
+
 §Links gives two rules that collide at `done`:
 
 1. "At `done` (a view-only stage) there is no working verb, so `link` lands in the
@@ -112,6 +116,8 @@ working `link` occupies a different verb. Otherwise the routing code at task 04 
 to guess.
 
 ### 3. Minor: stale file path / call-site framing for `planActionTransition`
+
+> **Resolved.** Qualified the §Links reference with the full directory (`shared/phases/planners/planActionTransition.js`); the line numbers were already accurate (render 240–245, `computeEngineLinks` 248). Added a one-line note that the sibling `planFieldsUpdate.js` (`{type}-update-fields` path) deliberately skips `computeEngineLinks` — a fields edit changes neither stage nor access, so custom's routed links need no re-routing there. No design change.
 
 §Links (line 58) cites `planActionTransition.js:240–245` / `(line 248)`. The file
 now lives at `connections/shared/phases/planners/planActionTransition.js` (the
