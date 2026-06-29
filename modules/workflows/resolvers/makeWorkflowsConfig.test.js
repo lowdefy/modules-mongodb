@@ -1104,6 +1104,65 @@ test("validateStatusMapCells: rejects a non-string/null status_title", () => {
   ).toThrow(/status_title must be a string or null/);
 });
 
+// --- kind: custom registration (Part 28) -----------------------------------
+
+function workflowWithCustomAction(action) {
+  return {
+    type: "account-review",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
+    display_order: 1,
+    starting_actions: [{ type: "review-document", status: "action-required" }],
+    actions: [{ type: "review-document", kind: "custom", ...action }],
+  };
+}
+
+test("kind: custom — a well-formed action validates and carries kind through", () => {
+  const wf = workflowWithCustomAction({
+    access: { demo: { view: true, edit: ["account-manager"] } },
+    status_map: {
+      "action-required": { demo: { message: "Review the document." } },
+    },
+  });
+  let out;
+  expect(() => {
+    [out] = makeWorkflowsConfig(null, { workflows: [wf] });
+  }).not.toThrow();
+  expect(out.actions[0].kind).toBe("custom");
+});
+
+test("kind: custom — a form: block hard-errors", () => {
+  const wf = workflowWithCustomAction({
+    access: { demo: { view: true } },
+    form: [],
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /has kind "custom" but defines form: or tracker:/,
+  );
+});
+
+test("kind: custom — a tracker: block hard-errors", () => {
+  const wf = workflowWithCustomAction({
+    access: { demo: { view: true } },
+    tracker: { child_workflow_type: "device-installation" },
+  });
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(/has kind "custom" but defines form: or tracker:/);
+});
+
+test("unknown kind — message lists custom", () => {
+  const wf = workflowWithCustomAction({ access: { demo: { view: true } } });
+  wf.actions[0].kind = "mystery";
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /expected form, check, custom, or tracker/,
+  );
+});
+
 // --- validateTrackerStartLink (Part 44) ------------------------------------
 
 function workflowWithTracker(tracker) {

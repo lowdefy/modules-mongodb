@@ -78,7 +78,7 @@ function describeForm(formArray) {
   return (formArray ?? []).map(toMetadataNode);
 }
 
-const ACTION_KINDS = ["form", "check", "tracker"];
+const ACTION_KINDS = ["form", "check", "custom", "tracker"];
 
 const ACTION_STATUSES = [
   "not-required",
@@ -541,7 +541,7 @@ function validateAction(workflow, action) {
   if (!ACTION_KINDS.includes(action.kind)) {
     fail(
       workflow.type,
-      `${where} has unknown kind "${action.kind}" (expected form, check, or tracker).`,
+      `${where} has unknown kind "${action.kind}" (expected form, check, custom, or tracker).`,
     );
   }
 
@@ -551,10 +551,13 @@ function validateAction(workflow, action) {
   if (action.kind === "tracker" && !action.tracker) {
     fail(workflow.type, `${where} has kind "tracker" but no tracker: block.`);
   }
-  if (action.kind === "check" && (action.form || action.tracker)) {
+  if (
+    (action.kind === "check" || action.kind === "custom") &&
+    (action.form || action.tracker)
+  ) {
     fail(
       workflow.type,
-      `${where} has kind "check" but defines form: or tracker:.`,
+      `${where} has kind "${action.kind}" but defines form: or tracker:.`,
     );
   }
   if (action.form && action.tracker) {

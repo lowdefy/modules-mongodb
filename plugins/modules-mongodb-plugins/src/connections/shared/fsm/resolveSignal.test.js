@@ -62,6 +62,34 @@ test("submit split is action-global — same result for check kind", () => {
   ).toBe("in-review");
 });
 
+test("kind: custom resolves submit signals through the same table as check/form", () => {
+  const reviewing = { access: { team: { view: true, review: true } } };
+  const noReview = { access: { team: { view: true, edit: true } } };
+  // submit at action-required → in-review when a review verb is declared, else done.
+  expect(
+    resolveSignal({
+      action: action("custom", "action-required"),
+      signal: "submit",
+      actionConfig: reviewing,
+    }),
+  ).toBe("in-review");
+  expect(
+    resolveSignal({
+      action: action("custom", "action-required"),
+      signal: "submit",
+      actionConfig: noReview,
+    }),
+  ).toBe("done");
+  // approve at in-review → done, identical to form/check.
+  expect(
+    resolveSignal({
+      action: action("custom", "in-review"),
+      signal: "approve",
+      actionConfig: reviewing,
+    }),
+  ).toBe("done");
+});
+
 test("resolves the none creation row for a pseudo-action (upsert spawn)", () => {
   const pseudo = { kind: "form", status: [{ stage: "none" }] };
   expect(

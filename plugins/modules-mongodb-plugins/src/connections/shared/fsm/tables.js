@@ -136,10 +136,13 @@ const tracker = {
 export const FSM_TABLES = {
   form,
   tracker,
-  // `check` is IDENTICAL to form — aliased by object identity, never a copy,
-  // so a future edit to `form` can't silently diverge from `check`
-  // (state-machine.md "Check kind"; CLAUDE.md "One correct way").
+  // `check` and `custom` are IDENTICAL to form — aliased by object identity,
+  // never a copy, so a future edit to `form` can't silently diverge from them
+  // (state-machine.md "Check kind"; Part 28 "Custom action"; CLAUDE.md "One
+  // correct way"). `custom` is a check-clone whose only difference is the link
+  // source (author-authored cells vs engine-computed), which is invisible here.
   check: form,
+  custom: form,
 };
 
 export default FSM_TABLES;
