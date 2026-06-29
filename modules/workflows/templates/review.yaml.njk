@@ -11,6 +11,11 @@
 # Three buttons: Edit (navigation, leftmost), Request Changes (danger),
 # Approve (primary). Edit-link sets `skip_status_redirect: true` so the
 # edit page's stale-URL guard doesn't bounce reviewers out of `in-review`.
+#
+# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
+# page_actions; the description is a middle-top callout; the action bar is the
+# shell's floating `actions` slot. Reviewers who need to change metadata use the
+# ✎ modal (or the edit page).
 _ref:
   module: layout
   component: page
@@ -53,6 +58,30 @@ _ref:
       _state: action.status.0.stage
     status_enum:
       _ref: ../shared/enums/action_statuses.yaml
+    # Universal-fields chips (assignees avatars + due pill + ✎ → edit modal) in the
+    # title bar's page_actions, only when the action declares universal fields.
+    page_actions:
+      _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _var:
+                  key: action_config.universal_fields
+                  default: []
+            - 0
+        then:
+          - _ref:
+              path: components/universal-fields/universal-fields-chips.yaml
+              vars:
+                modal_id: universal_fields_edit_modal
+                show:
+                  _var: action_config.universal_fields
+                action_data:
+                  assignee_docs:
+                    _state: action.assignee_docs
+                  due_date:
+                    _state: action.due_date
+        else: []
     show_back_button: true
     content_width:
       _var:
@@ -130,9 +159,8 @@ _ref:
               default: []
     blocks:
       _build.array.concat:
-        # Three-tier shell: left (entity workflows) + middle (review body) +
-        # RHS (read-only universal-fields card above Details?/History tabs).
-        # Reviewers who need to change metadata use the edit page's controls.
+        # Three-tier shell: left (entity workflows) + middle (description callout
+        # + review body + floating action bar) + RHS (Details? above History).
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -143,100 +171,85 @@ _ref:
                 details_slot:
                   _var: entity_view_slot
                 middle:
-                  - id: review_card
-                    type: Card
-                    layout:
-                      gap: 16
-                    blocks:
-                      _build.array.concat:
-                        - _var:
-                            key: page_config.formHeader
-                            default: []
-                        - - id: form_body
-                            type: DataDescriptions
-                            properties:
-                              formConfig:
-                                _var: action_config.form
-                              data:
-                                form:
-                                  _state: form
-                                entity:
-                                  _request: get_entity
-                        # Writable form_review section — only renders when the
-                        # action has a form_review schema declared.
-                        - _build.if:
-                            test:
-                              _build.gt:
-                                - _build.array.length:
-                                    _var:
-                                      key: action_config.form_review
-                                      default: []
-                                - 0
-                            then:
-                              - id: form_review_section
-                                type: Box
-                                visible:
-                                  _and:
-                                    - _eq:
-                                        - _state: action.status.0.stage
-                                        - in-review
-                                    - _state: action.allowed.review
-                                blocks:
-                                  _build.array.concat:
-                                    - - id: form_review_divider
-                                        type: Divider
-                                        properties:
-                                          title: Review
-                                    - _ref:
-                                        resolver: resolvers/makeActionsForm.js
-                                        vars:
-                                          form:
-                                            _var: action_config.form_review
-                                          mode: review
-                            else: []
-                        - - id: comment
-                            type: TiptapInput
-                            properties:
-                              title: Comment
-                              placeholder: Add a comment (optional).
-                        - _var:
-                            key: page_config.formFooter
-                            default: []
-                universal_fields:
-                  _build.if:
-                    test:
-                      _build.gt:
-                        - _build.array.length:
-                            _var:
-                              key: action_config.universal_fields
-                              default: []
-                        - 0
-                    then:
-                      - _ref:
-                          path: components/universal-fields/universal-fields.yaml
+                  _build.array.concat:
+                    # Description callout (top of the middle column; self-hides
+                    # when unset).
+                    - - _ref:
+                          path: components/universal-fields/universal-fields-callout.yaml
                           vars:
-                            mode: display
-                            state_path: fields
-                            workflow_type: {{ workflow_type }}
-                            show:
-                              _var: action_config.universal_fields
                             action_data:
-                              assignees:
-                                _state: action.assignees
-                              assignee_docs:
-                                _state: action.assignee_docs
-                              due_date:
-                                _state: action.due_date
                               description:
                                 _state: action.description
-                    else: []
-        # Floating-actions sticky button bar.
-        - - _ref:
-              module: layout
-              component: floating-actions
-              vars:
+                    - - id: review_card
+                        type: Card
+                        layout:
+                          gap: 16
+                        blocks:
+                          _build.array.concat:
+                            - _var:
+                                key: page_config.formHeader
+                                default: []
+                            - - id: form_body
+                                type: DataDescriptions
+                                properties:
+                                  formConfig:
+                                    _var: action_config.form
+                                  data:
+                                    form:
+                                      _state: form
+                                    entity:
+                                      _request: get_entity
+                            # Writable form_review section — only renders when the
+                            # action has a form_review schema declared.
+                            - _build.if:
+                                test:
+                                  _build.gt:
+                                    - _build.array.length:
+                                        _var:
+                                          key: action_config.form_review
+                                          default: []
+                                    - 0
+                                then:
+                                  - id: form_review_section
+                                    type: Box
+                                    visible:
+                                      _and:
+                                        - _eq:
+                                            - _state: action.status.0.stage
+                                            - in-review
+                                        - _state: action.allowed.review
+                                    blocks:
+                                      _build.array.concat:
+                                        - - id: form_review_divider
+                                            type: Divider
+                                            properties:
+                                              title: Review
+                                        - _ref:
+                                            resolver: resolvers/makeActionsForm.js
+                                            vars:
+                                              form:
+                                                _var: action_config.form_review
+                                              mode: review
+                                else: []
+                            - - id: comment
+                                type: TiptapInput
+                                properties:
+                                  title: Comment
+                                  placeholder: Add a comment (optional).
+                            - _var:
+                                key: page_config.formFooter
+                                default: []
+                # Floating action bar (shell `actions` slot): workflow extras on the
+                # left, signal verbs on the right (grow spacer between).
                 actions:
                   _build.array.concat:
+                    - _var:
+                        key: page_config.buttons.extra
+                        default: []
+                    - - id: action_bar_spacer
+                        type: Box
+                        layout:
+                          flex: 1 1 0
                       # Edit (navigation) — not gated on action_allowed; edit page
                       # gates its own writes. Always sets skip_status_redirect so
                       # edit's stale-URL guard lets `in-review` actions through.
@@ -361,9 +374,43 @@ _ref:
                                             _state: form_review
                                           comment:
                                             _state: comment
-                    - _var:
-                        key: page_config.buttons.extra
-                        default: []
+        # Universal-fields edit modal — opened by the title-bar ✎ chip.
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: action_config.universal_fields
+                      default: []
+                - 0
+            then:
+              - _ref:
+                  path: components/universal-fields/universal-fields-modal.yaml
+                  vars:
+                    modal_id: universal_fields_edit_modal
+                    state_path: fields
+                    workflow_type: {{ workflow_type }}
+                    action_id:
+                      _state: action._id
+                    allowed_edit:
+                      _state: action.allowed.edit
+                    show:
+                      _var: action_config.universal_fields
+                    on_complete:
+                      - id: refetch_action_fields
+                        type: Request
+                        params: get_workflow_action
+                      - id: reset_action_fields
+                        type: SetState
+                        params:
+                          action:
+                            _request: get_workflow_action
+                      - id: update_fields_success
+                        type: DisplayMessage
+                        params:
+                          status: success
+                          content: Updated successfully.
+            else: []
         # Mandatory Request Changes modal — carries the required comment input.
         - - id: request_changes_modal
             type: Modal

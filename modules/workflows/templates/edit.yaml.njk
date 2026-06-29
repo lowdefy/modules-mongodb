@@ -8,8 +8,12 @@
 # Escape hatch: review's Edit-link sets _input: skip_status_redirect=true.
 #
 # Outer-card suppression rule (v0 parity): if action_config.form[0].form is
-# truthy at build time, the first form entry owns its own outer chrome —
-# drop the outer layout.card wrap to avoid the double-card nesting.
+# truthy at build time, the first form entry owns its own outer chrome — drop the
+# outer layout.card wrap to avoid the double-card nesting.
+#
+# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
+# page_actions; the description is a middle-top callout; the action bar is the
+# shell's floating `actions` slot (not_required / progress / submit).
 _ref:
   module: layout
   component: page
@@ -52,6 +56,30 @@ _ref:
       _state: action.status.0.stage
     status_enum:
       _ref: ../shared/enums/action_statuses.yaml
+    # Universal-fields chips (assignees avatars + due pill + ✎ → edit modal) in the
+    # title bar's page_actions, only when the action declares universal fields.
+    page_actions:
+      _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _var:
+                  key: action_config.universal_fields
+                  default: []
+            - 0
+        then:
+          - _ref:
+              path: components/universal-fields/universal-fields-chips.yaml
+              vars:
+                modal_id: universal_fields_edit_modal
+                show:
+                  _var: action_config.universal_fields
+                action_data:
+                  assignee_docs:
+                    _state: action.assignee_docs
+                  due_date:
+                    _state: action.due_date
+        else: []
     show_back_button: true
     content_width:
       _var:
@@ -133,10 +161,10 @@ _ref:
               default: []
     blocks:
       _build.array.concat:
-        # Three-tier shell: left (entity workflows) + middle (form body) +
-        # RHS (universal-fields card above Details?/History tabs).
-        # The middle body is wrapped in a Card unless the first form entry
-        # owns its own outer chrome (outer-card suppression on form[0].form).
+        # Three-tier shell: left (entity workflows) + middle (description callout
+        # + form body + floating action bar) + RHS (Details? above History).
+        # The middle body is wrapped in a Card unless the first form entry owns
+        # its own outer chrome (outer-card suppression on form[0].form).
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -147,40 +175,24 @@ _ref:
                 details_slot:
                   _var: entity_view_slot
                 middle:
-                  _build.if:
-                    test:
-                      _build.ne:
-                        - _var:
-                            key: action_config.form.0.form
-                            default: null
-                        - null
-                    then:
-                      # First form entry owns outer chrome — render directly.
-                      _build.array.concat:
-                        - _var:
-                            key: page_config.formHeader
-                            default: []
-                        - _ref:
-                            resolver: resolvers/makeActionsForm.js
-                            vars:
-                              form:
-                                _var: action_config.form
-                              mode: edit
-                        - - id: comment
-                            type: TiptapInput
-                            properties:
-                              title: Comment
-                              placeholder: Add a comment (optional).
-                        - _var:
-                            key: page_config.formFooter
-                            default: []
-                    else:
-                      # Default: wrap in a Card.
-                      - id: form_card
-                        type: Card
-                        layout:
-                          gap: 16
-                        blocks:
+                  _build.array.concat:
+                    # Description callout (top of the middle column; self-hides
+                    # when unset).
+                    - - _ref:
+                          path: components/universal-fields/universal-fields-callout.yaml
+                          vars:
+                            action_data:
+                              description:
+                                _state: action.description
+                    - _build.if:
+                        test:
+                          _build.ne:
+                            - _var:
+                                key: action_config.form.0.form
+                                default: null
+                            - null
+                        then:
+                          # First form entry owns outer chrome — render directly.
                           _build.array.concat:
                             - _var:
                                 key: page_config.formHeader
@@ -199,57 +211,42 @@ _ref:
                             - _var:
                                 key: page_config.formFooter
                                 default: []
-                universal_fields:
-                  _build.if:
-                    test:
-                      _build.gt:
-                        - _build.array.length:
-                            _var:
-                              key: action_config.universal_fields
-                              default: []
-                        - 0
-                    then:
-                      - _ref:
-                          path: components/universal-fields/universal-fields.yaml
-                          vars:
-                            mode: edit
-                            state_path: fields
-                            workflow_type: {{ workflow_type }}
-                            show:
-                              _var: action_config.universal_fields
-                            action_id:
-                              _state: action._id
-                            allowed_edit:
-                              _state: action.allowed.edit
-                            on_complete:
-                              - id: refetch_action_fields
-                                type: Request
-                                params: get_workflow_action
-                              - id: reset_action_fields
-                                type: SetState
-                                params:
-                                  action:
-                                    _request: get_workflow_action
-                              - id: update_fields_success
-                                type: DisplayMessage
-                                params:
-                                  status: success
-                                  content: Updated successfully.
-                            action_data:
-                              assignees:
-                                _state: fields.assignees
-                              due_date:
-                                _state: fields.due_date
-                              description:
-                                _state: fields.description
-                    else: []
-        # Floating-actions sticky button bar.
-        - - _ref:
-              module: layout
-              component: floating-actions
-              vars:
+                        else:
+                          # Default: wrap in a Card.
+                          - id: form_card
+                            type: Card
+                            layout:
+                              gap: 16
+                            blocks:
+                              _build.array.concat:
+                                - _var:
+                                    key: page_config.formHeader
+                                    default: []
+                                - _ref:
+                                    resolver: resolvers/makeActionsForm.js
+                                    vars:
+                                      form:
+                                        _var: action_config.form
+                                      mode: edit
+                                - - id: comment
+                                    type: TiptapInput
+                                    properties:
+                                      title: Comment
+                                      placeholder: Add a comment (optional).
+                                - _var:
+                                    key: page_config.formFooter
+                                    default: []
+                # Floating action bar (shell `actions` slot): workflow extras on the
+                # left, signal verbs on the right (grow spacer between).
                 actions:
                   _build.array.concat:
+                    - _var:
+                        key: page_config.buttons.extra
+                        default: []
+                    - - id: action_bar_spacer
+                        type: Box
+                        layout:
+                          flex: 1 1 0
                     - - id: button_not_required
                         type: Button
                         layout:
@@ -437,9 +434,43 @@ _ref:
                                               _state: action.entity_link.urlQuery
                                           else:
                                             back: true
-                    - _var:
-                        key: page_config.buttons.extra
-                        default: []
+        # Universal-fields edit modal — opened by the title-bar ✎ chip.
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: action_config.universal_fields
+                      default: []
+                - 0
+            then:
+              - _ref:
+                  path: components/universal-fields/universal-fields-modal.yaml
+                  vars:
+                    modal_id: universal_fields_edit_modal
+                    state_path: fields
+                    workflow_type: {{ workflow_type }}
+                    action_id:
+                      _state: action._id
+                    allowed_edit:
+                      _state: action.allowed.edit
+                    show:
+                      _var: action_config.universal_fields
+                    on_complete:
+                      - id: refetch_action_fields
+                        type: Request
+                        params: get_workflow_action
+                      - id: reset_action_fields
+                        type: SetState
+                        params:
+                          action:
+                            _request: get_workflow_action
+                      - id: update_fields_success
+                        type: DisplayMessage
+                        params:
+                          status: success
+                          content: Updated successfully.
+            else: []
         # Confirm modals — render iff page_config.buttons.{name}.modal is set.
         - _build.if:
             test:

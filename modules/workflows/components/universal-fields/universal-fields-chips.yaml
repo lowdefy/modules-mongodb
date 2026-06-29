@@ -1,0 +1,110 @@
+# Universal-fields chips (Part 56 addendum DA1).
+#
+# The title-bar `page_actions` presentation of an action's universal fields:
+# assignees as avatars + due date as a Tag pill + a pencil (✎) button that opens
+# the edit modal. Display-only here — editing happens in the modal
+# (universal-fields-modal.yaml), so a calm chip strip reads at a glance.
+#
+# Composed by every action template into the layout `page` `page_actions` slot, so
+# the chip strip is identical across the form + check pages. Consumed via
+# `_ref: { path, vars }` with OPERATOR-valued vars. Vars:
+#   - action_data  map of operator leaves: `assignee_docs` (avatar source) and
+#                  `due_date`. (Assignees themselves are not needed — the avatars
+#                  render from the resolved docs.)
+#   - show         build-time array of field names (default all three); a chip is
+#                  omitted when its field is not listed (same gate as the component).
+#   - modal_id     build-time block id of the edit modal the ✎ opens (setOpen).
+#   - date_format  due-date display format (default `MMM D, YYYY`).
+id: universal_fields_chips
+type: Box
+layout:
+  direction: row
+  contentAlign: center
+  wrap: nowrap
+  gap: 8
+blocks:
+  _build.array.concat:
+    # Assignees → avatars, only when there are resolved assignee docs.
+    - _build.if:
+        test:
+          _build.array.includes:
+            on:
+              _var:
+                key: show
+                default: [assignees, due_date, description]
+            value: assignees
+        then:
+          - id: universal_fields_chips_assignees
+            type: List
+            visible:
+              _gt:
+                - _array.length:
+                    _var: action_data.assignee_docs
+                - 0
+            layout:
+              direction: row
+              contentAlign: center
+              wrap: nowrap
+              gap: 4
+            properties:
+              data:
+                _var: action_data.assignee_docs
+            blocks:
+              - _ref:
+                  module: user-account
+                  component: user-avatar
+                  vars:
+                    show_name: false
+                    user:
+                      _state: universal_fields_chips_assignees.$
+        else: []
+    # Due date → a compact Tag pill, only when set.
+    - _build.if:
+        test:
+          _build.array.includes:
+            on:
+              _var:
+                key: show
+                default: [assignees, due_date, description]
+            value: due_date
+        then:
+          - id: universal_fields_chips_due_date
+            type: Tag
+            layout:
+              flex: 0 0 auto
+            visible:
+              _ne:
+                - _var: action_data.due_date
+                - null
+            properties:
+              icon: AiOutlineCalendar
+              title:
+                _dayjs.format:
+                  on:
+                    _var: action_data.due_date
+                  params:
+                    format:
+                      _var:
+                        key: date_format
+                        default: MMM D, YYYY
+        else: []
+    # Edit (✎) — always present, so a description (or any field) can be ADDED even
+    # when no chips are showing a value yet. Opens the edit modal.
+    - - id: universal_fields_chips_edit
+        type: Button
+        layout:
+          flex: 0 0 auto
+        properties:
+          type: text
+          icon: AiOutlineEdit
+          hideTitle: true
+        events:
+          onClick:
+            - id: open_universal_fields_modal
+              type: CallMethod
+              params:
+                blockId:
+                  _var: modal_id
+                method: setOpen
+                args:
+                  - open: true
