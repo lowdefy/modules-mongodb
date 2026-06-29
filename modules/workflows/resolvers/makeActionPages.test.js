@@ -539,3 +539,40 @@ test("makeActionPages: the action page's entity_view_slot defaults to [] when no
   const checkPage = pages.find((p) => p.id === "onboarding-action");
   expect(checkPage._ref.vars.entity_view_slot).toEqual([]);
 });
+
+// ── Part 28: custom kind ─────────────────────────────────────────────────────
+
+const reviewDocumentAction = {
+  type: "review-document",
+  kind: "custom",
+  access: { "my-team-app": { view: true, edit: ["account-manager"] } },
+  status_map: {
+    "action-required": {
+      "my-team-app": {
+        message: "Review the document.",
+        link: { pageId: "contract-review", urlQuery: { action_id: true } },
+      },
+    },
+  },
+};
+
+test("makeActionPages: a custom action emits no per-action pages (app owns the working surface)", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([reviewDocumentAction])],
+    app_name: APP,
+  });
+
+  // No -edit/-view/-review/-error per-action pages — only the shared action page.
+  expect(pages.some((p) => /-(edit|view|review|error)$/.test(p.id))).toBe(
+    false,
+  );
+});
+
+test("makeActionPages: a custom-only workflow emits the single shared action page", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([reviewDocumentAction])],
+    app_name: APP,
+  });
+
+  expect(pages.map((p) => p.id)).toEqual(["onboarding-action"]);
+});
