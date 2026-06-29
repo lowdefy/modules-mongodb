@@ -203,6 +203,58 @@ test("makeWorkflowsConfig: rejects an empty-string entity.name_field", () => {
   );
 });
 
+// --- entity.list_page_id / entity.list_title (breadcrumb list link) ---------
+
+test("makeWorkflowsConfig: entity.list_page_id + list_title validate and survive onto the materialized entity block", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: {
+      ...validWorkflow.entity,
+      list_page_id: "lead-list",
+      list_title: "Leads",
+    },
+  };
+  const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
+  expect(out.entity.list_page_id).toBe("lead-list");
+  expect(out.entity.list_title).toBe("Leads");
+});
+
+test("makeWorkflowsConfig: omitting both list_page_id and list_title validates (no list crumb)", () => {
+  const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
+  expect("list_page_id" in out.entity).toBe(false);
+  expect("list_title" in out.entity).toBe(false);
+});
+
+test("makeWorkflowsConfig: rejects list_page_id without list_title", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, list_page_id: "lead-list" },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /entity\.list_page_id and entity\.list_title must be set together/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects list_title without list_page_id", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, list_title: "Leads" },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /entity\.list_page_id and entity\.list_title must be set together/,
+  );
+});
+
+test("makeWorkflowsConfig: rejects an empty-string entity.list_page_id", () => {
+  const workflow = {
+    ...validWorkflow,
+    entity: { ...validWorkflow.entity, list_page_id: "", list_title: "Leads" },
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
+    /entity\.list_page_id must be a non-empty string when present/,
+  );
+});
+
 // --- entity_view (Part 56 D2) -----------------------------------------------
 
 test("makeWorkflowsConfig: valid entity_view with an object slot validates and is absent from the materialized output", () => {

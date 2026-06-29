@@ -451,6 +451,30 @@ test("makeActionPages: name_field passes through workflow.entity.name_field when
   }
 });
 
+test("makeActionPages: list_page_id/list_title default to empty string when absent", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.list_page_id).toBe("");
+    expect(p._ref.vars.list_title).toBe("");
+  }
+});
+
+test("makeActionPages: list_page_id/list_title pass through workflow.entity when present", () => {
+  const wf = workflow([qualifyAction]);
+  wf.entity = { ...wf.entity, list_page_id: "lead-list", list_title: "Leads" };
+  const pages = makeActionPages(null, {
+    workflows: [wf],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.list_page_id).toBe("lead-list");
+    expect(p._ref.vars.list_title).toBe("Leads");
+  }
+});
+
 test("makeActionPages: entity_view_slot defaults to [] when workflow declares no entity_view", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
@@ -507,6 +531,8 @@ test("makeActionPages: the check page targets templates/check.yaml.njk with the 
     workflow_title: "Onboarding",
     entity_view_slot: slot,
     name_field: "lead.full_name",
+    list_page_id: "",
+    list_title: "",
   });
 });
 

@@ -60,8 +60,11 @@ function resolveWorkflowTitle(workflow, titleAcronyms) {
 // Per-workflow vars shared by the form templates and the check page (Part 56):
 // the entity connection id + ref_key (nested entity: block — Part 57), the baked
 // workflow title, the read-only entity_view.slot block array (empty when the
-// workflow declares none), and the optional entity.name_field dot-path (empty
-// string when absent, so the templates' `{% if name_field %}` gate is falsy).
+// workflow declares none), the optional entity.name_field dot-path (empty
+// string when absent, so the templates' `{% if name_field %}` gate is falsy),
+// and the optional entity-list breadcrumb link (list_page_id + list_title, both
+// empty strings when absent so the templates' `{% if list_page_id %}` gate is
+// falsy and the breadcrumb drops the list crumb).
 function workspaceVars(workflow, workflowTitle) {
   return {
     connection_id: workflow.entity.connection_id,
@@ -69,6 +72,8 @@ function workspaceVars(workflow, workflowTitle) {
     workflow_title: workflowTitle,
     entity_view_slot: workflow.entity_view?.slot ?? [],
     name_field: workflow.entity.name_field ?? "",
+    list_page_id: workflow.entity.list_page_id ?? "",
+    list_title: workflow.entity.list_title ?? "",
   };
 }
 

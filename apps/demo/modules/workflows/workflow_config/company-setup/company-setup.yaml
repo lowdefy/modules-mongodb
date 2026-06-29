@@ -7,6 +7,9 @@ entity:
   page_id: companies/view
   title: Company
   # id_query_key omitted — defaults to _id
+  # Entity-list breadcrumb link → the companies module's scoped list page.
+  list_page_id: companies/all
+  list_title: Companies
 display_order: 2
 
 starting_actions:

@@ -777,6 +777,37 @@ function validateWorkflow(workflow) {
     );
   }
 
+  // Optional entity-LIST breadcrumb link (e.g. Home / Leads / {entity} / …).
+  // `list_page_id` is the host-app entity-list page id; `list_title` is its
+  // (plural) crumb label. They are a pair: a link needs a label, so neither
+  // defaults from the other. Both set → the breadcrumb gets a list crumb in
+  // front of the entity crumb; both omitted → no list crumb (current trail).
+  // Exactly one present is an authoring error.
+  if (
+    "list_page_id" in entity &&
+    (typeof entity.list_page_id !== "string" || entity.list_page_id === "")
+  ) {
+    fail(
+      workflow.type,
+      `entity.list_page_id must be a non-empty string when present (got: ${JSON.stringify(entity.list_page_id)}).`,
+    );
+  }
+  if (
+    "list_title" in entity &&
+    (typeof entity.list_title !== "string" || entity.list_title === "")
+  ) {
+    fail(
+      workflow.type,
+      `entity.list_title must be a non-empty string when present (got: ${JSON.stringify(entity.list_title)}).`,
+    );
+  }
+  if (("list_page_id" in entity) !== ("list_title" in entity)) {
+    fail(
+      workflow.type,
+      'entity.list_page_id and entity.list_title must be set together — a list breadcrumb link needs both a page id and a label (or omit both to drop the list crumb).',
+    );
+  }
+
   validateEntityView(workflow);
 
   if ("title" in workflow && typeof workflow.title !== "string") {

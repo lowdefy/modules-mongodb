@@ -85,6 +85,8 @@ The Workflow breadcrumb segment links to the existing `workflow-overview` page (
 
 ### D10 — Entity breadcrumb segment: type always, instance name via optional `entity.name_field`
 
+> **⚠️ Superseded by the entity-list-link change (later than Part 56).** The entity portion of the trail was reworked to mirror the host app's own entity pages (`lead-list` → `lead-view`): a workflow's `entity:` block gained an optional `list_page_id` + `list_title` **pair** (both or neither; validated in `makeWorkflowsConfig`), and the breadcrumb fragment now renders **two** entity-area crumbs — a list crumb (`{list_title}` → `list_page_id`, omitted at build time when unconfigured) followed by the entity crumb, whose label is the **bare instance name** when `name_field` resolves and the **type label** otherwise (no more "{type} · {name}" combined segment). So a fully-configured trail is `Home / Leads / {name} / {workflow} / {action}`. The list crumb is threaded **build-time** through `makeActionPages`' `workspaceVars` (`list_page_id`/`list_title`) — not the runtime `entity_link` — because it is static config with no per-instance query. `entity_link` (D9/below) is unchanged. See `components/action-breadcrumbs.yaml` and `module.lowdefy.yaml`'s `workflows_config.entity` prose for the authoritative behavior.
+
 `entity_link` (built in `GetWorkflowAction.js:217-227`) carries `{ pageId, urlQuery, title }`, where `title` is the entity **type** label ("Company", "Lead") and a working deep-link. The specific instance **name** ("Acme Corp") is **not** on the response, and nothing tells the module where to read it. So:
 
 - The breadcrumb entity segment **always** renders the type label as a link (free, works today).

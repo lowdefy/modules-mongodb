@@ -32,6 +32,13 @@ _ref:
       _ref:
         path: components/action-breadcrumbs.yaml
         vars:
+{%- if list_page_id %}
+          entity_list_page_id: {{ list_page_id }}
+          entity_list_title: "{{ list_title }}"
+{%- else %}
+          entity_list_page_id: null
+          entity_list_title: null
+{%- endif %}
           entity_title:
             _state: action.entity_link.title
           entity_name:
