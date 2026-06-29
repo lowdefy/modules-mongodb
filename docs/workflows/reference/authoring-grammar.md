@@ -279,3 +279,38 @@ pages:
 ```
 
 Button `visible` accepts a boolean or any Lowdefy operator expression. It AND-combines with the server-resolved boolean — authors can only further restrict visibility, never show a button the FSM or role gate would reject.
+
+### Extra buttons (`buttons.extra`)
+
+The `buttons.{signal}` knobs above tune the **template-shipped signal buttons** — the only buttons that drive the workflow engine. For an _additional_, app-specific button in the same floating-actions bar (e.g. "Resend Reminder", "Open Help", "Re-run Ingestion"), add a `buttons.extra:` array. Its entries render in the bar **after** the signal buttons (signals stay rightmost/primary; extras sit to their left), and each is concatenated into the bar verbatim.
+
+`buttons.extra` is available on all four verb pages that render a bar — `edit`, `view`, `review`, `error`. It is **form-action only**: `check` and `tracker` actions emit no verb pages, so an `extra` slot on them is rejected at build time.
+
+Each entry is a **full Lowdefy `Button` block** — `type: Button` with `title`/`type`/`icon` under `properties`, plus its own `events.onClick`:
+
+```yaml
+pages:
+  edit:
+    buttons:
+      extra:
+        - id: open_help # must be unique; reserved ids (below) are rejected
+          type: Button
+          properties:
+            title: Help
+            type: link # primary | default | link | danger
+            icon: QuestionCircleOutlined
+          visible: <bool | operator> # optional, author-controlled
+          events:
+            onClick:
+              - id: nav_help
+                type: Link
+                params:
+                  url: https://help.example.com
+                  newTab: true
+```
+
+Extras carry no recognised `signal` and never touch the engine's FSM; their `onClick` is whatever Lowdefy chain the author wires (commonly `CallAPI` to an app endpoint, `CallMethod` to open a modal, or `Link` to navigate). Extras get **no implicit role gating** — gate them yourself with `visible:` / `disabled:` against the server-resolved `_state: action.allowed.{verb}` bool, and enforce server-side checks in any app endpoint they call.
+
+**Reserved ids.** An extra entry's `id` may not collide with a template-shipped signal button. Reservation is global across all verb pages: `button_submit`, `button_progress`, `button_not_required`, `button_approve`, `button_request_changes`, `button_resolve_error`, `button_edit`.
+
+**Button → modal pattern.** To collect input before a side-effect, declare a `Modal` block in the verb's `formFooter:` and open it from the extra button's `onClick` via `CallMethod` — `method: toggleOpen` for a `Modal`, `method: open` for a `ConfirmModal`. The modal overlays at render time regardless of where it's declared, so `formFooter` is just a tidy home; the modal's own `onOk` reads its inputs via `_state:` and calls the app API.

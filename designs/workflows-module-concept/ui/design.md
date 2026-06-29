@@ -107,7 +107,7 @@ The module ships two sets of templates:
 
 1. **Stale-URL guard.** Template appends a redirect step to the page's `onMount`: if the loaded action's `status[0].stage !== 'error'`, the template emits `Link` to the action's `-view` page so users hitting a stale error URL are bounced out automatically.
 2. **Failure-context banner.** Template surfaces diagnostic context as a read-only banner above the form. Status entries are uniform `{ stage, created, event_id }` ([Part 29 § D2a](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#d2a-status-entry-shape-simplification-docstypesreturn-field-cleanup)) — the banner reads from the `events` collection entry referenced by `status[0].event_id` (when an author-driven entry path attached metadata via `event_overrides.metadata`). Richer banner rendering is deferred ([Part 29 § Out of scope](../../workflows-module/parts/_completed/29-error-model-cleanup/design.md#out-of-scope--deferred)).
-3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` signal (form FSM `error → resolve_error → in-review`, [state-machine](../state-machine/design.md)) — wired to call `{workflow_type}-{action_type}-submit` with `signal: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.submit.{title, modal}`. Additional buttons can be added via `formFooter:`.
+3. **Recovery form + `resolve_error` button.** The form schema defaults to the action's `form:` block (or `form_error:` if the author declared one). Template ships a single primary "Submit" button — the `resolve_error` signal (form FSM `error → resolve_error → in-review`, [state-machine](../state-machine/design.md)) — wired to call `{workflow_type}-{action_type}-submit` with `signal: resolve_error`. The button block fires the author's `pages.error.events.onSubmit` first (for page-state work), then makes the engine call. Authors override the button title and add a confirm modal via `pages.error.buttons.resolve_error.{title, modal}`. Additional app-specific buttons can be added via `pages.error.buttons.extra:` (Part 36), which render in the same floating-actions bar.
 
 The `-error` page is gated identically to the other verbs: emitted iff the `error` verb key is present in the action's `access.{app_name}` map. `pages.error` is purely a chrome-override slot (like `pages.edit`); the template ships sensible defaults when it's absent. Per-app visibility of the recovery link from other pages is additionally controlled at the status-map level — omitting `status_map.error.{app_name}` suppresses the link even when the page exists. See [action-authoring](../action-authoring/design.md) "Error pages and the `error` status" for the authoring shape.
 
@@ -326,13 +326,15 @@ The page template wires each handler to its trigger; authors write only the rout
 
 Four optional blocks on each `pages.{verb}`:
 
-| Block        | Effect                                                                    |
-| ------------ | ------------------------------------------------------------------------- |
-| `title`      | Page title rendered in the page header                                    |
-| `requests`   | Lowdefy request refs the page loads (for entity hydration, file policies) |
-| `formHeader` | Block list rendered above the form (e.g. device-detail data view)         |
-| `formFooter` | Block list rendered below the form (e.g. collapsible help/info panels)    |
-| `modals`     | Config knobs on built-in module modals (review-page `request_changes`)    |
+| Block          | Effect                                                                                       |
+| --------------- | -------------------------------------------------------------------------------------------- |
+| `title`         | Page title rendered in the page header                                                       |
+| `requests`      | Lowdefy request refs the page loads (for entity hydration, file policies)                    |
+| `formHeader`    | Block list rendered above the form (e.g. device-detail data view)                            |
+| `formFooter`    | Block list rendered below the form (e.g. collapsible help/info panels, author `Modal` blocks)|
+| `buttons.extra` | Author Button blocks concatenated into the floating-actions bar after the signal buttons (Part 36) |
+
+Modal overrides are not a top-level chrome slot: the shipped confirm-modal knobs live under `buttons.{signal}.modal.{title, content}` on `submit` / `not_required` (edit), `approve` (review), and `resolve_error` (error). The review-page `request_changes` modal is mandatory (it carries the required comment input) and exposes no `modal` knob.
 
 ```yaml
 pages:
@@ -342,23 +344,29 @@ pages:
       - _ref: ../shared/files/requests/file_upload_policy.yaml
     formHeader: [...]
     formFooter: [...]
-  review:
-    modals:
-      request_changes:
-        client_change: false # hide the client-change checkbox field
+    buttons:
+      submit:
+        modal: { title: Confirm, content: Submit now? }
+      extra: # full Lowdefy Button blocks, rendered verbatim into the bar
+        - id: open_help
+          type: Button
+          properties: { title: Help, type: link }
+          events:
+            onClick:
+              - { id: nav, type: Link, params: { url: "https://help...", newTab: true } }
 ```
 
-The form-action templates (`edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`) carry slots for each chrome block; the resolver injects the authored content at build time.
+The form-action templates (`edit.yaml.njk`, `view.yaml.njk`, `review.yaml.njk`, `error.yaml.njk`) carry slots for each chrome block; the resolver injects the authored content at build time. The bar's `actions:` array is a `_build.array.concat` of the template-shipped signal buttons followed by `buttons.extra`.
 
 ### Why fixed names
 
 Three reasons to lock the five event verbs:
 
-- The template buttons are module-shipped; authors don't get to add a sixth button per-action without reaching for a different mechanism (form components library, or a custom block in `formFooter`).
+- The template buttons are module-shipped; authors don't get to add a sixth **signal** button per-action — new signals are deliberate engine-side changes, not author config.
 - Locked names mean apps can lint event handlers consistently — `onSubmit` always builds a submit payload, `onApprove` always means "approve in review."
 - Mirrors v0 exactly. No translation overhead for teams porting v0 actions into v1.
 
-Apps that need additional buttons add them via `formFooter:` — buttons in `formFooter:` carry their own `events.onClick`. The five locked verbs are template-wired; everything else is author-composed.
+What's locked is the engine's **signal vocabulary**, not the bar's composition. Apps that need an additional, app-specific button (one that carries no recognised signal — "Resend Reminder", "Open Help") add it via `pages.{verb}.buttons.extra:` (Part 36); the template concatenates these author Button blocks into the same floating-actions bar alongside the signal buttons. Author modals are declared in `pages.{verb}.formFooter:` and opened from a button's `onClick` via `CallMethod`. The signal buttons stay template-wired; everything else is author-composed.
 
 ## Decision 5 — Status-map binding for `actions-on-entity` and `workflow-history`
 
