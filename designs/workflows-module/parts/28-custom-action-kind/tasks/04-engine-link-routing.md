@@ -76,7 +76,7 @@ In `plugins/.../shared/render/computeEngineLinks.js`:
      - the author's `action[slug].view_link` if present (sentinels substituted),
        else
      - the entry-scoped shared fallback
-       `{ pageId: scoped(entryId, "workflow-action-view"), urlQuery: { action_id: action._id } }`.
+       `{ pageId: scoped(entryId, "{workflow_type}-action"), urlQuery: { action_id: action._id } }`.
 
      This is the observer fallback — a viewer is never dropped onto the working
      page. (Note: at `done` the working `link` and the `view` slot can coincide;
@@ -103,7 +103,7 @@ In `plugins/.../shared/render/computeEngineLinks.js`:
   substituted to the concrete `_id`) lands in the `edit` slot; `in-review` → the
   `review` slot; `error` → the `error` slot; `done` → the `view` slot.
 - The `view` slot is the author's `view_link` when present, else the shared
-  `workflow-action-view` page with `urlQuery: { action_id: <_id> }`, wherever the
+  `{workflow_type}-action` page with `urlQuery: { action_id: <_id> }`, wherever the
   stage exposes `view`.
 - `collapseLink` against the routed map yields the working app page for a user
   with the active working verb, and the view page (`view_link` or shared) for an

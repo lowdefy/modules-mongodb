@@ -40,9 +40,10 @@ entity_id, entity_collection: "things-collection" })`. Read the custom action
 
 3. **Observer fallback**: as a **view-only** user (a user whose roles satisfy
    `view` but not `edit`/`review` for the custom action's slug), confirm the card's
-   link resolves to the shared `workflow-action-view` page (the
-   `collapseLink` `view`-slot fallback), **not** the app working page. Assert the
-   navigated URL contains `workflow-action-view` with `action_id=<_id>`.
+   link resolves to the shared `{workflow_type}-action` page (the
+   `collapseLink` `view`-slot fallback), **not** the app working page. The
+   `custom-action` workflow's shared page id is `custom-action-action`, so assert
+   the navigated URL contains `custom-action-action` with `action_id=<_id>`.
 
 Add a top-of-file comment (matching the suite style) stating the cluster's purpose
 and that the click-through is the assertion guarding the #1/#2 defect class.
@@ -53,7 +54,8 @@ and that the click-through is the assertion guarding the #1/#2 defect class.
 - The click-through assertion proves the card link carries the concrete action
   `_id` (not `true`) and navigates to the app-owned page.
 - The observer-fallback assertion proves a view-only user lands on
-  `workflow-action-view`, not the working page.
+  `custom-action-action` (the shared `{workflow_type}-action` page), not the
+  working page.
 - The spec passes against the implemented branch (tasks 1–4 + 7).
 
 ## Files

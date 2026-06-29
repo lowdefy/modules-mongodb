@@ -10,12 +10,12 @@ distinguishing facts:
   writes a `status_map.{stage}.{slug}.link` cell (and optional `view_link:`)
   pointing at app pages; the engine routes those into the per-verb `links` map
   (working link → the stage's active working verb slot; `view_link` or the shared
-  `workflow-action-view` page → the `view` slot).
+  `{workflow_type}-action` page → the `view` slot).
 - It rides the same per-workflow `{type}-submit` / `{type}-update-fields`
   endpoints and the same nullary signals as check; the FSM resolves via the
   `custom: form` alias.
 - It emits **no** per-action module pages; navigation is via the author `link:`
-  cells, with the shared `workflow-action-view` page as the observer fallback.
+  cells, with the shared `{workflow_type}-action` page as the observer fallback.
 - The `link.pageId` is a free-form app page id — **not** build-validated against
   the host app's page tree (a typo surfaces as a click-time 404, like any
   free-form Lowdefy page reference).
@@ -37,7 +37,7 @@ Update the concept specs (in `designs/workflows-module-concept/`):
 
 3. **`ui/spec.md`** — add `custom` to the page-generation note: "none — app
    supplies pages; navigation via author `link:` cells (observer falls back to the
-   shared `workflow-action-view` page)".
+   shared `{workflow_type}-action` page)".
 
 Document for consumers:
 

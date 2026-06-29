@@ -48,7 +48,7 @@ App pages are registered in `apps/workflows-test/lowdefy.yaml` under `pages:`
    - Include enough to exercise **both** assertions the e2e needs: a working
      `link` (→ app page, concrete `_id`) and the observer fallback (a stage that
      exposes `view` with no authored `view_link`, so it falls back to the shared
-     `workflow-action-view`). Pick the slug name to match whatever the test app's
+     `{workflow_type}-action`). Pick the slug name to match whatever the test app's
      access uses (check existing scenarios for the app slug, e.g. `test`).
 
 2. **Register** the new workflow in
@@ -108,5 +108,5 @@ App pages are registered in `apps/workflows-test/lowdefy.yaml` under `pages:`
 
 The whole point of the kind is "app owns the working surface", so the working page
 is genuinely app-owned (under `apps/workflows-test/pages/`), not a module page. The
-shared `workflow-action-view` page (module-supplied) is the observer fallback and
+shared `{workflow_type}-action` page (module-supplied) is the observer fallback and
 needs no app page.
