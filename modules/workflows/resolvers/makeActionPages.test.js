@@ -159,6 +159,30 @@ test("makeActionPages: action_config carries access, status_map, and form", () =
   expect(vars.action_config.form).toEqual(qualifyAction.form);
 });
 
+test("makeActionPages: pages.{verb}.buttons.extra round-trips into the page_config var", () => {
+  // Part 36: makeActionPages only forwards page_config = action.pages[verb];
+  // the _build.array.concat that merges these into the bar's actions: array
+  // happens later in Lowdefy's build. Assert the author array round-trips.
+  const extra = [
+    {
+      id: "open_help",
+      type: "Button",
+      properties: { title: "Help", type: "link" },
+      events: { onClick: [{ id: "nav_help", type: "Link", params: { url: "x" } }] },
+    },
+  ];
+  const action = {
+    ...qualifyAction,
+    pages: { edit: { buttons: { extra } } },
+  };
+  const editPage = makeActionPages(null, {
+    workflows: [workflow([action])],
+    app_name: APP,
+  }).find((p) => p.id === "onboarding-qualify-edit");
+
+  expect(editPage._ref.vars.page_config.buttons.extra).toEqual(extra);
+});
+
 test("makeActionPages: page_ids only contains emitted verbs", () => {
   const [editPage] = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],

@@ -854,6 +854,177 @@ test("validateActionAccess: lint-warns (does not throw) on edit/review/error wit
   warn.mockRestore();
 });
 
+// --- validateButtonsExtra (Part 36) ----------------------------------------
+
+// A valid author extra entry is a full Lowdefy Button block (type: Button,
+// properties: {...}) carrying its own events.onClick — the template concats it
+// verbatim into the floating-actions bar alongside the signal buttons.
+const extraHelpButton = {
+  id: "open_help",
+  type: "Button",
+  properties: { title: "Help", type: "link" },
+  events: {
+    onClick: [
+      {
+        id: "nav_help",
+        type: "Link",
+        params: { url: "https://docs.lowdefy.com", newTab: true },
+      },
+    ],
+  },
+};
+
+function formWorkflowWithPages(pages) {
+  return {
+    type: "onboarding",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "form",
+        form: [],
+        access: { demo: { view: true, edit: true, review: true, error: true } },
+        pages,
+      },
+    ],
+  };
+}
+
+const runForm = (pages) =>
+  makeWorkflowsConfig(null, { workflows: [formWorkflowWithPages(pages)] });
+
+test("validateButtonsExtra: (a) valid extra array on pages.edit passes", () => {
+  expect(() =>
+    runForm({ edit: { buttons: { extra: [extraHelpButton] } } }),
+  ).not.toThrow();
+});
+
+test("validateButtonsExtra: (g) valid extra array on pages.view of a form action passes", () => {
+  expect(() =>
+    runForm({ view: { buttons: { extra: [extraHelpButton] } } }),
+  ).not.toThrow();
+});
+
+test("validateButtonsExtra: (b) non-array extra rejected", () => {
+  expect(() =>
+    runForm({ edit: { buttons: { extra: { id: "open_help" } } } }),
+  ).toThrow(/buttons\.extra must be an array/);
+});
+
+test("validateButtonsExtra: (c) entry missing id rejected", () => {
+  expect(() =>
+    runForm({
+      edit: { buttons: { extra: [{ type: "Button", events: { onClick: [] } }] } },
+    }),
+  ).toThrow(/must have a string "id"/);
+});
+
+test("validateButtonsExtra: (d) entry missing events.onClick rejected", () => {
+  expect(() =>
+    runForm({ edit: { buttons: { extra: [{ id: "open_help", type: "Button" }] } } }),
+  ).toThrow(/must have an events\.onClick action array/);
+});
+
+test("validateButtonsExtra: (e) reserved id button_submit on edit rejected", () => {
+  expect(() =>
+    runForm({
+      edit: { buttons: { extra: [{ ...extraHelpButton, id: "button_submit" }] } },
+    }),
+  ).toThrow(/reserved button id "button_submit"/);
+});
+
+test("validateButtonsExtra: (e2) reserved id button_progress on edit rejected", () => {
+  expect(() =>
+    runForm({
+      edit: { buttons: { extra: [{ ...extraHelpButton, id: "button_progress" }] } },
+    }),
+  ).toThrow(/reserved button id "button_progress"/);
+});
+
+test("validateButtonsExtra: (f) reserved id button_resolve_error on error rejected", () => {
+  expect(() =>
+    runForm({
+      error: {
+        buttons: { extra: [{ ...extraHelpButton, id: "button_resolve_error" }] },
+      },
+    }),
+  ).toThrow(/reserved button id "button_resolve_error"/);
+});
+
+test("validateButtonsExtra: (f2) reserved nav id button_edit on review rejected", () => {
+  expect(() =>
+    runForm({
+      review: { buttons: { extra: [{ ...extraHelpButton, id: "button_edit" }] } },
+    }),
+  ).toThrow(/reserved button id "button_edit"/);
+});
+
+test("validateButtonsExtra: (f3) reserved id button_approve rejected on edit (global, not per-page)", () => {
+  // The edit bar ships no approve button, yet the id is reserved everywhere.
+  expect(() =>
+    runForm({
+      edit: { buttons: { extra: [{ ...extraHelpButton, id: "button_approve" }] } },
+    }),
+  ).toThrow(/reserved button id "button_approve"/);
+});
+
+test("validateButtonsExtra: (h) buttons.extra on a check (non-form) action rejected", () => {
+  const wf = {
+    type: "onboarding",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
+    display_order: 1,
+    starting_actions: [{ type: "qualify", status: "action-required" }],
+    actions: [
+      {
+        type: "qualify",
+        kind: "check",
+        access: { demo: { view: true } },
+        pages: { edit: { buttons: { extra: [extraHelpButton] } } },
+      },
+    ],
+  };
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /only available on form actions/,
+  );
+});
+
+test("validateButtonsExtra: (h2) buttons.extra on a tracker (non-form) action rejected", () => {
+  const wf = {
+    type: "onboarding",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
+    display_order: 1,
+    starting_actions: [{ type: "install-device", status: "action-required" }],
+    actions: [
+      {
+        type: "install-device",
+        kind: "tracker",
+        tracker: { child_workflow_type: "device-installation" },
+        pages: { edit: { buttons: { extra: [extraHelpButton] } } },
+      },
+    ],
+  };
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(/only available on form actions/);
+});
+
 // --- validateStatusMapCells (Part 30 D9) -----------------------------------
 
 function workflowWithStatusMap(status_map) {
