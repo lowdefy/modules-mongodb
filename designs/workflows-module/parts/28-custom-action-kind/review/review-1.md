@@ -173,6 +173,8 @@ surface reads.
 
 ### 7. Open question 1 (e2e spec) — fold the link assertion in
 
+> **Resolved.** Went further than the finding: rather than just naming the acceptance criterion on a deferred open question, the e2e spec is promoted into this part's scope (per user direction) — in the `workflows-test` app, not `demo`. §Proposed change gains step 6 (a `custom-action` workflow config + app-owned page + `apps/workflows-test/e2e/workflows/custom-action.spec.js`); Files-changed gains the three new rows. The spec's load-bearing assertion is the click-through (rendered card link carries the concrete `_id`, not the `true` sentinel, and navigates to the app page — the assertion that catches the #1/#2 defect class), plus the observer-fallback assertion. Open question 1 removed (the Open questions section is now empty and dropped).
+
 The §Open-questions e2e item should, when scoped, assert the _click-through_: that
 the rendered card link carries the concrete `_id` (not `true`) and navigates to
 the app page. That single assertion is what would have caught #1 and #2. Worth
