@@ -8,6 +8,8 @@ files, the four module manifests, the `modules/shared/` reference convention, an
 
 ### 1. `search_contacts` is already in the target shape — the design mischaracterizes it, and the uniform builder does not fit it
 
+> **Resolved.** Corrected the Background to say 7 of 8 requests are filters-in-`$search` and `search_contacts` is already split (text-only `$search` + standard `$match`, with the component-level `filter` hook), needing only the `lead` toggle + `regex_clause` — not the facet/score machinery. Files-changed now reads "7 restructured + 1 adjusted." Added a "Two consumer hooks, deliberately separate" note to decision 4 documenting `filter_match` (module var, array, list/Excel) vs `filter` (component var, object, selector) and why they stay distinct rather than unified — both plain `$match` post-redesign, distinct in name/layer by design.
+
 The design's premise (Background, lines 27–32) is that **all 8** requests "have the same
 shape: a single `$search.compound` block mixing two unrelated concerns" — text ranking
 and structural filters — and that the work is to split them. That is true for 7 of them,
@@ -54,6 +56,8 @@ say so, and decide explicitly whether the selector's `filter` var and the list r
 
 ### 2. `_object.assign` silently clobbers the two `updated.timestamp` range bounds in `get_activities`
 
+> **Resolved.** Switched the `$match` body from `_object.assign` to a top-level `$and` array (empty entries dropped), composing `[structural filters, regex_clause, filter_match]` without key collisions. This is collision-proof by construction: the doubled `updated.timestamp` bounds and a consumer `$or` in `filter_match` both compose safely. Added a "Merge semantics" paragraph to decision 2 and updated the skeleton. (Chose `$and`-wrap over keeping `_object.assign` with mandated authoring rules — mechanical correctness over authoring discipline.)
+
 The skeleton (lines 71–76) merges all structural filters into a **single** object with
 `_object.assign`. That is a shallow merge keyed by top-level field — later keys overwrite
 earlier ones. `get_activities` is the one request that filters the **same field twice**:
@@ -77,6 +81,8 @@ would collide on the `$or` key. Call out the merge semantics and either mandate
 collision-free authoring or use `$and`-wrapping where collisions are possible.
 
 ### 3. `_build.array.concat` in the pipeline skeleton cannot gate stage inclusion on the runtime search term
+
+> **Resolved.** Reworked the skeleton and the Shared-builder section to split the two gating dimensions: the outer pipeline assembly is now a runtime `_array.concat`, with `_build.*` reserved for the `atlas_search` flag alone. Each builder piece (`lead`, `regex_clause`, `score_addfields`, `use_score`) is documented as a build-time `_build.if` on `atlas_search` wrapping a runtime `_if` on `term` — so the flag drops the whole text mechanism at compile, while term-presence is gated at runtime. The `$facet` keeps `_build.array.concat` since it only splices build-time-known `request_stages.*` stages.
 
 The skeleton (lines 67–77) assembles the pipeline with `_build.array.concat`, splicing
 `text_lead` and `score_addfields` described as present "when `atlas_search && term`". Per
@@ -105,6 +111,8 @@ descriptions should be corrected to say which pieces are build-time and which ar
 
 ### 4. `request_stages.filter_match` is an array of clauses, not a single object — the migration note understates the change
 
+> **Resolved.** The array→object concern is mooted by #2's switch to `$and`: the `$match` body now takes an array of clause objects, so `filter_match` stays an **array** (no shape change) and composes via `$and`. Tightened the migration note to state the array shape is preserved, show a multi-clause Atlas-compound→`$match` example, and note that `$and` composition makes a consumer `$or` safe against the regex fallback's `$or`.
+
 All four manifests default `filter_match` to `[]` (`contacts` line 91, `activities` line 97,
 `companies` line 154), and the requests consume it as an **array**: spread into the `must`
 array via `_array.filter` dropping nulls (e.g. `get_all_contacts.yaml` lines 55–60). The
@@ -121,6 +129,8 @@ change explicitly and show the multi-clause case.
 
 ### 5. The committed `companies` search index hardcodes `name`, but the search path uses the configurable `name_field` var
 
+> **Resolved.** Documented the coupling in decision 5: the static `companies/default.search.json` maps the default `name`, and a consumer who overrides `name_field` must regenerate the search index to map that field (else Atlas silently returns no text matches while the regex fallback still works). Added the obligation to decision 6's docs plan (`docs/shared/search.md` + companies module reference). Did not template the JSON on `name_field` — it's consumed by external index tooling, not the Lowdefy build.
+
 Decision 5 (line 116) commits `modules/companies/search-indexes/default.search.json`
 indexing "configured `name_field`, default `name`." But the committed JSON is static,
 while `get_all_companies.yaml` searches `_module.var: name_field` (lines 36–38, 50–52) —
@@ -134,6 +144,8 @@ the static JSON with the dynamic path).
 ## Worth noting (supporting, not blocking)
 
 ### 6. `storedSource: true` (decision 5) fixes a latent pre-existing bug, which strengthens the case
+
+> **Resolved.** Added a note to decision 3's footgun paragraph citing `search_contacts` as a live instance: it already runs `returnStoredSource: true` and `$match`es on `hidden`/`disabled`/`global_attributes.company_ids`, so with no committed index the filter may already be silently wrong on Atlas. Framed `storedSource: true` as closing a pre-existing latent correctness gap, not just enabling the fallback.
 
 `search_contacts` already runs `returnStoredSource: true` (line 22) and then `$match`es on
 `hidden`, `disabled`, and `global_attributes.company_ids` (lines 57–76) — precisely the
