@@ -78,6 +78,12 @@ blocks:
               _state: entity_id
             entity_connection_id:
               _var: entity_connection_id
+            # The action page is addressed by ?action_id; pass it so the left
+            # panel highlights the current action's row (Part 60). The URL
+            # convention stays here at the workspace layer; the component just
+            # takes an optional id.
+            active_action_id:
+              _url_query: action_id
   # MIDDLE — the caller-supplied action surface, with the floating action bar
   # (addendum DA3) docked at the bottom of the column when `actions` is non-empty.
   - id: workspace_middle

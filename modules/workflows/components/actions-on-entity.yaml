@@ -14,6 +14,9 @@
 # Vars:
 #   entity_id            — (required) the entity whose workflows render.
 #   entity_connection_id — (required) the entity's connection id.
+#   active_action_id     — (optional) the _id of the action currently on screen;
+#                          its step row is highlighted. Omit on entity-view pages
+#                          (no current action) — defaults to null, no highlight.
 id: actions_on_entity
 type: Box
 events:
@@ -93,6 +96,10 @@ blocks:
             _ref: components/check-action-click.yaml
         properties:
           direction: vertical
+          activeActionId:
+            _var:
+              key: active_action_id
+              default: null
           actionStatusConfig:
             _ref: components/action_statuses.yaml
           actionGroupConfig:

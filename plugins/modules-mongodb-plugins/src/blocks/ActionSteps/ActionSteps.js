@@ -81,6 +81,7 @@ const ActionSteps = ({
   const {
     actionGroupConfig = {},
     actionStatusConfig = {},
+    activeActionId,
     items = [],
   } = properties;
   const { token } = theme.useToken();
@@ -196,11 +197,15 @@ const ActionSteps = ({
                         });
                         const fireEvent =
                           events.onActionClick !== undefined && !linkDisabled;
+                        const isActive =
+                          activeActionId != null &&
+                          action._id === activeActionId;
                         return (
                           <Badge
                             key={action.id ?? actionIdx}
                             className={cn(
                               "action-steps-badge",
+                              isActive && "action-steps-badge-active",
                               classNames.badge,
                             )}
                             style={styles.badge}

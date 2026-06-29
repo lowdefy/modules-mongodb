@@ -15,6 +15,17 @@
   padding-right: 5px;
 }
 
+/* Current-action highlight — the row whose _id matches `activeActionId`
+   (the action page's ?action_id). A subtle, theme-aware "you are here" band,
+   using antd's selected-item token rather than the app primary (the step rail
+   deliberately neutralises colorPrimary). Radius + horizontal padding keep the
+   tint off the row edges. */
+:global(.action-steps-badge-active) {
+  background: var(--ant-control-item-bg-active);
+  border-radius: var(--ant-border-radius, 6px);
+  padding-left: 5px;
+}
+
 /* Secondary-text variant for action links whose status is `blocked` or
    `not-required` — picks up the secondary text token so the link recedes. */
 :global(.action-steps-link-secondary) {

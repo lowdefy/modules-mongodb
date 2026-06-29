@@ -110,6 +110,10 @@
         }
       }
     },
+    "activeActionId": {
+      "type": "string",
+      "description": "The _id of the action currently being viewed (the action page's ?action_id). When it matches an action's _id, that action's row renders with a subtle 'current' background highlight. Omit for no highlight (e.g. entity-view pages)."
+    },
     "linkStyle": {
       "description": "Style object merged into each action's Link via makeCssClass. Use `classNames.link` / `styles.link` for the same purpose if you prefer the standard Lowdefy theming surface."
     },
