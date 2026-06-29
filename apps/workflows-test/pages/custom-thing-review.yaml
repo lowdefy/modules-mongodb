@@ -5,8 +5,10 @@
 # `custom-action-submit` endpoint to advance the workflow.
 #
 # This is an APP-owned page (the defining property of kind:custom), so it
-# references the module's scoped connection / endpoint ids directly
-# (`workflows/...` — the app's module entry id is `workflows`).
+# references the module's connection / endpoint via the cross-module
+# `_module.{connectionId,endpointId}: { id, module: workflows }` operators
+# (resolved against the app's `workflows` module entry — the documented
+# "one correct way", no hardcoded scope prefix).
 _ref:
   module: layout
   component: page
@@ -16,7 +18,10 @@ _ref:
     requests:
       - id: get_workflow_action
         type: GetWorkflowAction
-        connectionId: workflows/workflow-api
+        connectionId:
+          _module.connectionId:
+            id: workflow-api
+            module: workflows
         payload:
           action_id:
             _url_query: action_id
@@ -72,7 +77,10 @@ _ref:
             - id: call_submit
               type: CallAPI
               params:
-                endpointId: workflows/custom-action-submit
+                endpointId:
+                  _module.endpointId:
+                    id: custom-action-submit
+                    module: workflows
                 payload:
                   action_id:
                     _url_query: action_id
@@ -98,7 +106,10 @@ _ref:
             - id: call_approve
               type: CallAPI
               params:
-                endpointId: workflows/custom-action-submit
+                endpointId:
+                  _module.endpointId:
+                    id: custom-action-submit
+                    module: workflows
                 payload:
                   action_id:
                     _url_query: action_id

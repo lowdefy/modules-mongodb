@@ -10,8 +10,9 @@
 # advance the workflow (two non-atomic requests — the documented recommended
 # path; the atomic alternative is a hooks.submit.pre routine on the action).
 #
-# References the module's scoped ids directly (workflows/...) — this is an
-# app-owned page and the demo's workflows entry id is `workflows`.
+# References the module's connection / submit endpoint via the cross-module
+# `_module.{connectionId,endpointId}: { id, module: workflows }` operators
+# (resolved against the demo's `workflows` module entry).
 _ref:
   module: layout
   component: page
@@ -28,7 +29,10 @@ _ref:
     requests:
       - id: get_workflow_action
         type: GetWorkflowAction
-        connectionId: workflows/workflow-api
+        connectionId:
+          _module.connectionId:
+            id: workflow-api
+            module: workflows
         payload:
           action_id:
             _url_query: action_id
