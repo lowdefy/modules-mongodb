@@ -73,6 +73,8 @@ Either way the design must stop describing this as "no code change."
 
 ### 2. `substituteActionIdSentinel` is never called — the `{ action_id: true }` sentinel is not substituted
 
+> **Resolved.** Confirmed `substituteActionIdSentinel.js` is dead Part-30 code (no production caller; only its own def + test) and weaker than the live path — it handles `action_id` only, not `entity_id`. The live sentinel swap already lives inline in the tracker `start_link` arm of `computeEngineLinks` (`computeEngineLinks.js:94–100`, both sentinels, validated by `validateTrackerStartLink`). Resolution: extract that inline swap into one shared flat-`urlQuery` helper, call it from both the tracker arm and the new custom branch, and **delete `substituteActionIdSentinel.js` + its test**. One sentinel mechanism for every engine-routed link ("one correct way"). Rejected the Nunjucks-`{{ _id }}`-string alternative — it would introduce a second convention diverging from tracker `start_link`. Design updated: §Proposed change 3, §Links (new "Sentinel substitution — one shared mechanism" paragraph), Files-changed (computeEngineLinks row + new deletion row), §Related.
+
 The design (§Proposed change 3, §Links, §Files-changed row 6, §Related) treats
 `substituteActionIdSentinel` as shipped machinery that step 1 activates. It is
 **dead code**: the only references in `src/` are its own definition and its own
@@ -155,6 +157,8 @@ nothing about this — it inherited the single-link mental model from rejected P
 surfaces the same app page), and state that explicitly.
 
 ### 6. Open question 2 (cell-link shape validation) interacts with #1
+
+> **Resolved.** Open question 2 removed; the lean is now baked into the design. `validateStatusMapCells` gains shape validation for both `link:` and `view_link:` (`{ pageId: non-empty string, urlQuery?: object }`, `action_id`/`entity_id` sentinel-only, other `urlQuery` values strings) — reusing `validateTrackerStartLink` (`makeWorkflowsConfig.js:361`), which already enforces this exact shape, rather than a parallel checker ("one correct way"). Because #2 keeps the sentinel convention, the validated shape matches what the engine consumes. Updated §Proposed change 3, §Build-time validation, the `validateStatusMapCells` Files-changed row (now "Code change"), and removed open question 2.
 
 `validateStatusMapCells` (line 466) permits `link:` for custom but validates no
 internal shape. The design's open question 2 leans toward adding a shallow shape
