@@ -7,20 +7,22 @@ concepts: [action-pages, workspace, entity_view, check-page, breadcrumbs]
 
 # Workflows — Action pages
 
-Every action a user opens — whether a `kind: form` action or a `kind: check` action — renders in the same **three-tier workspace**. The shell is layout-only and identical across page kinds, so navigating between actions in a workflow never produces a jarring column shift; only the middle content (and whether the right column shows a Details tab) changes.
+Every action a user opens — whether a `kind: form` action or a `kind: check` action — renders in the same **three-tier workspace**. The shell is layout-only and identical across page kinds, so navigating between actions in a workflow never produces a jarring column shift; only the middle content (and whether the right column shows a Details section) changes.
 
 ```
 ┌──────────────────┬────────────────────────┬───────────────────────────┐
-│ entity's          │  action surface         │  universal fields card    │
-│ workflows + steps │  (form / check body)    │  Tabs[ Details? · History ]│
-│ (actions-on-      │                         │                           │
-│  entity)          │                         │                           │
+│ entity's          │  description callout    │  Details? (form only)     │
+│ workflows + steps │  action surface         │                           │
+│ (actions-on-      │  (form / check body)    │  History (fills, scrolls) │
+│  entity)          │  floating action bar    │                           │
 └──────────────────┴────────────────────────┴───────────────────────────┘
 ```
 
+The action's **universal fields** (`assignees`, `due_date`, `description`) live in the title bar and middle column, not the right column: assignees render as avatars and the due date as a pill in the title bar's right-aligned actions, a pencil (✎) button beside them opens a modal that edits all three, and the description — when set — renders as a tinted callout at the top of the middle column. The modal's **Update** saves the fields independently of any form submit or signal.
+
 - **Left** — the `actions-on-entity` widget: every workflow attached to this entity with its action list. The current action's row links back to its own page.
-- **Middle** — the action surface. For a form action this is the form (edit / view / review / error verb). For a check action it is the check surface: the optional `entity_view` review subject, a comment field, and the signal button bar.
-- **Right** — the universal-fields card (`assignees`, `due_date`, `description`) above a Tabs wrapper. The **History** tab is always present (the action-filtered events timeline). The **Details** tab appears only when the workflow declares an `entity_view` slot (form pages only — see below); when absent, History is the sole tab and the Tabs wrapper stays so the layout is stable form↔check.
+- **Middle** — the description callout (when set), then the action surface, then a floating (sticky) action bar. For a form action the surface is the form (edit / view / review / error verb); for a check action it is the check surface (the optional `entity_view` review subject + a comment field). The action bar holds the action's buttons — any workflow-defined `buttons.extra` on the left, the standard signal verbs on the right — docked at the bottom of the column.
+- **Right** — a single card with an optional **Details** section stacked above the **History** timeline (no tabs). History is always present (the action-filtered events timeline) and fills the remaining card height, scrolling internally. The **Details** section appears only when the workflow declares an `entity_view` slot (form pages only — see below); on the check page it is absent (the entity is the middle review subject), leaving History as the sole section.
 
 ## The per-workflow check page
 
@@ -60,10 +62,10 @@ entity_view:
 
 Where the slot renders depends on the page kind:
 
-- **Form pages** — the slot is the right column's **Details** tab (the reviewer can flip between the entity detail and the action's History).
-- **Check page** — the slot is the **middle** review subject (the thing being checked), directly above the comment and signal buttons.
+- **Form pages** — the slot is the right column's **Details** section (stacked above the action's History).
+- **Check page** — the slot is the **middle** review subject (the thing being checked), directly above the comment and the floating signal-button bar.
 
-Omit `entity_view` and the Details tab is dropped on form pages / the middle review subject is empty on the check page.
+Omit `entity_view` and the Details section is dropped on form pages / the middle review subject is empty on the check page.
 
 ## Breadcrumbs
 

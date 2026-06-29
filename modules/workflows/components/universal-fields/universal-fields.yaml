@@ -2,11 +2,19 @@
 #
 # Renders the three action-level universal fields (assignees / due_date /
 # description) for one action, in edit or display mode. The surface is always a
-# plain Box (no card chrome): its container owns the chrome — the three-tier
-# workspace's single RHS card on form/check pages, the shared check-action
-# surface on the modal. Every consumer gets the same standalone Update button
-# (edit mode) that calls the per-workflow `{workflow_type}-update-fields`
-# operation — independent of any form submit or FSM transition.
+# plain Box (no card chrome): its container owns the chrome. Every consumer gets
+# the same standalone Update button (edit mode) that calls the per-workflow
+# `{workflow_type}-update-fields` operation — independent of any form submit or
+# FSM transition.
+#
+# Placement (Part 56 addendum DA1): on the action workspace pages the EDIT group
+# is hosted inside `universal-fields-modal.yaml` (opened by the title-bar ✎ chip),
+# while DISPLAY is split out of this component — assignees + due render as
+# title-bar chips (`universal-fields-chips.yaml`) and the description as a
+# middle-column callout (`universal-fields-callout.yaml`). The `mode: display`
+# group below is therefore no longer used by the workspace pages; it stays intact
+# because the component is shared and the in-context check-action surface still
+# composes this component inline (D6, untouched).
 #
 # Consumed via `_ref: { path: ..., vars: {...} }` with OPERATOR-valued vars, so
 # block-id namespacing uses `_string.concat` (not njk). Vars:
