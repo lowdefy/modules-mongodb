@@ -1,5 +1,6 @@
 lowdefy: 0.0.0-experimental-20260611102401
 name: Module Demo App
+slug: demo
 
 cli:
   watch:

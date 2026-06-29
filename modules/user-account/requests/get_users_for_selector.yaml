@@ -1,3 +1,13 @@
+# Options request for the user-selector / user-multi-selector components.
+# Scopes the dropdown to the current app's users via `apps.{slug}.is_user`.
+#
+# The app slug comes from `_app: slug` (reads the root `slug:` on lowdefy.yaml),
+# NOT `_module.var: app_name`. This request is only ever consumed through a
+# cross-module component `_ref`, and `_module.var` resolved to `null` in that
+# scope — yielding `apps.null.is_user` and zero results. `_app: slug` reads from
+# the app root and is independent of module-entry-var resolution, so it works
+# regardless of which module pulls the component in. `_string.concat` is a
+# runtime operator, so the runtime `_app` form is correct here (not `_build.app`).
 id: get_users_for_selector
 type: MongoDBAggregation
 connectionId:
@@ -10,7 +20,7 @@ properties:
           key:
             _string.concat:
               - "apps."
-              - _module.var: app_name
+              - _app: slug
               - ".is_user"
           descriptor:
             value: true
