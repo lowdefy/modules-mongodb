@@ -1104,6 +1104,94 @@ test("validateStatusMapCells: rejects a non-string/null status_title", () => {
   ).toThrow(/status_title must be a string or null/);
 });
 
+// --- validateStatusMapCells: kind: custom link/view_link (Part 28) ----------
+
+function workflowWithCustomStatusMap(status_map) {
+  return {
+    type: "account-review",
+    entity: {
+      connection_id: "leads-collection",
+      ref_key: "lead_ids",
+      page_id: "lead-view",
+      title: "Lead",
+    },
+    display_order: 1,
+    starting_actions: [{ type: "review-document", status: "action-required" }],
+    actions: [
+      {
+        type: "review-document",
+        kind: "custom",
+        access: { demo: { view: true, edit: ["account-manager"] } },
+        status_map,
+      },
+    ],
+  };
+}
+
+test("validateStatusMapCells: kind: custom accepts a valid link and view_link cell", () => {
+  const wf = workflowWithCustomStatusMap({
+    "action-required": {
+      demo: {
+        message: "Review the document.",
+        link: { pageId: "contract-review", urlQuery: { action_id: true } },
+        view_link: { pageId: "contract-view", urlQuery: { action_id: true } },
+      },
+    },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).not.toThrow();
+});
+
+test("validateStatusMapCells: kind: custom rejects a link missing pageId", () => {
+  const wf = workflowWithCustomStatusMap({
+    "action-required": { demo: { link: { urlQuery: { action_id: true } } } },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /status_map\.action-required\.demo\.link\.pageId must be a non-empty string/,
+  );
+});
+
+test("validateStatusMapCells: kind: custom rejects a non-true sentinel value", () => {
+  const wf = workflowWithCustomStatusMap({
+    "action-required": {
+      demo: { link: { pageId: "contract-review", urlQuery: { action_id: "x" } } },
+    },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /status_map\.action-required\.demo\.link\.urlQuery\.action_id is a reserved sentinel key/,
+  );
+});
+
+test("validateStatusMapCells: kind: custom rejects an unknown top-level link key", () => {
+  const wf = workflowWithCustomStatusMap({
+    "action-required": {
+      demo: { link: { pageId: "contract-review", title: "Review" } },
+    },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /status_map\.action-required\.demo\.link has unknown key "title"/,
+  );
+});
+
+test("validateStatusMapCells: kind: custom rejects a non-string non-sentinel urlQuery value", () => {
+  const wf = workflowWithCustomStatusMap({
+    "action-required": {
+      demo: { view_link: { pageId: "contract-view", urlQuery: { count: 3 } } },
+    },
+  });
+  expect(() => makeWorkflowsConfig(null, { workflows: [wf] })).toThrow(
+    /status_map\.action-required\.demo\.view_link\.urlQuery\.count must be a string/,
+  );
+});
+
+test("validateStatusMapCells: rejects view_link: on a built-in kind", () => {
+  const wf = workflowWithStatusMap({
+    done: { demo: { message: "Done.", view_link: { pageId: "x" } } },
+  });
+  expect(() =>
+    makeWorkflowsConfig(null, { workflows: [wf, deviceInstallationStub] }),
+  ).toThrow(/view_link is engine-managed for kind: form/);
+});
+
 // --- kind: custom registration (Part 28) -----------------------------------
 
 function workflowWithCustomAction(action) {
