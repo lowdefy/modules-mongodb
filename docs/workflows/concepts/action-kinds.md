@@ -3,12 +3,12 @@ title: Action Kinds
 module: workflows
 type: concept
 concepts:
-  [form, check, tracker, kinds, instanced-actions, start-link, form-data]
+  [form, check, custom, tracker, kinds, instanced-actions, start-link, form-data]
 ---
 
 # Workflows — Action kinds
 
-Every action declares `kind:` as a required field. The kind drives page generation, submit API surface, and resolver behavior. Three values: `form`, `check`, `tracker`.
+Every action declares `kind:` as a required field. The kind drives page generation, submit API surface, and resolver behavior. Four values: `form`, `check`, `custom`, `tracker`.
 
 ## Form actions (`kind: form`)
 
@@ -63,6 +63,29 @@ access:
 **Same FSM as form.** The check kind uses the same FSM table as the form kind. `submit` is nullary — the target (`in-review` vs `done`) depends on whether the action declares the `review` verb, same as form actions. There is no status selector.
 
 **Hooks.** Check actions can declare `hooks:` per signal. These follow the same contract as form action hooks.
+
+## Custom actions (`kind: custom`)
+
+A custom action is a **check action whose working surface is an app-owned page**. Its lifecycle, signals, `fields:` channel, submit endpoint, and hooks are identical to check — the only difference is that **you** author the navigation link instead of the engine deriving it. Use it when the per-action UX belongs to a page your app already owns (a domain editor, a multi-step wizard) that doesn't fit the shared check page or a flat `form:` block.
+
+```yaml
+type: review-document
+kind: custom
+action_group: review
+access:
+  my-app:
+    view: true
+    edit: [account-manager]
+status_map:
+  action-required:
+    my-app:
+      message: Review the contract document.
+      link: { pageId: contract-review, urlQuery: { action_id: true } }
+```
+
+**Author-owned links.** You write a `status_map.{stage}.{slug}.link` cell (and optional `view_link:`) pointing at an app page id. The engine routes the working `link` into the stage's active working verb slot (`edit` / `review` / `error`, or `view` at `done`) and fills the `view` slot with your `view_link` or — absent it — the shared `{workflow_type}-action` page, so an observer always lands on a read-only status surface. The `action_id` / `entity_id` sentinels in `urlQuery` are substituted per action at render time.
+
+**No module pages.** Custom emits no per-action pages — your app supplies the working page, which calls the `{workflow_type}-submit` endpoint to advance the workflow. See the [Build a custom action](../how-to/custom-actions.md) how-to.
 
 ## Tracker actions (`kind: tracker`)
 
