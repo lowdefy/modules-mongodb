@@ -22,7 +22,7 @@ Dependency-ordered. Items with no entry in **After** have no unmet dependencies 
 | 28  | [custom-action-kind](designs/workflows-module/parts/28-custom-action-kind/design.md)                                                       | M    | 💤                                          |
 | 31  | [keyed-auto-unblock-fanout](parts/_next/31-keyed-auto-unblock-fanout/design.md)                                                            | S–M  | 💤 draft / open for discussion              |
 | 33  | [comment-rendering](designs/workflows-module/parts/_completed/33-comment-rendering/design.md)                                              | M    | 💤                                          |
-| 36  | [extra-action-buttons](designs/workflows-module/parts/36-extra-action-buttons/design.md)                                                   | S–M  | 💤 needs signal-model reconciliation        |
+| 36  | [extra-action-buttons](designs/workflows-module/parts/_completed/36-extra-action-buttons/design.md)                                        | S–M  | 💤 needs signal-model reconciliation        |
 | 41  | [notification-roles-model](parts/_next/41-notification-roles-model/design.md)                                                              | TBD  | 💤 ⚠️ STUB — rethink; supersedes part 34 D9 |
 
 ## Shipped

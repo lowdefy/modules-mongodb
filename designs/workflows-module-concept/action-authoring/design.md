@@ -810,7 +810,7 @@ pages:
 - `requests:` — list of Lowdefy request refs the page loads.
 - `formHeader:` / `formFooter:` — block lists; the module-emitted page template slots them above/below the rendered form. Used for detail headers, informational collapse panels, and author-declared `Modal` blocks (which overlay at render time, so their declaration position is cosmetic).
 - `buttons.{signal}.{title,disabled,visible,modal}` — config knobs on the **template-shipped signal buttons**. The shipped confirm-modal overrides live under `buttons.{signal}.modal.{title,content}` for `submit` / `not_required` (edit), `approve` (review), and `resolve_error` (error). The `request_changes` modal is mandatory (it carries the required comment input) and exposes only `.visible` / `.disabled`, no `modal` knob.
-- `buttons.extra:` (Part 36) — an array of **author-supplied Button blocks** concatenated into the same `floating-actions` bar, _after_ the signal buttons. Each entry is a full Lowdefy `Button` block (`type: Button`, `properties: { title, type, icon }`, `events.onClick`) and is rendered verbatim — no transformation. Extras carry no recognised `signal` and never reach the engine's FSM; their `onClick` is whatever chain the author wires. Available on all four bar verbs (`edit`, `view`, `review`, `error`); rejected on non-form actions, which emit no verb pages. Entry ids may not collide with the template-shipped signal-button ids (`button_submit`, `button_progress`, `button_not_required`, `button_approve`, `button_request_changes`, `button_resolve_error`, `button_edit` — reserved globally). See [Part 36](../../workflows-module/parts/36-extra-action-buttons/design.md).
+- `buttons.extra:` (Part 36) — an array of **author-supplied Button blocks** concatenated into the same `floating-actions` bar, _after_ the signal buttons. Each entry is a full Lowdefy `Button` block (`type: Button`, `properties: { title, type, icon }`, `events.onClick`) and is rendered verbatim — no transformation. Extras carry no recognised `signal` and never reach the engine's FSM; their `onClick` is whatever chain the author wires. Available on all four bar verbs (`edit`, `view`, `review`, `error`); rejected on non-form actions, which emit no verb pages. Entry ids may not collide with the template-shipped signal-button ids (`button_submit`, `button_progress`, `button_not_required`, `button_approve`, `button_request_changes`, `button_resolve_error`, `button_edit` — reserved globally). See [Part 36](designs/workflows-module/parts/_completed/36-extra-action-buttons/design.md).
 
 **Button → modal pattern.** The dominant extras use case is _button opens a modal; modal collects input; modal's `onOk` calls an app API_. Declare the `Modal` (or `ConfirmModal`) block in the verb's `formFooter:`, and open it from the extra button's `onClick` via `CallMethod` — `method: toggleOpen` for a `Modal`, `method: open` for a `ConfirmModal`:
 
@@ -831,12 +831,17 @@ pages:
               type: CallAPI
               params:
                 endpointId: my-app-resend-reminder
-                payload: { action_id: { _state: action._id }, message: { _state: reminder_message } }
+                payload:
+                  {
+                    action_id: { _state: action._id },
+                    message: { _state: reminder_message },
+                  }
     buttons:
       extra:
         - id: resend_reminder
           type: Button
-          properties: { title: Resend Reminder, type: default, icon: FaWhatsapp }
+          properties:
+            { title: Resend Reminder, type: default, icon: FaWhatsapp }
           events:
             onClick:
               - id: open
