@@ -298,13 +298,13 @@ async function seedAction({
     "test-app": {
       links: {
         view: {
-          pageId: "workflows/workflow-action-view",
+          pageId: "workflows/onboarding-check",
           urlQuery: { action_id: _id },
         },
         edit:
           stage === "action-required"
             ? {
-                pageId: "workflows/workflow-action-edit",
+                pageId: "workflows/onboarding-check",
                 urlQuery: { action_id: _id },
               }
             : null,
@@ -397,6 +397,7 @@ describe("envelope shape", () => {
     expect(result._id).toBe("a1");
     expect(result.type).toBe("qualify");
     expect(result.workflow_type).toBe("onboarding");
+    expect(result.workflow_id).toBe("wf-1");
     expect(result.kind).toBe("form");
     expect(result.key).toBeNull();
     expect(result.status).toBeDefined();

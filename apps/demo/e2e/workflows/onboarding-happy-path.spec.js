@@ -16,11 +16,14 @@ import { test, expect } from "../fixtures.js";
 // Part 55: lead-view and companies/view drop the check-action modal, so the
 // four `check`-kind rows (site-visit, schedule-followup on lead-view;
 // assign-account-manager, kickoff-call on companies/view) open the modal IN
-// PLACE — they no longer navigate to workflow-action-edit. Each step opens the
-// modal, selects `done`, submits, and asserts the modal closes; lead-view also
-// asserts the co-present Activity timeline refreshes (the Part 55 bug fix).
-// These four steps must be confirmed against a live app + MongoDB via
-// /r:dev-test — a build check is not sufficient to exercise the modal.
+// PLACE — they do not navigate to the per-workflow check page (Part 56 retired
+// the shared workflow-action-* pages; checks now navigate to
+// {workflow_type}-check only when no modal is present — onboarding-check on
+// lead-view, company-setup-check on companies/view). Each step opens the modal,
+// selects `done`, submits, and asserts the modal closes; lead-view also asserts
+// the co-present Activity timeline refreshes (the Part 55 bug fix). These four
+// steps must be confirmed against a live app + MongoDB via /r:dev-test — a build
+// check is not sufficient to exercise the modal.
 
 // QUARANTINED (Part 22 task 11): this spec is stale against the current
 // navigation model (parts 40/46/48) — it waits for the retired
@@ -73,12 +76,10 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await expect
       .poll(
         async () =>
-          (await mdb
-            .collection("workflows")
-            .countDocuments({
-              "entity.id": leadId,
-              workflow_type: "onboarding",
-            })) > 0,
+          (await mdb.collection("workflows").countDocuments({
+            "entity.id": leadId,
+            workflow_type: "onboarding",
+          })) > 0,
         { timeout: 10_000 },
       )
       .toBe(true);
@@ -223,12 +224,10 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await expect
       .poll(
         async () => {
-          const doc = await mdb
-            .collection("actions")
-            .findOne({
-              workflow_id: onboardingWf._id,
-              type: "schedule-followup",
-            });
+          const doc = await mdb.collection("actions").findOne({
+            workflow_id: onboardingWf._id,
+            type: "schedule-followup",
+          });
           return doc?.status?.[0]?.stage;
         },
         { timeout: 10_000 },
@@ -259,7 +258,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
 
     // ── site-visit (kind: check) — opens the in-context modal IN PLACE ───────
     // Part 55: lead-view drops the check-action modal, so a check-row click
-    // opens it over the entity page (no navigation to workflow-action-edit).
+    // opens it over the entity page (no navigation to the onboarding-check page).
     const siteVisitLink = page
       .locator("a", { hasText: "Complete the site visit." })
       .first();
@@ -267,12 +266,12 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await siteVisitLink.click();
 
     // Modal opens in place — the surface's status selector becomes visible and
-    // the URL stays on lead-view (no workflow-action-edit navigation).
+    // the URL stays on lead-view (no navigation to the onboarding-check page).
     await expect(ldf.block("status").locator()).toBeVisible({
       timeout: 15_000,
     });
     expect(page.url()).toContain("lead-view");
-    expect(page.url()).not.toContain("workflow-action-edit");
+    expect(page.url()).not.toContain("onboarding-check");
 
     // For a check action the status selector drives completion. Select "done".
     await ldf.block("status").do.select("done");
@@ -332,7 +331,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       timeout: 15_000,
     });
     expect(page.url()).toContain("lead-view");
-    expect(page.url()).not.toContain("workflow-action-edit");
+    expect(page.url()).not.toContain("onboarding-check");
 
     await ldf.block("status").do.select("done");
 
@@ -342,12 +341,10 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await expect
       .poll(
         async () => {
-          const doc = await mdb
-            .collection("actions")
-            .findOne({
-              workflow_id: onboardingWf._id,
-              type: "schedule-followup",
-            });
+          const doc = await mdb.collection("actions").findOne({
+            workflow_id: onboardingWf._id,
+            type: "schedule-followup",
+          });
           return doc?.status?.[0]?.stage;
         },
         { timeout: 10_000 },
@@ -512,12 +509,10 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await expect
       .poll(
         async () => {
-          const doc = await mdb
-            .collection("actions")
-            .findOne({
-              workflow_id: onboardingWf._id,
-              type: "track-company-setup",
-            });
+          const doc = await mdb.collection("actions").findOne({
+            workflow_id: onboardingWf._id,
+            type: "track-company-setup",
+          });
           return doc?.status?.[0]?.stage;
         },
         { timeout: 10_000 },
@@ -673,12 +668,10 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await expect
       .poll(
         async () => {
-          const doc = await mdb
-            .collection("actions")
-            .findOne({
-              workflow_id: companySetupWf._id,
-              type: "billing-details",
-            });
+          const doc = await mdb.collection("actions").findOne({
+            workflow_id: companySetupWf._id,
+            type: "billing-details",
+          });
           return doc?.status?.[0]?.stage;
         },
         { timeout: 10_000 },
@@ -702,7 +695,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     });
     expect(page.url()).toContain("companies");
     expect(page.url()).toContain("view");
-    expect(page.url()).not.toContain("workflow-action-edit");
+    expect(page.url()).not.toContain("company-setup-check");
 
     await ldf.block("status").do.select("done");
 
@@ -712,12 +705,10 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await expect
       .poll(
         async () => {
-          const doc = await mdb
-            .collection("actions")
-            .findOne({
-              workflow_id: companySetupWf._id,
-              type: "assign-account-manager",
-            });
+          const doc = await mdb.collection("actions").findOne({
+            workflow_id: companySetupWf._id,
+            type: "assign-account-manager",
+          });
           return doc?.status?.[0]?.stage;
         },
         { timeout: 10_000 },
@@ -753,7 +744,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     });
     expect(page.url()).toContain("companies");
     expect(page.url()).toContain("view");
-    expect(page.url()).not.toContain("workflow-action-edit");
+    expect(page.url()).not.toContain("company-setup-check");
 
     await ldf.block("status").do.select("done");
 

@@ -1,5 +1,16 @@
 # Task 12: Retarget e2e specs and fixtures from `workflow-action-*` to `{workflow_type}-check`
 
+> **Status (as-built):** Parts 1, 2, 4 shipped — all check-link navigations and
+> fixture comments retargeted to `{workflow_type}-check` (onboarding,
+> check-blocked-by, error-recovery, tracker-child), and the `entity_view` slot was
+> wired into the demo `onboarding` workflow (`lead-detail-slot.yaml` +
+> `entity.name_field: name`) so the slot bakes into the form pages and the
+> `onboarding-check` page. **Part 3 (the new three-tier render + cross-action-nav
+> spec) was intentionally skipped** — the only Part 22 spec is quarantined
+> (`test.skip`), e2e cannot run in the build sandbox, and live three-tier coverage
+> is a `/r:dev-test` deliverable. See the "Implementation notes (as-built)" section
+> of `design.md`.
+
 ## Context
 
 Retargeting check links to the per-workflow `{workflow_type}-check` page (Tasks 2

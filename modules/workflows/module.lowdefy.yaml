@@ -5,8 +5,12 @@
 #   makeWorkflowApis       — per-workflow {type}-submit/start/cancel/close
 #                            APIs plus engine-only hook / group on-complete
 #                            InternalApis; spliced into api:.
-#   makeActionPages        — per-action edit/view/review/error pages from
-#                            templates/{verb}.yaml.njk; spliced into pages:.
+#   makeActionPages        — per-action edit/view/review/error pages (form kinds)
+#                            plus one per-workflow {type}-check page (check kind)
+#                            from templates/{verb}.yaml.njk and templates/
+#                            check.yaml.njk; spliced into pages:. All page kinds
+#                            share the three-tier action workspace shell
+#                            (components/action-workspace.yaml).
 #   makeActionsForm        — template-scope form-block substitution (already
 #                            wired from templates/{verb}.yaml.njk).
 #
@@ -27,9 +31,10 @@ dependencies:
       Provides the change_stamp component referenced by the workflow-api
       connection, the new-event Api the engine dispatches the per-invocation
       log event to (endpoints.new_event on the connection), and the
-      events-timeline component composed by the action pages (the check view
-      page and all four form-kind templates) to render the action's activity
-      stream — comments included inline via display.{app}.description.
+      events-timeline component composed by the three-tier action workspace
+      shell (components/action-workspace.yaml, the History tab on every action
+      page) to render the action's activity stream — comments included inline
+      via display.{app}.description.
   - id: notifications
     description: >
       Provides the send-notification InternalApi the engine dispatches to
@@ -63,6 +68,17 @@ vars:
       - `page_id` (required) — host-app page id rendering the entity.
       - `id_query_key` (optional, default `_id`) — URL query-string key for the entity's primary id.
       - `title` (required) — singular human-readable entity-kind label (e.g. "Lead").
+      - `name_field` (optional) — dot-path on the entity doc resolving to the
+        instance's display name (e.g. `name`, `profile.full_name`). When set, the
+        action-page breadcrumb's entity segment becomes "{title} · {name}";
+        omitted, the segment shows the type label only and no extra read fires.
+      Each workflow also accepts an optional `entity_view:` block — a build-time,
+      read-only UI hint, NOT part of the materialized engine config (it never
+      reaches the validated engine output). It carries a single `slot` (a Lowdefy
+      block ref) rendering a read-only view of the entity. On form action pages
+      the slot is the RHS Details tab; on the check page it is the middle review
+      subject. Omit it and the Details tab is dropped (form pages) / the middle
+      review subject is empty (check page).
       Workflows, actions, and
       action groups accept an optional `title:`; when omitted it is derived from
       the slug (`type`/`id`) by the title humanizer — splits on `-`/`_`/camelCase,
@@ -132,7 +148,7 @@ exports:
         Opened exclusively via the documented SetState + CallMethod(setOpen,
         [{ open: true }]) contract. One instance per page; never drop it on a
         page that already defines a get_workflow_action request (the
-        workflow-action-* pages).
+        per-workflow {workflow_type}-check action page).
 
 components:
   - id: action_statuses
@@ -172,10 +188,7 @@ api:
 
 pages:
   _build.array.concat:
-    - - _ref: pages/workflow-action-edit.yaml
-      - _ref: pages/workflow-action-view.yaml
-      - _ref: pages/workflow-action-review.yaml
-      - _ref: pages/workflow-overview.yaml
+    - - _ref: pages/workflow-overview.yaml
       - _ref: pages/workflow-group-overview.yaml
     - _ref:
         resolver: resolvers/makeActionPages.js

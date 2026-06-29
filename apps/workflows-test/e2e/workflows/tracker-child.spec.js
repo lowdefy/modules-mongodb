@@ -21,10 +21,11 @@ import { test, expect } from "../fixtures.js";
 // (fsm/tables.test.js) and runTrackerCascade's multi-level walk + depth guard
 // (runTrackerCascade.test.js). This cluster proves the wiring fires end-to-end.
 //
-// TARGET STATE (parts 40/46/48): track-child is kind:tracker; its child-step is
-// kind:check submitting from the static workflow-action-edit page; the child is
-// started via the per-workflow operational endpoint (Part 48). Fails against
-// pre-40/48 code by design — the suite is the spec.
+// TARGET STATE (parts 40/46/48/56): track-child is kind:tracker; its child-step
+// is kind:check submitting from the per-workflow tracker-child-flow-check page
+// (Part 56 retired the shared workflow-action-* pages); the child is started via
+// the per-workflow operational endpoint (Part 48). Fails against pre-40/48 code
+// by design — the suite is the spec.
 //
 // The `mdb` fixture wipes all collections between tests.
 
@@ -100,10 +101,10 @@ test("starting the child mirrors the parent tracker to in-progress, and completi
   await expect(page.getByText("Child workflow in progress.")).toBeVisible();
 
   // ── MIRROR UP (completed): complete the child's one step through its real
-  //    (static check) edit page → child auto-completes → parent tracker done ───
+  //    per-workflow check page → child auto-completes → parent tracker done ────
   const childStep = await actionByType(mdb, childWorkflowId, "child-step");
   await ldf.goto(
-    `/workflows/workflow-action-edit?action_id=${childStep._id.toString()}`,
+    `/workflows/tracker-child-flow-check?action_id=${childStep._id.toString()}`,
   );
   await ldf.block("button_submit").do.click();
 

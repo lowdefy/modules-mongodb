@@ -50,7 +50,29 @@ function fail(message) {
   throw new Error(`makeActionPages: ${message}`);
 }
 
-function emitForAction(workflow, action, appName, titleAcronyms) {
+// Resolve the workflow title identically to makeWorkflowsConfig (raw-YAML read,
+// kept in lock-step). Used for the title eyebrow and the breadcrumb Workflow
+// segment on every action page (Part 56 D8/D9).
+function resolveWorkflowTitle(workflow, titleAcronyms) {
+  return workflow.title ?? humanizeSlug(workflow.type, titleAcronyms);
+}
+
+// Per-workflow vars shared by the form templates and the check page (Part 56):
+// the entity connection id + ref_key (nested entity: block — Part 57), the baked
+// workflow title, the read-only entity_view.slot block array (empty when the
+// workflow declares none), and the optional entity.name_field dot-path (empty
+// string when absent, so the templates' `{% if name_field %}` gate is falsy).
+function workspaceVars(workflow, workflowTitle) {
+  return {
+    connection_id: workflow.entity.connection_id,
+    reference_field: workflow.entity.ref_key,
+    workflow_title: workflowTitle,
+    entity_view_slot: workflow.entity_view?.slot ?? [],
+    name_field: workflow.entity.name_field ?? "",
+  };
+}
+
+function emitForAction(workflow, action, appName, titleAcronyms, workflowTitle) {
   if (action.kind !== "form") return [];
 
   // Part 34 D5: emit a verb page iff the verb key is present in the app's
@@ -85,7 +107,7 @@ function emitForAction(workflow, action, appName, titleAcronyms) {
       vars: {
         action_config: actionConfig,
         workflow_type: workflow.type,
-        connection_id: workflow.entity.connection_id,
+        ...workspaceVars(workflow, workflowTitle),
         page_ids: pageIds,
         // Per-verb page customization (title, requests, events, formHeader,
         // formFooter, modals, maxWidth, buttons.submit on error) passes
@@ -103,6 +125,28 @@ function emitForAction(workflow, action, appName, titleAcronyms) {
   }));
 }
 
+// Part 56 D3: a workflow with ≥1 check action gets a SINGLE per-workflow
+// `{workflow_type}-check` page (the per-verb check links all target it; it
+// derives mode from the loaded action at runtime). It is its own composition —
+// `templates/check.yaml.njk` — not a reuse of the form templates or the modal.
+function emitCheckPage(workflow, workflowTitle) {
+  const hasCheck = (workflow.actions ?? []).some((a) => a.kind === "check");
+  if (!hasCheck) return [];
+
+  return [
+    {
+      id: `${workflow.type}-check`,
+      _ref: {
+        path: "templates/check.yaml.njk",
+        vars: {
+          workflow_type: workflow.type,
+          ...workspaceVars(workflow, workflowTitle),
+        },
+      },
+    },
+  ];
+}
+
 function makeActionPages(_, vars) {
   const { workflows, app_name: appName, title_acronyms = [] } = vars;
 
@@ -114,9 +158,19 @@ function makeActionPages(_, vars) {
 
   const pages = [];
   for (const workflow of workflows) {
+    const workflowTitle = resolveWorkflowTitle(workflow, title_acronyms);
     for (const action of workflow.actions ?? []) {
-      pages.push(...emitForAction(workflow, action, appName, title_acronyms));
+      pages.push(
+        ...emitForAction(
+          workflow,
+          action,
+          appName,
+          title_acronyms,
+          workflowTitle,
+        ),
+      );
     }
+    pages.push(...emitCheckPage(workflow, workflowTitle));
   }
   return pages;
 }

@@ -19,7 +19,7 @@ import {
  * client reads accordingly: `_request: get_action.0` → `_request: get_workflow_action`).
  *
  *   {
- *     _id, type, workflow_type, kind, key, status, action_group, description, due_date,
+ *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
  *     assignees, assignee_docs, entity: { connection_id, id }, created, updated,
  *     entity_link,          // { pageId, urlQuery, title } from the workflow config's `entity` block, or null
  *     required_after_close, message,
@@ -249,6 +249,7 @@ async function GetWorkflowAction(lowdefyContext) {
     _id: action._id,
     type: action.type,
     workflow_type: action.workflow_type,
+    workflow_id: action.workflow_id,
     kind: action.kind,
     key: action.key ?? null,
     status: action.status,

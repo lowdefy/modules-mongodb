@@ -330,7 +330,7 @@ describe("seeded drafts", () => {
     expect(byType.a.workflow_type).toBe("onboarding"); // denormalised
   });
 
-  test("seeded check-kind drafts carry task-18 workflow-action-* engine links", async () => {
+  test("seeded check-kind drafts carry {workflow_type}-check engine links", async () => {
     await StartWorkflow(
       buildContext({
         request: {
@@ -340,13 +340,14 @@ describe("seeded drafts", () => {
       }),
     );
     const a = await mongo.db.collection("actions").findOne({ type: "a" });
-    // action-required stage: view + edit pages exist for check kind.
+    // action-required stage: view + edit cells both target the single
+    // per-workflow check page for the check kind.
     expect(a["test-app"].links.view).toEqual({
-      pageId: "workflows/workflow-action-view",
+      pageId: "workflows/onboarding-check",
       urlQuery: { action_id: a._id },
     });
     expect(a["test-app"].links.edit).toEqual({
-      pageId: "workflows/workflow-action-edit",
+      pageId: "workflows/onboarding-check",
       urlQuery: { action_id: a._id },
     });
   });

@@ -4,16 +4,18 @@ import { test, expect } from "../fixtures.js";
 //
 // Proves both blocked_by dependency kinds fire through the wired app — a TYPE
 // dep (needs-type ← first-check) and a GROUP dep (needs-group ← prep group) —
-// and is the suite's coverage home for the STATIC shared check pages
-// (workflow-action-{edit,view,review}) and the two overview pages
+// and is the suite's coverage home for the per-workflow check page
+// (check-blocked-by-check) and the two overview pages
 // (workflow-overview, workflow-group-overview) rendering in a running app.
 //
-// TARGET STATE (parts 40/46/48):
-//   - kind:check actions render on the static shared pages via ?action_id=
-//     (Part 40 rewrites them to the signal model: button_submit / button_approve).
+// TARGET STATE (parts 40/46/48/56):
+//   - kind:check actions render on the per-workflow check page
+//     check-blocked-by-check via ?action_id= (Part 56 retired the shared
+//     workflow-action-{edit,view,review} pages; the signal model from Part 40 —
+//     button_submit / button_approve — is unchanged).
 //   - Per Part 40 D5, clicking a check row in actions-on-entity opens the
-//     in-context MODAL rather than navigating, so this spec reaches the static
-//     pages by their canonical ?action_id= URLs (their addressable target) — the
+//     in-context MODAL rather than navigating, so this spec reaches the check
+//     page by its canonical ?action_id= URL (its addressable target) — the
 //     modal path is Part 40's own e2e supplement, not this cluster's.
 //   - submit endpoint is per-workflow check-blocked-by-submit (Part 48).
 // These tests fail against pre-40/48 code by design — the suite is the spec.
@@ -75,10 +77,11 @@ test("completing a type blocker and completing a group both unblock their depend
   await expect(page.getByText("Waiting on the prep group.")).toBeVisible();
 
   // ── TYPE dep: completing first-check unblocks needs-type ───────────────────
-  // Reach the static edit page by its canonical ?action_id= URL and assert it
-  // renders the check action (its current-stage message), then complete it.
+  // Reach the per-workflow check page by its canonical ?action_id= URL and
+  // assert it renders the check action (its current-stage message), then
+  // complete it.
   await ldf.goto(
-    `/workflows/workflow-action-edit?action_id=${firstCheck._id.toString()}`,
+    `/workflows/check-blocked-by-check?action_id=${firstCheck._id.toString()}`,
   );
   await expect(page.getByText("Complete the first prep check.")).toBeVisible();
   await ldf.block("button_submit").do.click();
@@ -94,16 +97,16 @@ test("completing a type blocker and completing a group both unblock their depend
   // ── GROUP dep: completing the prep group unblocks needs-group ──────────────
   // second-check has the review verb: submit → in-review.
   await ldf.goto(
-    `/workflows/workflow-action-edit?action_id=${secondCheck._id.toString()}`,
+    `/workflows/check-blocked-by-check?action_id=${secondCheck._id.toString()}`,
   );
   await ldf.block("button_submit").do.click();
   await workflow.assertStatus(secondCheck._id.toString(), "in-review");
 
-  // The static review page serves the in-review check action; approve → done.
+  // The check page serves the in-review check action; approve → done.
   await ldf.goto(
-    `/workflows/workflow-action-review?action_id=${secondCheck._id.toString()}`,
+    `/workflows/check-blocked-by-check?action_id=${secondCheck._id.toString()}`,
   );
-  await expect(page).toHaveURL(/workflow-action-review/);
+  await expect(page).toHaveURL(/check-blocked-by-check/);
   await ldf.block("button_approve").do.click();
   await workflow.assertStatus(secondCheck._id.toString(), "done");
 
@@ -121,11 +124,11 @@ test("completing a type blocker and completing a group both unblock their depend
     )
     .toBe("done");
 
-  // ── static page sweep: the view page renders for a done check action ───────
+  // ── check page sweep: the page renders for a done check action ─────────────
   await ldf.goto(
-    `/workflows/workflow-action-view?action_id=${firstCheck._id.toString()}`,
+    `/workflows/check-blocked-by-check?action_id=${firstCheck._id.toString()}`,
   );
-  await expect(page).toHaveURL(/workflow-action-view/);
+  await expect(page).toHaveURL(/check-blocked-by-check/);
   await expect(page.getByText("First prep check complete.")).toBeVisible();
 
   // ── overview pages render against the group-structured workflow ────────────

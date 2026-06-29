@@ -34,8 +34,8 @@ Four verbs exist, each with independent meaning:
 | Verb     | Effect                                                                                                                                        |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | `view`   | Shows the action in the `actions-on-entity` component; renders read-only detail pages                                                         |
-| `edit`   | Renders the submit form — form-action `-edit` page, check-action `workflow-action-edit` page                                                  |
-| `review` | Renders the review page — form-action `-review` page, check-action `workflow-action-review` page. Ships `approve` / `request_changes` buttons |
+| `edit`   | Renders the submit form — form-action `-edit` page, or the `{workflow_type}-check` page in edit mode for check actions                        |
+| `review` | Renders the review page — form-action `-review` page, or the `{workflow_type}-check` page in review mode. Ships `approve` / `request_changes` buttons |
 | `error`  | Renders the recovery page for form actions in `error` state                                                                                   |
 
 **Verbs are independent.** Granting `edit` does not grant `view`. An author who wants "everyone can see, only managers edit" writes both:

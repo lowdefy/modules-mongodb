@@ -124,13 +124,18 @@ test("makeActionPages: send-quote (form, access [view, edit, review]) emits -edi
   expect(pages.some((p) => p.id.endsWith("-error"))).toBe(false);
 });
 
-test("makeActionPages: schedule-followup (check) emits nothing even with view+edit access", () => {
+test("makeActionPages: schedule-followup (check) emits no per-verb pages even with view+edit access", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([scheduleFollowupAction])],
     app_name: APP,
   });
 
-  expect(pages).toEqual([]);
+  // The check action emits no verb pages (no -edit/-view/-review/-error). It
+  // contributes only the single per-workflow check page (asserted separately).
+  expect(pages.some((p) => /-(edit|view|review|error)$/.test(p.id))).toBe(
+    false,
+  );
+  expect(pages.map((p) => p.id)).toEqual(["onboarding-check"]);
 });
 
 test("makeActionPages: track-installation (tracker) emits nothing even with view+edit+review access", () => {
@@ -177,7 +182,7 @@ test('makeActionPages: app_name of undefined, null, or "" throws with /app_name 
   }
 });
 
-test("makeActionPages: worked-example fixture emits exactly the five expected pages", () => {
+test("makeActionPages: worked-example fixture emits the five form pages plus the single check page", () => {
   const pages = makeActionPages(null, {
     workflows: [
       workflow([
@@ -192,6 +197,9 @@ test("makeActionPages: worked-example fixture emits exactly the five expected pa
 
   const ids = pages.map((p) => p.id).sort();
   expect(ids).toEqual([
+    // The check action (schedule-followup) contributes the per-workflow check
+    // page; the tracker action contributes nothing.
+    "onboarding-check",
     "onboarding-qualify-edit",
     "onboarding-qualify-view",
     "onboarding-send-quote-edit",
@@ -336,4 +344,174 @@ test("makeActionPages: universal_fields_required never appears in output", () =>
   expect("universal_fields_required" in pages[0]._ref.vars.action_config).toBe(
     false,
   );
+});
+
+// ── Part 56 Task 10: workspace vars on form pages ────────────────────────────
+
+test("makeActionPages: form pages carry connection_id from workflow.entity.connection_id", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.connection_id).toBe("leads-collection");
+  }
+});
+
+test("makeActionPages: form pages carry reference_field from workflow.entity.ref_key", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.reference_field).toBe("lead_ids");
+  }
+});
+
+test("makeActionPages: workflow_title falls back to humanizeSlug(workflow.type) when workflow.title absent", () => {
+  // The shared `workflow()` fixture sets `entity.title` (the entity's display
+  // name) but no top-level `workflow.title`, so the title is derived from the
+  // workflow type "onboarding".
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.workflow_title).toBe("Onboarding");
+  }
+});
+
+test("makeActionPages: explicit workflow.title wins over the humanized type", () => {
+  const wf = { ...workflow([qualifyAction]), title: "Lead Onboarding" };
+  const pages = makeActionPages(null, {
+    workflows: [wf],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.workflow_title).toBe("Lead Onboarding");
+  }
+});
+
+test("makeActionPages: workflow_title honours title_acronyms in the humanized fallback", () => {
+  const wf = { ...workflow([qualifyAction]), type: "kyc-review" };
+  const pages = makeActionPages(null, {
+    workflows: [wf],
+    app_name: APP,
+    title_acronyms: ["BOM"],
+  });
+  // "kyc" is in BASE_ACRONYMS, so it uppercases regardless of supplied acronyms.
+  for (const p of pages) {
+    expect(p._ref.vars.workflow_title).toBe("KYC Review");
+  }
+});
+
+test("makeActionPages: name_field defaults to empty string when workflow.entity.name_field absent", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.name_field).toBe("");
+  }
+});
+
+test("makeActionPages: name_field passes through workflow.entity.name_field when present", () => {
+  const wf = workflow([qualifyAction]);
+  wf.entity = { ...wf.entity, name_field: "lead.full_name" };
+  const pages = makeActionPages(null, {
+    workflows: [wf],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.name_field).toBe("lead.full_name");
+  }
+});
+
+test("makeActionPages: entity_view_slot defaults to [] when workflow declares no entity_view", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction])],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.entity_view_slot).toEqual([]);
+  }
+});
+
+test("makeActionPages: entity_view_slot is baked from workflow.entity_view.slot when present", () => {
+  const slot = [{ id: "lead_summary", type: "Html" }];
+  const wf = { ...workflow([qualifyAction]), entity_view: { slot } };
+  const pages = makeActionPages(null, {
+    workflows: [wf],
+    app_name: APP,
+  });
+  for (const p of pages) {
+    expect(p._ref.vars.entity_view_slot).toEqual(slot);
+  }
+});
+
+// ── Part 56 Task 10: check page emission ─────────────────────────────────────
+
+test("makeActionPages: a workflow with a check action emits exactly one check page", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction, scheduleFollowupAction])],
+    app_name: APP,
+  });
+
+  const checkPages = pages.filter((p) => p.id === "onboarding-check");
+  expect(checkPages).toHaveLength(1);
+});
+
+test("makeActionPages: the check page targets templates/check.yaml.njk with the workspace vars", () => {
+  const slot = [{ id: "lead_summary", type: "Html" }];
+  const wf = {
+    ...workflow([qualifyAction, scheduleFollowupAction]),
+    entity_view: { slot },
+  };
+  wf.entity = { ...wf.entity, name_field: "lead.full_name" };
+
+  const pages = makeActionPages(null, {
+    workflows: [wf],
+    app_name: APP,
+  });
+
+  const checkPage = pages.find((p) => p.id === "onboarding-check");
+  expect(checkPage._ref.path).toBe("templates/check.yaml.njk");
+  expect(checkPage._ref.vars).toEqual({
+    workflow_type: "onboarding",
+    connection_id: "leads-collection",
+    reference_field: "lead_ids",
+    workflow_title: "Onboarding",
+    entity_view_slot: slot,
+    name_field: "lead.full_name",
+  });
+});
+
+test("makeActionPages: a workflow with no check action emits no check page", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([qualifyAction, sendQuoteAction])],
+    app_name: APP,
+  });
+
+  expect(pages.some((p) => p.id === "onboarding-check")).toBe(false);
+});
+
+test("makeActionPages: multiple check actions still emit exactly one check page", () => {
+  const secondCheck = { ...scheduleFollowupAction, type: "confirm-delivery" };
+  const pages = makeActionPages(null, {
+    workflows: [workflow([scheduleFollowupAction, secondCheck])],
+    app_name: APP,
+  });
+
+  const checkPages = pages.filter((p) => p.id === "onboarding-check");
+  expect(checkPages).toHaveLength(1);
+});
+
+test("makeActionPages: the check page's entity_view_slot defaults to [] when no entity_view", () => {
+  const pages = makeActionPages(null, {
+    workflows: [workflow([scheduleFollowupAction])],
+    app_name: APP,
+  });
+
+  const checkPage = pages.find((p) => p.id === "onboarding-check");
+  expect(checkPage._ref.vars.entity_view_slot).toEqual([]);
 });

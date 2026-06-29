@@ -1,0 +1,56 @@
+# Four-segment action-page breadcrumb fragment (Part 56 — D8/D9/D10).
+#
+# Returns the breadcrumb LIST a template assigns to its layout-page `breadcrumbs`
+# var, so the four-segment trail isn't duplicated across the form templates and
+# the check page:
+#
+#   Home / {entity type [· name]} / {workflow title} / {action title}
+#
+# Lowdefy breadcrumb items spread their whole object onto the Link component, so
+# an item carries `label` + `pageId` + `urlQuery` directly. Page-only — the
+# in-context modal has no breadcrumb.
+#
+# Vars (each template supplies its own state-path operators; human-string labels
+# are baked at build time by makeActionPages and passed via `_var`):
+#   - entity_title      operator → the entity TYPE label (entity_link.title).
+#   - entity_name       operator → the entity INSTANCE name, or null. Resolved
+#                       page-side from the existing `get_entity` request via the
+#                       workflow's optional `entity.name_field` (D10); null when
+#                       no name_field is configured, so the segment shows the
+#                       type only and no extra query fires.
+#   - entity_page_id    operator → the entity page id (entity_link.pageId).
+#   - entity_url_query  operator → the entity deep-link query (entity_link.urlQuery).
+#   - workflow_id       operator → the parent workflow id (for the overview link).
+#   - workflow_title    baked string — the workflow-title label.
+#   - action_label      baked string — the current action's title (no link).
+- home: true
+  icon: AiOutlineHome
+# Entity — type label, plus "· {name}" when the instance name resolved (D10).
+- label:
+    _string.concat:
+      - _var: entity_title
+      - _if:
+          test:
+            _ne:
+              - _var: entity_name
+              - null
+          then:
+            _string.concat:
+              - " · "
+              - _var: entity_name
+          else: ""
+  pageId:
+    _var: entity_page_id
+  urlQuery:
+    _var: entity_url_query
+# Workflow — links to the workflow-overview page (D9).
+- label:
+    _var: workflow_title
+  pageId:
+    _module.pageId: workflow-overview
+  urlQuery:
+    workflow_id:
+      _var: workflow_id
+# Action — the current page, no link.
+- label:
+    _var: action_label

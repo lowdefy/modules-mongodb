@@ -13,9 +13,12 @@
  *
  * Page ids are entry-scoped (`${entry_id}/${page}`) to match Lowdefy's build-
  * time _module.pageId scoping (Part 30 D4 mechanic):
- *   - check   -> fixed module pages `workflow-action-{verb}`, urlQuery action_id
- *               (the `error` verb maps to `workflow-action-view` — no error page
- *                exists for the check kind; recovery is a button on the view page)
+ *   - check   -> single per-workflow page `{workflow_type}-check`, urlQuery
+ *               action_id (Part 56 D3: replaces the fixed `workflow-action-{verb}`
+ *               module pages; the page reads `?action_id` and derives its mode
+ *               from the loaded action, so every non-null verb cell — `error`
+ *               included — targets the one page and the error-verb special case
+ *               is gone)
  *   - form    -> derived pages `{workflow_type}-{action_type}-{verb}` (unprefixed),
  *                urlQuery action_id
  *   - tracker -> two arms:
@@ -115,9 +118,7 @@ function computeEngineLinks({ action, entry_id: entryId }) {
       if (!stageVerbs[verb]) continue; // stage has no page for this verb
       const page =
         kind === "check"
-          ? verb === "error"
-            ? "workflow-action-view"
-            : `workflow-action-${verb}`
+          ? `${action.workflow_type}-check`
           : `${action.workflow_type}-${action.type}-${verb}`;
       links[verb] = {
         pageId: scoped(entryId, page),

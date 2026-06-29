@@ -8,17 +8,18 @@ test("check kind at action-required: view+edit links, review/error null", () => 
     action: {
       _id: "a1",
       kind: "check",
+      workflow_type: "onboarding",
       status: [{ stage: "action-required" }],
       access: { demo: { view: true, edit: true } },
     },
   });
   expect(links.demo).toEqual({
     view: {
-      pageId: "workflows/workflow-action-view",
+      pageId: "workflows/onboarding-check",
       urlQuery: { action_id: "a1" },
     },
     edit: {
-      pageId: "workflows/workflow-action-edit",
+      pageId: "workflows/onboarding-check",
       urlQuery: { action_id: "a1" },
     },
     review: null,
@@ -61,28 +62,30 @@ test("in-review exposes review (declared), nulls edit", () => {
     action: {
       _id: "a1",
       kind: "check",
+      workflow_type: "onboarding",
       status: [{ stage: "in-review" }],
       access: { demo: { view: true, edit: true, review: true } },
     },
   });
-  expect(links.demo.review.pageId).toBe("workflows/workflow-action-review");
+  expect(links.demo.review.pageId).toBe("workflows/onboarding-check");
   expect(links.demo.edit).toBeNull();
 });
 
-test("error stage: check kind error verb maps to workflow-action-view (no error page exists)", () => {
+test("error stage: check kind error verb targets the single {workflow_type}-check page", () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,
     action: {
       _id: "a1",
       kind: "check",
+      workflow_type: "onboarding",
       status: [{ stage: "error" }],
       access: { demo: { view: true, error: true } },
     },
   });
-  // Per review-14 #4: check kind has no error page; recovery is a
-  // resolve_error button on the view page, so the error verb links there too.
-  expect(links.demo.error.pageId).toBe("workflows/workflow-action-view");
-  expect(links.demo.view.pageId).toBe("workflows/workflow-action-view");
+  // Part 56 D3: check kind has a single per-workflow page; every non-null verb
+  // cell — error included — targets it, so the error-verb special case is gone.
+  expect(links.demo.error.pageId).toBe("workflows/onboarding-check");
+  expect(links.demo.view.pageId).toBe("workflows/onboarding-check");
 });
 
 test("blocked / not-required stages produce all-null cells", () => {

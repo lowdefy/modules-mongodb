@@ -215,6 +215,10 @@ blocks:
                               _var:
                                 key: doc
                                 default: null
+                            description:
+                              _var:
+                                key: description
+                                default: null
                             page_actions:
                               _var:
                                 key: page_actions

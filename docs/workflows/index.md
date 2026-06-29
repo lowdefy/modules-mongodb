@@ -7,7 +7,7 @@ concepts: [workflows, actions, fsm, signals, hooks, trackers]
 
 # Workflows
 
-Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine — authors do not hand-write status transitions. The engine ships shared action pages, six operational APIs, and a resolver-emitted dynamic surface: one page set per form action and one submit endpoint per form/check action, both derived from the app's `workflows_config`.
+Multi-workflow engine that lets apps declare workflow YAML, render entity-scoped action lists, and submit lifecycle transitions through engine-managed handlers. Submissions carry a **signal** that the engine resolves against a per-kind finite-state machine — authors do not hand-write status transitions. The engine ships two static overview pages, six operational APIs, and a resolver-emitted dynamic surface: a per-verb page set per form action, one `{workflow_type}-check` page per workflow with check actions, and one submit endpoint per form/check action, all derived from the app's `workflows_config`. Every action page renders in the same [three-tier workspace](concepts/action-pages.md).
 
 ## Dependencies
 
@@ -62,6 +62,7 @@ See [`apps/demo/modules/workflows/vars.yaml`](../../apps/demo/modules/workflows/
 - [Mental model](concepts/mental-model.md) — workflows, actions, kinds, groups, and the engine at a glance
 - [Signals vs status](concepts/signals-vs-status.md) — how the FSM resolves signal → status, why `force: true` is gone
 - [Action kinds](concepts/action-kinds.md) — form, check, and tracker actions in depth
+- [Action pages](concepts/action-pages.md) — the three-tier workspace, the per-workflow check page, and `entity_view`
 - [Groups and blocking](concepts/groups-and-blocking.md) — `action_groups`, `blocked_by`, and the group unblock rule
 - [Access](concepts/access.md) — per-app, per-verb role gates; how the engine collapses access server-side
 - [Hooks](concepts/hooks.md) — pre/post hook phases, the `:return` shape, out-of-band vs. committed writes

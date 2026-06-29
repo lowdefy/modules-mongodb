@@ -11,27 +11,25 @@ concepts: [exports, pages, components, api, connections]
 
 ### Shared pages (static)
 
-| ID                        | Path                                 | Description                                                                                                                                                                                                        |
-| ------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `workflow-action-edit`    | `/{entryId}/workflow-action-edit`    | Shared check-kind action edit page — universal fields + comment + signal button bar (`submit` / `progress` / `not_required`). No status selector. Addressed by `?action_id=<id>`                                   |
-| `workflow-action-view`    | `/{entryId}/workflow-action-view`    | Shared check-kind action view page — universal fields + status history + action-filtered events timeline. Carries the `resolve_error` button (rendered only when stage is `error`). Addressed by `?action_id=<id>` |
-| `workflow-action-review`  | `/{entryId}/workflow-action-review`  | Shared check-kind action review page — read-only fields + comment + `approve` / `request_changes` signal buttons                                                                                                   |
-| `workflow-overview`       | `/{entryId}/workflow-overview`       | Workflow detail page — header + action cards with form_data DataView. Addressed by `?workflow_id=<id>`                                                                                                             |
-| `workflow-group-overview` | `/{entryId}/workflow-group-overview` | Group detail page — header + progress bar + group-status badge + action cards. Addressed by `?workflow_id=<id>&group_id=<id>`                                                                                      |
+| ID                        | Path                                 | Description                                                                                                                   |
+| ------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------- |
+| `workflow-overview`       | `/{entryId}/workflow-overview`       | Workflow detail page — header + action cards with form_data DataView. Addressed by `?workflow_id=<id>`                       |
+| `workflow-group-overview` | `/{entryId}/workflow-group-overview` | Group detail page — header + progress bar + group-status badge + action cards. Addressed by `?workflow_id=<id>&group_id=<id>` |
 
 The `workflow-` prefix is reserved module infrastructure: `{entry_id}/workflow-*` addresses these fixed pages, disjoint from per-type derived pages. `workflow` is therefore a reserved workflow type name — the build rejects it.
 
-### Per-action form pages (resolver-emitted)
+### Per-action pages (resolver-emitted)
 
-Emitted by `makeActionPages`: one page per `(workflow_type, action_type, verb)` tuple. Only `kind: form` actions emit pages — check actions use the shared `workflow-action-*` pages, and tracker actions emit none.
+Emitted by `makeActionPages`. Both page kinds `_ref` the same [three-tier action workspace](../concepts/action-pages.md) shell, so the layout is identical and only the middle content differs:
 
-| Pattern                                | Path                                              |
-| -------------------------------------- | ------------------------------------------------- |
-| `{workflow_type}-{action_type}-{verb}` | `/{entryId}/{workflow_type}-{action_type}-{verb}` |
+| Kind         | Pattern                                | Path                                              | Addressed by   |
+| ------------ | -------------------------------------- | ------------------------------------------------- | -------------- |
+| `form`       | `{workflow_type}-{action_type}-{verb}` | `/{entryId}/{workflow_type}-{action_type}-{verb}` | `?action_id=`  |
+| `check`      | `{workflow_type}-check`                | `/{entryId}/{workflow_type}-check`                | `?action_id=`  |
 
-Supported verbs: `edit`, `view`, `review`, `error` — only verbs declared in the action's `access.{app_name}` map are emitted.
+Form actions emit one page per declared verb (`edit`, `view`, `review`, `error`) — only verbs present in the action's `access.{app_name}` map. Each `kind: check` workflow emits exactly one `{workflow_type}-check` page shared by all of that workflow's check actions (routed by `?action_id=`); its mode (`edit` / `view` / `review`) is derived at load from the action's stage and the caller's resolved access. Tracker actions emit none.
 
-Example: a `qualify` form action in the `onboarding` workflow with `access.demo: { edit: true, view: true }` emits `onboarding-qualify-edit` and `onboarding-qualify-view`.
+Example: a `qualify` form action in the `onboarding` workflow with `access.demo: { edit: true, view: true }` emits `onboarding-qualify-edit` and `onboarding-qualify-view`; the same workflow's check actions are served by `onboarding-check`.
 
 ## Components
 
