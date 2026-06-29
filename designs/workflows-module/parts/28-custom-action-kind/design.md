@@ -15,6 +15,7 @@ This unblocks workflows where the per-action UX is dictated by an existing app p
 
 5. Document the kind in the concept specs and the module README: the `custom`/`check` distinction (engine-computed vs author-authored links), the recommended submit path (the app page calls the module's `{type}-submit` endpoint), and the `status_map.{stage}.{app}.link` cell convention.
 6. **Add an end-to-end Playwright spec in the `workflows-test` app** (not `demo`). Add a `custom-action` workflow config under `apps/workflows-test/modules/workflows/workflow_config/custom-action/`, an app-owned page the custom action's `link:` cell points at, and `apps/workflows-test/e2e/workflows/custom-action.spec.js`. The spec's load-bearing assertion is the **click-through**: the rendered action card's link carries the concrete action `_id` (not the literal `true` sentinel) and navigates to the app page — the single assertion that catches the #1/#2 class of defect (review-1 #7). Also assert the observer path: a view-only user lands on the shared `{workflow_type}-action` page, not the working page.
+7. **Showcase the kind in `apps/demo`.** Convert the demo's existing `send-quote` action (onboarding workflow) from `kind: form` to `kind: custom`, backed by a new app-owned `quote-builder` page (`apps/demo/pages/leads/quote-builder.yaml`). The flat two-field `form:` (`quote_total` + `notes`) becomes a bespoke builder surface — a line-items editor with a live-computed total — that the app owns, persists onto the lead doc, and from which it calls the module's `onboarding-submit` endpoint to advance the workflow. `send-quote` keeps its admin reviewer, so the demo exercises every custom link slot (working `edit` link → `quote-builder`, `review` at in-review, observer fallback → the shared `onboarding-action` page). This makes the demo cover all four kinds (it already shows form/check/tracker) and gives the kind a runnable example outside the test app. See §Demo showcase.
 
 ## What `custom` means: `check` with author-owned links
 
@@ -175,6 +176,46 @@ Custom is "app-owned working page + author-owned link" — every other engine fe
 - **No module working pages.** The author owns the working surface via cell `link:` (and an optional `view_link:`); `computeEngineLinks` routes those authored links into the per-verb map rather than computing module page ids for the working slots. The engine still supplies the shared `{workflow_type}-action` page as the observer fallback for the `view` slot — so a custom action always has a read-only status surface even when the author authors only a working `link`. This author-owned working surface is the defining property of the kind.
 - **No build-time validation of `link.pageId` against the host app's page tree.** Module resolvers have no view of host-app page ids. A typo surfaces at click time as a 404, the same as any free-form Lowdefy page reference. (Built-in kinds' links resolve through module page ids and _are_ build-validated; app page ids are not.)
 
+## Demo showcase — `send-quote` as a custom action
+
+The `workflows-test` spec (§6) is the load-bearing correctness check; the demo addition is a _showcase_ — `apps/demo` exercises every module and currently shows `form`, `check`, and `tracker` but never `custom`. Rather than invent a new action, convert the existing `send-quote` action — the demo's most form-stretching step (a real quote is line items + a total + a preview, not two fields) — into a custom action whose working surface is an app-owned quote builder. Additive coverage at the cost of one app page, and it trims the demo's form redundancy (four form actions → three).
+
+**Config change — `apps/demo/modules/workflows/workflow_config/onboarding/send-quote.yaml`.** `kind: form` → `kind: custom`; drop the `form:` block (custom rejects it); keep `action_group: quoting`, `blocked_by: [qualify]`, and the existing `access` (including `review: [admin]`). The `status_map` gains a `link:` cell on every working stage pointing at the app page id, with the `action_id` sentinel:
+
+```yaml
+status_map:
+  blocked:
+    demo: { message: Build the quote once the lead is qualified. }
+  action-required:
+    demo:
+      message: Build and send the quote for approval.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  in-progress:
+    demo:
+      message: Quote in progress.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  in-review:
+    demo:
+      message: Quote awaiting approval.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  changes-required:
+    demo:
+      message: Reviewer requested changes.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+  done:
+    demo:
+      message: Quote approved and sent.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
+```
+
+The engine routes each `link` into the stage's active verb slot: `edit` at action-required/in-progress/changes-required, `review` at in-review, `view` at done (§Links). **No `view_link` is authored** — so an observer at any in-flight stage falls back to the shared `onboarding-action` page (the regeneralized Part 56 page), exercising the default observer path. (The `workflows-test` spec covers the explicit-`view_link` variant.)
+
+**App page — `apps/demo/pages/leads/quote-builder.yaml` (new).** Loads the action by `?action_id` by `_ref`-ing the module's `requests/get_workflow_action.yaml` (the same request the module's `onboarding-action` page uses), derives `edit`/`review`/`view` mode from `status.0.stage` + `allowed` (the mode-derivation ladder copied from `templates/action.yaml.njk`), and renders the bespoke builder: a `ControlledList` of line items with a live-computed total — the surface a flat `form:` block can't express, which is the whole justification for the kind. On submit it (1) persists the quote subdoc to the lead via an app-owned `update_lead_quote` request, then (2) calls the module's `onboarding-submit` endpoint (`_module.endpointId`) with the appropriate nullary signal — `submit` from the actor, `approve` / `request_changes` from the admin reviewer. (Two non-atomic requests — the documented recommended path; the atomic alternative, a `hooks.submit.pre` routine on the action, is noted in §App-side shape.)
+
+**Wiring.** Register `quote-builder` in `apps/demo/lowdefy.yaml`'s `pages:` array and add the `update_lead_quote` request. The page id `quote-builder` matches the `link.pageId` cell.
+
+**E2e — `apps/demo/e2e/workflows/onboarding-happy-path.spec.js`.** The spec's `send-quote` section currently navigates to the form per-action edit page, fills `form.quote_total` / `form.notes`, and approves on `workflow-action-review`. Retarget it: navigate to `quote-builder` via the rendered action-row link (which now carries the concrete action `_id`), build the quote, submit → in-review, then approve as admin. This keeps the demo's headline happy-path green and doubles as the demo-side custom click-through.
+
 ## Files changed
 
 | File                                                                                                                                                                            | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -196,6 +237,10 @@ Custom is "app-owned working page + author-owned link" — every other engine fe
 | `apps/workflows-test/modules/workflows/workflow_config/custom-action/`                                                                                                          | **New.** A `custom`-kind workflow config exercising the cell `link:` / `view_link:` and the `action_id` sentinel (alongside the existing `form-lifecycle`, `check-blocked-by`, etc. scenarios).                                                                                                                                                                                                                                                                                                                                                                                               |
 | `apps/workflows-test/pages/` (app-owned custom page) + `modules.yaml` / `lowdefy.yaml` wiring                                                                                   | **New.** The app-owned working page the custom action's `link:` points at — loads the action by `?action_id=<id>` and calls the module's `{type}-submit` endpoint.                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `apps/workflows-test/e2e/workflows/custom-action.spec.js`                                                                                                                       | **New.** E2e spec. Load-bearing assertion: the rendered card link carries the concrete action `_id` (not the literal `true` sentinel) and navigates to the app page (catches the #1/#2 defect class); plus the observer-fallback assertion (view-only user lands on `{workflow_type}-action`). Subsumes the prior "end-to-end custom submit test" note.                                                                                                                                                                                                                                       |
+| `apps/demo/modules/workflows/workflow_config/onboarding/send-quote.yaml` | **Demo showcase.** Convert `kind: form` → `kind: custom`: drop the `form:` block, keep `access` (incl. `review: [admin]`), `blocked_by`, `action_group`; add `link:` cells (→ `quote-builder`, `action_id` sentinel) on every working stage. See §Demo showcase. |
+| `apps/demo/pages/leads/quote-builder.yaml` | **New (demo).** App-owned bespoke quote builder: loads the action via the module's `get_workflow_action` request keyed on `?action_id`, derives edit/review/view mode, renders a line-items editor + live total, persists the quote to the lead, and calls `onboarding-submit` with the nullary signal. |
+| `apps/demo/lowdefy.yaml` (+ `update_lead_quote` request) | **Demo wiring.** Register the `quote-builder` page in `pages:`; add the app-owned `update_lead_quote` domain-write request the page calls before submitting. |
+| `apps/demo/e2e/workflows/onboarding-happy-path.spec.js` | **Demo e2e update.** Rewrite the `send-quote` section: navigate to `quote-builder` (via the action-row link carrying the `_id`), build the quote, submit → in-review, approve as admin. Replaces the form-page / `workflow-action-review` steps. |
 
 ## Related
 
