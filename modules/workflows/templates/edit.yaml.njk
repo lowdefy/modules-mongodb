@@ -250,44 +250,81 @@ _ref:
               component: floating-actions
               vars:
                 actions:
-                  - id: button_not_required
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.not_required.visible
-                            default: true
-                        - _state: action.buttons.not_required
-                    properties:
-                      title: Mark Not Required
-                      type: default
-                      disabled:
-                        _var:
-                          key: page_config.buttons.not_required.disabled
-                          default: false
-                    events:
-                      onClick:
-                        _build.if:
-                          test:
-                            _build.ne:
-                              - _var:
-                                  key: page_config.buttons.not_required.modal
-                                  default: null
-                              - null
-                          then:
-                            - id: open_not_required_modal
-                              type: CallMethod
-                              params:
-                                method: open
-                                blockId: not_required_modal
-                          else:
+                  _build.array.concat:
+                    - - id: button_not_required
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
+                            - _var:
+                                key: page_config.buttons.not_required.visible
+                                default: true
+                            - _state: action.buttons.not_required
+                        properties:
+                          title: Mark Not Required
+                          type: default
+                          disabled:
+                            _var:
+                              key: page_config.buttons.not_required.disabled
+                              default: false
+                        events:
+                          onClick:
+                            _build.if:
+                              test:
+                                _build.ne:
+                                  - _var:
+                                      key: page_config.buttons.not_required.modal
+                                      default: null
+                                  - null
+                              then:
+                                - id: open_not_required_modal
+                                  type: CallMethod
+                                  params:
+                                    method: open
+                                    blockId: not_required_modal
+                              else:
+                                _build.array.concat:
+                                  - _var:
+                                      key: page_config.events.onSubmit
+                                      default: []
+                                  - - id: submit_not_required
+                                      type: CallAPI
+                                      params:
+                                        endpointId:
+                                          _module.endpointId: {{ workflow_type }}-submit
+                                        payload:
+                                          action_id:
+                                            _state: action._id
+                                          signal: not_required
+                                          current_key:
+                                            _state: action.key
+                                          comment:
+                                            _state: comment
+                      - id: button_progress
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
+                            - _var:
+                                key: page_config.buttons.progress.visible
+                                default: true
+                            - _state: action.buttons.progress
+                        properties:
+                          title: Save Draft
+                          type: default
+                          disabled:
+                            _var:
+                              key: page_config.buttons.progress.disabled
+                              default: false
+                        events:
+                          onClick:
                             _build.array.concat:
                               - _var:
-                                  key: page_config.events.onSubmit
+                                  key: page_config.events.onProgress
                                   default: []
-                              - - id: submit_not_required
+                              - - id: progress
                                   type: CallAPI
                                   params:
                                     endpointId:
@@ -295,148 +332,115 @@ _ref:
                                     payload:
                                       action_id:
                                         _state: action._id
-                                      signal: not_required
-                                      current_key:
-                                        _state: action.key
-                                      comment:
-                                        _state: comment
-                  - id: button_progress
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.progress.visible
-                            default: true
-                        - _state: action.buttons.progress
-                    properties:
-                      title: Save Draft
-                      type: default
-                      disabled:
-                        _var:
-                          key: page_config.buttons.progress.disabled
-                          default: false
-                    events:
-                      onClick:
-                        _build.array.concat:
-                          - _var:
-                              key: page_config.events.onProgress
-                              default: []
-                          - - id: progress
-                              type: CallAPI
-                              params:
-                                endpointId:
-                                  _module.endpointId: {{ workflow_type }}-submit
-                                payload:
-                                  action_id:
-                                    _state: action._id
-                                  signal: progress
-                                  current_key:
-                                    _state: action.key
-                                  form:
-                                    _state: form
-                            # Progress succeeded (CallAPI halts the chain on
-                            # error): refetch the action so status/key reflect
-                            # the saved draft, then confirm with a toast.
-                            - id: refetch_action_progress
-                              type: Request
-                              params: get_workflow_action
-                            - id: reset_action_progress
-                              type: SetState
-                              params:
-                                action:
-                                  _request: get_workflow_action
-                            - id: progress_success_message
-                              type: DisplayMessage
-                              params:
-                                status: success
-                                content:
-                                  _var:
-                                    key: page_config.buttons.progress.successMessage
-                                    default: Draft saved.
-                  - id: button_submit
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.submit.visible
-                            default: true
-                        - _state: action.buttons.submit
-                    properties:
-                      title: Submit
-                      type: primary
-                      disabled:
-                        _var:
-                          key: page_config.buttons.submit.disabled
-                          default: false
-                    events:
-                      onClick:
-                        _build.if:
-                          test:
-                            _build.ne:
-                              - _var:
-                                  key: page_config.buttons.submit.modal
-                                  default: null
-                              - null
-                          then:
-                            - id: open_submit_modal
-                              type: CallMethod
-                              params:
-                                method: open
-                                blockId: submit_modal
-                          else:
-                            _build.array.concat:
-                              - - id: validate
-                                  type: Validate
-                                  params:
-                                    regex:
-                                      - ^form\.
-                              - _var:
-                                  key: page_config.events.onSubmit
-                                  default: []
-                              - - id: submit
-                                  type: CallAPI
-                                  params:
-                                    endpointId:
-                                      _module.endpointId: {{ workflow_type }}-submit
-                                    payload:
-                                      action_id:
-                                        _state: action._id
-                                      signal: submit
+                                      signal: progress
                                       current_key:
                                         _state: action.key
                                       form:
                                         _state: form
-                                      comment:
-                                        _state: comment
-                                # Submit succeeded (CallAPI halts the chain on
-                                # error): confirm, then return to the entity.
-                                - id: submit_success_message
+                                # Progress succeeded (CallAPI halts the chain on
+                                # error): refetch the action so status/key reflect
+                                # the saved draft, then confirm with a toast.
+                                - id: refetch_action_progress
+                                  type: Request
+                                  params: get_workflow_action
+                                - id: reset_action_progress
+                                  type: SetState
+                                  params:
+                                    action:
+                                      _request: get_workflow_action
+                                - id: progress_success_message
                                   type: DisplayMessage
                                   params:
                                     status: success
                                     content:
                                       _var:
-                                        key: page_config.buttons.submit.successMessage
-                                        default: Submitted successfully.
-                                - id: return_to_entity
-                                  type: Link
+                                        key: page_config.buttons.progress.successMessage
+                                        default: Draft saved.
+                      - id: button_submit
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
+                            - _var:
+                                key: page_config.buttons.submit.visible
+                                default: true
+                            - _state: action.buttons.submit
+                        properties:
+                          title: Submit
+                          type: primary
+                          disabled:
+                            _var:
+                              key: page_config.buttons.submit.disabled
+                              default: false
+                        events:
+                          onClick:
+                            _build.if:
+                              test:
+                                _build.ne:
+                                  - _var:
+                                      key: page_config.buttons.submit.modal
+                                      default: null
+                                  - null
+                              then:
+                                - id: open_submit_modal
+                                  type: CallMethod
                                   params:
-                                    _if:
-                                      test:
-                                        _ne:
-                                          - _state: action.entity_link.pageId
-                                          - null
-                                      then:
-                                        pageId:
-                                          _state: action.entity_link.pageId
-                                        urlQuery:
-                                          _state: action.entity_link.urlQuery
-                                      else:
-                                        back: true
+                                    method: open
+                                    blockId: submit_modal
+                              else:
+                                _build.array.concat:
+                                  - - id: validate
+                                      type: Validate
+                                      params:
+                                        regex:
+                                          - ^form\.
+                                  - _var:
+                                      key: page_config.events.onSubmit
+                                      default: []
+                                  - - id: submit
+                                      type: CallAPI
+                                      params:
+                                        endpointId:
+                                          _module.endpointId: {{ workflow_type }}-submit
+                                        payload:
+                                          action_id:
+                                            _state: action._id
+                                          signal: submit
+                                          current_key:
+                                            _state: action.key
+                                          form:
+                                            _state: form
+                                          comment:
+                                            _state: comment
+                                    # Submit succeeded (CallAPI halts the chain on
+                                    # error): confirm, then return to the entity.
+                                    - id: submit_success_message
+                                      type: DisplayMessage
+                                      params:
+                                        status: success
+                                        content:
+                                          _var:
+                                            key: page_config.buttons.submit.successMessage
+                                            default: Submitted successfully.
+                                    - id: return_to_entity
+                                      type: Link
+                                      params:
+                                        _if:
+                                          test:
+                                            _ne:
+                                              - _state: action.entity_link.pageId
+                                              - null
+                                          then:
+                                            pageId:
+                                              _state: action.entity_link.pageId
+                                            urlQuery:
+                                              _state: action.entity_link.urlQuery
+                                          else:
+                                            back: true
+                    - _var:
+                        key: page_config.buttons.extra
+                        default: []
         # Confirm modals — render iff page_config.buttons.{name}.modal is set.
         - _build.if:
             test:

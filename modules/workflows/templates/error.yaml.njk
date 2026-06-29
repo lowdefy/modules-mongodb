@@ -269,66 +269,70 @@ _ref:
               component: floating-actions
               vars:
                 actions:
-                  - id: button_resolve_error
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.resolve_error.visible
-                            default: true
-                        - _state: action.buttons.resolve_error
-                    properties:
-                      title:
-                        _var:
-                          key: page_config.buttons.resolve_error.title
-                          default: Resolve
-                      type: primary
-                      disabled:
-                        _var:
-                          key: page_config.buttons.resolve_error.disabled
-                          default: false
-                    events:
-                      onClick:
-                        _build.if:
-                          test:
-                            _build.ne:
-                              - _var:
-                                  key: page_config.buttons.resolve_error.modal
-                                  default: null
-                              - null
-                          then:
-                            - id: open_resolve_error_modal
-                              type: CallMethod
-                              params:
-                                method: open
-                                blockId: resolve_error_modal
-                          else:
-                            _build.array.concat:
-                              - - id: validate
-                                  type: Validate
+                  _build.array.concat:
+                    - - id: button_resolve_error
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
+                            - _var:
+                                key: page_config.buttons.resolve_error.visible
+                                default: true
+                            - _state: action.buttons.resolve_error
+                        properties:
+                          title:
+                            _var:
+                              key: page_config.buttons.resolve_error.title
+                              default: Resolve
+                          type: primary
+                          disabled:
+                            _var:
+                              key: page_config.buttons.resolve_error.disabled
+                              default: false
+                        events:
+                          onClick:
+                            _build.if:
+                              test:
+                                _build.ne:
+                                  - _var:
+                                      key: page_config.buttons.resolve_error.modal
+                                      default: null
+                                  - null
+                              then:
+                                - id: open_resolve_error_modal
+                                  type: CallMethod
                                   params:
-                                    regex:
-                                      - ^form\.
-                              - _var:
-                                  key: page_config.events.onSubmit
-                                  default: []
-                              - - id: submit_resolve_error
-                                  type: CallAPI
-                                  params:
-                                    endpointId:
-                                      _module.endpointId: {{ workflow_type }}-submit
-                                    payload:
-                                      action_id:
-                                        _state: action._id
-                                      signal: resolve_error
-                                      current_key:
-                                        _state: action.key
-                                      form:
-                                        _state: form
-                                      comment:
-                                        _state: comment
+                                    method: open
+                                    blockId: resolve_error_modal
+                              else:
+                                _build.array.concat:
+                                  - - id: validate
+                                      type: Validate
+                                      params:
+                                        regex:
+                                          - ^form\.
+                                  - _var:
+                                      key: page_config.events.onSubmit
+                                      default: []
+                                  - - id: submit_resolve_error
+                                      type: CallAPI
+                                      params:
+                                        endpointId:
+                                          _module.endpointId: {{ workflow_type }}-submit
+                                        payload:
+                                          action_id:
+                                            _state: action._id
+                                          signal: resolve_error
+                                          current_key:
+                                            _state: action.key
+                                          form:
+                                            _state: form
+                                          comment:
+                                            _state: comment
+                    - _var:
+                        key: page_config.buttons.extra
+                        default: []
         # Optional ConfirmModal — renders iff page_config.buttons.resolve_error.modal is set.
         - _build.if:
             test:

@@ -237,130 +237,134 @@ _ref:
               component: floating-actions
               vars:
                 actions:
-                  # Edit (navigation) — not gated on action_allowed; edit page
-                  # gates its own writes. Always sets skip_status_redirect so
-                  # edit's stale-URL guard lets `in-review` actions through.
-                  - id: button_edit
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _var:
-                        key: page_config.buttons.edit.visible
-                        default:
-                          _build.ne:
+                  _build.array.concat:
+                      # Edit (navigation) — not gated on action_allowed; edit page
+                      # gates its own writes. Always sets skip_status_redirect so
+                      # edit's stale-URL guard lets `in-review` actions through.
+                    - - id: button_edit
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _var:
+                            key: page_config.buttons.edit.visible
+                            default:
+                              _build.ne:
+                                - _var:
+                                    key: page_ids.edit
+                                    default: null
+                                - null
+                        properties:
+                          title: Edit
+                          type: default
+                          disabled:
+                            _var:
+                              key: page_config.buttons.edit.disabled
+                              default: false
+                        events:
+                          onClick:
+                            - id: link_edit
+                              type: Link
+                              params:
+                                pageId:
+                                  _module.pageId:
+                                    _var: page_ids.edit
+                                urlQuery:
+                                  _url_query: true
+                                input:
+                                  skip_status_redirect: true
+                      - id: button_request_changes
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
                             - _var:
-                                key: page_ids.edit
-                                default: null
-                            - null
-                    properties:
-                      title: Edit
-                      type: default
-                      disabled:
-                        _var:
-                          key: page_config.buttons.edit.disabled
-                          default: false
-                    events:
-                      onClick:
-                        - id: link_edit
-                          type: Link
-                          params:
-                            pageId:
-                              _module.pageId:
-                                _var: page_ids.edit
-                            urlQuery:
-                              _url_query: true
-                            input:
-                              skip_status_redirect: true
-                  - id: button_request_changes
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.request_changes.visible
-                            default: true
-                        - _state: action.buttons.request_changes
-                    properties:
-                      title: Request Changes
-                      type: default
-                      danger: true
-                      ghost: true
-                      disabled:
-                        _var:
-                          key: page_config.buttons.request_changes.disabled
-                          default: false
-                    events:
-                      onClick:
-                        # request_changes_modal is a Modal (not a ConfirmModal):
-                        # its open method is setOpen({ open }), not open.
-                        - id: open_request_changes_modal
-                          type: CallMethod
-                          params:
-                            method: setOpen
-                            blockId: request_changes_modal
-                            args:
-                              - open: true
-                  - id: button_approve
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _var:
-                            key: page_config.buttons.approve.visible
-                            default: true
-                        - _state: action.buttons.approve
-                    properties:
-                      title: Approve
-                      type: primary
-                      disabled:
-                        _var:
-                          key: page_config.buttons.approve.disabled
-                          default: false
-                    events:
-                      onClick:
-                        _build.if:
-                          test:
-                            _build.ne:
-                              - _var:
-                                  key: page_config.buttons.approve.modal
-                                  default: null
-                              - null
-                          then:
-                            - id: open_approve_modal
+                                key: page_config.buttons.request_changes.visible
+                                default: true
+                            - _state: action.buttons.request_changes
+                        properties:
+                          title: Request Changes
+                          type: default
+                          danger: true
+                          ghost: true
+                          disabled:
+                            _var:
+                              key: page_config.buttons.request_changes.disabled
+                              default: false
+                        events:
+                          onClick:
+                            # request_changes_modal is a Modal (not a ConfirmModal):
+                            # its open method is setOpen({ open }), not open.
+                            - id: open_request_changes_modal
                               type: CallMethod
                               params:
-                                method: open
-                                blockId: approve_modal
-                          else:
-                            _build.array.concat:
-                              - - id: validate
-                                  type: Validate
+                                method: setOpen
+                                blockId: request_changes_modal
+                                args:
+                                  - open: true
+                      - id: button_approve
+                        type: Button
+                        layout:
+                          flex: 0 1 auto
+                        visible:
+                          _and:
+                            - _var:
+                                key: page_config.buttons.approve.visible
+                                default: true
+                            - _state: action.buttons.approve
+                        properties:
+                          title: Approve
+                          type: primary
+                          disabled:
+                            _var:
+                              key: page_config.buttons.approve.disabled
+                              default: false
+                        events:
+                          onClick:
+                            _build.if:
+                              test:
+                                _build.ne:
+                                  - _var:
+                                      key: page_config.buttons.approve.modal
+                                      default: null
+                                  - null
+                              then:
+                                - id: open_approve_modal
+                                  type: CallMethod
                                   params:
-                                    regex:
-                                      - ^form_review\.
-                              - _var:
-                                  key: page_config.events.onApprove
-                                  default: []
-                              - - id: submit_approve
-                                  type: CallAPI
-                                  params:
-                                    endpointId:
-                                      _module.endpointId: {{ workflow_type }}-submit
-                                    payload:
-                                      action_id:
-                                        _state: action._id
-                                      signal: approve
-                                      current_key:
-                                        _state: action.key
-                                      form:
-                                        _state: form
-                                      form_review:
-                                        _state: form_review
-                                      comment:
-                                        _state: comment
+                                    method: open
+                                    blockId: approve_modal
+                              else:
+                                _build.array.concat:
+                                  - - id: validate
+                                      type: Validate
+                                      params:
+                                        regex:
+                                          - ^form_review\.
+                                  - _var:
+                                      key: page_config.events.onApprove
+                                      default: []
+                                  - - id: submit_approve
+                                      type: CallAPI
+                                      params:
+                                        endpointId:
+                                          _module.endpointId: {{ workflow_type }}-submit
+                                        payload:
+                                          action_id:
+                                            _state: action._id
+                                          signal: approve
+                                          current_key:
+                                            _state: action.key
+                                          form:
+                                            _state: form
+                                          form_review:
+                                            _state: form_review
+                                          comment:
+                                            _state: comment
+                    - _var:
+                        key: page_config.buttons.extra
+                        default: []
         # Mandatory Request Changes modal — carries the required comment input.
         - - id: request_changes_modal
             type: Modal
