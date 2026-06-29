@@ -1,195 +1,189 @@
 # Custom action kind
 
-Adds a fourth action `kind:` to the workflows module — `custom` — for workflows whose action has the same status-transition semantics as `check` but whose entire submit surface lives in app-supplied pages and APIs rather than the module. The module ships no pages, no submit endpoint, and no hook surface for `custom` actions; apps wire `status_map.link` to their own pages, and those pages call the `SubmitWorkflowAction` plugin handler directly inside an app-authored Lowdefy Api.
+Adds a fourth action `kind:` to the workflows module — `custom` — for actions whose status lifecycle is identical to `check` but whose working surface lives on app-owned pages rather than the module's shared `workflow-action-*` pages. A custom action behaves exactly like a check action — same FSM, same nullary signals, same `fields:` channel, same per-workflow `{type}-submit` endpoint — with one difference: **its working surface is app-owned.** The author writes a `link:` cell (and optionally a `view_link:`) in `status_map` pointing at app pages; the engine routes those authored links into the per-verb link map by stage — the working `link` into the stage's active verb slot, and `view_link` (or the shared `workflow-action-view` page as a fallback) into the `view` slot — so an observer without working access always lands on a read-only status surface.
 
-This unblocks workflows where the per-action UX is dictated by an existing app page (e.g. a domain document editor, a multi-screen wizard, an external system mirror) that doesn't fit the shared `workflow-action-edit` shape and shouldn't be forced into a `form:` block.
+This unblocks workflows where the per-action UX is dictated by an existing app page (a domain document editor, a multi-screen wizard, an external-system mirror) that doesn't fit the shared check page and shouldn't be forced into a `form:` block.
 
 ## Proposed change
 
-1. Add `kind: custom` as the fourth value of the action-kind enum in [action-authoring/spec.md](../../../../workflows-module-concept/action-authoring/spec.md) and [makeWorkflowsConfig.js](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js). It rejects `form:`, `tracker:`, `hooks:`, `interactions:`, and `event:` at build time; it accepts the universal-fields (`assignees`, `due_date`, `description`), `action_group`, `sort_order`, `required_after_close`, `blocked_by`, `access`, and `status_map`.
-2. Skip per-action page emission in [makeActionPages.js](../../../../../modules/workflows/resolvers/makeActionPages.js) for `kind: custom` (same posture it already takes for `check` and `tracker`). The module ships no shared pages for this kind either — apps own the UI entirely.
-3. Skip per-action endpoint emission in [makeWorkflowApis.js](../../../../../modules/workflows/resolvers/makeWorkflowApis.js) for `kind: custom`. No `update-action-{action_type}` Api is generated; no hook Apis are generated.
-4. Reuse `SubmitWorkflowAction` as the engine entry point for custom-action writes. Apps invoke it from their own Lowdefy Api routine with `interaction: submit_edit` and a caller-supplied `current_status` (the same `current_status` channel the check kind already uses). Document the routine shape in the workflows module README under a new "Custom actions" section.
-5. Document the `status_map.link.pageId` convention for custom actions — it points at an app-side page id; the module does not validate it. (No code change; spec-level documentation of an existing freedom.)
+1. Add `kind: custom` as the fourth value of `ACTION_KINDS` in [makeWorkflowsConfig.js](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js). It rejects `form:` and `tracker:` (the kind-shape blocks, exactly as `check` does) and accepts everything `check` accepts: `key`, `hooks`, `event`, `status_map`, `access`, `action_group`, `blocked_by`, `required_after_close`, `allow_not_required`, and the universal fields.
+2. Add a `custom: form` alias to `FSM_TABLES` in [fsm/tables.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js) (by object identity, exactly as `check: form` is aliased today) so submit signals resolve through the same table as form/check.
+3. **Route the authored links into the per-verb link map** in [computeEngineLinks.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/render/computeEngineLinks.js). Today it returns `{}` for `kind: custom`, and every live display surface — `collapseLink` in [resolveActionAccess.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/render/resolveActionAccess.js), read by `GetEntityWorkflows`, both overviews, and the events timeline — reads only the per-verb `links` map. So an authored cell `link` (which renders to the singular `doc[slug].link`) would never reach a card (review-1 #1). Change the `kind: custom` branch so that, instead of returning `{}`, it reads the rendered cell's `link`/`view_link`, substitutes the `action_id`/`entity_id` sentinels (via the shared helper extracted from the tracker arm — see §Links and review-1 #2), and writes them into the per-verb `links` map by stage: the working `link` lands in the stage's active working verb slot (`edit` at action-required/in-progress/changes-required, `review` at in-review, `error` at error, `view` at done), and `view_link` — or the entry-scoped shared `workflow-action-view` page as a fallback — lands in the `view` slot. The map is the shape `collapseLink` already reads, so the authored link surfaces and the existing edit→review→error→view collapse routes each user to the right page (a working user to the app page, an observer to the view page). `validateStatusMapCells` already permits `link:` for `kind: custom`; extend it to permit `view_link:` and validate both shapes (open question 2 / review-1 #6).
+4. No change to [makeActionPages.js](../../../../../modules/workflows/resolvers/makeActionPages.js) (its `if (action.kind !== "form") return []` guard already excludes custom — it emits no per-action pages), [makeWorkflowApis.js](../../../../../modules/workflows/resolvers/makeWorkflowApis.js) (custom is submittable like check, so it rides the per-workflow `{type}-submit` / `{type}-update-fields` endpoints and `render_config` with no skip), or [handleSubmit.js](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) (the handler is signal-driven and keys on no `kind`).
+5. Document the kind in the concept specs and the module README: the `custom`/`check` distinction (engine-computed vs author-authored links), the recommended submit path (the app page calls the module's `{type}-submit` endpoint), and the `status_map.{stage}.{app}.link` cell convention.
 
-## Why a fourth kind
+## What `custom` means: `check` with author-owned links
 
-The existing three kinds each occupy a distinct slot on two axes — _who owns the UI_ and _who calls the engine_:
+The four kinds occupy distinct slots on two axes — _who owns the working-surface page_ and _who owns the navigation link the engine writes onto the action doc_:
 
-| Kind      | UI owner                                           | Submit endpoint                                | Status source                                       |
-| --------- | -------------------------------------------------- | ---------------------------------------------- | --------------------------------------------------- |
-| `form`    | Module (per-action pages, via `form:`)             | Resolver-emitted `update-action-{action_type}` | Engine default / `interactions:` / pre-hook         |
-| `check`   | Module (shared `workflow-action-edit/view/review`) | Resolver-emitted `update-action-{action_type}` | Caller-supplied (`current_status`) on `submit_edit` |
-| `tracker` | Module (inline in `actions-on-entity`)             | None (engine writes via subscription)          | Hard-coded child-stage map                          |
-| `custom`  | **App** (custom pages)                             | **None** (app-authored Lowdefy Api)            | Caller-supplied (`current_status`) on `submit_edit` |
+| Kind      | Working-surface page                                                              | Navigation `link` on the action doc                                                                              | Submit endpoint / status source                                     |
+| --------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `form`    | Module per-action pages `{type}-{action}-{verb}`                                  | Engine-computed (`computeEngineLinks`) → the derived form pages                                                  | `{type}-submit`, signal → FSM                                       |
+| `check`   | Module shared pages `workflow-action-{verb}`                                      | Engine-computed (`computeEngineLinks`) → the shared check pages                                                  | `{type}-submit`, signal → FSM                                       |
+| `tracker` | Inline in `actions-on-entity`                                                     | Engine-computed (child overview / `tracker.start_link`)                                                          | None — engine writes via the `internal_mirror_child_*` subscription |
+| `custom`  | **App-owned pages** (working) + shared `workflow-action-view` (observer fallback) | Engine-routed from author's `link:`/`view_link:` cells → app pages (working slots), shared view page (view slot) | `{type}-submit`, signal → FSM (`custom: form` alias)                |
 
-`custom` is the slot where neither `check`'s shared page nor `form`'s per-action page is the right home for the UI, but the engine's status model and per-action lifecycle should still apply. The closest existing analogue is `check` — same status semantics, same `current_status` channel — but with the module's UI and submit-endpoint emission stripped away. The motivating shape is "the action represents a piece of work, the user does that work on a page the app already owns, and we want the workflow's status array, group rollup, blocked_by, and tracker fan-up to keep working."
+Everything else is identical to `check`. Custom uses the same eight-status FSM (aliased to `form`), the same nullary submit signals (`submit`, `progress`, `not_required`, `approve`, `request_changes`, `resolve_error`), the same `fields:` payload channel, the same per-workflow `{type}-submit` and `{type}-update-fields` endpoints, and the same `hooks:`/`event:` machinery. The single difference is link _source_: for the three built-in kinds `computeEngineLinks` derives the per-verb link map from module page ids; for `custom` it derives the same per-verb map from the author's `status_map` `link:`/`view_link:` cells. It writes that map in the shape the display layer reads — so the authored working link reaches the card for users who can act, while observers fall back to the shared `workflow-action-view` status page. The engine still owns the read-only view fallback; the author owns the working surface (and, optionally, an app-owned in-flight view page).
 
-The alternatives considered:
+The motivating shape is "the action represents a piece of work, the user does that work on a page the app already owns, and we want the workflow's status array, group rollup, `blocked_by`, and tracker fan-up to keep working." Custom is exactly that: a check action whose card on the entity page links to an app page instead of the shared check page.
 
-- **A `form` action with an empty `form:` block and `status_map.link` pointing at an app page.** Rejected: still emits four per-action pages (none of which the app uses), still emits `update-action-{action_type}` with a `form:` payload contract the app doesn't honour, and forces the action through `form`'s priority-rule status path (no caller-supplied `current_status`).
-- **A `check` action with `status_map.link` pointing at the app page instead of `workflow-action-edit`.** Rejected: still ships the three shared check pages (which appear in the build's page-id index even when unreferenced), still emits `update-action-{action_type}` (which the app's custom page may or may not use depending on whether it routes through the shared check pages), and forces the action through the check page's status-selector UX semantics. Authors who pick `custom` are stating "the shared check page is not the surface" — encoding that choice in the kind is cleaner than encoding it in `status_map.link`.
-- **An extension knob on `check` (e.g. `check.shared_pages: false`).** Rejected: same encoding-choice-as-a-flag problem; downstream resolvers all need a `check && !shared_pages` branch which is just `custom` spelled awkwardly. Kinds are the discriminator the resolvers already key on.
+## Why a fourth kind, not a flag on `check`
+
+The engine keys link source on `kind` in `computeEngineLinks` (and `validateStatusMapCells` keys cell permissions the same way). Encoding "author owns the links" as a flag on `check` (e.g. `check.author_links: true`) would mean every one of those branches becomes `check && author_links` — which is just `custom` spelled awkwardly. Kinds are the discriminator the resolvers and renderers already switch on (CLAUDE.md "one correct way"). The alternatives:
+
+- **A `form` action with an empty `form:` block, linking to an app page via the cell.** Rejected: still emits the per-action `{type}-{action}-{verb}` pages (none of which the app uses), and `computeEngineLinks` would overwrite the author's cell links with computed links to those dead pages.
+- **A `check` action linking to the app page.** Rejected: `validateStatusMapCells` rejects `link:` for `check` (it's engine-managed), and `computeEngineLinks` overwrites the doc's link map with links to the shared `workflow-action-{verb}` pages. The author cannot redirect a check action's navigation to an app page — that redirection _is_ what `custom` provides.
+- **A `check.author_links` flag.** Rejected: the encoding-as-a-flag problem above.
 
 ## What the kind means at each layer
 
 ### Build-time validation (`makeWorkflowsConfig`)
 
-Add `custom` to `ACTION_KINDS`. New rules in `validateAction`:
+- Add `"custom"` to `ACTION_KINDS` and update the unknown-kind error message (currently `"expected form, check, or tracker"`).
+- In `validateAction`, reject the kind-shape blocks exactly as `check` does: `kind: custom` with `form:` or `tracker:` hard-errors. Concretely, extend the existing check guard (`makeWorkflowsConfig.js:535`, currently `action.kind === "check" && (action.form || action.tracker)`) to `(action.kind === "check" || action.kind === "custom") && (action.form || action.tracker)`.
+- `hooks:`, `event:`, `key:`, `status_map`, `access`, `universal_fields`, `blocked_by`, `action_group`, `required_after_close`, and `allow_not_required` are all accepted — custom is validated by the same per-field validators as check (`validateHooks`, `validateEvent`, `validateActionAccess`, `validateUniversalFields`, `validateStatusMapCells`). No custom-specific rules beyond the kind-shape rejection.
+- `validateStatusMapCells` already branches on `isCustom = action.kind === "custom"` to permit `link:` cells. The branch is currently unreachable (the unknown-kind check in `validateAction` fires first); adding `custom` to `ACTION_KINDS` makes it live. Confirm the branch is hit and add the `kind: custom` cell test.
 
-- `kind: custom` rejects `form:` ("custom actions cannot define form: — use kind: form for a form-driven action").
-- `kind: custom` rejects `tracker:` ("custom actions cannot define tracker: — use kind: tracker for a tracker action").
-- `kind: custom` rejects `hooks:` ("custom actions cannot declare hooks: — hooks are only meaningful when the module emits the submit endpoint; custom actions handle pre/post logic inside their app-supplied API routine").
-- `kind: custom` rejects `interactions:` ("custom actions cannot declare interactions: — apps supply current_status directly when calling SubmitWorkflowAction").
-- `kind: custom` rejects `event:` ("custom actions cannot declare event: — apps shape the log event payload inside their app-supplied API routine").
-- `kind: custom` accepts `key:` (instanced custom actions are allowed; same identity rules as form/check — `(workflow_id, type, key)`).
-- `kind: custom` rejects `required_after_close: true` is **not** restricted — the flag works the same as for check/form (action survives close-sweep unless blocked).
-- Existing `key:`/`tracker:` mutual-exclusion stays — `custom` actions opt into `key:` the same way `form`/`check` do.
+The kind passes through into the runtime `workflowsConfig` via the existing `ACTION_FIELDS` pick — no schema-shape change, only a new enum value.
 
-The kind passes through into the runtime `workflowsConfig` via the existing `ACTION_FIELDS` pick — no schema-shape change to the runtime config, only a new enum value.
+> **Decision (re-aligned 2026-06):** the parked version of this design rejected `hooks:`, `event:`, and `interactions:` for custom on the rationale that "the app owns the submit endpoint." That rationale is void post-Part 48: the submit endpoint is the module's per-workflow `{type}-submit`, and per-action `hooks:`/`event:` overrides ride it for every submittable kind. Custom therefore accepts them on the same terms as check. (`interactions:` no longer exists anywhere — Part 38 / state-machine removed the interaction→target table in favour of the signal FSM — so there is nothing to reject.)
 
-**Absorb Part 30's link / validator contracts for `custom`.** Part 30 ships engine-driven `link` computation (D4) and shape-only cell validation (D9) for built-in kinds only — `custom` was deliberately deferred. When this part lands, do three things:
+### FSM (`fsm/tables.js`)
 
-1. **`computeEngineLinks` short-circuits for `custom`** — Part 30 already special-cases this (returns `{}`); confirm the branch is hit and add the `kind: custom` test case to `computeEngineLinks.test.js`.
-2. **Cell shape validator accepts `link:` for `custom`** — Part 30's `validateStatusMapCells` rejects `link:` for built-in kinds. Extend the validator's kind branch so `kind: custom` cells pass with the shape `{ message?: string, link?: { pageId: string, urlQuery?: object, input?: object } }`. The `{ action_id: true }` sentinel substitution path (`substituteActionIdSentinel.js`) is wired for custom in Part 30; nothing further needed here on the engine side.
+`resolveSignal.js` looks up `FSM_TABLES[action.kind]`. The table set is `{ form, tracker, check: form }`. Add `custom: form` (object-identity alias, matching the `check: form` comment's "never a copy" rationale) so a custom action resolves submit signals through the same eight-status machine as form/check. Without this alias a custom submit throws on an undefined table.
 
-### Page emission (`makeActionPages`)
+### Links (`computeEngineLinks`) — engine routes authored cell links
 
-Branch as today: `if (action.kind !== "form") return []`. The `!== "form"` check already excludes `check` and `tracker`; adding `custom` to the kind enum doesn't change this line. No work needed beyond the validation update.
+This is the one substantial engine change (review-1 #1). The display layer is per-verb: every read surface (`GetEntityWorkflows`, `GetWorkflowOverview`, `GetWorkflowActionGroupOverview`, `GetEventsTimeline`) calls `collapseLink({ links: action[slug].links, allowed })`, and `collapseLink` ([resolveActionAccess.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/render/resolveActionAccess.js)) reads only `links.{edit,review,error,view}` — it has no concept of a singular `link`. The planner renders the author's cell to `doc[slug].link`/`doc[slug].view_link` (`renderStatusMap` → deep-merge, `planActionTransition.js:240–245`) and then calls `computeEngineLinks` (line 248) to populate `doc[slug].links`. If `computeEngineLinks` keeps returning `{}` for custom, the authored link never reaches `links` and the card is unclickable. So:
 
-### Endpoint emission (`makeWorkflowApis`)
+`computeEngineLinks` stops short-circuiting custom. For `kind: custom` it reads the rendered `doc[slug].link` / `doc[slug].view_link`, substitutes the `action_id`/`entity_id` sentinels, and builds the per-verb `links` map for each declared slug.
 
-The current resolver iterates actions and skips `kind: tracker` (no endpoint), emitting for both `form` and `check`. Change the skip condition from `if (action.kind === "tracker") continue;` to skipping anything that isn't `form` or `check` (i.e. also skip `custom`). Hook-API emission (`emitHooks`) is gated on `action.hooks` being present, which the build-time validator now forbids for `custom`, so no separate guard is needed.
+**Sentinel substitution — one shared mechanism (review-1 #2).** The `{ action_id: true }` / `{ entity_id: true }` sentinel swap already lives inline in the tracker `start_link` arm of `computeEngineLinks` (it walks the cell `urlQuery`, replacing `action_id: true` → `action._id` and `entity_id: true` → `action.entity.id`, passing static keys through). Extract that into one small shared helper (a flat-`urlQuery` substitution over both sentinels) and call it from both the tracker arm and the new custom branch, so every engine-routed link resolves sentinels the same way. **Delete the orphaned `substituteActionIdSentinel.js`** — it is dead Part-30 code (no production caller; only its own def + test), and weaker than the live path (it handles only `action_id`, not `entity_id`). With the helper in place the per-verb map is built as:
 
-### Engine handler (`SubmitWorkflowAction`)
+- The working `link` lands in the stage's single active working verb slot, reusing the existing `STAGE_VERB_PAGE` table: `edit` at `action-required` / `in-progress` / `changes-required`, `review` at `in-review`, `error` at `error`. At `done` (a view-only stage) there is no working verb, so `link` lands in the `view` slot — `done: { link: ... }` reads naturally. At `blocked` / `not-required` no slot is exposed, so the cell renders message-only.
+- The `view` slot is filled by the author's `view_link` if present, else by the entry-scoped shared `workflow-action-view` page (`{ pageId, urlQuery: { action_id } }`) wherever the stage exposes `view`. This is the observer fallback — a viewer is never dropped onto the working page.
 
-No code change. The handler currently keys on `action.kind === "check"` in [handleSubmit.js:32](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js#L32) to enforce caller-supplied `current_status` on `submit_edit`. Custom actions need the same treatment — extend the condition to `if (actionConfig.kind === "check" || actionConfig.kind === "custom")` so a `submit_edit` interaction with `current_status` works for both kinds. Every other engine path (priority rule, group recompute, blocked_by fan-out, tracker fire, close sweep) already keys on `status[0].stage` rather than `kind`, so no other handler change is needed.
+`collapseLink`'s `edit > review > error > view` priority then routes each user correctly: a user holding the stage's working verb gets the app page; everyone else with `view` gets `view_link` or the shared status page. The cell shape is `{ message?, link?: { pageId, urlQuery? }, view_link?: { pageId, urlQuery? } }`, deep-merged onto the doc and sticky across transitions like the built-in display fields. Add the worked-example tests.
 
-The five-interaction vocabulary (`submit_edit`, `not_required`, `resolve_error`, `approve`, `request_changes`) is still available for custom actions — the app can call `SubmitWorkflowAction` with any of them. The status defaults table from [submit-pipeline/spec.md § Interaction → target status](../../../../workflows-module-concept/submit-pipeline/spec.md) applies per interaction. For `custom`, the `submit_edit` default is "caller-supplied via current_status" (matching check). The other four interactions default to their fixed targets (`not-required`, `done`, `done`, `changes-required`) — apps that call with `interaction: approve` get the engine to push `done`, etc. Apps that want a non-default target on `submit_edit` supply `current_status` explicitly; on other interactions, they call with `interaction: submit_edit` + `current_status: <whatever>` instead.
+### Page emission (`makeActionPages`) — no change
 
-### `status_map` and entity-page display
+`emitForAction` returns `[]` for any non-`form` kind. Custom emits no per-action module pages — the app supplies the pages, and the cell `link.pageId` points at them. Add a test asserting custom emits no pages.
 
-`actions-on-entity` (part 18) consumes `status_map.{stage}.{app_name}` the same way for every kind — no branch on `kind`. A custom action with a `status_map.action-required.{app_name}.link` cell renders as a clickable card whose `link.pageId` resolves through Lowdefy's normal page-id resolution. The id can be any page in the host app — the module doesn't introspect it.
+### Endpoint emission (`makeWorkflowApis`) — no change
 
-Conventions documented in the workflows module README (no enforcement):
+Custom is a submittable kind. The per-workflow loop skips only `kind: tracker`; custom falls through, marks the workflow as having a submittable action, and so the workflow gets its `{type}-submit` and `{type}-update-fields` endpoints plus `render_config` (which carries every action's `status_map`, including the custom action's link cells). `emitHooks` is gated on `action.hooks`, so a custom action with hooks emits its hook `InternalApi`s the same as check; one without emits none. No skip, no special case.
 
-- `link.pageId` points at an app-side page id (not a `_module.pageId` reference).
-- `link.urlQuery.action_id: true` substitutes the current action's `_id` into the query string, the same as check/form. Apps' custom pages typically read `?action_id=<id>` and render their UI keyed by it.
-- For instanced custom actions, the action-instance message templating works the same as check/form — Nunjucks against the action-doc fields, with `urlQuery: { action_id: true }` selecting the instance.
+### Engine (`handleSubmit` and phases) — no change
+
+The handler is a signal-driven phase pipeline (`load → preHook → planSubmit → commitPlan → trackerCascade → postHook`). No phase branches on `kind` for the submit path; `planSubmit` resolves the target stage via `resolveSignal` (the FSM table), which step 2 makes valid for custom. The `current_status`/`interaction`/`submit_edit` channel the parked design relied on no longer exists.
 
 ## App-side shape
 
-A custom action declared in workflow YAML, plus the app-side page and API the action depends on:
+A custom action in workflow YAML, plus the app-owned page and the submit call. The cell links point at app page ids; the engine renders them onto the action doc at each transition.
 
 ```yaml
-# workflow_config/account-review/review-document.yaml
+# workflows_config/account-review/review-document.yaml
 type: review-document
 kind: custom
 action_group: review
-sort_order: 20
 description: Review the proposed contract document and either approve or request revisions.
 blocked_by: [collect-requirements]
 access:
-  my-team-app: [view, edit, review]
-  roles: [account-manager]
+  my-team-app:
+    view: true
+    edit: [account-manager]
+    review: [account-manager]
 status_map:
   blocked:
     my-team-app: { message: Awaiting requirements. }
   action-required:
     my-team-app:
       message: Review the contract document.
-      link:
-        pageId: contract-review # app-side page id
+      link: # the working page — routed to the `edit` slot at this stage
+        pageId: contract-review # app-owned page id (not a module page)
+        urlQuery: { action_id: true } # sentinel → substituted with the action _id
+      view_link: # optional in-flight observer page; omit to fall back to the shared status page
+        pageId: contract-view
         urlQuery: { action_id: true }
   in-review:
-    my-team-app: { message: In review. }
+    my-team-app: { message: In review. } # no link → observers get the shared status page; reviewers get the in-review working link if set
   done:
     my-team-app:
       message: Document approved.
-      link:
+      link: # view-only stage → routed to the `view` slot
         pageId: contract-view
         urlQuery: { action_id: true }
 ```
 
-The app supplies a page (`pages/contract-review.yaml`) that loads the contract, lets the user edit it, and on save calls a thin app-authored API:
+The app supplies `pages/contract-review.yaml`. It loads the contract (reading `?action_id=<id>` from the cell link), lets the user edit it, and on save advances the workflow by calling the module's per-workflow submit endpoint with the action id and a signal:
 
 ```yaml
-# api/contract-review-submit.yaml
-id: contract-review-submit
-type: Api
-auth:
-  public: false
-  roles: [account-manager] # matches action.access.roles
-routine:
-  - id: save_contract
-    type: MongoDBUpdateOne
-    connectionId: contracts-collection
-    properties:
-      filter: { _id: { _payload: contract_id } }
-      update: { $set: { body: { _payload: body }, ...change_stamp } }
+# inside the app page's save event
+- id: save_contract
+  type: Request
+  requestId: update_contract # app-owned domain write
 
-  - id: submit_action
-    type: SubmitWorkflowAction
-    connectionId:
-      _module.connectionId: { id: workflow-api, module: workflows }
-    properties:
-      action_id: { _payload: action_id }
-      action_type: review-document
-      workflow_type: account-review
-      interaction: submit_edit
-      current_status: done # or in-review, changes-required, etc.
-      fields: # universal-fields update channel
-        description: { _payload: review_summary }
-
-  - :return:
-      action_ids: { _step: submit_action.action_ids }
-      completed_groups: { _step: submit_action.completed_groups }
+- id: submit_review
+  type: CallApi
+  params:
+    endpointId:
+      _module.endpointId: { id: account-review-submit, module: workflows }
+    payload:
+      action_id: { _url_query: action_id }
+      signal: approve # or: submit, request_changes, not_required, …
+      fields: # universal-fields update channel (same as check)
+        description: { _state: review_summary }
+      comment: { _state: review_note }
 ```
 
-The two writes (app-domain write and workflow-action write) are not atomic — same posture as form/check actions whose pre-hook does an entity write. If atomicity matters, the app moves the domain write into a pre-hook of a form-kind action instead, accepting the form-page UX.
+The recommended submit path is the **module's `{type}-submit` endpoint**, because it carries the baked-in `render_config` (which renders the cell `message`/`link` onto the action doc) and any declared `hooks:`/`event:` overrides. The page composes whatever buttons it needs; each button calls the endpoint with a different nullary `signal`, and the FSM resolves the target stage exactly as it does for a check action.
 
-The app's page composes its own buttons. Each button calls `contract-review-submit` with a different `interaction` + `current_status` combination — "Save Draft" might call `interaction: submit_edit, current_status: in-progress`; "Submit for Review" calls `interaction: submit_edit, current_status: in-review`; etc. The page is free to surface any UI the app needs — a multi-step wizard, an inline editor, a mirror of an external system — because the module isn't generating it.
+**Atomicity.** The domain write and the workflow write above are two requests and are not atomic — the same posture as a check action whose pre-hook does an entity write. If the two must be atomic-ish, move the domain write into a **`hooks.submit.pre` routine** on the custom action (now permitted): the engine runs it inside the submit handler's flow, before the status commit.
 
 ## What's still wired up automatically
 
-The custom kind is "no module-supplied UI / no module-supplied endpoint" — but every other engine feature still works:
+Custom is "app-owned working page + author-owned link" — every other engine feature works as for check:
 
-- **Status array + priority rule.** Writes go through `SubmitWorkflowAction`'s normal path; the priority rule still gates transitions (so a `done` action can't be pushed back to `action-required` without `force: true`).
-- **`blocked_by` fan-out.** Other actions can list a custom action in their `blocked_by`; when the custom action reaches a terminal status, those actions auto-unblock.
-- **Group rollup.** Custom actions belong to `action_groups` and contribute to group-status computation like any other.
-- **`required_after_close: true`.** Works the same as for form/check — the action survives a `CloseWorkflow` sweep unless it's `blocked`.
-- **Tracker fan-up.** A custom action's terminal write triggers tracker subscription if the containing workflow's status changes. Custom actions cannot themselves _be_ trackers (they carry no `tracker:` block) but a custom action terminating a workflow still propagates up to a parent tracker.
-- **Log events and notifications.** `SubmitWorkflowAction` still dispatches the default log event and notifications. App-authored APIs that want to customise the event shape do so by populating `metadata` or by writing their own event in the app routine _before_ calling `SubmitWorkflowAction` (the engine's default event is additive — apps don't suppress it).
-- **`workflow-overview` page (part 17).** The shared workflow-overview page reads `get-entity-workflows` output and renders one card per action. Custom actions appear like any other — the card's link cell uses the action's `status_map.{current_stage}.{app_name}.link.pageId`, which for custom actions is the app-side page id.
+- **Status array + FSM.** Writes go through the normal submit path; the FSM gates transitions (a `done` action only re-opens via the signals the `done` row allows).
+- **`blocked_by` fan-out.** Other actions may list a custom action in `blocked_by`; when it reaches a terminal status they auto-unblock.
+- **Group rollup.** Custom actions belong to `action_groups` and contribute to group-status computation.
+- **`required_after_close: true`.** Survives a `CloseWorkflow` sweep unless blocked, same as check/form.
+- **`{type}-update-fields`.** The independent universal-fields edit endpoint covers custom actions like any other submittable kind.
+- **Tracker fan-up.** A custom action's terminal write propagates to a parent tracker if it changes the containing workflow's status. (Custom actions cannot _be_ trackers — they carry no `tracker:` block.)
+- **Log events and notifications.** The submit handler dispatches the default log event and notifications; `event:` overrides shape the per-app display, same as check.
+- **`workflow-overview` page.** Renders one card per action; the custom action's card uses the per-verb `links` map the engine routes from the author's cells — the app working page for a user who can act, the `view_link` or shared status page for an observer (resolved by `collapseLink` against the user's access).
 
 ## What's deliberately not provided
 
-- **No shared "custom-edit" page.** The whole point of the kind is "app owns the UI"; shipping a shared scaffold would invite drift and partial overrides that don't compose. Apps that find themselves wanting a shared shape across many custom actions should consider declaring those as `check` actions instead and customising the shared check page via the existing app-side override patterns.
-- **No hook surface.** `hooks:` is rejected at build time. The motivation: hooks are a coordination mechanism between the action-author's YAML and the engine's submit endpoint; when the app owns the submit-endpoint surface, the app's API routine _is_ the hook. Apps that want pre-write validation inline the check before the `SubmitWorkflowAction` step; apps that want post-write effects inline them after. The app routine has full read/write access to Mongo and full `CallApi` access to other modules.
-- **No `interactions:` block.** Same reasoning — `interactions:` is the build-time-baked override of engine status defaults for a submit-endpoint the module emits. When the app owns the endpoint, the app supplies `current_status` directly.
-- **No build-time validation of `status_map.link.pageId` against the host app's page ids.** Module resolvers don't have a view into the host-app page tree; the existing form/check links to `_module.pageId` are validated by Lowdefy's normal page-id resolution at build time, but free-form app page ids are not. A typo in `link.pageId` for a custom action surfaces at click time as a 404, the same as a typo anywhere else in Lowdefy.
+- **No per-action module pages.** The whole point is "app owns the working surface." Apps wanting a shared shape across many custom actions should use `check` and customise the shared check page via the existing template-composition patterns.
+- **No module working pages.** The author owns the working surface via cell `link:` (and an optional `view_link:`); `computeEngineLinks` routes those authored links into the per-verb map rather than computing module page ids for the working slots. The engine still supplies the shared `workflow-action-view` page as the observer fallback for the `view` slot — so a custom action always has a read-only status surface even when the author authors only a working `link`. This author-owned working surface is the defining property of the kind.
+- **No build-time validation of `link.pageId` against the host app's page tree.** Module resolvers have no view of host-app page ids. A typo surfaces at click time as a 404, the same as any free-form Lowdefy page reference. (Built-in kinds' links resolve through module page ids and _are_ build-validated; app page ids are not.)
 
 ## Files changed
 
-| File                                                                                                                                                                                                                | Change                                                                                                                                                                                                               |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [modules/workflows/resolvers/makeWorkflowsConfig.js](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js)                                                                                             | Add `custom` to `ACTION_KINDS`; add rejection rules for `form:`, `tracker:`, `hooks:`, `interactions:`, `event:` on `kind: custom`; add the matching test cases.                                                     |
-| [modules/workflows/resolvers/makeWorkflowApis.js](../../../../../modules/workflows/resolvers/makeWorkflowApis.js)                                                                                                   | Change the loop skip from `if (action.kind === "tracker") continue;` to `if (action.kind !== "form" && action.kind !== "check") continue;`. Add test coverage for `kind: custom` skip.                               |
-| [modules/workflows/resolvers/makeActionPages.js](../../../../../modules/workflows/resolvers/makeActionPages.js)                                                                                                     | No code change (the `if (action.kind !== "form") return []` guard already excludes `custom`); add a test asserting `custom` emits no pages.                                                                          |
-| [plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) | Extend the `submit_edit` branch's `kind === "check"` check to also match `kind === "custom"`, routing both to caller-supplied `current_status`. Update the matching handleSubmit test.                               |
-| [designs/workflows-module-concept/action-authoring/spec.md](../../../../workflows-module-concept/action-authoring/spec.md)                                                                                          | Add `custom` to the kind table; add a "Custom action" section mirroring "Task action" / "Tracker action"; update validation list.                                                                                    |
-| [designs/workflows-module-concept/submit-pipeline/spec.md](../../../../workflows-module-concept/submit-pipeline/spec.md)                                                                                            | Add a "Custom kind" row to the "Per-action `update-action-{action_type}` Api" Scope block stating it's not emitted; add `custom` to the per-interaction status-default table.                                        |
-| [designs/workflows-module-concept/ui/spec.md](../../../../workflows-module-concept/ui/spec.md)                                                                                                                      | Add `custom` to the per-action page generation table ("None — app supplies pages"); add a short subsection under "Page-level rendering of universal fields" noting that custom actions render entirely on app pages. |
-| [modules/workflows/README.md](../../../../../modules/workflows/README.md)                                                                                                                                           | Add a "Custom actions" section under Notes (or wherever the kind taxonomy is documented) with the app-side page + API shape and the link-cell convention.                                                            |
+| File                                                                                                                                                                            | Change                                                                                                                                                                                                                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [modules/workflows/resolvers/makeWorkflowsConfig.js](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js)                                                         | Add `"custom"` to `ACTION_KINDS`; update the unknown-kind message; reject `form:`/`tracker:` for `kind: custom` (mirror the check branch). Add test cases.                                                                                                                                          |
+| [plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/fsm/tables.js)                     | Add `custom: form` to `FSM_TABLES` (object-identity alias). Add a resolveSignal test for `kind: custom`.                                                                                                                                                                                            |
+| [modules/workflows/resolvers/makeWorkflowsConfig.js](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js) (`validateStatusMapCells`)                              | No code change (the `isCustom` branch already permits `link:`); add a test that a `kind: custom` cell with `link:` passes and a built-in kind's still rejects.                                                                                                                                      |
+| [modules/workflows/resolvers/makeActionPages.js](../../../../../modules/workflows/resolvers/makeActionPages.js)                                                                 | No code change; add a test asserting `kind: custom` emits no pages.                                                                                                                                                                                                                                 |
+| [modules/workflows/resolvers/makeWorkflowApis.js](../../../../../modules/workflows/resolvers/makeWorkflowApis.js)                                                               | No code change; add a test asserting a `kind: custom` action is submittable (emits `{type}-submit` + `{type}-update-fields`, carries its `status_map` in `render_config`).                                                                                                                          |
+| [plugins/.../shared/render/computeEngineLinks.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/render/computeEngineLinks.js)                           | **Code change.** Replace the `kind: custom` `return {}` short-circuit with routing: read the rendered cell `link`/`view_link`, substitute sentinels via the shared helper, write the per-verb `links` map by stage (working verb slot + `view` fallback to shared `workflow-action-view`). Extract the inline tracker-arm sentinel swap into a shared helper used by both arms. Add `kind: custom` test cases. |
+| [plugins/.../shared/render/substituteActionIdSentinel.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/render/substituteActionIdSentinel.js)         | **Delete.** Orphaned Part-30 dead code (no production caller; handles only `action_id`). Superseded by the shared helper extracted from the tracker arm. Remove it and its `.test.js`.                                                                                                              |
+| [plugins/.../WorkflowAPI/SubmitWorkflowAction/handleSubmit.js](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js) | No code change; covered by an end-to-end custom submit test (signal → FSM → committed status + rendered cell link).                                                                                                                                                                                 |
+| [designs/workflows-module-concept/action-authoring/spec.md](../../../../workflows-module-concept/action-authoring/spec.md)                                                      | Add `custom` to the kind list and the mutual-exclusion line; add a "Custom action" subsection (check semantics + author-owned links). Note `custom: form` FSM aliasing.                                                                                                                             |
+| [designs/workflows-module-concept/submit-pipeline/spec.md](../../../../workflows-module-concept/submit-pipeline/spec.md)                                                        | Note that `custom` rides the per-workflow `{type}-submit` endpoint with the same nullary signals as check; its `link` cells are author-authored.                                                                                                                                                    |
+| [designs/workflows-module-concept/ui/spec.md](../../../../workflows-module-concept/ui/spec.md)                                                                                  | Add `custom` to the page-generation note ("none — app supplies pages; navigation via author `link:` cells").                                                                                                                                                                                        |
+| [modules/workflows/README.md](../../../../../modules/workflows/README.md)                                                                                                       | Add a "Custom actions" section: the app-side page + submit-call shape and the `status_map.{stage}.{app}.link` convention.                                                                                                                                                                           |
 
 ## Open questions
 
-1. **Does the universal-fields update channel (`fields:` payload block) carry through cleanly for custom actions?** The engine path for `fields:` doesn't branch on `kind` — it just `$set`s `assignees`/`due_date`/`description` on the action doc. So yes, custom actions can use `fields:` the same way check actions do. Worth a worked-example test in the README to make this explicit.
-2. **Should we add a Playwright spec covering an end-to-end custom action?** Part 22 owns the e2e suite; if so, this design would add a `custom-action.spec.js` to its set, with an app-side page in `apps/demo/` exercising the kind. Open: defer to whoever picks this up to scope alongside.
+1. **End-to-end Playwright spec.** Should this part add a `custom-action.spec.js` with an app-side page in `apps/demo/` exercising the kind? Part 22 owns the e2e suite. Defer to whoever picks this up to scope alongside.
+2. **Cell `link` shape validation depth.** `validateStatusMapCells` currently permits `link:` for custom but does not validate its internal shape (`{ pageId: string, urlQuery?: object }`). Worth adding a shallow shape check (non-empty `pageId` string; `urlQuery` an object with sentinel `action_id`/`entity_id` values `=== true` and other values strings) for parity with `validateTrackerStartLink` — or leave it loose and let a malformed link surface at click time. Lean: add the shallow check (cheap, matches the start_link precedent).
 
 ## Related
 
-- Source kinds and resolver behavior: [workflows-module-concept/action-authoring/spec.md § Action kinds](../../../../workflows-module-concept/action-authoring/spec.md), [workflows-module-concept/submit-pipeline/spec.md](../../../../workflows-module-concept/submit-pipeline/spec.md).
-- Shipped engine handler: [plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js](../../../../../plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/SubmitWorkflowAction/handleSubmit.js).
-- Shipped resolvers touched: [makeWorkflowsConfig.js](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js), [makeWorkflowApis.js](../../../../../modules/workflows/resolvers/makeWorkflowApis.js).
-- Workflows module implementation tracker: [designs/workflows-module/design.md](designs/workflows-module/design.md). This design lands as a follow-on (in the spirit of parts 21 / 22 / 23) — small enough to amend shipped resolvers and the shipped `handleSubmit.js` directly rather than gating on an unimplemented sibling.
+- Action kinds and resolver behaviour: [action-authoring/spec.md](../../../../workflows-module-concept/action-authoring/spec.md), [submit-pipeline/spec.md](../../../../workflows-module-concept/submit-pipeline/spec.md), [state-machine/design.md](../../../../workflows-module-concept/state-machine/design.md) (the signal FSM that replaced the interaction/`current_status` model).
+- Custom-kind touch points: [computeEngineLinks.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/render/computeEngineLinks.js) (gets the routing change), `validateStatusMapCells` in [makeWorkflowsConfig.js](../../../../../modules/workflows/resolvers/makeWorkflowsConfig.js) (already permits `link:`; gains `view_link:` + shape validation), and the sentinel substitution (a shared helper extracted from the tracker arm; the orphaned [substituteActionIdSentinel.js](../../../../../plugins/modules-mongodb-plugins/src/connections/shared/render/substituteActionIdSentinel.js) is deleted — review-1 #2).
+- Architecture this design was re-aligned to: [Part 38 — engine rebuild](../_completed/38-engine-rebuild/design.md) (signal FSM), Part 48 (per-workflow endpoints), [Part 34 — action access model](../_completed/34-action-access-model/design.md) (the per-verb `links` map this design routes into), [Part 30 — engine-managed display](../_rejected/30-status-map-rendering/design.md) (rejected as a whole; its single-`link`/sentinel model is the source of the stale "already shipped" premise this design corrected).
+- Workflows module tracker: [designs/workflows-module/design.md](../../design.md). Lands as a follow-on: the FSM alias, the `computeEngineLinks` custom routing + sentinel substitution, the `validateAction` custom rejection arm, the `view_link` permit + cell-shape validation, plus the concept specs and README.
