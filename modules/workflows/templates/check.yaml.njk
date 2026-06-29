@@ -1,4 +1,4 @@
-# Per-workflow check-action page (Part 56 — D3/D6).
+# Per-workflow check-action page (Part 56 — D3/D6, revised by the Part 56 addendum).
 #
 # Replaces the three retired shared check pages (workflow-action-view / -edit /
 # -review) with ONE per-workflow page, `{workflow_type}-check`, emitted by
@@ -13,6 +13,15 @@
 # signal-button bar, request-changes modal) directly, because the modal's compact
 # one-card body and this page's three-column spread have diverged too far for a
 # shared leaf to pay off — the small duplication is deliberate.
+#
+# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
+# page_actions; the description is a middle-top callout; the signal buttons are
+# the shell's floating `actions` slot (right-aligned — check carries no
+# buttons.extra, so no grow spacer); the entity review subject stays in the
+# middle and the RHS is History only (details_slot empty). The check page is
+# per-workflow-TYPE (not per-action), so `action_config.universal_fields` is not
+# available — the chips/callout/modal default to all three fields (matching the
+# pre-addendum check surface) and self-hide per-field at runtime when unset.
 #
 # Mode derivation (D3) — copied VERBATIM from check-action-modal.yaml. The mode is
 # derived from the GetWorkflowAction RESPONSE (`_request: get_workflow_action.*`),
@@ -42,10 +51,11 @@
 #   - name_field        baked dot-path string for the instance name, or "".
 #
 # Post-signal `on_complete` (signal buttons + universal-fields Update): there is
-# no modal to close on this page, so on_complete refetches get_workflow_action and
-# re-runs the response-derived set_current_action SetState — the surface reflects
-# the new state in place (mirrors the form edit template's refetch+reseed; it does
-# NOT navigate away).
+# no modal to close on this page for the signal buttons, so on_complete refetches
+# get_workflow_action and re-runs the response-derived set_current_action SetState
+# — the surface reflects the new state in place (mirrors the form edit template's
+# refetch+reseed; it does NOT navigate away). The universal-fields Update runs the
+# same reseed, then closes its edit modal (appended by universal-fields-modal).
 _ref:
   module: layout
   component: page
@@ -60,6 +70,18 @@ _ref:
     status_enum:
       _ref: ../shared/enums/action_statuses.yaml
     show_back_button: true
+    # Universal-fields chips (assignees avatars + due pill + ✎ → edit modal) in the
+    # title bar's page_actions, sourced from the loaded action.
+    page_actions:
+      - _ref:
+          path: components/universal-fields/universal-fields-chips.yaml
+          vars:
+            modal_id: universal_fields_edit_modal
+            action_data:
+              assignee_docs:
+                _state: current_action.assignee_docs
+              due_date:
+                _state: current_action.due_date
     breadcrumbs:
       _ref:
         path: components/action-breadcrumbs.yaml
@@ -171,9 +193,18 @@ _ref:
               _var: connection_id
             reference_field:
               _var: reference_field
-            # Check puts the entity slot in the MIDDLE, not a Details tab (D7).
+            # Check puts the entity slot in the MIDDLE, not a Details section (D7),
+            # so the RHS is History only.
             details_slot: []
             middle:
+              # 0. Description callout — top of the middle column; self-hides when
+              #    the description is unset (addendum DA2).
+              - _ref:
+                  path: components/universal-fields/universal-fields-callout.yaml
+                  vars:
+                    action_data:
+                      description:
+                        _state: current_action.description
               # 1. Workflow-closed banner — gated on workflow_closed AND not
               #    required_after_close (copied from check-action-surface.yaml).
               - id: workflow_closed_banner
@@ -222,537 +253,7 @@ _ref:
                 properties:
                   title: Comment
                   placeholder: Add a comment (optional).
-              # 4. Signal button bar — right-aligned in-flow Box. Each button's
-              #    visible is the AND of the mode gate and its server-resolved
-              #    boolean; disabled is the uniform required_after_close gate.
-              #    Copied VERBATIM from check-action-surface.yaml; on_complete is
-              #    the page's refetch+reseed (no modal to close).
-              - id: signal_button_bar
-                type: Box
-                layout:
-                  justify: end
-                  wrap: nowrap
-                  gap: 8
-                blocks:
-                  - id: button_edit
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _eq:
-                            - _state: current_action.mode
-                            - view
-                        - _state: current_action.allowed.edit
-                    properties:
-                      title: Edit
-                      type: default
-                      disabled:
-                        _and:
-                          - _state: current_action.workflow_closed
-                          - _ne:
-                              - _state: current_action.required_after_close
-                              - true
-                    events:
-                      onClick:
-                        - id: enter_edit_mode
-                          type: SetState
-                          params:
-                            current_action.mode: edit
-                  - id: button_progress
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _eq:
-                            - _state: current_action.mode
-                            - edit
-                        - _state: current_action.buttons.progress
-                    properties:
-                      title: Mark Started
-                      type: default
-                      disabled:
-                        _and:
-                          - _state: current_action.workflow_closed
-                          - _ne:
-                              - _state: current_action.required_after_close
-                              - true
-                    events:
-                      onClick:
-                        - id: progress
-                          type: CallAPI
-                          params:
-                            endpointId:
-                              _string.concat:
-                                - _module.id: true
-                                - /
-                                - _state: current_action.workflow_type
-                                - -submit
-                            payload:
-                              action_id:
-                                _state: current_action._id
-                              signal: progress
-                              current_key:
-                                _state: current_action.key
-                              comment:
-                                _state: current_action.comment
-                              fields:
-                                _state: current_action.fields
-                        - id: refetch_action_progress
-                          type: Request
-                          params: get_workflow_action
-                        - id: reseed_action_progress
-                          type: SetState
-                          params:
-                            current_action:
-                              _request: get_workflow_action
-                            current_action.fields:
-                              assignees:
-                                _request: get_workflow_action.assignees
-                              due_date:
-                                _request: get_workflow_action.due_date
-                              description:
-                                _request: get_workflow_action.description
-                            current_action.comment: null
-                            current_action.change_request_comment: null
-                            current_action.stage:
-                              _request: get_workflow_action.status.0.stage
-                            current_action.mode:
-                              _if:
-                                test:
-                                  _eq:
-                                    - _request: get_workflow_action.status.0.stage
-                                    - error
-                                then: view
-                                else:
-                                  _if:
-                                    test:
-                                      _and:
-                                        - _eq:
-                                            - _request: get_workflow_action.status.0.stage
-                                            - in-review
-                                        - _eq:
-                                            - _request: get_workflow_action.allowed.review
-                                            - true
-                                    then: review
-                                    else:
-                                      _if:
-                                        test:
-                                          _and:
-                                            - _array.includes:
-                                                - - action-required
-                                                  - in-progress
-                                                  - changes-required
-                                                - _request: get_workflow_action.status.0.stage
-                                            - _eq:
-                                                - _request: get_workflow_action.allowed.edit
-                                                - true
-                                        then: edit
-                                        else: view
-                            entity_id:
-                              _request: get_workflow_action.entity.id
-                  - id: button_not_required
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _eq:
-                            - _state: current_action.mode
-                            - edit
-                        - _state: current_action.buttons.not_required
-                    properties:
-                      title: Mark Not Required
-                      type: default
-                      disabled:
-                        _and:
-                          - _state: current_action.workflow_closed
-                          - _ne:
-                              - _state: current_action.required_after_close
-                              - true
-                    events:
-                      onClick:
-                        - id: not_required
-                          type: CallAPI
-                          params:
-                            endpointId:
-                              _string.concat:
-                                - _module.id: true
-                                - /
-                                - _state: current_action.workflow_type
-                                - -submit
-                            payload:
-                              action_id:
-                                _state: current_action._id
-                              signal: not_required
-                              current_key:
-                                _state: current_action.key
-                              comment:
-                                _state: current_action.comment
-                        - id: refetch_action_not_required
-                          type: Request
-                          params: get_workflow_action
-                        - id: reseed_action_not_required
-                          type: SetState
-                          params:
-                            current_action:
-                              _request: get_workflow_action
-                            current_action.fields:
-                              assignees:
-                                _request: get_workflow_action.assignees
-                              due_date:
-                                _request: get_workflow_action.due_date
-                              description:
-                                _request: get_workflow_action.description
-                            current_action.comment: null
-                            current_action.change_request_comment: null
-                            current_action.stage:
-                              _request: get_workflow_action.status.0.stage
-                            current_action.mode:
-                              _if:
-                                test:
-                                  _eq:
-                                    - _request: get_workflow_action.status.0.stage
-                                    - error
-                                then: view
-                                else:
-                                  _if:
-                                    test:
-                                      _and:
-                                        - _eq:
-                                            - _request: get_workflow_action.status.0.stage
-                                            - in-review
-                                        - _eq:
-                                            - _request: get_workflow_action.allowed.review
-                                            - true
-                                    then: review
-                                    else:
-                                      _if:
-                                        test:
-                                          _and:
-                                            - _array.includes:
-                                                - - action-required
-                                                  - in-progress
-                                                  - changes-required
-                                                - _request: get_workflow_action.status.0.stage
-                                            - _eq:
-                                                - _request: get_workflow_action.allowed.edit
-                                                - true
-                                        then: edit
-                                        else: view
-                            entity_id:
-                              _request: get_workflow_action.entity.id
-                  - id: button_submit
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _eq:
-                            - _state: current_action.mode
-                            - edit
-                        - _state: current_action.buttons.submit
-                    properties:
-                      title: Submit
-                      type: primary
-                      disabled:
-                        _and:
-                          - _state: current_action.workflow_closed
-                          - _ne:
-                              - _state: current_action.required_after_close
-                              - true
-                    events:
-                      onClick:
-                        - id: validate
-                          type: Validate
-                          params:
-                            regex: ^current_action\.fields\.
-                        - id: submit
-                          type: CallAPI
-                          params:
-                            endpointId:
-                              _string.concat:
-                                - _module.id: true
-                                - /
-                                - _state: current_action.workflow_type
-                                - -submit
-                            payload:
-                              action_id:
-                                _state: current_action._id
-                              signal: submit
-                              current_key:
-                                _state: current_action.key
-                              comment:
-                                _state: current_action.comment
-                              fields:
-                                _state: current_action.fields
-                        - id: refetch_action_submit
-                          type: Request
-                          params: get_workflow_action
-                        - id: reseed_action_submit
-                          type: SetState
-                          params:
-                            current_action:
-                              _request: get_workflow_action
-                            current_action.fields:
-                              assignees:
-                                _request: get_workflow_action.assignees
-                              due_date:
-                                _request: get_workflow_action.due_date
-                              description:
-                                _request: get_workflow_action.description
-                            current_action.comment: null
-                            current_action.change_request_comment: null
-                            current_action.stage:
-                              _request: get_workflow_action.status.0.stage
-                            current_action.mode:
-                              _if:
-                                test:
-                                  _eq:
-                                    - _request: get_workflow_action.status.0.stage
-                                    - error
-                                then: view
-                                else:
-                                  _if:
-                                    test:
-                                      _and:
-                                        - _eq:
-                                            - _request: get_workflow_action.status.0.stage
-                                            - in-review
-                                        - _eq:
-                                            - _request: get_workflow_action.allowed.review
-                                            - true
-                                    then: review
-                                    else:
-                                      _if:
-                                        test:
-                                          _and:
-                                            - _array.includes:
-                                                - - action-required
-                                                  - in-progress
-                                                  - changes-required
-                                                - _request: get_workflow_action.status.0.stage
-                                            - _eq:
-                                                - _request: get_workflow_action.allowed.edit
-                                                - true
-                                        then: edit
-                                        else: view
-                            entity_id:
-                              _request: get_workflow_action.entity.id
-                  - id: button_request_changes
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _eq:
-                            - _state: current_action.mode
-                            - review
-                        - _state: current_action.buttons.request_changes
-                    properties:
-                      title: Request Changes
-                      type: default
-                      danger: true
-                      ghost: true
-                      disabled:
-                        _and:
-                          - _state: current_action.workflow_closed
-                          - _ne:
-                              - _state: current_action.required_after_close
-                              - true
-                    events:
-                      onClick:
-                        - id: open_request_changes_modal
-                          type: CallMethod
-                          params:
-                            blockId: request_changes_modal
-                            method: setOpen
-                            args:
-                              - open: true
-                  - id: button_approve
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _eq:
-                            - _state: current_action.mode
-                            - review
-                        - _state: current_action.buttons.approve
-                    properties:
-                      title: Approve
-                      type: primary
-                      disabled:
-                        _and:
-                          - _state: current_action.workflow_closed
-                          - _ne:
-                              - _state: current_action.required_after_close
-                              - true
-                    events:
-                      onClick:
-                        - id: approve
-                          type: CallAPI
-                          params:
-                            endpointId:
-                              _string.concat:
-                                - _module.id: true
-                                - /
-                                - _state: current_action.workflow_type
-                                - -submit
-                            payload:
-                              action_id:
-                                _state: current_action._id
-                              signal: approve
-                              current_key:
-                                _state: current_action.key
-                              comment:
-                                _state: current_action.comment
-                        - id: refetch_action_approve
-                          type: Request
-                          params: get_workflow_action
-                        - id: reseed_action_approve
-                          type: SetState
-                          params:
-                            current_action:
-                              _request: get_workflow_action
-                            current_action.fields:
-                              assignees:
-                                _request: get_workflow_action.assignees
-                              due_date:
-                                _request: get_workflow_action.due_date
-                              description:
-                                _request: get_workflow_action.description
-                            current_action.comment: null
-                            current_action.change_request_comment: null
-                            current_action.stage:
-                              _request: get_workflow_action.status.0.stage
-                            current_action.mode:
-                              _if:
-                                test:
-                                  _eq:
-                                    - _request: get_workflow_action.status.0.stage
-                                    - error
-                                then: view
-                                else:
-                                  _if:
-                                    test:
-                                      _and:
-                                        - _eq:
-                                            - _request: get_workflow_action.status.0.stage
-                                            - in-review
-                                        - _eq:
-                                            - _request: get_workflow_action.allowed.review
-                                            - true
-                                    then: review
-                                    else:
-                                      _if:
-                                        test:
-                                          _and:
-                                            - _array.includes:
-                                                - - action-required
-                                                  - in-progress
-                                                  - changes-required
-                                                - _request: get_workflow_action.status.0.stage
-                                            - _eq:
-                                                - _request: get_workflow_action.allowed.edit
-                                                - true
-                                        then: edit
-                                        else: view
-                            entity_id:
-                              _request: get_workflow_action.entity.id
-                  - id: button_resolve_error
-                    type: Button
-                    layout:
-                      flex: 0 1 auto
-                    visible:
-                      _and:
-                        - _eq:
-                            - _state: current_action.mode
-                            - view
-                        - _state: current_action.buttons.resolve_error
-                    properties:
-                      title: Resolve Error
-                      type: primary
-                      disabled:
-                        _and:
-                          - _state: current_action.workflow_closed
-                          - _ne:
-                              - _state: current_action.required_after_close
-                              - true
-                    events:
-                      onClick:
-                        - id: resolve_error
-                          type: CallAPI
-                          params:
-                            endpointId:
-                              _string.concat:
-                                - _module.id: true
-                                - /
-                                - _state: current_action.workflow_type
-                                - -submit
-                            payload:
-                              action_id:
-                                _state: current_action._id
-                              signal: resolve_error
-                              current_key:
-                                _state: current_action.key
-                              comment:
-                                _state: current_action.comment
-                        - id: refetch_action_resolve_error
-                          type: Request
-                          params: get_workflow_action
-                        - id: reseed_action_resolve_error
-                          type: SetState
-                          params:
-                            current_action:
-                              _request: get_workflow_action
-                            current_action.fields:
-                              assignees:
-                                _request: get_workflow_action.assignees
-                              due_date:
-                                _request: get_workflow_action.due_date
-                              description:
-                                _request: get_workflow_action.description
-                            current_action.comment: null
-                            current_action.change_request_comment: null
-                            current_action.stage:
-                              _request: get_workflow_action.status.0.stage
-                            current_action.mode:
-                              _if:
-                                test:
-                                  _eq:
-                                    - _request: get_workflow_action.status.0.stage
-                                    - error
-                                then: view
-                                else:
-                                  _if:
-                                    test:
-                                      _and:
-                                        - _eq:
-                                            - _request: get_workflow_action.status.0.stage
-                                            - in-review
-                                        - _eq:
-                                            - _request: get_workflow_action.allowed.review
-                                            - true
-                                    then: review
-                                    else:
-                                      _if:
-                                        test:
-                                          _and:
-                                            - _array.includes:
-                                                - - action-required
-                                                  - in-progress
-                                                  - changes-required
-                                                - _request: get_workflow_action.status.0.stage
-                                            - _eq:
-                                                - _request: get_workflow_action.allowed.edit
-                                                - true
-                                        then: edit
-                                        else: view
-                            entity_id:
-                              _request: get_workflow_action.entity.id
-              # 5. Request-changes modal — review mode only. Mandatory comment
+              # 4. Request-changes modal — review mode only. Mandatory comment
               #    binds current_action.change_request_comment (its own path);
               #    onOk validates then fires request_changes (base payload, no
               #    fields) and refetches+reseeds; onClose resets the comment.
@@ -873,85 +374,597 @@ _ref:
                     properties:
                       title: Change Description
                       placeholder: Please provide a description of the changes you would like.
-            universal_fields:
-              - _ref:
-                  path: components/universal-fields/universal-fields.yaml
-                  vars:
-                    state_path: current_action.fields
-                    mode:
-                      _if:
-                        test:
-                          _eq:
-                            - _state: current_action.allowed.edit
-                            - true
-                        then: edit
-                        else: display
-                    workflow_type:
-                      _state: current_action.workflow_type
-                    action_id:
-                      _state: current_action._id
-                    allowed_edit:
-                      _state: current_action.allowed.edit
-                    on_complete:
-                      - id: refetch_action_fields
-                        type: Request
-                        params: get_workflow_action
-                      - id: reseed_action_fields
-                        type: SetState
-                        params:
-                          current_action:
-                            _request: get_workflow_action
-                          current_action.fields:
-                            assignees:
-                              _request: get_workflow_action.assignees
-                            due_date:
-                              _request: get_workflow_action.due_date
-                            description:
-                              _request: get_workflow_action.description
-                          current_action.comment: null
-                          current_action.change_request_comment: null
-                          current_action.stage:
-                            _request: get_workflow_action.status.0.stage
-                          current_action.mode:
+            # Signal button bar (shell `actions` slot) — the floating-actions Card
+            # provides the row + justify:end + gap, so the buttons pass as a flat
+            # array. Each button's visible is the AND of the mode gate and its
+            # server-resolved boolean; disabled is the uniform required_after_close
+            # gate. Buttons copied VERBATIM from check-action-surface.yaml;
+            # on_complete is the page's refetch+reseed (no modal to close). Check
+            # carries no buttons.extra (Part 36), so no grow spacer.
+            actions:
+              - id: button_edit
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: current_action.mode
+                        - view
+                    - _state: current_action.allowed.edit
+                properties:
+                  title: Edit
+                  type: default
+                  disabled:
+                    _and:
+                      - _state: current_action.workflow_closed
+                      - _ne:
+                          - _state: current_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: enter_edit_mode
+                      type: SetState
+                      params:
+                        current_action.mode: edit
+              - id: button_progress
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: current_action.mode
+                        - edit
+                    - _state: current_action.buttons.progress
+                properties:
+                  title: Mark Started
+                  type: default
+                  disabled:
+                    _and:
+                      - _state: current_action.workflow_closed
+                      - _ne:
+                          - _state: current_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: progress
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /
+                            - _state: current_action.workflow_type
+                            - -submit
+                        payload:
+                          action_id:
+                            _state: current_action._id
+                          signal: progress
+                          current_key:
+                            _state: current_action.key
+                          comment:
+                            _state: current_action.comment
+                          fields:
+                            _state: current_action.fields
+                    - id: refetch_action_progress
+                      type: Request
+                      params: get_workflow_action
+                    - id: reseed_action_progress
+                      type: SetState
+                      params:
+                        current_action:
+                          _request: get_workflow_action
+                        current_action.fields:
+                          assignees:
+                            _request: get_workflow_action.assignees
+                          due_date:
+                            _request: get_workflow_action.due_date
+                          description:
+                            _request: get_workflow_action.description
+                        current_action.comment: null
+                        current_action.change_request_comment: null
+                        current_action.stage:
+                          _request: get_workflow_action.status.0.stage
+                        current_action.mode:
+                          _if:
+                            test:
+                              _eq:
+                                - _request: get_workflow_action.status.0.stage
+                                - error
+                            then: view
+                            else:
+                              _if:
+                                test:
+                                  _and:
+                                    - _eq:
+                                        - _request: get_workflow_action.status.0.stage
+                                        - in-review
+                                    - _eq:
+                                        - _request: get_workflow_action.allowed.review
+                                        - true
+                                then: review
+                                else:
+                                  _if:
+                                    test:
+                                      _and:
+                                        - _array.includes:
+                                            - - action-required
+                                              - in-progress
+                                              - changes-required
+                                            - _request: get_workflow_action.status.0.stage
+                                        - _eq:
+                                            - _request: get_workflow_action.allowed.edit
+                                            - true
+                                    then: edit
+                                    else: view
+                        entity_id:
+                          _request: get_workflow_action.entity.id
+              - id: button_not_required
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: current_action.mode
+                        - edit
+                    - _state: current_action.buttons.not_required
+                properties:
+                  title: Mark Not Required
+                  type: default
+                  disabled:
+                    _and:
+                      - _state: current_action.workflow_closed
+                      - _ne:
+                          - _state: current_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: not_required
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /
+                            - _state: current_action.workflow_type
+                            - -submit
+                        payload:
+                          action_id:
+                            _state: current_action._id
+                          signal: not_required
+                          current_key:
+                            _state: current_action.key
+                          comment:
+                            _state: current_action.comment
+                    - id: refetch_action_not_required
+                      type: Request
+                      params: get_workflow_action
+                    - id: reseed_action_not_required
+                      type: SetState
+                      params:
+                        current_action:
+                          _request: get_workflow_action
+                        current_action.fields:
+                          assignees:
+                            _request: get_workflow_action.assignees
+                          due_date:
+                            _request: get_workflow_action.due_date
+                          description:
+                            _request: get_workflow_action.description
+                        current_action.comment: null
+                        current_action.change_request_comment: null
+                        current_action.stage:
+                          _request: get_workflow_action.status.0.stage
+                        current_action.mode:
+                          _if:
+                            test:
+                              _eq:
+                                - _request: get_workflow_action.status.0.stage
+                                - error
+                            then: view
+                            else:
+                              _if:
+                                test:
+                                  _and:
+                                    - _eq:
+                                        - _request: get_workflow_action.status.0.stage
+                                        - in-review
+                                    - _eq:
+                                        - _request: get_workflow_action.allowed.review
+                                        - true
+                                then: review
+                                else:
+                                  _if:
+                                    test:
+                                      _and:
+                                        - _array.includes:
+                                            - - action-required
+                                              - in-progress
+                                              - changes-required
+                                            - _request: get_workflow_action.status.0.stage
+                                        - _eq:
+                                            - _request: get_workflow_action.allowed.edit
+                                            - true
+                                    then: edit
+                                    else: view
+                        entity_id:
+                          _request: get_workflow_action.entity.id
+              - id: button_submit
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: current_action.mode
+                        - edit
+                    - _state: current_action.buttons.submit
+                properties:
+                  title: Submit
+                  type: primary
+                  disabled:
+                    _and:
+                      - _state: current_action.workflow_closed
+                      - _ne:
+                          - _state: current_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: validate
+                      type: Validate
+                      params:
+                        regex: ^current_action\.fields\.
+                    - id: submit
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /
+                            - _state: current_action.workflow_type
+                            - -submit
+                        payload:
+                          action_id:
+                            _state: current_action._id
+                          signal: submit
+                          current_key:
+                            _state: current_action.key
+                          comment:
+                            _state: current_action.comment
+                          fields:
+                            _state: current_action.fields
+                    - id: refetch_action_submit
+                      type: Request
+                      params: get_workflow_action
+                    - id: reseed_action_submit
+                      type: SetState
+                      params:
+                        current_action:
+                          _request: get_workflow_action
+                        current_action.fields:
+                          assignees:
+                            _request: get_workflow_action.assignees
+                          due_date:
+                            _request: get_workflow_action.due_date
+                          description:
+                            _request: get_workflow_action.description
+                        current_action.comment: null
+                        current_action.change_request_comment: null
+                        current_action.stage:
+                          _request: get_workflow_action.status.0.stage
+                        current_action.mode:
+                          _if:
+                            test:
+                              _eq:
+                                - _request: get_workflow_action.status.0.stage
+                                - error
+                            then: view
+                            else:
+                              _if:
+                                test:
+                                  _and:
+                                    - _eq:
+                                        - _request: get_workflow_action.status.0.stage
+                                        - in-review
+                                    - _eq:
+                                        - _request: get_workflow_action.allowed.review
+                                        - true
+                                then: review
+                                else:
+                                  _if:
+                                    test:
+                                      _and:
+                                        - _array.includes:
+                                            - - action-required
+                                              - in-progress
+                                              - changes-required
+                                            - _request: get_workflow_action.status.0.stage
+                                        - _eq:
+                                            - _request: get_workflow_action.allowed.edit
+                                            - true
+                                    then: edit
+                                    else: view
+                        entity_id:
+                          _request: get_workflow_action.entity.id
+              - id: button_request_changes
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: current_action.mode
+                        - review
+                    - _state: current_action.buttons.request_changes
+                properties:
+                  title: Request Changes
+                  type: default
+                  danger: true
+                  ghost: true
+                  disabled:
+                    _and:
+                      - _state: current_action.workflow_closed
+                      - _ne:
+                          - _state: current_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: open_request_changes_modal
+                      type: CallMethod
+                      params:
+                        blockId: request_changes_modal
+                        method: setOpen
+                        args:
+                          - open: true
+              - id: button_approve
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: current_action.mode
+                        - review
+                    - _state: current_action.buttons.approve
+                properties:
+                  title: Approve
+                  type: primary
+                  disabled:
+                    _and:
+                      - _state: current_action.workflow_closed
+                      - _ne:
+                          - _state: current_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: approve
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /
+                            - _state: current_action.workflow_type
+                            - -submit
+                        payload:
+                          action_id:
+                            _state: current_action._id
+                          signal: approve
+                          current_key:
+                            _state: current_action.key
+                          comment:
+                            _state: current_action.comment
+                    - id: refetch_action_approve
+                      type: Request
+                      params: get_workflow_action
+                    - id: reseed_action_approve
+                      type: SetState
+                      params:
+                        current_action:
+                          _request: get_workflow_action
+                        current_action.fields:
+                          assignees:
+                            _request: get_workflow_action.assignees
+                          due_date:
+                            _request: get_workflow_action.due_date
+                          description:
+                            _request: get_workflow_action.description
+                        current_action.comment: null
+                        current_action.change_request_comment: null
+                        current_action.stage:
+                          _request: get_workflow_action.status.0.stage
+                        current_action.mode:
+                          _if:
+                            test:
+                              _eq:
+                                - _request: get_workflow_action.status.0.stage
+                                - error
+                            then: view
+                            else:
+                              _if:
+                                test:
+                                  _and:
+                                    - _eq:
+                                        - _request: get_workflow_action.status.0.stage
+                                        - in-review
+                                    - _eq:
+                                        - _request: get_workflow_action.allowed.review
+                                        - true
+                                then: review
+                                else:
+                                  _if:
+                                    test:
+                                      _and:
+                                        - _array.includes:
+                                            - - action-required
+                                              - in-progress
+                                              - changes-required
+                                            - _request: get_workflow_action.status.0.stage
+                                        - _eq:
+                                            - _request: get_workflow_action.allowed.edit
+                                            - true
+                                    then: edit
+                                    else: view
+                        entity_id:
+                          _request: get_workflow_action.entity.id
+              - id: button_resolve_error
+                type: Button
+                layout:
+                  flex: 0 1 auto
+                visible:
+                  _and:
+                    - _eq:
+                        - _state: current_action.mode
+                        - view
+                    - _state: current_action.buttons.resolve_error
+                properties:
+                  title: Resolve Error
+                  type: primary
+                  disabled:
+                    _and:
+                      - _state: current_action.workflow_closed
+                      - _ne:
+                          - _state: current_action.required_after_close
+                          - true
+                events:
+                  onClick:
+                    - id: resolve_error
+                      type: CallAPI
+                      params:
+                        endpointId:
+                          _string.concat:
+                            - _module.id: true
+                            - /
+                            - _state: current_action.workflow_type
+                            - -submit
+                        payload:
+                          action_id:
+                            _state: current_action._id
+                          signal: resolve_error
+                          current_key:
+                            _state: current_action.key
+                          comment:
+                            _state: current_action.comment
+                    - id: refetch_action_resolve_error
+                      type: Request
+                      params: get_workflow_action
+                    - id: reseed_action_resolve_error
+                      type: SetState
+                      params:
+                        current_action:
+                          _request: get_workflow_action
+                        current_action.fields:
+                          assignees:
+                            _request: get_workflow_action.assignees
+                          due_date:
+                            _request: get_workflow_action.due_date
+                          description:
+                            _request: get_workflow_action.description
+                        current_action.comment: null
+                        current_action.change_request_comment: null
+                        current_action.stage:
+                          _request: get_workflow_action.status.0.stage
+                        current_action.mode:
+                          _if:
+                            test:
+                              _eq:
+                                - _request: get_workflow_action.status.0.stage
+                                - error
+                            then: view
+                            else:
+                              _if:
+                                test:
+                                  _and:
+                                    - _eq:
+                                        - _request: get_workflow_action.status.0.stage
+                                        - in-review
+                                    - _eq:
+                                        - _request: get_workflow_action.allowed.review
+                                        - true
+                                then: review
+                                else:
+                                  _if:
+                                    test:
+                                      _and:
+                                        - _array.includes:
+                                            - - action-required
+                                              - in-progress
+                                              - changes-required
+                                            - _request: get_workflow_action.status.0.stage
+                                        - _eq:
+                                            - _request: get_workflow_action.allowed.edit
+                                            - true
+                                    then: edit
+                                    else: view
+                        entity_id:
+                          _request: get_workflow_action.entity.id
+      # Universal-fields edit modal — opened by the title-bar ✎ chip. Sourced from
+      # the loaded action; the Update calls {workflow_type}-update-fields and then
+      # runs the page's refetch+reseed before the modal self-closes.
+      - _ref:
+          path: components/universal-fields/universal-fields-modal.yaml
+          vars:
+            modal_id: universal_fields_edit_modal
+            state_path: current_action.fields
+            workflow_type:
+              _state: current_action.workflow_type
+            action_id:
+              _state: current_action._id
+            allowed_edit:
+              _state: current_action.allowed.edit
+            on_complete:
+              - id: refetch_action_fields
+                type: Request
+                params: get_workflow_action
+              - id: reseed_action_fields
+                type: SetState
+                params:
+                  current_action:
+                    _request: get_workflow_action
+                  current_action.fields:
+                    assignees:
+                      _request: get_workflow_action.assignees
+                    due_date:
+                      _request: get_workflow_action.due_date
+                    description:
+                      _request: get_workflow_action.description
+                  current_action.comment: null
+                  current_action.change_request_comment: null
+                  current_action.stage:
+                    _request: get_workflow_action.status.0.stage
+                  current_action.mode:
+                    _if:
+                      test:
+                        _eq:
+                          - _request: get_workflow_action.status.0.stage
+                          - error
+                      then: view
+                      else:
+                        _if:
+                          test:
+                            _and:
+                              - _eq:
+                                  - _request: get_workflow_action.status.0.stage
+                                  - in-review
+                              - _eq:
+                                  - _request: get_workflow_action.allowed.review
+                                  - true
+                          then: review
+                          else:
                             _if:
                               test:
-                                _eq:
-                                  - _request: get_workflow_action.status.0.stage
-                                  - error
-                              then: view
-                              else:
-                                _if:
-                                  test:
-                                    _and:
-                                      - _eq:
-                                          - _request: get_workflow_action.status.0.stage
-                                          - in-review
-                                      - _eq:
-                                          - _request: get_workflow_action.allowed.review
-                                          - true
-                                  then: review
-                                  else:
-                                    _if:
-                                      test:
-                                        _and:
-                                          - _array.includes:
-                                              - - action-required
-                                                - in-progress
-                                                - changes-required
-                                              - _request: get_workflow_action.status.0.stage
-                                          - _eq:
-                                              - _request: get_workflow_action.allowed.edit
-                                              - true
-                                      then: edit
-                                      else: view
-                          entity_id:
-                            _request: get_workflow_action.entity.id
-                    action_data:
-                      assignees:
-                        _state: current_action.fields.assignees
-                      due_date:
-                        _state: current_action.fields.due_date
-                      description:
-                        _state: current_action.fields.description
-                      assignee_docs:
-                        _state: current_action.assignee_docs
+                                _and:
+                                  - _array.includes:
+                                      - - action-required
+                                        - in-progress
+                                        - changes-required
+                                      - _request: get_workflow_action.status.0.stage
+                                  - _eq:
+                                      - _request: get_workflow_action.allowed.edit
+                                      - true
+                              then: edit
+                              else: view
+                  entity_id:
+                    _request: get_workflow_action.entity.id
