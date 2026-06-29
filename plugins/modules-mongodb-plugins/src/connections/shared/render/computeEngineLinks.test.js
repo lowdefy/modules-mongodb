@@ -293,17 +293,143 @@ test("tracker start_link: without urlQuery emits link with only pageId", () => {
   expect(links.demo.edit).not.toHaveProperty("urlQuery");
 });
 
-test("custom kind returns no engine links", () => {
+// ── Part 28: custom kind routes the author's cell links ──────────────────────
+
+// A custom action doc as it reaches computeEngineLinks: the planner has already
+// rendered the status_map cell onto doc[slug] (so doc.demo.link / .view_link
+// exist). The cell urlQuery still carries the `true` sentinels — the engine
+// substitutes them here.
+function customAction(stage, demoCell, { access } = {}) {
+  return {
+    _id: "c1",
+    kind: "custom",
+    workflow_type: "account-review",
+    entity: { id: "ent-9" },
+    status: [{ stage }],
+    access: access ?? { demo: { view: true, edit: true, review: true } },
+    demo: demoCell,
+  };
+}
+
+test("custom at action-required: working link → edit slot, sentinel substituted; view falls back to the shared action page", () => {
   const links = computeEngineLinks({
     entry_id: ENTRY,
-    action: {
-      _id: "a4",
-      kind: "custom",
-      status: [{ stage: "action-required" }],
-      access: { demo: { view: true } },
-    },
+    action: customAction("action-required", {
+      message: "Review.",
+      link: { pageId: "contract-review", urlQuery: { action_id: true } },
+    }),
   });
-  expect(links).toEqual({});
+  expect(links.demo.edit).toEqual({
+    pageId: "contract-review",
+    urlQuery: { action_id: "c1" },
+  });
+  // No view_link authored → observer fallback to the shared page.
+  expect(links.demo.view).toEqual({
+    pageId: "workflows/account-review-action",
+    urlQuery: { action_id: "c1" },
+  });
+  expect(links.demo.review).toBeNull();
+  expect(links.demo.error).toBeNull();
+});
+
+test("custom at in-review: working link → review slot; view falls back", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("in-review", {
+      link: { pageId: "contract-review", urlQuery: { action_id: true } },
+    }),
+  });
+  expect(links.demo.review).toEqual({
+    pageId: "contract-review",
+    urlQuery: { action_id: "c1" },
+  });
+  expect(links.demo.view.pageId).toBe("workflows/account-review-action");
+  expect(links.demo.edit).toBeNull();
+});
+
+test("custom at error: working link → error slot when error declared; view falls back", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction(
+      "error",
+      { link: { pageId: "contract-review", urlQuery: { action_id: true } } },
+      { access: { demo: { view: true, error: true } } },
+    ),
+  });
+  expect(links.demo.error).toEqual({
+    pageId: "contract-review",
+    urlQuery: { action_id: "c1" },
+  });
+  expect(links.demo.view.pageId).toBe("workflows/account-review-action");
+});
+
+test("custom at done: working link → view slot (done precedence over view_link)", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("done", {
+      link: { pageId: "contract-view", urlQuery: { action_id: true } },
+      view_link: { pageId: "should-not-win", urlQuery: { action_id: true } },
+    }),
+  });
+  // At done the working link claims the view slot; view_link does NOT override.
+  expect(links.demo.view).toEqual({
+    pageId: "contract-view",
+    urlQuery: { action_id: "c1" },
+  });
+  expect(links.demo.edit).toBeNull();
+});
+
+test("custom: authored view_link fills the view slot at an in-flight stage", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("action-required", {
+      link: { pageId: "contract-review", urlQuery: { action_id: true } },
+      view_link: { pageId: "contract-view", urlQuery: { action_id: true } },
+    }),
+  });
+  expect(links.demo.edit.pageId).toBe("contract-review");
+  expect(links.demo.view).toEqual({
+    pageId: "contract-view",
+    urlQuery: { action_id: "c1" },
+  });
+});
+
+test("custom: entity_id sentinel substituted from action.entity.id", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("action-required", {
+      link: {
+        pageId: "contract-review",
+        urlQuery: { action_id: true, entity_id: true },
+      },
+    }),
+  });
+  expect(links.demo.edit.urlQuery).toEqual({
+    action_id: "c1",
+    entity_id: "ent-9",
+  });
+});
+
+test("custom at blocked: message-only, all slots null (no view fallback)", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("blocked", { message: "Awaiting requirements." }),
+  });
+  expect(links.demo).toEqual({
+    view: null,
+    edit: null,
+    review: null,
+    error: null,
+  });
+});
+
+test("custom: working link absent → working slot null, view still falls back", () => {
+  const links = computeEngineLinks({
+    entry_id: ENTRY,
+    action: customAction("in-review", { message: "In review." }),
+  });
+  expect(links.demo.review).toBeNull();
+  expect(links.demo.view.pageId).toBe("workflows/account-review-action");
 });
 
 test("reserved access keys are not treated as slugs", () => {

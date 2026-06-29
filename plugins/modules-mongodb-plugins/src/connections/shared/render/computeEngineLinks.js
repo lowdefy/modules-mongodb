@@ -28,7 +28,14 @@
  *                 → `edit` to start_link.pageId (verbatim, NOT entry-scoped),
  *                   urlQuery sentinels: `action_id: true` → action._id,
  *                   `entity_id: true` → action.entity.id, statics verbatim
- *   - custom  -> no engine links (author authors them in the cell); returns {}
+ *   - custom  -> author-routed (Part 28): the working `link` cell
+ *               (action[slug].link) lands in the stage's active working verb
+ *               slot (edit at action-required/in-progress/changes-required,
+ *               review at in-review, error at error, view at done); the `view`
+ *               slot is filled by the author's `view_link` cell or, absent that,
+ *               the shared `{workflow_type}-action` page (observer fallback).
+ *               Sentinels (`action_id`/`entity_id`) are substituted as for
+ *               tracker start_link.
  *
  * Output: `{ [slug]: { view, edit, review, error } }` (each cell a link object
  * or null). The planner assigns each map to `action[slug].links`.
@@ -37,6 +44,48 @@
 const VERBS = ["view", "edit", "review", "error"];
 
 const RESERVED_ACCESS_KEYS = new Set(["roles", "notification_roles"]);
+
+// The single active working verb at each stage — the slot a custom action's
+// working `link` cell lands in. `done` is view-only (no working verb), so a
+// working `link` at done lands in the `view` slot. blocked / not-required
+// expose no slot. Mirrors STAGE_VERB_PAGE's exposed verbs.
+const STAGE_WORKING_VERB = {
+  "action-required": "edit",
+  "in-progress": "edit",
+  "changes-required": "edit",
+  "in-review": "review",
+  error: "error",
+  done: "view",
+};
+
+// Substitute the engine-link sentinels over a flat urlQuery: `action_id: true`
+// → action._id, `entity_id: true` → action.entity.id, every other key/value
+// verbatim. Returns undefined when there is no urlQuery (so the caller emits a
+// pageId-only link, matching tracker start_link). Shared by the tracker arm and
+// the custom branch so every engine-routed link resolves sentinels identically.
+function substituteSentinels(urlQuery, action) {
+  if (urlQuery == null) return undefined;
+  const out = {};
+  for (const [key, val] of Object.entries(urlQuery)) {
+    if (key === "action_id" && val === true) {
+      out[key] = action._id;
+    } else if (key === "entity_id" && val === true) {
+      out[key] = action.entity.id;
+    } else {
+      out[key] = val;
+    }
+  }
+  return out;
+}
+
+// Build a link object from an engine-link cell `{ pageId, urlQuery? }`,
+// substituting sentinels. Omits urlQuery entirely when the cell has none.
+function resolveCellLink(cell, action) {
+  const link = { pageId: cell.pageId };
+  const urlQuery = substituteSentinels(cell.urlQuery, action);
+  if (urlQuery !== undefined) link.urlQuery = urlQuery;
+  return link;
+}
 
 // Which verbs have a meaningful page at each stage (shared by check + form).
 // `true` => the stage exposes a page for that verb; otherwise the cell is null.
@@ -61,8 +110,6 @@ function scoped(entryId, page) {
 
 function computeEngineLinks({ action, entry_id: entryId }) {
   const { kind } = action;
-  // Custom kinds author their own links in the status_map cell.
-  if (kind === "custom") return {};
 
   const access = action.access ?? {};
   const slugs = declaredSlugs(access);
@@ -72,6 +119,41 @@ function computeEngineLinks({ action, entry_id: entryId }) {
   for (const slug of slugs) {
     const verbsDeclared = access[slug] ?? {};
     const links = { view: null, edit: null, review: null, error: null };
+
+    if (kind === "custom") {
+      // Part 28: route the author's rendered cells into the per-verb map.
+      const stageVerbs = STAGE_VERB_PAGE[stage] ?? {};
+      const cell = action[slug] ?? {};
+
+      // Working link → the stage's single active working verb slot (gated on
+      // the slug declaring that verb and the stage exposing a page for it).
+      const workingVerb = STAGE_WORKING_VERB[stage];
+      if (
+        workingVerb &&
+        workingVerb in verbsDeclared &&
+        stageVerbs[workingVerb] &&
+        cell.link != null
+      ) {
+        links[workingVerb] = resolveCellLink(cell.link, action);
+      }
+
+      // View slot → author's view_link else the shared {workflow_type}-action
+      // page (observer fallback), wherever the stage exposes view and the slug
+      // declares it, and the working link has not already claimed the slot
+      // (the done-stage precedence: a done.link wins the view slot).
+      if (stageVerbs.view && "view" in verbsDeclared && links.view == null) {
+        links.view =
+          cell.view_link != null
+            ? resolveCellLink(cell.view_link, action)
+            : {
+                pageId: scoped(entryId, `${action.workflow_type}-action`),
+                urlQuery: { action_id: action._id },
+              };
+      }
+
+      result[slug] = links;
+      continue;
+    }
 
     if (kind === "tracker") {
       // Arm 1: child exists → `view` to child workflow-overview.
@@ -90,21 +172,7 @@ function computeEngineLinks({ action, entry_id: entryId }) {
         action.child_workflow_id == null &&
         startLink != null
       ) {
-        const link = { pageId: startLink.pageId };
-        if (startLink.urlQuery != null) {
-          const urlQuery = {};
-          for (const [key, val] of Object.entries(startLink.urlQuery)) {
-            if (key === "action_id" && val === true) {
-              urlQuery[key] = action._id;
-            } else if (key === "entity_id" && val === true) {
-              urlQuery[key] = action.entity.id;
-            } else {
-              urlQuery[key] = val;
-            }
-          }
-          link.urlQuery = urlQuery;
-        }
-        links.edit = link;
+        links.edit = resolveCellLink(startLink, action);
       }
 
       result[slug] = links;
