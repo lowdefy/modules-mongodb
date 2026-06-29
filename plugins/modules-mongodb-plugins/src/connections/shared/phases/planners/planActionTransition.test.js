@@ -272,7 +272,7 @@ test("links computation reads access/workflow_type off the composed doc, not the
     actionConfig: makeConfig({ kind: "check" }),
   });
   expect(result.doc.demo.links.edit).toEqual({
-    pageId: "workflows/onboarding-check",
+    pageId: "workflows/onboarding-action",
     urlQuery: { action_id: "a-1" },
   });
 });
@@ -492,11 +492,11 @@ describe("upsert spawn", () => {
       demo: {
         links: {
           view: {
-            pageId: "workflows/onboarding-check",
+            pageId: "workflows/onboarding-action",
             urlQuery: { action_id: "new-1" },
           },
           edit: {
-            pageId: "workflows/onboarding-check",
+            pageId: "workflows/onboarding-action",
             urlQuery: { action_id: "new-1" },
           },
           review: null,
@@ -588,7 +588,7 @@ describe("seedStage mode", () => {
     expect(result.doc.status_title).toBe("To do");
     expect(result.doc.demo.message).toBe("Please complete this step.");
     expect(result.doc.demo.links.edit).toEqual({
-      pageId: "workflows/onboarding-check",
+      pageId: "workflows/onboarding-action",
       urlQuery: { action_id: "new-1" },
     });
     expect(result.changeLog).toEqual({ before: null, after: result.doc });

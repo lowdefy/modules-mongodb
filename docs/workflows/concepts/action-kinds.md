@@ -45,7 +45,7 @@ form:
 
 ## Check actions (`kind: check`)
 
-A check action is a lightweight task — no domain form, just the universal fields (`assignees`, `due_date`, `description`) and a comment. It is served by the per-workflow `{workflow_type}-check` page, routed by `?action_id=<id>`. That single page covers every check action in the workflow and switches between edit / view / review at load based on the action's stage and the caller's resolved access. See [Action pages](action-pages.md).
+A check action is a lightweight task — no domain form, just the universal fields (`assignees`, `due_date`, `description`) and a comment. It is served by the per-workflow `{workflow_type}-action` page, routed by `?action_id=<id>`. That single page covers every check action in the workflow and switches between edit / view / review at load based on the action's stage and the caller's resolved access. See [Action pages](action-pages.md).
 
 ```yaml
 type: schedule-followup
@@ -58,7 +58,7 @@ access:
     edit: [account-manager]
 ```
 
-**One page per workflow.** Check actions don't get a page set per action type. A single `{workflow_type}-check` page handles every check action in the workflow via the `?action_id=` query param.
+**One page per workflow.** Check actions don't get a page set per action type. A single `{workflow_type}-action` page handles every check action in the workflow via the `?action_id=` query param.
 
 **Same FSM as form.** The check kind uses the same FSM table as the form kind. `submit` is nullary — the target (`in-review` vs `done`) depends on whether the action declares the `review` verb, same as form actions. There is no status selector.
 

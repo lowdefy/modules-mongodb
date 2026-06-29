@@ -4,8 +4,8 @@
 # shared check-action surface (components/check-action-surface.yaml). It lets a
 # host (actions-on-entity, the events-timeline action cards) open a check action
 # in place — no full-page navigation — and is an in-app shortcut layered on
-# hosts, never a replacement for the canonical per-workflow {workflow_type}-check
-# action page.
+# hosts, never a replacement for the canonical per-workflow {workflow_type}-action
+# page.
 #
 # Open contract — every host wires it the same way (verbatim):
 #   - type: SetState
@@ -21,7 +21,7 @@
 # Fixed-request-id constraint. This component defines a component-local Request
 # with id `get_workflow_action`. NEVER drop this component on a page that already
 # defines a `get_workflow_action` request — i.e. the per-workflow
-# {workflow_type}-check action page, which carries its own URL-bound
+# {workflow_type}-action page, which carries its own URL-bound
 # `get_workflow_action`. A duplicate request id would collide. This modal is for
 # entity/host pages only.
 #

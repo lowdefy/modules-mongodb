@@ -131,11 +131,11 @@ test("makeActionPages: schedule-followup (check) emits no per-verb pages even wi
   });
 
   // The check action emits no verb pages (no -edit/-view/-review/-error). It
-  // contributes only the single per-workflow check page (asserted separately).
+  // contributes only the single per-workflow action page (asserted separately).
   expect(pages.some((p) => /-(edit|view|review|error)$/.test(p.id))).toBe(
     false,
   );
-  expect(pages.map((p) => p.id)).toEqual(["onboarding-check"]);
+  expect(pages.map((p) => p.id)).toEqual(["onboarding-action"]);
 });
 
 test("makeActionPages: track-installation (tracker) emits nothing even with view+edit+review access", () => {
@@ -206,7 +206,7 @@ test('makeActionPages: app_name of undefined, null, or "" throws with /app_name 
   }
 });
 
-test("makeActionPages: worked-example fixture emits the five form pages plus the single check page", () => {
+test("makeActionPages: worked-example fixture emits the five form pages plus the single action page", () => {
   const pages = makeActionPages(null, {
     workflows: [
       workflow([
@@ -221,9 +221,9 @@ test("makeActionPages: worked-example fixture emits the five form pages plus the
 
   const ids = pages.map((p) => p.id).sort();
   expect(ids).toEqual([
-    // The check action (schedule-followup) contributes the per-workflow check
-    // page; the tracker action contributes nothing.
-    "onboarding-check",
+    // The check action (schedule-followup) contributes the per-workflow
+    // action page; the tracker action contributes nothing.
+    "onboarding-action",
     "onboarding-qualify-edit",
     "onboarding-qualify-view",
     "onboarding-send-quote-edit",
@@ -473,19 +473,19 @@ test("makeActionPages: entity_view_slot is baked from workflow.entity_view.slot 
   }
 });
 
-// ── Part 56 Task 10: check page emission ─────────────────────────────────────
+// ── Part 56 Task 10 / Part 28: shared action page emission ──────────────────
 
-test("makeActionPages: a workflow with a check action emits exactly one check page", () => {
+test("makeActionPages: a workflow with a check action emits exactly one action page", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction, scheduleFollowupAction])],
     app_name: APP,
   });
 
-  const checkPages = pages.filter((p) => p.id === "onboarding-check");
+  const checkPages = pages.filter((p) => p.id === "onboarding-action");
   expect(checkPages).toHaveLength(1);
 });
 
-test("makeActionPages: the check page targets templates/check.yaml.njk with the workspace vars", () => {
+test("makeActionPages: the action page targets templates/action.yaml.njk with the workspace vars", () => {
   const slot = [{ id: "lead_summary", type: "Html" }];
   const wf = {
     ...workflow([qualifyAction, scheduleFollowupAction]),
@@ -498,8 +498,8 @@ test("makeActionPages: the check page targets templates/check.yaml.njk with the 
     app_name: APP,
   });
 
-  const checkPage = pages.find((p) => p.id === "onboarding-check");
-  expect(checkPage._ref.path).toBe("templates/check.yaml.njk");
+  const checkPage = pages.find((p) => p.id === "onboarding-action");
+  expect(checkPage._ref.path).toBe("templates/action.yaml.njk");
   expect(checkPage._ref.vars).toEqual({
     workflow_type: "onboarding",
     connection_id: "leads-collection",
@@ -510,32 +510,32 @@ test("makeActionPages: the check page targets templates/check.yaml.njk with the 
   });
 });
 
-test("makeActionPages: a workflow with no check action emits no check page", () => {
+test("makeActionPages: a workflow with neither check nor custom action emits no action page", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction, sendQuoteAction])],
     app_name: APP,
   });
 
-  expect(pages.some((p) => p.id === "onboarding-check")).toBe(false);
+  expect(pages.some((p) => p.id === "onboarding-action")).toBe(false);
 });
 
-test("makeActionPages: multiple check actions still emit exactly one check page", () => {
+test("makeActionPages: multiple check actions still emit exactly one action page", () => {
   const secondCheck = { ...scheduleFollowupAction, type: "confirm-delivery" };
   const pages = makeActionPages(null, {
     workflows: [workflow([scheduleFollowupAction, secondCheck])],
     app_name: APP,
   });
 
-  const checkPages = pages.filter((p) => p.id === "onboarding-check");
+  const checkPages = pages.filter((p) => p.id === "onboarding-action");
   expect(checkPages).toHaveLength(1);
 });
 
-test("makeActionPages: the check page's entity_view_slot defaults to [] when no entity_view", () => {
+test("makeActionPages: the action page's entity_view_slot defaults to [] when no entity_view", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([scheduleFollowupAction])],
     app_name: APP,
   });
 
-  const checkPage = pages.find((p) => p.id === "onboarding-check");
+  const checkPage = pages.find((p) => p.id === "onboarding-action");
   expect(checkPage._ref.vars.entity_view_slot).toEqual([]);
 });

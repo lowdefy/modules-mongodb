@@ -298,13 +298,13 @@ async function seedAction({
     "test-app": {
       links: {
         view: {
-          pageId: "workflows/onboarding-check",
+          pageId: "workflows/onboarding-action",
           urlQuery: { action_id: _id },
         },
         edit:
           stage === "action-required"
             ? {
-                pageId: "workflows/onboarding-check",
+                pageId: "workflows/onboarding-action",
                 urlQuery: { action_id: _id },
               }
             : null,

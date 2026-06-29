@@ -18,8 +18,8 @@ import { test, expect } from "../fixtures.js";
 // assign-account-manager, kickoff-call on companies/view) open the modal IN
 // PLACE — they do not navigate to the per-workflow check page (Part 56 retired
 // the shared workflow-action-* pages; checks now navigate to
-// {workflow_type}-check only when no modal is present — onboarding-check on
-// lead-view, company-setup-check on companies/view). Each step opens the modal,
+// {workflow_type}-action only when no modal is present — onboarding-action on
+// lead-view, company-setup-action on companies/view). Each step opens the modal,
 // selects `done`, submits, and asserts the modal closes; lead-view also asserts
 // the co-present Activity timeline refreshes (the Part 55 bug fix). These four
 // steps must be confirmed against a live app + MongoDB via /r:dev-test — a build
@@ -266,7 +266,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
 
     // ── site-visit (kind: check) — opens the in-context modal IN PLACE ───────
     // Part 55: lead-view drops the check-action modal, so a check-row click
-    // opens it over the entity page (no navigation to the onboarding-check page).
+    // opens it over the entity page (no navigation to the onboarding-action page).
     const siteVisitLink = page
       .locator("a", { hasText: "Complete the site visit." })
       .first();
@@ -274,12 +274,12 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     await siteVisitLink.click();
 
     // Modal opens in place — the surface's status selector becomes visible and
-    // the URL stays on lead-view (no navigation to the onboarding-check page).
+    // the URL stays on lead-view (no navigation to the onboarding-action page).
     await expect(ldf.block("status").locator()).toBeVisible({
       timeout: 15_000,
     });
     expect(page.url()).toContain("lead-view");
-    expect(page.url()).not.toContain("onboarding-check");
+    expect(page.url()).not.toContain("onboarding-action");
 
     // For a check action the status selector drives completion. Select "done".
     await ldf.block("status").do.select("done");
@@ -339,7 +339,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       timeout: 15_000,
     });
     expect(page.url()).toContain("lead-view");
-    expect(page.url()).not.toContain("onboarding-check");
+    expect(page.url()).not.toContain("onboarding-action");
 
     await ldf.block("status").do.select("done");
 
@@ -703,7 +703,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     });
     expect(page.url()).toContain("companies");
     expect(page.url()).toContain("view");
-    expect(page.url()).not.toContain("company-setup-check");
+    expect(page.url()).not.toContain("company-setup-action");
 
     await ldf.block("status").do.select("done");
 
@@ -752,7 +752,7 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
     });
     expect(page.url()).toContain("companies");
     expect(page.url()).toContain("view");
-    expect(page.url()).not.toContain("company-setup-check");
+    expect(page.url()).not.toContain("company-setup-action");
 
     await ldf.block("status").do.select("done");
 

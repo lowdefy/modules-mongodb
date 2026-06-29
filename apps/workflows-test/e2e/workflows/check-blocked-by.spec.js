@@ -5,12 +5,12 @@ import { test, expect } from "../fixtures.js";
 // Proves both blocked_by dependency kinds fire through the wired app — a TYPE
 // dep (needs-type ← first-check) and a GROUP dep (needs-group ← prep group) —
 // and is the suite's coverage home for the per-workflow check page
-// (check-blocked-by-check) and the two overview pages
+// (check-blocked-by-action) and the two overview pages
 // (workflow-overview, workflow-group-overview) rendering in a running app.
 //
 // TARGET STATE (parts 40/46/48/56):
 //   - kind:check actions render on the per-workflow check page
-//     check-blocked-by-check via ?action_id= (Part 56 retired the shared
+//     check-blocked-by-action via ?action_id= (Part 56 retired the shared
 //     workflow-action-{edit,view,review} pages; the signal model from Part 40 —
 //     button_submit / button_approve — is unchanged).
 //   - Per Part 40 D5, clicking a check row in actions-on-entity opens the
@@ -81,7 +81,7 @@ test("completing a type blocker and completing a group both unblock their depend
   // assert it renders the check action (its current-stage message), then
   // complete it.
   await ldf.goto(
-    `/workflows/check-blocked-by-check?action_id=${firstCheck._id.toString()}`,
+    `/workflows/check-blocked-by-action?action_id=${firstCheck._id.toString()}`,
   );
   await expect(page.getByText("Complete the first prep check.")).toBeVisible();
   await ldf.block("button_submit").do.click();
@@ -97,16 +97,16 @@ test("completing a type blocker and completing a group both unblock their depend
   // ── GROUP dep: completing the prep group unblocks needs-group ──────────────
   // second-check has the review verb: submit → in-review.
   await ldf.goto(
-    `/workflows/check-blocked-by-check?action_id=${secondCheck._id.toString()}`,
+    `/workflows/check-blocked-by-action?action_id=${secondCheck._id.toString()}`,
   );
   await ldf.block("button_submit").do.click();
   await workflow.assertStatus(secondCheck._id.toString(), "in-review");
 
   // The check page serves the in-review check action; approve → done.
   await ldf.goto(
-    `/workflows/check-blocked-by-check?action_id=${secondCheck._id.toString()}`,
+    `/workflows/check-blocked-by-action?action_id=${secondCheck._id.toString()}`,
   );
-  await expect(page).toHaveURL(/check-blocked-by-check/);
+  await expect(page).toHaveURL(/check-blocked-by-action/);
   await ldf.block("button_approve").do.click();
   await workflow.assertStatus(secondCheck._id.toString(), "done");
 
@@ -126,9 +126,9 @@ test("completing a type blocker and completing a group both unblock their depend
 
   // ── check page sweep: the page renders for a done check action ─────────────
   await ldf.goto(
-    `/workflows/check-blocked-by-check?action_id=${firstCheck._id.toString()}`,
+    `/workflows/check-blocked-by-action?action_id=${firstCheck._id.toString()}`,
   );
-  await expect(page).toHaveURL(/check-blocked-by-check/);
+  await expect(page).toHaveURL(/check-blocked-by-action/);
   await expect(page.getByText("First prep check complete.")).toBeVisible();
 
   // ── overview pages render against the group-structured workflow ────────────

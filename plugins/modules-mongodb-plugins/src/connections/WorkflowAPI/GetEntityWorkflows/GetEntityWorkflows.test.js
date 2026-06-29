@@ -185,13 +185,13 @@ async function seedAction({
     "test-app": {
       links: {
         view: {
-          pageId: "workflows/onboarding-check",
+          pageId: "workflows/onboarding-action",
           urlQuery: { action_id: _id },
         },
         edit:
           stage === "action-required"
             ? {
-                pageId: "workflows/onboarding-check",
+                pageId: "workflows/onboarding-action",
                 urlQuery: { action_id: _id },
               }
             : null,
@@ -410,7 +410,7 @@ describe("link collapse", () => {
     );
     const card = result.workflows[0].groups.flatMap((g) => g.actions)[0];
     // account-manager has edit access and action-required stage has edit link
-    expect(card.link.pageId).toContain("onboarding-check");
+    expect(card.link.pageId).toContain("onboarding-action");
   });
 
   test("view link is used when edit link is null", async () => {
@@ -424,7 +424,7 @@ describe("link collapse", () => {
         "test-app": {
           links: {
             view: {
-              pageId: "workflows/onboarding-check",
+              pageId: "workflows/onboarding-action",
               urlQuery: { action_id: "a1" },
             },
             edit: null,
@@ -441,7 +441,7 @@ describe("link collapse", () => {
       }),
     );
     const card = result.workflows[0].groups.flatMap((g) => g.actions)[0];
-    expect(card.link.pageId).toContain("onboarding-check");
+    expect(card.link.pageId).toContain("onboarding-action");
   });
 });
 
@@ -613,7 +613,7 @@ describe("unseen group order", () => {
         "test-app": {
           links: {
             view: {
-              pageId: "workflows/onboarding-check",
+              pageId: "workflows/onboarding-action",
               urlQuery: { action_id: "a2" },
             },
             edit: null,
@@ -654,7 +654,7 @@ describe("unseen group order", () => {
         "test-app": {
           links: {
             view: {
-              pageId: "workflows/onboarding-check",
+              pageId: "workflows/onboarding-action",
               urlQuery: { action_id: "a2" },
             },
             edit: null,

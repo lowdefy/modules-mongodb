@@ -330,7 +330,7 @@ describe("seeded drafts", () => {
     expect(byType.a.workflow_type).toBe("onboarding"); // denormalised
   });
 
-  test("seeded check-kind drafts carry {workflow_type}-check engine links", async () => {
+  test("seeded check-kind drafts carry {workflow_type}-action engine links", async () => {
     await StartWorkflow(
       buildContext({
         request: {
@@ -343,11 +343,11 @@ describe("seeded drafts", () => {
     // action-required stage: view + edit cells both target the single
     // per-workflow check page for the check kind.
     expect(a["test-app"].links.view).toEqual({
-      pageId: "workflows/onboarding-check",
+      pageId: "workflows/onboarding-action",
       urlQuery: { action_id: a._id },
     });
     expect(a["test-app"].links.edit).toEqual({
-      pageId: "workflows/onboarding-check",
+      pageId: "workflows/onboarding-action",
       urlQuery: { action_id: a._id },
     });
   });

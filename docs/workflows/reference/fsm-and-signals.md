@@ -77,7 +77,7 @@ The `submit` landing (`in-review` vs `done`) is action-global: `in-review` when 
 
 ### Check kind
 
-Identical to the form-kind table. Check actions are served by the per-workflow `{workflow_type}-check` page and carry no `form:` body or author `hooks:`.
+Identical to the form-kind table. Check actions are served by the per-workflow `{workflow_type}-action` page and carry no `form:` body or author `hooks:`.
 
 ### Tracker kind
 

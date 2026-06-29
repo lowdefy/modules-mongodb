@@ -22,7 +22,7 @@ import { test, expect } from "../fixtures.js";
 // TARGET STATE (parts 40/46/48/56): fragile is kind:form with the `error` verb,
 // so makeActionPages emits /workflows/error-recovery-fragile-error from
 // templates/error.yaml.njk; trigger is kind:check, submitting from the
-// per-workflow error-recovery-check page (Part 56 retired the shared
+// per-workflow error-recovery-action page (Part 56 retired the shared
 // workflow-action-* pages). The submit endpoint is per-workflow
 // error-recovery-submit (Part 48). Fails against pre-40/48 code by design.
 //
@@ -64,8 +64,8 @@ test("a submit cascades fragile into error — writing a real timeline event and
   const triggerId = trigger._id.toString();
   const fragileId = fragile._id.toString();
 
-  // ── SPINE: submit trigger through its real per-workflow check page ─────────
-  await ldf.goto(`/workflows/error-recovery-check?action_id=${triggerId}`);
+  // ── SPINE: submit trigger through its real per-workflow action page ─────────
+  await ldf.goto(`/workflows/error-recovery-action?action_id=${triggerId}`);
   await ldf.block("button_submit").do.click();
 
   // trigger completes; its pre-hook cascade pushes fragile into error.
