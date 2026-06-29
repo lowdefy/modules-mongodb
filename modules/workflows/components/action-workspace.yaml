@@ -9,15 +9,20 @@
 # native chrome, set by the template — D8).
 #
 #   ┌──────────────┬───────────────────────┬──────────────────────────┐
-#   │ actions-on-  │  middle (caller slot)  │  universal_fields card   │
+#   │ [card]       │  middle (caller slot)  │ [card]                   │
+#   │ actions-on-  │                        │  universal fields        │
 #   │ entity       │                        │  Tabs[ Details? History ]│
 #   └──────────────┴───────────────────────┴──────────────────────────┘
 #
+# Both side columns are cards: the left wraps `actions-on-entity`; the right is a
+# single card holding the universal fields above the Details?/History tabs.
+#
 # Vars (slots + baked scalars):
 #   - middle               (required) block array — the action surface.
-#   - universal_fields     block array — the Part 24 universal-fields card the
-#                          caller composes with its own kind-specific vars
-#                          (RHS top, both kinds). Default [].
+#   - universal_fields     block array — the Part 24 universal-fields content the
+#                          caller composes with its own kind-specific vars. The
+#                          component is always card-less, so it sits cleanly at
+#                          the top of the shell's RHS card. Default [].
 #   - details_slot         block array — baked from the workflow's
 #                          `entity_view.slot`. Rendered as the RHS Details tab on
 #                          form pages; check pages pass it empty (their slot is
@@ -50,9 +55,10 @@ visible:
 layout:
   gap: 16
 blocks:
-  # LEFT — the entity's workflows + steps (current row links to its action page).
+  # LEFT — the entity's workflows + steps (current row links to its action page),
+  # in a card.
   - id: workspace_left
-    type: Box
+    type: Card
     layout:
       span: 6
       sm:
@@ -76,9 +82,11 @@ blocks:
       _var:
         key: middle
         default: []
-  # RIGHT — universal-fields card (top) above a Tabs wrapper (Details? + History).
+  # RIGHT — a single card holding the universal fields (top, composed card-less)
+  # above a Tabs wrapper (Details? + History), so the fields, the entity Details
+  # and History all live inside one RHS card.
   - id: workspace_right
-    type: Box
+    type: Card
     layout:
       span: 6
       sm:

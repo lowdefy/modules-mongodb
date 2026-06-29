@@ -15,6 +15,10 @@ blocks:
             type: Button
             layout:
               flex: 0 0 auto
+              # Centre against the taller eyebrow+title+subtitle column rather
+              # than stretching to the full row height (the row's default
+              # cross-axis alignment is stretch, which top-aligns the arrow).
+              selfAlign: middle
             style:
               marginRight: 8
             properties:

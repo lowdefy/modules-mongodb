@@ -142,7 +142,6 @@ blocks:
   - _ref:
       path: components/universal-fields/universal-fields.yaml
       vars:
-        kind: check
         state_path: current_action.fields
         mode:
           _if:

@@ -1,27 +1,25 @@
 # Universal-fields surface (Part 24).
 #
 # Renders the three action-level universal fields (assignees / due_date /
-# description) for one action, in edit or display mode, for form or check kind.
-# On form kind it is the right-hand sidebar card; on check kind it is primary
-# content inside the shared check-action surface. Every kind gets the same
-# standalone Update button (edit mode) that calls the per-workflow
-# `{workflow_type}-update-fields` operation — independent of any form submit or
-# FSM transition.
+# description) for one action, in edit or display mode. The surface is always a
+# plain Box (no card chrome): its container owns the chrome — the three-tier
+# workspace's single RHS card on form/check pages, the shared check-action
+# surface on the modal. Every consumer gets the same standalone Update button
+# (edit mode) that calls the per-workflow `{workflow_type}-update-fields`
+# operation — independent of any form submit or FSM transition.
 #
 # Consumed via `_ref: { path: ..., vars: {...} }` with OPERATOR-valued vars, so
 # block-id namespacing uses `_string.concat` (not njk). Vars:
 #   - mode         'edit' | 'display' (required). Literal from the form
 #                  templates; a runtime `_if` operator from the check surface —
 #                  so mode is gated at RUNTIME (`_eq`), never `_build.*`.
-#   - kind         'form' | 'check' (required; always a build-time literal) —
-#                  drives the Card (form) vs plain Box (check) chrome.
 #   - state_path   state namespace for the edit inputs (default `fields`). Block
 #                  ids become `{state_path}.{field}`; the Update Validate is
 #                  scoped to `^{state_path}\.`.
 #   - workflow_type literal (form njk) or `_state` operator (check) — builds the
 #                  Update endpoint id at runtime.
 #   - action_id    operator leaf the Update payload posts (action root differs
-#                  by kind, so the consumer passes it).
+#                  per consumer, so the consumer passes it).
 #   - allowed_edit operator leaf — gates the Update button (visible) and the
 #                  inline inputs (disabled). Defaults false (display consumers
 #                  pass nothing).
@@ -32,14 +30,7 @@
 #   - on_complete  actions appended after the Update CallAPI (default []).
 #   - date_format  display date format (default `MMM D, YYYY`).
 id: universal_fields
-type:
-  _build.if:
-    test:
-      _build.eq:
-        - _var: kind
-        - form
-    then: Card
-    else: Box
+type: Box
 # Render nothing when the presence list is empty (the form templates also omit
 # the whole sidebar column — task 11).
 visible:
@@ -53,15 +44,6 @@ visible:
         - 0
     then: true
     else: false
-properties:
-  title:
-    _build.if:
-      test:
-        _build.eq:
-          - _var: kind
-          - form
-      then: Details
-      else: null
 layout:
   gap: 16
 blocks:
