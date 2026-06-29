@@ -33,6 +33,20 @@ This part keeps the locked-signal invariant (the bar still contains the signal b
 
 ## YAML shape
 
+> **Implementation note (deviation).** The illustrative entries below use a
+> flattened shape (`{ id, title, type, icon }` at the top level). That shape is
+> **not a valid Lowdefy block** — `type` reads as the _block type_ (so
+> `type: link` errors with "Block type 'link' is not defined") and `title` is
+> rejected as an unknown top-level block key. Because this part wires the
+> entries into the bar's `actions:` array **verbatim** (the design's explicit
+> "no transformation, no resolver magic" mandate, and why it's sized S), each
+> `extra` entry must be a **full Lowdefy `Button` block**: `type: Button` with
+> `title` / `type` / `icon` under `properties:`, plus `events.onClick`. The
+> shipped demo, docs, and concept-design examples use the full-block shape; the
+> validator's structural checks (string `id`, `events.onClick` array, reserved
+> ids) hold unchanged. The flat illustration below conveys the author's
+> _intent_; mentally nest `title` / `type` / `icon` under `properties:`.
+
 ```yaml
 type: technician-dispatch
 kind: form

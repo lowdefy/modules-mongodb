@@ -99,6 +99,25 @@ const LEGAL_SEED_STATUSES = ["action-required", "blocked"];
 // Part 34 access verbs. Vocabulary is closed in v1 (Part 34 D4 / per-app block).
 const ACCESS_VERBS = ["view", "edit", "review", "error"];
 
+// Part 36: block ids of the template-shipped signal buttons across the four
+// form-verb floating-actions bars. An author `pages.{verb}.buttons.extra` entry
+// may not reuse one of these — reservation is global (any reserved id is
+// rejected on every verb page, not just the page whose bar ships that button),
+// so the constant stays a flat list and self-protects when future parts move
+// buttons between pages. `button_request_changes` and `button_edit` already
+// each appear on two pages (review + view). The same ids are hardcoded as
+// `id:` on the Button blocks in the verb templates; for a seven-id set that
+// duplication is acceptable (see design Proposed change item 3).
+const RESERVED_BUTTON_IDS = [
+  "button_submit",
+  "button_progress",
+  "button_not_required",
+  "button_approve",
+  "button_request_changes",
+  "button_resolve_error",
+  "button_edit",
+];
+
 // Part 24: the three universal action fields an author may declare for the UI
 // presence list. The action doc always physically carries all three; this list
 // only controls which the templates render.
@@ -566,6 +585,67 @@ function validateAction(workflow, action) {
   validateTrackerStartLink(workflow, action);
   validateHooks(workflow, action);
   validateEvent(workflow, action);
+  validateButtonsExtra(workflow, action);
+}
+
+// Part 36: validate the `pages.{verb}.buttons.extra` author-button slot.
+// Form actions: each bar verb (edit / view / review / error) may carry an
+// `extra` array of author Button blocks that concat into the floating-actions
+// bar after the template-shipped signal buttons. Each entry needs a string
+// `id` and an `events.onClick` action array, and may not reuse a reserved
+// signal-button id. Non-form actions (check / tracker) emit no verb pages
+// (makeActionPages returns [] for non-form kinds), so an `extra` slot would
+// silently never render — reject it outright rather than drop it silently.
+// Behaviour past structural shape (what the onClick chain does) is not
+// type-checked: an extra that calls the per-action endpoint with a recognised
+// signal is processed by the engine normally — the locked-signal invariant is
+// about vocabulary, not caller (see design Decision 3).
+function validateButtonsExtra(workflow, action) {
+  const pages = action.pages;
+  if (pages === null || typeof pages !== "object") return;
+
+  for (const verb of ACCESS_VERBS) {
+    const extra = pages[verb]?.buttons?.extra;
+    if (extra === undefined) continue;
+
+    const slot = `${action.type}" pages.${verb}.buttons.extra`;
+
+    if (action.kind !== "form") {
+      fail(
+        workflow.type,
+        `action "${slot} is only available on form actions; kind "${action.kind}" emits no verb pages, so the slot would never render.`,
+      );
+    }
+
+    if (!Array.isArray(extra)) {
+      fail(
+        workflow.type,
+        `action "${slot} must be an array (got: ${JSON.stringify(extra)}).`,
+      );
+    }
+
+    extra.forEach((entry, i) => {
+      const at = `action "${action.type}" pages.${verb}.buttons.extra[${i}]`;
+      if (entry === null || typeof entry !== "object" || Array.isArray(entry)) {
+        fail(workflow.type, `${at} must be a Button block object.`);
+      }
+      if (typeof entry.id !== "string") {
+        fail(workflow.type, `${at} must have a string "id".`);
+      }
+      if (RESERVED_BUTTON_IDS.includes(entry.id)) {
+        fail(
+          workflow.type,
+          `${at} uses reserved button id "${entry.id}"; these ids (${RESERVED_BUTTON_IDS.join(", ")}) belong to the template-shipped signal buttons.`,
+        );
+      }
+      if (!Array.isArray(entry.events?.onClick)) {
+        fail(
+          workflow.type,
+          `${at} must have an events.onClick action array.`,
+        );
+      }
+    });
+  }
 }
 
 // Part 48 D8: workflow-level event map. Keys must be LIFECYCLE_SIGNALS

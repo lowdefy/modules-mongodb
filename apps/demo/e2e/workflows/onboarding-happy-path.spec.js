@@ -158,6 +158,14 @@ test.skip("onboarding happy path — six-step end-to-end", async ({
       timeout: 15_000,
     });
 
+    // Part 36: the qualify edit page declares an author "Help" extra button in
+    // pages.edit.buttons.extra — it renders in the floating-actions bar
+    // alongside the template Submit button and navigates externally (Link), no
+    // engine call. Assert it is present in the bar.
+    await expect(
+      page.getByRole("button", { name: "Help" }),
+    ).toBeVisible();
+
     // Fill the qualify form — `contact` is now a ContactSelector (rich picker),
     // required, site_visit_required = yes. The contact field stores an array of
     // { contact_id, name, email, verified }; we add a new contact through the

@@ -789,9 +789,9 @@ pages:
 
 The per-action endpoint (`{workflow_type}-{action_type}-submit`) is what each template-shipped button calls; the action's `hooks:` block declares which pre/post Lowdefy Apis the engine fires per signal. See submit-pipeline for the endpoint resolution detail.
 
-### Per-page chrome: `formHeader`, `formFooter`, `requests`, `modals`
+### Per-page chrome: `formHeader`, `formFooter`, `requests`, `buttons.extra`
 
-Each action page may declare four additional blocks alongside `events`:
+Each action page may declare these additional blocks alongside `events`:
 
 ```yaml
 pages:
@@ -801,15 +801,48 @@ pages:
     events: { onMount: [...], onSubmit: [...] }
     formHeader: [...] # blocks rendered above the form
     formFooter: [...] # blocks rendered below the form
-  review:
-    modals:
-      request_changes:
-        client_change: false # config knob for built-in request_changes modal
+    buttons:
+      submit:
+        modal: { title: Confirm, content: Submit now? } # confirm-modal on a signal button
+      extra: [...] # author Button blocks, concatenated into the floating-actions bar
 ```
 
 - `requests:` — list of Lowdefy request refs the page loads.
-- `formHeader:` / `formFooter:` — block lists; the module-emitted page template slots them above/below the rendered form. Used in v0 for device-detail headers and informational collapse panels.
-- `modals.{name}.{field}:` — config knobs on built-in module modals (the `request_changes` modal on review pages). Author-supplied values override the modal's defaults.
+- `formHeader:` / `formFooter:` — block lists; the module-emitted page template slots them above/below the rendered form. Used for detail headers, informational collapse panels, and author-declared `Modal` blocks (which overlay at render time, so their declaration position is cosmetic).
+- `buttons.{signal}.{title,disabled,visible,modal}` — config knobs on the **template-shipped signal buttons**. The shipped confirm-modal overrides live under `buttons.{signal}.modal.{title,content}` for `submit` / `not_required` (edit), `approve` (review), and `resolve_error` (error). The `request_changes` modal is mandatory (it carries the required comment input) and exposes only `.visible` / `.disabled`, no `modal` knob.
+- `buttons.extra:` (Part 36) — an array of **author-supplied Button blocks** concatenated into the same `floating-actions` bar, _after_ the signal buttons. Each entry is a full Lowdefy `Button` block (`type: Button`, `properties: { title, type, icon }`, `events.onClick`) and is rendered verbatim — no transformation. Extras carry no recognised `signal` and never reach the engine's FSM; their `onClick` is whatever chain the author wires. Available on all four bar verbs (`edit`, `view`, `review`, `error`); rejected on non-form actions, which emit no verb pages. Entry ids may not collide with the template-shipped signal-button ids (`button_submit`, `button_progress`, `button_not_required`, `button_approve`, `button_request_changes`, `button_resolve_error`, `button_edit` — reserved globally). See [Part 36](../../workflows-module/parts/36-extra-action-buttons/design.md).
+
+**Button → modal pattern.** The dominant extras use case is _button opens a modal; modal collects input; modal's `onOk` calls an app API_. Declare the `Modal` (or `ConfirmModal`) block in the verb's `formFooter:`, and open it from the extra button's `onClick` via `CallMethod` — `method: toggleOpen` for a `Modal`, `method: open` for a `ConfirmModal`:
+
+```yaml
+pages:
+  edit:
+    formFooter:
+      - id: resend_reminder_modal
+        type: Modal
+        properties: { title: Resend Reminder, width: 500 }
+        blocks:
+          - id: reminder_message
+            type: TextArea
+            properties: { title: Message }
+        events:
+          onOk:
+            - id: send
+              type: CallAPI
+              params:
+                endpointId: my-app-resend-reminder
+                payload: { action_id: { _state: action._id }, message: { _state: reminder_message } }
+    buttons:
+      extra:
+        - id: resend_reminder
+          type: Button
+          properties: { title: Resend Reminder, type: default, icon: FaWhatsapp }
+          events:
+            onClick:
+              - id: open
+                type: CallMethod
+                params: { blockId: resend_reminder_modal, method: toggleOpen }
+```
 
 These fields belong to the action's authored YAML — they ride into the generated page YAML via the module's page-emission resolver (ui sub-design).
 
@@ -850,7 +883,7 @@ The recovery form schema **reuses** the action's `form:` block — the user sees
 
 **Stale-URL guard.** The error template's `onMount` ships a built-in redirect step: if the action's `status[0].stage` isn't `error` when the page loads, the template emits a `Link` to `-view`. Apps don't write this guard themselves; it's part of the template.
 
-**Buttons.** The error template ships with a single primary "Submit" button wired to `pages.error.events.onSubmit`. Authors can override the button title and add a confirm modal via `pages.error.buttons.submit.{title,modal}`. Multi-button error pages can use `formFooter:` to add additional buttons with their own routines.
+**Buttons.** The error template ships with a single primary resolve button wired to `pages.error.events.onSubmit`. Authors can override the button title and add a confirm modal via `pages.error.buttons.resolve_error.{title,modal}`. Multi-button error pages add extra buttons via `pages.error.buttons.extra:` (Part 36) — they render in the same floating-actions bar alongside the resolve button, rather than below the form in `formFooter:`.
 
 **`access` interaction.** The `-error` page is gated identically to the other three verbs (Decision 3): the resolver emits it iff `error` is in the action's `access.{host_app_name}` map. Actions without `error` declared for an app have no recovery surface in that app — an author-driven `error` push still lands on the action, but there is no reachable `-error` page there. The stuck-state visibility concern is addressed by authors declaring `error` explicitly in the relevant app's verb map (this supersedes the earlier draft that emitted `-error` for every form action regardless of access — see [Part 34 § D5](../../workflows-module/parts/_completed/34-action-access-model/design.md)). Per-app suppression of the recovery _link_ from other pages is additionally controlled at the status-map level (omit `status_map.error.{app_name}`).
 
