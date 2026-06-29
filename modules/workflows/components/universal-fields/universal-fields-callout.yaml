@@ -1,0 +1,34 @@
+# Universal-fields description callout (Part 56 addendum DA2).
+#
+# Renders the action's description as a tinted, labelled callout at the top of the
+# middle column — free-text context for whoever works the action, meant to be read.
+# Absent entirely when the description html is null (no empty placeholder); editing
+# is the modal (universal-fields-modal.yaml). Consumed via `_ref: { path, vars }`
+# with OPERATOR-valued vars. Vars:
+#   - action_data  map with a `description` leaf (the { text, html } shape Part 24
+#                  stores).
+id: universal_fields_callout
+type: Html
+visible:
+  _ne:
+    - _get:
+        from:
+          _var: action_data.description
+        key: html
+    - null
+properties:
+  html:
+    _nunjucks:
+      template: |
+        <div style="display:flex; gap:10px; padding:13px 15px; border:1px solid var(--ant-color-primary-border); background:var(--ant-color-primary-bg); border-radius:8px;">
+          <div style="min-width:0;">
+            <div style="font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:var(--ant-color-primary); margin-bottom:3px;">Description</div>
+            <div style="color:var(--ant-color-text);">{{ description | safe }}</div>
+          </div>
+        </div>
+      on:
+        description:
+          _get:
+            from:
+              _var: action_data.description
+            key: html

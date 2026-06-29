@@ -12,6 +12,10 @@
 #
 # The `resolve_error` button is the only interaction button whose `title`
 # is overridable per app (default "Resolve").
+#
+# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
+# page_actions; the description is a middle-top callout; the action bar is the
+# shell's floating `actions` slot (single resolve_error button).
 _ref:
   module: layout
   component: page
@@ -54,6 +58,30 @@ _ref:
       _state: action.status.0.stage
     status_enum:
       _ref: ../shared/enums/action_statuses.yaml
+    # Universal-fields chips (assignees avatars + due pill + ✎ → edit modal) in the
+    # title bar's page_actions, only when the action declares universal fields.
+    page_actions:
+      _build.if:
+        test:
+          _build.gt:
+            - _build.array.length:
+                _var:
+                  key: action_config.universal_fields
+                  default: []
+            - 0
+        then:
+          - _ref:
+              path: components/universal-fields/universal-fields-chips.yaml
+              vars:
+                modal_id: universal_fields_edit_modal
+                show:
+                  _var: action_config.universal_fields
+                action_data:
+                  assignee_docs:
+                    _state: action.assignee_docs
+                  due_date:
+                    _state: action.due_date
+        else: []
     show_back_button: true
     content_width:
       _var:
@@ -127,9 +155,9 @@ _ref:
               default: []
     blocks:
       _build.array.concat:
-        # Three-tier shell: left (entity workflows) + middle (error/recovery
-        # body) + RHS (read-only universal-fields card above Details?/History
-        # tabs). Outer-card suppression on form_error[0].form.
+        # Three-tier shell: left (entity workflows) + middle (description callout
+        # + error/recovery body + floating action bar) + RHS (Details? above
+        # History). Outer-card suppression on form_error[0].form.
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -140,60 +168,23 @@ _ref:
                 details_slot:
                   _var: entity_view_slot
                 middle:
-                  _build.if:
-                    test:
-                      _build.ne:
-                        - _var:
-                            key: action_config.form_error.0.form
-                            default: null
-                        - null
-                    then:
-                      _build.array.concat:
-                        - - id: failure_banner
-                            type: Alert
-                            properties:
-                              type: error
-                              showIcon: true
-                              message:
-                                _state: action.status.0.error_message
+                  _build.array.concat:
+                    # Description callout (top of the middle column; self-hides
+                    # when unset).
+                    - - _ref:
+                          path: components/universal-fields/universal-fields-callout.yaml
+                          vars:
+                            action_data:
                               description:
-                                _nunjucks:
-                                  template: |
-                                    <pre>{{ metadata }}</pre>
-                                  on:
-                                    metadata:
-                                      _js:
-                                        args:
-                                          metadata:
-                                            _state: action.status.0.error_metadata
-                                        fn: |
-                                          const { metadata } = args;
-                                          return JSON.stringify(metadata, null, 2);
-                        - _var:
-                            key: page_config.formHeader
-                            default: []
-                        - _ref:
-                            resolver: resolvers/makeActionsForm.js
-                            vars:
-                              form:
-                                _var:
-                                  key: action_config.form_error
-                                  default: []
-                              mode: error
-                        - - id: comment
-                            type: TiptapInput
-                            properties:
-                              title: Comment
-                              placeholder: Add a comment about the recovery (optional).
-                        - _var:
-                            key: page_config.formFooter
-                            default: []
-                    else:
-                      - id: error_card
-                        type: Card
-                        layout:
-                          gap: 16
-                        blocks:
+                                _state: action.description
+                    - _build.if:
+                        test:
+                          _build.ne:
+                            - _var:
+                                key: action_config.form_error.0.form
+                                default: null
+                            - null
+                        then:
                           _build.array.concat:
                             - - id: failure_banner
                                 type: Alert
@@ -234,41 +225,63 @@ _ref:
                             - _var:
                                 key: page_config.formFooter
                                 default: []
-                universal_fields:
-                  _build.if:
-                    test:
-                      _build.gt:
-                        - _build.array.length:
-                            _var:
-                              key: action_config.universal_fields
-                              default: []
-                        - 0
-                    then:
-                      - _ref:
-                          path: components/universal-fields/universal-fields.yaml
-                          vars:
-                            mode: display
-                            state_path: fields
-                            workflow_type: {{ workflow_type }}
-                            show:
-                              _var: action_config.universal_fields
-                            action_data:
-                              assignees:
-                                _state: action.assignees
-                              assignee_docs:
-                                _state: action.assignee_docs
-                              due_date:
-                                _state: action.due_date
-                              description:
-                                _state: action.description
-                    else: []
-        # Floating-actions sticky button bar — single resolve_error button.
-        - - _ref:
-              module: layout
-              component: floating-actions
-              vars:
+                        else:
+                          - id: error_card
+                            type: Card
+                            layout:
+                              gap: 16
+                            blocks:
+                              _build.array.concat:
+                                - - id: failure_banner
+                                    type: Alert
+                                    properties:
+                                      type: error
+                                      showIcon: true
+                                      message:
+                                        _state: action.status.0.error_message
+                                      description:
+                                        _nunjucks:
+                                          template: |
+                                            <pre>{{ metadata }}</pre>
+                                          on:
+                                            metadata:
+                                              _js:
+                                                args:
+                                                  metadata:
+                                                    _state: action.status.0.error_metadata
+                                                fn: |
+                                                  const { metadata } = args;
+                                                  return JSON.stringify(metadata, null, 2);
+                                - _var:
+                                    key: page_config.formHeader
+                                    default: []
+                                - _ref:
+                                    resolver: resolvers/makeActionsForm.js
+                                    vars:
+                                      form:
+                                        _var:
+                                          key: action_config.form_error
+                                          default: []
+                                      mode: error
+                                - - id: comment
+                                    type: TiptapInput
+                                    properties:
+                                      title: Comment
+                                      placeholder: Add a comment about the recovery (optional).
+                                - _var:
+                                    key: page_config.formFooter
+                                    default: []
+                # Floating action bar (shell `actions` slot): workflow extras on the
+                # left, the single resolve_error verb on the right (grow spacer between).
                 actions:
                   _build.array.concat:
+                    - _var:
+                        key: page_config.buttons.extra
+                        default: []
+                    - - id: action_bar_spacer
+                        type: Box
+                        layout:
+                          flex: 1 1 0
                     - - id: button_resolve_error
                         type: Button
                         layout:
@@ -329,9 +342,43 @@ _ref:
                                             _state: form
                                           comment:
                                             _state: comment
-                    - _var:
-                        key: page_config.buttons.extra
-                        default: []
+        # Universal-fields edit modal — opened by the title-bar ✎ chip.
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: action_config.universal_fields
+                      default: []
+                - 0
+            then:
+              - _ref:
+                  path: components/universal-fields/universal-fields-modal.yaml
+                  vars:
+                    modal_id: universal_fields_edit_modal
+                    state_path: fields
+                    workflow_type: {{ workflow_type }}
+                    action_id:
+                      _state: action._id
+                    allowed_edit:
+                      _state: action.allowed.edit
+                    show:
+                      _var: action_config.universal_fields
+                    on_complete:
+                      - id: refetch_action_fields
+                        type: Request
+                        params: get_workflow_action
+                      - id: reset_action_fields
+                        type: SetState
+                        params:
+                          action:
+                            _request: get_workflow_action
+                      - id: update_fields_success
+                        type: DisplayMessage
+                        params:
+                          status: success
+                          content: Updated successfully.
+            else: []
         # Optional ConfirmModal — renders iff page_config.buttons.resolve_error.modal is set.
         - _build.if:
             test:

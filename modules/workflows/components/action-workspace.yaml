@@ -1,34 +1,41 @@
-# Three-tier action workspace shell (Part 56).
+# Three-tier action workspace shell (Part 56, revised by the Part 56 addendum).
 #
 # The shared layout every action page (form templates + the per-workflow check
 # page) `_ref`s, so the column scaffold is identical across page kinds and only
-# the MIDDLE content (and whether the RHS has a Details tab) differs — the
+# the MIDDLE content (and whether the RHS has a Details section) differs — the
 # "no-jarring-shift" constraint. The shell is LAYOUT-ONLY: it renders whatever
 # block arrays the caller passes into its slots, holds no requests, writes no
 # state, and renders no header (the header is the layout `page` component's
-# native chrome, set by the template — D8).
+# native chrome, set by the template — D8). The universal fields no longer mount
+# in the RHS (addendum DA1): the template wires their chips into the header's
+# `page_actions`, the description into a middle-top callout, and the edit modal as
+# a page block.
 #
 #   ┌──────────────┬───────────────────────┬──────────────────────────┐
 #   │ [card]       │  middle (caller slot)  │ [card]                   │
-#   │ actions-on-  │                        │  universal fields        │
-#   │ entity       │                        │  Tabs[ Details? History ]│
+#   │ actions-on-  │  …                     │  Details? (form only)    │
+#   │ entity       │  actions (floating bar)│  History (fills+scrolls) │
 #   └──────────────┴───────────────────────┴──────────────────────────┘
 #
 # Both side columns are cards: the left wraps `actions-on-entity`; the right is a
-# single card holding the universal fields above the Details?/History tabs.
+# single card holding an optional Details section stacked above the History
+# timeline (addendum DA4 — no Tabs).
 #
 # Vars (slots + baked scalars):
 #   - middle               (required) block array — the action surface.
-#   - universal_fields     block array — the Part 24 universal-fields content the
-#                          caller composes with its own kind-specific vars. The
-#                          component is always card-less, so it sits cleanly at
-#                          the top of the shell's RHS card. Default [].
+#   - actions              block array — the action's buttons. The shell wraps a
+#                          non-empty `actions` in the shared `floating-actions`
+#                          bar at the BOTTOM of the middle column (addendum DA3),
+#                          so the bar spans only the column width, not full
+#                          content width. The template composes the flat array
+#                          (workflow extras left, signal verbs right — Part 36's
+#                          one-flat-array precedent; `floating-actions.yaml` is
+#                          unchanged). Default [].
 #   - details_slot         block array — baked from the workflow's
-#                          `entity_view.slot`. Rendered as the RHS Details tab on
-#                          form pages; check pages pass it empty (their slot is
-#                          in `middle`). Default []. When empty the Details tab
-#                          is omitted (History becomes the sole tab); the Tabs
-#                          wrapper stays so the RHS layout is stable form↔check.
+#                          `entity_view.slot`. Rendered as the RHS Details section
+#                          on form pages; check pages pass it empty (their slot is
+#                          in `middle`). Default []. When empty the Details section
+#                          is omitted and History is the sole RHS section.
 #   - entity_connection_id scalar — baked from workflow.entity.connection_id
 #                          (the entity's MongoDB connection id), for the left
 #                          `actions-on-entity` panel.
@@ -71,20 +78,39 @@ blocks:
               _state: entity_id
             entity_connection_id:
               _var: entity_connection_id
-  # MIDDLE — the caller-supplied action surface.
+  # MIDDLE — the caller-supplied action surface, with the floating action bar
+  # (addendum DA3) docked at the bottom of the column when `actions` is non-empty.
   - id: workspace_middle
     type: Box
     layout:
       span: 12
       sm:
         span: 24
+      gap: 16
     blocks:
-      _var:
-        key: middle
-        default: []
-  # RIGHT — a single card holding the universal fields (top, composed card-less)
-  # above a Tabs wrapper (Details? + History), so the fields, the entity Details
-  # and History all live inside one RHS card.
+      _build.array.concat:
+        - _var:
+            key: middle
+            default: []
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: actions
+                      default: []
+                - 0
+            then:
+              - _ref:
+                  module: layout
+                  component: floating-actions
+                  vars:
+                    actions:
+                      _var: actions
+            else: []
+  # RIGHT — a single card holding an optional Details section (the reference
+  # subject, form pages only) stacked above the History timeline (addendum DA4 —
+  # no Tabs). Plain section headers replace the old single-tab-as-heading.
   - id: workspace_right
     type: Card
     layout:
@@ -94,44 +120,49 @@ blocks:
       gap: 16
     blocks:
       _build.array.concat:
-        - _var:
-            key: universal_fields
-            default: []
-        - - id: workspace_rhs_tabs
-            type: Tabs
-            properties:
-              tabs:
-                _build.array.concat:
-                  # Details first (the reference subject), present only when the
-                  # workflow declares an entity_view slot for this page.
-                  - _build.if:
-                      test:
-                        _build.gt:
-                          - _build.array.length:
-                              _var:
-                                key: details_slot
-                                default: []
-                          - 0
-                      then:
-                        - key: details
-                          title: Details
-                      else: []
-                  # History always present.
-                  - - key: history
-                      title: History
-            slots:
-              details:
+        # Details — present only when the workflow declares an entity_view slot
+        # for this page (check passes it empty, so the section is absent).
+        - _build.if:
+            test:
+              _build.gt:
+                - _build.array.length:
+                    _var:
+                      key: details_slot
+                      default: []
+                - 0
+            then:
+              - id: workspace_rhs_details
+                type: Box
+                layout:
+                  gap: 8
                 blocks:
-                  _var:
-                    key: details_slot
-                    default: []
-              history:
-                blocks:
-                  - _ref:
-                      module: events
-                      component: events-timeline
-                      vars:
-                        reference_field:
-                          _var: reference_field
-                        reference_value:
-                          _state: entity_id
+                  _build.array.concat:
+                    - - id: workspace_rhs_details_header
+                        type: Title
+                        properties:
+                          level: 5
+                          content: Details
+                    - _var:
+                        key: details_slot
+                        default: []
+            else: []
+        # History — always present; fills the remaining card height and scrolls
+        # (the timeline carries its own maxHeight/overflowY).
+        - - id: workspace_rhs_history
+            type: Box
+            layout:
+              gap: 8
+            blocks:
+              - id: workspace_rhs_history_header
+                type: Title
+                properties:
+                  level: 5
+                  content: History
+              - _ref:
+                  module: events
+                  component: events-timeline
+                  vars:
+                    reference_field:
+                      _var: reference_field
+                    reference_value:
+                      _state: entity_id
