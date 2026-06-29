@@ -1,5 +1,13 @@
+# send-quote (Part 28 showcase) — a kind:custom action.
+#
+# The quote is line items + a live total + notes — richer than a flat form: can
+# express — so its working surface is the app-owned `quote-builder` page rather
+# than the shared check page. The engine routes the `link:` cell below into the
+# per-verb links map: an actor (edit) and the admin reviewer (review) land on
+# quote-builder; an observer (view) falls back to the shared `onboarding-action`
+# page (no view_link is authored — the default observer path).
 type: send-quote
-kind: form
+kind: custom
 action_group: quoting
 blocked_by:
   - qualify
@@ -10,14 +18,6 @@ access:
     edit: true
     review:
       - admin
-form:
-  - key: form.quote_total
-    component: number
-    title: Quote total
-    required: true
-  - key: form.notes
-    component: text_area
-    title: Quote notes
 status_map:
   blocked:
     demo:
@@ -25,15 +25,20 @@ status_map:
   action-required:
     demo:
       message: Build and send the quote.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   in-progress:
     demo:
       message: Quote in progress.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   in-review:
     demo:
       message: Quote awaiting approval.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   changes-required:
     demo:
       message: Reviewer requested changes.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
   done:
     demo:
       message: Quote approved and sent.
+      link: { pageId: quote-builder, urlQuery: { action_id: true } }
