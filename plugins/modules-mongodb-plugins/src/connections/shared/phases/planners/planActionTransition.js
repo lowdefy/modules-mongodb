@@ -4,25 +4,26 @@ import computeEngineLinks from "../../render/computeEngineLinks.js";
 import renderStatusMap from "../../render/renderStatusMap.js";
 import deepMerge from "./deepMerge.js";
 
-// Part 24 / Part 64: the action-level universal fields. On the UPDATE path (a
-// user submit transitioning an existing action) they are written only for
-// `kind: check` — the kind whose submission content IS those fields. For
-// `kind: form` / `tracker` they're owned exclusively by the `UpdateActionFields`
-// operation, so a stray `fields` payload on their submit must be inert.
-// (Part 64 dropped `description` — it is now author-authored config, not an
-// editable per-instance field.)
+// Part 24 / Part 64 / Part 65: the action-level universal fields. On the UPDATE
+// path they are stripped for a USER submit (`source: 'user'`, any kind) — a
+// user edits assignees/due_date only through the `UpdateActionFields` operation,
+// never as a side effect of a transition they trigger (Part 65 D1). They pass
+// through for hook/cascade orchestration (`source: 'auxiliary'` / `'cascade'`),
+// the legitimate counterpart to start-time seeding. (Part 64 dropped
+// `description` — it is now author-authored config, not an editable field.)
 const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 /**
- * Apply the kind-based universal-fields rule to the update-path `fields` bag:
- * strip `assignees` / `due_date` unless `kind: check`. All other keys pass
- * through verbatim for every kind (pre-hook data seeding, tracker child-link
+ * Apply the source-based universal-fields rule to the update-path `fields` bag:
+ * strip `assignees` / `due_date` for a user-driven submit, pass them through for
+ * hook/cascade orchestration (`source !== "user"`). All other keys pass through
+ * verbatim regardless of source (pre-hook data seeding, tracker child-link
  * forwarding). The create/upsert path does NOT call this — seeding onto a
  * freshly-spawned action is initialization, not a form-submit clobber.
  */
-function applyUpdateFieldsRule(fields, kind) {
+function applyUpdateFieldsRule(fields, source) {
   if (fields == null) return {};
-  if (kind === "check") return fields;
+  if (source !== "user") return fields;
   const filtered = { ...fields };
   for (const key of UNIVERSAL_FIELDS) delete filtered[key];
   return filtered;
@@ -75,12 +76,13 @@ function applyUpdateFieldsRule(fields, kind) {
  * @param {'user' | 'auxiliary' | 'cascade'} [args.source] — signal source,
  *   discriminates throw-vs-noop on null FSM resolution. Default `'user'`.
  * @param {{ fields?: Object, metadata?: Object }} [args.payload] — generic
- *   bags. On the CREATE/upsert path `fields` is a kind-agnostic verbatim
- *   passthrough (cascade/auxiliary seeding). On the UPDATE path (Part 24) the
- *   two universal keys (`assignees` / `due_date`) are written only for
- *   `kind: check`; for `kind: form` / `tracker` they're stripped and owned
- *   exclusively by the `UpdateActionFields` operation. All other keys pass
- *   through verbatim on both paths.
+ *   bags. On the CREATE/upsert path `fields` is a source-agnostic verbatim
+ *   passthrough (cascade/auxiliary seeding). On the UPDATE path (Part 24 /
+ *   Part 65) the two universal keys (`assignees` / `due_date`) are stripped for
+ *   a user-driven submit (`source: 'user'`, any kind) — owned exclusively by
+ *   the `UpdateActionFields` operation — and pass through for hook/cascade
+ *   orchestration (`source !== 'user'`). All other keys pass through verbatim
+ *   on both paths.
  * @param {Object} args.actionConfig — workflowConfig.actions entry.
  * @param {Object} args.loadedWorkflow — the loaded workflow doc (NOT the
  *   recomputed one — that doesn't exist yet). Reads only the immutable
@@ -196,13 +198,14 @@ function planActionTransition({
       metadata: { ...(payload.metadata ?? {}) },
     };
   } else {
-    // Update path: kind-based universal-fields rule (Part 24). Universal keys
-    // are dropped unless kind: check; all other keys pass through verbatim.
+    // Update path: source-based universal-fields rule (Part 24 / Part 65).
+    // Universal keys are dropped for a user submit and passed through for
+    // hook/cascade orchestration; all other keys pass through verbatim.
     doc = {
       ...action,
       status: [statusEntry, ...action.status],
       updated: now,
-      ...applyUpdateFieldsRule(payload.fields, actionConfig.kind),
+      ...applyUpdateFieldsRule(payload.fields, source),
       metadata: { ...(action.metadata ?? {}), ...(payload.metadata ?? {}) },
     };
   }
