@@ -39,10 +39,6 @@ hooks:
                 else: []
 pages:
   edit:
-    # Part 36: author-supplied extra button in the floating-actions bar.
-    # A full Lowdefy Button block concatenated verbatim after the template's
-    # signal buttons — a plain Link, no engine call and no new endpoint, so it
-    # exercises the slot end-to-end (validator accepts it; template concats it).
     buttons:
       extra:
         - id: open_help
@@ -51,7 +47,6 @@ pages:
             flex: 0 1 auto
           properties:
             title: Help
-            type: link
             icon: QuestionCircleOutlined
           events:
             onClick:
