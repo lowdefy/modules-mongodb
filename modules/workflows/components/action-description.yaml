@@ -1,0 +1,26 @@
+# Action description (Part 64).
+#
+# Renders the workflow-author-authored action `description` as a plain Markdown
+# lead-in at the top of the middle-column content card. It has NO chrome of its
+# own — no tint, no eyebrow label, no bordered box — it shares the one content
+# card with the rest of the working surface, sitting as that card's first child.
+# Visible only when the content is non-null (an action with no authored
+# description renders nothing).
+#
+# The description is author-authored config, rendered server-side by
+# GetWorkflowAction (read-time nunjucks against the action instance) and shipped
+# as the envelope's `description` key — so each surface binds its own source via
+# the `content` var (`_state: action.description` on the form pages,
+# `_state: current_action.description` on the check page).
+#
+# Consumed via `_ref: { path, vars }` with an OPERATOR-valued var:
+#   - content  the rendered markdown string (or null).
+id: action_description
+type: Markdown
+visible:
+  _ne:
+    - _var: content
+    - null
+properties:
+  content:
+    _var: content

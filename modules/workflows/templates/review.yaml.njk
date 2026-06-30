@@ -12,10 +12,11 @@
 # Approve (primary). Edit-link sets `skip_status_redirect: true` so the
 # edit page's stale-URL guard doesn't bounce reviewers out of `in-review`.
 #
-# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
-# page_actions; the description is a middle-top callout; the action bar is the
-# shell's floating `actions` slot. Reviewers who need to change metadata use the
-# ✎ modal (or the edit page).
+# Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
+# bar's page_actions; a bare workflow-closed banner sits above the review card,
+# and the author-authored description renders as the review card's first child
+# (plain Markdown lead-in); the action bar is the shell's floating `actions`
+# slot. Reviewers who need to change metadata use the ✎ modal (or the edit page).
 _ref:
   module: layout
   component: page
@@ -157,8 +158,6 @@ _ref:
                     _state: action.assignees
                   due_date:
                     _state: action.due_date
-                  description:
-                    _state: action.description
                 comment: null
                 change_request_comment: null
           - _var:
@@ -166,8 +165,9 @@ _ref:
               default: []
     blocks:
       _build.array.concat:
-        # Three-tier shell: left (entity workflows) + middle (description callout
-        # + review body + floating action bar) + RHS (Details? above History).
+        # Three-tier shell: left (entity workflows) + middle (closed banner +
+        # review card with description lead-in + floating action bar) + RHS
+        # (Details? above History).
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -179,20 +179,35 @@ _ref:
                   _var: entity_view_slot
                 middle:
                   _build.array.concat:
-                    # Description callout (top of the middle column; self-hides
-                    # when unset).
-                    - - _ref:
-                          path: components/universal-fields/universal-fields-callout.yaml
-                          vars:
-                            action_data:
-                              description:
-                                _state: action.description
+                    # Workflow-closed banner — bare full-width alert above the
+                    # content card (Part 64 layout model; consistency fix). Gated
+                    # on workflow_closed AND not required_after_close.
+                    - - id: workflow_closed_banner
+                        type: Alert
+                        visible:
+                          _and:
+                            - _state: action.workflow_closed
+                            - _ne:
+                                - _state: action.required_after_close
+                                - true
+                        properties:
+                          type: warning
+                          showIcon: true
+                          message: Workflow closed
+                          description: This workflow is closed. Updates to this action are no longer accepted.
                     - - id: review_card
                         type: Card
                         layout:
                           gap: 16
                         blocks:
                           _build.array.concat:
+                            # Description lead-in — first child of the review card
+                            # (plain Markdown; self-hides when unset).
+                            - - _ref:
+                                  path: components/action-description.yaml
+                                  vars:
+                                    content:
+                                      _state: action.description
                             - _var:
                                 key: page_config.formHeader
                                 default: []

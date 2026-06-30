@@ -106,8 +106,6 @@ events:
             _request: get_workflow_action.assignees
           due_date:
             _request: get_workflow_action.due_date
-          description:
-            _request: get_workflow_action.description
         current_action.comment: null
         current_action.change_request_comment: null
         # Stable stage scalar — the header badge reads this, not the prunable

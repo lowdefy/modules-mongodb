@@ -31,7 +31,7 @@ blocks:
             on:
               _var:
                 key: show
-                default: [assignees, due_date, description]
+                default: [assignees, due_date]
             value: assignees
         then:
           - id: universal_fields_chips_assignees
@@ -65,7 +65,7 @@ blocks:
             on:
               _var:
                 key: show
-                default: [assignees, due_date, description]
+                default: [assignees, due_date]
             value: due_date
         then:
           - id: universal_fields_chips_due_date
@@ -88,8 +88,8 @@ blocks:
                         key: date_format
                         default: MMM D, YYYY
         else: []
-    # Edit (✎) — always present, so a description (or any field) can be ADDED even
-    # when no chips are showing a value yet. Opens the edit modal.
+    # Edit (✎) — always present, so a field (assignees / due date) can be ADDED
+    # even when no chips are showing a value yet. Opens the edit modal.
     - - id: universal_fields_chips_edit
         type: Button
         layout:

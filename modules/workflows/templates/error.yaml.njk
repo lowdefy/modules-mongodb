@@ -13,8 +13,11 @@
 # The `resolve_error` button is the only interaction button whose `title`
 # is overridable per app (default "Resolve").
 #
-# Layout (Part 56 addendum): universal-fields chips + ✎ ride the title bar's
-# page_actions; the description is a middle-top callout; the action bar is the
+# Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
+# bar's page_actions; a bare workflow-closed banner sits above the working
+# content, and the author-authored description renders as the recovery
+# container's first child (plain Markdown lead-in, above the failure banner,
+# prepended in both the carded and outer-chrome branches); the action bar is the
 # shell's floating `actions` slot (single resolve_error button).
 _ref:
   module: layout
@@ -154,17 +157,16 @@ _ref:
                     _state: action.assignees
                   due_date:
                     _state: action.due_date
-                  description:
-                    _state: action.description
                 comment: null
           - _var:
               key: page_config.events.onMount
               default: []
     blocks:
       _build.array.concat:
-        # Three-tier shell: left (entity workflows) + middle (description callout
-        # + error/recovery body + floating action bar) + RHS (Details? above
-        # History). Outer-card suppression on form_error[0].form.
+        # Three-tier shell: left (entity workflows) + middle (closed banner +
+        # error/recovery body with description lead-in + floating action bar) +
+        # RHS (Details? above History). Outer-card suppression on
+        # form_error[0].form.
         - - _ref:
               path: components/action-workspace.yaml
               vars:
@@ -176,14 +178,22 @@ _ref:
                   _var: entity_view_slot
                 middle:
                   _build.array.concat:
-                    # Description callout (top of the middle column; self-hides
-                    # when unset).
-                    - - _ref:
-                          path: components/universal-fields/universal-fields-callout.yaml
-                          vars:
-                            action_data:
-                              description:
-                                _state: action.description
+                    # Workflow-closed banner — bare full-width alert above the
+                    # working content (Part 64 layout model; consistency fix).
+                    # Gated on workflow_closed AND not required_after_close.
+                    - - id: workflow_closed_banner
+                        type: Alert
+                        visible:
+                          _and:
+                            - _state: action.workflow_closed
+                            - _ne:
+                                - _state: action.required_after_close
+                                - true
+                        properties:
+                          type: warning
+                          showIcon: true
+                          message: Workflow closed
+                          description: This workflow is closed. Updates to this action are no longer accepted.
                     - _build.if:
                         test:
                           _build.ne:
@@ -192,7 +202,15 @@ _ref:
                                 default: null
                             - null
                         then:
+                          # First form entry owns outer chrome — render directly.
+                          # The description lead-in is prepended here too (it must
+                          # land inside whichever container holds the form).
                           _build.array.concat:
+                            - - _ref:
+                                  path: components/action-description.yaml
+                                  vars:
+                                    content:
+                                      _state: action.description
                             - - id: failure_banner
                                 type: Alert
                                 properties:
@@ -239,6 +257,13 @@ _ref:
                               gap: 16
                             blocks:
                               _build.array.concat:
+                                # Description lead-in — first child of the error
+                                # card (plain Markdown; self-hides when unset).
+                                - - _ref:
+                                      path: components/action-description.yaml
+                                      vars:
+                                        content:
+                                          _state: action.description
                                 - - id: failure_banner
                                     type: Alert
                                     properties:

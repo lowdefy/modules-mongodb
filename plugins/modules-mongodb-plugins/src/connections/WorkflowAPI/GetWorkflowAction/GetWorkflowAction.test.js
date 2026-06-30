@@ -39,6 +39,10 @@ function makeWorkflowsConfig() {
           action_group: "phase-1",
           allow_not_required: false,
           required_after_close: true,
+          // Part 64: author-authored body, nunjucks-templated against the action
+          // instance at read time. `{{ type }}` resolves off the action doc and
+          // `{{ some }}` off action.metadata (the renderStatusMap context shape).
+          description: "Body for {{ type }} — {{ some }}.",
           access: { "test-app": { view: true, edit: ["account-manager"] } },
           form_meta: {
             form: [
@@ -257,7 +261,11 @@ async function seedWorkflow({
   await mongo.db.collection("workflows").insertOne({
     _id,
     workflow_type: "onboarding",
-    entity: { connection_id: "leads-collection", id: entity_id, ref_key: "lead_ids" },
+    entity: {
+      connection_id: "leads-collection",
+      id: entity_id,
+      ref_key: "lead_ids",
+    },
     display_order: 1,
     status: [{ stage: wfStage, event_id: "e0", created: changeStamp }],
     groups: [
@@ -314,7 +322,6 @@ async function seedAction({
       message: `${type} message`,
     },
     metadata: { some: "internal" },
-    description: `${type} description`,
     entity: { connection_id: "leads-collection", id: "lead-1" },
     created: changeStamp,
     updated: changeStamp,
@@ -453,6 +460,27 @@ describe("envelope shape", () => {
     );
     expect(result.message).toBe("qualify message");
     expect(result.required_after_close).toBe(true);
+  });
+
+  test("description is rendered from config (read-time nunjucks), not the doc", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    // Sourced from actionConfig.description and rendered against the instance:
+    // `{{ type }}` → action.type, `{{ some }}` → action.metadata.some.
+    expect(result.description).toBe("Body for qualify — internal.");
+  });
+
+  test("description is null when the action config declares none", async () => {
+    await seedWorkflow();
+    // check-step config carries no `description` key.
+    await seedAction({ _id: "c1", type: "check-step", kind: "check" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "c1" } }),
+    );
+    expect(result.description).toBeNull();
   });
 
   test("envelope carries allowed and buttons", async () => {

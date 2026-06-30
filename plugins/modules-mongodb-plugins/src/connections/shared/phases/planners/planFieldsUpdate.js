@@ -3,11 +3,13 @@ import deepMerge from "./deepMerge.js";
 import planEventDispatch from "./planEventDispatch.js";
 import planChangeLog from "./planChangeLog.js";
 
-// The three action-level metadata fields this operation owns. A key present in
-// the payload `fields` bag is written ($set semantics — `null` clears); a key
+// The action-level metadata fields this operation owns. A key present in the
+// payload `fields` bag is written ($set semantics — `null` clears); a key
 // absent leaves the stored value unchanged. Any other key in the bag is ignored
-// — universal-field writes flow exclusively through this operation.
-const UNIVERSAL_FIELDS = ["assignees", "due_date", "description"];
+// — universal-field writes flow exclusively through this operation. (Part 64
+// removed the editable `description` universal field; the action body
+// `description` is now author-authored config read via GetWorkflowAction.)
+const UNIVERSAL_FIELDS = ["assignees", "due_date"];
 
 /**
  * Plan-phase planner for the `UpdateActionFields` operation (Part 24). Writes
@@ -40,8 +42,8 @@ const UNIVERSAL_FIELDS = ["assignees", "due_date", "description"];
  * @param {import('../types.js').LoadedState} args.loadedState — verb-mode load
  *   (`{ actionId, verb: 'edit' }`); carries `workflow`, `targetAction`,
  *   `actionConfig`.
- * @param {{ assignees?, due_date?, description? }} [args.fields] — the universal
- *   fields to write ($set semantics; only the three universal keys are honoured).
+ * @param {{ assignees?, due_date? }} [args.fields] — the universal
+ *   fields to write ($set semantics; only the two universal keys are honoured).
  * @param {{ text: string, html: string } | null} [args.comment] — optional
  *   comment, passed through to the event planner (Part 33 renders it).
  * @param {Object} [args.metadata] — optional metadata bag merged onto the doc

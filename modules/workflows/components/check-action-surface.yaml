@@ -16,7 +16,7 @@
 #     ({ view, edit, review, error }), .buttons ({ submit, progress,
 #     not_required, approve, request_changes, resolve_error } booleans, all
 #     AND-ed server-side per Part 46 D5), .workflow_closed, .required_after_close.
-#   - working inputs: current_action.fields.{assignees, due_date, description}
+#   - working inputs: current_action.fields.{assignees, due_date}
 #     (seeded from the response), current_action.comment (the OPTIONAL surface
 #     comment, seeded null) and current_action.change_request_comment (the
 #     MANDATORY comment in the review-mode Request Changes modal, a separate
@@ -166,8 +166,6 @@ blocks:
             _state: current_action.fields.assignees
           due_date:
             _state: current_action.fields.due_date
-          description:
-            _state: current_action.fields.description
           assignee_docs:
             _state: current_action.assignee_docs
   # 4. Status history — view mode only. The List binds state at its block id;

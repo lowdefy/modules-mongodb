@@ -1,18 +1,19 @@
-# Universal-fields surface (Part 24).
+# Universal-fields surface (Part 24; Part 64 shrank it to two fields).
 #
-# Renders the three action-level universal fields (assignees / due_date /
-# description) for one action, in edit or display mode. The surface is always a
-# plain Box (no card chrome): its container owns the chrome. Every consumer gets
-# the same standalone Update button (edit mode) that calls the per-workflow
+# Renders the action-level universal fields (assignees / due_date) for one
+# action, in edit or display mode. The surface is always a plain Box (no card
+# chrome): its container owns the chrome. Every consumer gets the same
+# standalone Update button (edit mode) that calls the per-workflow
 # `{workflow_type}-update-fields` operation — independent of any form submit or
-# FSM transition.
+# FSM transition. (Part 64 removed the editable `description` field; the action
+# body `description` is now author-authored config, rendered separately by
+# `components/action-description.yaml`.)
 #
 # Placement (Part 56 addendum DA1): on the action workspace pages the EDIT group
 # is hosted inside `universal-fields-modal.yaml` (opened by the title-bar ✎ chip),
 # while DISPLAY is split out of this component — assignees + due render as
-# title-bar chips (`universal-fields-chips.yaml`) and the description as a
-# middle-column callout (`universal-fields-callout.yaml`). The `mode: display`
-# group below is therefore no longer used by the workspace pages; it stays intact
+# title-bar chips (`universal-fields-chips.yaml`). The `mode: display` group
+# below is therefore no longer used by the workspace pages; it stays intact
 # because the component is shared and the in-context check-action surface still
 # composes this component inline (D6, untouched).
 #
@@ -31,9 +32,9 @@
 #   - allowed_edit operator leaf — gates the Update button (visible) and the
 #                  inline inputs (disabled). Defaults false (display consumers
 #                  pass nothing).
-#   - show         build-time array of field names to render (default all three;
+#   - show         build-time array of field names to render (default both;
 #                  per-field presence gated via `_build.array.includes`).
-#   - action_data  map of operator leaves: assignees, due_date, description, and
+#   - action_data  map of operator leaves: assignees, due_date, and
 #                  (display) assignee_docs.
 #   - on_complete  actions appended after the Update CallAPI (default []).
 #   - date_format  display date format (default `MMM D, YYYY`).
@@ -48,7 +49,7 @@ visible:
         - _build.array.length:
             _var:
               key: show
-              default: [assignees, due_date, description]
+              default: [assignees, due_date]
         - 0
     then: true
     else: false
@@ -73,7 +74,7 @@ blocks:
                 on:
                   _var:
                     key: show
-                    default: [assignees, due_date, description]
+                    default: [assignees, due_date]
                 value: assignees
             then:
               - _ref:
@@ -93,7 +94,7 @@ blocks:
                 on:
                   _var:
                     key: show
-                    default: [assignees, due_date, description]
+                    default: [assignees, due_date]
                 value: due_date
             then:
               - id:
@@ -103,30 +104,6 @@ blocks:
                 type: DateSelector
                 properties:
                   title: Due date
-                  disabled:
-                    _eq:
-                      - _var:
-                          key: allowed_edit
-                          default: false
-                      - false
-            else: []
-        # description → TiptapInput (stores { text, html })
-        - _build.if:
-            test:
-              _build.array.includes:
-                on:
-                  _var:
-                    key: show
-                    default: [assignees, due_date, description]
-                value: description
-            then:
-              - id:
-                  _string.concat:
-                    - _var: state_path
-                    - .description
-                type: TiptapInput
-                properties:
-                  title: Description
                   disabled:
                     _eq:
                       - _var:
@@ -194,7 +171,7 @@ blocks:
                 on:
                   _var:
                     key: show
-                    default: [assignees, due_date, description]
+                    default: [assignees, due_date]
                 value: assignees
             then:
               - id: universal_fields_assignees_label
@@ -240,7 +217,7 @@ blocks:
                 on:
                   _var:
                     key: show
-                    default: [assignees, due_date, description]
+                    default: [assignees, due_date]
                 value: due_date
             then:
               - id: universal_fields_due_date_label
@@ -273,47 +250,4 @@ blocks:
                 properties:
                   type: secondary
                   content: No due date
-            else: []
-        # description → rendered html; placeholder when null
-        - _build.if:
-            test:
-              _build.array.includes:
-                on:
-                  _var:
-                    key: show
-                    default: [assignees, due_date, description]
-                value: description
-            then:
-              - id: universal_fields_description_label
-                type: Title
-                properties:
-                  level: 5
-                  content: Description
-              - id: universal_fields_description_value
-                type: Html
-                visible:
-                  _ne:
-                    - _get:
-                        from:
-                          _var: action_data.description
-                        key: html
-                    - null
-                properties:
-                  html:
-                    _get:
-                      from:
-                        _var: action_data.description
-                      key: html
-              - id: universal_fields_description_empty
-                type: Paragraph
-                visible:
-                  _eq:
-                    - _get:
-                        from:
-                          _var: action_data.description
-                        key: html
-                    - null
-                properties:
-                  type: secondary
-                  content: No description
             else: []
