@@ -1,49 +1,61 @@
-# Part 26 — Entity data contract (host `data_endpoint` routine, server-resolved)
+# Part 26 — Entity data contract (inline `entity.data` routine, module-generated endpoint)
 
-Workflow pages need data _about the entity a workflow is attached to_ — its display name for breadcrumbs and back-links, and arbitrary entity fields for the action page's read-only summary and its side panel. Today that data is fetched two incompatible ways: action pages bake a per-workflow `get_entity` MongoDB request (works because they're generated per workflow type), while the shared overview pages can't bake a connection at all and so have no entity name. This part replaces both with **one mechanism**: the host app writes a single _routine_ per entity type that returns whatever entity data it wants, and the workflows module's read APIs call that routine server-side and surface the result on their responses. The client never learns the routine exists — it just reads `entity_link.name` and an `entity` object off the API response.
+Workflow pages need data _about the entity a workflow is attached to_ — its display name for breadcrumbs and back-links, and arbitrary entity fields for the action page's read-only summary and its side panel. Today that data is fetched two incompatible ways: action pages bake a per-workflow `get_entity` MongoDB request (works because they're generated per workflow type), while the shared overview pages can't bake a connection at all and so have no entity name. This part replaces both with **one mechanism, authored the same way hooks are**: the host declares an **inline Lowdefy routine** in the workflow's `entity:` block that returns whatever entity data it wants, the module's build resolver **automatically generates an engine-only endpoint** from that routine, and the workflows module's read APIs call that endpoint server-side and surface the result on their responses. The client never learns the endpoint exists — it just reads `entity_link.name` and an `entity` object off the API response.
 
-> This design predates a `vars.entities` enum that an earlier draft assumed. There is no such enum — entity wiring lives in each workflow's `entity:` block (`connection_id`, `ref_key`, `page_id`, `id_query_key`, `title`, plus the now-removed `name_field`). This rewrite reflects current reality.
+> This rewrite supersedes an earlier draft that had the host **author their own `Api` endpoint** in the app's `apis:` and pass its **id** via `entity.data_endpoint`. That is exactly the pattern this module already abandoned for hooks (`makeWorkflowsConfig.js` hard-errors on a hook given as an endpoint-id string, demanding an inline `{ routine: [...] }`). Entity data now mirrors hooks: inline routine in, module-generated `InternalApi` out.
 
 ## Proposed change
 
-1. Add an optional **`entity.data_endpoint`** field to a workflow's `entity:` block — the id of a host-app Api endpoint (a routine) that, given an entity instance id, returns an entity-data object.
-2. The four read handlers (`GetWorkflowAction`, `GetWorkflowOverview`, `GetWorkflowActionGroupOverview`, `GetEntityWorkflows`) call this routine **server-side via `callApi`** and lift its reserved **magic `name`** field onto `entity_link.name` on every response.
-3. `GetWorkflowAction` additionally returns the **full routine object** as `entity` on its response, so the action page's `DataDescriptions` summary and its `entity_view` slot read entity fields from there.
-4. **Delete** `requests/get_entity.yaml.njk`, the `connection_id`/`name_field` baking in `makeActionPages`, and the `entity.name_field` config field — all subsumed by the routine.
-5. Keep `entity.connection_id` (its only remaining role is entity identity / the `GetEntityWorkflows` query) and keep static `entity.title` as the type label and the no-routine fallback.
-6. Migrate the demo's entity slot and any `entity.*` form-config fields to read from the routine result instead of the deleted `get_entity` request.
+1. Add an optional **`entity.data`** block to a workflow's `entity:` config — an inline routine in the `{ routine: [...] }` envelope (identical in shape to a hook's `hooks.{signal}.{phase}` and an action group's `on_complete`) that, given an entity instance id, returns an entity-data object.
+2. **`makeWorkflowApis`** emits one **`InternalApi`** per workflow that declares `entity.data` — id `{type}-entity-data`, `routine: workflow.entity.data.routine` — exactly mirroring `emitHookApi` / `emitGroupOnCompleteApi`. Engine-only (blocks HTTP and client `CallApi`), reachable only via engine `callApi`.
+3. **`makeWorkflowsConfig`** validates `entity.data` is a `{ routine: [...] }` object, **strips the raw routine** from the carried runtime config, and carries `entity.data_endpoint: { "_module.endpointId": "{type}-entity-data" }` so the build walker resolves it to a pre-scoped opaque id that rides `workflowsConfig` to the read handlers.
+4. The three single-workflow read handlers (`GetWorkflowAction`, `GetWorkflowOverview`, `GetWorkflowActionGroupOverview`) call this endpoint **server-side via `callApi`** and lift its reserved **magic `name`** field onto `entity_link.name`. (`GetEntityWorkflows` — the entity hub — does **not** call it: it always runs on the entity's own page, and no consumer reads a per-workflow instance name there.)
+5. `GetWorkflowAction` returns a single **`entity` object** = the module-injected **`id`** (the entity instance id, always present) merged with the routine result. The action page's `DataDescriptions` summary and `entity_view` slot read host fields off `entity`, while `set_entity_id` keeps reading `entity.id`. The previously-dead **`connection_id`** subfield (nothing read it — the panel's connection id is build-time baked) is dropped.
+6. **Delete** `requests/get_entity.yaml.njk`, the `connection_id`/`name_field` baking in `makeActionPages`, and the `entity.name_field` config field — all subsumed by the routine. Keep `entity.connection_id` (entity identity / `GetEntityWorkflows` query) and keep static `entity.title` as the type label and the no-routine fallback.
+7. Migrate the demo's entity slot and any `entity.*` form-config fields to read from the routine result instead of the deleted `get_entity` request, and add an `entity.data` routine to the demo workflow.
 
 ## Key decisions and rationale
 
-### Why a host routine called server-side, not a client fetch or a config-supplied pipeline
+### Why an inline routine the module turns into an endpoint, not a host-authored endpoint id
 
-Three approaches were on the table for getting entity data onto the shared overview pages, which can't bake a per-workflow connection:
+The host authors a **routine**, not an endpoint. The module **generates the endpoint**. This is the exact contract hooks and action-group `on_complete` already use, and it is enforced, not optional: `makeWorkflowsConfig.js:165-169` hard-errors when a hook is supplied as an endpoint-id string ("the legacy shape pointing at an external Api id. Convert to an inline routine object"). Entity data is a third instance of the same need — host-supplied server logic the module dispatches — so it gets the same shape rather than reintroducing the rejected one.
 
-- **Client `CallApi`** (an earlier draft of this part): the page fires a host endpoint and stores the result in state. Rejected — it pushes the mechanism into the client (every page must remember to call it and wire the result), and it can't populate the back-link/breadcrumb that the layout reads from the API response itself.
-- **Server-side read of the entity collection** (Part 63 Option B): the read handler reads the entity doc directly. Blocked — the handler only holds a Mongo handle to the _workflow-api_ connection's database, and only knows the entity's Lowdefy `connection_id`, not its Mongo collection name or cluster. It would need a new `entity.collection` field _and_ a same-database assumption (entity must live in the workflow store's DB).
+Concretely, mirroring hooks buys:
+
+- **One authoring surface.** The routine lives in the module-entry `vars` (the app's `workflows_config`), right next to `connection_id`, `ref_key`, etc. The host registers nothing in their own `apis:` and invents no endpoint id. Compare hooks (`hooks.submit.pre.routine`) and groups (`on_complete.routine`) — same envelope, same place.
+- **The endpoint always exists.** Because the module emits it from the routine, there is no "host forgot to register the endpoint" or "id typo" failure mode, and no need to defer endpoint-existence validation to runtime (the rejected draft's open problem — now moot).
+- **The routine still names its own connection.** A hook routine writes `connectionId:` on its own steps against any app connection; so does this one. The host reads whatever database/collection/cluster it likes — no `entity.collection` field, no same-DB assumption. (This was the decisive advantage over the two server-side-read alternatives below, and it survives unchanged.)
+- **Engine-only by construction.** Like `emitHookApi`, the generated endpoint is an **`InternalApi`**: a built `Api` is HTTP-callable, and the id (`{type}-entity-data`) is predictable, so a direct HTTP hit would bypass the engine. `InternalApi` blocks HTTP and client `CallApi` while staying reachable via the engine's `callApi` — which is exactly how the read handlers reach it (`createEngineContext` threads `callApi` into every read handler, confirmed on `GetWorkflowAction`).
+
+### Alternatives rejected (for getting entity data onto the shared overview pages)
+
+The shared overview pages can't bake a per-workflow connection, which is what forced a new mechanism. Three non-routine approaches were considered and dropped:
+
+- **Client `CallApi`** (an even earlier draft): the page fires a host endpoint and stores the result in state. Rejected — it pushes the mechanism into the client (every page must remember to call it and wire the result), and it can't populate the back-link/breadcrumb that the layout reads from the API response itself.
+- **Server-side read of the entity collection** (Part 63 Option B): the read handler reads the entity doc directly. Blocked — the handler only holds a Mongo handle to the _workflow-api_ connection's database, and only knows the entity's Lowdefy `connection_id`, not its Mongo collection name or cluster. It would need a new `entity.collection` field _and_ a same-database assumption.
 - **Per-workflow generated overview pages** (Part 63 Option C): convert the shared pages to `makeActionPages`-style generation so each bakes its own `get_entity`. Rejected — large refactor with blast radius across every cross-module link to the overview pages and the engine link builders.
 
-A host routine sidesteps all of it. The routine **names its own connection**, so it reads whatever database/collection/cluster it likes — no `entity.collection` field, no same-DB assumption. The read handler invokes it with `callApi`, which is already battle-tested in this module (events, notifications, and pre/post hooks all dispatch through `callApi({ endpointId, payload })`, running as the same authenticated user, returning just the routine's `:return` value, with a depth-10 recursion guard). The client stays ignorant: it reads populated fields off the response.
+A module-generated routine endpoint sidesteps all of it: the read handler invokes it with `callApi`, already battle-tested in this module (events, notifications, and pre/post hooks all dispatch through `callApi({ endpointId, payload })`, running as the same authenticated user, returning just the routine's `:return` value, with a depth-10 recursion guard).
 
 ### Arbitrary data + reserved magic keys (not a fixed schema)
 
-The routine returns an **arbitrary, host-shaped object** — the host decides what to fetch, compute, or hardcode. The module reserves exactly one **magic key** it reads for its own chrome: **`name`** (the entity instance display name). Everything else in the object belongs to the host, consumed by their own UI (the `DataDescriptions` `entity.*` field configs and the `entity_view` slot blocks).
+The routine returns an **arbitrary, host-shaped object** — the host decides what to fetch, compute, or hardcode. The module owns two keys on the resulting `entity` object: it **injects `id`** (the entity instance id, always present — even with no routine or a thrown routine) so the shell's `set_entity_id` and the id-dependent panels keep working, and it **reads `name`** (the instance display name) for its own chrome. Everything else in the object belongs to the host, consumed by their own UI (the `DataDescriptions` `entity.*` field configs and the `entity_view` slot blocks). Hosts must not author their own `id` — the module injects it last and it wins.
 
 This is what makes one routine able to serve every entity surface. A genuinely _fixed_ schema can't describe the slot, because the slot reads arbitrary fields the host authored. Reserving a small magic-key set and passing the rest through gives the host a single place to declare "everything about this entity" while keeping the module's contract tiny.
 
 ### `name` is the one magic field; `title` stays static
 
-The entity **type label** (e.g. "Lead") stays as the existing required static `entity.title`. It is the breadcrumb's type-label crumb and the fallback shown when no instance name is available. Keeping it static means it works **without** a routine (the no-endpoint fallback) and never costs a call.
+The entity **type label** (e.g. "Lead") stays as the existing required static `entity.title`. It is the breadcrumb's type-label crumb and the fallback shown when no instance name is available. Keeping it static means it works **without** a routine (the no-`data` fallback) and never costs a call.
 
 Making `type` a _second_ magic field would only earn its place if the entity type genuinely varied per instance (polymorphic entities) — a speculative need today. So: `name` is the single magic key the routine drives; `title` remains static config.
 
 ### `connection_id` stays; removing it is a separate change
 
-With `get_entity` deleted, `connection_id` is no longer used to _fetch_ anything. Its only remaining role is **entity identity**: it is stored on the workflow doc's `entity` block and `GetEntityWorkflows` queries on it (`{ "entity.connection_id": …, "entity.id": … }`) to find every workflow for an entity, scoping the entity-id namespace. Removing it would touch the workflow write path, the stored document shape, the entity-hub query, and require migrating existing docs — an entity-identity-model change out of scope here. It stays.
+With `get_entity` deleted, `connection_id` is no longer used to _fetch_ anything (the `entity.data` routine names its own connection). Its only remaining role is **entity identity**: it is stored on the workflow doc's `entity` block and `GetEntityWorkflows` queries on it (`{ "entity.connection_id": …, "entity.id": … }`) to find every workflow for an entity, scoping the entity-id namespace. Removing it would touch the workflow write path, the stored document shape, the entity-hub query, and require migrating existing docs — an entity-identity-model change out of scope here. It stays.
 
 ## The routine contract
 
-### Authoring — `entity.data_endpoint`
+### Authoring — `entity.data` (inline routine, like a hook)
 
 ```yaml
 workflows_config:
@@ -54,73 +66,86 @@ workflows_config:
       page_id: lead-view # entity link target (unchanged)
       id_query_key: _id # entity link query key (unchanged)
       title: Lead # type label + no-routine fallback (unchanged)
-      data_endpoint: get-lead-entity-data # NEW — host routine id
+      data: # NEW — optional, inline routine (same { routine: [...] } envelope as hooks)
+        routine:
+          - id: load
+            type: MongoDBAggregation
+            connectionId: leads-collection # the routine names its OWN connection
+            payload:
+              entity_id:
+                _payload: entity_id
+            properties:
+              pipeline:
+                - $match: { _id: { _payload: entity_id } }
+          - :return:
+              name: # magic key — module reads this for chrome
+                _string.concat:
+                  - _step: load.0.first_name
+                  - " "
+                  - _step: load.0.last_name
+              email: # host-owned — for the slot / DataDescriptions
+                _step: load.0.email
+              status:
+                _step: load.0.status
 ```
 
-`data_endpoint` is **optional**. The value is the host-app endpoint id, passed verbatim to `callApi` (the same way pre/post hook ids and `endpoints.new_event` are handled today). The host registers the routine in their app's `apis:`.
+`entity.data` is **optional**. Its shape is identical to a hook phase (`hooks.{signal}.{phase}.routine`) and an action group's `on_complete.routine`: an object with a `routine:` array ending in a `:return:`. The routine is free to skip the DB entirely and return hardcoded/derived values — the module only cares that `name` (if present) is the display name, and that the rest is whatever the host's own UI references.
 
-### The routine itself (host-authored)
+**Payload is `{ entity_id }` only.** The entity instance id comes from `wfDoc.entity.id` / `action.entity.id`. The connection is declared inside the routine (less indirection, more intuitive), exactly as a hook routine does. One routine per entity type; no dispatcher.
 
-A normal Lowdefy Api endpoint. It receives `{ entity_id }` and returns an object whose only module-reserved key is `name`:
+### What the module generates — the `{type}-entity-data` InternalApi
 
-```yaml
-# host app: apis/get-lead-entity-data.yaml
-id: get-lead-entity-data
-type: Api
-routine:
-  - id: load
-    type: MongoDBAggregation
-    connectionId: leads-collection # host wires its OWN connection here
-    payload:
-      entity_id:
-        _payload: entity_id
-    properties:
-      pipeline:
-        - $match: { _id: { _payload: entity_id } }
-  - :return:
-      name:
-        _string.concat: # magic key — module reads this
-          - _step: load.0.first_name
-          - " "
-          - _step: load.0.last_name
-      email: # host-owned — for the slot / DataDescriptions
-        _step: load.0.email
-      status:
-        _step: load.0.status
+`makeWorkflowApis` adds an `emitEntityDataApi(workflow)` alongside the existing emitters:
+
+```text
+function emitEntityDataApi(workflow) {
+  if (!workflow.entity?.data) return null;
+  return {
+    id: `${workflow.type}-entity-data`,
+    type: "InternalApi",
+    routine: workflow.entity.data.routine,
+  };
+}
 ```
 
-The routine is free to skip the DB entirely and return hardcoded/derived values — the module only cares that `name` (if present) is the display name, and that the rest is whatever the host's own UI references.
+This is the same body as `emitGroupOnCompleteApi` (`makeWorkflowApis.js:295-303`). The id `{type}-entity-data` is collision-free: hook ids are 4 segments (`{type}-{action}-{signal}-{phase}`), group ids are `{type}-group-{id}-on-complete`, and the lifecycle/submit ids are `{type}-{submit|start|cancel|close|update-fields}` — none can equal `{type}-entity-data`. (`type: "workflow"` is already reserved by `emitForWorkflow`.)
 
-**Payload is `{ entity_id }` only.** The entity instance id comes from `wfDoc.entity.id` / `action.entity.id`. `connection_id` is deliberately _not_ in the payload — the host declares the connection inside the routine (less indirection, more intuitive). One routine per entity type; no dispatcher.
+### How the endpoint id reaches the read handlers
+
+The read handlers consume **`workflowsConfig`** (built by `makeWorkflowsConfig`, carried onto the `workflow-api` connection via `properties.workflowsConfig`). They do not see `makeWorkflowApis` output. So `makeWorkflowsConfig` carries the resolved endpoint id on the entity block:
+
+- When `entity.data` is present, the carried config drops the raw `data` routine (build-only, heavy) and adds `data_endpoint: { "_module.endpointId": "${type}-entity-data" }`.
+- The build walker resolves `_module.endpointId` in resolver output to a **pre-scoped opaque string** (`<workflowsEntryId>/<type>-entity-data`) — the same resolution the hook refs rely on (`makeWorkflowApis.js:36-40`) and that `workflow-api.yaml`'s own `endpoints:` block already uses for `new_event` / `send_notification`. The handler reads `wfConfig.entity.data_endpoint` as that opaque string and passes it to `callApi` verbatim.
+- When `entity.data` is absent, no endpoint is emitted and no `data_endpoint` is carried — the handler sees no endpoint and falls back to the type label.
 
 ### Read-handler behavior
 
-Each read handler matches the workflow's config (`wfConfig = workflowsConfig.find(wc => wc.type === doc.workflow_type)`), then, when `wfConfig.entity.data_endpoint` is set:
+Each calling handler matches the workflow's config (`wfConfig = workflowsConfig.find(wc => wc.type === doc.workflow_type)`), then, when `wfConfig.entity.data_endpoint` is set:
 
 ```text
 data = await callApi({ endpointId: wfConfig.entity.data_endpoint,
                        payload: { entity_id: <doc>.entity.id } })
-entity_link.name = data?.name ?? null      // lifted onto chrome — ALL four handlers
+entity_link.name = data?.name ?? null      // lifted onto chrome
 ```
 
-`GetWorkflowAction` additionally returns the whole object:
+`GetWorkflowAction` merges the routine result onto the always-present entity id (no separate `entity_data` key; the dead `connection_id` subfield is gone):
 
 ```text
-return { …action, entity_link, entity: data ?? null }
+return { …action, entity_link, entity: { id: <doc>.entity.id, ...(data ?? {}) } }
 ```
 
-| Handler                          | Lifts `name` → `entity_link.name`                              | Returns full `entity` object              |
-| -------------------------------- | -------------------------------------------------------------- | ----------------------------------------- |
-| `GetWorkflowAction`              | yes                                                            | **yes** (slot + DataDescriptions need it) |
-| `GetWorkflowOverview`            | yes                                                            | no (overview has no slot/form)            |
-| `GetWorkflowActionGroupOverview` | yes                                                            | no                                        |
-| `GetEntityWorkflows`             | yes (one call, single entity, applied to all listed workflows) | no                                        |
+| Handler                          | Lifts `name` → `entity_link.name`                             | Returns `entity` object (id + routine result) |
+| -------------------------------- | ------------------------------------------------------------- | --------------------------------------------- |
+| `GetWorkflowAction`              | yes                                                           | **yes** (slot + DataDescriptions need it)     |
+| `GetWorkflowOverview`            | yes                                                           | no (overview has no slot/form)                |
+| `GetWorkflowActionGroupOverview` | yes                                                           | no                                            |
+| `GetEntityWorkflows`             | **no** — hub runs on the entity's own page; no `.name` reader | no                                            |
 
-Every handler resolves exactly **one** entity, so this is exactly **one `callApi` per read** — even `GetEntityWorkflows` (many workflows, one entity) calls once and reuses the result across the listed workflows' `entity_link`s. No batching needed.
+Each _calling_ handler resolves exactly **one** workflow (one type → at most one endpoint), so this is exactly **one `callApi` per read**. `GetEntityWorkflows` makes no call at all — so the hub mixing multiple workflow types (each with its own or no `entity.data`) is a non-issue. No batching or per-type dispatch needed.
 
 ### Error / missing handling — never fail the read
 
-The `callApi` is wrapped in try/catch. A missing endpoint id, a throwing routine, or a deleted entity degrades to `name: null` (chrome falls back to the type label) and `entity: null`; the read never fails because the entity name couldn't resolve. Failures are logged.
+The `callApi` is wrapped in try/catch. A missing endpoint (no `entity.data` declared), a throwing routine, or a deleted entity degrades to `name: null` (chrome falls back to the type label); `entity` reduces to just `{ id }` (host fields absent), so `set_entity_id` and the id-dependent panels keep working. The read never fails because the entity name couldn't resolve. Failures are logged.
 
 ## Action-page consolidation
 
@@ -130,7 +155,18 @@ Today `get_entity` (the full entity doc) feeds three consumers on action pages. 
 2. **`DataDescriptions` summary** — `view`/`review` templates change the `entity` data branch from `_request: get_entity` to `_request: get_workflow_action.entity`. Field configs keyed `entity.<field>` resolve unchanged against that object.
 3. **`entity_view` slot** — host slot blocks change `_request: get_entity.0.<field>` to `_request: get_workflow_action.entity.<field>` (note the shape change: the result is now an **object**, not a single-element array, so authors drop the `.0`).
 
-Once these move, `makeActionPages` no longer bakes `connection_id` or `name_field`, and `requests/get_entity.yaml.njk` is deleted.
+Once these move, `makeActionPages` no longer bakes `name_field`, and `requests/get_entity.yaml.njk` is deleted. (`connection_id` keeps being baked — see the removal table.)
+
+## Shell loading behavior (action-workspace)
+
+With entity data now arriving on the single `get_workflow_action` response, the action-workspace shell stops blanking the page while that request is in flight. Today `components/action-workspace.yaml` gates its **entire** render on `visible: _ne: [_state.entity_id, null]`, and `entity_id` is a value the page sets itself in an onMount `SetState` (`set_entity_id`) — so the gate is a self-set-flag mount barrier that renders **nothing** until the action resolves.
+
+Change:
+
+- **Drop the whole-shell `visible` gate.** The shell renders immediately. The middle action surface and the right-hand Details/History content use the native `loading:` + `skeleton:` swap gated on `_not: _request: get_workflow_action` (the request is the source of truth — per the loading-skeletons idiom, never gate `loading` on the self-set `entity_id`), so they show content-shaped skeletons in flight instead of a blank page.
+- **Keep the id-dependent panels gated until the id resolves.** `actions-on-entity` (its `call_entity_workflows` onMount `CallAPI`) and the History timeline (`reference_value: _state.entity_id`) must still mount only once the entity id is available, so they retain an entity-id gate — now narrowed to just those panels instead of the whole shell. Their onMount reads then fire with a real id, never null.
+
+The null-gate survives only where it does real mount-ordering work; everywhere else the page falls through to skeletons.
 
 ## What is removed, what stays
 
@@ -147,28 +183,31 @@ Once these move, `makeActionPages` no longer bakes `connection_id` or `name_fiel
 
 ## Validation (Part 4 / `makeWorkflowsConfig`)
 
-`makeWorkflowsConfig` validates `entity.data_endpoint`, when present, is a non-empty string (mirrors the old `name_field` check). The resolver receives only `workflows_config` — it cannot see the app's `apis:` registry — so build-time endpoint-existence validation is **not** done here; an unregistered endpoint id surfaces at runtime as a clear `callApi` `ConfigError`. The `name_field` validation block is removed.
+A new `validateEntityData(workflow)` mirrors `validateHooks` / `validateGroupOnComplete`: when `entity.data` is present it must be a plain object with a `routine:` array, and a **string** value is rejected with the same "legacy shape pointing at an external Api id — convert to an inline routine object" message hooks already emit (the rejected draft's `data_endpoint: <id>` form lands here with a clear migration hint). The `name_field` validation block is removed. The resolver does not validate routine internals (same depth as hook/`on_complete` validation) — those are walked and validated by the build like any other routine. Build-time endpoint-existence validation is now **unnecessary**: the module generates the endpoint, so it cannot be missing.
+
+In the materialization step, `makeWorkflowsConfig` strips `data` from the carried `entity` block and, when it was present, adds `data_endpoint: { "_module.endpointId": "${type}-entity-data" }` (the wholesale `entity` carry at `makeWorkflowsConfig.js:1030-1035` gains this transform).
 
 ## Manifest & docs (Part 20)
 
-`module.lowdefy.yaml`'s `workflows_config` description: drop the `name_field` bullet, add a `data_endpoint` bullet (optional; host routine id; receives `{ entity_id }`; returns an object whose reserved `name` key is the instance display name; all other keys are host-owned and available on the action response's `entity` object and via the `entity_view` slot). Regenerate `docs/` per the manifest-is-source-of-truth rule.
+`module.lowdefy.yaml`'s `workflows_config` description: drop the `name_field` bullet, add an `entity.data` bullet (optional; inline `{ routine: [...] }` like hooks; the routine receives `{ entity_id }` and returns an object whose reserved `name` key is the instance display name; all other keys are host-owned and available on the action response's `entity` object and via the `entity_view` slot; the module generates the engine-only endpoint from it). Regenerate `docs/` per the manifest-is-source-of-truth rule.
 
 ## Files changed
 
-- `modules/workflows/resolvers/makeWorkflowsConfig.js` — replace `name_field` validation with `data_endpoint` string validation; stop carrying `name_field`; carry `data_endpoint`.
+- `modules/workflows/resolvers/makeWorkflowsConfig.js` — add `validateEntityData` (mirrors `validateHooks`); call it from `validateWorkflow`; remove the `name_field` validation block; in the entity-carry step, strip `data` and add the resolved `data_endpoint` `_module.endpointId` ref when `data` was present.
+- `modules/workflows/resolvers/makeWorkflowApis.js` — add `emitEntityDataApi(workflow)` (same body as `emitGroupOnCompleteApi`); push its result in `emitForWorkflow` when non-null.
 - `modules/workflows/resolvers/makeActionPages.js` — drop `name_field` from `workspaceVars`; **keep `connection_id`** (still passed through as `entity_connection_id` for the actions-on-entity panel).
 - `modules/workflows/requests/get_entity.yaml.njk` — delete.
-- `modules/workflows/templates/{view,review,edit,error,action}.yaml.njk` — remove the `entity_name`/`get_entity` wiring; point `DataDescriptions` `data.entity` and slot data at `get_workflow_action.entity`.
+- `modules/workflows/templates/{view,review,edit,error,action}.yaml.njk` — `get_entity` appears in **three** spots per template that all must be handled: **delete** (a) the request-list `_ref` to `requests/get_entity.yaml.njk`, (b) the `onMount` `get_entity` **Request action** (`view:138-140` etc.) — leaving this dangling against the deleted request file is a build error, and (c) the `entity_name` var block that fed the old breadcrumb; then **repoint** the `DataDescriptions` `data.entity` read (and the second read in `view`/`review`) and the slot from `get_entity`/`get_entity.0.*` to `get_workflow_action.entity[.<field>]` (object, so drop the `.0`).
 - `modules/workflows/components/action-breadcrumbs.yaml` — entity-crumb name reads `entity_link.name` (no longer an `entity_name` var sourced from `get_entity`).
-- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/{GetWorkflowAction,GetWorkflowOverview,GetWorkflowActionGroupOverview,GetEntityWorkflows}/*.js` — add the `callApi` to `data_endpoint`, lift `name` onto `entity_link`; `GetWorkflowAction` returns the full `entity` object. Candidate shared helper `resolveEntityData(context, wfConfig, entityId)`.
+- `plugins/modules-mongodb-plugins/src/connections/WorkflowAPI/{GetWorkflowAction,GetWorkflowOverview,GetWorkflowActionGroupOverview}/*.js` — add the `callApi` to `wfConfig.entity.data_endpoint`, lift `name` onto `entity_link`; `GetWorkflowAction` returns `entity: { id, ...routineResult }` (inject `id`, drop the dead `connection_id` subfield, no separate `entity_data` key). Candidate shared helper `resolveEntityData(context, wfConfig, entityId)`. **`GetEntityWorkflows` is unchanged** — it does not call the routine.
+- `modules/workflows/components/action-workspace.yaml` — drop the whole-shell `visible: _ne: [_state.entity_id, null]` gate; add `loading:`/`skeleton:` (gated on `_not: _request: get_workflow_action`) to the middle and right content; narrow the entity-id gate to just `actions-on-entity` and the History timeline so their onMount reads still fire with a resolved id.
 - `modules/workflows/module.lowdefy.yaml` + `docs/` — manifest description + regenerated var docs.
-- Demo: `apps/demo/.../onboarding/lead-detail-slot.yaml` + any `entity.*` form configs — read from `get_workflow_action.entity`; add a `get-lead-entity-data` routine to the demo app and wire `data_endpoint`.
+- Demo: `apps/demo/.../onboarding/lead-detail-slot.yaml` + any `entity.*` form configs — read from `get_workflow_action.entity`; add an `entity.data` routine to the demo onboarding workflow's `entity:` block.
 
 ## Out of scope / non-goals
 
 - **Removing `entity.connection_id`** — entity-identity-model change with write-path + migration blast radius; separate work.
 - **Second magic field (`type`)** — only for polymorphic entities; not a concrete need. `title` stays static.
-- **Build-time endpoint-existence validation** — resolver can't see the `apis:` registry; runtime `callApi` error is the guardrail.
 - **Cross-entity dispatch / batching** — every read resolves a single entity; one routine per entity type.
 - **Caching entity data across pages** — one `callApi` per read is cheap; revisit only if real apps show duplicate fetches.
 
@@ -178,20 +217,21 @@ Part 63's open decision was how the shared overview pages resolve the entity ins
 
 ## Verification
 
-- **With `data_endpoint` declared, routine returns `{ name: "Acme Corp", email, status }`:**
+- **With `entity.data` declared, routine returns `{ name: "Acme Corp", email, status }`:**
+  - `makeWorkflowApis` emits an `onboarding-entity-data` `InternalApi`; `makeWorkflowsConfig` carries the resolved `data_endpoint` and no raw routine.
   - Overview/group/action breadcrumbs and back-links show "Acme Corp".
   - Action page `DataDescriptions` fields keyed `entity.email`/`entity.status` render from `get_workflow_action.entity`.
   - The `entity_view` slot renders host blocks reading `get_workflow_action.entity.*`.
-  - Exactly one `get-lead-entity-data` call per read; no direct hit on the entity collection from the module.
+  - Exactly one `entity-data` call per read; no direct hit on the entity collection from the module; a direct HTTP call to `{entry}/onboarding-entity-data` is rejected (InternalApi).
 - **Routine returns no `name` key:** chrome falls back to the type label ("Lead"); host `entity.*` fields still render.
-- **No `data_endpoint` declared:** breadcrumbs/back-links show the type label; no entity call fires; slot/`entity.*` fields show nothing (host chose not to surface entity data).
+- **No `entity.data` declared:** breadcrumbs/back-links show the type label; no endpoint emitted, no entity call fires; slot/`entity.*` fields show nothing (host chose not to surface entity data).
 - **Routine throws / entity missing:** read succeeds, `name: null`, type-label fallback, error logged.
-- **Validation:** `data_endpoint: 42` (non-string) fails the build with a precise per-workflow message.
+- **Validation:** `entity.data: "get-lead-entity-data"` (string, the rejected-draft shape) fails the build with the "convert to an inline routine object" message; `entity.data: { routine: 42 }` fails with the routine-array message.
 - **End-to-end:** covered by Part 22's e2e suite once the demo declares the routine.
 
 ## Depends on
 
-- [Part 4](../_completed/04-workflow-config-schema/design.md) — `data_endpoint` string validation (replaces `name_field`).
+- [Part 4](../_completed/04-workflow-config-schema/design.md) — `entity.data` `{ routine }` validation (replaces `name_field`).
 - [Part 16 page templates](../_completed/16-page-templates/design.md) — shipped; this part edits the four templates to drop `get_entity` and source `entity` from the action response.
 - [Part 17 shared pages](../_completed/17-shared-pages/design.md) — introduced the overview pages and the per-workflow `entity` block this part extends.
 - [Part 56](designs/workflows-module/parts/_completed/56-three-tier-action-pages/design.md) — introduced `name_field` + the action-breadcrumb entity crumb this part rewrites.
