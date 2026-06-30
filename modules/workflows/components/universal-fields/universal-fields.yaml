@@ -34,6 +34,9 @@
 #                  pass nothing).
 #   - show         build-time array of field names to render (default both;
 #                  per-field presence gated via `_build.array.includes`).
+#   - show_update_button  build-time flag — render the in-body Update button
+#                  (default true). The edit modal sets false and drives the
+#                  Update from its native footer Ok instead (Part 56 addendum).
 #   - action_data  map of operator leaves: assignees, due_date, and
 #                  (display) assignee_docs.
 #   - on_complete  actions appended after the Update CallAPI (default []).
@@ -111,48 +114,45 @@ blocks:
                           default: false
                       - false
             else: []
-        # Update button — both kinds; visible only with the edit verb.
-        - - id: button_update_fields
-            type: Button
-            properties:
-              title: Update
-              type: primary
-            visible:
-              _eq:
-                - _var:
-                    key: allowed_edit
-                    default: false
-                - true
-            events:
-              onClick:
-                _build.array.concat:
-                  - - id: validate_fields
-                      type: Validate
-                      params:
-                        regex:
-                          - _string.concat:
-                              - "^"
-                              - _var: state_path
-                              - '\.'
-                    - id: update_fields
-                      type: CallAPI
-                      params:
-                        endpointId:
-                          _string.concat:
-                            - _module.id: true
-                            - /
-                            - _var: workflow_type
-                            - -update-fields
-                        payload:
-                          action_id:
-                            _var: action_id
-                          fields:
-                            _state:
-                              _var: state_path
-                          comment: null
-                  - _var:
-                      key: on_complete
-                      default: []
+        # Update button — rendered only when the consumer hosts the action in the
+        # body. The in-context check surface needs it (its host modal has no
+        # standard footer); the edit MODAL passes show_update_button: false and
+        # runs the SAME sequence from its native footer Ok instead. Visible only
+        # with the edit verb. The action sequence is the shared
+        # update_fields_actions.yaml fragment (one correct way).
+        - _build.if:
+            test:
+              _var:
+                key: show_update_button
+                default: true
+            then:
+              - id: button_update_fields
+                type: Button
+                properties:
+                  title: Update
+                  type: primary
+                visible:
+                  _eq:
+                    - _var:
+                        key: allowed_edit
+                        default: false
+                    - true
+                events:
+                  onClick:
+                    _ref:
+                      path: components/universal-fields/update_fields_actions.yaml
+                      vars:
+                        state_path:
+                          _var: state_path
+                        workflow_type:
+                          _var: workflow_type
+                        action_id:
+                          _var: action_id
+                        on_complete:
+                          _var:
+                            key: on_complete
+                            default: []
+            else: []
   # ── Display group (mode: display) — read-only with empty-state placeholders ─
   - id: universal_fields_display_group
     type: Box
@@ -179,25 +179,38 @@ blocks:
                 properties:
                   level: 5
                   content: Assignees
+              # A single Avatar block in group mode renders an overlapping
+              # Avatar.Group from the resolved docs. A `List` is the wrong tool: a
+              # list-category block iterates STATE at its own id (not
+              # `properties.data`), so with no state seeded at the list id it
+              # renders zero items. Computing the avatars array sidesteps per-item
+              # state binding. (assignee_docs entries: { _id, profile: { name,
+              # picture } }; picture is a pre-generated SVG, so `content` — the
+              # name initial — is only a fallback.)
               - id: universal_fields_assignees_list
-                type: List
+                type: Avatar
                 visible:
                   _gt:
                     - _array.length:
                         _var: action_data.assignee_docs
                     - 0
-                layout:
-                  gap: 8
                 properties:
-                  data:
-                    _var: action_data.assignee_docs
-                blocks:
-                  - _ref:
-                      module: user-account
-                      component: user-avatar
-                      vars:
-                        user:
-                          _state: universal_fields_assignees_list.$
+                  group:
+                    avatars:
+                      _js:
+                        args:
+                          docs:
+                            _var: action_data.assignee_docs
+                        fn: |
+                          const docs = args.docs || [];
+                          return docs.map((d) => {
+                            const name = d.profile && d.profile.name;
+                            return {
+                              src: d.profile && d.profile.picture,
+                              alt: name,
+                              content: name ? name.charAt(0).toUpperCase() : undefined,
+                            };
+                          });
               - id: universal_fields_assignees_empty
                 type: Paragraph
                 visible:
