@@ -23,6 +23,8 @@ concepts:
 
 > This is a translation guide, not a code-mod. There is no automated converter — the model differences (especially explicit status writes → signals) require a human pass per workflow. Migrate one workflow end-to-end, verify it, then do the rest.
 
+> **Legacy implementations vary.** The "legacy engine" is a family, not a single spec — across real apps the shapes differ: some start from a category field on the host entity (`ticket_category`, `non_conformance_category`), others seed `starting_actions` and are started programmatically; some carry an `entity:` block (with `key` / `collection` / `redirect_page` / `requests`), others have none; `responsibility` values are app-defined (`client`/`team`/`technician`, `author`/`lead`/`process-owner`, `sales-rep`, …); instanced actions, `shared: true`, and `force: true` appear in some apps and not others. Treat every app-specific field below as **"if your engine has it."** The constants that hold everywhere are the ones that matter most: `action:`-defined actions, a `status_map`, and submit/approve routines that set the next status by hand via `UpdateWorkflowActions`.
+
 ## The one shift that drives everything
 
 The legacy engine is **imperative about status**: a submit endpoint runs a routine that explicitly writes `{ type: current-action, status: done }` and `{ type: next-action, status: action-required }` via `UpdateWorkflowActions`. Every transition — including unblocking the next step — is code you wrote.
@@ -58,14 +60,14 @@ Internalize this before doing anything else: see [Signals vs status](../concepts
 | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | `workflows.yaml` registry                                      | `workflows_config` module var (one entry per type)                                                | One YAML, passed as a var; validated at build by `makeWorkflowsConfig`                          |
 | workflow `type` / `title`                                      | `type` / `title`                                                                                  | Unchanged                                                                                       |
-| `ticket_category` (auto-start trigger, device workflows)       | **App-wired** call to the `{type}-start` endpoint                                                 | No built-in category trigger — see [How workflows start](#how-workflows-start)                  |
-| programmatic `entity` start (finance/non-ticket workflows)     | call to the `{type}-start` endpoint                                                               | Near 1:1 — this is already how the module starts every workflow                                 |
-| `entity` block (`key` / `redirect_page` / `requests`)          | `entity.{ connection_id, ref_key, page_id, title, … }`                                            | Legacy entity is basic (defaults to `key: ticket`); module block is richer — [grammar](../reference/authoring-grammar.md) |
-| action `action:`                                               | action `type:`                                                                                    | Renamed                                                                                         |
+| category-field auto-start (`ticket_category`, `non_conformance_category`)  | **App-wired** call to the `{type}-start` endpoint                                     | No built-in category trigger — see [How workflows start](#how-workflows-start)                  |
+| programmatic / `starting_actions`-seeded start (non-ticket workflows)      | call to the `{type}-start` endpoint                                                   | Near 1:1 — this is already how the module starts every workflow                                 |
+| `entity` block (`key` / `collection` / `redirect_page` / `requests`) — _if present_ | `entity.{ connection_id, ref_key, page_id, title, … }`                       | `collection`→`connection_id`, `{key}_ids`→`ref_key`, `redirect_page`→`page_id`; `requests` dropped. Some legacy workflows omit `entity` entirely — see [grammar](../reference/authoring-grammar.md) |
+| action-definition field `action:`                             | action `type:`                                                                                    | Renamed on the definition. Legacy _references_ (`starting_actions`, `UpdateWorkflowActions`) already use `type:` — they carry over |
 | _(implicit — every action was a form)_                         | `kind:` **(required)**: `form` \| `check` \| `custom` \| `tracker`                                | New required field; see [Action kinds](../concepts/action-kinds.md)                             |
 | `sort_order`                                                   | _(removed)_                                                                                        | Order = `action_groups` + `actions` array order; workflow order via `display_order`             |
-| `shared: true`                                                 | _(removed)_                                                                                        | Multi-app reuse handled by listing multiple apps under `access:`                                |
-| `responsibility: client/team/technician`                       | _(removed)_                                                                                        | Replaced by per-app `access:` (who may act) + check-action `assignees` (who should)             |
+| `shared: true` _(prp-style apps)_                              | _(removed)_                                                                                        | Multi-app reuse handled by listing multiple apps under `access:`                                |
+| `responsibility: <app-defined>`                                | _(removed)_                                                                                        | Values are app-specific. Replaced by per-app `access:` (who may act) + check-action `assignees` (who should) |
 | `access: { app: [view, edit, review] }`                        | `access: { app: { view: true, edit: [roles], review: [roles] } }`                                 | Per-verb map; array shorthand is now rejected — see [Access](../concepts/access.md)             |
 | `roles:` / `access.roles`                                      | folded into per-verb gates                                                                        | Action-wide `roles:` is rejected by the validator                                               |
 | `notification_roles`                                           | `notification_roles` (action root)                                                                | Kept; now drives engine auto-dispatch                                                           |
@@ -106,9 +108,12 @@ The module wires its dependencies (`layout`, `events`, `notifications`, `contact
 
 ### 2. Convert the workflow definition
 
-Legacy root file → module workflow entry. Every legacy workflow already carries an `entity:` block — it's just basic, defaulting to `{ key: ticket, redirect_page: ticket-view }` for the device (ticket) workflows and spelled out more fully for non-ticket workflows like billing. The block **changes shape**: the engine needs the entity's Lowdefy **connection**, the event-**references key**, and the back-link **page**, rather than a request-id stem (`key`) and an injected `requests` list.
+Legacy root file → module workflow entry. The module **always** needs an explicit `entity:` block, and it has a different shape than legacy: it wants the entity's Lowdefy **connection**, the event-**references key**, and the back-link **page**. Where your legacy workflow stands today varies:
 
-A device (ticket) workflow, whose legacy entity was the `ticket` default:
+- **It has an `entity:` block** (e.g. `{ key, collection, redirect_page, requests }`) — map field-by-field: `collection`→`connection_id`, the `{key}_ids` references key→`ref_key`, `redirect_page`→`page_id`. The injected `requests` list has no equivalent (the module fetches workflow data itself).
+- **It has no `entity:` block** (entity wiring was implicit — e.g. a ticket/`*_category` workflow that hard-coded `ticket_ids`) — you author the block fresh, pointing `connection_id` at the host entity's collection and `ref_key` at the references key its events already use.
+
+A category-triggered ticket workflow with no legacy `entity:` block — author one fresh:
 
 ```yaml
 # LEGACY device-installation.yaml
@@ -151,6 +156,7 @@ type: finance-billing-run
 title: Finance Billing Run
 entity:
   key: billing_run # request-id stem (get_billing_run) and the {key}_ids field
+  collection: billing_runs # the entity's Mongo collection
   redirect_page: billing-run-view
   requests:
     - _ref: ../shared/workflow_utils/requests/get_billing_run.yaml
@@ -161,7 +167,7 @@ entity:
 type: finance-billing-run
 title: Finance Billing Run
 entity:
-  connection_id: billing-runs-collection
+  connection_id: billing-runs-collection # was entity.collection (Lowdefy connection id)
   ref_key: billing_run_ids # the {key}_ids field becomes the event-references key
   page_id: billing-run-view # was redirect_page
   title: Billing Run
@@ -304,7 +310,7 @@ Button `visible` overrides can only **further restrict** the server-resolved gat
 
 #### Notifications — delete the per-routine fan-out
 
-Legacy routines ended with a `create_notifications.yaml` `_ref` and Lambda templates per recipient class. The engine now dispatches to the notifications module's `send-notification` API **automatically** after every committed transition. You provide:
+Legacy routines ended with an `_ref` to a notifications routine (commonly `create_notifications.yaml`) that posted to an external notifications service (an HTTP/Lambda consumer with per-recipient templates). The engine now dispatches to the notifications module's `send-notification` API **automatically** after every committed transition. You provide:
 
 - `notification_roles` on the action (recipients — kept from legacy).
 - The app's notifications `send_routine` var, which reads the event and decides channels.
@@ -313,7 +319,7 @@ Delete the per-action notification wiring; keep `notification_roles`. See [Event
 
 #### Event log — delete the manual writes
 
-Legacy routines wrote a `MongoDBInsertOne` into the `events` collection (`type`, `ticket_ids`, `action_ids`, `source_action_id`). The engine emits a log event on **every** transition, deriving `references` from `entity.ref_key`. Delete the manual writes. To customize the event `type`/`title`/`metadata`, use the action-root `event:` block keyed by signal — see [Events](../concepts/events.md#overriding-event-metadata). (The event body/`description` is owned by the action comment; you can't author it.)
+Legacy routines wrote a `MongoDBInsertOne` into the log-events collection (`type`, the entity references key — `ticket_ids` / `deal_ids` / …, `action_ids`, `source_action_id`). The engine emits a log event on **every** transition, deriving `references` from `entity.ref_key`. Delete the manual writes. To customize the event `type`/`title`/`metadata`, use the action-root `event:` block keyed by signal — see [Events](../concepts/events.md#overriding-event-metadata). (The event body/`description` is owned by the action comment; you can't author it.)
 
 ### 7. Form components
 
@@ -328,7 +334,7 @@ Watch for:
 
 ### 8. Instanced actions (per-device, per-line)
 
-Legacy created N actions with `_array.map … _function` returning `{ type, key, upsert: true, additional_fields, metadata }`. The module models this as **instanced actions** keyed by `key:`:
+If your engine spawns N actions of one type per item — by mapping over an array (`_array.map … _function`), or by emitting `upsert: true` entries with a generated `key` (e.g. `key: { _uuid: true }`) plus `additional_fields` / `metadata` — the module models this as **instanced actions** keyed by `key:` (legacy `additional_fields` → module `fields`; `metadata` → `metadata`):
 
 ```yaml
 # proof-of-installation.yaml
@@ -367,12 +373,12 @@ Status dashboards that read the `actions` collection still work — the collecti
 
 ## How workflows start
 
-The legacy engine had **two** start mechanisms, and they migrate differently:
+Legacy apps start workflows in **two** ways, and they migrate differently:
 
-1. **Ticket-category auto-start (device workflows).** A workflow started automatically when a ticket was created with — or recategorized to — a workflow-enabled `ticket_category`.
-2. **Programmatic entity start (finance/non-ticket workflows).** App code passed an `entity` and `workflowType` to the engine to start the run.
+1. **Category-field auto-start.** A workflow started automatically when the host entity was created with — or changed to — a workflow-enabled category. The field is domain-named: `ticket_category`, `non_conformance_category`, and so on.
+2. **Programmatic / seeded start.** No category trigger — app code passed an `entity` and `workflowType` to the engine (or the workflow simply seeded its `starting_actions` for an already-existing entity).
 
-The module keeps only the second model: starting is always an explicit call to the type-scoped `{type}-start` endpoint (which invokes the engine's `StartWorkflow`). **There is no built-in `ticket_category` trigger.**
+The module keeps only the second model: starting is always an explicit call to the type-scoped `{type}-start` endpoint (which invokes the engine's `StartWorkflow`). **There is no built-in category trigger.**
 
 ```yaml
 # App-side: start a workflow on its entity
@@ -386,10 +392,10 @@ The module keeps only the second model: starting is always an explicit call to t
 
 **So:**
 
-- **Finance/non-ticket workflows are a near 1:1 port** — you already started them programmatically; swap your old engine call for the `{type}-start` `CallApi`.
-- **Device (category-triggered) workflows need new app-side wiring** to replace the implicit trigger: an event/handler on ticket create/update that maps the category to the right `{type}-start` endpoint.
+- **Already-programmatic workflows are a near 1:1 port** — swap your old engine call for the `{type}-start` `CallApi`.
+- **Category-triggered workflows need new app-side wiring** to replace the implicit trigger: an event/handler on the host entity's create/update that maps the category to the right `{type}-start` endpoint.
 
-This is a deliberate behavior change — starting is now uniformly app-owned, so every entity (ticket or not) starts a workflow the same way, with no special `entity.key` plumbing.
+This is a deliberate behavior change — starting is now uniformly app-owned, so every entity starts a workflow the same way, with no special category-field plumbing.
 
 ## Things that no longer exist (and why)
 
