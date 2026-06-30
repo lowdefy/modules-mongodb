@@ -14,6 +14,8 @@ Findings below.
 
 ### 1. The status-history/pruning rationale also lives in `check-action-modal.yaml`, which the design doesn't update
 
+> **Resolved.** Added `check-action-modal.yaml` to Files changed (comment-only: converge its header + `set_current_action` comments to `action.yaml.njk:39-43`'s wording — List gone, so `current_action.status` is never bound/pruned, single-`SetState` kept for parity + pre-`SetState` param evaluation). D4 corrected from "only `check-action-surface.yaml`" to name both files. Behavior unchanged in both.
+
 D4 says "only the explanatory comment in `check-action-surface.yaml` changes," and Files changed lists only the surface (plus the engine and `action.yaml.njk`). But the pruning rationale is duplicated in the modal **container** too: `check-action-modal.yaml:49-65` (header) and the inline comments at `:91-98` and `:111-114` justify the single-`SetState` `set_current_action` pattern entirely by the `current_action.status` List being pruned when hidden. Once this part deletes that List, `current_action.status` is bound by no block and never pruned — so that justification is stale in the modal file, exactly as it would be in the surface.
 
 The workspace page already carries the corrected wording (`action.yaml.njk:39-43`): "This page omits the status-history List, so `current_action.status` is never bound by a block and never pruned — but the single-SetState pattern is preserved for parity."
@@ -24,6 +26,8 @@ The workspace page already carries the corrected wording (`action.yaml.njk:39-43
 
 ### 2. The chosen mockup (Option B) depicts an eyebrow and a subtitle that D3 removes — so no mockup shows the as-built header
 
+> **Resolved.** Kept Option B (the shared `title-block` — D2/D3's "one correct way"). Corrected the mockup's Option B to the true as-built header (eyebrow + subtitle removed → pill · bare title · chips) and updated its note. D3 now records Option A (compact hand-rolled header) as the explicit fallback. Whether the lone title reads acceptably is a render-time question; per the design owner it is **not** added as a validation task — the header is eyeballed post-implementation and reverted to Option A if it looks oversized.
+
 The mockup's Option B (`mockups/mockup.html:296-315`) renders the full `title-block`: a `.eyebrow` ("Onboarding") **and** a `.sub` subtitle ("Review and accept the qualification."). D3 and the chosen-option callout (`mockup.html:273`) both strip the eyebrow _and_ pass no `description`/`doc`, so there is **no subtitle**. The as-built header is therefore: status pill (left) · bare 23px title · chips — which no mockup actually depicts.
 
 This matters because Option B's own note already warns the "big title + eyebrow can feel page-sized inside a modal" (`mockup.html:295`); removing the eyebrow and subtitle leaves the large `<h2 class="text-2xl font-semibold">` (`title-block.yaml:183`) standing alone with nothing above or below to balance it. The header that was visually validated is not the header being built.
@@ -31,6 +35,8 @@ This matters because Option B's own note already warns the "big title + eyebrow 
 **Fix:** Add (or revise Option B to) a mockup of the true target — pill · bare title · chips, no eyebrow, no subtitle — and confirm the lone large title reads acceptably in the 750px modal. If it looks unbalanced, Option A (the compact `level: 4`-style title) is the fallback the design should explicitly weigh against, not assume away.
 
 ### 3. `title-block` is sized for full-page headers; it will render heavier than the mockup
+
+> **Accepted.** Folds into #2's decision to keep Option B. The page-scaled characteristics — chunky pill (`padding:15px 14px`), large title, empty `text-text-secondary` subtitle `<div>` (a small dead gap, identical to the workspace page), and `page-actions` `margin:16` inside the modal Card — are accepted as the cost of reusing the _exact_ page component with no modal-specific vars added to `title-block.yaml`. D3 documents them as accepted trade-offs. No build-time validation step is added (per design owner); if the result reads as oversized chrome, the documented fallback is Option A (revert D3), not patching the shared component.
 
 The real component is page-scaled in ways the mockup under-represents:
 
@@ -44,7 +50,7 @@ The real component is page-scaled in ways the mockup under-represents:
 
 ### 4. Removing the `kind` branch also changes the pre-hook auxiliary update path — the audit scope is wider than the two surfaces
 
-> **Resolved.** Reshaped rather than audited around: the engine rule is re-gated on transition `source` instead of `kind`. `source === "user"` strips universal keys (uniform across kinds, replacing the check exception); `auxiliary`/`cascade` pass them through, so the hook/cascade seeding path this finding flagged is *preserved by design* — no silent drop to audit for. D1 now scopes the guarantee to user submits, non-goal #2 flips from "deferred" to "preserved," and the engine/test bullets switch to the source gate (added an auxiliary-source passthrough test). Aligns with "don't over-restrict / absence of a caller is not absence of need."
+> **Resolved.** Reshaped rather than audited around: the engine rule is re-gated on transition `source` instead of `kind`. `source === "user"` strips universal keys (uniform across kinds, replacing the check exception); `auxiliary`/`cascade` pass them through, so the hook/cascade seeding path this finding flagged is _preserved by design_ — no silent drop to audit for. D1 now scopes the guarantee to user submits, non-goal #2 flips from "deferred" to "preserved," and the engine/test bullets switch to the source gate (added an auxiliary-source passthrough test). Aligns with "don't over-restrict / absence of a caller is not absence of need."
 
 The design frames the behavioral change as "both check surfaces stop sending `fields`," and the engine branch becomes dead "with both check surfaces no longer sending `fields`." But `applyUpdateFieldsRule` is also reached by the **auxiliary/cascade** signal path: `planSubmit.js:88` plans `payload: { fields: aux.fields, ... }`, and hook payloads forward author-declared `fields` (`buildHookPayload.js:38`). After the branch is removed, a pre-hook that seeds `assignees`/`due_date` onto an **already-existing** check action via `fields` will silently stop persisting them (the insert/upsert spawn path still writes them — only the update path strips).
 
