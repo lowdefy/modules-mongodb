@@ -143,6 +143,7 @@ _ref:
                   due_date:
                     _state: action.due_date
                 change_request_comment: null
+                change_request_comment_internal: false
           # Step 8: author-supplied onMount runs last.
           - _var:
               key: page_config.events.onMount
@@ -358,30 +359,26 @@ _ref:
                             _state: form
                           comment:
                             _state: change_request_comment
+                          comment_visibility:
+                            _if:
+                              - _state: change_request_comment_internal
+                              - internal
+                              - shared
               onClose:
                 - id: reset_comment
                   type: SetState
                   params:
                     change_request_comment: null
+                    change_request_comment_internal: false
             blocks:
-              - id: change_request_comment
-                type: TiptapInput
-                required: true
-                validate:
-                  - message: A comment is required to request changes
-                    status: error
-                    pass:
-                      _ne:
-                        - _if_none:
-                            - _state: change_request_comment.text
-                            - null
-                        - null
-                properties:
-                  # Text-only (Part 62): disable the inline Image extension and
-                  # leave s3PostPolicyRequestId unset, so the comment never
-                  # carries a fileList / inline <img> — the callout that surfaces
-                  # this brief only ever renders text.
-                  image:
-                    disabled: true
-                  title: Change Description
-                  placeholder: Please provide a description of the changes you would like.
+              # Mandatory request-changes comment — shared comment-input fragment
+              # (Part 61): text-only + the shared/internal control.
+              - _ref:
+                  path: components/comment-input.yaml
+                  vars:
+                    comment_path: change_request_comment
+                    visibility_path: change_request_comment_internal
+                    required: true
+                    required_message: A comment is required to request changes
+                    title: Change Description
+                    placeholder: Please provide a description of the changes you would like.

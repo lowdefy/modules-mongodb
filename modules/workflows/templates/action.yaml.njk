@@ -152,6 +152,8 @@ _ref:
                 _request: get_workflow_action.due_date
             current_action.comment: null
             current_action.change_request_comment: null
+            current_action.comment_internal: false
+            current_action.change_request_comment_internal: false
             # Stable stage scalar — the header badge reads this (see
             # check-action-surface.yaml).
             current_action.stage:
@@ -254,27 +256,29 @@ _ref:
                         default: []
                   # 2c. Comment — edit / review modes always; view mode only when
                   #     the current stage is `error` (resolve_error recovery
-                  #     note). Copied VERBATIM from check-action-surface.yaml.
-                  - id: current_action.comment
-                    type: TiptapInput
-                    visible:
-                      _or:
-                        - _eq:
-                            - _state: current_action.mode
-                            - edit
-                        - _eq:
-                            - _state: current_action.mode
-                            - review
-                        - _and:
+                  #     note). Shared comment-input fragment (Part 61): text-only
+                  #     + the shared/internal control.
+                  - _ref:
+                      path: components/comment-input.yaml
+                      vars:
+                        comment_path: current_action.comment
+                        visibility_path: current_action.comment_internal
+                        placeholder: Add a comment (optional).
+                        visible:
+                          _or:
                             - _eq:
                                 - _state: current_action.mode
-                                - view
+                                - edit
                             - _eq:
-                                - _state: current_action.stage
-                                - error
-                    properties:
-                      title: Comment
-                      placeholder: Add a comment (optional).
+                                - _state: current_action.mode
+                                - review
+                            - _and:
+                                - _eq:
+                                    - _state: current_action.mode
+                                    - view
+                                - _eq:
+                                    - _state: current_action.stage
+                                    - error
               # 3. Request-changes modal — review mode only. Mandatory comment
               #    binds current_action.change_request_comment (its own path);
               #    onOk validates then fires request_changes (base payload, no
@@ -315,6 +319,11 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.change_request_comment
+                          comment_visibility:
+                            _if:
+                              - _state: current_action.change_request_comment_internal
+                              - internal
+                              - shared
                     - id: refetch_action_request_changes
                       type: Request
                       params: get_workflow_action
@@ -330,6 +339,8 @@ _ref:
                             _request: get_workflow_action.due_date
                         current_action.comment: null
                         current_action.change_request_comment: null
+                        current_action.comment_internal: false
+                        current_action.change_request_comment_internal: false
                         current_action.stage:
                           _request: get_workflow_action.status.0.stage
                         current_action.mode:
@@ -371,28 +382,19 @@ _ref:
                       type: SetState
                       params:
                         current_action.change_request_comment: null
+                        current_action.change_request_comment_internal: false
                 blocks:
-                  - id: current_action.change_request_comment
-                    type: TiptapInput
-                    required: true
-                    validate:
-                      - message: A comment is required to request changes
-                        status: error
-                        pass:
-                          _ne:
-                            - _if_none:
-                                - _state: current_action.change_request_comment.text
-                                - null
-                            - null
-                    properties:
-                      # Text-only (Part 62): disable the inline Image extension and
-                      # leave s3PostPolicyRequestId unset, so the comment never
-                      # carries a fileList / inline <img> — the callout that
-                      # surfaces this brief only ever renders text.
-                      image:
-                        disabled: true
-                      title: Change Description
-                      placeholder: Please provide a description of the changes you would like.
+                  # Mandatory request-changes comment — shared comment-input
+                  # fragment (Part 61): text-only + the shared/internal control.
+                  - _ref:
+                      path: components/comment-input.yaml
+                      vars:
+                        comment_path: current_action.change_request_comment
+                        visibility_path: current_action.change_request_comment_internal
+                        required: true
+                        required_message: A comment is required to request changes
+                        title: Change Description
+                        placeholder: Please provide a description of the changes you would like.
             # Signal button bar (shell `actions` slot) — the floating-actions Card
             # provides the row + justify:end + gap, so the buttons pass as a flat
             # array. Each button's visible is the AND of the mode gate and its
@@ -464,6 +466,11 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.comment
+                          comment_visibility:
+                            _if:
+                              - _state: current_action.comment_internal
+                              - internal
+                              - shared
                           fields:
                             _state: current_action.fields
                     - id: refetch_action_progress
@@ -481,6 +488,8 @@ _ref:
                             _request: get_workflow_action.due_date
                         current_action.comment: null
                         current_action.change_request_comment: null
+                        current_action.comment_internal: false
+                        current_action.change_request_comment_internal: false
                         current_action.stage:
                           _request: get_workflow_action.status.0.stage
                         current_action.mode:
@@ -555,6 +564,11 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.comment
+                          comment_visibility:
+                            _if:
+                              - _state: current_action.comment_internal
+                              - internal
+                              - shared
                     - id: refetch_action_not_required
                       type: Request
                       params: get_workflow_action
@@ -570,6 +584,8 @@ _ref:
                             _request: get_workflow_action.due_date
                         current_action.comment: null
                         current_action.change_request_comment: null
+                        current_action.comment_internal: false
+                        current_action.change_request_comment_internal: false
                         current_action.stage:
                           _request: get_workflow_action.status.0.stage
                         current_action.mode:
@@ -648,6 +664,11 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.comment
+                          comment_visibility:
+                            _if:
+                              - _state: current_action.comment_internal
+                              - internal
+                              - shared
                           fields:
                             _state: current_action.fields
                     - id: refetch_action_submit
@@ -665,6 +686,8 @@ _ref:
                             _request: get_workflow_action.due_date
                         current_action.comment: null
                         current_action.change_request_comment: null
+                        current_action.comment_internal: false
+                        current_action.change_request_comment_internal: false
                         current_action.stage:
                           _request: get_workflow_action.status.0.stage
                         current_action.mode:
@@ -769,6 +792,11 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.comment
+                          comment_visibility:
+                            _if:
+                              - _state: current_action.comment_internal
+                              - internal
+                              - shared
                     - id: refetch_action_approve
                       type: Request
                       params: get_workflow_action
@@ -784,6 +812,8 @@ _ref:
                             _request: get_workflow_action.due_date
                         current_action.comment: null
                         current_action.change_request_comment: null
+                        current_action.comment_internal: false
+                        current_action.change_request_comment_internal: false
                         current_action.stage:
                           _request: get_workflow_action.status.0.stage
                         current_action.mode:
@@ -858,6 +888,11 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.comment
+                          comment_visibility:
+                            _if:
+                              - _state: current_action.comment_internal
+                              - internal
+                              - shared
                     - id: refetch_action_resolve_error
                       type: Request
                       params: get_workflow_action
@@ -873,6 +908,8 @@ _ref:
                             _request: get_workflow_action.due_date
                         current_action.comment: null
                         current_action.change_request_comment: null
+                        current_action.comment_internal: false
+                        current_action.change_request_comment_internal: false
                         current_action.stage:
                           _request: get_workflow_action.status.0.stage
                         current_action.mode:
@@ -939,6 +976,8 @@ _ref:
                       _request: get_workflow_action.due_date
                   current_action.comment: null
                   current_action.change_request_comment: null
+                  current_action.comment_internal: false
+                  current_action.change_request_comment_internal: false
                   current_action.stage:
                     _request: get_workflow_action.status.0.stage
                   current_action.mode:

@@ -149,6 +149,7 @@ _ref:
                   due_date:
                     _state: action.due_date
                 comment: null
+                comment_internal: false
           - _var:
               key: page_config.events.onMount
               default: []
@@ -241,11 +242,12 @@ _ref:
                                       key: action_config.form_error
                                       default: []
                                   mode: error
-                            - - id: comment
-                                type: TiptapInput
-                                properties:
-                                  title: Comment
-                                  placeholder: Add a comment about the recovery (optional).
+                            - - _ref:
+                                  path: components/comment-input.yaml
+                                  vars:
+                                    comment_path: comment
+                                    visibility_path: comment_internal
+                                    placeholder: Add a comment about the recovery (optional).
                             - _var:
                                 key: page_config.formFooter
                                 default: []
@@ -294,11 +296,12 @@ _ref:
                                           key: action_config.form_error
                                           default: []
                                       mode: error
-                                - - id: comment
-                                    type: TiptapInput
-                                    properties:
-                                      title: Comment
-                                      placeholder: Add a comment about the recovery (optional).
+                                - - _ref:
+                                      path: components/comment-input.yaml
+                                      vars:
+                                        comment_path: comment
+                                        visibility_path: comment_internal
+                                        placeholder: Add a comment about the recovery (optional).
                                 - _var:
                                     key: page_config.formFooter
                                     default: []
@@ -373,6 +376,11 @@ _ref:
                                             _state: form
                                           comment:
                                             _state: comment
+                                          comment_visibility:
+                                            _if:
+                                              - _state: comment_internal
+                                              - internal
+                                              - shared
         # Universal-fields edit modal — opened by the title-bar ✎ chip.
         - _build.if:
             test:
@@ -461,4 +469,9 @@ _ref:
                                 _state: form
                               comment:
                                 _state: comment
+                              comment_visibility:
+                                _if:
+                                  - _state: comment_internal
+                                  - internal
+                                  - shared
             else: []

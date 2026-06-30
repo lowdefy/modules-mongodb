@@ -155,6 +155,7 @@ _ref:
                   due_date:
                     _state: action.due_date
                 comment: null
+                comment_internal: false
           - _var:
               key: page_config.events.onMount
               default: []
@@ -226,11 +227,12 @@ _ref:
                                   form:
                                     _var: action_config.form
                                   mode: edit
-                            - - id: comment
-                                type: TiptapInput
-                                properties:
-                                  title: Comment
-                                  placeholder: Add a comment (optional).
+                            - - _ref:
+                                  path: components/comment-input.yaml
+                                  vars:
+                                    comment_path: comment
+                                    visibility_path: comment_internal
+                                    placeholder: Add a comment (optional).
                             - _var:
                                 key: page_config.formFooter
                                 default: []
@@ -258,11 +260,12 @@ _ref:
                                       form:
                                         _var: action_config.form
                                       mode: edit
-                                - - id: comment
-                                    type: TiptapInput
-                                    properties:
-                                      title: Comment
-                                      placeholder: Add a comment (optional).
+                                - - _ref:
+                                      path: components/comment-input.yaml
+                                      vars:
+                                        comment_path: comment
+                                        visibility_path: comment_internal
+                                        placeholder: Add a comment (optional).
                                 - _var:
                                     key: page_config.formFooter
                                     default: []
@@ -327,6 +330,11 @@ _ref:
                                             _state: action.key
                                           comment:
                                             _state: comment
+                                          comment_visibility:
+                                            _if:
+                                              - _state: comment_internal
+                                              - internal
+                                              - shared
                       - id: button_progress
                         type: Button
                         layout:
@@ -439,6 +447,11 @@ _ref:
                                             _state: form
                                           comment:
                                             _state: comment
+                                          comment_visibility:
+                                            _if:
+                                              - _state: comment_internal
+                                              - internal
+                                              - shared
                                     # Submit succeeded (CallAPI halts the chain on
                                     # error): confirm, then return to the entity.
                                     - id: submit_success_message
@@ -549,6 +562,11 @@ _ref:
                                 _state: form
                               comment:
                                 _state: comment
+                              comment_visibility:
+                                _if:
+                                  - _state: comment_internal
+                                  - internal
+                                  - shared
                         # Submit succeeded (CallAPI halts the chain on error):
                         # confirm, then return to the entity.
                         - id: submit_success_message
@@ -615,4 +633,9 @@ _ref:
                                 _state: action.key
                               comment:
                                 _state: comment
+                              comment_visibility:
+                                _if:
+                                  - _state: comment_internal
+                                  - internal
+                                  - shared
             else: []
