@@ -39,7 +39,6 @@ _build.array.concat:
           fields:
             _state:
               _var: state_path
-          comment: null
   - _var:
       key: on_complete
       default: []

@@ -77,10 +77,9 @@ function resolveActionSignalTitle(signal, status_after) {
  * render context but WITHOUT `signal` / `status_before` / `status_after` /
  * `submitted_form` (there is no transition), a default title, and a reduced
  * metadata shape `{ action_type, workflow_type, current_key }`. No override
- * channels exist for it (engine-default only). Its optional `comment` flows
- * through the `comment` param; Part 33's `foldCommentIntoEvent` (single call
- * site, post-render) renders it into `display.{app_name}.description` — this
- * planner never writes `metadata.comment`.
+ * channels exist for it (engine-default only). The fields-update path carries no
+ * comment (Part 61), so `planFieldsUpdate` passes none and the event never
+ * carries a description.
  *
  * The three-source override merge (engine default → YAML override → pre-hook
  * return) fires for any handler type whenever an override slice is present.
@@ -104,9 +103,13 @@ function resolveActionSignalTitle(signal, status_after) {
  * @param {string} [args.signal] — the resolved FSM signal name. Absent on the
  *   UpdateActionFields path (no transition).
  * @param {{ html: string, text?: string, fileList?: any[] } | null} [args.comment]
- *   — optional rich-text comment (submit and UpdateActionFields paths). Folded
- *   into `display.{app_name}.description` (verbatim `comment.html`) by
- *   `foldCommentIntoEvent` after render; the planner reads only `comment.html`.
+ *   — optional rich-text comment (submit path; the fields-update path passes
+ *   none — Part 61). Folded into `display.{app}.description` (verbatim
+ *   `comment.html`) by `foldCommentIntoEvent` after render; the planner reads
+ *   only `comment.html`.
+ * @param {'shared'|'internal'} [args.comment_visibility] — writer's per-comment
+ *   visibility choice (Part 61). Passed to `foldCommentIntoEvent` along with the
+ *   connection's `enable_internal_comments` opt-in; absent → `shared`.
  * @param {Object} args.plannedWorkflowDoc — the whole planned post-commit
  *   workflow doc (from planWorkflowRecompute). Must carry `entity.ref_key`.
  * @param {Object} [args.plannedActionDoc] — required for action-event and
@@ -136,6 +139,7 @@ function planEventDispatch({
   handlerType,
   signal,
   comment,
+  comment_visibility,
   plannedWorkflowDoc,
   plannedActionDoc,
   status_before = null,
@@ -287,12 +291,21 @@ function planEventDispatch({
     ctx,
   });
 
-  // ── Fold the runtime comment into display.{appName}.description ──────────
+  // ── Fold the runtime comment into display.{app}.description ──────────────
   // Strictly after render (merge → render → fold, Part 33 D4): the comment is
   // raw user-typed HTML stored verbatim — it must never pass through the
   // Nunjucks compile in renderEventDisplay. No-ops when there is no comment, so
   // it is unconditional for every handler type (lifecycle paths never pass one).
-  foldCommentIntoEvent({ display: renderedDisplay }, comment, appName);
+  // Part 61: `shared` (default) fans the comment into every bucket the rendered
+  // event has; `internal` keeps it in the submitting app's bucket, honoured only
+  // when the connection opted in via `enable_internal_comments`.
+  foldCommentIntoEvent(
+    { display: renderedDisplay },
+    comment,
+    appName,
+    comment_visibility,
+    connection?.enable_internal_comments === true,
+  );
 
   const doc = {
     _id: event_id,

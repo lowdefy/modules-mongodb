@@ -33,10 +33,11 @@ const UNIVERSAL_FIELDS = ["assignees", "due_date"];
  *     is no CAS gate — per-action concurrency is last-write-wins.
  *   - No `trackerFires` / `completedGroups` — this is not a transition.
  *
- * The optional `comment` rides the `planEventDispatch` `comment` param; Part
- * 33's `foldCommentIntoEvent` (single call site, inside that planner) renders
- * it into `display.{app_name}.description`. This planner never writes
- * `metadata.comment` (Part 33 D2).
+ * The field-update operation carries NO comment (Part 61): changing assignees /
+ * due date is a metadata edit, not a note-bearing transition, and the surface
+ * has no comment input. So this planner passes no `comment` to
+ * `planEventDispatch` — the `action-fields-updated` event never carries a
+ * description, and `metadata.comment` is never written.
  *
  * @param {Object} args
  * @param {import('../types.js').LoadedState} args.loadedState — verb-mode load
@@ -44,15 +45,13 @@ const UNIVERSAL_FIELDS = ["assignees", "due_date"];
  *   `actionConfig`.
  * @param {{ assignees?, due_date? }} [args.fields] — the universal
  *   fields to write ($set semantics; only the two universal keys are honoured).
- * @param {{ text: string, html: string } | null} [args.comment] — optional
- *   comment, passed through to the event planner (Part 33 renders it).
  * @param {Object} [args.metadata] — optional metadata bag merged onto the doc
  *   (the v1 endpoint sends none — normally a no-op merge).
  * @param {Object} args.context — engine context (`event_id`, `now`,
  *   `connection`, `user`, `lowdefyContext`).
  * @returns {import('../types.js').Plan} — `{ workflow: null, actions, event, changeLog }`.
  */
-function planFieldsUpdate({ loadedState, fields, comment, metadata, context }) {
+function planFieldsUpdate({ loadedState, fields, metadata, context }) {
   const { workflow, targetAction, actionConfig } = loadedState;
   const { event_id, now, connection, user } = context;
 
@@ -88,7 +87,6 @@ function planFieldsUpdate({ loadedState, fields, comment, metadata, context }) {
     event_id,
     user,
     handlerType: "UpdateActionFields",
-    comment,
     plannedWorkflowDoc: workflow,
     plannedActionDoc: doc,
     allTouchedActionDocs: [doc],

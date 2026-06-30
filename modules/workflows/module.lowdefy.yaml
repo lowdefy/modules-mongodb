@@ -108,6 +108,20 @@ vars:
       projection); and (3) keys the per-app action display the engine writes
       onto each action doc — display surfaces read `action.{app_name}.message`
       and `action.{app_name}.links` for the current app's slug.
+  enable_internal_comments:
+    type: boolean
+    default: false
+    description: >
+      Opt this app in to the shared/internal comment distinction (Part 61). The
+      host wires it onto the workflow-api connection (`enable_internal_comments`)
+      and the comment surfaces read it at build time. When `true`, every comment
+      input shows a small shared/internal control and the engine honours an
+      `internal` (single-app) comment from this app. When `false` (the default),
+      the control is hidden, and the engine coerces any `internal` request to
+      `shared` — so every comment is visible to all apps that see the event.
+      Comments default to `shared` regardless. Set this only on the internal/team
+      app that sometimes needs to keep a note off other apps; single-app and
+      customer-facing apps leave it off.
   action_statuses_display:
     type: object
     default: {}

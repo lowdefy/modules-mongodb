@@ -272,7 +272,7 @@ test("updates fine on a completed workflow (required_after_close does not apply)
 // Event + return
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("dispatches an action-fields-updated event with no metadata.comment", async () => {
+test("dispatches an action-fields-updated event that carries no comment (Part 61)", async () => {
   await seed();
   const calls = [];
   const result = await UpdateActionFields(
@@ -281,6 +281,8 @@ test("dispatches an action-fields-updated event with no metadata.comment", async
       request: {
         action_id: "A1",
         fields: { assignees: ["u-7"] },
+        // A crafted comment in the payload is ignored — the field-update
+        // operation never carries one.
         comment: { text: "reassigned", html: "<p>reassigned</p>" },
       },
     }),
@@ -289,6 +291,10 @@ test("dispatches an action-fields-updated event with no metadata.comment", async
   const eventCall = calls.find((c) => c.endpointId === "events/new-event");
   expect(eventCall.payload.type).toBe("action-fields-updated");
   expect(eventCall.payload.metadata).not.toHaveProperty("comment");
+  // The comment is dropped: the event's display bucket carries no description.
+  expect(eventCall.payload.display["test-app"]).not.toHaveProperty(
+    "description",
+  );
   expect(eventCall.payload._id).toBe(result.event_id);
 
   const ev = await mongo.db

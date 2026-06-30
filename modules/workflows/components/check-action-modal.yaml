@@ -101,6 +101,10 @@ events:
             _request: get_workflow_action.due_date
         current_action.comment: null
         current_action.change_request_comment: null
+        # Reset the Part 61 visibility toggles so a reopened modal starts at
+        # `shared` (off). Off-by-default means the shared default needs no init.
+        current_action.comment_internal: false
+        current_action.change_request_comment_internal: false
         # Stable stage scalar — the header status pill and the error-stage
         # comment gate read this (D4; see check-action-surface.yaml).
         current_action.stage:
