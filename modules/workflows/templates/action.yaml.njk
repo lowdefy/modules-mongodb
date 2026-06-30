@@ -464,8 +464,6 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.comment
-                          fields:
-                            _state: current_action.fields
                     - id: refetch_action_progress
                       type: Request
                       params: get_workflow_action
@@ -627,10 +625,6 @@ _ref:
                           - true
                 events:
                   onClick:
-                    - id: validate
-                      type: Validate
-                      params:
-                        regex: ^current_action\.fields\.
                     - id: submit
                       type: CallAPI
                       params:
@@ -648,8 +642,6 @@ _ref:
                             _state: current_action.key
                           comment:
                             _state: current_action.comment
-                          fields:
-                            _state: current_action.fields
                     - id: refetch_action_submit
                       type: Request
                       params: get_workflow_action
@@ -937,8 +929,10 @@ _ref:
                       _request: get_workflow_action.assignees
                     due_date:
                       _request: get_workflow_action.due_date
-                  current_action.comment: null
-                  current_action.change_request_comment: null
+                  # No comment / change_request_comment reset here (D5): a field
+                  # edit is not a submission, so an in-progress reviewer comment
+                  # must survive it. The post-signal reseeds clear the comment;
+                  # this field-edit reseed does not.
                   current_action.stage:
                     _request: get_workflow_action.status.0.stage
                   current_action.mode:
