@@ -126,6 +126,7 @@ async function GetWorkflowAction(lowdefyContext) {
   const workflowsCollection = connection.workflowsCollection ?? "workflows";
   const actionsCollection = connection.actionsCollection ?? "actions";
   const contactsCollection = connection.contactsCollection ?? "user-contacts";
+  const eventsCollection = connection.eventsCollection ?? "log-events";
 
   // ── Step 1: Read the action doc ──
   const [action] = await findDocs({
@@ -256,6 +257,40 @@ async function GetWorkflowAction(lowdefyContext) {
         })
       : null;
 
+  // ── Changes-requested brief (Part 62) — the latest request-changes comment ──
+  // When the action sits in `changes-required`, surface the reviewer's brief so
+  // the reworker sees "what to fix" without hunting the History timeline. The
+  // comment lives once on the request_changes event (Part 33), so this reads the
+  // event — never the action doc — and inherits Part 61's app-scoping for free:
+  // the projection keys off the CALLING connection's app_name, so an `internal`
+  // note resolves to null for an app that can't see it.
+  //
+  // Read contract: the latest `action-request_changes` event for this action
+  // overall (sort date desc, limit 1) — then this app's bucket on it. If that
+  // latest event has no brief in my bucket, `changes_requested` is null (the
+  // callout is omitted; the status pill still conveys the state). Skipped — and
+  // null — in every other stage.
+  let changes_requested = null;
+  if (stage === "changes-required") {
+    const [evt] = await findDocs({
+      mongoDb,
+      collection: eventsCollection,
+      query: { type: "action-request_changes", action_ids: action._id },
+      options: {
+        sort: { date: -1 },
+        limit: 1,
+        projection: { [`${app_name}.description`]: 1 },
+      },
+    });
+    const html = evt?.[app_name]?.description ?? null;
+    // Defensive (D3): request-changes comments are text-only (inline files are
+    // disabled on the input), but legacy image-only rows stored TipTap's empty
+    // doc marker `<p></p>` with the content in `fileList` (not read here). Treat
+    // empty/whitespace-only html as "no brief" so the callout's non-null gate
+    // never renders a present-but-blank brief.
+    changes_requested = html?.replace(/<[^>]*>/g, "").trim() ? html : null;
+  }
+
   // ── Step 6: Curated envelope (explicit allowlist — no spread of raw doc) ──
   const message = action[app_name]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
@@ -285,6 +320,10 @@ async function GetWorkflowAction(lowdefyContext) {
     // Display copy
     required_after_close,
     message,
+    // Latest request-changes brief (Part 62) — null outside `changes-required`,
+    // and null when the latest such event has no brief in the calling app's
+    // bucket (Part 61 app-scoping). The callout binds and gates on this.
+    changes_requested,
     // Form-field values (from parent workflow, not the action doc)
     form_values,
     // Resolved fields

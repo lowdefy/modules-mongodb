@@ -36,6 +36,18 @@ Serves the entity workflow list (the entity pointer is a nested `entity` object;
 
 The compound index matches the equality prefix exactly. Per-entity workflow counts are small (single-digit rows in typical apps), so the post-match in-memory sort on `display_order` + `created.timestamp` is inexpensive.
 
+## `log-events` collection
+
+### Index: `{ action_ids: 1 }` — non-partial
+
+Serves the changes-requested callout's request-changes comment lookup (the first reader to match the events collection by `action_ids` — the existing timeline reads match by `reference_field` / `reference_value`):
+
+| Query site          | Operation                                                                                                                            |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `GetWorkflowAction` | `find({ type: "action-request_changes", action_ids }, { sort: { date: -1 }, limit: 1 })` on each `changes-required` action-page load |
+
+`action_ids` is highly selective — a single action has only a handful of events — so the leading-field match narrows to a tiny set and the residual `type` filter + `date` sort + `limit 1` run in-memory over a few docs (the same reasoning the `{ workflow_id: 1 }` entry uses for the `actions` collection). A plain `{ action_ids: 1 }` therefore suffices. Without **any** index on `action_ids`, this query is a collection scan on a perpetually-growing log on every changes-required page load — the failure mode this entry exists to prevent. (`log-events` is the collection backing the WorkflowAPI / EventsTimeline `eventsCollection`, default `"log-events"`.)
+
 ## `actions` validator constraint
 
 The `actions` collection must remain free of any collection-level required-field **validator** beyond the always-present `_id`, `kind`, `status`, `change_stamp`. The shipped `connections/actions-collection.yaml` carries no `validator:` block — keep it that way.
