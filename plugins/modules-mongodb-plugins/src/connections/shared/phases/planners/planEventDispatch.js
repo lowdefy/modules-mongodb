@@ -105,8 +105,11 @@ function resolveActionSignalTitle(signal, status_after) {
  *   UpdateActionFields path (no transition).
  * @param {{ html: string, text?: string, fileList?: any[] } | null} [args.comment]
  *   — optional rich-text comment (submit and UpdateActionFields paths). Folded
- *   into `display.{app_name}.description` (verbatim `comment.html`) by
+ *   into `display.{app}.description` (verbatim `comment.html`) by
  *   `foldCommentIntoEvent` after render; the planner reads only `comment.html`.
+ * @param {'shared'|'internal'} [args.comment_visibility] — writer's per-comment
+ *   visibility choice (Part 61). Passed to `foldCommentIntoEvent` along with the
+ *   connection's `enable_internal_comments` opt-in; absent → `shared`.
  * @param {Object} args.plannedWorkflowDoc — the whole planned post-commit
  *   workflow doc (from planWorkflowRecompute). Must carry `entity.ref_key`.
  * @param {Object} [args.plannedActionDoc] — required for action-event and
@@ -136,6 +139,7 @@ function planEventDispatch({
   handlerType,
   signal,
   comment,
+  comment_visibility,
   plannedWorkflowDoc,
   plannedActionDoc,
   status_before = null,
@@ -287,12 +291,21 @@ function planEventDispatch({
     ctx,
   });
 
-  // ── Fold the runtime comment into display.{appName}.description ──────────
+  // ── Fold the runtime comment into display.{app}.description ──────────────
   // Strictly after render (merge → render → fold, Part 33 D4): the comment is
   // raw user-typed HTML stored verbatim — it must never pass through the
   // Nunjucks compile in renderEventDisplay. No-ops when there is no comment, so
   // it is unconditional for every handler type (lifecycle paths never pass one).
-  foldCommentIntoEvent({ display: renderedDisplay }, comment, appName);
+  // Part 61: `shared` (default) fans the comment into every bucket the rendered
+  // event has; `internal` keeps it in the submitting app's bucket, honoured only
+  // when the connection opted in via `enable_internal_comments`.
+  foldCommentIntoEvent(
+    { display: renderedDisplay },
+    comment,
+    appName,
+    comment_visibility,
+    connection?.enable_internal_comments === true,
+  );
 
   const doc = {
     _id: event_id,

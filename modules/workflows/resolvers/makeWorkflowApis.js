@@ -125,6 +125,7 @@ function emitSubmitEndpoint(workflow, hooksByAction, renderConfig) {
     form: { _payload: "form" },
     form_review: { _payload: "form_review" },
     comment: { _payload: "comment" },
+    comment_visibility: { _payload: "comment_visibility" },
     metadata: { _payload: "metadata" },
     // hooks is a sibling of render_config, not nested under it: hook values
     // are build-resolved endpoint refs consumed off params, not Nunjucks
@@ -181,6 +182,7 @@ function emitFieldsEndpoint(workflow) {
           workflow_type: workflow.type,
           fields: { _payload: "fields" },
           comment: { _payload: "comment" },
+          comment_visibility: { _payload: "comment_visibility" },
         },
       },
       {

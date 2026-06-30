@@ -23,8 +23,11 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
  * Params (from `context.params`): `action_id` (required — the authoritative
  * target locator), `fields` (`{ assignees?, due_date? }`),
  * `comment` (optional; routed through the planner's `comment` param — Part 33
- * renders it into `display.{app_name}.description`, never `metadata.comment`),
- * and `metadata` (optional). `action_type` is NOT sent — the endpoint is
+ * renders it into `display.{app}.description`, never `metadata.comment`),
+ * `comment_visibility` (optional `'shared' | 'internal'`; Part 61 — routed
+ * through the planner to the shared fold, where `internal` is honoured only when
+ * the connection opted in via `enable_internal_comments`, else coerced to
+ * `shared`), and `metadata` (optional). `action_type` is NOT sent — the endpoint is
  * per-workflow (not per-action-type, Rev 2), so the handler derives type/kind
  * from the loaded action doc.
  *
@@ -55,6 +58,7 @@ async function UpdateActionFields(lowdefyContext) {
     loadedState,
     fields: params.fields,
     comment: params.comment,
+    comment_visibility: params.comment_visibility,
     metadata: params.metadata,
     context,
   });

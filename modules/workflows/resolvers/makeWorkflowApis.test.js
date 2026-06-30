@@ -144,6 +144,7 @@ test("makeWorkflowApis: payload contains the complete required field set", () =>
   expect(props.form).toEqual({ _payload: "form" });
   expect(props.form_review).toEqual({ _payload: "form_review" });
   expect(props.comment).toEqual({ _payload: "comment" });
+  expect(props.comment_visibility).toEqual({ _payload: "comment_visibility" });
   expect(props.metadata).toEqual({ _payload: "metadata" });
 });
 
@@ -671,6 +672,7 @@ test("makeWorkflowApis: update-fields endpoint shape — Api, exact properties, 
     workflow_type: "onboarding",
     fields: { _payload: "fields" },
     comment: { _payload: "comment" },
+    comment_visibility: { _payload: "comment_visibility" },
   });
   expect(ep.routine[0].type).toBe("UpdateActionFields");
   expect(ep.routine[1][":return"]).toEqual({

@@ -46,13 +46,23 @@ const UNIVERSAL_FIELDS = ["assignees", "due_date"];
  *   fields to write ($set semantics; only the two universal keys are honoured).
  * @param {{ text: string, html: string } | null} [args.comment] — optional
  *   comment, passed through to the event planner (Part 33 renders it).
+ * @param {'shared'|'internal'} [args.comment_visibility] — writer's per-comment
+ *   visibility choice (Part 61), passed through to the event planner; absent →
+ *   `shared`.
  * @param {Object} [args.metadata] — optional metadata bag merged onto the doc
  *   (the v1 endpoint sends none — normally a no-op merge).
  * @param {Object} args.context — engine context (`event_id`, `now`,
  *   `connection`, `user`, `lowdefyContext`).
  * @returns {import('../types.js').Plan} — `{ workflow: null, actions, event, changeLog }`.
  */
-function planFieldsUpdate({ loadedState, fields, comment, metadata, context }) {
+function planFieldsUpdate({
+  loadedState,
+  fields,
+  comment,
+  comment_visibility,
+  metadata,
+  context,
+}) {
   const { workflow, targetAction, actionConfig } = loadedState;
   const { event_id, now, connection, user } = context;
 
@@ -89,6 +99,7 @@ function planFieldsUpdate({ loadedState, fields, comment, metadata, context }) {
     user,
     handlerType: "UpdateActionFields",
     comment,
+    comment_visibility,
     plannedWorkflowDoc: workflow,
     plannedActionDoc: doc,
     allTouchedActionDocs: [doc],

@@ -723,3 +723,44 @@ test("StartWorkflow lifecycle without comment produces no description key", () =
   expect(doc.display.demo.title).toBe("Alice started Onboarding");
   expect(doc.display.demo).not.toHaveProperty("description");
 });
+
+// ── comment_visibility flow-through (Part 61) ───────────────────────────────
+// An author title override adds a second app bucket (portal) to the rendered
+// display, so the shared/internal split is observable.
+
+test("Submit: comment_visibility absent → shared (fans into every bucket)", () => {
+  const { doc } = dispatch({
+    signal: "submit",
+    status_after: "done",
+    comment: { html: "<p>Typed</p>", text: "Typed" },
+    yamlEventOverrides: { display: { portal: { title: "Quote updated" } } },
+  });
+  expect(doc.display.demo.description).toBe("<p>Typed</p>");
+  expect(doc.display.portal.description).toBe("<p>Typed</p>");
+});
+
+test("Submit: internal honoured when connection enabled (submitting bucket only)", () => {
+  const { doc } = dispatch({
+    signal: "submit",
+    status_after: "done",
+    comment: { html: "<p>note</p>", text: "note" },
+    comment_visibility: "internal",
+    connection: { app_name: "demo", enable_internal_comments: true },
+    yamlEventOverrides: { display: { portal: { title: "Quote updated" } } },
+  });
+  expect(doc.display.demo.description).toBe("<p>note</p>");
+  expect(doc.display.portal).not.toHaveProperty("description");
+});
+
+test("Submit: internal coerced to shared when connection NOT enabled", () => {
+  const { doc } = dispatch({
+    signal: "submit",
+    status_after: "done",
+    comment: { html: "<p>note</p>", text: "note" },
+    comment_visibility: "internal",
+    connection: { app_name: "demo" },
+    yamlEventOverrides: { display: { portal: { title: "Quote updated" } } },
+  });
+  expect(doc.display.demo.description).toBe("<p>note</p>");
+  expect(doc.display.portal.description).toBe("<p>note</p>");
+});
