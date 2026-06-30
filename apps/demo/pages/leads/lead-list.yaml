@@ -37,6 +37,49 @@ _ref:
             - $sort:
                 updated.timestamp: -1
             - $limit: 500
+            # Current pipeline stage (status is a newest-first array) → a tag
+            # display { title, color } for the AgGrid tag cell. color is an antd
+            # preset name (not hex), as the tag cell expects.
+            - $addFields:
+                current_stage:
+                  $arrayElemAt:
+                    - $status.stage
+                    - 0
+            - $addFields:
+                status_display:
+                  $switch:
+                    branches:
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - qualified
+                        then:
+                          title: Qualified
+                          color: blue
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - quoted
+                        then:
+                          title: Quoted
+                          color: gold
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - won
+                        then:
+                          title: Won
+                          color: green
+                      - case:
+                          $eq:
+                            - $current_stage
+                            - parked
+                        then:
+                          title: Parked
+                          color: red
+                    default:
+                      title: New
+                      color: default
     blocks:
       - id: leads_table_card
         type: Card
@@ -54,9 +97,15 @@ _ref:
                 - field: name
                   headerName: Name
                   flex: 2
-                - field: email
-                  headerName: Email
-                  flex: 3
+                - field: company
+                  headerName: Company
+                  flex: 2
+                - field: status_display.title
+                  headerName: Status
+                  width: 160
+                  cell:
+                    type: tag
+                    colorFrom: status_display.color
             events:
               onCellClick:
                 - id: go_view

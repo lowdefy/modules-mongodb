@@ -31,6 +31,10 @@ form:
   - key: form.notes
     component: text_area
     title: Qualification notes
+  - key: form.estimated_value
+    component: number
+    title: Estimated value
+    extra: Approximate deal size, in dollars.
   - key: form.site_visit_required
     component: yes_no_selector
     title: Site visit needed?
@@ -50,6 +54,45 @@ hooks:
                     signal: activate
                     upsert: true
                 else: []
+    # Post-submit (Part 26 pattern, mirrors company-setup/billing-details):
+    # advance the lead's pipeline status to `qualified` and persist the values
+    # the form already captured (point of contact + estimated value). The
+    # `status.0.stage: { $ne: qualified }` filter is the same-status guard from
+    # the status-fields skill — it also makes the hook idempotent (post-hook
+    # failures don't roll back engine writes, so replays must be safe).
+    post:
+      routine:
+        - id: advance_lead_status
+          type: MongoDBUpdateOne
+          connectionId: leads-collection
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity.id
+              status.0.stage:
+                $ne: qualified
+            update:
+              $set:
+                contact:
+                  _payload: form.contact.0
+                estimated_value:
+                  _payload: form.estimated_value
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+              $push:
+                status:
+                  $position: 0
+                  $each:
+                    - stage: qualified
+                      created:
+                        _ref:
+                          module: events
+                          component: change_stamp
+        - :return:
+            lead_id:
+              _payload: context.workflow.entity.id
 pages:
   edit:
     buttons:

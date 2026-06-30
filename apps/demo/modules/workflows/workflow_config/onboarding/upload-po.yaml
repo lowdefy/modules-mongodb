@@ -14,6 +14,39 @@ access:
     edit: true
     review:
       - admin
+# Advance the lead to `won` when the reviewer approves the purchase order. Same
+# idempotent $push pattern as the other onboarding post-hooks.
+hooks:
+  approve:
+    post:
+      routine:
+        - id: advance_lead_status
+          type: MongoDBUpdateOne
+          connectionId: leads-collection
+          properties:
+            filter:
+              _id:
+                _payload: context.workflow.entity.id
+              status.0.stage:
+                $ne: won
+            update:
+              $set:
+                updated:
+                  _ref:
+                    module: events
+                    component: change_stamp
+              $push:
+                status:
+                  $position: 0
+                  $each:
+                    - stage: won
+                      created:
+                        _ref:
+                          module: events
+                          component: change_stamp
+        - :return:
+            lead_id:
+              _payload: context.workflow.entity.id
 form:
   - key: form.po_number
     component: text_input

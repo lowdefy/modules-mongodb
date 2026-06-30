@@ -27,8 +27,18 @@ entity:
       - :return:
           name:
             _step: load_lead.0.name
-          email:
-            _step: load_lead.0.email
+          company:
+            _step: load_lead.0.company
+          source:
+            _step: load_lead.0.source
+          estimated_value:
+            _step: load_lead.0.estimated_value
+          contact:
+            _step: load_lead.0.contact
+          # Current pipeline stage (status is a newest-first array) — drives the
+          # status badge on the entity_view profile card.
+          status:
+            _step: load_lead.0.status.0.stage
   # Entity-list breadcrumb link → trail mirrors lead-list / lead-view:
   # Home / Leads / {name} / {workflow} / {action}.
   list_page_id: lead-list

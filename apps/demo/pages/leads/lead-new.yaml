@@ -33,11 +33,23 @@ _ref:
                 properties:
                   title: Name
                   required: true
-              - id: lead.email
+              - id: lead.company
                 type: TextInput
                 properties:
-                  title: Email
-                  required: true
+                  title: Company
+              - id: lead.source
+                type: Selector
+                properties:
+                  title: Source
+                  options:
+                    - label: Web
+                      value: web
+                    - label: Referral
+                      value: referral
+                    - label: Event
+                      value: event
+                    - label: Cold outreach
+                      value: cold
       - _ref:
           module: layout
           component: floating-actions
@@ -81,8 +93,10 @@ _ref:
                             _state: new_lead_id
                           name:
                             _state: lead.name
-                          email:
-                            _state: lead.email
+                          company:
+                            _state: lead.company
+                          source:
+                            _state: lead.source
                       messages:
                         success: Lead created.
                     - id: reset

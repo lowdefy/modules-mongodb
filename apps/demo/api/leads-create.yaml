@@ -10,8 +10,18 @@ routine:
           _payload: _id
         name:
           _payload: name
-        email:
-          _payload: email
+        company:
+          _payload: company
+        source:
+          _payload: source
+        # Pipeline status as a newest-first array of { stage, created } per the
+        # status-fields pattern; advanced by the onboarding action posthooks.
+        status:
+          - stage: new
+            created:
+              _ref:
+                module: events
+                component: change_stamp
         created:
           _ref:
             module: events
