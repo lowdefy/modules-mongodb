@@ -168,7 +168,9 @@ test("makeActionPages: pages.{verb}.buttons.extra round-trips into the page_conf
       id: "open_help",
       type: "Button",
       properties: { title: "Help", type: "link" },
-      events: { onClick: [{ id: "nav_help", type: "Link", params: { url: "x" } }] },
+      events: {
+        onClick: [{ id: "nav_help", type: "Link", params: { url: "x" } }],
+      },
     },
   ];
   const action = {
@@ -327,7 +329,7 @@ test("makeActionPages: action_config does not carry the `pages` slot (duplicate 
 
 // ── Part 24: universal_fields normalization on action_config ─────────────────
 
-test("makeActionPages: universal_fields omitted → all-three default on action_config", () => {
+test("makeActionPages: universal_fields omitted → both-field default on action_config", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
     app_name: APP,
@@ -335,7 +337,6 @@ test("makeActionPages: universal_fields omitted → all-three default on action_
   expect(pages[0]._ref.vars.action_config.universal_fields).toEqual([
     "assignees",
     "due_date",
-    "description",
   ]);
 });
 

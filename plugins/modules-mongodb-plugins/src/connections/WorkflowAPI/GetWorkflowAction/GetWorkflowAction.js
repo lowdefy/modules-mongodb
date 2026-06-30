@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import parseNunjucks from "../../shared/render/parseNunjucks.js";
 import {
   computeAllowed,
   resolveButtons,
@@ -240,6 +241,21 @@ async function GetWorkflowAction(lowdefyContext) {
       }
     : null;
 
+  // ── Authored description (Part 64) — rendered at read time from config ──
+  // The action body `description` is workflow-author-authored config (lives on
+  // `actionConfig`, NOT the action doc). It is rendered fresh on every read via
+  // nunjucks against the action instance — same context shape `renderStatusMap`
+  // builds (`{ ...action, ...metadata }`) — so a templated description can never
+  // go stale (there is no create-time materialisation to drift). Null when the
+  // author declared none.
+  const description =
+    actionConfig.description != null
+      ? parseNunjucks(actionConfig.description, {
+          ...action,
+          ...(action.metadata ?? {}),
+        })
+      : null;
+
   // ── Step 6: Curated envelope (explicit allowlist — no spread of raw doc) ──
   const message = action[app_name]?.message ?? null;
   const required_after_close = actionConfig.required_after_close ?? null;
@@ -254,7 +270,8 @@ async function GetWorkflowAction(lowdefyContext) {
     key: action.key ?? null,
     status: action.status,
     action_group: action.action_group ?? null,
-    description: action.description ?? null,
+    // Authored config field, rendered at read time (not the action doc).
+    description,
     due_date: action.due_date ?? null,
     assignees: action.assignees ?? null,
     assignee_docs,

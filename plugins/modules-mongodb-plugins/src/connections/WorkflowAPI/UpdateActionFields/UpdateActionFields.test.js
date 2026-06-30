@@ -67,7 +67,11 @@ async function seed({
   await mongo.db.collection("workflows").insertOne({
     _id: "W1",
     workflow_type: "onboarding",
-    entity: { connection_id: "leads-collection", id: "L1", ref_key: "lead_ids" },
+    entity: {
+      connection_id: "leads-collection",
+      id: "L1",
+      ref_key: "lead_ids",
+    },
     status: [{ stage: workflowStage, event_id: "e0", created: changeStamp }],
     summary: { done: 0, not_required: 0, total: 1 },
     groups: [],
@@ -86,7 +90,6 @@ async function seed({
     status: [{ stage: actionStage, event_id: "e0", created: changeStamp }],
     assignees: ["u-old"],
     due_date: new Date("2026-01-01"),
-    description: { text: "old", html: "<p>old</p>" },
     metadata: {},
     access: makeWorkflowsConfig()[0].actions[0].access,
     created: changeStamp,
@@ -166,7 +169,7 @@ beforeEach(async () => {
 // Fields write
 // ─────────────────────────────────────────────────────────────────────────────
 
-test("writes assignees / due_date / description; omitted keys preserved", async () => {
+test("writes assignees; omitted keys preserved", async () => {
   await seed();
   const result = await UpdateActionFields(
     buildContext({
@@ -174,7 +177,6 @@ test("writes assignees / due_date / description; omitted keys preserved", async 
         action_id: "A1",
         fields: {
           assignees: ["u-7"],
-          description: { text: "new", html: "<p>new</p>" },
         },
       },
     }),
@@ -183,7 +185,6 @@ test("writes assignees / due_date / description; omitted keys preserved", async 
 
   const doc = await mongo.db.collection("actions").findOne({ _id: "A1" });
   expect(doc.assignees).toEqual(["u-7"]);
-  expect(doc.description).toEqual({ text: "new", html: "<p>new</p>" });
   // due_date omitted from the bag → preserved.
   expect(doc.due_date).toEqual(new Date("2026-01-01"));
 });

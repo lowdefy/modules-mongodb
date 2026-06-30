@@ -27,10 +27,11 @@ const ACTION_FIELDS_FOR_TEMPLATE = [
   "universal_fields",
 ];
 
-// Part 24: the all-three default for the UI presence list. Normalized onto the
+// Part 24 / Part 64: the default for the UI presence list. Normalized onto the
 // emitted action_config so templates/components always see a (possibly empty)
-// array — `false` → [], omitted → all three, array → as-is.
-const UNIVERSAL_FIELDS_DEFAULT = ["assignees", "due_date", "description"];
+// array — `false` → [], omitted → both fields, array → as-is. (Part 64 dropped
+// `description` from the universal set; it is now author-authored config.)
+const UNIVERSAL_FIELDS_DEFAULT = ["assignees", "due_date"];
 
 function normalizeUniversalFields(value) {
   if (value === undefined) return UNIVERSAL_FIELDS_DEFAULT;
@@ -77,7 +78,13 @@ function workspaceVars(workflow, workflowTitle) {
   };
 }
 
-function emitForAction(workflow, action, appName, titleAcronyms, workflowTitle) {
+function emitForAction(
+  workflow,
+  action,
+  appName,
+  titleAcronyms,
+  workflowTitle,
+) {
   if (action.kind !== "form") return [];
 
   // Part 34 D5: emit a verb page iff the verb key is present in the app's

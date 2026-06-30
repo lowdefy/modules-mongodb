@@ -7,7 +7,7 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
 /**
  * UpdateActionFields connection resolver (Part 24).
  *
- * Writes the three universal fields (`assignees` / `due_date` / `description`)
+ * Writes the universal fields (`assignees` / `due_date`)
  * on ONE action as a state-orthogonal operation — NO FSM transition, NO
  * workflow doc write, NO pre/post hook, NO tracker cascade. It is an operation,
  * not a signal: the deliberate operations/transitions boundary (critique
@@ -21,7 +21,7 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
  *     → return { action_id, event_id }
  *
  * Params (from `context.params`): `action_id` (required — the authoritative
- * target locator), `fields` (`{ assignees?, due_date?, description? }`),
+ * target locator), `fields` (`{ assignees?, due_date? }`),
  * `comment` (optional; routed through the planner's `comment` param — Part 33
  * renders it into `display.{app_name}.description`, never `metadata.comment`),
  * and `metadata` (optional). `action_type` is NOT sent — the endpoint is

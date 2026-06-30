@@ -28,7 +28,6 @@ function makeAction(overrides = {}) {
     ],
     assignees: ["u-old"],
     due_date: new Date("2026-01-01"),
-    description: { text: "old", html: "<p>old</p>" },
     metadata: { foo: "bar" },
     ...overrides,
   };
@@ -79,12 +78,8 @@ test("null clears a field", () => {
 
 test("omitted keys are preserved", () => {
   const result = plan({ fields: { assignees: ["u-7"] } });
-  // due_date / description not in the bag → unchanged from the loaded doc.
+  // due_date not in the bag → unchanged from the loaded doc.
   expect(result.actions[0].doc.due_date).toEqual(new Date("2026-01-01"));
-  expect(result.actions[0].doc.description).toEqual({
-    text: "old",
-    html: "<p>old</p>",
-  });
 });
 
 test("non-universal keys in the bag are ignored (never written)", () => {
@@ -95,12 +90,11 @@ test("non-universal keys in the bag are ignored (never written)", () => {
   expect(result.actions[0].doc.type).toBe("qualify");
 });
 
-test("no fields bag → all three preserved", () => {
+test("no fields bag → both preserved", () => {
   const result = plan({ fields: undefined });
   const doc = result.actions[0].doc;
   expect(doc.assignees).toEqual(["u-old"]);
   expect(doc.due_date).toEqual(new Date("2026-01-01"));
-  expect(doc.description).toEqual({ text: "old", html: "<p>old</p>" });
 });
 
 // ── Change stamp + status untouched ─────────────────────────────────────────
