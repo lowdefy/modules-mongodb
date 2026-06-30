@@ -1,7 +1,20 @@
 type: qualify
 kind: form
 action_group: qualification
-description: Confirm the lead's details and capture qualification notes.
+# Authored action description (Part 64) — markdown, rendered read-time as the
+# chrome-less lead-in at the top of the action's content card. Carries the
+# *criteria* for qualifying (context the form fields don't state), not a restate
+# of the fields themselves.
+description: |
+  Qualify before advancing — a lead that fails a criterion should be parked,
+  not quoted:
+
+  - **Budget** — spend is in range for a standard package
+  - **Authority** — you're talking to the decision-maker, not a researcher
+  - **Need** — a concrete problem we solve, with a deadline behind it
+
+  Flag a **site visit** only when the install is non-standard — multiple sites,
+  restricted access, or bespoke hardware. Routine installs skip it.
 access:
   demo:
     view: true
@@ -47,7 +60,7 @@ pages:
             flex: 0 1 auto
           properties:
             title: Help
-            icon: QuestionCircleOutlined
+            icon: AiOutlineQuestionCircle
           events:
             onClick:
               - id: nav_help
