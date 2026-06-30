@@ -671,8 +671,6 @@ test("makeWorkflowApis: update-fields endpoint shape — Api, exact properties, 
     action_id: { _payload: "action_id" },
     workflow_type: "onboarding",
     fields: { _payload: "fields" },
-    comment: { _payload: "comment" },
-    comment_visibility: { _payload: "comment_visibility" },
   });
   expect(ep.routine[0].type).toBe("UpdateActionFields");
   expect(ep.routine[1][":return"]).toEqual({
@@ -685,6 +683,9 @@ test("makeWorkflowApis: update-fields endpoint shape — Api, exact properties, 
   expect(props).not.toHaveProperty("form");
   expect(props).not.toHaveProperty("interaction");
   expect(props).not.toHaveProperty("action_type");
+  // Part 61: the field-update operation carries no comment.
+  expect(props).not.toHaveProperty("comment");
+  expect(props).not.toHaveProperty("comment_visibility");
 });
 
 test("makeWorkflowApis: a workflow with only check actions still emits update-fields", () => {

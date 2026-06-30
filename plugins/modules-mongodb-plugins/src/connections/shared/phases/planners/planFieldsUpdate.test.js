@@ -55,7 +55,6 @@ function plan(overrides = {}) {
   return planFieldsUpdate({
     loadedState: makeLoadedState(overrides),
     fields: overrides.fields,
-    comment: overrides.comment,
     metadata: overrides.metadata,
     context: overrides.context ?? makeContext(),
   });
@@ -159,10 +158,9 @@ test("no cell for the stage → doc unchanged apart from fields/stamp", () => {
 
 // ── Event ─────────────────────────────────────────────────────────────────────
 
-test("event doc: type action-fields-updated, references + metadata shape, no metadata.comment", () => {
+test("event doc: type action-fields-updated, references + metadata shape, no comment", () => {
   const result = plan({
     fields: { assignees: ["u-7"] },
-    comment: { text: "reassigned", html: "<p>reassigned</p>" },
   });
   const ev = result.event.doc;
   expect(ev.type).toBe("action-fields-updated");
@@ -176,6 +174,8 @@ test("event doc: type action-fields-updated, references + metadata shape, no met
     current_key: null,
   });
   expect(ev.metadata).not.toHaveProperty("comment");
+  // Part 61: the field-update event carries no comment description either.
+  expect(ev.display.demo).not.toHaveProperty("description");
 });
 
 // ── Change-log ──────────────────────────────────────────────────────────────

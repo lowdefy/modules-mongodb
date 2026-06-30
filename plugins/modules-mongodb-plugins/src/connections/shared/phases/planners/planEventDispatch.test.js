@@ -610,13 +610,10 @@ test("UpdateActionFields: metadata carries { action_type, workflow_type, current
   expect(doc.metadata).not.toHaveProperty("comment");
 });
 
-test("UpdateActionFields: metadata.comment absent whether or not a comment is passed", () => {
-  const withComment = fieldsUpdate({
-    comment: { text: "reassigned", html: "<p>reassigned</p>" },
-  }).doc;
-  const withoutComment = fieldsUpdate().doc;
-  expect(withComment.metadata).not.toHaveProperty("comment");
-  expect(withoutComment.metadata).not.toHaveProperty("comment");
+test("UpdateActionFields: carries no comment (Part 61) — no description, no metadata.comment", () => {
+  const { doc } = fieldsUpdate();
+  expect(doc.metadata).not.toHaveProperty("comment");
+  expect(doc.display.demo).not.toHaveProperty("description");
 });
 
 test("UpdateActionFields: current_key defaults to null when action has no key", () => {

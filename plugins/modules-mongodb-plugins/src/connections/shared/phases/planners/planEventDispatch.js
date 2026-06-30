@@ -77,10 +77,9 @@ function resolveActionSignalTitle(signal, status_after) {
  * render context but WITHOUT `signal` / `status_before` / `status_after` /
  * `submitted_form` (there is no transition), a default title, and a reduced
  * metadata shape `{ action_type, workflow_type, current_key }`. No override
- * channels exist for it (engine-default only). Its optional `comment` flows
- * through the `comment` param; Part 33's `foldCommentIntoEvent` (single call
- * site, post-render) renders it into `display.{app_name}.description` — this
- * planner never writes `metadata.comment`.
+ * channels exist for it (engine-default only). The fields-update path carries no
+ * comment (Part 61), so `planFieldsUpdate` passes none and the event never
+ * carries a description.
  *
  * The three-source override merge (engine default → YAML override → pre-hook
  * return) fires for any handler type whenever an override slice is present.
@@ -104,9 +103,10 @@ function resolveActionSignalTitle(signal, status_after) {
  * @param {string} [args.signal] — the resolved FSM signal name. Absent on the
  *   UpdateActionFields path (no transition).
  * @param {{ html: string, text?: string, fileList?: any[] } | null} [args.comment]
- *   — optional rich-text comment (submit and UpdateActionFields paths). Folded
- *   into `display.{app}.description` (verbatim `comment.html`) by
- *   `foldCommentIntoEvent` after render; the planner reads only `comment.html`.
+ *   — optional rich-text comment (submit path; the fields-update path passes
+ *   none — Part 61). Folded into `display.{app}.description` (verbatim
+ *   `comment.html`) by `foldCommentIntoEvent` after render; the planner reads
+ *   only `comment.html`.
  * @param {'shared'|'internal'} [args.comment_visibility] — writer's per-comment
  *   visibility choice (Part 61). Passed to `foldCommentIntoEvent` along with the
  *   connection's `enable_internal_comments` opt-in; absent → `shared`.

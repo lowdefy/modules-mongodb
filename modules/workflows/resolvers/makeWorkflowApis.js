@@ -181,8 +181,6 @@ function emitFieldsEndpoint(workflow) {
           // needs (the component builds the id from it at runtime).
           workflow_type: workflow.type,
           fields: { _payload: "fields" },
-          comment: { _payload: "comment" },
-          comment_visibility: { _payload: "comment_visibility" },
         },
       },
       {

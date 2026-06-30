@@ -21,15 +21,12 @@ import throwIfDispatchFailed from "../../shared/phases/throwIfDispatchFailed.js"
  *     → return { action_id, event_id }
  *
  * Params (from `context.params`): `action_id` (required — the authoritative
- * target locator), `fields` (`{ assignees?, due_date? }`),
- * `comment` (optional; routed through the planner's `comment` param — Part 33
- * renders it into `display.{app}.description`, never `metadata.comment`),
- * `comment_visibility` (optional `'shared' | 'internal'`; Part 61 — routed
- * through the planner to the shared fold, where `internal` is honoured only when
- * the connection opted in via `enable_internal_comments`, else coerced to
- * `shared`), and `metadata` (optional). `action_type` is NOT sent — the endpoint is
- * per-workflow (not per-action-type, Rev 2), so the handler derives type/kind
- * from the loaded action doc.
+ * target locator), `fields` (`{ assignees?, due_date? }`), and `metadata`
+ * (optional). The field-update operation carries NO comment (Part 61): editing
+ * assignees / due date is a metadata edit with no comment input, so the
+ * `action-fields-updated` event never carries a description. `action_type` is
+ * NOT sent — the endpoint is per-workflow (not per-action-type, Rev 2), so the
+ * handler derives type/kind from the loaded action doc.
  *
  * Access: the load phase's `edit`-verb gate (`access.{app_name}.edit`) is the
  * sole access authority — the same posture as the submit endpoint. The
@@ -57,8 +54,6 @@ async function UpdateActionFields(lowdefyContext) {
   const plan = planFieldsUpdate({
     loadedState,
     fields: params.fields,
-    comment: params.comment,
-    comment_visibility: params.comment_visibility,
     metadata: params.metadata,
     context,
   });
