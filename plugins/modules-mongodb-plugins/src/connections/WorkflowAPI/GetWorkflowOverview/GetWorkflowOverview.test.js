@@ -254,6 +254,8 @@ describe("GetWorkflowOverview return shape", () => {
       pageId: "leads/lead-view",
       urlQuery: { lead_id: "lead-1" },
       title: "Lead",
+      // Part 26: null because no entity.data routine is declared (callApi → null).
+      name: null,
     });
   });
 

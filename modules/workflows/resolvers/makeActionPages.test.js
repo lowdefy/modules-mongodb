@@ -430,25 +430,15 @@ test("makeActionPages: workflow_title honours title_acronyms in the humanized fa
   }
 });
 
-test("makeActionPages: name_field defaults to empty string when workflow.entity.name_field absent", () => {
+// Part 26: makeActionPages no longer bakes a `name_field` var — the instance
+// name is sourced server-side from entity_link.name (the entity.data routine).
+test("makeActionPages: does not bake a name_field var", () => {
   const pages = makeActionPages(null, {
     workflows: [workflow([qualifyAction])],
     app_name: APP,
   });
   for (const p of pages) {
-    expect(p._ref.vars.name_field).toBe("");
-  }
-});
-
-test("makeActionPages: name_field passes through workflow.entity.name_field when present", () => {
-  const wf = workflow([qualifyAction]);
-  wf.entity = { ...wf.entity, name_field: "lead.full_name" };
-  const pages = makeActionPages(null, {
-    workflows: [wf],
-    app_name: APP,
-  });
-  for (const p of pages) {
-    expect(p._ref.vars.name_field).toBe("lead.full_name");
+    expect("name_field" in p._ref.vars).toBe(false);
   }
 });
 
@@ -516,7 +506,6 @@ test("makeActionPages: the action page targets templates/action.yaml.njk with th
     ...workflow([qualifyAction, scheduleFollowupAction]),
     entity_view: { slot },
   };
-  wf.entity = { ...wf.entity, name_field: "lead.full_name" };
 
   const pages = makeActionPages(null, {
     workflows: [wf],
@@ -531,7 +520,6 @@ test("makeActionPages: the action page targets templates/action.yaml.njk with th
     reference_field: "lead_ids",
     workflow_title: "Onboarding",
     entity_view_slot: slot,
-    name_field: "lead.full_name",
     list_page_id: "",
     list_title: "",
   });

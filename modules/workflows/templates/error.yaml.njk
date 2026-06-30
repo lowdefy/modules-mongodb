@@ -2,7 +2,9 @@
 #
 # Build-time vars (from makeActionPages.js): action_config, page_config,
 # page_ids, workflow_type, connection_id, workflow_title, reference_field,
-# entity_view_slot, name_field. See view.yaml.njk.
+# entity_view_slot. See view.yaml.njk. The entity instance name arrives on
+# get_workflow_action.entity_link.name (Part 26, from the workflow's entity.data
+# routine) — no per-page entity request.
 #
 # Stale-URL allowlist: [error]. Only renders during recovery; any other
 # stage redirects to -view.
@@ -47,11 +49,7 @@ _ref:
           entity_title:
             _state: action.entity_link.title
           entity_name:
-{%- if name_field %}
-            _request: get_entity.0.{{ name_field }}
-{%- else %}
-            null
-{%- endif %}
+            _state: action.entity_link.name
           entity_page_id:
             _state: action.entity_link.pageId
           entity_url_query:
@@ -100,10 +98,6 @@ _ref:
     requests:
       _build.array.concat:
         - - _ref: requests/get_workflow_action.yaml
-          - _ref:
-              path: requests/get_entity.yaml.njk
-              vars:
-                connection_id: {{ connection_id }}
         - _var:
             key: page_config.requests
             default: []
@@ -144,9 +138,6 @@ _ref:
                     _var: page_ids.view
                 urlQuery:
                   _url_query: true
-            - id: get_entity
-              type: Request
-              params: get_entity
             - id: prime_form_state
               type: SetState
               params:

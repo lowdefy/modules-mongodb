@@ -161,45 +161,62 @@ test("makeWorkflowsConfig: rejects a non-string entity.id_query_key when present
   );
 });
 
-// --- entity.name_field (Part 56 D10) ---------------------------------------
+// --- entity.data (Part 26) -------------------------------------------------
 
-test("makeWorkflowsConfig: entity.name_field non-empty string validates and survives onto the materialized entity block", () => {
+const entityDataRoutine = {
+  routine: [
+    {
+      id: "load",
+      type: "MongoDBAggregation",
+      connectionId: "leads-collection",
+    },
+    { ":return": { name: { _step: "load.0.name" } } },
+  ],
+};
+
+test("makeWorkflowsConfig: entity.data strips the raw routine and adds a resolved data_endpoint ref", () => {
   const workflow = {
     ...validWorkflow,
-    entity: { ...validWorkflow.entity, name_field: "company.name" },
+    entity: { ...validWorkflow.entity, data: entityDataRoutine },
   };
   const [out] = makeWorkflowsConfig(null, { workflows: [workflow] });
-  expect(out.entity.name_field).toBe("company.name");
+  // The heavy build-only routine is not carried onto the runtime config.
+  expect("data" in out.entity).toBe(false);
+  // A pre-scoped endpoint ref rides the carried config instead.
+  expect(out.entity.data_endpoint).toEqual({
+    "_module.endpointId": "onboarding-entity-data",
+  });
 });
 
-test("makeWorkflowsConfig: omitted entity.name_field validates (no error)", () => {
+test("makeWorkflowsConfig: omitted entity.data carries no data_endpoint", () => {
   expect(() =>
     makeWorkflowsConfig(null, { workflows: [validWorkflow] }),
   ).not.toThrow();
   const [out] = makeWorkflowsConfig(null, { workflows: [validWorkflow] });
-  expect("name_field" in out.entity).toBe(false);
+  expect("data" in out.entity).toBe(false);
+  expect("data_endpoint" in out.entity).toBe(false);
 });
 
-test("makeWorkflowsConfig: rejects a non-string entity.name_field", () => {
+test("makeWorkflowsConfig: rejects a string entity.data (legacy external-endpoint shape)", () => {
   const workflow = {
     ...validWorkflow,
-    entity: { ...validWorkflow.entity, name_field: 42 },
+    entity: { ...validWorkflow.entity, data: "get-lead-entity-data" },
   };
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /entity\.name_field must be a non-empty string when present/,
+    /entity\.data is a string.*Convert to an inline routine object/s,
   );
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
     /onboarding/,
   );
 });
 
-test("makeWorkflowsConfig: rejects an empty-string entity.name_field", () => {
+test("makeWorkflowsConfig: rejects entity.data without a routine array", () => {
   const workflow = {
     ...validWorkflow,
-    entity: { ...validWorkflow.entity, name_field: "" },
+    entity: { ...validWorkflow.entity, data: { routine: 42 } },
   };
   expect(() => makeWorkflowsConfig(null, { workflows: [workflow] })).toThrow(
-    /entity\.name_field must be a non-empty string when present/,
+    /entity\.data must be an object with a routine: array/,
   );
 });
 

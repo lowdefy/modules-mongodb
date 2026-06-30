@@ -24,10 +24,12 @@
 #                          crumb; null drops it (build-time decision).
 #   - entity_list_title    baked string|null — the list crumb's (plural) label.
 #   - entity_title         operator → the entity TYPE label (entity_link.title).
-#   - entity_name          operator → the entity INSTANCE name, or null. Resolved
-#                          page-side from the existing `get_entity` request via the
-#                          workflow's optional `entity.name_field` (D10). The
-#                          entity crumb shows the name when set, else the type.
+#   - entity_name          operator → the entity INSTANCE name, or null. Sourced
+#                          from `entity_link.name` on the get_workflow_action
+#                          response, which the read handler resolves server-side
+#                          from the workflow's optional `entity.data` routine
+#                          (Part 26). The entity crumb shows the name when set,
+#                          else the type.
 #   - entity_page_id       operator → the entity (view) page id (entity_link.pageId).
 #   - entity_url_query     operator → the entity deep-link query (entity_link.urlQuery).
 #   - workflow_id          operator → the parent workflow id (for the overview link).

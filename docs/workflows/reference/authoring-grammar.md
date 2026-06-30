@@ -29,7 +29,8 @@ entity: # required — the workflow's entity wiring
   page_id: <page> # required — host-app page id the back-link navigates to
   id_query_key: <key> # optional — URL query key for the entity id (default _id)
   title: <Label> # required — singular entity-kind label (e.g. Lead)
-  name_field: <dot-path> # optional — entity-doc path to the instance name; adds "· {name}" to the breadcrumb
+  data: # optional — inline routine ({ routine: [...] }, like a hook) returning entity data;
+    routine: [...] #   reserved `name` key → breadcrumb instance name; other keys host-owned (replaces name_field)
 entity_view: # optional — build-time, read-only UI hint; never part of the engine config
   slot: { ... } # a Lowdefy block ref rendering a read-only view of the entity
 title: <string> # optional — human-readable title; derived from slug when omitted
