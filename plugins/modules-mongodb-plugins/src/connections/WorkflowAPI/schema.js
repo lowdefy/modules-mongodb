@@ -68,6 +68,16 @@ const schema = {
       description: 'Actions collection name. Defaults to "actions".',
       default: "actions",
     },
+    eventsCollection: {
+      type: "string",
+      default: "log-events",
+      description:
+        "Events collection name. Defaults to \"log-events\" (matching the " +
+        "events module's collection). Read by GetEventsTimeline and by " +
+        "GetWorkflowAction (the changes-requested callout's request-changes " +
+        "comment lookup). Host apps need only set this when overriding the " +
+        "collection name.",
+    },
     changeLog: {
       type: "object",
       description:

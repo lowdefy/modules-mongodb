@@ -213,6 +213,29 @@ async function resetCollections() {
   await mongo.db.collection("workflows").deleteMany({});
   await mongo.db.collection("actions").deleteMany({});
   await mongo.db.collection("user-contacts").deleteMany({});
+  await mongo.db.collection("log-events").deleteMany({});
+}
+
+/**
+ * Seed an `action-request_changes` event for an action (Part 62). The reviewer's
+ * comment is folded into the event's per-app bucket at top level
+ * (`{app_name}.description`) — new-event.yaml spreads `display` and `references`
+ * onto the doc root, so both `action_ids` and the app slice are top-level.
+ */
+async function seedRequestChangesEvent({
+  _id = "evt-rc-1",
+  action_id = "a1",
+  date = new Date("2026-05-21T00:00:00Z"),
+  buckets = { "test-app": { description: "<p>Fix the address</p>" } },
+} = {}) {
+  await mongo.db.collection("log-events").insertOne({
+    _id,
+    type: "action-request_changes",
+    action_ids: [action_id],
+    date,
+    created: changeStamp,
+    ...buckets,
+  });
 }
 
 beforeEach(async () => {
@@ -1042,5 +1065,93 @@ describe("assignee_docs (Part 24)", () => {
       buildContext({ request: { action_id: "a1" } }),
     );
     expect(result.assignee_docs).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Part 62: changes_requested (request-changes brief)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("changes_requested (Part 62)", () => {
+  test("resolves from the latest request-changes event's {app_name}.description in changes-required", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    await seedRequestChangesEvent({
+      action_id: "a1",
+      buckets: { "test-app": { description: "<p>Fix the address</p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBe("<p>Fix the address</p>");
+  });
+
+  test("is null when the latest such event has no description in the calling app's bucket (Part 61 internal note from another app)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    // The brief was marked internal and written only into another app's bucket.
+    await seedRequestChangesEvent({
+      action_id: "a1",
+      buckets: { "other-app": { description: "<p>Internal note</p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
+  });
+
+  test("is null in every other stage (read skipped)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "action-required" });
+    // Even with a request-changes event present, a non-changes-required stage
+    // never reads it.
+    await seedRequestChangesEvent({ action_id: "a1" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
+  });
+
+  test("is null when no request-changes event exists for the action", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
+  });
+
+  test("newest event wins when the action has cycled (changes requested twice)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    await seedRequestChangesEvent({
+      _id: "evt-old",
+      action_id: "a1",
+      date: new Date("2026-05-21T00:00:00Z"),
+      buckets: { "test-app": { description: "<p>Old brief</p>" } },
+    });
+    await seedRequestChangesEvent({
+      _id: "evt-new",
+      action_id: "a1",
+      date: new Date("2026-05-22T00:00:00Z"),
+      buckets: { "test-app": { description: "<p>New brief</p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBe("<p>New brief</p>");
+  });
+
+  test("normalizes empty/whitespace-only html to null (legacy comment-less row)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify", stage: "changes-required" });
+    await seedRequestChangesEvent({
+      action_id: "a1",
+      buckets: { "test-app": { description: "<p></p>" } },
+    });
+    const result = await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" } }),
+    );
+    expect(result.changes_requested).toBeNull();
   });
 });
