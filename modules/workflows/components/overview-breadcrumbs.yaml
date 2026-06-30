@@ -1,0 +1,56 @@
+# Overview-page breadcrumb fragment (Part 63).
+#
+# Returns the breadcrumb LIST the two shared overview pages
+# (workflow-overview, workflow-group-overview) assign to their layout-page
+# `breadcrumbs` var. The shared prefix mirrors the host app's own entity pages:
+#
+#   Home / {entity list} / {entity name|type} / …tail
+#
+# Unlike the action page's build-time `action-breadcrumbs.yaml`, this fragment
+# is RUNTIME-driven: the overview pages are single shared pages addressed by
+# ?workflow_id=…, so nothing is knowable at build time. Every crumb reads from
+# `_state.workflow.entity_link` (carried on the get-(action-group-)overview
+# response), and the optional list crumb is included/omitted by building the
+# list conditionally (`_array.concat` + `_if`) — Lowdefy breadcrumb items have
+# no per-item `visible`.
+#
+# Vars:
+#   - tail  list of page-specific terminal crumbs appended after the prefix.
+#           Each item spreads onto the Link component (label [+ pageId +
+#           urlQuery]). workflow-overview passes a single workflow crumb (no
+#           link); workflow-group-overview passes a linked workflow crumb + a
+#           terminal group crumb.
+_array.concat:
+  - - home: true
+      icon: AiOutlineHome
+  # Entity list — runtime-optional: present only when the workflow configures
+  # entity.list_page_id (carried onto entity_link by the read handler, Part 63).
+  - _if:
+      test:
+        _ne:
+          - _state: workflow.entity_link.list_page_id
+          - null
+      then:
+        - label:
+            _state: workflow.entity_link.list_title
+          pageId:
+            _state: workflow.entity_link.list_page_id
+      else: []
+  # Entity — the instance name when resolved (Part 26), else the type label.
+  # Links to the entity view page.
+  - - label:
+        _if:
+          test:
+            _ne:
+              - _state: workflow.entity_link.name
+              - null
+          then:
+            _state: workflow.entity_link.name
+          else:
+            _state: workflow.entity_link.title
+      pageId:
+        _state: workflow.entity_link.pageId
+      urlQuery:
+        _state: workflow.entity_link.urlQuery
+  # Page-specific terminal crumbs (workflow [/ group]).
+  - _var: tail

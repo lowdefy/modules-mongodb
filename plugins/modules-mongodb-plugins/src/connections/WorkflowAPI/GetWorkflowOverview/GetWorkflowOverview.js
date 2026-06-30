@@ -213,6 +213,11 @@ async function GetWorkflowOverview(lowdefyContext) {
         urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
         title: entityConfig.title ?? null,
         name: entityData?.name ?? null,
+        // Part 63: the optional entity-list breadcrumb crumb. Runtime-driven
+        // overview pages can't bake these like the action page does, so they
+        // ride the response and the runtime fragment gates on list_page_id.
+        list_page_id: entityConfig.list_page_id ?? null,
+        list_title: entityConfig.list_title ?? null,
       }
     : null;
 

@@ -29,6 +29,8 @@ function makeWorkflowsConfig() {
         page_id: "leads/lead-view",
         id_query_key: "lead_id",
         title: "Lead",
+        list_page_id: "leads/lead-list",
+        list_title: "Leads",
       },
       display_order: 1,
       starting_actions: [{ type: "qualify", status: "action-required" }],
@@ -256,6 +258,9 @@ describe("GetWorkflowOverview return shape", () => {
       title: "Lead",
       // Part 26: null because no entity.data routine is declared (callApi → null).
       name: null,
+      // Part 63: list-crumb fields ride the response for the runtime breadcrumb.
+      list_page_id: "leads/lead-list",
+      list_title: "Leads",
     });
   });
 

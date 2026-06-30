@@ -288,14 +288,34 @@ pages:
         successMessage: <string> # override "Submitted successfully."
         visible: <bool | operator> # AND-combines with server boolean
       not_required:
+        successMessage: <string> # override "Marked as not required."
         visible: <bool | operator>
       progress:
+        successMessage: <string> # override "Draft saved."
         visible: <bool | operator>
-      request_changes: # view page only; default false
+  review:
+    buttons:
+      approve:
+        successMessage: <string> # override "Approved."
+        visible: <bool | operator>
+      request_changes:
+        successMessage: <string> # override "Changes requested."
+        visible: <bool | operator>
+  error:
+    buttons:
+      resolve_error:
+        successMessage: <string> # override "Resolved."
+        visible: <bool | operator>
+  view:
+    buttons:
+      request_changes: # view page only; default visible false
+        successMessage: <string> # override "Changes requested."
         visible: <bool | operator>
 ```
 
 Button `visible` accepts a boolean or any Lowdefy operator expression. It AND-combines with the server-resolved boolean — authors can only further restrict visibility, never show a button the FSM or role gate would reject.
+
+`successMessage` is the success toast shown after the signal lands. Every **terminal** signal (`submit`, `not_required`, `approve`, `request_changes`, `resolve_error`) shows it and then returns to the entity page; the one non-terminal signal, `progress` (Save Draft / Mark Started), shows it and stays on the page. These knobs are **form-action only** — the per-workflow check page (`{workflow_type}-action`) is auto-generated and serves every check action at once, so it has no per-button override surface; its toasts are fixed.
 
 ### Extra buttons (`buttons.extra`)
 
@@ -315,7 +335,7 @@ pages:
           properties:
             title: Help
             type: link # primary | default | link | danger
-            icon: AiOutlineQuestionCircle # react-icons name (Ant Design set = Ai* prefix)
+            icon: AiOutlineQuestionCircle
           visible: <bool | operator> # optional, author-controlled
           events:
             onClick:
