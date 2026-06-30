@@ -302,6 +302,21 @@ function emitGroupOnCompleteApi(workflow, group) {
   };
 }
 
+// Part 26: one {type}-entity-data InternalApi per workflow that declares an
+// inline entity.data routine — same body as emitGroupOnCompleteApi. The read
+// handlers reach it via the engine's callApi to fetch host-shaped entity data.
+// Engine-only for the same reason as hook Apis (see emitHookApi); the id
+// {type}-entity-data is collision-free against the hook (4-segment), group
+// ({type}-group-{id}-on-complete), and lifecycle/submit id spaces.
+function emitEntityDataApi(workflow) {
+  if (!workflow.entity?.data) return null;
+  return {
+    id: `${workflow.type}-entity-data`,
+    type: "InternalApi",
+    routine: workflow.entity.data.routine,
+  };
+}
+
 function emitForWorkflow(workflow, { workflowsByType, edges }) {
   // `workflow` is reserved (Part 34 D10): a type named `workflow` would emit
   // derived ids (`workflow-{action}-…`, and since Part 48 also
@@ -364,6 +379,9 @@ function emitForWorkflow(workflow, { workflowsByType, edges }) {
     const api = emitGroupOnCompleteApi(workflow, group);
     if (api) apis.push(api);
   }
+
+  const entityDataApi = emitEntityDataApi(workflow);
+  if (entityDataApi) apis.push(entityDataApi);
 
   return apis;
 }

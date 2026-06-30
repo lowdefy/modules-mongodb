@@ -49,23 +49,32 @@
 # its onMount; the shell reads that single fixed path for the left panel, the
 # History reference_value, and the mount gate.
 #
-# Mount sequencing — `actions-on-entity` and the events timeline fire onMount
-# reads off `entity_id`, so the columns must mount AFTER the action loads. The
-# shell gates its render on `_state.entity_id` being non-null so those reads do
-# not fire with a null id on first paint.
+# Loading + mount sequencing (Part 26) — the shell renders immediately; it no
+# longer blanks the whole page on the self-set `entity_id`. The middle action
+# surface and the RHS Details/History card show content-shaped skeletons while
+# the action request is in flight, swapped on `_not: _request: get_workflow_action`
+# (the request is the source of truth — never gate `loading` on the self-set
+# `entity_id`, per the loading-skeletons idiom). The two id-dependent panels keep
+# a narrowed entity-id gate: `actions-on-entity` (its `call_entity_workflows`
+# onMount CallAPI) and the History timeline (`reference_value: _state.entity_id`)
+# must mount only once the id resolves, so their onMount reads never fire with a
+# null id (a `visible: false` block does not mount). The gate is now on just those
+# panels, not the whole shell.
 id: action_workspace
 type: Box
-visible:
-  _ne:
-    - _state: entity_id
-    - null
 layout:
   gap: 16
 blocks:
   # LEFT — the entity's workflows + steps (current row links to its action page),
-  # in a card.
+  # in a card. Entity-id-gated (Part 26): the inner actions-on-entity panel fires
+  # an onMount CallAPI keyed on entity_id, so it must not mount until the id is
+  # set (a non-visible block does not mount).
   - id: workspace_left
     type: Card
+    visible:
+      _ne:
+        - _state: entity_id
+        - null
     layout:
       span: 6
       sm:
@@ -88,6 +97,18 @@ blocks:
   # (addendum DA3) docked at the bottom of the column when `actions` is non-empty.
   - id: workspace_middle
     type: Box
+    # Content-shaped skeleton while the action request is in flight (Part 26),
+    # so the column shows a card placeholder instead of a blank page. Gated on
+    # the request, never the self-set entity_id.
+    loading:
+      _not:
+        _request: get_workflow_action
+    skeleton:
+      type: Card
+      blocks:
+        - type: Skeleton
+          properties:
+            height: 400
     layout:
       span: 12
       sm:
@@ -119,6 +140,18 @@ blocks:
   # no Tabs). Plain section headers replace the old single-tab-as-heading.
   - id: workspace_right
     type: Card
+    # Content-shaped skeleton while the action request is in flight (Part 26).
+    # Once loaded, the Details slot reads get_workflow_action.entity.*; the
+    # History timeline below keeps its own entity-id mount gate.
+    loading:
+      _not:
+        _request: get_workflow_action
+    skeleton:
+      type: Card
+      blocks:
+        - type: Skeleton
+          properties:
+            height: 300
     layout:
       span: 6
       sm:
@@ -153,9 +186,17 @@ blocks:
                         default: []
             else: []
         # History — always present; fills the remaining card height and scrolls
-        # (the timeline carries its own maxHeight/overflowY).
+        # (the timeline carries its own maxHeight/overflowY). Entity-id-gated
+        # (Part 26): the events-timeline reads reference_value: entity_id on
+        # mount, so it must not mount until the id is set (the card above already
+        # swapped its loading skeleton out by the time the request resolved, but
+        # entity_id is set a beat later in the same onMount).
         - - id: workspace_rhs_history
             type: Box
+            visible:
+              _ne:
+                - _state: entity_id
+                - null
             layout:
               gap: 8
             blocks:

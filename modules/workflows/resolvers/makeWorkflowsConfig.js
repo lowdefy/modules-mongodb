@@ -244,6 +244,34 @@ function validateEvent(workflow, action) {
   }
 }
 
+// Part 26: the optional `entity.data` block — an inline routine the module turns
+// into the `{type}-entity-data` InternalApi (mirrors validateHooks /
+// validateGroupOnComplete). When present it must be a plain object with a
+// `routine:` array; a string value is the rejected draft's `data_endpoint: <id>`
+// shape and hard-errors with the same migration hint hooks emit. Routine
+// internals are not validated here — the build walks them like any other routine.
+function validateEntityData(workflow) {
+  const entity = workflow.entity;
+  if (!entity || !("data" in entity)) return;
+  const value = entity.data;
+  if (typeof value === "string") {
+    fail(
+      workflow.type,
+      `entity.data is a string ("${value}") — the legacy shape pointing at an external Api id. Convert to an inline routine object: { routine: [ ... ] }. The module generates the engine-only endpoint from it.`,
+    );
+  }
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    !Array.isArray(value.routine)
+  ) {
+    fail(
+      workflow.type,
+      `entity.data must be an object with a routine: array (got: ${JSON.stringify(value)}).`,
+    );
+  }
+}
+
 function validateGroupOnComplete(workflow, group) {
   if (!("on_complete" in group)) return;
   const where = `action_groups "${group.id}"`;
@@ -802,18 +830,9 @@ function validateWorkflow(workflow) {
     );
   }
 
-  // Part 56 D10: optional dot-path to the entity's display name field, read by
-  // GetWorkflowAction to resolve the breadcrumb instance name. When present it
-  // must be a non-empty string; it rides the wholesale entity carry untouched.
-  if (
-    "name_field" in entity &&
-    (typeof entity.name_field !== "string" || entity.name_field === "")
-  ) {
-    fail(
-      workflow.type,
-      `entity.name_field must be a non-empty string when present (got: ${JSON.stringify(entity.name_field)}).`,
-    );
-  }
+  // Part 26: the optional `entity.data` inline routine (replaces name_field —
+  // the routine returns the instance display name as its reserved `name` key).
+  validateEntityData(workflow);
 
   // Optional entity-LIST breadcrumb link (e.g. Home / Leads / {entity} / …).
   // `list_page_id` is the host-app entity-list page id; `list_title` is its
@@ -1048,10 +1067,25 @@ function makeWorkflowsConfig(_, vars) {
       title: workflow.title ?? humanizeSlug(workflow.type, title_acronyms),
       // Part 57: carry the whole authored `entity` block wholesale (no field is
       // lifted to a flat alias), applying only the id_query_key default.
-      entity: {
-        ...workflow.entity,
-        id_query_key: workflow.entity.id_query_key ?? "_id",
-      },
+      // Part 26: the build-only `data` routine is stripped (heavy, never read at
+      // runtime); when present, a resolved `data_endpoint` _module.endpointId ref
+      // is carried so the read handlers can callApi the generated InternalApi.
+      // The build walker resolves the ref to a pre-scoped opaque id (same as the
+      // connection's own `endpoints:` block).
+      entity: (() => {
+        const { data, ...rest } = workflow.entity;
+        return {
+          ...rest,
+          id_query_key: workflow.entity.id_query_key ?? "_id",
+          ...(data
+            ? {
+                data_endpoint: {
+                  "_module.endpointId": `${workflow.type}-entity-data`,
+                },
+              }
+            : {}),
+        };
+      })(),
       ...(actionGroups.length > 0 ? { action_groups: actionGroups } : {}),
       actions,
     };

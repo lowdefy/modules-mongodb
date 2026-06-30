@@ -1,6 +1,7 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
 import parseNunjucks from "../../shared/render/parseNunjucks.js";
+import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import {
   computeAllowed,
   resolveButtons,
@@ -21,8 +22,9 @@ import {
  *
  *   {
  *     _id, type, workflow_type, workflow_id, kind, key, status, action_group, description, due_date,
- *     assignees, assignee_docs, entity: { connection_id, id }, created, updated,
- *     entity_link,          // { pageId, urlQuery, title } from the workflow config's `entity` block, or null
+ *     assignees, assignee_docs, created, updated,
+ *     entity,               // { ...entity.data routine result, id } — host fields + the always-present instance id
+ *     entity_link,          // { pageId, urlQuery, title, name } from the workflow config's `entity` block (name from the routine), or null
  *     required_after_close, message,
  *     form_values,          // form-field values from workflow.form_data (allowlisted)
  *     allowed,              // { view, edit, review, error }
@@ -229,16 +231,25 @@ async function GetWorkflowAction(lowdefyContext) {
     }
   }
 
+  // ── Entity data (Part 26) — call the host's `entity.data` routine via the
+  //    module-generated {type}-entity-data InternalApi (server-side, same user).
+  //    Returns the host-shaped object (reserved `name` for chrome + host fields),
+  //    or null when no routine is declared / it throws / the entity is missing.
+  const entityId = action.entity?.id ?? null;
+  const entityData = await resolveEntityData(context, wfConfig, entityId);
+
   // ── Entity link (mirrors GetWorkflowOverview) — resolved from the workflow
   //    config's `entity` block (by action.workflow_type) so submit/back nav can
-  //    return to the entity page. Null when the workflow type has no config or
-  //    no `entity` block.
+  //    return to the entity page. The instance `name` is lifted off the routine
+  //    result onto the chrome (falls back to the type label when null). Null when
+  //    the workflow type has no config or no `entity` block.
   const entityConfig = wfConfig?.entity;
   const entity_link = entityConfig
     ? {
         pageId: entityConfig.page_id,
         urlQuery: { [entityConfig.id_query_key]: action.entity.id },
         title: entityConfig.title ?? null,
+        name: entityData?.name ?? null,
       }
     : null;
 
@@ -310,10 +321,11 @@ async function GetWorkflowAction(lowdefyContext) {
     due_date: action.due_date ?? null,
     assignees: action.assignees ?? null,
     assignee_docs,
-    entity: {
-      connection_id: action.entity?.connection_id ?? null,
-      id: action.entity?.id ?? null,
-    },
+    // Part 26: the entity object the action page's slot + DataDescriptions read.
+    // The host routine result merged with the always-present entity id — id is
+    // injected LAST so the instance id always wins over any host-returned `id`.
+    // Degrades to `{ id }` when no routine is declared / it threw.
+    entity: { ...(entityData ?? {}), id: entityId },
     entity_link,
     created: action.created ?? null,
     updated: action.updated ?? null,

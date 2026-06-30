@@ -304,6 +304,29 @@ test("makeWorkflowApis: submit Api stays client-invokable type Api", () => {
   expect(findApi(apis, "onboarding-submit").type).toBe("Api");
 });
 
+test("makeWorkflowApis: entity.data emits a {type}-entity-data InternalApi (Part 26)", () => {
+  const routine = [
+    {
+      id: "load",
+      type: "MongoDBAggregation",
+      connectionId: "leads-collection",
+    },
+    { ":return": { name: { _step: "load.0.name" } } },
+  ];
+  const workflow = { ...workedExample, entity: { data: { routine } } };
+  const apis = makeWorkflowApis(null, { workflows: [workflow] });
+  const entityData = findApi(apis, "onboarding-entity-data");
+  expect(entityData).toBeDefined();
+  // Engine-only, same rationale as hook / on_complete Apis.
+  expect(entityData.type).toBe("InternalApi");
+  expect(entityData.routine).toEqual(routine);
+});
+
+test("makeWorkflowApis: no entity.data → no entity-data endpoint", () => {
+  const apis = makeWorkflowApis(null, { workflows: [workedExample] });
+  expect(findApi(apis, "onboarding-entity-data")).toBeUndefined();
+});
+
 test("makeWorkflowApis: render_config carries own slices — raw status_map + signal-keyed event_overrides", () => {
   const apis = makeWorkflowApis(null, { workflows: [workedExample] });
   const props = propsOf(findApi(apis, "onboarding-submit"));

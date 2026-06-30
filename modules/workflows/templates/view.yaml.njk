@@ -9,11 +9,14 @@
 #                     modals, maxWidth, buttons }), defaults to {}.
 #   page_ids:      { view, edit?, review?, error? }
 #   workflow_type: workflow.type
-#   connection_id: workflow.entity.connection_id (connection id baked into get_entity)
+#   connection_id: workflow.entity.connection_id (the actions-on-entity panel's connection)
 #   workflow_title: baked workflow-title string (eyebrow + breadcrumb workflow label)
 #   reference_field: baked entity.ref_key string (History match field)
 #   entity_view_slot: baked block array from workflow.entity_view.slot (may be [])
-#   name_field: baked dot-path string for the entity instance name, or "" when none
+#
+# Part 26: the entity instance name + entity fields arrive on the single
+# get_workflow_action response (entity_link.name + the entity object), resolved
+# server-side from the workflow's entity.data routine — no per-page entity request.
 #
 # Layout (Part 56 addendum; Part 64): universal-fields chips + ✎ ride the title
 # bar's page_actions; a bare workflow-closed banner sits above the form card, and
@@ -48,11 +51,7 @@ _ref:
           entity_title:
             _state: action.entity_link.title
           entity_name:
-{%- if name_field %}
-            _request: get_entity.0.{{ name_field }}
-{%- else %}
-            null
-{%- endif %}
+            _state: action.entity_link.name
           entity_page_id:
             _state: action.entity_link.pageId
           entity_url_query:
@@ -101,10 +100,6 @@ _ref:
     requests:
       _build.array.concat:
         - - _ref: requests/get_workflow_action.yaml
-          - _ref:
-              path: requests/get_entity.yaml.njk
-              vars:
-                connection_id: {{ connection_id }}
         - _var:
             key: page_config.requests
             default: []
@@ -136,11 +131,7 @@ _ref:
                 entity_id:
                   _request: get_workflow_action.entity.id
             # Step 3 (stale-URL guard) — intentionally omitted on view.
-            # Step 4: load the entity.
-            - id: get_entity
-              type: Request
-              params: get_entity
-            # Step 5: prime form state from envelope's form_values.
+            # Step 4: prime form state from envelope's form_values.
             - id: prime_form_state
               type: SetState
               params:
@@ -222,7 +213,7 @@ _ref:
                                     form:
                                       _state: form
                                     entity:
-                                      _request: get_entity
+                                      _request: get_workflow_action.entity
                             - _var:
                                 key: page_config.formFooter
                                 default: []

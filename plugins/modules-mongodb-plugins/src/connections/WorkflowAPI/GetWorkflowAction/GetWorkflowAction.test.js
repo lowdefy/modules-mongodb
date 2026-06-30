@@ -252,6 +252,7 @@ function buildContext({
     roles: ["account-manager"],
   },
   workflowsConfig = makeWorkflowsConfig(),
+  callApi = async () => null,
 } = {}) {
   return {
     request,
@@ -270,7 +271,7 @@ function buildContext({
       changeStamp,
       user,
     },
-    callApi: async () => null,
+    callApi,
   };
 }
 
@@ -434,8 +435,10 @@ describe("envelope shape", () => {
     expect(result.action_group).toBe("phase-1");
     expect(result.created).toBeDefined();
     expect(result.updated).toBeDefined();
+    // Part 26: no entity.data routine declared (buildContext's callApi returns
+    // null), so the entity object reduces to the always-present instance id; the
+    // dead connection_id subfield is gone.
     expect(result.entity).toEqual({
-      connection_id: "leads-collection",
       id: "lead-1",
     });
   });
@@ -447,11 +450,13 @@ describe("envelope shape", () => {
       buildContext({ request: { action_id: "a1" } }),
     );
     // id_query_key/page_id/title come from wfConfig.entity; the id comes from
-    // the action doc's entity.id (seedAction stamps entity.id: 'lead-1').
+    // the action doc's entity.id (seedAction stamps entity.id: 'lead-1'). name is
+    // null because no entity.data routine is declared (Part 26).
     expect(result.entity_link).toEqual({
       pageId: "leads/lead-view",
       urlQuery: { lead_id: "lead-1" },
       title: "Lead",
+      name: null,
     });
   });
 
@@ -539,6 +544,113 @@ describe("envelope shape", () => {
       checkRead: false,
       checkWrite: false,
     });
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// entity.data resolution (Part 26)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("entity.data resolution (Part 26)", () => {
+  // A workflowsConfig whose entity carries the resolved endpoint id (as
+  // makeWorkflowsConfig emits it once the build walker resolves _module.endpointId).
+  function configWithDataEndpoint() {
+    const config = makeWorkflowsConfig();
+    config[0].entity.data_endpoint = "workflows/onboarding-entity-data";
+    return config;
+  }
+
+  test("calls the data endpoint with { entity_id }, lifts name onto entity_link, merges entity object", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const calls = [];
+    const callApi = async (args) => {
+      calls.push(args);
+      return { name: "Acme Corp", email: "ops@acme.test", status: "warm" };
+    };
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    // Exactly one call, to the resolved endpoint, payload is { entity_id } only.
+    expect(calls).toEqual([
+      {
+        endpointId: "workflows/onboarding-entity-data",
+        payload: { entity_id: "lead-1" },
+      },
+    ]);
+    // name lifted onto chrome.
+    expect(result.entity_link.name).toBe("Acme Corp");
+    // entity object = routine result + the always-present instance id.
+    expect(result.entity).toEqual({
+      name: "Acme Corp",
+      email: "ops@acme.test",
+      status: "warm",
+      id: "lead-1",
+    });
+  });
+
+  test("module-injected id wins over a host-returned id (injected last)", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const callApi = async () => ({ id: "host-supplied", name: "X" });
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    expect(result.entity.id).toBe("lead-1");
+  });
+
+  test("routine returning no name → entity_link.name null, host fields still present", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const callApi = async () => ({ email: "ops@acme.test" });
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    expect(result.entity_link.name).toBeNull();
+    expect(result.entity).toEqual({ email: "ops@acme.test", id: "lead-1" });
+  });
+
+  test("a throwing routine never fails the read — name null, entity reduces to { id }", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    const callApi = async () => {
+      throw new Error("routine blew up");
+    };
+    const result = await GetWorkflowAction(
+      buildContext({
+        request: { action_id: "a1" },
+        workflowsConfig: configWithDataEndpoint(),
+        callApi,
+      }),
+    );
+    expect(result.entity_link.name).toBeNull();
+    expect(result.entity).toEqual({ id: "lead-1" });
+  });
+
+  test("no data_endpoint → no callApi fired", async () => {
+    await seedWorkflow();
+    await seedAction({ _id: "a1", type: "qualify" });
+    let called = false;
+    const callApi = async () => {
+      called = true;
+      return null;
+    };
+    await GetWorkflowAction(
+      buildContext({ request: { action_id: "a1" }, callApi }),
+    );
+    expect(called).toBe(false);
   });
 });
 

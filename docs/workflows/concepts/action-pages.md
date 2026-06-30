@@ -52,12 +52,28 @@ entity:
   ref_key: lead_ids
   page_id: lead-view
   title: Lead
-  name_field: company_name # breadcrumb shows "Lead · Acme Co"
+  data: # the entity.data routine (see Breadcrumbs) supplies the slot's fields
+    routine:
+      - id: load
+        type: MongoDBAggregation
+        connectionId: leads-collection
+        payload: { entity_id: { _payload: entity_id } }
+        properties:
+          pipeline: [{ $match: { _id: { _payload: entity_id } } }]
+      - ":return":
+          name: { _step: load.0.company_name } # reserved → breadcrumb instance name
+          email: { _step: load.0.email } # host-owned → read by the slot below
 entity_view:
   slot:
     - id: lead_summary
-      type: Descriptions
-      properties: { ... } # a read-only entity view
+      type: Html
+      properties:
+        html:
+          _nunjucks:
+            template: "{{ email }}"
+            # Slot blocks read the entity.data result off the action response —
+            # an object, so no `.0`: get_workflow_action.entity.<field>.
+            on: { email: { _request: get_workflow_action.entity.email } }
 ```
 
 Where the slot renders depends on the page kind:
@@ -65,7 +81,7 @@ Where the slot renders depends on the page kind:
 - **Form pages** — the slot is the right column's **Details** section (stacked above the action's History).
 - **Check page** — the slot is the **middle** review subject (the thing being checked), directly above the comment and the floating signal-button bar.
 
-Omit `entity_view` and the Details section is dropped on form pages / the middle review subject is empty on the check page.
+Omit `entity_view` and the Details section is dropped on form pages / the middle review subject is empty on the check page. The slot's fields come from the workflow's `entity.data` routine (below), surfaced on `get_workflow_action.entity` — there is no per-page entity request to author.
 
 ## Breadcrumbs
 
@@ -75,4 +91,6 @@ Every action page shows a four-segment trail:
 Home / {entity title [· name]} / {workflow title} / {action title}
 ```
 
-The entity segment links to the entity's `page_id`; when the workflow's `entity.name_field` is set, the instance name is appended after a `·`. The workflow segment links to `workflow-overview`. The action segment is the current page (no link). The in-context modal has no breadcrumb.
+The entity segment links to the entity's `page_id`; when the workflow's `entity.data` routine returns a reserved `name` key, that instance name is appended after a `·` (otherwise the segment is just the type label). The workflow segment links to `workflow-overview`. The action segment is the current page (no link). The in-context modal has no breadcrumb.
+
+The instance name is resolved **server-side**: the module generates an engine-only `{type}-entity-data` endpoint from the `entity.data` routine, the action read handler calls it (payload `{ entity_id }`), and lifts the routine's `name` onto the response. The same routine result powers the `entity_view` slot (above) — its non-`name` keys are arbitrary host-owned fields read off `get_workflow_action.entity`. Resolution never fails the page: a missing routine, a throwing routine, or a deleted entity all fall back to the type label.
