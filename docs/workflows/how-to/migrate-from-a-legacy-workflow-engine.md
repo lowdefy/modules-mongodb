@@ -23,7 +23,12 @@ concepts:
 
 > This is a translation guide, not a code-mod. There is no automated converter — the model differences (especially explicit status writes → signals) require a human pass per workflow. Migrate one workflow end-to-end, verify it, then do the rest.
 
-> **Legacy implementations vary.** The "legacy engine" is a family, not a single spec — across real apps the shapes differ: some start from a category field on the host entity (`ticket_category`, `non_conformance_category`), others seed `starting_actions` and are started programmatically; some carry an `entity:` block (with `key` / `collection` / `redirect_page` / `requests`), others have none; `responsibility` values are app-defined (`client`/`team`/`technician`, `author`/`lead`/`process-owner`, `sales-rep`, …); instanced actions, `shared: true`, and `force: true` appear in some apps and not others. Treat every app-specific field below as **"if your engine has it."** The constants that hold everywhere are the ones that matter most: `action:`-defined actions, a `status_map`, and submit/approve routines that set the next status by hand via `UpdateWorkflowActions`.
+> **Two archetypes — and this guide targets one.** Home-grown workflow engines split into two families:
+>
+> - **Config-driven** (this guide's target): workflows are declared in **build-time YAML** under `apps/shared/workflow_config/`, with per-action `form` / `status_map` / `access` and submit/approve routines that set the next status by hand via `UpdateWorkflowActions`. Even here the shapes vary — some start from a category field on the host entity (`ticket_category`, `non_conformance_category`), others seed `starting_actions`; some carry an `entity:` block (`key` / `collection` / `redirect_page` / `requests`), others none; `responsibility` values are app-defined (`client`/`team`/`technician`, `author`/`lead`/`process-owner`, `sales-rep`, …); instanced actions, `shared: true`, and `force: true` appear in some apps and not others. **Treat every app-specific field below as "if your engine has it."**
+> - **Data-driven**: workflows are authored at **runtime as data** — reusable templates in a collection, created/edited through in-app pages and applied to entities with placeholder resolution. Actions are uniform lightweight tasks (`title`, `assignees`, `due_date`, `blocked_by`, `action_group`) with no per-action form, `status_map`, or `access`, and unblocking is already `blocked_by`-driven rather than hand-wired.
+>
+> The module is itself **config-driven** (`workflows_config` is build-time YAML). The bulk of this guide assumes a config-driven source. If yours is data-driven, read [Data-driven engines](#data-driven-engines-a-different-migration) first — the migration is as much a product decision as a port.
 
 ## The one shift that drives everything
 
@@ -396,6 +401,22 @@ The module keeps only the second model: starting is always an explicit call to t
 - **Category-triggered workflows need new app-side wiring** to replace the implicit trigger: an event/handler on the host entity's create/update that maps the category to the right `{type}-start` endpoint.
 
 This is a deliberate behavior change — starting is now uniformly app-owned, so every entity starts a workflow the same way, with no special category-field plumbing.
+
+## Data-driven engines: a different migration
+
+If your workflows are authored at **runtime as data** — reusable templates in a collection, edited through in-app pages, applied to entities with placeholder resolution (`{{ customer.name }}`) — the field-by-field mapping above mostly doesn't apply, and one fact dominates:
+
+**The module has no runtime workflow designer.** Workflow structure is build-time YAML validated by `makeWorkflowsConfig`; there is no supported path for end users to define new workflow types or edit action graphs in-app. So the first question is a product question, not a porting one:
+
+- **If the catalogue of workflow types is small and stable** (e.g. a handful of templates), freeze each template into a static `workflows_config` entry. You gain the FSM, role-gated `access`, review steps, hooks, trackers, group status, and auto-generated pages; you give up in-app template authoring. The placeholder layer (`{{ customer.name }}`) is replaced by the module fetching live entity data on its pages — you don't bake values in at creation.
+- **If end-user-authored workflows are a hard requirement**, the module can't model them. Keep your data-driven engine, or use the module only for a fixed set of workflow types alongside it.
+
+The mechanics, where you do port, are mostly favourable:
+
+- **Action shape is the easy part.** Data-defined actions (`title`, `assignees`, `due_date`, `description`, `blocked_by`, `action_group`) map almost directly onto the module's **check** actions, which carry exactly those universal fields. You were effectively running check-only workflows — there's no `form:` schema or `status_map` to translate because you never had one.
+- **The status engine is a wash, not a rewrite.** A data-driven engine typically already auto-unblocks via `blocked_by` (a "find blocked actions → unblock" pass after each update). The module does the same through its FSM, so there's no hand-wired `UpdateWorkflowActions` transition code to delete — you never wrote any. Note the reference changes from action **slug/id** to action **type** in the module's `blocked_by`.
+- **Groups** defined inline on templates (`action_groups` with `title`/`icon`/`color`) become the workflow-level `action_groups:` declaration; the module derives group status for you. Per-action icon/color styling has no engine equivalent — that's display config, not workflow config.
+- **`assignees` / `due_date` / `description`** are first-class universal fields on check actions — no migration needed beyond moving the values onto the seeded action docs at `start-workflow`.
 
 ## Things that no longer exist (and why)
 
