@@ -104,23 +104,30 @@ test("tracker kind: unblock from blocked lands action-required", () => {
   expect(result.doc.status[0].stage).toBe("action-required");
 });
 
-test("check kind update: payload.fields is a verbatim passthrough (universal keys written)", () => {
+test("check kind user submit: universal keys stripped (Part 65 — parity with form/tracker)", () => {
   const fields = {
     assignees: [{ id: "u2" }],
     due_date: "2026-06-01",
     custom_field: 42,
   };
   const result = plan({
-    action: makeAction({ kind: "check" }),
+    action: makeAction({
+      kind: "check",
+      assignees: ["orig"],
+      due_date: "orig-date",
+    }),
     actionConfig: makeConfig({ kind: "check" }),
     payload: { fields },
   });
-  expect(result.doc.assignees).toEqual([{ id: "u2" }]);
-  expect(result.doc.due_date).toBe("2026-06-01");
+  // Universal keys preserved at their loaded values — a user submit no longer
+  // writes assignees/due_date (Part 65 D1; default source: 'user').
+  expect(result.doc.assignees).toEqual(["orig"]);
+  expect(result.doc.due_date).toBe("orig-date");
+  // Non-universal key still passes through.
   expect(result.doc.custom_field).toBe(42);
 });
 
-// ── Part 24: kind-based universal-fields rule (update path) ───────────────────
+// ── Part 24 / Part 65: source-based universal-fields rule (update path) ────────
 
 test("form kind update: universal keys stripped; non-universal keys still written", () => {
   const fields = {
@@ -171,6 +178,26 @@ test("tracker kind update: universal keys stripped; child-link fields still forw
     connection_id: "cc-1",
     id: "ce-1",
   });
+});
+
+test("auxiliary-source update: universal keys pass through (hook seeding path, Part 65 D1)", () => {
+  const fields = {
+    assignees: ["u-hook"],
+    due_date: "2026-12-01",
+  };
+  const result = plan({
+    action: makeAction({
+      kind: "check",
+      assignees: ["orig"],
+      due_date: "orig-date",
+    }),
+    actionConfig: makeConfig({ kind: "check" }),
+    source: "auxiliary",
+    payload: { fields },
+  });
+  // Hook/cascade orchestration may seed universal fields on a transition.
+  expect(result.doc.assignees).toEqual(["u-hook"]);
+  expect(result.doc.due_date).toBe("2026-12-01");
 });
 
 test("form kind upsert/insert: universal keys in the bag ARE written (create path unguarded)", () => {
