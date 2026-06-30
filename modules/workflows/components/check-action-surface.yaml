@@ -251,8 +251,7 @@ blocks:
                     _dayjs.format:
                       on:
                         _state: current_action.status.$.created.timestamp
-                      params:
-                        format: YYYY-MM-DD HH:mm
+                      format: YYYY-MM-DD HH:mm
               - id: current_action.status.$.error
                 type: Paragraph
                 visible:

@@ -17,11 +17,16 @@
 #   - date_format  due-date display format (default `MMM D, YYYY`).
 id: universal_fields_chips
 type: Box
+# flex 0 0 auto: this strip sizes to its chips. A block with no flex/grow/shrink
+# falls into the 24-span column grid (flex 0 0 100%); inside the shrink-to-fit
+# page_actions slot that resolves fine for the Box itself, but the explicit flex
+# keeps the intent clear and avoids any percentage-basis edge case.
 layout:
   direction: row
   contentAlign: center
   wrap: nowrap
   gap: 8
+  flex: 0 0 auto
 blocks:
   _build.array.concat:
     # Assignees → avatars, only when there are resolved assignee docs.
@@ -34,29 +39,45 @@ blocks:
                 default: [assignees, due_date]
             value: assignees
         then:
+          # A single Avatar block in group mode renders one overlapping
+          # Avatar.Group from the resolved assignee docs — the design's
+          # "overlapping avatars". A `List` is the wrong tool here: a list-category
+          # block iterates STATE at its own id (not `properties.data`), so with no
+          # state seeded at the list id it renders zero items. Computing the
+          # avatars array sidesteps per-item state binding entirely. flex 0 0 auto
+          # keeps the strip compact (a flex-less block defaults to a 24-span column
+          # and would push the due-date pill past the viewport).
           - id: universal_fields_chips_assignees
-            type: List
+            type: Avatar
+            layout:
+              flex: 0 0 auto
             visible:
               _gt:
                 - _array.length:
                     _var: action_data.assignee_docs
                 - 0
-            layout:
-              direction: row
-              contentAlign: center
-              wrap: nowrap
-              gap: 4
             properties:
-              data:
-                _var: action_data.assignee_docs
-            blocks:
-              - _ref:
-                  module: user-account
-                  component: user-avatar
-                  vars:
-                    show_name: false
-                    user:
-                      _state: universal_fields_chips_assignees.$
+              group:
+                size: small
+                maxCount: 5
+                # assignee_docs entries carry { _id, profile: { name, picture } }.
+                # picture is a pre-generated gradient SVG, so `content` (the name
+                # initial) is only a fallback when a doc has no picture.
+                avatars:
+                  _js:
+                    args:
+                      docs:
+                        _var: action_data.assignee_docs
+                    fn: |
+                      const docs = args.docs || [];
+                      return docs.map((d) => {
+                        const name = d.profile && d.profile.name;
+                        return {
+                          src: d.profile && d.profile.picture,
+                          alt: name,
+                          content: name ? name.charAt(0).toUpperCase() : undefined,
+                        };
+                      });
         else: []
     # Due date → a compact Tag pill, only when set.
     - _build.if:
@@ -82,11 +103,10 @@ blocks:
                 _dayjs.format:
                   on:
                     _var: action_data.due_date
-                  params:
-                    format:
-                      _var:
-                        key: date_format
-                        default: MMM D, YYYY
+                  format:
+                    _var:
+                      key: date_format
+                      default: MMM D, YYYY
         else: []
     # Edit (✎) — always present, so a field (assignees / due date) can be ADDED
     # even when no chips are showing a value yet. Opens the edit modal.

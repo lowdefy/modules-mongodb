@@ -236,11 +236,10 @@ blocks:
                     _dayjs.format:
                       on:
                         _var: action_data.due_date
-                      params:
-                        format:
-                          _var:
-                            key: date_format
-                            default: MMM D, YYYY
+                      format:
+                        _var:
+                          key: date_format
+                          default: MMM D, YYYY
               - id: universal_fields_due_date_empty
                 type: Paragraph
                 visible:
