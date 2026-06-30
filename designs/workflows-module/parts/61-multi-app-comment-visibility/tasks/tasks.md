@@ -4,7 +4,7 @@
 
 These tasks implement Part 61: a workflow comment becomes visible to **all** of the workflow's apps by default (`shared`), with an opt-in **internal** option that keeps it in the submitting app's bucket only. The change is centred on the single `foldCommentIntoEvent` chokepoint (Part 33 D3) and threads a new `comment_visibility` choice from the comment surfaces through both write paths (submit + Part 24 update-fields) to the fold, gated server-side by a per-app `enable_internal_comments` connection flag. Derived from `designs/workflows-module/parts/61-multi-app-comment-visibility/design.md`.
 
-The UI half also extracts a single shared comment-input fragment that is **text-only** on every surface (design D6): inline images are disabled on all comment inputs. This generalises [Part 62](../../62-changes-requested-callout/design.md)'s request-changes-only text-only change (its task 4) to every comment surface, and the fragment (tasks 7–8) supersedes Part 62's inline text-only edits once it lands.
+The UI half also extracts a single shared comment-input fragment that is **text-only** on every surface (design D6): inline images are disabled on all comment inputs. This generalises [Part 62](designs/workflows-module/parts/_completed/62-changes-requested-callout/design.md)'s request-changes-only text-only change (its task 4) to every comment surface, and the fragment (tasks 7–8) supersedes Part 62's inline text-only edits once it lands.
 
 ## Tasks
 

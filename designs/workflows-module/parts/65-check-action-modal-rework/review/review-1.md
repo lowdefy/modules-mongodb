@@ -44,6 +44,8 @@ The real component is page-scaled in ways the mockup under-represents:
 
 ### 4. Removing the `kind` branch also changes the pre-hook auxiliary update path — the audit scope is wider than the two surfaces
 
+> **Resolved.** Reshaped rather than audited around: the engine rule is re-gated on transition `source` instead of `kind`. `source === "user"` strips universal keys (uniform across kinds, replacing the check exception); `auxiliary`/`cascade` pass them through, so the hook/cascade seeding path this finding flagged is *preserved by design* — no silent drop to audit for. D1 now scopes the guarantee to user submits, non-goal #2 flips from "deferred" to "preserved," and the engine/test bullets switch to the source gate (added an auxiliary-source passthrough test). Aligns with "don't over-restrict / absence of a caller is not absence of need."
+
 The design frames the behavioral change as "both check surfaces stop sending `fields`," and the engine branch becomes dead "with both check surfaces no longer sending `fields`." But `applyUpdateFieldsRule` is also reached by the **auxiliary/cascade** signal path: `planSubmit.js:88` plans `payload: { fields: aux.fields, ... }`, and hook payloads forward author-declared `fields` (`buildHookPayload.js:38`). After the branch is removed, a pre-hook that seeds `assignees`/`due_date` onto an **already-existing** check action via `fields` will silently stop persisting them (the insert/upsert spawn path still writes them — only the update path strips).
 
 Non-goal #2 acknowledges this direction ("no transition can carry universal fields for any kind"), so it's intended — but the **audit** in Files changed names only `planSubmit.test.js` / `SubmitWorkflowAction.test.js` and the two surfaces. No demo workflow seeds universal fields via hook `fields` (grep of `apps/demo/modules/workflows/` is clean), but production hooks aren't visible from this repo.
@@ -54,6 +56,8 @@ Non-goal #2 acknowledges this direction ("no transition can carry universal fiel
 
 ### 5. The field-edit reseed wipes an in-progress comment in the modal
 
+> **Resolved.** Dropped the `current_action.comment` / `change_request_comment: null` resets from the **field-edit** `on_complete` reseed on both surfaces (modal authors its reseed without them; `action.yaml.njk`'s existing field-edit reseed loses them). The `GetWorkflowAction` response never carries those keys, so omitting the resets preserves a typed comment while everything else refreshes. The **post-signal** reseed keeps its resets (the transition consumed the comment). D5 updated; "one correct way" = field-edit reseeds preserve comments, signal reseeds clear them.
+
 D5's `on_complete` reseed is "the same spread+seed the open handler runs." The open handler — and the workspace page's field-edit reseed (`action.yaml.njk:942-943`) — set `current_action.comment: null` and `current_action.change_request_comment: null`. So in the modal: a reviewer types a comment, opens the ✎ edit modal to fix a due date, hits Update → `on_complete` reseeds → the typed comment is wiped. Editing a side field is not a transition and shouldn't discard submission-in-progress text.
 
 This is pre-existing on the workspace page and replicating it keeps the surfaces consistent (the design's stated goal), so it's not a regression _introduced_ here — but the modal is explicitly "a quick in-context shortcut" (design ¶3), where type-comment-then-edit-due-date is a plausible flow, so the papercut bites harder.
@@ -63,5 +67,7 @@ This is pre-existing on the workspace page and replicating it keeps the surfaces
 ## Minor
 
 ### 6. D3 "configured exactly as the workspace page configures it" is imprecise on the status path
+
+> **Resolved (auto).** D3 now reads "configured as `action.yaml.njk` does, except it reads the `current_action.stage` scalar (D4) in place of the page's `status.0.stage` (equivalent values)" — no longer claiming identical wiring.
 
 The workspace page passes `status: current_action.status.0.stage` (`action.yaml.njk:78-79`); the modal (Files changed line 90) passes `status: current_action.stage` (the scalar). Both resolve to the same value, and the scalar is the correct choice in the modal per D4 — but "exactly as" overstates it. Minor wording: say "configured as the workspace page does, reading the `current_action.stage` scalar (D4) in place of the page's `status.0.stage` — equivalent values."

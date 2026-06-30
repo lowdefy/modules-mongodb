@@ -161,15 +161,15 @@ The module is unreleased and its test data has been deleted, so there is nothing
 
 ## Relationship to Part 24
 
-[Part 24 (universal-fields surface)](../_completed/24-universal-fields/design.md) is in `_completed/` (implemented). This part supersedes its `description` decisions: Part 24's universal fields were `[assignees, due_date, description]`; after this part they are `[assignees, due_date]`, and `description` is the author-authored config field defined here. Part 24's `assignees` / `due_date` write path (the `{workflow_type}-update-fields` operation, the chips/modal, the role gating) is unchanged. A deviation note is added to Part 24 pointing here.
+[Part 24 (universal-fields surface)](designs/workflows-module/parts/_completed/24-universal-fields/design.md) is in `_completed/` (implemented). This part supersedes its `description` decisions: Part 24's universal fields were `[assignees, due_date, description]`; after this part they are `[assignees, due_date]`, and `description` is the author-authored config field defined here. Part 24's `assignees` / `due_date` write path (the `{workflow_type}-update-fields` operation, the chips/modal, the role gating) is unchanged. A deviation note is added to Part 24 pointing here.
 
 ## Relates to
 
-- **[Part 62 (changes-requested callout)](../62-changes-requested-callout/design.md)** lands _after_ this part and builds on the layout this part establishes: its changes-requested callout sits in the **bare-alerts slot** — below the `workflow_closed_banner`, above the content card (so above, and outside, the `action-description.yaml` lead-in inside the card). Its `changes_requested` envelope field sits beside this part's `description`-source change in `GetWorkflowAction.js`. This part is self-contained and needs no accommodation for Part 62 — but it does define the alerts-slot / content-card structure Part 62 slots into, so Part 62's design references it.
+- **[Part 62 (changes-requested callout)](designs/workflows-module/parts/_completed/62-changes-requested-callout/design.md)** lands _after_ this part and builds on the layout this part establishes: its changes-requested callout sits in the **bare-alerts slot** — below the `workflow_closed_banner`, above the content card (so above, and outside, the `action-description.yaml` lead-in inside the card). Its `changes_requested` envelope field sits beside this part's `description`-source change in `GetWorkflowAction.js`. This part is self-contained and needs no accommodation for Part 62 — but it does define the alerts-slot / content-card structure Part 62 slots into, so Part 62's design references it.
 
 ## Depends on
 
-- **[Part 24 (universal-fields surface)](../_completed/24-universal-fields/design.md)** — the surfaces, the chips/modal, and the `assignees`/`due_date` write path this part keeps.
+- **[Part 24 (universal-fields surface)](designs/workflows-module/parts/_completed/24-universal-fields/design.md)** — the surfaces, the chips/modal, and the `assignees`/`due_date` write path this part keeps.
 - **Part 46 (`GetWorkflowAction` handler)** — the read path the envelope `description` flows through; already reads `actionConfig` (for `required_after_close`) and the workflow config (for `entity_link`).
-- **[Part 56 (three-tier action pages)](../_completed/56-three-tier-action-pages/design.md)** — the `action.yaml.njk` page + callout/chips/modal split this part edits.
-- **[Part 33 (comment rendering)](../_completed/33-comment-rendering/design.md)** — comments are the per-instance free-text channel whose existence makes the editable universal-field `description` redundant.
+- **[Part 56 (three-tier action pages)](designs/workflows-module/parts/_completed/56-three-tier-action-pages/design.md)** — the `action.yaml.njk` page + callout/chips/modal split this part edits.
+- **[Part 33 (comment rendering)](designs/workflows-module/parts/_completed/33-comment-rendering/design.md)** — comments are the per-instance free-text channel whose existence makes the editable universal-field `description` redundant.
