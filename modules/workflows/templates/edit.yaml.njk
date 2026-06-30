@@ -201,6 +201,14 @@ _ref:
                           showIcon: true
                           message: Workflow closed
                           description: This workflow is closed. Updates to this action are no longer accepted.
+                    # Changes-requested callout — bare full-width alert below the
+                    # closed banner, above the working content (Part 62). Self-hides
+                    # unless the action is in changes-required with a brief.
+                    - - _ref:
+                          path: components/changes-requested-callout.yaml
+                          vars:
+                            content:
+                              _state: action.changes_requested
                     - _build.if:
                         test:
                           _build.ne:

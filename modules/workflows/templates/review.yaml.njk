@@ -195,6 +195,14 @@ _ref:
                           showIcon: true
                           message: Workflow closed
                           description: This workflow is closed. Updates to this action are no longer accepted.
+                    # Changes-requested callout — bare full-width alert below the
+                    # closed banner, above the content card (Part 62). Self-hides
+                    # unless the action is in changes-required with a brief.
+                    - - _ref:
+                          path: components/changes-requested-callout.yaml
+                          vars:
+                            content:
+                              _state: action.changes_requested
                     - - id: review_card
                         type: Card
                         layout:
@@ -480,19 +488,18 @@ _ref:
                   - message: A comment is required to request changes
                     status: error
                     pass:
-                      _or:
-                        - _ne:
-                            - _if_none:
-                                - _state: change_request_comment.text
-                                - null
+                      _ne:
+                        - _if_none:
+                            - _state: change_request_comment.text
                             - null
-                        - _gt:
-                            - _array.length:
-                                _if_none:
-                                  - _state: change_request_comment.fileList
-                                  - []
-                            - 0
+                        - null
                 properties:
+                  # Text-only (Part 62): disable the inline Image extension and
+                  # leave s3PostPolicyRequestId unset, so the comment never
+                  # carries a fileList / inline <img> — the callout that surfaces
+                  # this brief only ever renders text.
+                  image:
+                    disabled: true
                   title: Change Description
                   placeholder: Please provide a description of the changes you would like.
         # Optional Approve modal — renders iff page_config.buttons.approve.modal is set.

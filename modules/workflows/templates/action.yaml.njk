@@ -228,6 +228,14 @@ _ref:
                   showIcon: true
                   message: Workflow closed
                   description: This workflow is closed. Updates to this action are no longer accepted.
+              # 1b. Changes-requested callout — bare full-width alert below the
+              #     closed banner, above the content card (Part 62). Self-hides
+              #     unless the action is in changes-required with a brief.
+              - _ref:
+                  path: components/changes-requested-callout.yaml
+                  vars:
+                    content:
+                      _state: current_action.changes_requested
               # 2. Content card — one card holding the working content (Part 64
               #    layout model): the description lead-in, the entity-view review
               #    subject, and the comment.
@@ -380,19 +388,18 @@ _ref:
                       - message: A comment is required to request changes
                         status: error
                         pass:
-                          _or:
-                            - _ne:
-                                - _if_none:
-                                    - _state: current_action.change_request_comment.text
-                                    - null
+                          _ne:
+                            - _if_none:
+                                - _state: current_action.change_request_comment.text
                                 - null
-                            - _gt:
-                                - _array.length:
-                                    _if_none:
-                                      - _state: current_action.change_request_comment.fileList
-                                      - []
-                                - 0
+                            - null
                     properties:
+                      # Text-only (Part 62): disable the inline Image extension and
+                      # leave s3PostPolicyRequestId unset, so the comment never
+                      # carries a fileList / inline <img> — the callout that
+                      # surfaces this brief only ever renders text.
+                      image:
+                        disabled: true
                       title: Change Description
                       placeholder: Please provide a description of the changes you would like.
             # Signal button bar (shell `actions` slot) — the floating-actions Card
