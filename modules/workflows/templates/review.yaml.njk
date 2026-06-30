@@ -395,6 +395,18 @@ _ref:
                                             _state: form_review
                                           comment:
                                             _state: comment
+                                  # Terminal signal — return to the entity on success.
+                                  - _ref:
+                                      path: components/return-to-entity.yaml
+                                      vars:
+                                        entity_page_id:
+                                          _state: action.entity_link.pageId
+                                        entity_url_query:
+                                          _state: action.entity_link.urlQuery
+                                        success_message:
+                                          _var:
+                                            key: page_config.buttons.approve.successMessage
+                                            default: Approved.
         # Universal-fields edit modal — opened by the title-bar ✎ chip.
         - _build.if:
             test:
@@ -466,6 +478,18 @@ _ref:
                             _state: form_review
                           comment:
                             _state: change_request_comment
+                  # Terminal signal — return to the entity on success.
+                  - _ref:
+                      path: components/return-to-entity.yaml
+                      vars:
+                        entity_page_id:
+                          _state: action.entity_link.pageId
+                        entity_url_query:
+                          _state: action.entity_link.urlQuery
+                        success_message:
+                          _var:
+                            key: page_config.buttons.request_changes.successMessage
+                            default: Changes requested.
               onClose:
                 - id: reset_comment
                   type: SetState
@@ -543,4 +567,16 @@ _ref:
                                 _state: form_review
                               comment:
                                 _state: comment
+                      # Terminal signal — return to the entity on success.
+                      - _ref:
+                          path: components/return-to-entity.yaml
+                          vars:
+                            entity_page_id:
+                              _state: action.entity_link.pageId
+                            entity_url_query:
+                              _state: action.entity_link.urlQuery
+                            success_message:
+                              _var:
+                                key: page_config.buttons.approve.successMessage
+                                default: Approved.
             else: []

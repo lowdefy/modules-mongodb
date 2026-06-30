@@ -327,6 +327,18 @@ _ref:
                                             _state: action.key
                                           comment:
                                             _state: comment
+                                  # Terminal signal — return to the entity on success.
+                                  - _ref:
+                                      path: components/return-to-entity.yaml
+                                      vars:
+                                        entity_page_id:
+                                          _state: action.entity_link.pageId
+                                        entity_url_query:
+                                          _state: action.entity_link.urlQuery
+                                        success_message:
+                                          _var:
+                                            key: page_config.buttons.not_required.successMessage
+                                            default: Marked as not required.
                       - id: button_progress
                         type: Button
                         layout:
@@ -439,31 +451,19 @@ _ref:
                                             _state: form
                                           comment:
                                             _state: comment
-                                    # Submit succeeded (CallAPI halts the chain on
-                                    # error): confirm, then return to the entity.
-                                    - id: submit_success_message
-                                      type: DisplayMessage
-                                      params:
-                                        status: success
-                                        content:
+                                  # Submit succeeded (CallAPI halts the chain on
+                                  # error): confirm, then return to the entity.
+                                  - _ref:
+                                      path: components/return-to-entity.yaml
+                                      vars:
+                                        entity_page_id:
+                                          _state: action.entity_link.pageId
+                                        entity_url_query:
+                                          _state: action.entity_link.urlQuery
+                                        success_message:
                                           _var:
                                             key: page_config.buttons.submit.successMessage
                                             default: Submitted successfully.
-                                    - id: return_to_entity
-                                      type: Link
-                                      params:
-                                        _if:
-                                          test:
-                                            _ne:
-                                              - _state: action.entity_link.pageId
-                                              - null
-                                          then:
-                                            pageId:
-                                              _state: action.entity_link.pageId
-                                            urlQuery:
-                                              _state: action.entity_link.urlQuery
-                                          else:
-                                            back: true
         # Universal-fields edit modal — opened by the title-bar ✎ chip.
         - _build.if:
             test:
@@ -549,31 +549,19 @@ _ref:
                                 _state: form
                               comment:
                                 _state: comment
-                        # Submit succeeded (CallAPI halts the chain on error):
-                        # confirm, then return to the entity.
-                        - id: submit_success_message
-                          type: DisplayMessage
-                          params:
-                            status: success
-                            content:
+                      # Submit succeeded (CallAPI halts the chain on error):
+                      # confirm, then return to the entity.
+                      - _ref:
+                          path: components/return-to-entity.yaml
+                          vars:
+                            entity_page_id:
+                              _state: action.entity_link.pageId
+                            entity_url_query:
+                              _state: action.entity_link.urlQuery
+                            success_message:
                               _var:
                                 key: page_config.buttons.submit.successMessage
                                 default: Submitted successfully.
-                        - id: return_to_entity
-                          type: Link
-                          params:
-                            _if:
-                              test:
-                                _ne:
-                                  - _state: action.entity_link.pageId
-                                  - null
-                              then:
-                                pageId:
-                                  _state: action.entity_link.pageId
-                                urlQuery:
-                                  _state: action.entity_link.urlQuery
-                              else:
-                                back: true
             else: []
         - _build.if:
             test:
@@ -615,4 +603,16 @@ _ref:
                                 _state: action.key
                               comment:
                                 _state: comment
+                      # Terminal signal — return to the entity on success.
+                      - _ref:
+                          path: components/return-to-entity.yaml
+                          vars:
+                            entity_page_id:
+                              _state: action.entity_link.pageId
+                            entity_url_query:
+                              _state: action.entity_link.urlQuery
+                            success_message:
+                              _var:
+                                key: page_config.buttons.not_required.successMessage
+                                default: Marked as not required.
             else: []

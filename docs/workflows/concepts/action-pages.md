@@ -37,7 +37,7 @@ On load the page fetches the action and derives a **mode** from the action's sta
 | `action-required` / `in-progress` / `changes-required` | `edit`   | `edit`   |
 | otherwise                                              | —        | `view`   |
 
-The mode drives which signal buttons appear (`submit` / `progress` / `not_required` in edit, `approve` / `request_changes` in review, `resolve_error` in error-stage view). After a successful signal the page refetches in place — it does not navigate away.
+The mode drives which signal buttons appear (`submit` / `progress` / `not_required` in edit, `approve` / `request_changes` in review, `resolve_error` in error-stage view). After a successful **terminal** signal (`submit`, `not_required`, `approve`, `request_changes`, `resolve_error`) the page returns to the entity it belongs to — the same behaviour as the form action pages — falling back to browser-back when the action has no resolvable entity page. The one non-terminal signal, `progress` (Mark Started), refetches in place instead: the user is still working the same action, so it stays put. The in-context [`check-action-modal`](../reference/exports.md#components) differs here on purpose — it already sits on the entity page, so it closes rather than navigating.
 
 This page replaces the three former shared check pages (`workflow-action-edit` / `-view` / `-review`). There is also a separate in-context [`check-action-modal`](../reference/exports.md#components) for opening a check action without leaving the entity page; the modal and the check page are independent compositions and share no layout.
 
