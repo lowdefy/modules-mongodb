@@ -19,7 +19,7 @@
 #                   Update endpoint id.
 #   - action_id     operator leaf the Update payload posts.
 #   - allowed_edit  operator leaf gating the Update button (visible) + inputs (disabled).
-#   - show          build-time array of field names to render (default all three).
+#   - show          build-time array of field names to render (default both).
 #   - on_complete   actions appended after the Update CallAPI (default []); this
 #                   modal appends a `setOpen: false` self-close after them.
 id:
@@ -47,7 +47,7 @@ blocks:
         show:
           _var:
             key: show
-            default: [assignees, due_date, description]
+            default: [assignees, due_date]
         on_complete:
           _build.array.concat:
             - _var:
