@@ -39,7 +39,7 @@ Two facts force the split:
 - Only the writer knows, per comment, whether a given note is for everyone or internal (the same review step often carries both kinds — "please update your address" vs "margin's too thin, flag finance"). So the **per-comment** choice belongs to the **writer**, not a per-action config setting.
 - But the comment surface is a page block that **cannot detect** whether the deployment is multi-app (no registry; the connection knows only itself). Showing a shared/internal toggle in a single-app deployment is meaningless ("internal to whom?"), and showing it to customer-portal users invites mistakes.
 
-So the control is **enabled per app** by a connection flag (`enable_internal_comments`, default `false`), and _when enabled_ the writer makes the per-comment call. This maps cleanly onto reality: the internal/team app sets the flag and its users get the choice; single-app and customer apps leave it off and every comment is `shared` (the default). The flag is the app's own knowledge ("I am an app that sometimes needs to keep a comment off other apps"), readable by the page because it is the app's own connection var — no registry needed.
+So the control is **enabled per app** by a module var (`enable_internal_comments`, default `false`) that the host sets once on the module entry — exactly like `app_name`. That single var fans out two ways: the module's `workflow-api.yaml` wires it onto the connection (`_module.var: enable_internal_comments`), where the **engine** enforces it (#1 — coercing `internal → shared` when off); and the comment surfaces read the same module var at **build time** to show or hide the control. _When enabled_ the writer makes the per-comment call. This maps cleanly onto reality: the internal/team app sets the var and its users get the choice; single-app and customer apps leave it off and every comment is `shared` (the default). The flag is the app's own knowledge ("I am an app that sometimes needs to keep a comment off other apps"), readable by the page because the host wires it as a module var (page config can read module vars at build time; it cannot read a server-side connection property at runtime) — no registry needed.
 
 `shared` is always the default audience whether or not the control is shown, so an app with the flag off behaves as "every comment shared" with zero UI.
 
@@ -69,36 +69,46 @@ Visibility is a closed two-value choice, not an arbitrary per-app audience set. 
 enable_internal_comments: true # default false; when true the comment surfaces show the shared/internal control
 ```
 
-**Comment payload (unchanged shape, one new sibling key):**
+**Control (in the shared fragment):** a `Switch`, default **off = `shared`** (on = `internal`), shown only when `enable_internal_comments` is set. The switch state is boolean; the fragment maps it to the documented string enum at payload time so the engine always receives a clean `"shared" | "internal"`:
 
 ```yaml
-# every comment-posting surface
+# the shared comment-input fragment, gated by _module.var: enable_internal_comments
 payload:
   comment: { _state: <comment-state-path> } # { html, text, fileList } — unchanged
-  comment_visibility: { _state: <toggle-state> } # "shared" (default) | "internal" — NEW
+  comment_visibility: # NEW — boolean toggle → string enum
+    _if:
+      - { _state: <toggle-state> } # on = internal
+      - "internal"
+      - "shared"
 ```
 
-`comment_visibility` is optional; absent or unrecognised → `shared`. The engine never trusts the client for _who_ sees what beyond this flag — `shared` fans out only to buckets the author already created, and `internal` is the submitter's own bucket, so a malicious/garbage value can at worst fall back to the safe-for-collaboration default.
+The toggle is **reset on modal close** alongside the existing comment reset (the surfaces already set `current_action.comment` / `change_request_comment` to `null` on `onClose`; the toggle resets to `false` there too), so a reopened modal starts at `shared`. Off-by-default means the `shared` default needs no separate initialization.
+
+`comment_visibility` is optional; absent or unrecognised → `shared`. The engine never trusts the client for _who_ sees what: `internal` is honoured **only** when the submitting app's connection has `enable_internal_comments: true` — otherwise the engine coerces it to `shared`. So an app that never enabled internal comments (a customer portal, a single-app deployment) cannot silo a comment by crafting an `internal` payload; the worst a malicious/garbage value can do is fall back to the safe-for-collaboration default. And `shared` itself fans out only to buckets the author already created, so the client can never widen visibility beyond the event's existing audience.
 
 ## Files changed
 
 ### Plugin — `plugins/modules-mongodb-plugins/src/connections/`
 
-- **`shared/phases/planners/foldCommentIntoEvent.js`** — add a `visibility` argument (`'shared' | 'internal'`, default `'shared'`). The emptiness gate is unchanged. On a non-empty comment: `internal` → write `display[appName].description = comment.html` (today's behaviour); `shared` → write `comment.html` into the `description` of **every** key present on `display` (each app bucket the rendered event already has). The helper still runs **after** render and the override merge (Part 33 D4), so all title buckets exist to write into. Pure; still the single call site.
-- **`shared/phases/planners/planEventDispatch.js`** — accept `comment_visibility` and pass it to `foldCommentIntoEvent`. No other change (type/title/metadata logic untouched; description stays comment-only).
+- **`shared/phases/planners/foldCommentIntoEvent.js`** — add a `visibility` argument (`'shared' | 'internal'`, default `'shared'`) and an `enableInternalComments` argument (boolean, default `false`). The emptiness gate is unchanged. The effective predicate is **`visibility === 'internal' && enableInternalComments` → single bucket; everything else → shared** — so an app that has not enabled internal comments coerces any `internal` request back to `shared`, regardless of what the client sent. On a non-empty comment: single-bucket → write `display[appName].description = comment.html` (today's behaviour); shared → write `comment.html` into the `description` of **every** key present on `display` (each app bucket the rendered event already has). The helper still runs **after** render and the override merge (Part 33 D4), so all title buckets exist to write into. Pure; still the single call site — and the single place the flag gates internal visibility.
+- **`shared/phases/planners/planEventDispatch.js`** — accept `comment_visibility` and pass it, along with `connection.enable_internal_comments`, to `foldCommentIntoEvent`. No other change (type/title/metadata logic untouched; description stays comment-only).
 - **`shared/phases/planSubmit.js`** — thread `comment_visibility: params.comment_visibility` into the `planEventDispatch` call beside the existing `comment`.
 - **`shared/phases/planners/planFieldsUpdate.js`** (Part 24 path) — add a `comment_visibility` param beside the existing `comment` and pass it into its `planEventDispatch` call (`planFieldsUpdate.js:85`). This is the planner that actually dispatches the fields-update event.
 - **`WorkflowAPI/UpdateActionFields/UpdateActionFields.js`** (Part 24 path) — read `params.comment_visibility` and pass it into the `planFieldsUpdate` call (`UpdateActionFields.js:54`) beside the existing `comment`. `UpdateActionFields` calls `planFieldsUpdate`, not `planEventDispatch` directly, so the choice rides the same three-hop path to the shared fold. No new logic.
-- **`WorkflowAPI/schema.js`** — add the optional `enable_internal_comments` connection property (boolean, default false; doc: "When true, comment surfaces in this app offer a shared/internal visibility control; comments default to shared regardless.").
+- **`WorkflowAPI/schema.js`** — add the optional `enable_internal_comments` connection property (boolean, default false; doc: "When true, this app may write `internal` (single-app) comments and its comment surfaces offer the shared/internal control. When false, the engine coerces any `internal` request to `shared`, so every comment from this app is visible to all apps that see the event. Comments default to `shared` regardless."). The engine reads this property (via `planEventDispatch` → `foldCommentIntoEvent`); it is not UI-only.
 
 ### Module — `modules/workflows/`
 
 - **`resolvers/makeWorkflowApis.js`** — add `comment_visibility: { _payload: "comment_visibility" }` to the submit endpoint properties (`:127`) and the update-fields endpoint properties (`:183`), beside the existing `comment` mapping.
-- **Comment surfaces** — add the shared/internal control next to each comment `TiptapInput`, shown only when `enable_internal_comments` is set, posting `comment_visibility`:
-  - `components/check-action-surface.yaml` — the optional surface comment and the Request Changes modal comment.
-  - `templates/review.yaml.njk` — the Request Changes modal's `change_request_comment`.
-  - the regular form-submit comment surface (`templates/edit.yaml.njk` / wherever a submit comment is captured).
-    To avoid a 4-way drift (one-correct-way), extract a **single shared "comment input + visibility control" fragment** that all surfaces `_ref`, parameterised by state path and the gating flag — rather than copying the control into each surface.
+- **Comment surfaces** — add the shared/internal control next to **every** comment `TiptapInput`, shown only when `enable_internal_comments` is set, posting `comment_visibility`. To avoid drift across surfaces (one-correct-way), extract a **single shared "comment input + visibility control" fragment** that all surfaces `_ref`, parameterised by state path and the gating module var — rather than copying the control into each surface. The fragment is dropped at every comment-input site:
+  - `components/check-action-surface.yaml` — the optional surface comment (`current_action.comment`) and the Request Changes modal comment (`current_action.change_request_comment`).
+  - `components/check-action-modal.yaml` — covered **transitively**; it wraps `check-action-surface.yaml`'s comment paths, so updating the surface fragment is sufficient (no separate control here).
+  - `templates/action.yaml.njk` — the full check/custom-kind action page: surface comment + Request Changes modal comment.
+  - `templates/view.yaml.njk` — the Request Changes modal's `change_request_comment`.
+  - `templates/error.yaml.njk` — the recovery comment and the Request Changes comment.
+  - `templates/review.yaml.njk` — the Request Changes modal's `change_request_comment` (and the surface comment).
+  - `templates/edit.yaml.njk` — the regular form-submit comment.
+  - `components/universal-fields/universal-fields.yaml` — the **Part 24** update-fields comment. Required so the `comment_visibility` thread wired through `UpdateActionFields` → `planFieldsUpdate` → `planEventDispatch` (see #1, Files-changed) actually receives a value; without it the Part 24 endpoint would accept the key but never be sent one.
 - **`module.lowdefy.yaml`** — document the `enable_internal_comments` connection var (and the module var the host wires it from).
 
 ### Read side — explicitly unchanged
@@ -111,6 +121,7 @@ payload:
 - **Unit (`planEventDispatch` / `planSubmit`):** `comment_visibility` flows from params to the fold; absent → `shared`.
 - **Integration (multi-app demo):** an event with team + customer title buckets — a `shared` `request_changes` comment renders in both timelines; an `internal` one renders only in the submitting app's timeline; the event title still renders per-app in both cases.
 - **Integration (single-app):** `shared` and `internal` produce identical output (one bucket); control hidden when `enable_internal_comments` is unset; comments default to shared.
+- **Server-side enforcement (#1):** with `enable_internal_comments` false, a crafted `comment_visibility: "internal"` payload is coerced to `shared` (fans out to every bucket) — the flag-off app cannot silo a comment by bypassing the UI; with the flag true, `internal` is honoured (single bucket).
 - **Behaviour-change guard (D3):** a multi-app event that previously relied on single-bucket comments now surfaces a default (shared) comment in the other titled app; marking it `internal` restores submitter-only visibility.
 - **Part 56 callout:** the changes-requested callout reads the comment unchanged via `event.{calling app_name}.description`; an `internal` team note does not appear for the customer app, a `shared` one does (where the customer has a title for the event).
 
