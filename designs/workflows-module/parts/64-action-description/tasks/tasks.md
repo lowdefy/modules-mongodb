@@ -13,8 +13,8 @@ These tasks implement Part 64 (`designs/workflows-module/parts/64-action-descrip
 | 3   | `03-drop-description-write-path.md`        | Remove `description` from the universal-fields write path, the action-doc seed, and the `Action` typedef      | —          |
 | 4   | `04-action-description-component.md`       | New shared `components/action-description.yaml` leaf — plain `Markdown` render, content via var               | —          |
 | 5   | `05-shrink-universal-fields-components.md` | Drop the `description` input/branch from the universal-fields components; defaults shrink to two              | —          |
-| 6   | `06-rework-check-surfaces.md`              | Swap callout → `action-description` on the check page + in-context surfaces; remove dead `fields.description` | 4          |
-| 7   | `07-rework-form-templates.md`              | Swap callout → `action-description` on the four form pages; remove dead seeds; delete the callout component   | 4, 6       |
+| 6   | `06-rework-check-surfaces.md`              | Check page: content-card layout + `action-description` lead-in; modal cleanup only (render deferred)          | 4          |
+| 7   | `07-rework-form-templates.md`              | Form pages: `action-description` inside the card + closed banner; remove dead seeds; delete callout component | 4, 6       |
 | 8   | `08-concept-spec-amendments.md`            | Amend `action-authoring/spec.md` + `engine/spec.md` for the authored field + disambiguation                   | —          |
 
 ## Ordering Rationale
@@ -35,5 +35,5 @@ Parallelizable groups: {1}, then {2, 3, 4, 5} can proceed concurrently; then {6}
 ## Scope
 
 **Source:** `designs/workflows-module/parts/64-action-description/design.md`
-**Context files considered:** none beyond `design.md` (the folder contains only `design.md` and `review/review-1.md`)
-**Review files skipped:** `designs/workflows-module/parts/64-action-description/review/review-1.md`
+**Context files considered:** `review/review-1.md` and `review/review-2.md` (both fully resolved into the design); the design's "Middle-column layout model" and modal-deferral decisions are reflected in Tasks 6 and 7.
+**Review files:** `review-1.md`, `review-2.md` — findings folded into `design.md`; tasks reconciled to the current design via `consistency-1.md`.
