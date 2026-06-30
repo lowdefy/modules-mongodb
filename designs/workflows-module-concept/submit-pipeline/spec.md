@@ -75,7 +75,7 @@ routine:
       post_hook_response: { _step: submit.post_hook_response }
 ```
 
-**Scope:** Emitted for `kind: form`, `kind: check`, and `kind: custom` actions. `custom` rides the per-workflow `{workflow_type}-submit` endpoint with the same nullary signals as check — the only difference is that its navigation `link:` cells are author-authored (routed into the per-verb link map by `computeEngineLinks`) rather than engine-derived from module page ids ([Part 28](../../workflows-module/parts/28-custom-action-kind/design.md)). Tracker actions get no endpoint (engine writes their status via the tracker subscription).
+**Scope:** Emitted for `kind: form`, `kind: check`, and `kind: custom` actions. `custom` rides the per-workflow `{workflow_type}-submit` endpoint with the same nullary signals as check — the only difference is that its navigation `link:` cells are author-authored (routed into the per-verb link map by `computeEngineLinks`) rather than engine-derived from module page ids ([Part 28](designs/workflows-module/parts/_completed/28-custom-action-kind/design.md)). Tracker actions get no endpoint (engine writes their status via the tracker subscription).
 
 **Per-app emission:** The submit endpoint is emitted regardless of the action's `access.{app_name}` map — the handler enforces access at submit time via the interaction's required verb (`access.{current_app}.{required-verb}` against the caller's per-app roles; table below). Lowdefy's central `api.roles` glob over the endpoint id is the coarse outer fence (Part 34 D10–D11). (Per-page emission is still verb-filtered per ui spec.)
 

@@ -75,12 +75,12 @@ Each entry carries `priority`, `title`, `color`, `borderColor`, `titleColor`, op
 
 Every action declares its kind via a required `kind:` field. `kind` is the **lifecycle-driver discriminator** for an action — it tells the engine what code path produces and transitions this action, and what UI surface (if any) the module emits for it. Workflow actions take one of the values below; a further value `kind: task` is reserved for adhoc todos owned by the future tasks module (those docs have `workflow_id: null` and are out of scope for workflow authoring — see [tasks-module-plan](../tasks-module-plan/design.md)).
 
-| `kind:`   | Required companion block | Primary content                                                                 |
-| --------- | ------------------------ | ------------------------------------------------------------------------------- |
-| `form`    | `form:` block            | Domain-specific form schema; rendered as the edit page's main content           |
-| `check`   | none                     | Universal fields + comment + signal buttons on the shared `{workflow_type}-action` page |
+| `kind:`   | Required companion block | Primary content                                                                                                                          |
+| --------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `form`    | `form:` block            | Domain-specific form schema; rendered as the edit page's main content                                                                    |
+| `check`   | none                     | Universal fields + comment + signal buttons on the shared `{workflow_type}-action` page                                                  |
 | `custom`  | none                     | A check-clone whose working surface is an **app-owned page**; author writes the navigation `link:` (see [Custom action](#custom-action)) |
-| `tracker` | `tracker:` block         | Display-only inline; mirrors a child workflow                                   |
+| `tracker` | `tracker:` block         | Display-only inline; mirrors a child workflow                                                                                            |
 
 **Build-time validation** (in `makeWorkflowsConfig` — single place all workflow-config validation lives):
 
@@ -119,7 +119,7 @@ The kind drives:
 
 ### Custom action
 
-`kind: custom` is a **check-clone with author-owned links** ([Part 28](../../workflows-module/parts/28-custom-action-kind/design.md)). Everything about its lifecycle is identical to `check` — the same eight-status FSM (the FSM table is `custom: form`, an object-identity alias of the form table, exactly like `check: form`), the same nullary submit signals, the same `fields:` channel, the same per-workflow `{workflow_type}-submit` / `{workflow_type}-update-fields` endpoints, and the same `hooks:` / `event:` machinery.
+`kind: custom` is a **check-clone with author-owned links** ([Part 28](designs/workflows-module/parts/_completed/28-custom-action-kind/design.md)). Everything about its lifecycle is identical to `check` — the same eight-status FSM (the FSM table is `custom: form`, an object-identity alias of the form table, exactly like `check: form`), the same nullary submit signals, the same `fields:` channel, the same per-workflow `{workflow_type}-submit` / `{workflow_type}-update-fields` endpoints, and the same `hooks:` / `event:` machinery.
 
 The single difference is the **source of the navigation link** the engine writes onto the action doc. For the three built-in kinds `computeEngineLinks` derives the per-verb link map from module page ids. For `custom` the author writes the links: a `status_map.{stage}.{slug}.link` cell (and optional `view_link:`) pointing at app-owned pages, and the engine routes them into the per-verb map — the working `link` into the stage's active working verb slot (`edit` at action-required / in-progress / changes-required, `review` at in-review, `error` at error, `view` at done), and `view_link` (or, absent it, the shared `{workflow_type}-action` page) into the `view` slot. So a user who can act lands on the app page; an observer always lands on a read-only status surface.
 

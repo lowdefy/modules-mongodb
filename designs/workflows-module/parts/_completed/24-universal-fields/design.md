@@ -1,5 +1,7 @@
 # Part 24 — Universal-fields surface (`assignees`, `due_date`, `description`)
 
+> **Superseded in part by [Part 64](../../64-action-description/design.md).** The `description` universal field described here was a mistake — a per-instance, end-user-editable rich-text field redundant with action comments. Part 64 **deletes** it (universal fields become `assignees` + `due_date` only) and revives `description` as an author-authored config field (the originally-intended one). The `assignees` / `due_date` write path below — the `{workflow_type}-update-fields` operation, the chips/modal, the role gating — is unchanged. Read this document for that machinery; ignore every `description` reference in it.
+
 > **Revision 2 (current-state reconciliation).** This design and its three reviews were written across the `kind: simple` era. Since then Parts 38/39/40/43 (and 46/48/49) shipped and **restructured the surfaces this part binds to**. This revision re-grounds the design on the in-tree code. The substantive changes from Revision 1, each justified inline below:
 >
 > 1. **Endpoint is `{workflow_type}-update-fields`, one per workflow type** (action*id-dispatched), mirroring the shipped `{workflow_type}-submit` — \_not* the per-action-type `{workflow_type}-{action_type}-update-fields` of Rev 1. The build-time `action_type` component var is dropped. (Supersedes the "user-approved" per-action-type id in tasks.md; the workflow prefix still avoids the cross-workflow collision that approval was about.)

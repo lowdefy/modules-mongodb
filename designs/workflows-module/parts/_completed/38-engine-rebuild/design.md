@@ -841,7 +841,7 @@ D3/D9/Q1 commit the workflow as a **whole-doc `$set`** of `plan.workflow.doc`, s
 - [state-machine.md](../../../../workflows-module-concept/state-machine/design.md) — concept-level FSM model.
 - [engine/design.md](../../../../workflows-module-concept/engine/design.md) — concept-level engine surface (Decision 4 updated separately).
 - [submit-pipeline/design.md](../../../../workflows-module-concept/submit-pipeline/design.md) — concept-level submit lifecycle (Decision 3 updated separately).
-- [Part 28 — Custom action kind](designs/workflows-module/parts/28-custom-action-kind/design.md) — `kind: custom` author-driven link authoring; the planner handles it via Part 30's carried-over sentinel-substitution rule.
+- [Part 28 — Custom action kind](designs/workflows-module/parts/_completed/28-custom-action-kind/design.md) — `kind: custom` author-driven link authoring; the planner handles it via Part 30's carried-over sentinel-substitution rule.
 - [Part 32 — Drop static interactions overrides](../32-drop-static-overrides/design.md) — adjacent topic on event_overrides channel; no shared edits.
 - [Part 37 — Actions collection indexes](../37-actions-collection-indexes/design.md) — index migration pattern (the engine adds no new collection, so no change-log index work here).
 - [`docs/idioms.md` § Event display](../../../../../docs/idioms.md#event-display) — the cross-repo event_display idiom the engine path conforms to (plain Nunjucks strings).

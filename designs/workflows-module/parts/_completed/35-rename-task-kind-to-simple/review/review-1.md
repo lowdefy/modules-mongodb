@@ -8,7 +8,7 @@ The design is mechanically correct in intent but the file list and sequencing no
 
 > **Resolved.** Verified: `handleSubmit.js` contains no `kind`/`task` references; the `actionConfig.kind === "task"` check is at `resolveTargetStatus.js:54`. Updated the Files-changed note and Open question 1 to point at `resolveTargetStatus.js`, and added a parenthetical flagging the same mis-naming in Part 28's design for its next review.
 
-Section "Files changed — shipped code and templates" (note after the table, line 48) and Open question 1 both describe Part 28 as amending `handleSubmit.js` (`kind === "task" → "task" || "custom"`). Part 28's own design.md repeats the claim at [line 66](designs/workflows-module/parts/28-custom-action-kind/design.md) and [line 179](designs/workflows-module/parts/28-custom-action-kind/design.md) (`handleSubmit.js:32`).
+Section "Files changed — shipped code and templates" (note after the table, line 48) and Open question 1 both describe Part 28 as amending `handleSubmit.js` (`kind === "task" → "task" || "custom"`). Part 28's own design.md repeats the claim at [line 66](designs/workflows-module/parts/_completed/28-custom-action-kind/design.md) and [line 179](designs/workflows-module/parts/_completed/28-custom-action-kind/design.md) (`handleSubmit.js:32`).
 
 The shipped `handleSubmit.js` contains **no** reference to `kind` or `"task"` — `grep -n "kind\|task" plugins/.../SubmitWorkflowAction/handleSubmit.js` is empty. The site that actually has `actionConfig.kind === "task"` is:
 
