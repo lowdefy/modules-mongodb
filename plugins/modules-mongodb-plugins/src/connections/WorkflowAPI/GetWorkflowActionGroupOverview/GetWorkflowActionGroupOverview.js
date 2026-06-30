@@ -1,5 +1,6 @@
 import createEngineContext from "../../shared/phases/createEngineContext.js";
 import findDocs from "../../mongo/findDocs.js";
+import resolveEntityData from "../../shared/render/resolveEntityData.js";
 import {
   computeAllowed,
   collapseLink,
@@ -155,13 +156,22 @@ async function GetWorkflowActionGroupOverview(lowdefyContext) {
   }
 
   // ── Workflow title + entity_link ──
+  // Part 26: lift the instance `name` onto entity_link from the host's
+  // entity.data routine (server-side; null when no routine / it throws), uniform
+  // with the action and overview pages. No `entity` object — chrome only.
   const title = wfConfig?.title ?? null;
   const entityConfig = wfConfig?.entity;
+  const entityData = await resolveEntityData(
+    context,
+    wfConfig,
+    wfDoc.entity?.id ?? null,
+  );
   const entity_link = entityConfig
     ? {
         pageId: entityConfig.page_id,
         urlQuery: { [entityConfig.id_query_key]: wfDoc.entity.id },
         title: entityConfig.title ?? null,
+        name: entityData?.name ?? null,
       }
     : null;
 
