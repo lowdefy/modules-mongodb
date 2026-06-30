@@ -3,34 +3,35 @@
 # This file is the body of the standalone in-context check-action modal
 # (components/check-action-modal.yaml) and nothing else. The per-workflow
 # {workflow_type}-action page is its OWN composition (templates/action.yaml.njk),
-# authored standalone in the three-tier workspace shell — it shares no leaf with
-# this surface (Part 56 — D6: the modal's compact one-card body and the page's
-# three-column spread diverged too far for a shared leaf to pay off; the small
-# duplication is deliberate).
+# authored standalone in the three-tier workspace shell.
+#
+# Part 65: the surface now composes the SAME converged leaves the workspace page
+# uses — the shared `title-block` header, the universal-fields chips + edit modal,
+# and the authored `description` lead-in (D2). Assignees/due are display-only chips
+# edited through a separate modal (never written on submit); the status-history
+# card is gone (full history lives on the action's own page and the entity
+# timeline).
 #
 # State contract — the surface reads exclusively from `_state.current_action.*`.
 # The modal open handler spreads the `GetWorkflowAction` response into
 # `current_action` and seeds the working inputs:
-#   - response top-level: current_action._id, .key, .type, .message,
-#     .status (array; status.0.stage = current stage), .allowed
-#     ({ view, edit, review, error }), .buttons ({ submit, progress,
+#   - response top-level: current_action._id, .key, .type, .message, .description
+#     (authored Markdown lead-in), .assignee_docs / .due_date (resolved envelope
+#     values the chips read), .status (array; status.0.stage = current stage),
+#     .allowed ({ view, edit, review, error }), .buttons ({ submit, progress,
 #     not_required, approve, request_changes, resolve_error } booleans, all
 #     AND-ed server-side per Part 46 D5), .workflow_closed, .required_after_close.
 #   - working inputs: current_action.fields.{assignees, due_date}
-#     (seeded from the response), current_action.comment (the OPTIONAL surface
-#     comment, seeded null) and current_action.change_request_comment (the
-#     MANDATORY comment in the review-mode Request Changes modal, a separate
-#     path so its required-validate doesn't fire on the optional input; seeded
-#     null).
-#   - current_action.stage — the current stage (response status.0.stage),
-#     seeded as a plain scalar by every container. The header badge and the
-#     error-stage comment gate read THIS, not current_action.status.0.stage,
-#     because the status-history List binds `id: current_action.status` and
-#     Lowdefy deletes a non-visible block's state by its blockId — so whenever
-#     the List is hidden (any mode but view), current_action.status is pruned
-#     and status.0.stage goes undefined. The scalar is bound by no block, so it
-#     survives. The List/rows still read current_action.status[.$] — they only
-#     render when the List is visible (view mode), where the array is present.
+#     (seeded from the response — the WORKING COPY the edit modal binds),
+#     current_action.comment (the OPTIONAL surface comment, seeded null) and
+#     current_action.change_request_comment (the MANDATORY comment in the
+#     review-mode Request Changes modal, a separate path so its required-validate
+#     doesn't fire on the optional input; seeded null).
+#   - current_action.stage — the current stage (response status.0.stage), seeded
+#     as a plain scalar by every container. The header status pill and the
+#     error-stage comment gate read THIS scalar as the stable stage source (D4);
+#     the workspace page seeds an identical scalar, so both surfaces read the
+#     stage the same way.
 #   - current_action.mode — `edit` | `view` | `review`, set by the modal's open
 #     handler (which derives it from the GetWorkflowAction response). The surface
 #     gates every mode-dependent block on `_state: current_action.mode` — mode is
@@ -42,12 +43,14 @@
 # Surface conventions:
 #   - Workflow-closed banner renders in ALL modes; rendering it read-only is
 #     informative and keeps one body.
-#   - The signal button bar is an in-flow, right-aligned Box at the bottom of
-#     the card — NOT the layout module's `floating-actions` — because the
-#     surface also renders inside a Modal, where a page-level floating bar is
-#     wrong.
+#   - The signal button bar is an in-flow, right-aligned Box at the bottom of the
+#     modal body — NOT the layout module's `floating-actions` — because the
+#     surface renders inside a Modal, where a page-level floating bar is wrong.
+#   - Top-level block is a Box (not a Card): a Card mounted inside the Modal would
+#     render a bordered/padded box inside the modal's already-padded body
+#     (box-in-box). As a Box, content sits directly in the modal body.
 id: check_action_surface
-type: Card
+type: Box
 layout:
   gap: 16
 blocks:
@@ -66,205 +69,40 @@ blocks:
       showIcon: true
       message: Workflow closed
       description: This workflow is closed. Updates to this action are no longer accepted.
-  # 2. Header — Title + status Tag styled from the action_statuses enum.
-  #    Shown in ALL modes: the surface is the only title source inside the modal
-  #    (the modal has no page chrome), so gating it to view/review left edit mode
-  #    with no title and no status tag.
-  - id: action_header
-    type: Box
-    layout:
-      gap: 8
-      selfAlign: middle
-    blocks:
-      - id: action_title
-        type: Title
-        properties:
-          level: 4
-          content:
-            _state: current_action.message
-      - id: action_status_badge
-        type: Tag
-        # `.element` targets the antd Tag itself; a flat style object would land
-        # on the BlockLayout wrapper instead, leaving the Tag's default
-        # (white-on-custom-colour) text invisible on the light tint.
-        style:
-          .element:
-            color:
-              _js:
-                args:
-                  statuses:
-                    _ref: ../shared/enums/action_statuses.yaml
-                  stage:
-                    _state: current_action.stage
-                fn: |
-                  const { statuses, stage } = args;
-                  return statuses?.[stage]?.titleColor;
-            borderColor:
-              _js:
-                args:
-                  statuses:
-                    _ref: ../shared/enums/action_statuses.yaml
-                  stage:
-                    _state: current_action.stage
-                fn: |
-                  const { statuses, stage } = args;
-                  return statuses?.[stage]?.borderColor;
-        properties:
-          color:
-            _js:
-              args:
-                statuses:
-                  _ref: ../shared/enums/action_statuses.yaml
-                stage:
-                  _state: current_action.stage
-              fn: |
-                const { statuses, stage } = args;
-                return statuses?.[stage]?.color;
-          title:
-            _js:
-              args:
-                statuses:
-                  _ref: ../shared/enums/action_statuses.yaml
-                stage:
-                  _state: current_action.stage
-              fn: |
-                const { statuses, stage } = args;
-                return statuses?.[stage]?.title;
-  # 3. Universal fields — Part 24 component. Editability is edit-verb-gated
-  #    (current_action.allowed.edit), not mode-gated. The standalone Update
-  #    button writes the fields without a transition; the surface's submit/
-  #    progress signals additionally carry `fields` (check writes on transition).
-  #    `show` is omitted → the component defaults to all three (the design's
-  #    "no behavioural change for check" floor; the GetWorkflowAction envelope
-  #    carries no universal_fields presence list to narrow it). `workflow_type`
-  #    is a runtime state operator, so the Update endpoint id resolves
-  #    dynamically (same as the -submit buttons).
+  # 2. Header — shared title-block (status pill from the current_action.stage
+  #    scalar · message title · universal-fields chips in page_actions). No
+  #    eyebrow (the modal's host page already names the workflow, D3) and no
+  #    subtitle (no description/doc var — the authored description renders below,
+  #    D3). The chips read the RESOLVED envelope values (assignee_docs / due_date),
+  #    not the working copy; the ✎ opens the edit modal mounted below.
   - _ref:
-      path: components/universal-fields/universal-fields.yaml
+      path: ../shared/layout/title-block.yaml
       vars:
-        state_path: current_action.fields
-        mode:
-          _if:
-            test:
-              _eq:
-                - _state: current_action.allowed.edit
-                - true
-            then: edit
-            else: display
-        workflow_type:
-          _state: current_action.workflow_type
-        action_id:
-          _state: current_action._id
-        allowed_edit:
-          _state: current_action.allowed.edit
-        on_complete:
-          _var:
-            key: on_complete
-            default: []
-        action_data:
-          assignees:
-            _state: current_action.fields.assignees
-          due_date:
-            _state: current_action.fields.due_date
-          assignee_docs:
-            _state: current_action.assignee_docs
-  # 4. Status history — view mode only. The List binds state at its block id;
-  #    the spread response already holds the status array at
-  #    current_action.status, so there is no request and no extra SetState.
-  - id: status_history_card
-    type: Card
-    visible:
-      _eq:
-        - _state: current_action.mode
-        - view
-    properties:
-      title: Status History
-    layout:
-      gap: 16
-    blocks:
-      - id: current_action.status
-        type: List
-        visible:
-          _gt:
-            - _array.length:
-                _state: current_action.status
-            - 0
-        blocks:
-          - id: current_action.status.$.row
-            type: Box
-            layout:
-              gap: 8
-              selfAlign: middle
-            blocks:
-              - id: current_action.status.$.badge
-                type: Tag
-                style:
-                  .element:
-                    color:
-                      _js:
-                        args:
-                          statuses:
-                            _ref: ../shared/enums/action_statuses.yaml
-                          stage:
-                            _state: current_action.status.$.stage
-                        fn: |
-                          const { statuses, stage } = args;
-                          return statuses?.[stage]?.titleColor;
-                    borderColor:
-                      _js:
-                        args:
-                          statuses:
-                            _ref: ../shared/enums/action_statuses.yaml
-                          stage:
-                            _state: current_action.status.$.stage
-                        fn: |
-                          const { statuses, stage } = args;
-                          return statuses?.[stage]?.borderColor;
-                properties:
-                  color:
-                    _js:
-                      args:
-                        statuses:
-                          _ref: ../shared/enums/action_statuses.yaml
-                        stage:
-                          _state: current_action.status.$.stage
-                      fn: |
-                        const { statuses, stage } = args;
-                        return statuses?.[stage]?.color;
-                  title:
-                    _js:
-                      args:
-                        statuses:
-                          _ref: ../shared/enums/action_statuses.yaml
-                        stage:
-                          _state: current_action.status.$.stage
-                      fn: |
-                        const { statuses, stage } = args;
-                        return statuses?.[stage]?.title;
-              - id: current_action.status.$.timestamp
-                type: Paragraph
-                properties:
-                  type: secondary
-                  style:
-                    fontSize: 12
-                  content:
-                    _dayjs.format:
-                      on:
-                        _state: current_action.status.$.created.timestamp
-                      format: YYYY-MM-DD HH:mm
-              - id: current_action.status.$.error
-                type: Paragraph
-                visible:
-                  _ne:
-                    - _state: current_action.status.$.error_message
-                    - null
-                properties:
-                  type: danger
-                  style:
-                    fontSize: 12
-                  content:
-                    _state: current_action.status.$.error_message
-  # 5. Comment — edit / review modes always; view mode only when the current
+        title:
+          _state: current_action.message
+        status:
+          _state: current_action.stage
+        status_enum:
+          _ref: ../shared/enums/action_statuses.yaml
+        show_back_button: false
+        page_actions:
+          - _ref:
+              path: components/universal-fields/universal-fields-chips.yaml
+              vars:
+                modal_id: universal_fields_edit_modal
+                action_data:
+                  assignee_docs:
+                    _state: current_action.assignee_docs
+                  due_date:
+                    _state: current_action.due_date
+  # 3. Authored description — read-only Markdown lead-in (Part 64). Self-hides
+  #    when the action carries no authored description.
+  - _ref:
+      path: components/action-description.yaml
+      vars:
+        content:
+          _state: current_action.description
+  # 4. Comment — edit / review modes always; view mode only when the current
   #    stage is `error` (the resolve_error recovery note).
   - id: current_action.comment
     type: TiptapInput
@@ -286,10 +124,11 @@ blocks:
     properties:
       title: Comment
       placeholder: Add a comment (optional).
-  # 6. Signal button bar — right-aligned in-flow Box. Each button's `visible`
+  # 5. Signal button bar — right-aligned in-flow Box. Each button's `visible`
   #    is the AND of the mode gate and its server-resolved boolean; `disabled`
   #    is the uniform required_after_close gate. Endpoint and base payload are
-  #    identical across signals; `fields` rides submit and progress only.
+  #    identical across signals. No signal carries `fields` (Part 65 D1 — a user
+  #    submit never writes universal fields; they are edited through the ✎ modal).
   - id: signal_button_bar
     type: Box
     layout:
@@ -367,8 +206,6 @@ blocks:
                         _state: current_action.key
                       comment:
                         _state: current_action.comment
-                      fields:
-                        _state: current_action.fields
               - _var:
                   key: on_complete
                   default: []
@@ -436,11 +273,7 @@ blocks:
         events:
           onClick:
             _build.array.concat:
-              - - id: validate
-                  type: Validate
-                  params:
-                    regex: ^current_action\.fields\.
-                - id: submit
+              - - id: submit
                   type: CallAPI
                   params:
                     endpointId:
@@ -457,8 +290,6 @@ blocks:
                         _state: current_action.key
                       comment:
                         _state: current_action.comment
-                      fields:
-                        _state: current_action.fields
               - _var:
                   key: on_complete
                   default: []
@@ -576,7 +407,7 @@ blocks:
               - _var:
                   key: on_complete
                   default: []
-  # 7. Request-changes modal — review mode only. Mandatory comment binds
+  # 6. Request-changes modal — review mode only. Mandatory comment binds
   #    current_action.change_request_comment (its own path, separate from the
   #    optional surface comment, so its required-validate fires only here); onOk
   #    validates the comment then fires the request_changes signal (base payload,
@@ -647,3 +478,73 @@ blocks:
             disabled: true
           title: Change Description
           placeholder: Please provide a description of the changes you would like.
+  # 7. Universal-fields edit modal — opened by the title-bar ✎ chip. The Update
+  #    calls {workflow_type}-update-fields; on success its on_complete refetches
+  #    get_workflow_action and reseeds current_action, then the modal self-closes
+  #    (appended by universal-fields-modal.yaml). The reseed deliberately OMITS
+  #    the comment / change_request_comment resets (D5): a field edit is not a
+  #    submission, so an in-progress reviewer comment must survive it (the
+  #    GetWorkflowAction response carries neither key, so omitting the resets
+  #    leaves the working text untouched). The post-signal close path clears the
+  #    comment by re-running the open handler on the next open instead.
+  - _ref:
+      path: components/universal-fields/universal-fields-modal.yaml
+      vars:
+        modal_id: universal_fields_edit_modal
+        state_path: current_action.fields
+        workflow_type:
+          _state: current_action.workflow_type
+        action_id:
+          _state: current_action._id
+        allowed_edit:
+          _state: current_action.allowed.edit
+        on_complete:
+          - id: refetch_action_fields
+            type: Request
+            params: get_workflow_action
+          - id: reseed_action_fields
+            type: SetState
+            params:
+              current_action:
+                _request: get_workflow_action
+              current_action.fields:
+                assignees:
+                  _request: get_workflow_action.assignees
+                due_date:
+                  _request: get_workflow_action.due_date
+              current_action.stage:
+                _request: get_workflow_action.status.0.stage
+              current_action.mode:
+                _if:
+                  test:
+                    _eq:
+                      - _request: get_workflow_action.status.0.stage
+                      - error
+                  then: view
+                  else:
+                    _if:
+                      test:
+                        _and:
+                          - _eq:
+                              - _request: get_workflow_action.status.0.stage
+                              - in-review
+                          - _eq:
+                              - _request: get_workflow_action.allowed.review
+                              - true
+                      then: review
+                      else:
+                        _if:
+                          test:
+                            _and:
+                              - _array.includes:
+                                  - - action-required
+                                    - in-progress
+                                    - changes-required
+                                  - _request: get_workflow_action.status.0.stage
+                              - _eq:
+                                  - _request: get_workflow_action.allowed.edit
+                                  - true
+                          then: edit
+                          else: view
+              entity_id:
+                _request: get_workflow_action.entity.id
