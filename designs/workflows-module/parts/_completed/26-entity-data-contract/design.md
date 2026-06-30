@@ -233,8 +233,8 @@ Part 63's open decision was how the shared overview pages resolve the entity ins
 
 ## Depends on
 
-- [Part 4](../_completed/04-workflow-config-schema/design.md) — `entity.data` `{ routine }` validation (replaces `name_field`).
-- [Part 16 page templates](../_completed/16-page-templates/design.md) — shipped; this part edits the four templates to drop `get_entity` and source `entity` from the action response.
-- [Part 17 shared pages](../_completed/17-shared-pages/design.md) — introduced the overview pages and the per-workflow `entity` block this part extends.
-- [Part 56](../_completed/56-three-tier-action-pages/design.md) — introduced `name_field` + the action-breadcrumb entity crumb this part rewrites.
-- [Part 63](../63-overview-page-breadcrumbs/design.md) — consumes `entity_link.name` from this part.
+- [Part 4](designs/workflows-module/parts/_completed/04-workflow-config-schema/design.md) — `entity.data` `{ routine }` validation (replaces `name_field`).
+- [Part 16 page templates](designs/workflows-module/parts/_completed/16-page-templates/design.md) — shipped; this part edits the four templates to drop `get_entity` and source `entity` from the action response.
+- [Part 17 shared pages](designs/workflows-module/parts/_completed/17-shared-pages/design.md) — introduced the overview pages and the per-workflow `entity` block this part extends.
+- [Part 56](designs/workflows-module/parts/_completed/56-three-tier-action-pages/design.md) — introduced `name_field` + the action-breadcrumb entity crumb this part rewrites.
+- [Part 63](designs/workflows-module/parts/63-overview-page-breadcrumbs/design.md) — consumes `entity_link.name` from this part.

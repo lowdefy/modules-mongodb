@@ -2,7 +2,7 @@
 
 The two workflow overview pages — `workflow-overview` and `workflow-group-overview` — currently have only a back button, no breadcrumb. Action pages (Part 56) already render a full breadcrumb trail through the layout `page` component's `breadcrumbs` var. This part gives the overview pages the same trail so navigation is consistent: a user landing on a workflow or group overview can see and click their way back up through `Home / [entity list] / entity / workflow [/ group]`.
 
-The work is now **mechanical**. The hard part used to be resolving the entity instance name on these shared pages — and that obstacle is removed by [Part 26](../26-entity-data-contract/design.md), which has the read APIs populate `entity_link.name` server-side. This part just builds the trail and reads that field.
+The work is now **mechanical**. The hard part used to be resolving the entity instance name on these shared pages — and that obstacle is removed by [Part 26](designs/workflows-module/parts/_completed/26-entity-data-contract/design.md), which has the read APIs populate `entity_link.name` server-side. This part just builds the trail and reads that field.
 
 ## Proposed change
 
@@ -75,5 +75,5 @@ No plugin/API changes in this part — `entity_link.name` is delivered by Part 2
 
 ## Depends on
 
-- [Part 26 — Entity data contract](../26-entity-data-contract/design.md) — populates `entity_link.name` on the overview read-API responses; this part consumes it.
+- [Part 26 — Entity data contract](designs/workflows-module/parts/_completed/26-entity-data-contract/design.md) — populates `entity_link.name` on the overview read-API responses; this part consumes it.
 - [Part 56 — three-tier action pages](designs/workflows-module/parts/_completed/56-three-tier-action-pages/design.md) — established the `breadcrumbs` var on the layout `page` component and `action-breadcrumbs.yaml`.
